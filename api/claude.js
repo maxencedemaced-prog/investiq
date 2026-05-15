@@ -15,7 +15,7 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-opus-4-5',
         max_tokens: 1024,
         system: system || 'Tu es un assistant financier pédagogue francophone pour investisseurs débutants. Réponds en français, clairement. Tu ne fournis pas de conseil financier réglementé.',
         messages: [{ role: 'user', content: prompt }]
@@ -23,7 +23,6 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    console.log('Anthropic response:', JSON.stringify(data).slice(0, 300));
     if (data.error) return res.status(500).json({ error: data.error.message });
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
     res.status(200).json({ text: text || 'Aucune réponse.' });
