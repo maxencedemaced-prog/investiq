@@ -15,7 +15,7 @@ let newsFilter = 'tous';
 let notifications = [];
 let posSignals = {};
 let chatHistory = [];
-const COLORS = ['#00b386','#1c1c1e','#ff3b30','#1a56db','#ff9500','#9b59b6'];
+const COLORS = ['#1a7f5a','#1c1c1e','#ff3b30','#1a56db','#ff9500','#9b59b6'];
 const HL = { court:'Court (<3 ans)', moyen:'Moyen (3–7 ans)', long:'Long (>7 ans)' };
 const RL = { faible:'Faible', modere:'Modérée', eleve:'Élevée' };
 
@@ -117,7 +117,7 @@ async function changePassword() {
   const { error } = await sb.auth.updateUser({ password: p });
   msg.style.display='block';
   if (error) { msg.style.color='#ff3b30'; msg.textContent='Erreur: '+error.message; }
-  else { msg.style.color='#00b386'; msg.textContent='✓ Mot de passe mis à jour !'; }
+  else { msg.style.color='#1a7f5a'; msg.textContent='✓ Mot de passe mis à jour !'; }
 }
 
 // ===== DATA =====
@@ -187,7 +187,7 @@ function showPriceTicker(quotes) {
   if (!quotes.length) { ticker.innerHTML=''; return; }
   const items = quotes.slice(0,3).map(q => {
     const chg = q.regularMarketChangePercent||0;
-    const color = chg>=0?'#00b386':'#ff3b30';
+    const color = chg>=0?'#1a7f5a':'#ff3b30';
     return `<span style="font-size:12px;font-weight:700;color:${color}">${q.symbol} ${chg>=0?'+':''}${chg.toFixed(1)}%</span>`;
   });
   ticker.innerHTML = items.join('<span style="color:#c7c7cc;margin:0 6px">·</span>');
@@ -356,7 +356,7 @@ function renderPlatforms() {
   positions.forEach(p=>{ const v=p.qty*p.price; platforms[p.platform||'Autre']=(platforms[p.platform||'Autre']||0)+v; });
   document.getElementById('home-platforms').innerHTML = Object.entries(platforms).map(([name,val])=>`
     <div class="bar-row"><div class="bar-label"><span>${name}</span><span>${fmtK(val)} (${(val/tv*100).toFixed(1)}%)</span></div>
-    <div class="bar-bg"><div class="bar-fill" style="width:${val/tv*100}%;background:#00b386"></div></div></div>`).join('');
+    <div class="bar-bg"><div class="bar-fill" style="width:${val/tv*100}%;background:#1c1c1e"></div></div></div>`).join('');
 }
 
 // ===== SCORE =====
@@ -376,10 +376,10 @@ function calcScore() {
 }
 function buildScore() {
   const {score,items}=calcScore();
-  const color=score>=7?'#00b386':score>=5?'#ff9500':'#ff3b30';
-  const bg=score>=7?'#e6f7f2':score>=5?'#fff5e0':'#fff0f0';
+  const color=score>=7?'#1a7f5a':score>=5?'#ff9500':'#ff3b30';
+  const bg=score>=7?'#e8f8f0':score>=5?'#fff5e0':'#fff0f0';
   let html=`<div class="score-wrap"><div class="score-ring" style="background:${bg};border-color:${color}"><div class="score-num" style="color:${color}">${score.toFixed(1)}</div><div class="score-max" style="color:${color}">/10</div></div><div class="score-items">`;
-  items.forEach(it=>{const c=it.score>=7?'#00b386':it.score>=5?'#ff9500':'#ff3b30';html+=`<div class="score-row"><span class="score-row-label">${it.label}</span><div class="score-bar-bg"><div class="score-bar-fill" style="width:${it.score/10*100}%;background:${c}"></div></div><span class="score-val" style="color:${c}">${it.score}</span></div>`;});
+  items.forEach(it=>{const c=it.score>=7?'#1a7f5a':it.score>=5?'#ff9500':'#ff3b30';html+=`<div class="score-row"><span class="score-row-label">${it.label}</span><div class="score-bar-bg"><div class="score-bar-fill" style="width:${it.score/10*100}%;background:${c}"></div></div><span class="score-val" style="color:${c}">${it.score}</span></div>`;});
   html+='</div></div>';
   const tips=items.filter(i=>i.tip);
   if(tips.length) html+='<div style="margin-top:8px">'+tips.map(t=>`<div style="font-size:13px;color:#8e8e93;margin-bottom:4px;font-weight:500">→ ${t.tip}</div>`).join('')+'</div>';
@@ -422,7 +422,7 @@ function renderPortfolio() {
     const val=p.qty*p.price,inv=p.qty*p.pru,pnl=val-inv,pct=inv?pnl/inv*100:0;
     const sig=posSignals[p.id];
     const sigHtml=sig?`<span class="signal-badge-large ${sig.action==='acheter'?'sig-buy':sig.action==='vendre'?'sig-sell':'sig-hold'}">${sig.action==='acheter'?'↑ Renforcer':sig.action==='vendre'?'↓ Alléger':'→ Garder'}</span>`:`<span class="signal-badge-large sig-loading">Analyse...</span>`;
-    const chgHtml=p.change_pct!==undefined?`<span style="font-size:12px;color:${p.change_pct>=0?'#00b386':'#ff3b30'};font-weight:700">${p.change_pct>=0?'+':''}${p.change_pct?.toFixed(1)}% auj.</span>`:'';
+    const chgHtml=p.change_pct!==undefined?`<span style="font-size:12px;color:${p.change_pct>=0?'#1a7f5a':'#ff3b30'};font-weight:700">${p.change_pct>=0?'+':''}${p.change_pct?.toFixed(1)}% auj.</span>`:'';
     const alertHtml=p.alert_price?`<span style="font-size:11px;color:#8e8e93;font-weight:600">🔔 Alerte: ${fmt(p.alert_price)}€</span>`:'';
     return`<div class="pos-card">
       <div class="pos-card-head" onclick="togglePosSignal('${p.id}')">
@@ -443,7 +443,7 @@ function renderPortfolio() {
           <div class="signal-header"><div style="font-size:12px;color:#8e8e93;font-weight:700">Signal IA</div>${sigHtml}</div>
           <div class="perf-bar-wrap">
             <div class="perf-bar-label"><span>PRU : ${fmt(p.pru)}€</span><span>Actuel : ${fmt(p.price)}€</span></div>
-            <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${Math.min(Math.abs(pct)/30*100,100)}%;background:${pnl>=0?'#00b386':'#ff3b30'}"></div></div>
+            <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${Math.min(Math.abs(pct)/30*100,100)}%;background:${pnl>=0?'#1a7f5a':'#ff3b30'}"></div></div>
           </div>
           ${sig?`<div class="signal-text" style="margin-top:8px">${sig.texte}</div>`:''}
           <div class="pos-actions">
@@ -531,8 +531,8 @@ function exportPDF() {
   const tv=positions.reduce((a,p)=>a+p.qty*p.price,0);
   const ti=positions.reduce((a,p)=>a+p.qty*p.pru,0);
   const tpnl=tv-ti, tpct=ti?tpnl/ti*100:0;
-  const rows=positions.map(p=>{const val=p.qty*p.price,pnl=val-p.qty*p.pru,pct=p.qty*p.pru?pnl/(p.qty*p.pru)*100:0;return`<tr><td>${p.name}</td><td>${p.type}</td><td>${p.qty}</td><td>${fmt(p.pru)}€</td><td>${fmt(p.price)}€</td><td>${fmt(val)}€</td><td style="color:${pnl>=0?'#00b386':'#ff3b30'}">${pnl>=0?'+':''}${pct.toFixed(1)}%</td></tr>`;}).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>InvestIQ — Rapport</title><style>body{font-family:-apple-system,sans-serif;padding:40px;color:#1c1c1e}h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px}p{color:#8e8e93}table{width:100%;border-collapse:collapse;margin-top:24px}th{text-align:left;padding:10px;background:#f2f2f7;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#8e8e93}td{padding:12px 10px;border-bottom:1px solid #f2f2f7;font-size:14px}.summary{display:flex;gap:24px;margin:24px 0}.metric{background:#f2f2f7;border-radius:14px;padding:16px;min-width:140px}.metric-label{font-size:11px;color:#8e8e93;text-transform:uppercase;font-weight:700;margin-bottom:6px}.metric-val{font-size:22px;font-weight:800}</style></head><body><h1>InvestIQ</h1><p>Rapport du ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</p><div class="summary"><div class="metric"><div class="metric-label">Valeur totale</div><div class="metric-val">${fmtK(tv)}</div></div><div class="metric"><div class="metric-label">Total investi</div><div class="metric-val">${fmtK(ti)}</div></div><div class="metric"><div class="metric-label">Plus-value</div><div class="metric-val" style="color:${tpnl>=0?'#00b386':'#ff3b30'}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div></div><div class="metric"><div class="metric-label">Performance</div><div class="metric-val" style="color:${tpnl>=0?'#00b386':'#ff3b30'}">${tpnl>=0?'+':''}${tpct.toFixed(2)}%</div></div></div><table><thead><tr><th>Actif</th><th>Type</th><th>Qté</th><th>PRU</th><th>Prix actuel</th><th>Valeur</th><th>+/-</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+  const rows=positions.map(p=>{const val=p.qty*p.price,pnl=val-p.qty*p.pru,pct=p.qty*p.pru?pnl/(p.qty*p.pru)*100:0;return`<tr><td>${p.name}</td><td>${p.type}</td><td>${p.qty}</td><td>${fmt(p.pru)}€</td><td>${fmt(p.price)}€</td><td>${fmt(val)}€</td><td style="color:${pnl>=0?'#1a7f5a':'#ff3b30'}">${pnl>=0?'+':''}${pct.toFixed(1)}%</td></tr>`;}).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>InvestIQ — Rapport</title><style>body{font-family:-apple-system,sans-serif;padding:40px;color:#1c1c1e}h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px}p{color:#8e8e93}table{width:100%;border-collapse:collapse;margin-top:24px}th{text-align:left;padding:10px;background:#f2f2f7;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#8e8e93}td{padding:12px 10px;border-bottom:1px solid #f2f2f7;font-size:14px}.summary{display:flex;gap:24px;margin:24px 0}.metric{background:#f2f2f7;border-radius:14px;padding:16px;min-width:140px}.metric-label{font-size:11px;color:#8e8e93;text-transform:uppercase;font-weight:700;margin-bottom:6px}.metric-val{font-size:22px;font-weight:800}</style></head><body><h1>InvestIQ</h1><p>Rapport du ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</p><div class="summary"><div class="metric"><div class="metric-label">Valeur totale</div><div class="metric-val">${fmtK(tv)}</div></div><div class="metric"><div class="metric-label">Total investi</div><div class="metric-val">${fmtK(ti)}</div></div><div class="metric"><div class="metric-label">Plus-value</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div></div><div class="metric"><div class="metric-label">Performance</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${tpct.toFixed(2)}%</div></div></div><table><thead><tr><th>Actif</th><th>Type</th><th>Qté</th><th>PRU</th><th>Prix actuel</th><th>Valeur</th><th>+/-</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
   const win=window.open('','_blank');
   win.document.write(html);
   win.document.close();
