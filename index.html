@@ -25,6 +25,11 @@
       </div>
       <div><div class="logo-name">InvestIQ</div><div class="logo-sub">Ton assistant investissement</div></div>
     </div>
+    <div class="auth-tagline">
+      <div class="auth-feature"><span>📊</span> Suis ton portefeuille</div>
+      <div class="auth-feature"><span>🤖</span> Analyse IA en temps réel</div>
+      <div class="auth-feature"><span>📰</span> Actus & signaux marchés</div>
+    </div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-login" onclick="switchAuth('login')">Connexion</button>
       <button class="auth-tab" id="tab-signup" onclick="switchAuth('signup')">Inscription</button>
@@ -47,7 +52,69 @@
 
 <!-- APP -->
 <div id="app" style="display:none">
-  <!-- DEMO BANNER -->
+  
+<!-- ONBOARDING MODAL -->
+<div id="onboarding-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <div class="onboard-steps">
+      <div class="onboard-step active" id="ob-step-1">
+        <div class="ob-icon">📊</div>
+        <div class="ob-title">Bienvenue sur InvestIQ !</div>
+        <div class="ob-text">Ton assistant investissement personnel. En 3 étapes, tu vas configurer ton profil et commencer à suivre tes investissements.</div>
+        <div class="ob-progress"><div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+        <button class="btn-primary" onclick="obNext(2)">Commencer →</button>
+      </div>
+      <div class="onboard-step" id="ob-step-2" style="display:none">
+        <div class="ob-icon">💰</div>
+        <div class="ob-title">Ton profil investisseur</div>
+        <div class="ob-text">Configure ta bankroll et ton profil pour des recommandations personnalisées.</div>
+        <div class="field" style="margin-top:16px"><label>Bankroll disponible (€)</label><input type="number" id="ob-bankroll" value="1000" placeholder="Ex: 1000"></div>
+        <div class="field"><label>Ton profil</label>
+          <select id="ob-risk">
+            <option value="faible">🛡️ Débutant prudent — je veux sécuriser</option>
+            <option value="modere">⚖️ Équilibré — risque/rendement</option>
+            <option value="eleve">🚀 Agressif — je vise la performance</option>
+          </select>
+        </div>
+        <div class="field"><label>Horizon d'investissement</label>
+          <select id="ob-horizon">
+            <option value="court">Court terme — moins de 3 ans</option>
+            <option value="moyen" selected>Moyen terme — 3 à 7 ans</option>
+            <option value="long">Long terme — plus de 7 ans</option>
+          </select>
+        </div>
+        <div class="ob-progress"><div class="ob-dot"></div><div class="ob-dot active"></div><div class="ob-dot"></div></div>
+        <button class="btn-primary" onclick="obNext(3)">Suivant →</button>
+      </div>
+      <div class="onboard-step" id="ob-step-3" style="display:none">
+        <div class="ob-icon">🎯</div>
+        <div class="ob-title">Par où commencer ?</div>
+        <div class="ob-text">Choisis comment démarrer :</div>
+        <div class="ob-choices">
+          <div class="ob-choice" onclick="obFinish('ajouter')">
+            <div class="ob-choice-icon">➕</div>
+            <div><strong>Ajouter mes positions</strong><div style="font-size:12px;color:#8e8e93;margin-top:2px">J'ai déjà des actions ou ETF</div></div>
+          </div>
+          <div class="ob-choice" onclick="obFinish('news')">
+            <div class="ob-choice-icon">📰</div>
+            <div><strong>Explorer les actualités</strong><div style="font-size:12px;color:#8e8e93;margin-top:2px">Je veux voir le marché avant d'investir</div></div>
+          </div>
+          <div class="ob-choice" onclick="obFinish('dca')">
+            <div class="ob-choice-icon">📅</div>
+            <div><strong>Simuler un investissement</strong><div style="font-size:12px;color:#8e8e93;margin-top:2px">Je veux voir combien je peux gagner</div></div>
+          </div>
+          <div class="ob-choice" onclick="obFinish('demo')">
+            <div class="ob-choice-icon">👀</div>
+            <div><strong>Voir un exemple</strong><div style="font-size:12px;color:#8e8e93;margin-top:2px">Charger un portefeuille démo</div></div>
+          </div>
+        </div>
+        <div class="ob-progress"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot active"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DEMO BANNER -->
   <div id="demo-banner" style="display:none" class="demo-banner">
     👀 Mode démo — <strong>données fictives</strong> · <a onclick="showAuth()" style="cursor:pointer;text-decoration:underline">Créer un compte gratuit →</a>
   </div>
@@ -255,14 +322,14 @@
         </div>
         <div class="form-grid three">
           <div class="field"><label>Quantité *</label><input type="number" id="f-qty" step="0.01" placeholder="10"></div>
-          <div class="field"><label>PRU (€) *</label><input type="number" id="f-pru" step="0.01" placeholder="150.00"></div>
+          <div class="field"><label>PRU (€) * <span class="tooltip-icon" data-tip="Prix de Revient Unitaire : le prix moyen auquel tu as acheté">?</span></label><input type="number" id="f-pru" step="0.01" placeholder="150.00"></div>
           <div class="field"><label>Prix actuel (€) *</label><input type="number" id="f-price" step="0.01" placeholder="165.00"></div>
         </div>
         <div class="form-grid">
           <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Monde, Tech, Luxe..."></div>
           <div class="field"><label>Plateforme</label><select id="f-platform"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
         </div>
-        <div class="field"><label>Alerte prix (€) <span class="field-hint">— optionnel</span></label><input type="number" id="f-alert" step="0.01" placeholder="Ex: 85 (alerte si prix < 85€)"></div>
+        <div class="field"><label>Alerte prix (€) <span class="tooltip-icon" data-tip="Tu recevras une notification si le prix tombe sous ce seuil">?</span></label><input type="number" id="f-alert" step="0.01" placeholder="Ex: 85 — alerte si prix descend sous 85€"></div>
         <div class="btn-row">
           <button class="btn-primary" onclick="addPos()">Ajouter au portefeuille</button>
           <button class="btn-secondary" onclick="loadDemo()">Charger un exemple</button>
