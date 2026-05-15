@@ -316,24 +316,69 @@
     <section id="sec-ajouter" class="sec">
       <div class="page-header"><h1>Ajouter une position</h1></div>
       <div class="card">
-        <div class="form-grid">
-          <div class="field"><label>Nom / Ticker *</label><input type="text" id="f-name" placeholder="Ex: IWDA, MSFT, Air Liquide"></div>
-          <div class="field"><label>Type *</label><select id="f-type"><option>ETF</option><option>Action</option></select></div>
+
+        <!-- AUTOCOMPLETE SEARCH -->
+        <div class="field" style="margin-bottom:20px">
+          <label>Rechercher une action ou un ETF *</label>
+          <div class="ac-wrap">
+            <div class="ac-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#8e8e93;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="f-search" placeholder="Ex: Apple, NVIDIA, LVMH, IWDA..." oninput="acSearch(this.value)" autocomplete="off">
+              <button id="ac-clear" style="display:none;background:transparent;border:none;cursor:pointer;color:#8e8e93;font-size:18px" onclick="acClear()">×</button>
+            </div>
+            <div id="ac-drop" class="ac-drop" style="display:none"></div>
+          </div>
         </div>
-        <div class="form-grid three">
-          <div class="field"><label>Quantité *</label><input type="number" id="f-qty" step="0.01" placeholder="10"></div>
-          <div class="field"><label>PRU (€) * <span class="tooltip-icon" data-tip="Prix de Revient Unitaire : le prix moyen auquel tu as acheté">?</span></label><input type="number" id="f-pru" step="0.01" placeholder="150.00"></div>
-          <div class="field"><label>Prix actuel (€) *</label><input type="number" id="f-price" step="0.01" placeholder="165.00"></div>
+
+        <!-- SELECTED COMPANY BADGE -->
+        <div id="ac-selected" style="display:none" class="ac-selected-badge">
+          <div id="ac-badge-content"></div>
+          <button onclick="acClear()" style="background:transparent;border:none;cursor:pointer;color:#8e8e93;font-size:16px;padding:0">×</button>
         </div>
-        <div class="form-grid">
-          <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Monde, Tech, Luxe..."></div>
-          <div class="field"><label>Plateforme</label><select id="f-platform"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
+
+        <!-- FORM FIELDS (hidden until company selected) -->
+        <div id="f-fields" style="display:none">
+          <input type="hidden" id="f-name">
+          <input type="hidden" id="f-type-hidden">
+
+          <div class="form-grid three">
+            <div class="field">
+              <label>Quantité *</label>
+              <input type="number" id="f-qty" step="0.01" placeholder="10">
+            </div>
+            <div class="field">
+              <label>PRU (€) * <span class="tooltip-icon" data-tip="Prix moyen auquel tu as acheté">?</span></label>
+              <input type="number" id="f-pru" step="0.01" placeholder="150.00">
+            </div>
+            <div class="field">
+              <label>Prix actuel (€) <span class="ac-live-badge" id="ac-live-label" style="display:none">⚡ live</span></label>
+              <input type="number" id="f-price" step="0.01" placeholder="165.00">
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Tech, Monde..."></div>
+            <div class="field"><label>Plateforme</label><select id="f-platform"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
+          </div>
+          <div class="field">
+            <label>Alerte prix (€) <span class="tooltip-icon" data-tip="Notification si le prix descend sous ce seuil">?</span></label>
+            <input type="number" id="f-alert" step="0.01" placeholder="Ex: 85 — alerte si prix < 85€">
+          </div>
+          <div class="btn-row">
+            <button class="btn-primary" onclick="addPos()">Ajouter au portefeuille</button>
+            <button class="btn-secondary" onclick="loadDemo()">Charger un exemple</button>
+          </div>
         </div>
-        <div class="field"><label>Alerte prix (€) <span class="tooltip-icon" data-tip="Tu recevras une notification si le prix tombe sous ce seuil">?</span></label><input type="number" id="f-alert" step="0.01" placeholder="Ex: 85 — alerte si prix descend sous 85€"></div>
-        <div class="btn-row">
-          <button class="btn-primary" onclick="addPos()">Ajouter au portefeuille</button>
-          <button class="btn-secondary" onclick="loadDemo()">Charger un exemple</button>
+
+        <!-- EMPTY STATE -->
+        <div id="f-empty-state" style="text-align:center;padding:20px 0;color:#8e8e93">
+          <div style="font-size:32px;margin-bottom:8px">🔍</div>
+          <div style="font-size:14px;font-weight:600">Recherche une action ou un ETF ci-dessus</div>
+          <div style="font-size:13px;color:#c7c7cc;margin-top:4px">Le prix et le secteur se rempliront automatiquement</div>
+          <div class="btn-row" style="justify-content:center;margin-top:16px">
+            <button class="btn-secondary" onclick="loadDemo()">Charger un exemple</button>
+          </div>
         </div>
+
       </div>
     </section>
 
