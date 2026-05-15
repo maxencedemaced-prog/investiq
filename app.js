@@ -1,4 +1,209 @@
 
+// ===== PORTFOLIO TABS =====
+function switchPortTab(tab, el) {
+  ['positions','chart','transactions'].forEach(t => {
+    const el2 = document.getElementById('port-tab-'+t);
+    if (el2) el2.style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.port-tab').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (tab === 'chart') setTimeout(renderPortfolioChart, 100);
+  if (tab === 'transactions') loadTransactions().then(renderTransactions);
+}
+
+// ===== SHARE PORTFOLIO =====
+function sharePortfolio() {
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const tpnl = tv-ti, tpct = ti?tpnl/ti*100:0;
+  const text = `Mon portefeuille InvestIQ 📊\n\nValeur : ${fmtK(tv)}\nPlus-value : ${tpnl>=0?'+':''}${fmtK(tpnl)} (${tpnl>=0?'+':''}${tpct.toFixed(1)}%)\n\nPositions : ${positions.map(p=>p.name).join(', ')}\n\n🔗 investiq-kappa.vercel.app`;
+  if (navigator.share) {
+    navigator.share({ title: 'Mon portefeuille InvestIQ', text, url: 'https://investiq-kappa.vercel.app' })
+      .catch(() => copyToClipboard(text));
+  } else {
+    copyToClipboard(text);
+  }
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('✓ Copié dans le presse-papiers !');
+  }).catch(() => {
+    showToast('Partage non disponible sur ce navigateur.');
+  });
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+// ===== TX MODAL =====
+function showAddTxModal() {
+  document.getElementById('tx-modal').style.display = 'flex';
+}
+
+async function saveTx() {
+  const name = document.getElementById('tx-name').value.trim();
+  const type = document.getElementById('tx-type').value;
+  const qty = parseFloat(document.getElementById('tx-qty').value);
+  const price = parseFloat(document.getElementById('tx-price').value);
+  const notes = document.getElementById('tx-notes').value;
+  if (!name || isNaN(qty) || isNaN(price)) { alert('Remplis les champs obligatoires.'); return; }
+  await addTransaction(name, type, qty, price, notes);
+  document.getElementById('tx-modal').style.display = 'none';
+  ['tx-name','tx-qty','tx-price','tx-notes'].forEach(id => document.getElementById(id).value = '');
+  renderTransactions();
+}
+
+// ===== PAGE TRANSITIONS =====
+function animatePageIn(sectionId) {
+  const el = document.getElementById(sectionId);
+  if (!el) return;
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(8px)';
+  el.classList.add('active');
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  }, 10);
+}
+
+
+// ===== PORTFOLIO CHART =====
+function renderPortfolioChart() {
+  const canvas = document.getElementById('portfolio-chart');
+  if (!canvas || !positions.length) return;
+  
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  
+  // Generate simulated history (last 12 months)
+  const labels = [];
+  const values = [];
+  const invested = [];
+  const now = new Date();
+  
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels.push(d.toLocaleDateString('fr-FR', {month:'short', year:'2-digit'}));
+    // Simulate growth
+    const factor = 1 + (11 - i) / 11 * (tv/ti - 1);
+    values.push(Math.round(ti * factor));
+    invested.push(ti);
+  }
+  values[11] = Math.round(tv);
+  
+  if (window.portfolioChart) window.portfolioChart.destroy();
+  
+  const ctx = canvas.getContext('2d');
+  window.portfolioChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Valeur du portefeuille',
+          data: values,
+          borderColor: '#1c1c1e',
+          backgroundColor: 'rgba(28,28,30,0.05)',
+          borderWidth: 2.5,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+        },
+        {
+          label: 'Capital investi',
+          data: invested,
+          borderColor: '#c7c7cc',
+          borderWidth: 1.5,
+          borderDash: [4,4],
+          fill: false,
+          tension: 0,
+          pointRadius: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + ctx.raw.toLocaleString('fr-FR') + ' €'
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' }, color: '#8e8e93' } },
+        y: { grid: { color: '#f5f5f5' }, ticks: { font: { size: 11, weight: '600' }, color: '#8e8e93', callback: v => v.toLocaleString('fr-FR') + ' €' } }
+      }
+    }
+  });
+}
+
+
+// ===== TRANSACTIONS =====
+let transactions = [];
+
+async function loadTransactions() {
+  if (isDemo) {
+    transactions = [
+      {id:'t1',position_name:'IWDA',type:'achat',qty:10,price:87.5,total:875,date:new Date(Date.now()-86400000*30).toISOString(),notes:'Premier achat ETF monde'},
+      {id:'t2',position_name:'LVMH',type:'achat',qty:2,price:730,total:1460,date:new Date(Date.now()-86400000*14).toISOString(),notes:''},
+      {id:'t3',position_name:'IWDA',type:'achat',qty:5,price:91,total:455,date:new Date(Date.now()-86400000*7).toISOString(),notes:'Renforcement DCA'},
+    ];
+    return;
+  }
+  const { data } = await sb.from('transactions').select('*').eq('user_id',currentUser.id).order('date',{ascending:false}).limit(50);
+  transactions = data || [];
+}
+
+async function addTransaction(posName, type, qty, price, notes='') {
+  const total = qty * price;
+  const tx = { position_name:posName, type, qty, price, total, notes };
+  if (!isDemo) {
+    const { data } = await sb.from('transactions').insert({...tx, user_id:currentUser.id}).select().single();
+    if (data) transactions.unshift(data);
+  } else {
+    transactions.unshift({...tx, id:'t'+Date.now(), date:new Date().toISOString()});
+  }
+}
+
+function renderTransactions() {
+  const el = document.getElementById('tx-list');
+  if (!el) return;
+  if (!transactions.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-icon">📋</div><div>Aucune transaction enregistrée</div></div>';
+    return;
+  }
+  el.innerHTML = transactions.map(tx => {
+    const d = new Date(tx.date);
+    const dateStr = d.toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'});
+    const typeColor = tx.type === 'achat' ? '#1a7f5a' : '#cc2f26';
+    const typeBg = tx.type === 'achat' ? '#e8f8f0' : '#fff0f0';
+    return `<div class="tx-item">
+      <div class="tx-left">
+        <div class="tx-avatar" style="background:${typeColor}">${tx.type==='achat'?'↑':'↓'}</div>
+        <div>
+          <div class="tx-name">${tx.position_name} <span style="font-size:11px;font-weight:700;background:${typeBg};color:${typeColor};padding:2px 8px;border-radius:99px">${tx.type}</span></div>
+          <div class="tx-meta">${tx.qty} parts × ${fmt(tx.price)}€ · ${dateStr}</div>
+          ${tx.notes?`<div class="tx-notes">${tx.notes}</div>`:''}
+        </div>
+      </div>
+      <div class="tx-total" style="color:${typeColor}">${tx.type==='achat'?'-':'+'}${fmt(tx.total)}€</div>
+    </div>`;
+  }).join('');
+}
+
+
 function buildEmptyHome() {
   return `<div class="empty-home">
     <div class="empty-home-icon">👋</div>
@@ -333,20 +538,20 @@ function updateFavBtn(ticker) {
 
 async function fetchCompanyPrice(ticker) {
   try {
-    const res = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(ticker)}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketChange`);
+    const res = await fetch(`/api/prices?symbols=${encodeURIComponent(ticker)}`);
     const data = await res.json();
-    const q = data.quoteResponse?.result?.[0];
+    const q = data.quotes?.[0];
     if (q) {
       const priceEl = document.getElementById('co-price');
       const changeEl = document.getElementById('co-change');
-      if (priceEl) { priceEl.textContent = q.regularMarketPrice ? q.regularMarketPrice.toFixed(2) + ' €' : '—'; }
+      if (priceEl) { priceEl.textContent = q.price ? q.price.toFixed(2) + ' €' : '—'; }
       if (changeEl) {
-        const chg = q.regularMarketChangePercent || 0;
+        const chg = q.changePct || 0;
         changeEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
         changeEl.className = 'metric-val ' + (chg >= 0 ? 'green' : 'red');
       }
     }
-  } catch { /* CORS — skip */ }
+  } catch { /* skip */ }
 }
 
 async function generateCompanyAnalysis(ticker, name, sector) {
@@ -639,29 +844,28 @@ async function loadObjective() {
 async function refreshPrices() {
   if (!positions.length) return;
   const ico = document.getElementById('refresh-prices-ico');
-  ico.classList.add('spinning');
-  const tickers = positions.map(p => encodeURIComponent(p.name)).join(',');
+  if(ico) ico.classList.add('spinning');
+  const tickers = positions.map(p => p.name).join(',');
   try {
-    const res = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers}&fields=regularMarketPrice,regularMarketChangePercent`);
+    const res = await fetch(`/api/prices?symbols=${encodeURIComponent(tickers)}`);
     const data = await res.json();
-    const quotes = data.quoteResponse?.result || [];
+    const quotes = data.quotes || [];
     let updated = 0;
     for (const q of quotes) {
-      const pos = positions.find(p => p.name.toUpperCase() === q.symbol.toUpperCase() || q.symbol.includes(p.name.toUpperCase()));
-      if (pos && q.regularMarketPrice) {
-        pos.price = q.regularMarketPrice;
-        pos.change_pct = q.regularMarketChangePercent;
+      const pos = positions.find(p => p.name.toUpperCase() === q.symbol?.toUpperCase() || q.symbol?.includes(p.name.toUpperCase()));
+      if (pos && q.price) {
+        pos.price = q.price;
+        pos.change_pct = q.changePct;
         if (!isDemo) await sb.from('positions').update({ price: pos.price }).eq('id', pos.id);
         updated++;
       }
     }
-    if (updated > 0) renderPortfolio();
+    if (updated > 0) { renderPortfolio(); renderHome(); }
     showPriceTicker(quotes);
   } catch(e) {
-    // Yahoo Finance may be blocked by CORS — use fallback
     showTickerFallback();
   }
-  ico.classList.remove('spinning');
+  if(ico) ico.classList.remove('spinning');
 }
 
 function showPriceTicker(quotes) {
@@ -744,7 +948,7 @@ function nav(page) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const sec = document.getElementById('sec-'+page);
   const btn = document.getElementById('nav-'+page);
-  if (sec) { sec.classList.add('active'); }
+  if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
   closeSidebar();
   const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif:renderObj, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
@@ -945,6 +1149,8 @@ function renderPortfolio() {
     }).join('');
   }
   positions.forEach(p=>{if(!posSignals[p.id])generatePosSignal(p);});
+  // Load transactions if visible
+  if (document.getElementById('tx-list')) { loadTransactions().then(renderTransactions); }
 }
 
 async function generatePosSignal(p) {
@@ -988,7 +1194,12 @@ async function addPos() {
   if(isDemo){positions.push({id:'d'+Date.now(),name,qty,pru,price,type:document.getElementById('f-type').value,sector:document.getElementById('f-sector').value||'',platform:document.getElementById('f-platform').value,alert_price:alertPrice});['f-name','f-qty','f-pru','f-price','f-sector','f-alert'].forEach(id=>document.getElementById(id).value='');nav('portfolio');return;}
   const pos={user_id:currentUser.id,name,qty,pru,price,type:document.getElementById('f-type').value,sector:document.getElementById('f-sector').value||'',platform:document.getElementById('f-platform').value,alert_price:alertPrice};
   const {data,error}=await sb.from('positions').insert(pos).select().single();
-  if(!error&&data){positions.push(data);['f-name','f-qty','f-pru','f-price','f-sector','f-alert'].forEach(id=>document.getElementById(id).value='');nav('portfolio');}
+  if(!error&&data){
+    positions.push(data);
+    await addTransaction(name,'achat',qty,pru,'Ouverture de position');
+    ['f-name','f-qty','f-pru','f-price','f-sector','f-alert'].forEach(id=>document.getElementById(id).value='');
+    nav('portfolio');
+  }
 }
 async function delPos(id) {
   if(!confirm('Supprimer ?'))return;
