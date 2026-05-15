@@ -1354,20 +1354,39 @@ function openDecisionFromPos(name,action) {
 }
 
 async function addPos() {
-  const name=document.getElementById('f-name').value.trim();
-  const qty=parseFloat(document.getElementById('f-qty').value);
-  const pru=parseFloat(document.getElementById('f-pru').value);
-  const price=parseFloat(document.getElementById('f-price').value);
-  const alertPrice=parseFloat(document.getElementById('f-alert').value)||null;
-  if(!name||isNaN(qty)||isNaN(pru)||isNaN(price)){alert('Remplis tous les champs obligatoires.');return;}
-  if(isDemo){positions.push({id:'d'+Date.now(),name,qty,pru,price,type:document.getElementById('f-type-hidden')?.value||'Action',sector:document.getElementById('f-sector').value||'',platform:document.getElementById('f-platform').value,alert_price:alertPrice});['f-name','f-qty','f-pru','f-price','f-sector','f-alert'].forEach(id=>document.getElementById(id).value='');nav('portfolio');return;}
-  const pos={user_id:currentUser.id,name,qty,pru,price,type:document.getElementById('f-type-hidden')?.value||'Action',sector:document.getElementById('f-sector').value||'',platform:document.getElementById('f-platform').value,alert_price:alertPrice};
-  const {data,error}=await sb.from('positions').insert(pos).select().single();
-  if(!error&&data){
-    positions.push(data);
-    await addTransaction(name,'achat',qty,pru,'Ouverture de position');
-    ['f-name','f-qty','f-pru','f-price','f-sector','f-alert'].forEach(id=>document.getElementById(id).value='');
+  const name = document.getElementById('f-name').value.trim();
+  const qty = parseFloat(document.getElementById('f-qty').value);
+  const pru = parseFloat(document.getElementById('f-pru').value);
+  const price = parseFloat(document.getElementById('f-price').value);
+  const alertPrice = parseFloat(document.getElementById('f-alert').value) || null;
+  const type = document.getElementById('f-type-hidden')?.value || (acSelected?.type) || 'Action';
+  const sector = document.getElementById('f-sector').value || (acSelected?.sector) || '';
+  const platform = document.getElementById('f-platform').value || 'Autre';
+
+  // Validation avec messages clairs
+  if (!name) { showToast('⚠ Recherche et sélectionne une action d'abord'); return; }
+  if (isNaN(qty) || qty <= 0) { showToast('⚠ Indique une quantité valide'); return; }
+  if (isNaN(pru) || pru <= 0) { showToast('⚠ Indique ton prix de revient (PRU)'); return; }
+  if (isNaN(price) || price <= 0) { showToast('⚠ Indique le prix actuel'); return; }
+
+  const pos = { name, qty, pru, price, type, sector, platform, alert_price: alertPrice };
+
+  if (isDemo) {
+    positions.push({ id: 'd'+Date.now(), ...pos });
+    acClear();
     nav('portfolio');
+    showToast('✓ Position ajoutée !');
+    return;
+  }
+
+  const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
+  if (error) { showToast('Erreur: ' + error.message); return; }
+  if (data) {
+    positions.push(data);
+    await addTransaction(name, 'achat', qty, pru, 'Ouverture de position');
+    acClear();
+    nav('portfolio');
+    showToast('✓ ' + name + ' ajouté au portefeuille !');
   }
 }
 async function delPos(id) {
