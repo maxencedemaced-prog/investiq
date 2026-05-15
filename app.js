@@ -1,4 +1,25 @@
 
+async function tryAlternativeTicker(ticker, priceInput, liveLabel) {
+  // Try common suffixes
+  const alternatives = [ticker+'.DE', ticker+'.PA', ticker+'.L', ticker+'.MI'];
+  for (const alt of alternatives) {
+    try {
+      const res = await fetch('/api/prices?symbols=' + encodeURIComponent(alt));
+      const data = await res.json();
+      const q = data.quotes?.[0];
+      if (q && q.price) {
+        if (priceInput) { priceInput.value = q.price.toFixed(2); priceInput.style.color = '#1c1c1e'; }
+        if (liveLabel) liveLabel.style.display = 'inline';
+        // Update the stored ticker
+        if (acSelected) acSelected.ticker = alt;
+        document.getElementById('f-name').value = alt;
+        return;
+      }
+    } catch {}
+  }
+}
+
+
 async function acSearchYahoo(query) {
   const drop = document.getElementById('ac-drop');
   if (!drop) return;
@@ -62,17 +83,17 @@ document.addEventListener('visibilitychange', () => {
 // ===== AUTOCOMPLETE ADD POSITION =====
 const AC_DB = [
   // ===== ETF MONDE =====
-  {ticker:'IWDA',name:'iShares Core MSCI World ETF',type:'ETF',sector:'Monde',exchange:'LSE'},
-  {ticker:'VWCE',name:'Vanguard FTSE All-World UCITS ETF',type:'ETF',sector:'Monde',exchange:'XETRA'},
+  {ticker:'IWDA.L',name:'iShares Core MSCI World ETF',type:'ETF',sector:'Monde',exchange:'LSE'},
+  {ticker:'VWCE.DE',name:'Vanguard FTSE All-World UCITS ETF',type:'ETF',sector:'Monde',exchange:'XETRA'},
   {ticker:'CW8',name:'Amundi MSCI World UCITS ETF',type:'ETF',sector:'Monde',exchange:'Euronext'},
   {ticker:'EUNL',name:'iShares Core MSCI World EUR Hedged',type:'ETF',sector:'Monde',exchange:'XETRA'},
   {ticker:'MWRD',name:'iShares MSCI World Swap UCITS ETF',type:'ETF',sector:'Monde',exchange:'LSE'},
   {ticker:'LCUW',name:'Amundi MSCI World II UCITS ETF',type:'ETF',sector:'Monde',exchange:'Euronext'},
   {ticker:'WEBG',name:'Amundi Prime All Country World',type:'ETF',sector:'Monde',exchange:'XETRA'},
   // ===== ETF USA =====
-  {ticker:'CSPX',name:'iShares Core S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'LSE'},
-  {ticker:'VUSA',name:'Vanguard S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'LSE'},
-  {ticker:'VUAA',name:'Vanguard S&P 500 UCITS ETF Acc',type:'ETF',sector:'USA',exchange:'XETRA'},
+  {ticker:'CSPX.L',name:'iShares Core S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'LSE'},
+  {ticker:'VUSA.L',name:'Vanguard S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'LSE'},
+  {ticker:'VUAA.DE',name:'Vanguard S&P 500 UCITS ETF Acc',type:'ETF',sector:'USA',exchange:'XETRA'},
   {ticker:'LYPS',name:'Lyxor S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'XETRA'},
   {ticker:'500',name:'Amundi S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'Euronext'},
   {ticker:'SPYL',name:'SPDR S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'LSE'},
@@ -86,23 +107,23 @@ const AC_DB = [
   {ticker:'IDEM',name:'iShares MSCI Emerging Markets',type:'ETF',sector:'Émergents',exchange:'LSE'},
   {ticker:'VFEM',name:'Vanguard FTSE Emerging Markets ETF',type:'ETF',sector:'Émergents',exchange:'LSE'},
   // ===== ETF OBLIGATIONS =====
-  {ticker:'AGGH',name:'iShares Core Global Aggregate Bond',type:'ETF',sector:'Obligations',exchange:'LSE'},
+  {ticker:'AGGH.L',name:'iShares Core Global Aggregate Bond',type:'ETF',sector:'Obligations',exchange:'LSE'},
   {ticker:'IEAG',name:'iShares Core Euro Aggregate Bond',type:'ETF',sector:'Obligations',exchange:'XETRA'},
   {ticker:'IEGE',name:'iShares € Govt Bond ETF',type:'ETF',sector:'Obligations',exchange:'XETRA'},
   {ticker:'XGLE',name:'Xtrackers Global Government Bond',type:'ETF',sector:'Obligations',exchange:'XETRA'},
   // ===== ETF THEMATIQUES =====
-  {ticker:'IITU',name:'iShares S&P 500 Information Technology',type:'ETF',sector:'Tech',exchange:'LSE'},
-  {ticker:'HEAL',name:'iShares Healthcare Innovation ETF',type:'ETF',sector:'Santé',exchange:'LSE'},
-  {ticker:'INRG',name:'iShares Global Clean Energy ETF',type:'ETF',sector:'Énergie verte',exchange:'LSE'},
+  {ticker:'IITU.L',name:'iShares S&P 500 Information Technology',type:'ETF',sector:'Tech',exchange:'LSE'},
+  {ticker:'HEAL.L',name:'iShares Healthcare Innovation ETF',type:'ETF',sector:'Santé',exchange:'LSE'},
+  {ticker:'INRG.L',name:'iShares Global Clean Energy ETF',type:'ETF',sector:'Énergie verte',exchange:'LSE'},
   {ticker:'WCLD',name:'WisdomTree Cloud Computing ETF',type:'ETF',sector:'Cloud',exchange:'NASDAQ'},
   {ticker:'ROBO',name:'ROBO Global Robotics & Automation',type:'ETF',sector:'Robotique',exchange:'LSE'},
-  {ticker:'ECAR',name:'iShares Electric Vehicles & Driving',type:'ETF',sector:'Véhicules élec.',exchange:'LSE'},
+  {ticker:'ECAR.L',name:'iShares Electric Vehicles & Driving',type:'ETF',sector:'Véhicules élec.',exchange:'LSE'},
   // ===== ETF OR & MATIERES =====
-  {ticker:'SGLD',name:'Invesco Physical Gold ETC',type:'ETF',sector:'Or',exchange:'LSE'},
-  {ticker:'PHAU',name:'WisdomTree Physical Gold',type:'ETF',sector:'Or',exchange:'LSE'},
-  {ticker:'IGLN',name:'iShares Physical Gold ETC',type:'ETF',sector:'Or',exchange:'LSE'},
+  {ticker:'SGLD.L',name:'Invesco Physical Gold ETC',type:'ETF',sector:'Or',exchange:'LSE'},
+  {ticker:'PHAU.L',name:'WisdomTree Physical Gold',type:'ETF',sector:'Or',exchange:'LSE'},
+  {ticker:'IGLN.L',name:'iShares Physical Gold ETC',type:'ETF',sector:'Or',exchange:'LSE'},
   // ===== ETF IMMOBILIER =====
-  {ticker:'IWDP',name:'iShares Developed Markets Property ETF',type:'ETF',sector:'Immobilier',exchange:'LSE'},
+  {ticker:'IWDP.L',name:'iShares Developed Markets Property ETF',type:'ETF',sector:'Immobilier',exchange:'LSE'},
   {ticker:'EPRA',name:'Amundi FTSE EPRA NAREIT Global',type:'ETF',sector:'Immobilier',exchange:'Euronext'},
   // ===== CAC 40 =====
   {ticker:'MC.PA',name:'LVMH Moët Hennessy Louis Vuitton',type:'Action',sector:'Luxe',exchange:'Euronext'},
@@ -171,10 +192,10 @@ const AC_DB = [
   {ticker:'SONY',name:'Sony Group Corporation',type:'Action',sector:'Tech',exchange:'NYSE'},
   {ticker:'RBLX',name:'Roblox Corporation',type:'Action',sector:'Gaming',exchange:'NYSE'},
   {ticker:'U',name:'Unity Software',type:'Action',sector:'Gaming',exchange:'NYSE'},
-  {ticker:'CDPROJEKT.WA',name:'CD Projekt',type:'Action',sector:'Gaming',exchange:'Varsovie'},
+  {ticker:'CDR.WA',name:'CD Projekt',type:'Action',sector:'Gaming',exchange:'Varsovie'},
   // ===== AUTO =====
   {ticker:'RACE',name:'Ferrari N.V.',type:'Action',sector:'Auto Premium',exchange:'NYSE'},
-  {ticker:'P911.DE',name:'Porsche AG',type:'Action',sector:'Auto Premium',exchange:'XETRA'},
+  {ticker:'PAH3.DE',name:'Porsche AG',type:'Action',sector:'Auto Premium',exchange:'XETRA'},
   {ticker:'BMW.DE',name:'BMW Group',type:'Action',sector:'Auto',exchange:'XETRA'},
   {ticker:'MBG.DE',name:'Mercedes-Benz Group',type:'Action',sector:'Auto',exchange:'XETRA'},
   {ticker:'VOW3.DE',name:'Volkswagen AG',type:'Action',sector:'Auto',exchange:'XETRA'},
@@ -184,7 +205,7 @@ const AC_DB = [
   {ticker:'MA',name:'Mastercard Incorporated',type:'Action',sector:'Finance',exchange:'NYSE'},
   {ticker:'JPM',name:'JPMorgan Chase & Co.',type:'Action',sector:'Finance',exchange:'NYSE'},
   {ticker:'GS',name:'Goldman Sachs Group',type:'Action',sector:'Finance',exchange:'NYSE'},
-  {ticker:'HSBA.L',name:'HSBC Holdings',type:'Action',sector:'Finance',exchange:'LSE'},
+  {ticker:'HSBC',name:'HSBC Holdings',type:'Action',sector:'Finance',exchange:'LSE'},
   {ticker:'AXA.PA',name:'AXA Group',type:'Action',sector:'Assurance',exchange:'Euronext'},
   {ticker:'CS.PA',name:'AXA',type:'Action',sector:'Assurance',exchange:'Euronext'},
   // ===== SANTE =====
@@ -192,7 +213,7 @@ const AC_DB = [
   {ticker:'UNH',name:'UnitedHealth Group',type:'Action',sector:'Santé',exchange:'NYSE'},
   {ticker:'PFE',name:'Pfizer Inc.',type:'Action',sector:'Santé',exchange:'NYSE'},
   {ticker:'MRNA',name:'Moderna Inc.',type:'Action',sector:'Santé',exchange:'NASDAQ'},
-  {ticker:'NOVO-B.CO',name:'Novo Nordisk',type:'Action',sector:'Santé',exchange:'Copenhague'},
+  {ticker:'NVO',name:'Novo Nordisk',type:'Action',sector:'Santé',exchange:'Copenhague'},
   {ticker:'NVS',name:'Novartis AG',type:'Action',sector:'Santé',exchange:'NYSE'},
   {ticker:'ROG.SW',name:'Roche Holding',type:'Action',sector:'Santé',exchange:'Zurich'},
   // ===== CONSOMMATION =====
@@ -207,7 +228,7 @@ const AC_DB = [
   {ticker:'ASML',name:'ASML Holding N.V.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
   {ticker:'SAP',name:'SAP SE',type:'Action',sector:'Tech',exchange:'NYSE'},
   {ticker:'SIE.DE',name:'Siemens AG',type:'Action',sector:'Industrie',exchange:'XETRA'},
-  {ticker:'NOKIA.HE',name:'Nokia Corporation',type:'Action',sector:'Télécoms',exchange:'Helsinki'},
+  {ticker:'NOK',name:'Nokia Corporation',type:'Action',sector:'Télécoms',exchange:'Helsinki'},
   {ticker:'ERIC',name:'Ericsson',type:'Action',sector:'Télécoms',exchange:'NASDAQ'},
   // ===== ENERGIE =====
   {ticker:'XOM',name:'ExxonMobil Corporation',type:'Action',sector:'Énergie',exchange:'NYSE'},
@@ -216,7 +237,7 @@ const AC_DB = [
   {ticker:'NEE',name:'NextEra Energy',type:'Action',sector:'Énergie verte',exchange:'NYSE'},
   {ticker:'ENPH',name:'Enphase Energy',type:'Action',sector:'Énergie verte',exchange:'NASDAQ'},
   // ===== LUXE & MODE =====
-  {ticker:'RCF.MI',name:'Brunello Cucinelli',type:'Action',sector:'Luxe',exchange:'Milan'},
+  {ticker:'BC.MI',name:'Brunello Cucinelli',type:'Action',sector:'Luxe',exchange:'Milan'},
   {ticker:'MONC.MI',name:'Moncler',type:'Action',sector:'Luxe',exchange:'Milan'},
   {ticker:'BRBY.L',name:'Burberry Group',type:'Action',sector:'Luxe',exchange:'LSE'},
   // ===== IMMOBILIER =====
@@ -292,23 +313,35 @@ async function acSelect(company) {
 
   // Fetch live price
   const liveLabel = document.getElementById('ac-live-label');
+  const priceInput = document.getElementById('f-price');
   if (liveLabel) liveLabel.style.display = 'none';
-  document.getElementById('f-price').value = '';
-  document.getElementById('f-price').placeholder = 'Chargement prix...';
+  if (priceInput) { priceInput.value = ''; priceInput.placeholder = '⏳ Chargement...'; priceInput.style.color = '#8e8e93'; }
 
   try {
     const res = await fetch('/api/prices?symbols=' + encodeURIComponent(company.ticker));
     const data = await res.json();
     const q = data.quotes?.[0];
     if (q && q.price) {
-      document.getElementById('f-price').value = q.price.toFixed(2);
-      document.getElementById('f-price').placeholder = q.price.toFixed(2);
+      if (priceInput) {
+        priceInput.value = q.price.toFixed(2);
+        priceInput.placeholder = q.price.toFixed(2);
+        priceInput.style.color = '#1c1c1e';
+      }
       if (liveLabel) liveLabel.style.display = 'inline';
+      // Also pre-fill PRU with current price as suggestion
+      const pruInput = document.getElementById('f-pru');
+      if (pruInput && !pruInput.value) {
+        pruInput.placeholder = q.price.toFixed(2) + ' (suggestion)';
+      }
     } else {
-      document.getElementById('f-price').placeholder = 'Saisir manuellement';
+      if (priceInput) { priceInput.placeholder = 'Saisir manuellement'; priceInput.style.color = '#1c1c1e'; }
+      // Try with .DE suffix for European stocks
+      if (!company.ticker.includes('.') && !company.ticker.includes('-')) {
+        tryAlternativeTicker(company.ticker, priceInput, liveLabel);
+      }
     }
   } catch {
-    document.getElementById('f-price').placeholder = 'Saisir manuellement';
+    if (priceInput) { priceInput.placeholder = 'Saisir manuellement'; priceInput.style.color = '#1c1c1e'; }
   }
 }
 
@@ -497,9 +530,9 @@ let transactions = [];
 async function loadTransactions() {
   if (isDemo) {
     transactions = [
-      {id:'t1',position_name:'IWDA',type:'achat',qty:10,price:87.5,total:875,date:new Date(Date.now()-86400000*30).toISOString(),notes:'Premier achat ETF monde'},
+      {id:'t1',position_name:'IWDA.L',type:'achat',qty:10,price:87.5,total:875,date:new Date(Date.now()-86400000*30).toISOString(),notes:'Premier achat ETF monde'},
       {id:'t2',position_name:'LVMH',type:'achat',qty:2,price:730,total:1460,date:new Date(Date.now()-86400000*14).toISOString(),notes:''},
-      {id:'t3',position_name:'IWDA',type:'achat',qty:5,price:91,total:455,date:new Date(Date.now()-86400000*7).toISOString(),notes:'Renforcement DCA'},
+      {id:'t3',position_name:'IWDA.L',type:'achat',qty:5,price:91,total:455,date:new Date(Date.now()-86400000*7).toISOString(),notes:'Renforcement DCA'},
     ];
     return;
   }
@@ -634,8 +667,8 @@ const POPULAR = [
   {ticker:'AI.PA', name:'Air Liquide', sector:'Industrie'},
   {ticker:'TTE.PA', name:'TotalEnergies', sector:'Énergie'},
   {ticker:'BNP.PA', name:'BNP Paribas', sector:'Finance'},
-  {ticker:'IWDA', name:'iShares MSCI World', sector:'ETF'},
-  {ticker:'VWCE', name:'Vanguard FTSE All-World', sector:'ETF'},
+  {ticker:'IWDA.L', name:'iShares MSCI World', sector:'ETF'},
+  {ticker:'VWCE.DE', name:'Vanguard FTSE All-World', sector:'ETF'},
 ];
 
 function loadWatchlist() {
@@ -1087,8 +1120,8 @@ function enterDemo() {
   document.getElementById('topbar-email').textContent = 'Demo';
   document.getElementById('topbar-avatar').textContent = 'D';
   positions = [
-    {id:'d1',name:'IWDA',qty:15,pru:87.5,price:94.2,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:80},
-    {id:'d2',name:'VWCE',qty:8,pru:110,price:118.5,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:null},
+    {id:'d1',name:'IWDA.L',qty:15,pru:87.5,price:94.2,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:80},
+    {id:'d2',name:'VWCE.DE',qty:8,pru:110,price:118.5,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:null},
     {id:'d3',name:'LVMH',qty:2,pru:730,price:685,type:'Action',sector:'Luxe',platform:'XTB',alert_price:650},
     {id:'d4',name:'Air Liquide',qty:5,pru:162,price:179,type:'Action',sector:'Industrie',platform:'XTB',alert_price:null},
   ];
@@ -1571,8 +1604,8 @@ async function delPos(id) {
 }
 async function loadDemo() {
   const demo=[
-    {name:'IWDA',qty:15,pru:87.5,price:94.2,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:80},
-    {name:'VWCE',qty:8,pru:110,price:118.5,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:null},
+    {name:'IWDA.L',qty:15,pru:87.5,price:94.2,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:80},
+    {name:'VWCE.DE',qty:8,pru:110,price:118.5,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:null},
     {name:'LVMH',qty:2,pru:730,price:685,type:'Action',sector:'Luxe',platform:'XTB',alert_price:650},
     {name:'Air Liquide',qty:5,pru:162,price:179,type:'Action',sector:'Industrie',platform:'XTB',alert_price:null},
   ];
