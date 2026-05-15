@@ -4,27 +4,63 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { q } = req.query;
-  if (!q) return res.status(400).json({ results: [] });
+  if (!q || q.length < 2) return res.status(400).json({ results: [] });
 
   try {
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=fr-FR&region=FR&quotesCount=8&newsCount=0&listsCount=0`;
+    // TradingView symbol search - much better than Yahoo
+    const url = `https://symbol-search.tradingview.com/symbol_search/v3/?text=${encodeURIComponent(q)}&hl=1&exchange=&lang=fr&search_type=undefined&domainEnabled=true&sort_by_country=FR&type=`;
+    
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' }
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Origin': 'https://www.tradingview.com',
+        'Referer': 'https://www.tradingview.com/'
+      }
     });
+
+    if (!response.ok) throw new Error('TradingView search failed');
+
     const data = await response.json();
-    const quotes = data.quotes || [];
-    const results = quotes
-      .filter(q => q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND')
-      .slice(0, 7)
-      .map(q => ({
-        ticker: q.symbol,
-        name: q.longname || q.shortname || q.symbol,
-        type: q.quoteType === 'ETF' ? 'ETF' : 'Action',
-        sector: q.sector || q.industry || q.quoteType || 'Autre',
-        exchange: q.exchange || q.fullExchangeName || ''
-      }));
+    const symbols = data.symbols || [];
+
+    const results = symbols
+      .slice(0, 8)
+      .map(s => ({
+        ticker: s.symbol || s.id,
+        name: s.full_name || s.description || s.symbol,
+        type: s.type === 'fund' || s.type === 'ETF' ? 'ETF' : 'Action',
+        sector: s.industry || s.type || 'Autre',
+        exchange: s.exchange || s.prefix || '',
+        tv_symbol: `${s.prefix || s.exchange}:${s.symbol}`,
+        logo: s.logoid ? `https://s3-symbol-logo.tradingview.com/${s.logoid}.svg` : null
+      }))
+      .filter(r => r.ticker && r.name);
+
     res.status(200).json({ results });
+
   } catch (error) {
-    res.status(500).json({ results: [], error: error.message });
+    // Fallback to Yahoo Finance search
+    try {
+      const yahooUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0`;
+      const yahooRes = await fetch(yahooUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      const yahooData = await yahooRes.json();
+      const quotes = yahooData.quotes || [];
+      const results = quotes
+        .filter(q => ['EQUITY','ETF','MUTUALFUND'].includes(q.quoteType))
+        .slice(0, 8)
+        .map(q => ({
+          ticker: q.symbol,
+          name: q.longname || q.shortname || q.symbol,
+          type: q.quoteType === 'ETF' ? 'ETF' : 'Action',
+          sector: q.industry || q.sector || 'Autre',
+          exchange: q.exchange || q.fullExchangeName || ''
+        }));
+      res.status(200).json({ results });
+    } catch {
+      res.status(500).json({ results: [] });
+    }
   }
 }
