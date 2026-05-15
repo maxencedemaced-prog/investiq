@@ -1,4 +1,173 @@
 
+// ===== AUTOCOMPLETE ADD POSITION =====
+const AC_DB = [
+  // ETF
+  {ticker:'IWDA',name:'iShares Core MSCI World',type:'ETF',sector:'Monde',exchange:'LSE'},
+  {ticker:'VWCE',name:'Vanguard FTSE All-World',type:'ETF',sector:'Monde',exchange:'XETRA'},
+  {ticker:'CSPX',name:'iShares Core S&P 500',type:'ETF',sector:'USA',exchange:'LSE'},
+  {ticker:'EUNL',name:'iShares Core MSCI World EUR',type:'ETF',sector:'Monde',exchange:'XETRA'},
+  {ticker:'AGGH',name:'iShares Core Global Aggregate Bond',type:'ETF',sector:'Obligations',exchange:'LSE'},
+  {ticker:'VUSA',name:'Vanguard S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'LSE'},
+  {ticker:'MWRD',name:'iShares MSCI World Swap',type:'ETF',sector:'Monde',exchange:'LSE'},
+  {ticker:'LYPS',name:'Lyxor S&P 500',type:'ETF',sector:'USA',exchange:'XETRA'},
+  {ticker:'CW8',name:'Amundi MSCI World',type:'ETF',sector:'Monde',exchange:'Euronext'},
+  {ticker:'PAEEM',name:'Amundi MSCI Emerging Markets',type:'ETF',sector:'Émergents',exchange:'Euronext'},
+  // Tech US
+  {ticker:'AAPL',name:'Apple Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'MSFT',name:'Microsoft Corporation',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'NVDA',name:'NVIDIA Corporation',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'GOOGL',name:'Alphabet Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'META',name:'Meta Platforms',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'AMZN',name:'Amazon.com Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'TSLA',name:'Tesla Inc.',type:'Action',sector:'Auto',exchange:'NASDAQ'},
+  {ticker:'NFLX',name:'Netflix Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'AMD',name:'Advanced Micro Devices',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'INTC',name:'Intel Corporation',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'ORCL',name:'Oracle Corporation',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'CRM',name:'Salesforce Inc.',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'TTWO',name:'Take-Two Interactive',type:'Action',sector:'Gaming',exchange:'NASDAQ'},
+  {ticker:'SONY',name:'Sony Group Corporation',type:'Action',sector:'Tech',exchange:'NYSE'},
+  // FR / Europe
+  {ticker:'MC.PA',name:'LVMH Moët Hennessy',type:'Action',sector:'Luxe',exchange:'Euronext'},
+  {ticker:'AI.PA',name:'Air Liquide',type:'Action',sector:'Industrie',exchange:'Euronext'},
+  {ticker:'TTE.PA',name:'TotalEnergies',type:'Action',sector:'Énergie',exchange:'Euronext'},
+  {ticker:'BNP.PA',name:'BNP Paribas',type:'Action',sector:'Finance',exchange:'Euronext'},
+  {ticker:'SAN.PA',name:'Sanofi',type:'Action',sector:'Santé',exchange:'Euronext'},
+  {ticker:'OR.PA',name:"L'Oréal",type:'Action',sector:'Beauté',exchange:'Euronext'},
+  {ticker:'KER.PA',name:'Kering',type:'Action',sector:'Luxe',exchange:'Euronext'},
+  {ticker:'RMS.PA',name:'Hermès International',type:'Action',sector:'Luxe',exchange:'Euronext'},
+  {ticker:'CAP.PA',name:'Capgemini',type:'Action',sector:'Tech',exchange:'Euronext'},
+  {ticker:'DG.PA',name:'Vinci',type:'Action',sector:'Industrie',exchange:'Euronext'},
+  {ticker:'SAP',name:'SAP SE',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'ASML',name:'ASML Holding',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  // Finance / Autres
+  {ticker:'V',name:'Visa Inc.',type:'Action',sector:'Finance',exchange:'NYSE'},
+  {ticker:'MA',name:'Mastercard',type:'Action',sector:'Finance',exchange:'NYSE'},
+  {ticker:'JPM',name:'JPMorgan Chase',type:'Action',sector:'Finance',exchange:'NYSE'},
+  {ticker:'JNJ',name:'Johnson & Johnson',type:'Action',sector:'Santé',exchange:'NYSE'},
+  {ticker:'UNH',name:'UnitedHealth Group',type:'Action',sector:'Santé',exchange:'NYSE'},
+  {ticker:'PG',name:'Procter & Gamble',type:'Action',sector:'Consommation',exchange:'NYSE'},
+  {ticker:'KO',name:'Coca-Cola Company',type:'Action',sector:'Consommation',exchange:'NYSE'},
+];
+
+let acSelected = null;
+
+function acSearch(query) {
+  const drop = document.getElementById('ac-drop');
+  const clearBtn = document.getElementById('ac-clear');
+  if (!query || query.length < 2) {
+    drop.style.display = 'none';
+    if (clearBtn) clearBtn.style.display = 'none';
+    return;
+  }
+  if (clearBtn) clearBtn.style.display = 'block';
+  const q = query.toLowerCase();
+  const results = AC_DB.filter(c =>
+    c.ticker.toLowerCase().includes(q) ||
+    c.name.toLowerCase().includes(q) ||
+    c.sector.toLowerCase().includes(q)
+  ).slice(0, 7);
+
+  if (!results.length) {
+    drop.style.display = 'block';
+    drop.innerHTML = `<div class="ac-no-result">
+      <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat pour "${query}"</div>
+      <div style="font-size:12px;color:#c7c7cc;margin-top:2px">Tu peux quand même saisir le ticker manuellement</div>
+      <button class="ac-manual-btn" onclick="acSelectManual('${query.toUpperCase()}')">Utiliser "${query.toUpperCase()}" comme ticker →</button>
+    </div>`;
+    return;
+  }
+
+  drop.style.display = 'block';
+  drop.innerHTML = results.map(r => `
+    <div class="ac-item" onclick="acSelect(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+      <div class="ac-item-avatar ${r.type==='ETF'?'etf':''}">${r.ticker.slice(0,2)}</div>
+      <div class="ac-item-info">
+        <div class="ac-item-name">${r.name}</div>
+        <div class="ac-item-meta">${r.ticker} · ${r.type} · ${r.sector} · ${r.exchange}</div>
+      </div>
+      <div class="ac-item-type ${r.type==='ETF'?'etf':''}">${r.type}</div>
+    </div>`).join('');
+}
+
+async function acSelect(company) {
+  acSelected = company;
+  document.getElementById('ac-drop').style.display = 'none';
+  document.getElementById('f-search').value = company.name + ' (' + company.ticker + ')';
+  document.getElementById('ac-clear').style.display = 'block';
+
+  // Fill hidden fields
+  document.getElementById('f-name').value = company.ticker;
+  document.getElementById('f-type-hidden').value = company.type;
+  document.getElementById('f-sector').value = company.sector;
+
+  // Show selected badge
+  const badge = document.getElementById('ac-selected');
+  const badgeContent = document.getElementById('ac-badge-content');
+  badge.style.display = 'flex';
+  badgeContent.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="ac-item-avatar ${company.type==='ETF'?'etf':''}" style="width:36px;height:36px;font-size:12px">${company.ticker.slice(0,2)}</div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#1c1c1e">${company.name}</div>
+        <div style="font-size:12px;color:#8e8e93;font-weight:500">${company.ticker} · ${company.type} · ${company.sector}</div>
+      </div>
+    </div>`;
+
+  // Show form fields
+  document.getElementById('f-fields').style.display = 'block';
+  document.getElementById('f-empty-state').style.display = 'none';
+
+  // Fetch live price
+  const liveLabel = document.getElementById('ac-live-label');
+  if (liveLabel) liveLabel.style.display = 'none';
+  document.getElementById('f-price').value = '';
+  document.getElementById('f-price').placeholder = 'Chargement prix...';
+
+  try {
+    const res = await fetch('/api/prices?symbols=' + encodeURIComponent(company.ticker));
+    const data = await res.json();
+    const q = data.quotes?.[0];
+    if (q && q.price) {
+      document.getElementById('f-price').value = q.price.toFixed(2);
+      document.getElementById('f-price').placeholder = q.price.toFixed(2);
+      if (liveLabel) liveLabel.style.display = 'inline';
+    } else {
+      document.getElementById('f-price').placeholder = 'Saisir manuellement';
+    }
+  } catch {
+    document.getElementById('f-price').placeholder = 'Saisir manuellement';
+  }
+}
+
+function acSelectManual(ticker) {
+  acSelect({ ticker, name: ticker, type: 'Action', sector: '', exchange: '' });
+}
+
+function acClear() {
+  acSelected = null;
+  document.getElementById('f-search').value = '';
+  document.getElementById('ac-drop').style.display = 'none';
+  document.getElementById('ac-clear').style.display = 'none';
+  document.getElementById('ac-selected').style.display = 'none';
+  document.getElementById('f-fields').style.display = 'none';
+  document.getElementById('f-empty-state').style.display = 'block';
+  document.getElementById('f-name').value = '';
+  ['f-qty','f-pru','f-price','f-sector','f-alert'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+// Close autocomplete on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ac-wrap')) {
+    const drop = document.getElementById('ac-drop');
+    if (drop) drop.style.display = 'none';
+  }
+});
+
+
 // ===== PORTFOLIO TABS =====
 function switchPortTab(tab, el) {
   ['positions','chart','transactions'].forEach(t => {
@@ -1191,8 +1360,8 @@ async function addPos() {
   const price=parseFloat(document.getElementById('f-price').value);
   const alertPrice=parseFloat(document.getElementById('f-alert').value)||null;
   if(!name||isNaN(qty)||isNaN(pru)||isNaN(price)){alert('Remplis tous les champs obligatoires.');return;}
-  if(isDemo){positions.push({id:'d'+Date.now(),name,qty,pru,price,type:document.getElementById('f-type').value,sector:document.getElementById('f-sector').value||'',platform:document.getElementById('f-platform').value,alert_price:alertPrice});['f-name','f-qty','f-pru','f-price','f-sector','f-alert'].forEach(id=>document.getElementById(id).value='');nav('portfolio');return;}
-  const pos={user_id:currentUser.id,name,qty,pru,price,type:document.getElementById('f-type').value,sector:document.getElementById('f-sector').value||'',platform:document.getElementById('f-platform').value,alert_price:alertPrice};
+  if(isDemo){positions.push({id:'d'+Date.now(),name,qty,pru,price,type:document.getElementById('f-type-hidden')?.value||'Action',sector:document.getElementById('f-sector').value||'',platform:document.getElementById('f-platform').value,alert_price:alertPrice});['f-name','f-qty','f-pru','f-price','f-sector','f-alert'].forEach(id=>document.getElementById(id).value='');nav('portfolio');return;}
+  const pos={user_id:currentUser.id,name,qty,pru,price,type:document.getElementById('f-type-hidden')?.value||'Action',sector:document.getElementById('f-sector').value||'',platform:document.getElementById('f-platform').value,alert_price:alertPrice};
   const {data,error}=await sb.from('positions').insert(pos).select().single();
   if(!error&&data){
     positions.push(data);
