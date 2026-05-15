@@ -12,19 +12,19 @@ export default async function handler(req, res) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'web-search-2025-03-05'
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 1024,
         system: system || 'Tu es un assistant financier pédagogue francophone pour investisseurs débutants. Réponds en français, clairement. Tu ne fournis pas de conseil financier réglementé.',
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       })
     });
 
     const data = await response.json();
+    console.log('Anthropic response:', JSON.stringify(data).slice(0, 300));
+    if (data.error) return res.status(500).json({ error: data.error.message });
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
     res.status(200).json({ text: text || 'Aucune réponse.' });
   } catch (error) {
