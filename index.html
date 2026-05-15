@@ -57,6 +57,10 @@
       </div>
     </div>
     <div class="topbar-right">
+      <button class="notif-btn" onclick="toggleNotifPanel()" aria-label="Notifications">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div class="notif-dot" id="notif-dot"></div>
+      </button>
       <div class="profile-pill" onclick="nav('settings')">
         <div class="avatar" id="topbar-avatar">U</div>
         <span id="topbar-email">Mon compte</span>
@@ -124,6 +128,15 @@
     </button>
   </aside>
 
+  <!-- NOTIF PANEL -->
+  <div class="notif-panel" id="notif-panel">
+    <div class="notif-panel-head">
+      <div class="notif-panel-title">Notifications</div>
+      <button class="notif-close" onclick="closeNotifPanel()">×</button>
+    </div>
+    <div id="notif-list"><div class="notif-empty">Chargement...</div></div>
+  </div>
+
   <!-- MAIN CONTENT -->
   <main class="main">
 
@@ -157,22 +170,14 @@
     <section id="sec-portfolio" class="sec">
       <div class="page-header"><h1>Mon portefeuille</h1><button class="btn-add" onclick="nav('ajouter')">+ Ajouter</button></div>
       <div class="metrics-grid" id="port-metrics"></div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon blue">≡</span> Mes positions</div></div>
-        <div class="table-wrap">
-          <table class="tbl" id="pos-table">
-            <thead><tr><th>Actif</th><th>Type</th><th>Qté</th><th>PRU</th><th>Prix act.</th><th>Valeur</th><th>+/-</th><th></th></tr></thead>
-            <tbody id="pos-body"></tbody>
-          </table>
-          <div id="pos-empty" class="empty-state">
-            <div class="empty-icon">📊</div>
-            <div>Aucune position pour l'instant</div>
-            <button class="btn-link" onclick="nav('ajouter')">Ajouter ma première position →</button>
-          </div>
-        </div>
+      <div class="pos-grid" id="pos-grid"></div>
+      <div id="pos-empty" class="empty-state" style="display:none">
+        <div class="empty-icon">📊</div>
+        <div>Aucune position pour l'instant</div>
+        <button class="btn-link" onclick="nav('ajouter')">Ajouter ma première position →</button>
       </div>
       <div class="card" id="alloc-card" style="display:none">
-        <div class="card-head"><div class="card-title"><span class="card-icon purple">◉</span> Répartition</div></div>
+        <div class="card-head"><div class="card-title"><span class="card-icon dark">◉</span> Répartition</div></div>
         <div id="alloc-bars"></div>
       </div>
     </section>
