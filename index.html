@@ -199,18 +199,8 @@
 
     <!-- NEWS -->
     <section id="sec-news" class="sec">
-      <div class="page-header">
-        <h1>Actualités & Signaux</h1>
-        <button class="btn-refresh" id="news-refresh-btn" onclick="loadNews(true)"><svg id="news-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg> Actualiser</button>
-      </div>
-      <div class="filter-row" id="news-filters">
-        <button class="filter-pill active" onclick="filterNews('tous',this)">Tous</button>
-        <button class="filter-pill" onclick="filterNews('macro',this)">Macro</button>
-        <button class="filter-pill" onclick="filterNews('banque',this)">Banques centrales</button>
-        <button class="filter-pill" onclick="filterNews('marche',this)">Marchés</button>
-        <button class="filter-pill" onclick="filterNews('geo',this)">Géopolitique</button>
-      </div>
-      <div id="news-list"></div>
+      <div class="page-header"><h1>Actualités & Signaux</h1></div>
+      <div id="news-page-content"></div>
     </section>
 
     <!-- DECISION -->
@@ -333,6 +323,7 @@
   </main>
 </div>
 
+<script src="news.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
