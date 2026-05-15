@@ -1,3 +1,72 @@
+
+function buildEmptyHome() {
+  return `<div class="empty-home">
+    <div class="empty-home-icon">👋</div>
+    <div class="empty-home-title">Commence par ajouter tes positions</div>
+    <div class="empty-home-sub">Ou charge un exemple pour découvrir l'app</div>
+    <div class="empty-home-actions">
+      <button class="btn-primary" onclick="nav('ajouter')">+ Ajouter une position</button>
+      <button class="btn-secondary" onclick="loadDemo()">Voir un exemple</button>
+    </div>
+  </div>`;
+}
+
+
+// ===== ONBOARDING =====
+const OB_KEY = 'iq_onboarded';
+
+function showOnboarding() {
+  if (localStorage.getItem(OB_KEY)) return;
+  document.getElementById('onboarding-modal').style.display = 'flex';
+}
+
+function obNext(step) {
+  document.querySelectorAll('.onboard-step').forEach(s => s.style.display = 'none');
+  const el = document.getElementById('ob-step-' + step);
+  if (el) el.style.display = 'block';
+}
+
+async function obFinish(action) {
+  // Save profile from onboarding
+  const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 1000;
+  const risk = document.getElementById('ob-risk')?.value || 'faible';
+  const horizon = document.getElementById('ob-horizon')?.value || 'moyen';
+  
+  profile.bankroll = bankroll;
+  profile.risk = risk;
+  profile.horizon = horizon;
+  
+  // Update settings fields
+  if (document.getElementById('s-bankroll')) document.getElementById('s-bankroll').value = bankroll;
+  if (document.getElementById('s-risk')) document.getElementById('s-risk').value = risk;
+  if (document.getElementById('s-horizon')) document.getElementById('s-horizon').value = horizon;
+  
+  if (!isDemo) await saveProfile();
+  
+  localStorage.setItem(OB_KEY, '1');
+  document.getElementById('onboarding-modal').style.display = 'none';
+  
+  if (action === 'demo') {
+    await loadDemo();
+  } else {
+    nav(action);
+  }
+}
+
+
+// ===== MARKDOWN FORMATTER =====
+function formatMD(text) {
+  if (!text) return '';
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^#{1,3}\s+(.+)$/gm, '<div style="font-size:15px;font-weight:800;color:#1c1c1e;margin:12px 0 6px;letter-spacing:-0.2px">$1</div>')
+    .replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0"><span style="color:#8e8e93;flex-shrink:0">•</span><span>$1</span></div>')
+    .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0"><span style="color:#1c1c1e;font-weight:700;flex-shrink:0">$1.</span><span>$2</span></div>')
+    .replace(/\n\n/g, '<div style="height:8px"></div>')
+    .replace(/\n/g, '<br>');
+}
+
 // ===== WATCHLIST & SEARCH MODULE =====
 let watchlist = []; // {ticker, name, type}
 let searchResults = [];
@@ -297,10 +366,7 @@ Sois pédagogue, concis et direct. Utilise des termes simples.`;
   const el = document.getElementById('co-analysis');
   if (el) {
     // Format the response nicely
-    const formatted = r
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n\n/g, '</p><p style="margin-top:10px">')
-      .replace(/\n/g, '<br>');
+    const formatted = formatMD(r);
     el.innerHTML = `<div style="font-size:13px;color:#3c3c43;line-height:1.7;font-weight:500"><p>${formatted}</p></div>
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-primary" style="font-size:13px;padding:10px 16px" onclick="openDecision('${ticker}','acheter')">Analyser pour investir →</button>
@@ -461,6 +527,7 @@ async function initApp(user) {
   loadChatHistory();
   nav('home');
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
+  setTimeout(() => showOnboarding(), 500);
   if ('Notification' in window) Notification.requestPermission();
 }
 
@@ -752,7 +819,7 @@ function renderHome() {
     <div class="metric-card"><div class="metric-label">Plus-value</div><div class="metric-val ${tpnl>=0?'green':'red'}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div><div class="metric-trend">${tpnl>=0?'↑':'↓'} sur position initiale</div></div>
     <div class="metric-card"><div class="metric-label">Performance</div><div class="metric-val ${tpnl>=0?'green':'red'}">${tpnl>=0?'+':''}${tpct.toFixed(2)}%</div><div class="metric-trend">Depuis l'ouverture</div></div>
     <div class="metric-card"><div class="metric-label">Bankroll dispo</div><div class="metric-val blue">${fmtK(profile.bankroll)}</div><div class="metric-trend">Pour investir</div></div>`;
-  document.getElementById('home-score').innerHTML = positions.length?buildScore():emptyMsg();
+  document.getElementById('home-score').innerHTML = positions.length?buildScore():buildEmptyHome();
   document.getElementById('home-alerts').innerHTML = positions.length?buildAlerts():emptyMsg();
   const pctObj = Math.min(tv/objective.target*100,100);
   document.getElementById('home-obj').innerHTML=`
@@ -1128,7 +1195,7 @@ async function analyseDecision(){
   const prompt=`Actif : ${name} | Montant : ${amount||'?'}€ (${pct}% bankroll ${profile.bankroll}€) | Horizon : ${HL[horizon]} | Risque : ${RL[risk]} | Profil : débutant prudent ETF/actions. Analyse en 5 lignes : 1) ce que c'est 2) risque 3) adapté ? 4) montant raisonnable ? 5) alternative.`;
   document.getElementById('d-result').innerHTML='<div class="bubble bot">Analyse en cours...</div>';
   const r=await callClaude(prompt);
-  document.getElementById('d-result').innerHTML=`<div class="bubble bot">${r}</div>`;
+  document.getElementById('d-result').innerHTML=`<div class="bubble bot">${formatMD(r)}</div>`;
 }
 
 // ===== DCA =====
@@ -1166,7 +1233,8 @@ async function sendAI(){
   const inp=document.getElementById('ai-in');
   const q=inp.value.trim();if(!q)return;
   inp.value='';
-  document.getElementById('qbtns').style.display='none';
+  // Keep quick questions visible
+
   const chat=document.getElementById('ai-chat');
   chatHistory.push({role:'user',content:q});
   chat.innerHTML+=`<div class="bubble user">${q}</div><div class="bubble bot" id="ai-loading">Réflexion...</div>`;
@@ -1176,6 +1244,6 @@ async function sendAI(){
   const r=await callClaude(fullPrompt);
   chatHistory.push({role:'assistant',content:r});
   saveChatHistory();
-  document.getElementById('ai-loading').outerHTML=`<div class="bubble bot">${r}</div>`;
+  document.getElementById('ai-loading').outerHTML=`<div class="bubble bot">${formatMD(r)}</div>`;
   chat.scrollTop=chat.scrollHeight;
 }
