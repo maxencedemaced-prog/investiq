@@ -1,4 +1,37 @@
 
+async function acSearchYahoo(query) {
+  const drop = document.getElementById('ac-drop');
+  if (!drop) return;
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    const results = data.results || [];
+    if (!results.length) {
+      drop.innerHTML = `<div class="ac-no-result">
+        <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat pour "${query}"</div>
+        <button class="ac-manual-btn" onclick="acSelectManual('${query.toUpperCase()}')">Utiliser "${query.toUpperCase()}" comme ticker →</button>
+      </div>`;
+      return;
+    }
+    drop.innerHTML = results.map(r => `
+      <div class="ac-item" onclick="acSelect(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+        <div class="ac-item-avatar">${r.ticker.slice(0,2)}</div>
+        <div class="ac-item-info">
+          <div class="ac-item-name">${r.name}</div>
+          <div class="ac-item-meta">${r.ticker} · ${r.type} · ${r.sector} · ${r.exchange}</div>
+        </div>
+        <div class="ac-item-type">${r.type}</div>
+      </div>`).join('');
+  } catch {
+    const drop2 = document.getElementById('ac-drop');
+    if (drop2) drop2.innerHTML = `<div class="ac-no-result">
+      <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat trouvé</div>
+      <button class="ac-manual-btn" onclick="acSelectManual('${query.toUpperCase()}')">Utiliser "${query.toUpperCase()}" comme ticker →</button>
+    </div>`;
+  }
+}
+
+
 // ===== AUTO REFRESH PRICES =====
 let priceRefreshInterval = null;
 
@@ -28,23 +61,89 @@ document.addEventListener('visibilitychange', () => {
 
 // ===== AUTOCOMPLETE ADD POSITION =====
 const AC_DB = [
-  // ETF
-  {ticker:'IWDA',name:'iShares Core MSCI World',type:'ETF',sector:'Monde',exchange:'LSE'},
-  {ticker:'VWCE',name:'Vanguard FTSE All-World',type:'ETF',sector:'Monde',exchange:'XETRA'},
-  {ticker:'CSPX',name:'iShares Core S&P 500',type:'ETF',sector:'USA',exchange:'LSE'},
-  {ticker:'EUNL',name:'iShares Core MSCI World EUR',type:'ETF',sector:'Monde',exchange:'XETRA'},
-  {ticker:'AGGH',name:'iShares Core Global Aggregate Bond',type:'ETF',sector:'Obligations',exchange:'LSE'},
+  // ===== ETF MONDE =====
+  {ticker:'IWDA',name:'iShares Core MSCI World ETF',type:'ETF',sector:'Monde',exchange:'LSE'},
+  {ticker:'VWCE',name:'Vanguard FTSE All-World UCITS ETF',type:'ETF',sector:'Monde',exchange:'XETRA'},
+  {ticker:'CW8',name:'Amundi MSCI World UCITS ETF',type:'ETF',sector:'Monde',exchange:'Euronext'},
+  {ticker:'EUNL',name:'iShares Core MSCI World EUR Hedged',type:'ETF',sector:'Monde',exchange:'XETRA'},
+  {ticker:'MWRD',name:'iShares MSCI World Swap UCITS ETF',type:'ETF',sector:'Monde',exchange:'LSE'},
+  {ticker:'LCUW',name:'Amundi MSCI World II UCITS ETF',type:'ETF',sector:'Monde',exchange:'Euronext'},
+  {ticker:'WEBG',name:'Amundi Prime All Country World',type:'ETF',sector:'Monde',exchange:'XETRA'},
+  // ===== ETF USA =====
+  {ticker:'CSPX',name:'iShares Core S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'LSE'},
   {ticker:'VUSA',name:'Vanguard S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'LSE'},
-  {ticker:'MWRD',name:'iShares MSCI World Swap',type:'ETF',sector:'Monde',exchange:'LSE'},
-  {ticker:'LYPS',name:'Lyxor S&P 500',type:'ETF',sector:'USA',exchange:'XETRA'},
-  {ticker:'CW8',name:'Amundi MSCI World',type:'ETF',sector:'Monde',exchange:'Euronext'},
+  {ticker:'VUAA',name:'Vanguard S&P 500 UCITS ETF Acc',type:'ETF',sector:'USA',exchange:'XETRA'},
+  {ticker:'LYPS',name:'Lyxor S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'XETRA'},
+  {ticker:'500',name:'Amundi S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'Euronext'},
+  {ticker:'SPYL',name:'SPDR S&P 500 UCITS ETF',type:'ETF',sector:'USA',exchange:'LSE'},
+  // ===== ETF EUROPE =====
+  {ticker:'MEUD',name:'Amundi MSCI Europe UCITS ETF',type:'ETF',sector:'Europe',exchange:'Euronext'},
+  {ticker:'EXSA',name:'iShares Core EURO STOXX 50 ETF',type:'ETF',sector:'Europe',exchange:'XETRA'},
+  {ticker:'PAREU',name:'Amundi MSCI Europe',type:'ETF',sector:'Europe',exchange:'Euronext'},
+  {ticker:'VEUR',name:'Vanguard FTSE Developed Europe ETF',type:'ETF',sector:'Europe',exchange:'LSE'},
+  // ===== ETF EMERGENTS =====
   {ticker:'PAEEM',name:'Amundi MSCI Emerging Markets',type:'ETF',sector:'Émergents',exchange:'Euronext'},
-  // Tech US
+  {ticker:'IDEM',name:'iShares MSCI Emerging Markets',type:'ETF',sector:'Émergents',exchange:'LSE'},
+  {ticker:'VFEM',name:'Vanguard FTSE Emerging Markets ETF',type:'ETF',sector:'Émergents',exchange:'LSE'},
+  // ===== ETF OBLIGATIONS =====
+  {ticker:'AGGH',name:'iShares Core Global Aggregate Bond',type:'ETF',sector:'Obligations',exchange:'LSE'},
+  {ticker:'IEAG',name:'iShares Core Euro Aggregate Bond',type:'ETF',sector:'Obligations',exchange:'XETRA'},
+  {ticker:'IEGE',name:'iShares € Govt Bond ETF',type:'ETF',sector:'Obligations',exchange:'XETRA'},
+  {ticker:'XGLE',name:'Xtrackers Global Government Bond',type:'ETF',sector:'Obligations',exchange:'XETRA'},
+  // ===== ETF THEMATIQUES =====
+  {ticker:'IITU',name:'iShares S&P 500 Information Technology',type:'ETF',sector:'Tech',exchange:'LSE'},
+  {ticker:'HEAL',name:'iShares Healthcare Innovation ETF',type:'ETF',sector:'Santé',exchange:'LSE'},
+  {ticker:'INRG',name:'iShares Global Clean Energy ETF',type:'ETF',sector:'Énergie verte',exchange:'LSE'},
+  {ticker:'WCLD',name:'WisdomTree Cloud Computing ETF',type:'ETF',sector:'Cloud',exchange:'NASDAQ'},
+  {ticker:'ROBO',name:'ROBO Global Robotics & Automation',type:'ETF',sector:'Robotique',exchange:'LSE'},
+  {ticker:'ECAR',name:'iShares Electric Vehicles & Driving',type:'ETF',sector:'Véhicules élec.',exchange:'LSE'},
+  // ===== ETF OR & MATIERES =====
+  {ticker:'SGLD',name:'Invesco Physical Gold ETC',type:'ETF',sector:'Or',exchange:'LSE'},
+  {ticker:'PHAU',name:'WisdomTree Physical Gold',type:'ETF',sector:'Or',exchange:'LSE'},
+  {ticker:'IGLN',name:'iShares Physical Gold ETC',type:'ETF',sector:'Or',exchange:'LSE'},
+  // ===== ETF IMMOBILIER =====
+  {ticker:'IWDP',name:'iShares Developed Markets Property ETF',type:'ETF',sector:'Immobilier',exchange:'LSE'},
+  {ticker:'EPRA',name:'Amundi FTSE EPRA NAREIT Global',type:'ETF',sector:'Immobilier',exchange:'Euronext'},
+  // ===== CAC 40 =====
+  {ticker:'MC.PA',name:'LVMH Moët Hennessy Louis Vuitton',type:'Action',sector:'Luxe',exchange:'Euronext'},
+  {ticker:'RMS.PA',name:'Hermès International',type:'Action',sector:'Luxe',exchange:'Euronext'},
+  {ticker:'OR.PA',name:"L'Oréal",type:'Action',sector:'Beauté',exchange:'Euronext'},
+  {ticker:'TTE.PA',name:'TotalEnergies',type:'Action',sector:'Énergie',exchange:'Euronext'},
+  {ticker:'SAN.PA',name:'Sanofi',type:'Action',sector:'Santé',exchange:'Euronext'},
+  {ticker:'AI.PA',name:'Air Liquide',type:'Action',sector:'Industrie',exchange:'Euronext'},
+  {ticker:'AIR.PA',name:'Airbus Group',type:'Action',sector:'Aéronautique',exchange:'Euronext'},
+  {ticker:'BNP.PA',name:'BNP Paribas',type:'Action',sector:'Finance',exchange:'Euronext'},
+  {ticker:'KER.PA',name:'Kering',type:'Action',sector:'Luxe',exchange:'Euronext'},
+  {ticker:'DG.PA',name:'Vinci',type:'Action',sector:'Industrie',exchange:'Euronext'},
+  {ticker:'CAP.PA',name:'Capgemini',type:'Action',sector:'Tech',exchange:'Euronext'},
+  {ticker:'SAF.PA',name:'Safran',type:'Action',sector:'Aéronautique',exchange:'Euronext'},
+  {ticker:'SU.PA',name:'Schneider Electric',type:'Action',sector:'Industrie',exchange:'Euronext'},
+  {ticker:'ACA.PA',name:'Crédit Agricole',type:'Action',sector:'Finance',exchange:'Euronext'},
+  {ticker:'GLE.PA',name:'Société Générale',type:'Action',sector:'Finance',exchange:'Euronext'},
+  {ticker:'BN.PA',name:'Danone',type:'Action',sector:'Alimentation',exchange:'Euronext'},
+  {ticker:'VIE.PA',name:'Veolia Environnement',type:'Action',sector:'Utilities',exchange:'Euronext'},
+  {ticker:'ORA.PA',name:'Orange',type:'Action',sector:'Télécoms',exchange:'Euronext'},
+  {ticker:'RNO.PA',name:'Renault',type:'Action',sector:'Auto',exchange:'Euronext'},
+  {ticker:'STLAM.MI',name:'Stellantis',type:'Action',sector:'Auto',exchange:'Milan'},
+  {ticker:'ML.PA',name:'Michelin',type:'Action',sector:'Auto',exchange:'Euronext'},
+  {ticker:'SW.PA',name:'Sodexo',type:'Action',sector:'Services',exchange:'Euronext'},
+  {ticker:'PUB.PA',name:'Publicis Groupe',type:'Action',sector:'Media',exchange:'Euronext'},
+  {ticker:'LR.PA',name:'Legrand',type:'Action',sector:'Industrie',exchange:'Euronext'},
+  {ticker:'DSY.PA',name:'Dassault Systèmes',type:'Action',sector:'Tech',exchange:'Euronext'},
+  {ticker:'HO.PA',name:'Thales',type:'Action',sector:'Défense',exchange:'Euronext'},
+  {ticker:'SGO.PA',name:'Saint-Gobain',type:'Action',sector:'Matériaux',exchange:'Euronext'},
+  {ticker:'RI.PA',name:'Pernod Ricard',type:'Action',sector:'Alimentation',exchange:'Euronext'},
+  {ticker:'WLN.PA',name:'Worldline',type:'Action',sector:'Fintech',exchange:'Euronext'},
+  {ticker:'EN.PA',name:'Bouygues',type:'Action',sector:'Industrie',exchange:'Euronext'},
+  {ticker:'VIV.PA',name:'Vivendi',type:'Action',sector:'Media',exchange:'Euronext'},
+  {ticker:'ATO.PA',name:'Atos',type:'Action',sector:'Tech',exchange:'Euronext'},
+  {ticker:'UBI.PA',name:'Ubisoft Entertainment',type:'Action',sector:'Gaming',exchange:'Euronext'},
+  // ===== TECH US =====
   {ticker:'AAPL',name:'Apple Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
   {ticker:'MSFT',name:'Microsoft Corporation',type:'Action',sector:'Tech',exchange:'NASDAQ'},
   {ticker:'NVDA',name:'NVIDIA Corporation',type:'Action',sector:'Tech',exchange:'NASDAQ'},
-  {ticker:'GOOGL',name:'Alphabet Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
-  {ticker:'META',name:'Meta Platforms',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'GOOGL',name:'Alphabet (Google)',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'META',name:'Meta Platforms (Facebook)',type:'Action',sector:'Tech',exchange:'NASDAQ'},
   {ticker:'AMZN',name:'Amazon.com Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
   {ticker:'TSLA',name:'Tesla Inc.',type:'Action',sector:'Auto',exchange:'NASDAQ'},
   {ticker:'NFLX',name:'Netflix Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
@@ -52,29 +151,77 @@ const AC_DB = [
   {ticker:'INTC',name:'Intel Corporation',type:'Action',sector:'Tech',exchange:'NASDAQ'},
   {ticker:'ORCL',name:'Oracle Corporation',type:'Action',sector:'Tech',exchange:'NYSE'},
   {ticker:'CRM',name:'Salesforce Inc.',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'ADBE',name:'Adobe Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'QCOM',name:'Qualcomm Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'AVGO',name:'Broadcom Inc.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'SPOT',name:'Spotify Technology',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'UBER',name:'Uber Technologies',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'PYPL',name:'PayPal Holdings',type:'Action',sector:'Fintech',exchange:'NASDAQ'},
+  {ticker:'SQ',name:'Block Inc. (Square)',type:'Action',sector:'Fintech',exchange:'NYSE'},
+  {ticker:'SHOP',name:'Shopify Inc.',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'SNOW',name:'Snowflake Inc.',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'PLTR',name:'Palantir Technologies',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'AI',name:'C3.ai Inc.',type:'Action',sector:'IA',exchange:'NYSE'},
+  {ticker:'MSCI',name:'MSCI Inc.',type:'Action',sector:'Finance',exchange:'NYSE'},
+  // ===== GAMING & DIVERTISSEMENT =====
   {ticker:'TTWO',name:'Take-Two Interactive',type:'Action',sector:'Gaming',exchange:'NASDAQ'},
+  {ticker:'EA',name:'Electronic Arts',type:'Action',sector:'Gaming',exchange:'NASDAQ'},
+  {ticker:'ATVI',name:'Activision Blizzard',type:'Action',sector:'Gaming',exchange:'NASDAQ'},
+  {ticker:'NTDOY',name:'Nintendo Co. Ltd',type:'Action',sector:'Gaming',exchange:'OTC'},
   {ticker:'SONY',name:'Sony Group Corporation',type:'Action',sector:'Tech',exchange:'NYSE'},
-  // FR / Europe
-  {ticker:'MC.PA',name:'LVMH Moët Hennessy',type:'Action',sector:'Luxe',exchange:'Euronext'},
-  {ticker:'AI.PA',name:'Air Liquide',type:'Action',sector:'Industrie',exchange:'Euronext'},
-  {ticker:'TTE.PA',name:'TotalEnergies',type:'Action',sector:'Énergie',exchange:'Euronext'},
-  {ticker:'BNP.PA',name:'BNP Paribas',type:'Action',sector:'Finance',exchange:'Euronext'},
-  {ticker:'SAN.PA',name:'Sanofi',type:'Action',sector:'Santé',exchange:'Euronext'},
-  {ticker:'OR.PA',name:"L'Oréal",type:'Action',sector:'Beauté',exchange:'Euronext'},
-  {ticker:'KER.PA',name:'Kering',type:'Action',sector:'Luxe',exchange:'Euronext'},
-  {ticker:'RMS.PA',name:'Hermès International',type:'Action',sector:'Luxe',exchange:'Euronext'},
-  {ticker:'CAP.PA',name:'Capgemini',type:'Action',sector:'Tech',exchange:'Euronext'},
-  {ticker:'DG.PA',name:'Vinci',type:'Action',sector:'Industrie',exchange:'Euronext'},
-  {ticker:'SAP',name:'SAP SE',type:'Action',sector:'Tech',exchange:'NYSE'},
-  {ticker:'ASML',name:'ASML Holding',type:'Action',sector:'Tech',exchange:'NASDAQ'},
-  // Finance / Autres
+  {ticker:'RBLX',name:'Roblox Corporation',type:'Action',sector:'Gaming',exchange:'NYSE'},
+  {ticker:'U',name:'Unity Software',type:'Action',sector:'Gaming',exchange:'NYSE'},
+  {ticker:'CDPROJEKT.WA',name:'CD Projekt',type:'Action',sector:'Gaming',exchange:'Varsovie'},
+  // ===== AUTO =====
+  {ticker:'RACE',name:'Ferrari N.V.',type:'Action',sector:'Auto Premium',exchange:'NYSE'},
+  {ticker:'P911.DE',name:'Porsche AG',type:'Action',sector:'Auto Premium',exchange:'XETRA'},
+  {ticker:'BMW.DE',name:'BMW Group',type:'Action',sector:'Auto',exchange:'XETRA'},
+  {ticker:'MBG.DE',name:'Mercedes-Benz Group',type:'Action',sector:'Auto',exchange:'XETRA'},
+  {ticker:'VOW3.DE',name:'Volkswagen AG',type:'Action',sector:'Auto',exchange:'XETRA'},
+  {ticker:'TM',name:'Toyota Motor Corporation',type:'Action',sector:'Auto',exchange:'NYSE'},
+  // ===== FINANCE =====
   {ticker:'V',name:'Visa Inc.',type:'Action',sector:'Finance',exchange:'NYSE'},
-  {ticker:'MA',name:'Mastercard',type:'Action',sector:'Finance',exchange:'NYSE'},
-  {ticker:'JPM',name:'JPMorgan Chase',type:'Action',sector:'Finance',exchange:'NYSE'},
+  {ticker:'MA',name:'Mastercard Incorporated',type:'Action',sector:'Finance',exchange:'NYSE'},
+  {ticker:'JPM',name:'JPMorgan Chase & Co.',type:'Action',sector:'Finance',exchange:'NYSE'},
+  {ticker:'GS',name:'Goldman Sachs Group',type:'Action',sector:'Finance',exchange:'NYSE'},
+  {ticker:'HSBA.L',name:'HSBC Holdings',type:'Action',sector:'Finance',exchange:'LSE'},
+  {ticker:'AXA.PA',name:'AXA Group',type:'Action',sector:'Assurance',exchange:'Euronext'},
+  {ticker:'CS.PA',name:'AXA',type:'Action',sector:'Assurance',exchange:'Euronext'},
+  // ===== SANTE =====
   {ticker:'JNJ',name:'Johnson & Johnson',type:'Action',sector:'Santé',exchange:'NYSE'},
   {ticker:'UNH',name:'UnitedHealth Group',type:'Action',sector:'Santé',exchange:'NYSE'},
+  {ticker:'PFE',name:'Pfizer Inc.',type:'Action',sector:'Santé',exchange:'NYSE'},
+  {ticker:'MRNA',name:'Moderna Inc.',type:'Action',sector:'Santé',exchange:'NASDAQ'},
+  {ticker:'NOVO-B.CO',name:'Novo Nordisk',type:'Action',sector:'Santé',exchange:'Copenhague'},
+  {ticker:'NVS',name:'Novartis AG',type:'Action',sector:'Santé',exchange:'NYSE'},
+  {ticker:'ROG.SW',name:'Roche Holding',type:'Action',sector:'Santé',exchange:'Zurich'},
+  // ===== CONSOMMATION =====
   {ticker:'PG',name:'Procter & Gamble',type:'Action',sector:'Consommation',exchange:'NYSE'},
   {ticker:'KO',name:'Coca-Cola Company',type:'Action',sector:'Consommation',exchange:'NYSE'},
+  {ticker:'PEP',name:'PepsiCo Inc.',type:'Action',sector:'Consommation',exchange:'NASDAQ'},
+  {ticker:'MCD',name:"McDonald's Corporation",type:'Action',sector:'Restauration',exchange:'NYSE'},
+  {ticker:'SBUX',name:'Starbucks Corporation',type:'Action',sector:'Restauration',exchange:'NASDAQ'},
+  {ticker:'NKE',name:'Nike Inc.',type:'Action',sector:'Sport',exchange:'NYSE'},
+  {ticker:'ADDYY',name:'Adidas AG',type:'Action',sector:'Sport',exchange:'OTC'},
+  // ===== EUROPE TECH =====
+  {ticker:'ASML',name:'ASML Holding N.V.',type:'Action',sector:'Tech',exchange:'NASDAQ'},
+  {ticker:'SAP',name:'SAP SE',type:'Action',sector:'Tech',exchange:'NYSE'},
+  {ticker:'SIE.DE',name:'Siemens AG',type:'Action',sector:'Industrie',exchange:'XETRA'},
+  {ticker:'NOKIA.HE',name:'Nokia Corporation',type:'Action',sector:'Télécoms',exchange:'Helsinki'},
+  {ticker:'ERIC',name:'Ericsson',type:'Action',sector:'Télécoms',exchange:'NASDAQ'},
+  // ===== ENERGIE =====
+  {ticker:'XOM',name:'ExxonMobil Corporation',type:'Action',sector:'Énergie',exchange:'NYSE'},
+  {ticker:'CVX',name:'Chevron Corporation',type:'Action',sector:'Énergie',exchange:'NYSE'},
+  {ticker:'SHEL',name:'Shell plc',type:'Action',sector:'Énergie',exchange:'NYSE'},
+  {ticker:'NEE',name:'NextEra Energy',type:'Action',sector:'Énergie verte',exchange:'NYSE'},
+  {ticker:'ENPH',name:'Enphase Energy',type:'Action',sector:'Énergie verte',exchange:'NASDAQ'},
+  // ===== LUXE & MODE =====
+  {ticker:'RCF.MI',name:'Brunello Cucinelli',type:'Action',sector:'Luxe',exchange:'Milan'},
+  {ticker:'MONC.MI',name:'Moncler',type:'Action',sector:'Luxe',exchange:'Milan'},
+  {ticker:'BRBY.L',name:'Burberry Group',type:'Action',sector:'Luxe',exchange:'LSE'},
+  // ===== IMMOBILIER =====
+  {ticker:'AMT',name:'American Tower Corp',type:'Action',sector:'Immobilier',exchange:'NYSE'},
+  {ticker:'PLD',name:'Prologis Inc.',type:'Action',sector:'Immobilier',exchange:'NYSE'},
 ];
 
 let acSelected = null;
@@ -96,12 +243,10 @@ function acSearch(query) {
   ).slice(0, 7);
 
   if (!results.length) {
+    // Try dynamic search via Yahoo Finance
     drop.style.display = 'block';
-    drop.innerHTML = `<div class="ac-no-result">
-      <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat pour "${query}"</div>
-      <div style="font-size:12px;color:#c7c7cc;margin-top:2px">Tu peux quand même saisir le ticker manuellement</div>
-      <button class="ac-manual-btn" onclick="acSelectManual('${query.toUpperCase()}')">Utiliser "${query.toUpperCase()}" comme ticker →</button>
-    </div>`;
+    drop.innerHTML = '<div class="ac-no-result"><div style="font-size:13px;color:#8e8e93;font-weight:600">Recherche en cours...</div></div>';
+    acSearchYahoo(query);
     return;
   }
 
