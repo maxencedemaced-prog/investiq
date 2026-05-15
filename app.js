@@ -1364,7 +1364,7 @@ async function addPos() {
   const platform = document.getElementById('f-platform').value || 'Autre';
 
   // Validation avec messages clairs
-  if (!name) { showToast('⚠ Recherche et sélectionne une action d'abord'); return; }
+  if (!name) { showToast('⚠ Recherche et sélectionne une action'); return; }
   if (isNaN(qty) || qty <= 0) { showToast('⚠ Indique une quantité valide'); return; }
   if (isNaN(pru) || pru <= 0) { showToast('⚠ Indique ton prix de revient (PRU)'); return; }
   if (isNaN(price) || price <= 0) { showToast('⚠ Indique le prix actuel'); return; }
