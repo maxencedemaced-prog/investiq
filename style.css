@@ -507,3 +507,32 @@ input:focus,select:focus{outline:none;background:#ebebeb}
   .obj-step-h2{font-size:20px}
   .risk-cards{grid-template-columns:1fr}
 }
+
+/* ===== OBJECTIF CHART TR-STYLE ===== */
+.obj-chart-card{background:linear-gradient(145deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border-radius:22px;padding:24px;color:#fff;overflow:hidden}
+.obj-chart-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.obj-chart-amount{font-size:40px;font-weight:800;color:#fff;letter-spacing:-1.5px;line-height:1;transition:all 0.3s}
+.obj-chart-label{font-size:14px;color:rgba(255,255,255,0.6);font-weight:500;margin-top:4px;transition:all 0.3s}
+.obj-chart-wrap{height:160px;position:relative;margin:0 -4px}
+.obj-slider-wrap{margin-top:12px}
+.obj-slider{width:100%;-webkit-appearance:none;height:3px;border-radius:99px;background:rgba(255,255,255,0.2);outline:none;cursor:pointer}
+.obj-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;cursor:pointer;border:3px solid rgba(255,255,255,0.3);box-shadow:0 2px 8px rgba(0,0,0,0.3);transition:transform 0.15s}
+.obj-slider::-webkit-slider-thumb:hover{transform:scale(1.2)}
+.obj-slider-labels{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.5);margin-top:6px;font-weight:600}
+
+/* REAL PROGRESS */
+.obj-real-progress{display:flex;align-items:center;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.1)}
+.obj-real-label{font-size:10px;color:rgba(255,255,255,0.5);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
+.obj-real-val{font-size:15px;font-weight:800;color:#fff}
+.obj-real-bar-wrap{flex:1;display:flex;align-items:center;gap:8px}
+.obj-real-bar-bg{flex:1;height:6px;background:rgba(255,255,255,0.15);border-radius:99px;position:relative;overflow:visible}
+.obj-real-bar-fill{height:100%;background:#4ade80;border-radius:99px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1)}
+.obj-real-bar-marker{position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;background:#fff;border-radius:50%;border:3px solid #4ade80;transition:left 0.8s cubic-bezier(0.4,0,0.2,1);z-index:2}
+.obj-real-pct{font-size:13px;font-weight:800;color:rgba(255,255,255,0.7);min-width:40px}
+.obj-real-left,.obj-real-right{flex-shrink:0;min-width:60px}
+.obj-real-right{text-align:right}
+
+/* TRACK BADGE */
+.obj-track-badge{padding:8px 16px;border-radius:99px;font-size:13px;font-weight:800;flex-shrink:0}
+.obj-track-badge.on-track{background:rgba(74,222,128,0.2);color:#4ade80}
+.obj-track-badge.off-track{background:rgba(251,191,36,0.2);color:#fbbf24}
