@@ -1971,24 +1971,8 @@ async function generateObjPlan() {
   const pct = Math.min(tv/target*100, 100);
   const rateNeeded = onTrack ? riskRates[objRisk] : calcNeededRate(capital, monthly, target, years);
 
-  // Progress card - simple and clean
-  document.getElementById('obj-progress-card').innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-      <div>
-        <div style="font-size:13px;color:#8e8e93;font-weight:600;margin-bottom:4px">${goalLabels[goal]}</div>
-        <div style="font-size:32px;font-weight:800;color:#1c1c1e;letter-spacing:-1px">${fmtK(Math.round(fv))}</div>
-        <div style="font-size:14px;color:#8e8e93;margin-top:2px">projeté dans ${years} ans · objectif ${fmtK(target)}</div>
-      </div>
-      <div class="obj-track-badge ${onTrack?'on-track':'off-track'}" style="font-size:15px;padding:10px 20px">
-        ${onTrack?'✓ Objectif atteignable':'⚠ Ajustement conseillé'}
-      </div>
-    </div>
-    <div class="obj-bar-bg"><div class="obj-bar-fill" style="width:${Math.min(fv/target*100,100).toFixed(0)}%"></div></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:#8e8e93;margin-top:6px;font-weight:500">
-      <span>Aujourd'hui : ${fmtK(tv||capital)}</span>
-      <span>${onTrack ? monthly+'€/mois suffit ✓' : fmtI(monthlyNeeded)+'€/mois nécessaires'}</span>
-      <span>Objectif : ${fmtK(target)}</span>
-    </div>`;
+  // Progress card now handled by buildObjChart
+  // (obj-progress-card is no longer used — chart takes its place)
 
   // AI Plan
   document.getElementById('obj-ai-plan').innerHTML = `
