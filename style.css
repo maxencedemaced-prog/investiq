@@ -299,8 +299,9 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 .sr-ticker{font-size:12px;color:#8e8e93;font-weight:500}
 
 /* WATCHLIST STRIP */
-.watchlist-strip{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+.watchlist-strip{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory}
 .watchlist-strip::-webkit-scrollbar{display:none}
+.watchlist-chip{scroll-snap-align:start;flex-shrink:0}
 .watchlist-chip{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);cursor:pointer;flex-shrink:0;transition:box-shadow 0.2s;min-width:100px}
 .watchlist-chip:hover{box-shadow:0 3px 10px rgba(0,0,0,0.1)}
 .watchlist-chip.in-portfolio{border:2px solid #1c1c1e}
