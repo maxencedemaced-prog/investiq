@@ -1,4 +1,77 @@
 
+// ===== VALIDATE & PERSIST OBJECTIF =====
+const OBJ_STORAGE = 'iq_validated_objective';
+
+function validateObjectif() {
+  const data = {
+    capital: objChartCapital,
+    monthly: objChartMonthly,
+    target: objChartTarget,
+    years: objChartYears,
+    rate: objChartRate,
+    risk: objRisk,
+    validatedAt: new Date().toISOString()
+  };
+  try { localStorage.setItem(OBJ_STORAGE, JSON.stringify(data)); } catch {}
+  
+  // Show success
+  const btn = document.querySelector('.btn-obj-validate');
+  if (btn) {
+    btn.textContent = '✓ Objectif validé et sauvegardé !';
+    btn.style.background = '#1a7f5a';
+    btn.disabled = true;
+  }
+  showToast('🎯 Objectif validé ! Le graphique sera persistant.');
+}
+
+function loadValidatedObjectif() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(OBJ_STORAGE) || 'null');
+    if (!saved) return false;
+    
+    // Restore state
+    objChartCapital = saved.capital;
+    objChartMonthly = saved.monthly;
+    objChartTarget = saved.target;
+    objChartYears = saved.years;
+    objChartRate = saved.rate;
+    objRisk = saved.risk || 'equilibre';
+    
+    // Fill form fields
+    if (document.getElementById('obj-capital')) document.getElementById('obj-capital').value = saved.capital;
+    if (document.getElementById('obj-monthly')) document.getElementById('obj-monthly').value = saved.monthly;
+    if (document.getElementById('obj-target')) document.getElementById('obj-target').value = saved.target;
+    if (document.getElementById('obj-years')) document.getElementById('obj-years').value = saved.years;
+    
+    return true;
+  } catch { return false; }
+}
+
+function showValidatedChart() {
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(OBJ_STORAGE) || 'null'); } catch { return null; } })();
+  if (!saved) return;
+  
+  document.getElementById('obj-wizard').style.display = 'none';
+  document.getElementById('obj-results').style.display = 'block';
+  
+  setTimeout(() => {
+    buildObjChart(saved.capital, saved.monthly, saved.target, saved.years, saved.rate);
+  }, 100);
+  
+  // Show validated badge in ai-simple
+  const el = document.getElementById('obj-ai-simple');
+  if (el && el.innerHTML.trim() === '') {
+    const daysAgo = Math.floor((Date.now() - new Date(saved.validatedAt)) / 86400000);
+    el.innerHTML = `
+      <div style="background:#e8f8f0;border-radius:14px;padding:16px;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;color:#1a7f5a;margin-bottom:4px">✓ Objectif validé il y a ${daysAgo === 0 ? "aujourd'hui" : daysAgo + ' jour(s)'}</div>
+        <div style="font-size:13px;color:#1a7f5a">Capital : ${fmtK(saved.capital)} · ${saved.monthly}€/mois · Profil ${saved.risk}</div>
+      </div>
+      <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px">Modifier l'objectif</button>`;
+  }
+}
+
+
 // ===== OBJECTIF INTERACTIVE CHART =====
 let objChartInstance = null;
 let objProjectionData = [];
@@ -164,7 +237,7 @@ function updateObjSlider(val) {
   const gainsPct = invested > 0 ? Math.round(gains/invested*100) : 0;
 
   if (amountEl) {
-    amountEl.textContent = fmtK(projValue) + ' €';
+    amountEl.textContent = fmtK(projValue);
     amountEl.style.color = projValue >= objChartTarget ? '#4ade80' : '#fff';
   }
   if (labelEl) {
@@ -872,12 +945,13 @@ async function obFinish(action) {
 function formatMD(text) {
   if (!text) return '';
   return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #f0f0f0;margin:10px 0">')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#1c1c1e;font-weight:800">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^#{1,3}\s+(.+)$/gm, '<div style="font-size:15px;font-weight:800;color:#1c1c1e;margin:12px 0 6px;letter-spacing:-0.2px">$1</div>')
-    .replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0"><span style="color:#8e8e93;flex-shrink:0">•</span><span>$1</span></div>')
-    .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0"><span style="color:#1c1c1e;font-weight:700;flex-shrink:0">$1.</span><span>$2</span></div>')
-    .replace(/\n\n/g, '<div style="height:8px"></div>')
+    .replace(/^#{1,3}\s+(.+)$/gm, '<div style="font-size:15px;font-weight:800;color:#1c1c1e;margin:14px 0 6px;letter-spacing:-0.2px;padding-top:8px;border-top:1px solid #f5f5f5">$1</div>')
+    .replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;font-size:14px"><span style="color:#1a7f5a;font-weight:800;flex-shrink:0">→</span><span>$1</span></div>')
+    .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:10px;margin:6px 0;align-items:flex-start"><span style="background:#1c1c1e;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px">$1</span><span style="font-size:14px">$2</span></div>')
+    .replace(/\n\n/g, '<div style="height:10px"></div>')
     .replace(/\n/g, '<br>');
 }
 
@@ -1628,7 +1702,7 @@ function nav(page) {
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
   closeSidebar();
-  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif:()=>{ renderObj(); const tv=positions.reduce((a,p)=>a+p.qty*p.price,0); const rr=document.getElementById('obj-results'); if(rr&&rr.style.display!=='none') buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate); }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif:()=>{ const hasValidated = loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
@@ -1969,6 +2043,9 @@ function toggleObjDetail() {
 function resetObj() {
   document.getElementById('obj-results').style.display = 'none';
   document.getElementById('obj-wizard').style.display = 'block';
+  // Clear ai-simple so it gets regenerated
+  const el = document.getElementById('obj-ai-simple');
+  if (el) el.innerHTML = '';
   objGo(1);
 }
 
@@ -2077,6 +2154,9 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
     </div>`}
     <div style="margin-top:12px;padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93">
       ⚠ Simulation éducative — pas un conseil financier réglementé.
+    </div>
+    <div style="margin-top:16px;text-align:center">
+      <button class="btn-obj-validate" onclick="validateObjectif()">✓ Valider et suivre cet objectif</button>
     </div>`;
 
   // Full analysis in background
