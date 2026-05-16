@@ -536,3 +536,8 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 .obj-track-badge{padding:8px 16px;border-radius:99px;font-size:13px;font-weight:800;flex-shrink:0}
 .obj-track-badge.on-track{background:rgba(74,222,128,0.2);color:#4ade80}
 .obj-track-badge.off-track{background:rgba(251,191,36,0.2);color:#fbbf24}
+
+/* VALIDATE BUTTON */
+.btn-obj-validate{padding:14px 32px;background:#1c1c1e;border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:all 0.2s;letter-spacing:-0.2px}
+.btn-obj-validate:hover{background:#1a7f5a;transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,127,90,0.3)}
+.btn-obj-validate:disabled{opacity:0.8;cursor:default;transform:none}
