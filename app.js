@@ -1207,12 +1207,42 @@ async function loadObjective() {
   }
 }
 
+
 // ===== LIVE PRICES =====
 async function refreshPrices() {
+  if (!positions.length) return;
+  const btn = document.getElementById('refresh-prices-btn');
   const ico = document.getElementById('refresh-prices-ico');
-  if(ico) ico.classList.add('spinning');
-  if(ico) ico.classList.remove('spinning');
+  if (btn) btn.disabled = true;
+  if (ico) ico.classList.add('spinning');
+  try {
+    const tickers = positions.map(p => p.name).join(',');
+    const res = await fetch('/api/prices?symbols=' + encodeURIComponent(tickers));
+    if (!res.ok) throw new Error('API error ' + res.status);
+    const data = await res.json();
+    const quotes = data.quotes || [];
+    for (const q of quotes) {
+      if (!q.price) continue;
+      const pos = positions.find(p => p.name.toUpperCase() === (q.symbol||'').toUpperCase());
+      if (pos) {
+        pos.price = q.price;
+        pos.change_pct = q.changePct || 0;
+        if (!isDemo) sb.from('positions').update({ price: pos.price }).eq('id', pos.id).then(()=>{});
+      }
+    }
+    renderPortfolio();
+    renderHome();
+    showPriceTicker(quotes);
+    showToast('✓ Prix mis à jour');
+  } catch(e) {
+    showToast('Impossible de charger les prix');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (ico) ico.classList.remove('spinning');
+  }
 }
+
+
 
 function showPriceTicker(quotes) {
   const ticker = document.getElementById('price-ticker');
