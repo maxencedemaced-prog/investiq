@@ -469,3 +469,41 @@ input:focus,select:focus{outline:none;background:#ebebeb}
   .risk-pills{flex-direction:column}
   .risk-pill{flex-direction:row;justify-content:space-between}
 }
+
+/* ===== OBJECTIF WIZARD V3 ===== */
+/* Progress bar */
+.obj-wizard-progress{display:flex;align-items:center;margin-bottom:24px;padding:0 8px}
+.obj-wp-step{display:flex;flex-direction:column;align-items:center;gap:4px}
+.obj-wp-num{width:36px;height:36px;border-radius:50%;background:#e5e5ea;color:#8e8e93;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;transition:all 0.3s}
+.obj-wp-label{font-size:11px;font-weight:700;color:#8e8e93;transition:all 0.3s}
+.obj-wp-step.active .obj-wp-num{background:#1c1c1e;color:#fff}
+.obj-wp-step.active .obj-wp-label{color:#1c1c1e}
+.obj-wp-step.done .obj-wp-num{background:#1a7f5a;color:#fff}
+.obj-wp-line{flex:1;height:2px;background:#e5e5ea;margin:0 8px;margin-bottom:20px}
+
+/* Step cards */
+.obj-step-card{background:#fff;border-radius:22px;padding:32px;box-shadow:0 1px 6px rgba(0,0,0,0.06);text-align:center}
+.obj-step-emoji{font-size:52px;margin-bottom:14px}
+.obj-step-h2{font-size:24px;font-weight:800;color:#1c1c1e;letter-spacing:-0.6px;margin-bottom:8px}
+.obj-step-p{font-size:15px;color:#8e8e93;font-weight:500;margin-bottom:4px}
+.obj-step-card .form-grid{text-align:left}
+.obj-step-card .field{text-align:left}
+.obj-step-btns{display:flex;gap:10px;justify-content:center}
+.btn-obj-next{padding:14px 32px;background:#1c1c1e;border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity 0.2s}
+.btn-obj-next:hover{opacity:0.8}
+.btn-obj-generate{padding:14px 32px;background:#1c1c1e;border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px}
+.btn-obj-generate:hover{opacity:0.8}
+
+/* Result hero */
+.obj-result-hero{background:#1c1c1e;color:#fff;border-radius:22px}
+.obj-result-hero .obj-bar-bg{background:rgba(255,255,255,0.15)}
+.obj-result-hero .obj-bar-fill{background:#fff}
+.obj-result-hero .obj-track-badge.on-track{background:rgba(255,255,255,0.15);color:#fff}
+.obj-result-hero .obj-track-badge.off-track{background:rgba(255,165,0,0.2);color:#ffd700}
+
+@media(max-width:480px){
+  .obj-step-card{padding:24px 16px}
+  .obj-step-emoji{font-size:40px}
+  .obj-step-h2{font-size:20px}
+  .risk-cards{grid-template-columns:1fr}
+}
