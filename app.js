@@ -1750,16 +1750,22 @@ function renderSante() {
 let objRisk = 'equilibre';
 let objPlan = null;
 
-function objNextStep(step) {
-  document.querySelectorAll('.obj-step').forEach(s => s.style.display = 'none');
-  const el = document.getElementById('obj-s' + step);
-  if (el) { el.style.display = 'block'; el.classList.add('active'); }
+function objGo(step) {
+  [1,2,3].forEach(i => {
+    const s = document.getElementById('obj-s'+i);
+    if (s) s.style.display = i===step ? 'block' : 'none';
+    const wp = document.getElementById('owp'+i);
+    if (wp) {
+      wp.classList.toggle('active', i<=step);
+      wp.classList.toggle('done', i<step);
+    }
+  });
 }
 
 function selectRisk(risk) {
   objRisk = risk;
-  document.querySelectorAll('.risk-pill').forEach(c => c.classList.remove('active'));
-  document.getElementById('rp-' + risk)?.classList.add('active');
+  document.querySelectorAll('.risk-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('risk-' + risk)?.classList.add('active');
 }
 
 function toggleObjDetail() {
@@ -1773,7 +1779,8 @@ function toggleObjDetail() {
 
 function resetObj() {
   document.getElementById('obj-results').style.display = 'none';
-  document.getElementById('obj-form-card').style.display = 'block';
+  document.getElementById('obj-wizard').style.display = 'block';
+  objGo(1);
 }
 
 async function generateObjPlan() {
@@ -1793,7 +1800,7 @@ async function generateObjPlan() {
   if (!isDemo) { try { await sb.from('objectives').upsert({ ...objective, user_id: currentUser.id, updated_at: new Date().toISOString() }); } catch(e) {} }
 
   // Show results section
-  document.getElementById('obj-form-card').style.display = 'none';
+  document.getElementById('obj-wizard').style.display = 'none';
   document.getElementById('obj-results').style.display = 'block';
 
   // Calculate projection
@@ -1858,11 +1865,25 @@ Les risques spécifiques à ce profil et comment s'en protéger.
 
 Sois très concret, donne des chiffres précis, utilise un langage simple pour débutant.`;
 
-  const r = await callClaude(prompt);
-  document.getElementById('obj-ai-plan').innerHTML = `<div style="font-size:14px;color:#3c3c43;line-height:1.7;font-weight:500">${formatMD(r)}</div>
-    <div style="margin-top:16px;padding:14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93">
-      ⚠️ Ceci est une simulation éducative, pas un conseil financier réglementé. Consulte un conseiller pour des décisions importantes.
+  // Simple plan first
+  const simplePrompt = `Tu es conseiller financier. En 5 lignes MAX et de façon très claire, dis exactement :
+1. Comment répartir le premier apport de ${capital}€ (donne les %, les noms des ETF/actions et les montants exacts)
+2. Comment répartir les ${monthly}€/mois (idem, très précis)
+Profil : ${objRisk}, objectif ${fmtK(target)} en ${years} ans.
+Sois ULTRA concret, pas de blabla. Exemple : "60% IWDA (${Math.round(capital*0.6)}€), 40% VWCE (${Math.round(capital*0.4)}€)"`;
+  
+  const simpleR = await callClaude(simplePrompt);
+  document.getElementById('obj-ai-simple').innerHTML = `
+    <div style="font-size:15px;color:#1c1c1e;line-height:1.8;font-weight:500">${formatMD(simpleR)}</div>
+    <div style="margin-top:14px;padding:12px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;font-weight:500">
+      ⚠ Simulation éducative — pas un conseil financier réglementé.
     </div>`;
+
+  // Full analysis in background
+  callClaude(prompt).then(r => {
+    const el = document.getElementById('obj-ai-plan');
+    if (el) el.innerHTML = `<div style="font-size:14px;color:#3c3c43;line-height:1.7;font-weight:500">${formatMD(r)}</div>`;
+  });
 
   // Projection table
   renderProjectionTable(capital, monthly, target, years, riskRates[objRisk]);
