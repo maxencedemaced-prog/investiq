@@ -1,4 +1,45 @@
 
+// ===== EDIT POSITION =====
+function openEditPos(id) {
+  const pos = positions.find(p => p.id === id);
+  if (!pos) return;
+  document.getElementById('edit-pos-id').value = id;
+  document.getElementById('edit-name').value = pos.name;
+  document.getElementById('edit-qty').value = pos.qty;
+  document.getElementById('edit-pru').value = pos.pru;
+  document.getElementById('edit-price').value = pos.price;
+  document.getElementById('edit-alert').value = pos.alert_price || '';
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+async function saveEditPos() {
+  const id = document.getElementById('edit-pos-id').value;
+  const qty = parseFloat(document.getElementById('edit-qty').value);
+  const pru = parseFloat(document.getElementById('edit-pru').value);
+  const price = parseFloat(document.getElementById('edit-price').value);
+  const alert_price = parseFloat(document.getElementById('edit-alert').value) || null;
+
+  if (isNaN(qty) || isNaN(pru) || isNaN(price)) { showToast('⚠ Remplis tous les champs'); return; }
+
+  const pos = positions.find(p => p.id === id);
+  if (!pos) return;
+
+  pos.qty = qty;
+  pos.pru = pru;
+  pos.price = price;
+  pos.alert_price = alert_price;
+
+  if (!isDemo) {
+    await sb.from('positions').update({ qty, pru, price, alert_price }).eq('id', id);
+  }
+
+  document.getElementById('edit-modal').style.display = 'none';
+  renderPortfolio();
+  renderHome();
+  showToast('✓ Position modifiée !');
+}
+
+
 async function tryAlternativeTicker(ticker, priceInput, liveLabel) {
   // Try common suffixes
   const alternatives = [ticker+'.DE', ticker+'.PA', ticker+'.L', ticker+'.MI'];
@@ -1520,6 +1561,7 @@ function renderPortfolio() {
             <button class="btn-sm buy" onclick="openDecisionFromPos('${p.name}','acheter')">+ Renforcer</button>
             <button class="btn-sm" onclick="openDecisionFromPos('${p.name}','garder')">Analyser</button>
             <button class="btn-sm sell" onclick="openDecisionFromPos('${p.name}','vendre')">− Alléger</button>
+            ${!isDemo?`<button class="btn-sm" onclick="openEditPos('${p.id}')">✏ Modifier</button>`:''}
             ${!isDemo?`<button class="btn-del" onclick="delPos('${p.id}')" style="margin-left:auto">Supprimer</button>`:''}
           </div>
         </div>
