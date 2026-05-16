@@ -1326,16 +1326,46 @@ async function refreshPrices() {
 
 
 
-function showPriceTicker(quotes) {
+
+let tickerInterval = null;
+let tickerIndex = 0;
+
+function showPriceTicker() {
   const ticker = document.getElementById('price-ticker');
-  if (!quotes.length) { ticker.innerHTML=''; return; }
-  const items = quotes.slice(0,3).map(q => {
-    const chg = q.regularMarketChangePercent||0;
-    const color = chg>=0?'#1a7f5a':'#ff3b30';
-    return `<span style="font-size:12px;font-weight:700;color:${color}">${q.symbol} ${chg>=0?'+':''}${chg.toFixed(1)}%</span>`;
+  if (!ticker || !positions || !positions.length) return;
+
+  const allItems = positions.map(p => {
+    const chg = p.change_pct || 0;
+    const color = chg >= 0 ? '#1a7f5a' : '#cc2f26';
+    const sign = chg >= 0 ? '+' : '';
+    return `<span style="font-size:11px;font-weight:700;color:${color};white-space:nowrap">${p.name} ${sign}${chg.toFixed(1)}%</span>`;
   });
-  ticker.innerHTML = items.join('<span style="color:#c7c7cc;margin:0 6px">·</span>');
+
+  if (allItems.length <= 3) {
+    ticker.innerHTML = allItems.join('<span style="color:#c7c7cc;margin:0 5px">·</span>');
+    return;
+  }
+
+  function showNext() {
+    const chunk = [];
+    for (let i = 0; i < 3; i++) {
+      chunk.push(allItems[(tickerIndex + i) % allItems.length]);
+    }
+    ticker.style.opacity = '0';
+    ticker.style.transition = 'opacity 0.3s';
+    setTimeout(() => {
+      ticker.innerHTML = chunk.join('<span style="color:#c7c7cc;margin:0 5px">·</span>');
+      ticker.style.opacity = '1';
+    }, 300);
+    tickerIndex = (tickerIndex + 3) % allItems.length;
+  }
+
+  showNext();
+  if (tickerInterval) clearInterval(tickerInterval);
+  tickerInterval = setInterval(showNext, 3000);
 }
+
+
 
 function showTickerFallback() {
   const ticker = document.getElementById('price-ticker');
