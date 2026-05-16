@@ -1782,7 +1782,7 @@ async function generateObjPlan() {
 
   // Save objective
   objective = { target, years, rate: riskRates[objRisk], monthly };
-  if (!isDemo) await sb.from('objectives').upsert({ ...objective, user_id: currentUser.id, updated_at: new Date().toISOString() }).catch(()=>{});
+  if (!isDemo) { try { await sb.from('objectives').upsert({ ...objective, user_id: currentUser.id, updated_at: new Date().toISOString() }); } catch(e) {} }
 
   // Show results section
   document.getElementById('obj-wizard').style.display = 'none';
