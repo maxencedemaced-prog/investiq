@@ -1221,19 +1221,27 @@ async function refreshPrices() {
     if (!res.ok) throw new Error('API error ' + res.status);
     const data = await res.json();
     const quotes = data.quotes || [];
+    let updated = 0;
     for (const q of quotes) {
-      if (!q.price) continue;
-      const pos = positions.find(p => p.name.toUpperCase() === (q.symbol||'').toUpperCase());
+      if (!q.price || q.price <= 0) continue;
+      // Match by symbol (case insensitive)
+      const pos = positions.find(p => 
+        p.name.toUpperCase() === (q.symbol||'').toUpperCase()
+      );
       if (pos) {
-        pos.price = q.price;
-        pos.change_pct = q.changePct || 0;
-        if (!isDemo) sb.from('positions').update({ price: pos.price }).eq('id', pos.id).then(()=>{});
+        pos.price = parseFloat(q.price);
+        pos.change_pct = parseFloat(q.changePct) || 0;
+        if (!isDemo) {
+          sb.from('positions').update({ price: pos.price }).eq('id', pos.id).then(()=>{});
+        }
+        updated++;
       }
     }
+    console.log('Prix mis à jour:', updated, 'positions sur', positions.length);
     renderPortfolio();
     renderHome();
     showPriceTicker(quotes);
-    showToast('✓ Prix mis à jour');
+    showToast('✓ ' + updated + ' prix mis à jour');
   } catch(e) {
     showToast('Impossible de charger les prix');
   } finally {
