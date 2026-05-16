@@ -236,74 +236,125 @@
     <!-- OBJECTIF -->
     <section id="sec-objectif" class="sec">
       <div class="page-header">
-        <div><h1>Mon objectif</h1><p class="page-sub">Plan d'investissement personnalisé par l'IA</p></div>
+        <div><h1>Mon objectif</h1><p class="page-sub">Ton plan d'investissement personnalisé</p></div>
       </div>
 
-      <!-- FORM SIMPLE -->
-      <div class="card" id="obj-form-card">
-        <div class="obj-simple-grid">
-          <div class="field">
-            <label>Je veux atteindre</label>
-            <div class="obj-input-wrap"><input type="number" id="obj-target" placeholder="100 000" value="100000"><span class="obj-unit">€</span></div>
+      <!-- WIZARD 3 STEPS -->
+      <div id="obj-wizard">
+
+        <!-- PROGRESS BAR -->
+        <div class="obj-wizard-progress">
+          <div class="obj-wp-step active" id="owp1"><div class="obj-wp-num">1</div><div class="obj-wp-label">Capital</div></div>
+          <div class="obj-wp-line"></div>
+          <div class="obj-wp-step" id="owp2"><div class="obj-wp-num">2</div><div class="obj-wp-label">Objectif</div></div>
+          <div class="obj-wp-line"></div>
+          <div class="obj-wp-step" id="owp3"><div class="obj-wp-num">3</div><div class="obj-wp-label">Risque</div></div>
+        </div>
+
+        <!-- STEP 1 -->
+        <div class="obj-step-card" id="obj-s1">
+          <div class="obj-step-emoji">💰</div>
+          <h2 class="obj-step-h2">Ton capital de départ</h2>
+          <p class="obj-step-p">Ce que tu peux investir maintenant et chaque mois</p>
+          <div class="form-grid" style="margin-top:20px">
+            <div class="field"><label>Premier apport (€)</label><input type="number" id="obj-capital" placeholder="Ex: 1 000"></div>
+            <div class="field"><label>Versement mensuel (€)</label><input type="number" id="obj-monthly" placeholder="Ex: 200" value="200"></div>
+          </div>
+          <button class="btn-obj-next" onclick="objGo(2)">Suivant →</button>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="obj-step-card" id="obj-s2" style="display:none">
+          <div class="obj-step-emoji">🎯</div>
+          <h2 class="obj-step-h2">Ton objectif</h2>
+          <p class="obj-step-p">Combien tu veux avoir et pourquoi</p>
+          <div class="form-grid" style="margin-top:20px">
+            <div class="field"><label>Capital visé (€)</label><input type="number" id="obj-target" placeholder="Ex: 100 000" value="100000"></div>
+            <div class="field"><label>Dans combien d'années ?</label><input type="number" id="obj-years" placeholder="Ex: 10" value="10"></div>
           </div>
           <div class="field">
-            <label>En</label>
-            <div class="obj-input-wrap"><input type="number" id="obj-years" placeholder="10" value="10"><span class="obj-unit">ans</span></div>
+            <label>Pour quel projet ?</label>
+            <select id="obj-goal">
+              <option value="retraite">🏖️ Retraite / Indépendance financière</option>
+              <option value="immo">🏠 Achat immobilier</option>
+              <option value="enfants">👨‍👩‍👧 Études des enfants</option>
+              <option value="liberte">🚀 Liberté financière</option>
+              <option value="autre">✨ Autre projet</option>
+            </select>
           </div>
-          <div class="field">
-            <label>Je commence avec</label>
-            <div class="obj-input-wrap"><input type="number" id="obj-capital" placeholder="1 000" value=""><span class="obj-unit">€</span></div>
-          </div>
-          <div class="field">
-            <label>Puis chaque mois</label>
-            <div class="obj-input-wrap"><input type="number" id="obj-monthly" placeholder="200" value="200"><span class="obj-unit">€/mois</span></div>
+          <div class="obj-step-btns">
+            <button class="btn-secondary" onclick="objGo(1)">← Retour</button>
+            <button class="btn-obj-next" onclick="objGo(3)">Suivant →</button>
           </div>
         </div>
 
-        <!-- RISK SELECTOR -->
-        <div style="margin:16px 0">
-          <label style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:10px">Mon profil de risque</label>
-          <div class="risk-pills">
-            <button class="risk-pill" id="rp-prudent" onclick="selectRisk('prudent')">🛡️ Prudent <span>~5%/an</span></button>
-            <button class="risk-pill active" id="rp-equilibre" onclick="selectRisk('equilibre')">⚖️ Équilibré <span>~7%/an</span></button>
-            <button class="risk-pill" id="rp-agressif" onclick="selectRisk('agressif')">🚀 Agressif <span>~11%/an</span></button>
+        <!-- STEP 3 -->
+        <div class="obj-step-card" id="obj-s3" style="display:none">
+          <div class="obj-step-emoji">⚖️</div>
+          <h2 class="obj-step-h2">Ton profil de risque</h2>
+          <p class="obj-step-p">Quel niveau de volatilité tu peux accepter ?</p>
+          <div class="risk-cards" style="margin-top:20px">
+            <div class="risk-card" id="risk-prudent" onclick="selectRisk('prudent')">
+              <div class="risk-card-icon">🛡️</div>
+              <div class="risk-card-title">Prudent</div>
+              <div class="risk-card-desc">~4-5%/an</div>
+              <div class="risk-card-detail">Perte max -10%</div>
+            </div>
+            <div class="risk-card active" id="risk-equilibre" onclick="selectRisk('equilibre')">
+              <div class="risk-card-icon">⚖️</div>
+              <div class="risk-card-title">Équilibré</div>
+              <div class="risk-card-desc">~7-8%/an</div>
+              <div class="risk-card-detail">Perte max -25%</div>
+            </div>
+            <div class="risk-card" id="risk-agressif" onclick="selectRisk('agressif')">
+              <div class="risk-card-icon">🚀</div>
+              <div class="risk-card-title">Agressif</div>
+              <div class="risk-card-desc">~10-12%/an</div>
+              <div class="risk-card-detail">Perte max -40%</div>
+            </div>
+          </div>
+          <div class="obj-step-btns" style="margin-top:24px">
+            <button class="btn-secondary" onclick="objGo(2)">← Retour</button>
+            <button class="btn-obj-generate" onclick="generateObjPlan()">
+              🤖 Générer mon plan
+            </button>
           </div>
         </div>
 
-        <button class="btn-obj-generate" onclick="generateObjPlan()" id="obj-gen-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/></svg>
-          Générer mon plan IA
-        </button>
       </div>
 
       <!-- RESULTS -->
       <div id="obj-results" style="display:none">
 
-        <!-- SUMMARY CARD -->
-        <div class="card obj-summary-card" id="obj-progress-card"></div>
+        <!-- CHIFFRE CLE -->
+        <div class="card obj-result-hero" id="obj-progress-card"></div>
 
-        <!-- AI PLAN CARD -->
+        <!-- PLAN SIMPLE -->
         <div class="card">
           <div class="card-head">
-            <div class="card-title"><div class="card-icon dark">🤖</div>Recommandations IA</div>
+            <div class="card-title"><div class="card-icon dark">📋</div>Où et comment investir</div>
           </div>
-          <div id="obj-ai-plan"></div>
+          <div id="obj-ai-simple"></div>
         </div>
 
-        <!-- DETAIL (collapsed) -->
+        <!-- DETAIL CACHE -->
         <div id="obj-detail-wrap" style="display:none">
+          <div class="card">
+            <div class="card-head"><div class="card-title"><div class="card-icon dark">🔬</div>Analyse complète IA</div></div>
+            <div id="obj-ai-plan"></div>
+          </div>
           <div class="card">
             <div class="card-head"><div class="card-title"><div class="card-icon dark">📈</div>Projection année par année</div></div>
             <div id="obj-projection"></div>
           </div>
         </div>
 
-        <div style="display:flex;gap:10px;margin-top:4px">
-          <button class="btn-secondary" onclick="toggleObjDetail()" id="obj-detail-btn">▾ Voir la projection détaillée</button>
-          <button class="btn-secondary" onclick="resetObj()">Modifier</button>
+        <div class="btn-row" style="margin-top:4px">
+          <button class="btn-secondary" onclick="toggleObjDetail()" id="obj-detail-btn">🔬 Voir l'analyse complète</button>
+          <button class="btn-secondary" onclick="resetObj()">✏ Modifier</button>
         </div>
-      </div>
 
+      </div>
     </section>
 
     <!-- DECISION -->
