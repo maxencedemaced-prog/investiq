@@ -239,10 +239,8 @@
         <div><h1>Mon objectif</h1><p class="page-sub">Ton plan d'investissement personnalisé</p></div>
       </div>
 
-      <!-- WIZARD 3 STEPS -->
+      <!-- WIZARD -->
       <div id="obj-wizard">
-
-        <!-- PROGRESS BAR -->
         <div class="obj-wizard-progress">
           <div class="obj-wp-step active" id="owp1"><div class="obj-wp-num">1</div><div class="obj-wp-label">Capital</div></div>
           <div class="obj-wp-line"></div>
@@ -251,7 +249,6 @@
           <div class="obj-wp-step" id="owp3"><div class="obj-wp-num">3</div><div class="obj-wp-label">Risque</div></div>
         </div>
 
-        <!-- STEP 1 -->
         <div class="obj-step-card" id="obj-s1">
           <div class="obj-step-emoji">💰</div>
           <h2 class="obj-step-h2">Ton capital de départ</h2>
@@ -263,7 +260,6 @@
           <button class="btn-obj-next" onclick="objGo(2)">Suivant →</button>
         </div>
 
-        <!-- STEP 2 -->
         <div class="obj-step-card" id="obj-s2" style="display:none">
           <div class="obj-step-emoji">🎯</div>
           <h2 class="obj-step-h2">Ton objectif</h2>
@@ -288,7 +284,6 @@
           </div>
         </div>
 
-        <!-- STEP 3 -->
         <div class="obj-step-card" id="obj-s3" style="display:none">
           <div class="obj-step-emoji">⚖️</div>
           <h2 class="obj-step-h2">Ton profil de risque</h2>
@@ -315,21 +310,54 @@
           </div>
           <div class="obj-step-btns" style="margin-top:24px">
             <button class="btn-secondary" onclick="objGo(2)">← Retour</button>
-            <button class="btn-obj-generate" onclick="generateObjPlan()">
-              🤖 Générer mon plan
-            </button>
+            <button class="btn-obj-generate" onclick="generateObjPlan()">🤖 Générer mon plan</button>
           </div>
         </div>
-
       </div>
 
       <!-- RESULTS -->
       <div id="obj-results" style="display:none">
 
-        <!-- CHIFFRE CLE -->
-        <div class="card obj-result-hero" id="obj-progress-card"></div>
+        <!-- GRAPHIQUE INTERACTIF TR-STYLE -->
+        <div class="card obj-chart-card">
+          <div class="obj-chart-header">
+            <div>
+              <div class="obj-chart-amount" id="obj-chart-amount">—</div>
+              <div class="obj-chart-label" id="obj-chart-label">Valeur projetée</div>
+            </div>
+            <div class="obj-track-badge on-track" id="obj-track-badge">Calcul...</div>
+          </div>
+          <div class="obj-chart-wrap">
+            <canvas id="obj-chart" height="160"></canvas>
+          </div>
+          <div class="obj-slider-wrap">
+            <input type="range" id="obj-slider" min="0" max="100" value="100" class="obj-slider" oninput="updateObjSlider(this.value)">
+            <div class="obj-slider-labels">
+              <span>Aujourd'hui</span>
+              <span id="obj-slider-end">Dans — ans</span>
+            </div>
+          </div>
+          <!-- BARRE PROGRESSION REELLE -->
+          <div class="obj-real-progress">
+            <div class="obj-real-left">
+              <div class="obj-real-label">Progression réelle</div>
+              <div class="obj-real-val" id="obj-real-val">—</div>
+            </div>
+            <div class="obj-real-bar-wrap">
+              <div class="obj-real-bar-bg">
+                <div class="obj-real-bar-fill" id="obj-real-bar"></div>
+                <div class="obj-real-bar-marker" id="obj-real-marker"></div>
+              </div>
+              <div class="obj-real-pct" id="obj-real-pct">0%</div>
+            </div>
+            <div class="obj-real-right">
+              <div class="obj-real-label">Objectif</div>
+              <div class="obj-real-val" id="obj-real-target">—</div>
+            </div>
+          </div>
+        </div>
 
-        <!-- PLAN SIMPLE -->
+        <!-- RECOMMANDATIONS -->
         <div class="card">
           <div class="card-head">
             <div class="card-title"><div class="card-icon dark">📋</div>Où et comment investir</div>
@@ -344,7 +372,7 @@
             <div id="obj-ai-plan"></div>
           </div>
           <div class="card">
-            <div class="card-head"><div class="card-title"><div class="card-icon dark">📈</div>Projection année par année</div></div>
+            <div class="card-head"><div class="card-title"><div class="card-icon dark">📊</div>Projection année par année</div></div>
             <div id="obj-projection"></div>
           </div>
         </div>
@@ -353,7 +381,6 @@
           <button class="btn-secondary" onclick="toggleObjDetail()" id="obj-detail-btn">🔬 Voir l'analyse complète</button>
           <button class="btn-secondary" onclick="resetObj()">✏ Modifier</button>
         </div>
-
       </div>
     </section>
 
