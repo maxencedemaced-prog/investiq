@@ -1746,37 +1746,164 @@ function renderSante() {
   document.getElementById('sante-alerts').innerHTML=positions.length?buildAlerts():emptyMsg();
 }
 
-// ===== OBJECTIF =====
-function renderObj() {
-  const target=parseFloat(document.getElementById('obj-target').value)||50000;
-  const years=parseInt(document.getElementById('obj-years').value)||10;
-  const rate=parseFloat(document.getElementById('obj-rate').value)/100/12||0.07/12;
-  const monthly=parseFloat(document.getElementById('obj-monthly').value)||200;
-  const tv=positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const n=years*12, fv=tv*Math.pow(1+rate,n)+monthly*((Math.pow(1+rate,n)-1)/rate);
-  const onTrack=fv>=target;
-  const monthlyNeeded=Math.max((target-tv*Math.pow(1+rate,n))*rate/(Math.pow(1+rate,n)-1),0);
-  const pct=Math.min(tv/target*100,100);
-  document.getElementById('obj-result').innerHTML=`
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:#8e8e93;margin-bottom:4px;font-weight:600"><span>Aujourd'hui : ${fmtK(tv)}</span><span>Objectif : ${fmtK(target)}</span></div>
-    <div class="obj-bar-bg"><div class="obj-bar-fill" style="width:${pct}%"></div></div>
-    <div class="metrics-grid" style="margin-top:14px">
-      <div class="metric-card"><div class="metric-label">Capital projeté dans ${years} ans</div><div class="metric-val ${onTrack?'green':'red'}">${fmtK(Math.round(fv))}</div></div>
-      <div class="metric-card"><div class="metric-label">Objectif</div><div class="metric-val">${fmtK(target)}</div></div>
-      <div class="metric-card"><div class="metric-label">Versement actuel</div><div class="metric-val">${fmtI(monthly)} €/mois</div></div>
-      <div class="metric-card"><div class="metric-label">Nécessaire</div><div class="metric-val ${onTrack?'green':'red'}">${onTrack?'En bonne voie !':fmtI(monthlyNeeded)+' €/mois'}</div></div>
+// ===== OBJECTIF WIZARD =====
+let objRisk = 'equilibre';
+let objPlan = null;
+
+function objNextStep(step) {
+  document.querySelectorAll('.obj-step').forEach(s => s.style.display = 'none');
+  const el = document.getElementById('obj-s' + step);
+  if (el) { el.style.display = 'block'; el.classList.add('active'); }
+}
+
+function selectRisk(risk) {
+  objRisk = risk;
+  document.querySelectorAll('.risk-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('risk-' + risk)?.classList.add('active');
+}
+
+function resetObj() {
+  document.getElementById('obj-results').style.display = 'none';
+  document.getElementById('obj-wizard').style.display = 'block';
+  objNextStep(1);
+}
+
+async function generateObjPlan() {
+  const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
+  const capital = parseFloat(document.getElementById('obj-capital').value) || tv || 0;
+  const monthly = parseFloat(document.getElementById('obj-monthly').value) || 200;
+  const target = parseFloat(document.getElementById('obj-target').value) || 100000;
+  const years = parseInt(document.getElementById('obj-years').value) || 10;
+  const goal = document.getElementById('obj-goal').value;
+  const goalLabels = { retraite:'Retraite anticipée', immo:'Achat immobilier', enfants:'Études enfants', liberte:'Liberté financière', autre:'Projet personnel' };
+  const riskRates = { prudent: 4.5, equilibre: 7, agressif: 11 };
+  const rate = riskRates[objRisk] / 100 / 12;
+  const n = years * 12;
+
+  // Save objective
+  objective = { target, years, rate: riskRates[objRisk], monthly };
+  if (!isDemo) await sb.from('objectives').upsert({ ...objective, user_id: currentUser.id, updated_at: new Date().toISOString() }).catch(()=>{});
+
+  // Show results section
+  document.getElementById('obj-wizard').style.display = 'none';
+  document.getElementById('obj-results').style.display = 'block';
+
+  // Calculate projection
+  const fv = capital * Math.pow(1+rate, n) + monthly * ((Math.pow(1+rate,n)-1)/rate);
+  const onTrack = fv >= target;
+  const monthlyNeeded = Math.max((target - capital*Math.pow(1+rate,n)) * rate / (Math.pow(1+rate,n)-1), 0);
+  const pct = Math.min(tv/target*100, 100);
+  const rateNeeded = onTrack ? riskRates[objRisk] : calcNeededRate(capital, monthly, target, years);
+
+  // Progress card
+  document.getElementById('obj-progress-card').innerHTML = `
+    <div class="obj-progress-header">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Progression vers l'objectif</div>
+        <div style="font-size:28px;font-weight:800;color:#1c1c1e;letter-spacing:-0.8px">${fmtK(tv)} <span style="font-size:16px;color:#8e8e93">/ ${fmtK(target)}</span></div>
+      </div>
+      <div class="obj-track-badge ${onTrack?'on-track':'off-track'}">${onTrack?'✓ En bonne voie':'⚠ Ajustement nécessaire'}</div>
     </div>
-    <div class="alert ${onTrack?'alert-ok':'alert-warn'}" style="margin-top:12px">
-      <span>${onTrack?'✓':'⚠'}</span>
-      <div>${onTrack?`Tu devrais atteindre <strong>${fmtK(Math.round(fv))}</strong> dans ${years} ans.`:`Il te manque <strong>${fmtI(monthlyNeeded-monthly)} €/mois</strong> pour réussir.`}</div>
+    <div class="obj-bar-bg" style="margin:14px 0 8px"><div class="obj-bar-fill" style="width:${pct}%"></div></div>
+    <div style="font-size:12px;color:#8e8e93;font-weight:500;margin-bottom:16px">${pct.toFixed(1)}% atteint · Reste ${fmtK(Math.max(target-tv,0))}</div>
+    <div class="metrics-grid">
+      <div class="metric-card"><div class="metric-label">Capital projeté</div><div class="metric-val ${onTrack?'green':'red'}">${fmtK(Math.round(fv))}</div><div class="metric-trend">dans ${years} ans</div></div>
+      <div class="metric-card"><div class="metric-label">Versement actuel</div><div class="metric-val">${fmtI(monthly)} €/mois</div><div class="metric-trend">${onTrack?'Suffisant 👍':'Insuffisant ⚠'}</div></div>
+      <div class="metric-card"><div class="metric-label">${onTrack?'Rendement nécessaire':'Versement nécessaire'}</div><div class="metric-val ${onTrack?'green':'red'}">${onTrack?riskRates[objRisk]+'%/an':fmtI(monthlyNeeded)+'€/mois'}</div></div>
+      <div class="metric-card"><div class="metric-label">Objectif</div><div class="metric-val">${goalLabels[goal]}</div></div>
     </div>`;
+
+  // AI Plan
+  document.getElementById('obj-ai-plan').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;color:#8e8e93;font-size:14px;padding:12px 0">
+      <svg class="spinning" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      Génération de ton plan personnalisé...
+    </div>`;
+
+  const portfolioCtx = positions.length ? `Portefeuille actuel : ${positions.map(p=>`${p.name}(${p.type},${p.qty}parts,PRU ${p.pru}€)`).join(', ')}.` : 'Pas encore de positions.';
+  const prompt = `Tu es un conseiller financier expert pour débutants. Génère un plan d'investissement ultra-personnalisé.
+
+PROFIL :
+- Capital de départ : ${fmtK(capital)}
+- Versement mensuel : ${monthly}€/mois  
+- Objectif : ${fmtK(target)} en ${years} ans pour : ${goalLabels[goal]}
+- Profil de risque : ${objRisk} (~${riskRates[objRisk]}%/an)
+- ${portfolioCtx}
+
+Génère un plan structuré avec :
+
+**1. Analyse de la faisabilité**
+Est-ce que l'objectif est réaliste ? Sois honnête et pédagogue.
+
+**2. Allocation recommandée**
+Répartition précise en % avec les ETF/actions spécifiques à acheter (donne les vrais tickers).
+
+**3. Plan d'action mois par mois**
+Comment répartir les ${monthly}€/mois exactement.
+
+**4. Les 3-5 actifs prioritaires à acheter maintenant**
+Avec le montant exact à investir sur chacun.
+
+**5. Points de vigilance**
+Les risques spécifiques à ce profil et comment s'en protéger.
+
+Sois très concret, donne des chiffres précis, utilise un langage simple pour débutant.`;
+
+  const r = await callClaude(prompt);
+  document.getElementById('obj-ai-plan').innerHTML = `<div style="font-size:14px;color:#3c3c43;line-height:1.7;font-weight:500">${formatMD(r)}</div>
+    <div style="margin-top:16px;padding:14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93">
+      ⚠️ Ceci est une simulation éducative, pas un conseil financier réglementé. Consulte un conseiller pour des décisions importantes.
+    </div>`;
+
+  // Projection table
+  renderProjectionTable(capital, monthly, target, years, riskRates[objRisk]);
 }
-async function saveObjectif() {
-  const data={target:parseFloat(document.getElementById('obj-target').value)||50000,years:parseInt(document.getElementById('obj-years').value)||10,rate:parseFloat(document.getElementById('obj-rate').value)||7,monthly:parseFloat(document.getElementById('obj-monthly').value)||200};
-  objective=data;
-  if(!isDemo)await sb.from('objectives').upsert({...data,user_id:currentUser.id,updated_at:new Date().toISOString()});
-  renderObj();
+
+function calcNeededRate(capital, monthly, target, years) {
+  // Binary search for needed rate
+  let lo = 0, hi = 30;
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2;
+    const r = mid/100/12, n = years*12;
+    const fv = capital*Math.pow(1+r,n) + monthly*((Math.pow(1+r,n)-1)/r);
+    if (fv < target) lo = mid; else hi = mid;
+  }
+  return Math.round((lo+hi)/2 * 10) / 10;
 }
+
+function renderProjectionTable(capital, monthly, target, years, annualRate) {
+  const rate = annualRate/100/12;
+  let rows = '';
+  const milestones = [1,2,3,5,7,10,15,20].filter(y => y <= years+1);
+  for (const y of milestones) {
+    const n = y*12;
+    const fv = capital*Math.pow(1+rate,n) + monthly*((Math.pow(1+rate,n)-1)/rate);
+    const invested = capital + monthly*n;
+    const gain = fv - invested;
+    const onT = fv >= target;
+    rows += `<tr>
+      <td style="font-weight:700">Année ${y}</td>
+      <td style="font-weight:800;color:${onT?'#1a7f5a':'#1c1c1e'}">${fmtK(Math.round(fv))}</td>
+      <td style="color:#8e8e93">${fmtK(Math.round(invested))}</td>
+      <td style="color:#1a7f5a;font-weight:700">+${fmtK(Math.round(gain))}</td>
+      <td>${onT?'<span style="color:#1a7f5a;font-weight:700">✓ Atteint</span>':'<span style="color:#8e8e93">En cours</span>'}</td>
+    </tr>`;
+  }
+  document.getElementById('obj-projection').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="border-bottom:2px solid #f5f5f5">
+        <th style="text-align:left;padding:8px 0;color:#8e8e93;font-weight:700;font-size:11px;text-transform:uppercase">Année</th>
+        <th style="text-align:left;padding:8px 0;color:#8e8e93;font-weight:700;font-size:11px;text-transform:uppercase">Capital</th>
+        <th style="text-align:left;padding:8px 0;color:#8e8e93;font-weight:700;font-size:11px;text-transform:uppercase">Investi</th>
+        <th style="text-align:left;padding:8px 0;color:#8e8e93;font-weight:700;font-size:11px;text-transform:uppercase">Gains</th>
+        <th style="text-align:left;padding:8px 0;color:#8e8e93;font-weight:700;font-size:11px;text-transform:uppercase">Objectif</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function renderObj() { /* legacy - kept for compat */ }
+async function saveObjectif() { /* legacy */ }
 
 // ===== CRISE =====
 function renderCrise() {
