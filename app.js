@@ -1197,7 +1197,7 @@ async function loadPositions() {
   positions = data||[];
 }
 async function loadObjective() {
-  const { data } = await sb.from('objectives').select('*').eq('user_id',currentUser.id).single();
+  const { data } = await sb.from('objectives').select('*').eq('user_id',currentUser.id).maybeSingle();
   if (data) {
     objective = { target:data.target, years:data.years, rate:data.rate, monthly:data.monthly };
     document.getElementById('obj-target').value = objective.target;
@@ -1211,9 +1211,7 @@ async function loadObjective() {
 async function refreshPrices() {
   const ico = document.getElementById('refresh-prices-ico');
   if(ico) ico.classList.add('spinning');
-  await refreshAllTickers();
   if(ico) ico.classList.remove('spinning');
-  isRefreshing = false;
 }
 
 function showPriceTicker(quotes) {
