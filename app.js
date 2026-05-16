@@ -2116,8 +2116,7 @@ Les risques spécifiques à ce profil et comment s'en protéger.
 Sois très concret, donne des chiffres précis, utilise un langage simple pour débutant.`;
 
   // Simple plan first
-  const rateNeededVal = onTrack ? riskRates[objRisk] : calcNeededRate(capital, monthly, target, years);
-  const adjustMsg = !onTrack ? `\n\nSituation : l'objectif n'est PAS atteint avec ce plan. Pour y arriver il faudrait soit : augmenter le versement à ${fmtI(monthlyNeeded)}€/mois, soit viser un rendement de ${rateNeededVal}%/an (profil plus agressif), soit allonger la durée.` : '';
+  const adjustMsg = !onTrack ? `\n\nSituation : l'objectif n'est PAS atteint avec ce plan. Pour y arriver il faudrait soit : augmenter le versement à ${fmtI(monthlyNeeded)}€/mois, soit viser un rendement de ${rateNeeded}%/an (profil plus agressif), soit allonger la durée.` : '';
 
   const simplePrompt = `Tu es conseiller financier. Réponds en 3 blocs clairs avec des titres en gras :
 
@@ -2144,7 +2143,7 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
         Pour atteindre <strong>${fmtK(target)}</strong> en <strong>${years} ans</strong>, voici tes options :
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
           <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">💰 Augmenter à <strong>${fmtI(monthlyNeeded)}€/mois</strong> (au lieu de ${monthly}€)</div>
-          <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">📈 Viser <strong>${rateNeededVal}%/an</strong> → profil ${rateNeededVal > 9 ? 'Agressif 🚀' : 'Équilibré ⚖️'}</div>
+          <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">📈 Viser <strong>${rateNeeded}%/an</strong> → profil ${rateNeeded > 9 ? 'Agressif 🚀' : 'Équilibré ⚖️'}</div>
           <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">⏳ Allonger à <strong>${Math.ceil(years * (Math.log(target/capital) / Math.log(1+riskRates[objRisk]/100)))}+ ans</strong></div>
         </div>
       </div>
