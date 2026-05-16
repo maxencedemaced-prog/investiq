@@ -54,30 +54,7 @@ async function acSearchYahoo(query) {
 
 
 // ===== AUTO REFRESH PRICES =====
-let priceRefreshInterval = null;
-
-function startPriceAutoRefresh() {
-  if (priceRefreshInterval) clearInterval(priceRefreshInterval);
-  priceRefreshInterval = setInterval(() => {
-    if (positions.length && document.visibilityState === 'visible') {
-      refreshPrices();
-    }
-  }, 120000); // every 2 minutes
-}
-
-function stopPriceAutoRefresh() {
-  if (priceRefreshInterval) clearInterval(priceRefreshInterval);
-}
-
-// Pause when tab is hidden, resume when visible
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    startPriceAutoRefresh();
-    if (positions.length) refreshPrices(); // immediate refresh on tab focus
-  } else {
-    stopPriceAutoRefresh();
-  }
-});
+// Simple manual refresh only - no auto loop
 
 
 // ===== AUTOCOMPLETE ADD POSITION =====
@@ -1123,7 +1100,6 @@ async function initApp(user) {
   nav('home');
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   setTimeout(() => showOnboarding(), 500);
-  startPriceAutoRefresh();
   if ('Notification' in window) Notification.requestPermission();
 }
 
