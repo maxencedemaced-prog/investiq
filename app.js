@@ -1758,14 +1758,22 @@ function objNextStep(step) {
 
 function selectRisk(risk) {
   objRisk = risk;
-  document.querySelectorAll('.risk-card').forEach(c => c.classList.remove('active'));
-  document.getElementById('risk-' + risk)?.classList.add('active');
+  document.querySelectorAll('.risk-pill').forEach(c => c.classList.remove('active'));
+  document.getElementById('rp-' + risk)?.classList.add('active');
+}
+
+function toggleObjDetail() {
+  const wrap = document.getElementById('obj-detail-wrap');
+  const btn = document.getElementById('obj-detail-btn');
+  if (!wrap) return;
+  const open = wrap.style.display === 'block';
+  wrap.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '▾ Voir la projection détaillée' : '▴ Masquer la projection';
 }
 
 function resetObj() {
   document.getElementById('obj-results').style.display = 'none';
-  document.getElementById('obj-wizard').style.display = 'block';
-  objNextStep(1);
+  document.getElementById('obj-form-card').style.display = 'block';
 }
 
 async function generateObjPlan() {
@@ -1785,7 +1793,7 @@ async function generateObjPlan() {
   if (!isDemo) { try { await sb.from('objectives').upsert({ ...objective, user_id: currentUser.id, updated_at: new Date().toISOString() }); } catch(e) {} }
 
   // Show results section
-  document.getElementById('obj-wizard').style.display = 'none';
+  document.getElementById('obj-form-card').style.display = 'none';
   document.getElementById('obj-results').style.display = 'block';
 
   // Calculate projection
@@ -1795,22 +1803,23 @@ async function generateObjPlan() {
   const pct = Math.min(tv/target*100, 100);
   const rateNeeded = onTrack ? riskRates[objRisk] : calcNeededRate(capital, monthly, target, years);
 
-  // Progress card
+  // Progress card - simple and clean
   document.getElementById('obj-progress-card').innerHTML = `
-    <div class="obj-progress-header">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
       <div>
-        <div style="font-size:13px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Progression vers l'objectif</div>
-        <div style="font-size:28px;font-weight:800;color:#1c1c1e;letter-spacing:-0.8px">${fmtK(tv)} <span style="font-size:16px;color:#8e8e93">/ ${fmtK(target)}</span></div>
+        <div style="font-size:13px;color:#8e8e93;font-weight:600;margin-bottom:4px">${goalLabels[goal]}</div>
+        <div style="font-size:32px;font-weight:800;color:#1c1c1e;letter-spacing:-1px">${fmtK(Math.round(fv))}</div>
+        <div style="font-size:14px;color:#8e8e93;margin-top:2px">projeté dans ${years} ans · objectif ${fmtK(target)}</div>
       </div>
-      <div class="obj-track-badge ${onTrack?'on-track':'off-track'}">${onTrack?'✓ En bonne voie':'⚠ Ajustement nécessaire'}</div>
+      <div class="obj-track-badge ${onTrack?'on-track':'off-track'}" style="font-size:15px;padding:10px 20px">
+        ${onTrack?'✓ Objectif atteignable':'⚠ Ajustement conseillé'}
+      </div>
     </div>
-    <div class="obj-bar-bg" style="margin:14px 0 8px"><div class="obj-bar-fill" style="width:${pct}%"></div></div>
-    <div style="font-size:12px;color:#8e8e93;font-weight:500;margin-bottom:16px">${pct.toFixed(1)}% atteint · Reste ${fmtK(Math.max(target-tv,0))}</div>
-    <div class="metrics-grid">
-      <div class="metric-card"><div class="metric-label">Capital projeté</div><div class="metric-val ${onTrack?'green':'red'}">${fmtK(Math.round(fv))}</div><div class="metric-trend">dans ${years} ans</div></div>
-      <div class="metric-card"><div class="metric-label">Versement actuel</div><div class="metric-val">${fmtI(monthly)} €/mois</div><div class="metric-trend">${onTrack?'Suffisant 👍':'Insuffisant ⚠'}</div></div>
-      <div class="metric-card"><div class="metric-label">${onTrack?'Rendement nécessaire':'Versement nécessaire'}</div><div class="metric-val ${onTrack?'green':'red'}">${onTrack?riskRates[objRisk]+'%/an':fmtI(monthlyNeeded)+'€/mois'}</div></div>
-      <div class="metric-card"><div class="metric-label">Objectif</div><div class="metric-val">${goalLabels[goal]}</div></div>
+    <div class="obj-bar-bg"><div class="obj-bar-fill" style="width:${Math.min(fv/target*100,100).toFixed(0)}%"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:#8e8e93;margin-top:6px;font-weight:500">
+      <span>Aujourd'hui : ${fmtK(tv||capital)}</span>
+      <span>${onTrack ? monthly+'€/mois suffit ✓' : fmtI(monthlyNeeded)+'€/mois nécessaires'}</span>
+      <span>Objectif : ${fmtK(target)}</span>
     </div>`;
 
   // AI Plan
