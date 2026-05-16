@@ -62,7 +62,7 @@ function startPriceAutoRefresh() {
     if (positions.length && document.visibilityState === 'visible') {
       refreshPrices();
     }
-  }, 60000); // every 60 seconds
+  }, 120000); // every 2 minutes
 }
 
 function stopPriceAutoRefresh() {
@@ -1124,7 +1124,6 @@ async function initApp(user) {
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   setTimeout(() => showOnboarding(), 500);
   startPriceAutoRefresh();
-  setTimeout(() => refreshPrices(), 3000);
   if ('Notification' in window) Notification.requestPermission();
 }
 
@@ -1238,6 +1237,7 @@ async function refreshPrices() {
   if(ico) ico.classList.add('spinning');
   await refreshAllTickers();
   if(ico) ico.classList.remove('spinning');
+  isRefreshing = false;
 }
 
 function showPriceTicker(quotes) {
