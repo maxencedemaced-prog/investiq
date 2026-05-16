@@ -235,39 +235,98 @@
 
     <!-- OBJECTIF -->
     <section id="sec-objectif" class="sec">
-      <div class="page-header"><h1>Mon objectif financier</h1></div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon dark">◎</span>Configurer</div></div>
-        <div class="form-grid">
-          <div class="field"><label>Objectif (€)</label><input type="number" id="obj-target" value="50000" oninput="renderObj()"></div>
-          <div class="field"><label>Durée (années)</label><input type="number" id="obj-years" value="10" oninput="renderObj()"></div>
-          <div class="field"><label>Rendement estimé (%/an)</label><input type="number" id="obj-rate" value="7" step="0.5" oninput="renderObj()"></div>
-          <div class="field"><label>Versement mensuel (€)</label><input type="number" id="obj-monthly" value="200" oninput="renderObj()"></div>
-        </div>
-        <button class="btn-save" onclick="saveObjectif()">Sauvegarder</button>
-        <div id="obj-result" style="margin-top:16px"></div>
+      <div class="page-header">
+        <div><h1>Mon objectif financier</h1><p class="page-sub">Ton plan d'investissement personnalisé par l'IA</p></div>
       </div>
-    </section>
 
-    <!-- CRISE -->
-    <section id="sec-crise" class="sec">
-      <div class="page-header"><h1>Simulateur de crise</h1></div>
-      <div class="card"><div class="card-head"><div class="card-title"><span class="card-icon red">▼</span>Impact sur mon portefeuille</div></div><div id="crise-content"></div></div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon blue">i</span>Que faire en cas de crise ?</div></div>
-        <div class="tips-list">
-          <div class="tip-item"><div class="tip-num">1</div><div><strong>Ne pas vendre en panique.</strong> Les marchés ont toujours récupéré. Vendre dans le creux transforme une perte virtuelle en perte réelle.</div></div>
-          <div class="tip-item"><div class="tip-num">2</div><div><strong>Continuer son DCA.</strong> Investir en baisse, c'est acheter moins cher — une opportunité déguisée.</div></div>
-          <div class="tip-item"><div class="tip-num">3</div><div><strong>Vérifier sa diversification.</strong> Si une position chute beaucoup plus que les autres, c'est signe de concentration excessive.</div></div>
-          <div class="tip-item"><div class="tip-num">4</div><div><strong>Garder une réserve.</strong> Toujours avoir 3–6 mois de dépenses hors investissement.</div></div>
+      <div id="obj-wizard">
+        <!-- STEP 1 -->
+        <div class="obj-step" id="obj-s1">
+          <div class="obj-step-header">
+            <div class="obj-step-num">1</div>
+            <div><div class="obj-step-title">Ton capital</div><div class="obj-step-sub">Ce que tu as et ce que tu peux investir chaque mois</div></div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Premier apport (€)</label><input type="number" id="obj-capital" placeholder="Ex: 1000"></div>
+            <div class="field"><label>Versement mensuel (€)</label><input type="number" id="obj-monthly" placeholder="Ex: 200" value="200"></div>
+          </div>
+          <button class="btn-primary" onclick="objNextStep(2)">Suivant →</button>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="obj-step" id="obj-s2" style="display:none">
+          <div class="obj-step-header">
+            <div class="obj-step-num">2</div>
+            <div><div class="obj-step-title">Ton objectif</div><div class="obj-step-sub">Combien veux-tu atteindre et pourquoi ?</div></div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Capital visé (€)</label><input type="number" id="obj-target" placeholder="Ex: 100000" value="100000"></div>
+            <div class="field"><label>Dans combien d'années ?</label><input type="number" id="obj-years" placeholder="Ex: 10" value="10"></div>
+          </div>
+          <div class="field"><label>Pour quoi faire ?</label>
+            <select id="obj-goal">
+              <option value="retraite">🏖️ Retraite anticipée / indépendance financière</option>
+              <option value="immo">🏠 Achat immobilier</option>
+              <option value="enfants">👨‍👩‍👧 Études des enfants</option>
+              <option value="liberte">🚀 Liberté financière</option>
+              <option value="autre">✨ Autre projet</option>
+            </select>
+          </div>
+          <div class="btn-row">
+            <button class="btn-secondary" onclick="objNextStep(1)">← Retour</button>
+            <button class="btn-primary" onclick="objNextStep(3)">Suivant →</button>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="obj-step" id="obj-s3" style="display:none">
+          <div class="obj-step-header">
+            <div class="obj-step-num">3</div>
+            <div><div class="obj-step-title">Profil de risque</div><div class="obj-step-sub">Quel niveau de risque es-tu prêt à accepter ?</div></div>
+          </div>
+          <div class="risk-cards">
+            <div class="risk-card" id="risk-prudent" onclick="selectRisk('prudent')">
+              <div class="risk-card-icon">🛡️</div>
+              <div class="risk-card-title">Prudent</div>
+              <div class="risk-card-desc">~4-5%/an</div>
+              <div class="risk-card-detail">Perte max : -10%</div>
+            </div>
+            <div class="risk-card active" id="risk-equilibre" onclick="selectRisk('equilibre')">
+              <div class="risk-card-icon">⚖️</div>
+              <div class="risk-card-title">Équilibré</div>
+              <div class="risk-card-desc">~7-8%/an</div>
+              <div class="risk-card-detail">Perte max : -25%</div>
+            </div>
+            <div class="risk-card" id="risk-agressif" onclick="selectRisk('agressif')">
+              <div class="risk-card-icon">🚀</div>
+              <div class="risk-card-title">Agressif</div>
+              <div class="risk-card-desc">~10-12%/an</div>
+              <div class="risk-card-detail">Perte max : -40%</div>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:20px">
+            <button class="btn-secondary" onclick="objNextStep(2)">← Retour</button>
+            <button class="btn-primary" onclick="generateObjPlan()">Générer mon plan IA →</button>
+          </div>
         </div>
       </div>
-    </section>
 
-    <!-- NEWS -->
-    <section id="sec-news" class="sec">
-      <div class="page-header"><h1>Actualités & Signaux</h1></div>
-      <div id="news-page-content"></div>
+      <div id="obj-results" style="display:none">
+        <div class="card" id="obj-progress-card"></div>
+        <div class="card">
+          <div class="card-head">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div class="card-title"><div class="card-icon dark">🤖</div>Plan d'investissement IA</div>
+              <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="resetObj()">Modifier</button>
+            </div>
+          </div>
+          <div id="obj-ai-plan"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title"><div class="card-icon dark">📈</div>Projection année par année</div></div>
+          <div id="obj-projection"></div>
+        </div>
+      </div>
     </section>
 
     <!-- DECISION -->
