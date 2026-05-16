@@ -10,52 +10,70 @@ export default async function handler(req, res) {
   const apiKey = process.env.FINNHUB_API_KEY;
   const quotes = [];
 
-  for (const symbol of symbolList) {
-    let price = null;
-    let changePct = 0;
-
-    // Try Finnhub with correct format
-    const finnhubSymbol = toFinnhubSymbol(symbol);
-    try {
-      const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubSymbol)}&token=${apiKey}`;
-      const r = await fetch(url);
-      const d = await r.json();
-      if (d && d.c > 0) {
-        price = d.c;
-        changePct = d.dp || 0;
-      }
-    } catch(e) {}
-
-    // If Finnhub failed, try Yahoo Finance as fallback
-    if (!price) {
+  // Fetch all from Finnhub in parallel
+  const results = await Promise.allSettled(
+    symbolList.map(async (symbol) => {
+      const finnhubSymbol = toFinnhubSymbol(symbol);
+      
+      // Try Finnhub first
       try {
-        const yahooSymbol = symbol; // Yahoo uses original format (MC.PA, BMW.DE etc)
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=1d`;
+        const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubSymbol)}&token=${apiKey}`;
+        const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        const d = await r.json();
+        if (d && d.c && d.c > 0 && d.c !== d.pc) {
+          // Validate price makes sense (not obviously wrong)
+          return {
+            symbol,
+            price: d.c,
+            changePct: d.dp || 0,
+            change: d.d || 0,
+            source: 'finnhub'
+          };
+        }
+      } catch(e) {}
+
+      // Fallback: Yahoo Finance
+      try {
+        const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
         const r = await fetch(url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'fr-FR,fr;q=0.9'
+          },
+          signal: AbortSignal.timeout(5000)
         });
         const d = await r.json();
         const meta = d?.chart?.result?.[0]?.meta;
-        if (meta?.regularMarketPrice) {
-          price = meta.regularMarketPrice;
-          changePct = meta.previousClose ? ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose * 100) : 0;
+        if (meta?.regularMarketPrice && meta.regularMarketPrice > 0) {
+          const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
+          return {
+            symbol,
+            price: meta.regularMarketPrice,
+            changePct: prev ? ((meta.regularMarketPrice - prev) / prev * 100) : 0,
+            change: meta.regularMarketPrice - prev,
+            source: 'yahoo'
+          };
         }
       } catch(e) {}
-    }
 
-    quotes.push({
-      symbol,
-      price,
-      changePct: Math.round(changePct * 100) / 100,
-      change: 0
-    });
+      return { symbol, price: null, changePct: 0, change: 0, source: null };
+    })
+  );
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      quotes.push(result.value);
+    } else {
+      const symbol = symbolList[results.indexOf(result)];
+      quotes.push({ symbol, price: null, changePct: 0, change: 0, source: null });
+    }
   }
 
   res.status(200).json({ quotes });
 }
 
 function toFinnhubSymbol(ticker) {
-  // Finnhub requires exchange prefix for non-US stocks
   if (ticker.endsWith('.PA')) return 'EURONEXT:' + ticker.replace('.PA', '');
   if (ticker.endsWith('.DE')) return 'XETR:' + ticker.replace('.DE', '');
   if (ticker.endsWith('.L'))  return 'LSE:' + ticker.replace('.L', '');
@@ -63,8 +81,5 @@ function toFinnhubSymbol(ticker) {
   if (ticker.endsWith('.SW')) return 'SWX:' + ticker.replace('.SW', '');
   if (ticker.endsWith('.WA')) return 'WSE:' + ticker.replace('.WA', '');
   if (ticker.endsWith('.AS')) return 'AMS:' + ticker.replace('.AS', '');
-  if (ticker.endsWith('.CO')) return 'CPH:' + ticker.replace('.CO', '');
-  if (ticker.endsWith('.HE')) return 'HEL:' + ticker.replace('.HE', '');
-  // US stocks - no prefix needed
   return ticker;
 }
