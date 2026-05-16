@@ -1170,7 +1170,8 @@ async function initApp(user) {
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   setTimeout(() => showOnboarding(), 500);
   startSmartRefresh();
-  setTimeout(() => refreshPrices(), 2000); // initial load
+  setTimeout(() => { refreshPrices(); }, 2000);
+  setTimeout(() => showPriceTicker(), 3000);
   if ('Notification' in window) Notification.requestPermission();
 }
 
@@ -1311,7 +1312,7 @@ async function refreshPrices() {
     console.log('Prix mis à jour:', updated, 'positions sur', positions.length);
     renderPortfolio();
     renderHome();
-    showPriceTicker();
+    setTimeout(() => showPriceTicker(), 100); // after render
     showToast('✓ ' + updated + ' prix mis à jour');
   } catch(e) {
     showToast('Impossible de charger les prix');
