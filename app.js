@@ -19,22 +19,30 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
   const rate = annualRate / 100 / 12;
   const totalMonths = years * 12;
 
-  // Build projection data month by month
+  // Build projection data — split into: invested vs compound gains
   objProjectionData = [];
+  const investedData = [];
+  const gainsData = [];
+  
   for (let m = 0; m <= totalMonths; m++) {
     const n = m;
     const fv = capital * Math.pow(1+rate, n) + monthly * ((Math.pow(1+rate,n)-1)/rate);
+    const invested = capital + monthly * n;
     objProjectionData.push(Math.round(fv));
+    investedData.push(Math.round(invested));
+    gainsData.push(Math.round(fv - invested));
   }
 
-  // Sample to max 60 points for chart
+  // Sample to 60 points
   const step = Math.max(1, Math.floor(totalMonths / 60));
   const labels = [];
   const values = [];
+  const invested60 = [];
   for (let m = 0; m <= totalMonths; m += step) {
     const yr = m / 12;
-    labels.push(yr === 0 ? "Auj." : yr % 1 === 0 ? `${yr}a` : "");
+    labels.push(yr === 0 ? "Auj." : yr % 1 === 0 ? `${Math.round(yr)}a` : "");
     values.push(objProjectionData[m]);
+    invested60.push(investedData[m]);
   }
 
   // Find when target is reached
@@ -62,15 +70,27 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
       labels,
       datasets: [
         {
+          label: 'Capital projeté',
           data: values,
           borderColor: '#fff',
           backgroundColor: gradient,
-          borderWidth: 2.5,
+          borderWidth: 3,
           fill: true,
-          tension: 0.4,
+          tension: 0.35,
           pointRadius: 0,
-          pointHoverRadius: 6,
+          pointHoverRadius: 7,
           pointHoverBackgroundColor: '#fff',
+        },
+        {
+          label: 'Capital investi',
+          data: invested60,
+          borderColor: 'rgba(255,255,255,0.3)',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [5,5],
+          fill: false,
+          tension: 0,
+          pointRadius: 0,
         }
       ]
     },
@@ -139,14 +159,22 @@ function updateObjSlider(val) {
   const amountEl = document.getElementById('obj-chart-amount');
   const labelEl = document.getElementById('obj-chart-label');
 
+  const invested = Math.round(objChartCapital + objChartMonthly * monthIndex);
+  const gains = Math.max(0, projValue - invested);
+  const gainsPct = invested > 0 ? Math.round(gains/invested*100) : 0;
+
   if (amountEl) {
     amountEl.textContent = fmtK(projValue) + ' €';
     amountEl.style.color = projValue >= objChartTarget ? '#4ade80' : '#fff';
   }
   if (labelEl) {
-    if (monthIndex === 0) labelEl.textContent = "Aujourd'hui";
-    else if (projValue >= objChartTarget) labelEl.textContent = `🎯 Objectif atteint dans ${years} ans !`;
-    else labelEl.textContent = `Dans ${years} ans · ${Math.round(projValue/objChartTarget*100)}% de l'objectif`;
+    if (monthIndex === 0) {
+      labelEl.textContent = "Point de départ";
+    } else if (projValue >= objChartTarget) {
+      labelEl.innerHTML = `<span style="color:#4ade80">🎯 Objectif atteint !</span> · +${fmtK(gains)} d'intérêts composés`;
+    } else {
+      labelEl.innerHTML = `Dans ${years} ans · <span style="color:#4ade80">+${fmtK(gains)} de gains</span> (+${gainsPct}%)`;
+    }
   }
 
   // Update chart vertical line (point highlight)
@@ -2011,16 +2039,43 @@ Les risques spécifiques à ce profil et comment s'en protéger.
 Sois très concret, donne des chiffres précis, utilise un langage simple pour débutant.`;
 
   // Simple plan first
-  const simplePrompt = `Tu es conseiller financier. En 5 lignes MAX et de façon très claire, dis exactement :
-1. Comment répartir le premier apport de ${capital}€ (donne les %, les noms des ETF/actions et les montants exacts)
-2. Comment répartir les ${monthly}€/mois (idem, très précis)
-Profil : ${objRisk}, objectif ${fmtK(target)} en ${years} ans.
-Sois ULTRA concret, pas de blabla. Exemple : "60% IWDA (${Math.round(capital*0.6)}€), 40% VWCE (${Math.round(capital*0.4)}€)"`;
+  const rateNeeded = onTrack ? riskRates[objRisk] : calcNeededRate(capital, monthly, target, years);
+  const adjustMsg = !onTrack ? `\n\nSituation : l'objectif n'est PAS atteint avec ce plan. Pour y arriver il faudrait soit : augmenter le versement à ${fmtI(monthlyNeeded)}€/mois, soit viser un rendement de ${rateNeeded}%/an (profil plus agressif), soit allonger la durée.` : '';
+
+  const simplePrompt = `Tu es conseiller financier. Réponds en 3 blocs clairs avec des titres en gras :
+
+**Ton premier apport de ${capital}€**
+Répartition exacte avec montants (ex: 700€ sur IWDA, 300€ sur VWCE)
+
+**Chaque mois : ${monthly}€**  
+Répartition exacte avec montants
+
+**Pourquoi cette stratégie ?**
+1 phrase simple${adjustMsg}
+
+Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${years} ans. Sois ULTRA concret, donne les vrais noms et montants.`;
   
   const simpleR = await callClaude(simplePrompt);
+  
+  // Build nice cards for the recommendation
   document.getElementById('obj-ai-simple').innerHTML = `
-    <div style="font-size:15px;color:#1c1c1e;line-height:1.8;font-weight:500">${formatMD(simpleR)}</div>
-    <div style="margin-top:14px;padding:12px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;font-weight:500">
+    <div style="font-size:14px;color:#1c1c1e;line-height:1.8">${formatMD(simpleR)}</div>
+    ${!onTrack ? `
+    <div style="margin-top:16px;background:#fff5e0;border-radius:14px;padding:16px;border-left:4px solid #f59e0b">
+      <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:8px">⚠ Ajustement conseillé</div>
+      <div style="font-size:13px;color:#78350f;line-height:1.6">
+        Pour atteindre <strong>${fmtK(target)}</strong> en <strong>${years} ans</strong>, voici tes options :
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+          <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">💰 Augmenter à <strong>${fmtI(monthlyNeeded)}€/mois</strong> (au lieu de ${monthly}€)</div>
+          <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">📈 Viser <strong>${rateNeeded}%/an</strong> → profil ${rateNeeded > 9 ? 'Agressif 🚀' : 'Équilibré ⚖️'}</div>
+          <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">⏳ Allonger à <strong>${Math.ceil(years * (Math.log(target/capital) / Math.log(1+riskRates[objRisk]/100)))}+ ans</strong></div>
+        </div>
+      </div>
+    </div>` : `
+    <div style="margin-top:16px;background:#e8f8f0;border-radius:14px;padding:14px 16px;border-left:4px solid #1a7f5a">
+      <div style="font-size:14px;font-weight:700;color:#1a7f5a">✓ Objectif atteignable avec ce plan — continue comme ça !</div>
+    </div>`}
+    <div style="margin-top:12px;padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93">
       ⚠ Simulation éducative — pas un conseil financier réglementé.
     </div>`;
 
