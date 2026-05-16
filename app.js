@@ -1,15 +1,17 @@
 
 // ===== EDIT POSITION =====
 function openEditPos(id) {
-  const pos = positions.find(p => p.id === id);
-  if (!pos) return;
+  const pos = positions.find(p => String(p.id) === String(id));
+  if (!pos) { showToast('Position introuvable'); return; }
+  const modal = document.getElementById('edit-modal');
+  if (!modal) { showToast('Erreur: modal manquant'); return; }
   document.getElementById('edit-pos-id').value = id;
   document.getElementById('edit-name').value = pos.name;
   document.getElementById('edit-qty').value = pos.qty;
   document.getElementById('edit-pru').value = pos.pru;
   document.getElementById('edit-price').value = pos.price;
   document.getElementById('edit-alert').value = pos.alert_price || '';
-  document.getElementById('edit-modal').style.display = 'flex';
+  modal.style.display = 'flex';
 }
 
 async function saveEditPos() {
