@@ -11,40 +11,51 @@ export default async function handler(req, res) {
   const quotes = [];
 
   for (const symbol of symbolList) {
-    try {
-      // Convert European tickers to Finnhub format
-      const finnhubSymbol = toFinnhubSymbol(symbol);
-      
-      const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubSymbol)}&token=${apiKey}`;
-      const response = await fetch(url);
-      const data = await response.json();
+    let price = null;
+    let changePct = 0;
 
-      if (data && data.c && data.c > 0) {
-        quotes.push({
-          symbol,
-          price: data.c,           // current price
-          change: data.d || 0,     // change
-          changePct: data.dp || 0, // change percent
-          high: data.h,
-          low: data.l,
-          open: data.o,
-          prevClose: data.pc,
-          name: symbol,
-          source: 'finnhub'
-        });
-      } else {
-        quotes.push({ symbol, price: null, change: 0, changePct: 0, source: null });
+    // Try Finnhub with correct format
+    const finnhubSymbol = toFinnhubSymbol(symbol);
+    try {
+      const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubSymbol)}&token=${apiKey}`;
+      const r = await fetch(url);
+      const d = await r.json();
+      if (d && d.c > 0) {
+        price = d.c;
+        changePct = d.dp || 0;
       }
-    } catch (e) {
-      quotes.push({ symbol, price: null, change: 0, changePct: 0, source: null });
+    } catch(e) {}
+
+    // If Finnhub failed, try Yahoo Finance as fallback
+    if (!price) {
+      try {
+        const yahooSymbol = symbol; // Yahoo uses original format (MC.PA, BMW.DE etc)
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=1d`;
+        const r = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+        });
+        const d = await r.json();
+        const meta = d?.chart?.result?.[0]?.meta;
+        if (meta?.regularMarketPrice) {
+          price = meta.regularMarketPrice;
+          changePct = meta.previousClose ? ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose * 100) : 0;
+        }
+      } catch(e) {}
     }
+
+    quotes.push({
+      symbol,
+      price,
+      changePct: Math.round(changePct * 100) / 100,
+      change: 0
+    });
   }
 
   res.status(200).json({ quotes });
 }
 
 function toFinnhubSymbol(ticker) {
-  // Finnhub uses exchange prefixes for non-US stocks
+  // Finnhub requires exchange prefix for non-US stocks
   if (ticker.endsWith('.PA')) return 'EURONEXT:' + ticker.replace('.PA', '');
   if (ticker.endsWith('.DE')) return 'XETR:' + ticker.replace('.DE', '');
   if (ticker.endsWith('.L'))  return 'LSE:' + ticker.replace('.L', '');
@@ -52,6 +63,8 @@ function toFinnhubSymbol(ticker) {
   if (ticker.endsWith('.SW')) return 'SWX:' + ticker.replace('.SW', '');
   if (ticker.endsWith('.WA')) return 'WSE:' + ticker.replace('.WA', '');
   if (ticker.endsWith('.AS')) return 'AMS:' + ticker.replace('.AS', '');
+  if (ticker.endsWith('.CO')) return 'CPH:' + ticker.replace('.CO', '');
+  if (ticker.endsWith('.HE')) return 'HEL:' + ticker.replace('.HE', '');
   // US stocks - no prefix needed
   return ticker;
 }
