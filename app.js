@@ -1,4 +1,30 @@
 
+// ===== SMART AUTO REFRESH =====
+let priceInterval = null;
+
+function startSmartRefresh() {
+  if (priceInterval) clearInterval(priceInterval);
+  priceInterval = setInterval(() => {
+    // Only refresh if tab is visible AND on portfolio or home page
+    const activeSec = document.querySelector('.sec.active');
+    const activeId = activeSec ? activeSec.id : '';
+    const onRelevantPage = activeId === 'sec-portfolio' || activeId === 'sec-home';
+    if (document.visibilityState === 'visible' && onRelevantPage && positions.length) {
+      refreshPrices();
+    }
+  }, 5 * 60 * 1000); // every 5 minutes
+}
+
+// Pause when tab hidden, resume when visible
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    startSmartRefresh();
+  } else {
+    if (priceInterval) clearInterval(priceInterval);
+  }
+});
+
+
 // ===== EDIT POSITION =====
 function openEditPos(id) {
   const pos = positions.find(p => String(p.id) === String(id));
@@ -1143,6 +1169,8 @@ async function initApp(user) {
   nav('home');
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   setTimeout(() => showOnboarding(), 500);
+  startSmartRefresh();
+  setTimeout(() => refreshPrices(), 2000); // initial load
   if ('Notification' in window) Notification.requestPermission();
 }
 
