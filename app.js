@@ -1311,7 +1311,7 @@ async function refreshPrices() {
     console.log('Prix mis à jour:', updated, 'positions sur', positions.length);
     renderPortfolio();
     renderHome();
-    showPriceTicker(quotes);
+    showPriceTicker();
     showToast('✓ ' + updated + ' prix mis à jour');
   } catch(e) {
     showToast('Impossible de charger les prix');
