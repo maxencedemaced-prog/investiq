@@ -682,14 +682,16 @@ function saveWatchlist() {
 }
 
 function toggleFavorite(ticker, name, sector) {
+  loadWatchlist();
   const idx = watchlist.findIndex(w => w.ticker === ticker);
   if (idx >= 0) {
     watchlist.splice(idx, 1);
+    showToast('Retiré des favoris');
   } else {
-    watchlist.push({ ticker, name, sector: sector || 'Autre' });
+    watchlist.push({ ticker, name: name||ticker, sector: sector||'Autre' });
+    showToast('★ ' + (name||ticker) + ' ajouté aux favoris !');
   }
   saveWatchlist();
-  renderNewsPage();
 }
 
 function isFavorite(ticker) {
@@ -702,6 +704,7 @@ function renderNewsPage() {
   if (!container) return;
 
   // Get all companies to track (portfolio + watchlist)
+  loadWatchlist(); // make sure watchlist is loaded fresh
   const portfolioCompanies = positions.map(p => ({
     ticker: p.name, name: p.name, sector: p.sector || 'Portefeuille', inPortfolio: true
   }));
@@ -732,17 +735,30 @@ function renderNewsPage() {
 
     <!-- WATCHLIST COMPANIES -->
     ${allTracked.length > 0 ? `
-    <div class="watchlist-strip">
-      ${allTracked.map(c => `
-        <div class="watchlist-chip ${c.inPortfolio ? 'in-portfolio' : ''}" onclick="openCompany('${c.ticker}','${c.name}','${c.sector}')">
-          <div class="wchip-avatar">${c.ticker.slice(0,2).toUpperCase()}</div>
-          <div>
-            <div class="wchip-name">${c.ticker}</div>
-            <div class="wchip-sector">${c.sector}</div>
-          </div>
-          ${c.inPortfolio ? '<span class="wchip-badge">Portf.</span>' : `<button class="wchip-remove" onclick="event.stopPropagation();toggleFavorite('${c.ticker}','${c.name}','${c.sector}')">×</button>`}
-        </div>`).join('')}
-    </div>` : ''}
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Mes valeurs suivies (${allTracked.length})</div>
+      <div class="watchlist-strip" id="watchlist-strip">
+        ${allTracked.map(c => {
+          const pos = positions.find(p => p.name === c.ticker);
+          const pnlPct = pos ? ((pos.price - pos.pru) / pos.pru * 100).toFixed(1) : null;
+          const pnlColor = pnlPct >= 0 ? '#1a7f5a' : '#cc2f26';
+          return `<div class="watchlist-chip ${c.inPortfolio ? 'in-portfolio' : ''}" onclick="openCompany('${c.ticker}','${c.name || c.ticker}','${c.sector || ''}')">
+            <div class="wchip-avatar">${c.ticker.slice(0,2).toUpperCase()}</div>
+            <div>
+              <div class="wchip-name">${c.ticker}</div>
+              <div class="wchip-sector" style="color:${pnlPct !== null ? pnlColor : '#8e8e93'}">${pnlPct !== null ? (pnlPct >= 0 ? '+' : '') + pnlPct + '%' : c.sector || 'Favori'}</div>
+            </div>
+            ${c.inPortfolio 
+              ? '<span class="wchip-badge">Portf.</span>' 
+              : `<button class="wchip-remove" onclick="event.stopPropagation();toggleFavorite('${c.ticker}','${c.name || c.ticker}','${c.sector || ''}');renderNewsPage()">×</button>`
+            }
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : `
+    <div style="text-align:center;padding:16px;background:#f9f9f9;border-radius:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucune valeur suivie — recherche une entreprise ci-dessus et clique ☆ Suivre</div>
+    </div>`}
 
     <!-- POPULAR TO ADD -->
     ${allTracked.length < 5 ? `
@@ -1218,29 +1234,9 @@ async function loadObjective() {
 
 // ===== LIVE PRICES =====
 async function refreshPrices() {
-  if (!positions.length) return;
   const ico = document.getElementById('refresh-prices-ico');
   if(ico) ico.classList.add('spinning');
-  const tickers = positions.map(p => p.name).join(',');
-  try {
-    const res = await fetch(`/api/prices?symbols=${encodeURIComponent(tickers)}`);
-    const data = await res.json();
-    const quotes = data.quotes || [];
-    let updated = 0;
-    for (const q of quotes) {
-      const pos = positions.find(p => p.name.toUpperCase() === q.symbol?.toUpperCase() || q.symbol?.includes(p.name.toUpperCase()));
-      if (pos && q.price) {
-        pos.price = q.price;
-        pos.change_pct = q.changePct;
-        if (!isDemo) await sb.from('positions').update({ price: pos.price }).eq('id', pos.id);
-        updated++;
-      }
-    }
-    if (updated > 0) { renderPortfolio(); renderHome(); }
-    showPriceTicker(quotes);
-  } catch(e) {
-    showTickerFallback();
-  }
+  await refreshAllTickers();
   if(ico) ico.classList.remove('spinning');
 }
 
