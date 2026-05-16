@@ -1,4 +1,165 @@
 
+// ===== OBJECTIF INTERACTIVE CHART =====
+let objChartInstance = null;
+let objProjectionData = [];
+let objChartYears = 10;
+let objChartCapital = 0;
+let objChartMonthly = 200;
+let objChartRate = 7;
+let objChartTarget = 100000;
+
+function buildObjChart(capital, monthly, target, years, annualRate) {
+  objChartCapital = capital;
+  objChartMonthly = monthly;
+  objChartTarget = target;
+  objChartYears = years;
+  objChartRate = annualRate;
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+  const rate = annualRate / 100 / 12;
+  const totalMonths = years * 12;
+
+  // Build projection data month by month
+  objProjectionData = [];
+  for (let m = 0; m <= totalMonths; m++) {
+    const n = m;
+    const fv = capital * Math.pow(1+rate, n) + monthly * ((Math.pow(1+rate,n)-1)/rate);
+    objProjectionData.push(Math.round(fv));
+  }
+
+  // Sample to max 60 points for chart
+  const step = Math.max(1, Math.floor(totalMonths / 60));
+  const labels = [];
+  const values = [];
+  for (let m = 0; m <= totalMonths; m += step) {
+    const yr = m / 12;
+    labels.push(yr === 0 ? "Auj." : yr % 1 === 0 ? `${yr}a` : "");
+    values.push(objProjectionData[m]);
+  }
+
+  // Find when target is reached
+  const targetMonth = objProjectionData.findIndex(v => v >= target);
+  const targetYear = targetMonth > 0 ? (targetMonth/12).toFixed(1) : null;
+
+  // Update slider end label
+  document.getElementById('obj-slider-end').textContent = `Dans ${years} an${years>1?'s':''}`;
+
+  // Draw chart
+  const canvas = document.getElementById('obj-chart');
+  if (!canvas) return;
+  if (objChartInstance) objChartInstance.destroy();
+
+  const ctx = canvas.getContext('2d');
+
+  // Gradient
+  const gradient = ctx.createLinearGradient(0, 0, 0, 160);
+  gradient.addColorStop(0, 'rgba(255,255,255,0.15)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+
+  objChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          data: values,
+          borderColor: '#fff',
+          backgroundColor: gradient,
+          borderWidth: 2.5,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#fff',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => fmtK(ctx.raw) + ' €',
+            title: ctx => ctx[0].label ? `+${ctx[0].label}` : "Aujourd'hui"
+          },
+          backgroundColor: 'rgba(255,255,255,0.15)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: 'rgba(255,255,255,0.2)',
+          borderWidth: 1,
+        }
+      },
+      scales: {
+        x: { display: false },
+        y: { display: false }
+      },
+      interaction: { mode: 'index', intersect: false }
+    }
+  });
+
+  // Init slider at max
+  updateObjSlider(100);
+
+  // Real progress bar
+  const pct = Math.min(tv / target * 100, 100);
+  const el = document.getElementById('obj-real-bar');
+  const marker = document.getElementById('obj-real-marker');
+  if (el) el.style.width = pct + '%';
+  if (marker) marker.style.left = pct + '%';
+  const pctEl = document.getElementById('obj-real-pct');
+  if (pctEl) pctEl.textContent = pct.toFixed(1) + '%';
+  const valEl = document.getElementById('obj-real-val');
+  if (valEl) valEl.textContent = fmtK(tv);
+  const targetEl = document.getElementById('obj-real-target');
+  if (targetEl) targetEl.textContent = fmtK(target);
+
+  // Track badge
+  const fvFinal = objProjectionData[objProjectionData.length-1];
+  const badge = document.getElementById('obj-track-badge');
+  if (badge) {
+    if (fvFinal >= target) {
+      badge.textContent = targetYear ? `✓ Atteint en ${targetYear} ans` : '✓ Objectif atteint';
+      badge.className = 'obj-track-badge on-track';
+    } else {
+      badge.textContent = '⚠ Ajustement conseillé';
+      badge.className = 'obj-track-badge off-track';
+    }
+  }
+}
+
+function updateObjSlider(val) {
+  const pct = val / 100;
+  const monthIndex = Math.round(pct * (objProjectionData.length - 1));
+  const projValue = objProjectionData[monthIndex] || 0;
+  const years = (monthIndex / 12).toFixed(1);
+
+  const amountEl = document.getElementById('obj-chart-amount');
+  const labelEl = document.getElementById('obj-chart-label');
+
+  if (amountEl) {
+    amountEl.textContent = fmtK(projValue) + ' €';
+    amountEl.style.color = projValue >= objChartTarget ? '#4ade80' : '#fff';
+  }
+  if (labelEl) {
+    if (monthIndex === 0) labelEl.textContent = "Aujourd'hui";
+    else if (projValue >= objChartTarget) labelEl.textContent = `🎯 Objectif atteint dans ${years} ans !`;
+    else labelEl.textContent = `Dans ${years} ans · ${Math.round(projValue/objChartTarget*100)}% de l'objectif`;
+  }
+
+  // Update chart vertical line (point highlight)
+  if (objChartInstance) {
+    const step = Math.max(1, Math.floor((objChartYears*12) / 60));
+    const chartIndex = Math.round(monthIndex / step);
+    objChartInstance.data.datasets[0].pointRadius = objChartInstance.data.datasets[0].data.map((_,i) => i === chartIndex ? 8 : 0);
+    objChartInstance.data.datasets[0].pointBackgroundColor = '#fff';
+    objChartInstance.update('none');
+  }
+}
+
+
 // ===== SMART AUTO REFRESH =====
 let priceInterval = null;
 
@@ -1439,7 +1600,7 @@ function nav(page) {
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
   closeSidebar();
-  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif:renderObj, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif:()=>{ renderObj(); const tv=positions.reduce((a,p)=>a+p.qty*p.price,0); const rr=document.getElementById('obj-results'); if(rr&&rr.style.display!=='none') buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate); }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
@@ -1885,7 +2046,9 @@ Sois ULTRA concret, pas de blabla. Exemple : "60% IWDA (${Math.round(capital*0.6
     if (el) el.innerHTML = `<div style="font-size:14px;color:#3c3c43;line-height:1.7;font-weight:500">${formatMD(r)}</div>`;
   });
 
-  // Projection table
+  // Build interactive chart
+  setTimeout(() => buildObjChart(capital, monthly, target, years, riskRates[objRisk]), 100);
+  // Projection table in background
   renderProjectionTable(capital, monthly, target, years, riskRates[objRisk]);
 }
 
