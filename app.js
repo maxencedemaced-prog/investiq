@@ -1171,7 +1171,7 @@ async function initApp(user) {
   setTimeout(() => showOnboarding(), 500);
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
-  setTimeout(() => showPriceTicker(), 3000);
+  setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
   if ('Notification' in window) Notification.requestPermission();
 }
 
@@ -1315,7 +1315,9 @@ async function refreshPrices() {
     setTimeout(() => showPriceTicker(), 100); // after render
     showToast('✓ ' + updated + ' prix mis à jour');
   } catch(e) {
-    showToast('Impossible de charger les prix');
+    // Market may be closed - keep last known prices and ticker
+    showPriceTicker(); // show last known
+    showToast('Marché fermé — derniers prix connus affichés');
   } finally {
     if (btn) btn.disabled = false;
     if (ico) ico.classList.remove('spinning');
