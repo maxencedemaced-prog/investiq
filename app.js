@@ -1958,9 +1958,9 @@ function renderPortfolio() {
           </div>
           ${sig?`<div class="signal-text" style="margin-top:8px">${sig.texte}</div>`:''}
           <div class="pos-actions">
-            <button class="btn-sm buy" onclick="openDecisionFromPos('${p.name}','acheter')">+ Renforcer</button>
-            <button class="btn-sm" onclick="openDecisionFromPos('${p.name}','garder')">Analyser</button>
-            <button class="btn-sm sell" onclick="openDecisionFromPos('${p.name}','vendre')">− Alléger</button>
+            <button class="btn-sm buy" onclick="openDecisionFromPos('${p.name}','acheter')">💰 Acheter plus</button>
+            <button class="btn-sm" onclick="openDecisionFromPos('${p.name}','garder')">🤔 Que faire ?</button>
+            <button class="btn-sm sell" onclick="openDecisionFromPos('${p.name}','vendre')">📤 Vendre</button>
             ${!isDemo?`<button class="btn-sm" onclick="openEditPos('${p._ids[0]}')">✏ Modifier</button>`:''}
             ${!isDemo?`<button class="btn-del" onclick="delPosGroup(${idsJson})">🗑 Supprimer</button>`:''}
           </div>
@@ -2444,33 +2444,124 @@ function updatePct(){
   document.getElementById('d-amount').value=amt;
   document.getElementById('d-pct-lbl').textContent=`= ${amt.toLocaleString('fr-FR')} €`;
 }
-async function analyseDecision(){
-  const name=document.getElementById('d-name').value.trim();
-  const amount=document.getElementById('d-amount').value;
-  const pct=document.getElementById('d-pct').value;
-  const horizon=document.getElementById('d-horizon').value;
-  const risk=document.getElementById('d-risk').value;
-  if(!name){alert('Indique un actif.');return;}
+function setDecisionIntent(intent) {
+  decisionIntention = intent;
+  ['garder','acheter','vendre'].forEach(i => {
+    const btn = document.getElementById('d-int-'+i);
+    if (btn) btn.classList.toggle('active', i === intent);
+  });
+}
 
-  // Trouve la position groupée si elle existe
-  const pos = positions.find(p => p.name === name);
-  const posContext = pos ? `PRU : ${pos.pru}€, prix actuel : ${pos.price}€, perf : ${((pos.price-pos.pru)/pos.pru*100).toFixed(1)}%, qty : ${pos.qty} parts.` : '';
+async function analyseDecision() {
+  const name = document.getElementById('d-name').value.trim();
+  const pct  = parseInt(document.getElementById('d-pct').value) || 10;
+  const amt  = Math.round((profile.bankroll || 5000) * pct / 100);
+  document.getElementById('d-amount').value = amt;
 
-  const intentionLabel = { acheter: 'ACHETER / RENFORCER cette position', vendre: 'VENDRE / ALLÉGER cette position', garder: 'décider quoi faire avec' };
-  const intentionCtx = decisionIntention ? `L'utilisateur veut ${intentionLabel[decisionIntention] || decisionIntention}.` : '';
+  if (!name) { showToast('⚠ Indique un actif'); return; }
 
-  const prompt = `Actif : ${name}. ${posContext} ${intentionCtx}
-Montant envisagé : ${amount||'?'}€ (${pct}% de la bankroll de ${profile.bankroll}€).
-Horizon : ${HL[horizon]} | Tolérance au risque : ${RL[risk]} | Profil : débutant.
-Réponds en français en 4 points clairs :
-1) Analyse rapide de l'actif aujourd'hui
-2) ${decisionIntention === 'vendre' ? 'Faut-il vraiment vendre ? Quand et combien ?' : decisionIntention === 'acheter' ? 'Est-ce le bon moment pour renforcer ?' : 'Que faire avec cette position ?'}
-3) Risques à connaître
-4) Recommandation concrète en 1 phrase`;
+  // Contexte position existante
+  const pos = positions.find(p => p.name.toLowerCase() === name.toLowerCase());
+  const posCtx = pos
+    ? `L'utilisateur a déjà cette position : ${pos.qty} parts, PRU ${fmt(pos.pru)}€, prix actuel ${fmt(pos.price)}€, performance ${((pos.price-pos.pru)/pos.pru*100).toFixed(1)}%.`
+    : "L'utilisateur n'a pas encore cette position.";
 
-  document.getElementById('d-result').innerHTML='<div class="bubble bot">Analyse en cours...</div>';
-  const r=await callClaude(prompt);
-  document.getElementById('d-result').innerHTML=`<div class="bubble bot">${formatMD(r)}</div>`;
+  const intent = decisionIntention || 'garder';
+  const intentTxt = { acheter: 'acheter ou renforcer', vendre: 'vendre ou réduire', garder: 'savoir quoi faire' }[intent];
+
+  const prompt = `Tu es un conseiller financier pédagogue. Un débutant veut ${intentTxt} ${name}.
+${posCtx}
+Montant envisagé : ${amt}€ (${pct}% de sa bankroll de ${profile.bankroll}€).
+Profil : horizon ${HL[profile.horizon]}, risque ${RL[profile.risk]}.
+
+Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
+{
+  "recommandation": "ACHETER" ou "ATTENDRE" ou "VENDRE" ou "EVITER",
+  "emoji": "✅" ou "⚠️" ou "❌" ou "⏳",
+  "phrase_cle": "Une phrase courte et directe (max 15 mots)",
+  "risque_niveau": "Faible" ou "Moyen" ou "Élevé",
+  "risque_explication": "Pourquoi ce niveau de risque (1 phrase)",
+  "horizon_conseille": "Ex: 5 à 10 ans minimum",
+  "montant_conseille": "Ex: 300€ maximum (6% de ta bankroll)",
+  "pour": ["point positif 1", "point positif 2"],
+  "contre": ["point négatif 1", "point négatif 2"],
+  "conseil_final": "Conseil concret en 2-3 phrases simples pour un débutant"
+}`;
+
+  const result = document.getElementById('d-result');
+  result.innerHTML = `<div class="card" style="text-align:center;padding:32px">
+    <div style="font-size:32px;margin-bottom:8px">🧠</div>
+    <div style="font-weight:700;color:#1c1c1e">Analyse en cours...</div>
+    <div style="font-size:13px;color:#8e8e93;margin-top:4px">L'IA analyse ${name} pour toi</div>
+  </div>`;
+
+  try {
+    const raw = await callClaude(prompt);
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const d = JSON.parse(clean);
+
+    const riskColor = d.risque_niveau === 'Faible' ? '#1a7f5a' : d.risque_niveau === 'Moyen' ? '#f59e0b' : '#cc2f26';
+    const recoBg = d.recommandation === 'ACHETER' ? '#e8f8f0' : d.recommandation === 'VENDRE' ? '#fff0f0' : d.recommandation === 'EVITER' ? '#fff0f0' : '#fff9e6';
+    const recoColor = d.recommandation === 'ACHETER' ? '#1a7f5a' : d.recommandation === 'VENDRE' || d.recommandation === 'EVITER' ? '#cc2f26' : '#92400e';
+
+    result.innerHTML = `
+      <!-- RECOMMANDATION PRINCIPALE -->
+      <div class="card" style="background:${recoBg};border:2px solid ${recoColor}20">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="font-size:48px">${d.emoji}</div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:${recoColor};text-transform:uppercase;letter-spacing:1px">${name} · ${['garder','acheter','vendre'].includes(intent) ? {garder:'Analyse générale',acheter:'Acheter ?',vendre:'Vendre ?'}[intent] : 'Analyse'}</div>
+            <div style="font-size:24px;font-weight:900;color:${recoColor}">${d.recommandation}</div>
+            <div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-top:2px">${d.phrase_cle}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MÉTRIQUES CLÉS -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px">
+        <div class="card" style="padding:14px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:4px">Risque</div>
+          <div style="font-size:16px;font-weight:800;color:${riskColor}">${d.risque_niveau}</div>
+          <div style="font-size:11px;color:#8e8e93;margin-top:2px">${d.risque_explication}</div>
+        </div>
+        <div class="card" style="padding:14px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:4px">Horizon</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">${d.horizon_conseille}</div>
+        </div>
+        <div class="card" style="padding:14px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:4px">Montant</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">${d.montant_conseille}</div>
+        </div>
+      </div>
+
+      <!-- POUR / CONTRE -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        <div class="card" style="padding:14px">
+          <div style="font-size:12px;font-weight:700;color:#1a7f5a;margin-bottom:8px">✅ Points positifs</div>
+          ${d.pour.map(p=>`<div style="font-size:13px;color:#3c3c43;padding:4px 0;border-bottom:1px solid #f0f0f0">• ${p}</div>`).join('')}
+        </div>
+        <div class="card" style="padding:14px">
+          <div style="font-size:12px;font-weight:700;color:#cc2f26;margin-bottom:8px">⚠️ Points négatifs</div>
+          ${d.contre.map(p=>`<div style="font-size:13px;color:#3c3c43;padding:4px 0;border-bottom:1px solid #f0f0f0">• ${p}</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- CONSEIL FINAL -->
+      <div class="card" style="margin-top:10px;background:#f9f9f9">
+        <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:8px">💬 Conseil personnalisé</div>
+        <div style="font-size:14px;color:#1c1c1e;line-height:1.7;font-weight:500">${d.conseil_final}</div>
+      </div>
+
+      <!-- NOUVELLE ANALYSE -->
+      <button class="btn-secondary" onclick="document.getElementById('d-result').innerHTML='';document.getElementById('d-name').value='';document.getElementById('d-name').focus()" style="width:100%;margin-top:10px">
+        🔄 Analyser un autre actif
+      </button>
+      <div style="margin-top:8px;padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center">
+        ⚠ Simulation éducative — pas un conseil financier réglementé.
+      </div>`;
+  } catch(e) {
+    result.innerHTML = `<div class="card"><div style="color:#cc2f26;font-weight:700">Erreur d'analyse</div><div style="font-size:13px;margin-top:4px">Réessaie dans quelques secondes.</div></div>`;
+  }
   decisionIntention = null;
 }
 
