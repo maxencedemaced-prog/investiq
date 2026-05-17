@@ -2639,6 +2639,24 @@ function showAuthScreen(tab) {
 }
 
 // ===== AUTH =====
+async function resetPassword() {
+  const email = document.getElementById('login-email')?.value?.trim();
+  if (!email) {
+    setAuthMsg('Entre ton email puis clique Mot de passe oublié', false);
+    document.getElementById('login-email')?.focus();
+    return;
+  }
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://investiq-kappa.vercel.app'
+    });
+    if (error) throw error;
+    setAuthMsg('📧 Email de réinitialisation envoyé !', true);
+  } catch(e) {
+    setAuthMsg('Erreur : ' + (e.message || 'Réessaie'), false);
+  }
+}
+
 function switchAuth(m) {
   document.getElementById('auth-login').style.display = m==='login'?'block':'none';
   document.getElementById('auth-signup').style.display = m==='signup'?'block':'none';
