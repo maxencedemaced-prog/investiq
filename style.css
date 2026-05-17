@@ -8,8 +8,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 .demo-banner a{color:#a3a3a3;text-decoration:underline;cursor:pointer}
 
 /* AUTH */
-.auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#f5f5f5}
-.auth-card{width:100%;max-width:400px;background:#fff;border-radius:20px;padding:36px 32px;box-shadow:0 2px 16px rgba(0,0,0,0.07)}
+.auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#0f0f10;position:relative;overflow:hidden}
+
+/* Fond animé */
+.auth-bg{position:absolute;inset:0;pointer-events:none}
+.auth-bg-circle{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.15}
+.auth-bg-circle.c1{width:400px;height:400px;background:#1a7f5a;top:-100px;left:-100px;animation:float1 8s ease-in-out infinite}
+.auth-bg-circle.c2{width:300px;height:300px;background:#3b82f6;bottom:-80px;right:-80px;animation:float2 10s ease-in-out infinite}
+.auth-bg-circle.c3{width:200px;height:200px;background:#f59e0b;top:50%;left:50%;animation:float3 12s ease-in-out infinite}
+@keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,20px)}}
+@keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-20px,30px)}}
+@keyframes float3{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-40%,-60%)}}
+
+/* Layout 2 colonnes */
+.auth-wrap{display:flex;gap:60px;align-items:center;max-width:900px;width:100%;position:relative;z-index:1}
+
+/* Colonne gauche — pitch */
+.auth-pitch{flex:1;color:#fff}
+.auth-pitch-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+.auth-pitch-title{font-size:38px;font-weight:900;line-height:1.15;margin:0 0 14px;letter-spacing:-1px}
+.auth-pitch-sub{font-size:16px;color:rgba(255,255,255,0.6);margin:0 0 32px;line-height:1.6}
+.auth-features-list{display:flex;flex-direction:column;gap:16px}
+.auth-feature-big{display:flex;align-items:flex-start;gap:14px}
+.auth-feature-icon{font-size:22px;width:44px;height:44px;background:rgba(255,255,255,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.auth-feature-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px}
+.auth-feature-desc{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5}
+
+/* Colonne droite — card */
+.auth-card{width:100%;max-width:400px;background:#fff;border-radius:24px;padding:36px 32px;box-shadow:0 24px 80px rgba(0,0,0,0.4);flex-shrink:0}
 .auth-logo{display:flex;align-items:center;gap:14px;margin-bottom:32px}
 .logo-icon{width:48px;height:48px;background:#1c1c1e;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
 .logo-icon.sm{width:30px;height:30px;border-radius:9px}
@@ -22,12 +48,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 .field label{display:block;font-size:11px;color:#8e8e93;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px}
 .field input,.field select{width:100%;padding:12px 14px;background:#f5f5f5;border:none;border-radius:12px;color:#1c1c1e;font-size:14px;font-family:inherit;font-weight:500;transition:all 0.2s}
 .field input:focus,.field select:focus{outline:none;background:#ebebeb}
-.btn-auth{width:100%;padding:14px;background:#1c1c1e;border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;margin-top:8px;transition:all 0.2s;font-family:inherit;letter-spacing:-0.2px}
-.btn-auth:hover{opacity:0.85}
-.btn-demo{width:100%;padding:12px;background:#f5f5f5;border:none;border-radius:12px;color:#1c1c1e;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;font-family:inherit}
-.btn-demo:hover{background:#ebebeb}
+.auth-field{margin-bottom:14px}
+.auth-label{display:block;font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.auth-input{width:100%;padding:13px 14px;border:2px solid #f0f0f0;border-radius:12px;font-size:15px;outline:none;transition:border 0.2s;box-sizing:border-box;font-family:inherit;background:#fafafa}
+.auth-input:focus{border-color:#1c1c1e;background:#fff}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:#8e8e93;font-size:12px;font-weight:600}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:#f0f0f0}
+.auth-terms{font-size:11px;color:#8e8e93;text-align:center;margin-top:12px;line-height:1.5}
+.btn-auth{width:100%;padding:14px 20px;background:#1c1c1e;border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;margin-top:4px;transition:all 0.2s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-auth:hover{background:#000;transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.2)}
+.btn-demo{width:100%;padding:12px;background:#f5f5f5;border:none;border-radius:12px;color:#1c1c1e;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.btn-demo:hover{background:#e8e8e8}
 .auth-msg{margin-top:12px;font-size:13px;text-align:center;min-height:20px;font-weight:600}
 .auth-msg.error{color:#ff3b30}.auth-msg.success{color:#34c759}
+
+/* Responsive — mobile : 1 colonne */
+@media(max-width:700px){
+  .auth-wrap{flex-direction:column;gap:24px}
+  .auth-pitch{text-align:center}
+  .auth-pitch-title{font-size:28px}
+  .auth-features-list{display:none}
+  .auth-card{max-width:100%}
+}
 
 /* LAYOUT */
 #app{display:flex;flex-direction:column;min-height:100vh}
@@ -334,8 +376,7 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 .empty-news-msg{text-align:center;padding:40px 20px;color:#8e8e93}
 
 /* ===== AUTH TAGLINE ===== */
-.auth-tagline{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
-.auth-feature{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#8e8e93;background:#f5f5f5;padding:6px 12px;border-radius:99px}
+.auth-tagline{display:none}
 
 /* ===== ONBOARDING MODAL ===== */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
