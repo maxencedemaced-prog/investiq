@@ -2419,7 +2419,37 @@ function renderPortfolio() {
             <div class="perf-bar-label"><span>PRU moy. : ${fmt(p.pru)}€</span><span>Actuel : ${fmt(p.price)}€</span></div>
             <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${Math.min(Math.abs(pct)/30*100,100)}%;background:${pnl>=0?'#1a7f5a':'#ff3b30'}"></div></div>
           </div>
-          ${sig?`<div class="signal-text" style="margin-top:8px">${sig.texte}</div>`:''}
+          ${sig ? `
+          <div style="margin-top:10px;background:#f9f9f9;border-radius:12px;padding:12px 14px">
+            <div style="font-size:13px;color:#1c1c1e;font-weight:600;margin-bottom:8px">${sig.texte}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr${sig.prix_cible > 0 ? ' 1fr 1fr' : ''};gap:8px;margin-bottom:8px">
+              <div style="background:#fff;border-radius:8px;padding:8px 10px;text-align:center">
+                <div style="font-size:10px;color:#8e8e93;font-weight:700;text-transform:uppercase">Timing</div>
+                <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-top:2px">${sig.timing || '—'}</div>
+              </div>
+              <div style="background:#fff;border-radius:8px;padding:8px 10px;text-align:center">
+                <div style="font-size:10px;color:#8e8e93;font-weight:700;text-transform:uppercase">Horizon</div>
+                <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-top:2px">${sig.horizon_signal || '—'}</div>
+              </div>
+              ${sig.prix_cible > 0 ? `
+              <div style="background:#e8f8f0;border-radius:8px;padding:8px 10px;text-align:center">
+                <div style="font-size:10px;color:#1a7f5a;font-weight:700;text-transform:uppercase">Objectif</div>
+                <div style="font-size:12px;font-weight:800;color:#1a7f5a;margin-top:2px">${fmt(sig.prix_cible)}€</div>
+              </div>
+              <div style="background:#fff0f0;border-radius:8px;padding:8px 10px;text-align:center">
+                <div style="font-size:10px;color:#cc2f26;font-weight:700;text-transform:uppercase">Stop loss</div>
+                <div style="font-size:12px;font-weight:800;color:#cc2f26;margin-top:2px">${fmt(sig.stop_loss)}€</div>
+              </div>` : ''}
+            </div>
+            ${sig.catalyseurs?.length ? `<div style="margin-bottom:6px">
+              <div style="font-size:10px;color:#8e8e93;font-weight:700;text-transform:uppercase;margin-bottom:3px">✅ Catalyseurs</div>
+              ${sig.catalyseurs.map(c=>`<div style="font-size:11px;color:#1a7f5a;margin-bottom:2px">• ${c}</div>`).join('')}
+            </div>` : ''}
+            ${sig.risques?.length ? `<div>
+              <div style="font-size:10px;color:#8e8e93;font-weight:700;text-transform:uppercase;margin-bottom:3px">⚠ Risques</div>
+              ${sig.risques.map(r=>`<div style="font-size:11px;color:#cc2f26;margin-bottom:2px">• ${r}</div>`).join('')}
+            </div>` : ''}
+          </div>` : ''}
           <div class="pos-actions">
             <button class="btn-sm buy" onclick="openDecisionFromPos('${p.name}','acheter')">💰 Acheter plus</button>
             <button class="btn-sm" onclick="openDecisionFromPos('${p.name}','garder')">🤔 Que faire ?</button>
@@ -2443,19 +2473,56 @@ function renderPortfolio() {
 }
 
 async function generatePosSignal(p) {
-  const pnl=(p.price-p.pru)/p.pru*100;
-  const prompt=`Position : ${p.name}(${p.type}), PRU ${p.pru}€, actuel ${p.price}€, perf ${pnl.toFixed(1)}%. Profil : ${HL[profile.horizon]}, risque ${RL[profile.risk]}.
-Retourne UNIQUEMENT JSON : {"action":"acheter|garder|vendre","texte":"1 phrase conseil simple"}`;
+  const pnl = (p.price - p.pru) / p.pru * 100;
+  const isAction = p.type === 'Action' || p.type === 'action';
+
+  const prompt = `Tu es un analyste financier expert. Analyse cette position pour un investisseur ${RL[profile.risk]}, horizon ${HL[profile.horizon]}.
+
+Position : ${p.name} (${p.type})
+PRU : ${p.pru}€ | Prix actuel : ${p.price}€ | Performance : ${pnl.toFixed(1)}%
+Quantité : ${p.qty} parts | Valeur totale : ${fmt(p.qty * p.price)}€
+
+${isAction ? `C'est une action individuelle — donne un signal court terme précis avec timing.` : `C'est un ETF — signal long terme, pas de timing court terme.`}
+
+Réponds UNIQUEMENT en JSON valide sans markdown :
+{
+  "action": "acheter" ou "garder" ou "vendre",
+  "conviction": "forte" ou "modérée" ou "faible",
+  "texte": "Conseil principal en 1 phrase simple",
+  ${isAction ? `
+  "prix_cible": 0,
+  "stop_loss": 0,
+  "horizon_signal": "2-4 semaines",
+  "timing": "Maintenant" ou "Attendre" ou "Progressif",
+  "catalyseurs": ["raison 1", "raison 2"],
+  "risques": ["risque 1"]` : `
+  "horizon_signal": "Long terme",
+  "timing": "DCA régulier",
+  "catalyseurs": ["raison long terme"],
+  "risques": ["risque principal"]`}
+}`;
+
   try {
-    const raw=await callClaude(prompt,'Retourne uniquement du JSON valide.');
-    const s=raw.replace(/```json|```/g,'').trim();
-    posSignals[p.id]=JSON.parse(s.slice(s.indexOf('{'),s.lastIndexOf('}')+1));
+    const raw = await callClaude(prompt, 'Tu es un analyste financier. Réponds UNIQUEMENT en JSON valide.');
+    const s = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}')+1));
+    posSignals[p.id] = parsed;
   } catch {
-    posSignals[p.id]={action:pnl>5?'garder':pnl<-10?'vendre':'garder',texte:'Continue à surveiller cette position.'};
+    posSignals[p.id] = {
+      action: pnl > 5 ? 'garder' : pnl < -15 ? 'vendre' : 'garder',
+      conviction: 'modérée',
+      texte: pnl < -15 ? 'Perte importante — envisage de couper.' : pnl > 15 ? 'Belle performance — sécurise une partie.' : 'Continue à surveiller cette position.',
+      horizon_signal: p.type === 'ETF' ? 'Long terme' : '1-3 mois',
+      timing: 'Attendre',
+      catalyseurs: ['Analyse en cours'],
+      risques: ['Volatilité du marché'],
+      prix_cible: 0,
+      stop_loss: 0
+    };
   }
   saveSignalsCache();
-  const sigEl=document.getElementById('sig-'+p.id);
-  if(sigEl&&sigEl.style.display==='block')renderPortfolio();
+  const sigEl = document.getElementById('sig-'+p.id);
+  if (sigEl && sigEl.style.display === 'block') renderPortfolio();
 }
 
 function togglePosSignal(id) {
