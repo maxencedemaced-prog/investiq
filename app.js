@@ -1568,7 +1568,8 @@ async function loadPositions() {
   positions = data||[];
 }
 async function loadObjective() {
-  const { data } = await sb.from('objectives').select('*').eq('user_id',currentUser.id).maybeSingle();
+  const { data, error } = await sb.from('objectives').select('*').eq('user_id',currentUser.id).maybeSingle();
+  console.log('[loadObjective] data=', JSON.stringify(data), 'error=', error);
   if (data) {
     objective = { target:data.target, years:data.years, rate:data.rate, monthly:data.monthly };
     // Charge aussi les variables du wizard objectif
