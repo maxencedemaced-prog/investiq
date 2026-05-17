@@ -1509,43 +1509,97 @@ async function renderSignaux() {
   const list = document.getElementById('news-list');
   if (!list) return;
 
+  // Constants
+  const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#8e8e93' };
+  const sigBg    = { acheter:'#e8f8f0', attendre:'#fff9e6', vendre:'#fff0f0', eviter:'#f5f5f5' };
+  const sigIcon  = { acheter:'↑', attendre:'⏸', vendre:'↓', eviter:'✕' };
+  const sigLabel = { acheter:'ACHETER', attendre:'ATTENDRE', vendre:'VENDRE', eviter:'ÉVITER' };
+
+  function riskBar(n) {
+    const colors = ['#1a7f5a','#1a7f5a','#f59e0b','#f59e0b','#cc2f26'];
+    const labels = ['','Très faible','Faible','Moyen','Élevé','Très élevé'];
+    return `<div style="display:flex;align-items:center;gap:4px">
+      ${[1,2,3,4,5].map(i => `<div style="width:14px;height:6px;border-radius:2px;background:${i<=n?colors[n-1]:'#e5e5ea'}"></div>`).join('')}
+      <span style="font-size:10px;color:#8e8e93;margin-left:2px">${labels[n]||''}</span>
+    </div>`;
+  }
+
+  function signalCard(s, isMine) {
+    const myPos = positions.find(p => p.name === s.ticker);
+    const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
+    return `
+    <div style="background:${sigBg[s.signal]||'#f9f9f9'};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${sigColor[s.signal]||'#e5e5ea'};cursor:pointer"
+         onclick="openDecisionFromPos('${s.ticker}','${s.signal==='acheter'?'acheter':s.signal==='vendre'?'vendre':'garder'}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:40px;height:40px;border-radius:12px;background:${sigColor[s.signal]}20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${sigColor[s.signal]}">${sigIcon[s.signal]}</div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#1c1c1e">
+              ${s.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${s.ticker}</span>
+              ${isMine ? '<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:4px">📦 Portef.</span>' : ''}
+            </div>
+            <div style="font-size:11px;color:#8e8e93;margin-top:2px">${s.type||''} · ${s.secteur||''}</div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:4px">
+              <span style="font-size:10px;color:#8e8e93;font-weight:700">RISQUE</span>
+              ${riskBar(s.risque||3)}
+            </div>
+          </div>
+        </div>
+        <div style="background:${sigColor[s.signal]};color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800;white-space:nowrap">
+          ${sigLabel[s.signal]||s.signal.toUpperCase()}
+        </div>
+      </div>
+      <div style="font-size:13px;color:#1c1c1e;font-weight:500;margin-bottom:8px">${s.raison}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px">
+        <div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
+          <div style="font-size:10px;color:#8e8e93;font-weight:700">HORIZON</div>
+          <div style="font-size:11px;font-weight:800;color:#1c1c1e;margin-top:1px">${s.horizon}</div>
+        </div>
+        ${s.objectif > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
+          <div style="font-size:10px;color:#1a7f5a;font-weight:700">OBJECTIF <span title="Prix cible estimé — bon moment de vendre si atteint" style="display:inline-block;width:12px;height:12px;background:#1a7f5a20;color:#1a7f5a;border-radius:50%;font-size:8px;font-weight:800;line-height:12px;text-align:center;cursor:help">?</span></div>
+          <div style="font-size:11px;font-weight:800;color:#1a7f5a;margin-top:1px">${s.objectif}€</div>
+        </div>` : ''}
+        ${s.stop_loss > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
+          <div style="font-size:10px;color:#cc2f26;font-weight:700">STOP <span title="Vends si l'action descend à ce prix pour limiter les pertes" style="display:inline-block;width:12px;height:12px;background:#cc2f2620;color:#cc2f26;border-radius:50%;font-size:8px;font-weight:800;line-height:12px;text-align:center;cursor:help">?</span></div>
+          <div style="font-size:11px;font-weight:800;color:#cc2f26;margin-top:1px">${s.stop_loss}€</div>
+        </div>` : ''}
+        ${isMine && myPnl !== null ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
+          <div style="font-size:10px;color:#8e8e93;font-weight:700">MA PERF.</div>
+          <div style="font-size:11px;font-weight:800;color:${parseFloat(myPnl)>=0?'#1a7f5a':'#cc2f26'};margin-top:1px">${parseFloat(myPnl)>=0?'+':''}${myPnl}%</div>
+        </div>` : ''}
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:${sigColor[s.signal]};font-weight:600;text-align:right">Analyser & investir →</div>
+    </div>`;
+  }
+
+  async function fetchSignaux(tickers) {
+    const date = new Date().toLocaleDateString('fr-FR');
+    const prompt = `Analyste financier, le ${date}. Signal pour : ${tickers.join(', ')}.
+Réponds UNIQUEMENT avec du JSON valide, tableau d'objets :
+[{"ticker":"X","name":"Nom","signal":"acheter","conviction":"forte","risque":3,"objectif":0,"stop_loss":0,"horizon":"2-4 semaines","raison":"1 phrase","type":"Action","secteur":"Tech"}]
+signal: acheter/attendre/vendre/eviter. risque: 1(très faible) à 5(très élevé).`;
+    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT JSON valide sans markdown.');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const s = clean.indexOf('['), e = clean.lastIndexOf(']');
+    if (s === -1 || e === -1) throw new Error('No array');
+    return JSON.parse(clean.slice(s, e+1));
+  }
+
+  const date = new Date().toLocaleDateString('fr-FR');
+  const myTickers = [...new Set(positions.map(p => p.name))].slice(0, 3);
+  const oppoTickers = ['NVDA','MSFT','AAPL','MC.PA','TTE.PA'].filter(t => !myTickers.includes(t)).slice(0, 4);
+
   list.innerHTML = `<div style="text-align:center;padding:30px;color:#8e8e93">
     <div style="font-size:28px;margin-bottom:8px">🧠</div>
     <div style="font-size:13px;font-weight:600">Analyse du marché en cours...</div>
   </div>`;
 
-  // Max 2 positions + 4 opportunités
-  const myTickers = [...new Set(positions.map(p => p.name))].slice(0, 2);
-  const oppoTickers = ['NVDA','MSFT','AAPL','MC.PA'].filter(t => !myTickers.includes(t)).slice(0, 4);
-  const date = new Date().toLocaleDateString('fr-FR');
-
-  async function fetchSignaux(tickers) {
-    if (!tickers.length) return [];
-    // Un seul ticker par appel pour fiabilité maximale
-    const results = [];
-    for (const ticker of tickers) {
-      try {
-        const prompt = `Signal de trading pour ${ticker} aujourd'hui ${date}.
-Réponds avec exactement ce JSON et rien d'autre :
-{"ticker":"${ticker}","name":"NomComplet","signal":"acheter","conviction":"modérée","risque":3,"objectif":0,"stop_loss":0,"horizon":"2-4 semaines","raison":"1 phrase max","type":"Action","secteur":"Tech"}
-signal: acheter/attendre/vendre/eviter. risque: 1 à 5.`;
-        const raw = await callClaude(prompt, 'Réponds UNIQUEMENT avec du JSON valide, un seul objet.');
-        const clean = raw.replace(/```json|```/g,'').trim();
-        const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
-        if (s !== -1 && e !== -1) results.push(JSON.parse(clean.slice(s, e+1)));
-      } catch(e) { console.warn('Signal failed for', ticker); }
-    }
-    return results;
-  }
-
   try {
-    // Chargement progressif
-    const mySignaux = await fetchSignaux(myTickers);
-    
-    // Affiche mes positions immédiatement
+    const mySignaux = myTickers.length ? await fetchSignaux(myTickers) : [];
+
     list.innerHTML = `
       <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⚡ Signaux IA — ${date}</div>
-      ${mySignaux.length ? `<div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px">📦 Mes positions</div>${mySignaux.map(s => signalCard(s, true)).join('')}` : ''}
+      ${mySignaux.length ? `<div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px">📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:400">${mySignaux.length} actifs</span></div>${mySignaux.map(s => signalCard(s, true)).join('')}` : ''}
       <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px">🔭 Opportunités du marché</div>
       <div id="oppo-loading" style="text-align:center;padding:20px;color:#8e8e93">
         <div style="font-size:20px;margin-bottom:6px">🧠</div>
@@ -1553,103 +1607,13 @@ signal: acheter/attendre/vendre/eviter. risque: 1 à 5.`;
       </div>`;
 
     const oppoSignaux = await fetchSignaux(oppoTickers);
-    
-    // Remplace le loader par les opportunités
     const oppoLoader = document.getElementById('oppo-loading');
     if (oppoLoader) {
-      oppoLoader.outerHTML = oppoSignaux.map(s => signalCard(s, false)).join('') + 
+      oppoLoader.outerHTML = oppoSignaux.map(s => signalCard(s, false)).join('') +
         `<div style="padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
           ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
         </div>`;
     }
-    return; // Skip the big innerHTML below
-
-    const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#8e8e93' };
-    const sigBg    = { acheter:'#e8f8f0', attendre:'#fff9e6', vendre:'#fff0f0', eviter:'#f5f5f5' };
-    const sigIcon  = { acheter:'↑', attendre:'⏸', vendre:'↓', eviter:'✕' };
-    const sigLabel = { acheter:'ACHETER', attendre:'ATTENDRE', vendre:'VENDRE', eviter:'ÉVITER' };
-
-    function riskBar(n) {
-      const colors = ['#1a7f5a','#1a7f5a','#f59e0b','#f59e0b','#cc2f26'];
-      const labels = ['','Très faible','Faible','Moyen','Élevé','Très élevé'];
-      return `<div style="display:flex;align-items:center;gap:4px">
-        ${[1,2,3,4,5].map(i => `<div style="width:14px;height:6px;border-radius:2px;background:${i<=n?colors[n-1]:'#e5e5ea'}"></div>`).join('')}
-        <span style="font-size:10px;color:#8e8e93;margin-left:2px">${labels[n]||''}</span>
-      </div>`;
-    }
-
-    function signalCard(s, isMine) {
-      const myPos = positions.find(p => p.name === s.ticker);
-      const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
-      return `
-      <div style="background:${sigBg[s.signal]||'#f9f9f9'};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${sigColor[s.signal]||'#e5e5ea'};cursor:pointer"
-           onclick="openDecisionFromPos('${s.ticker}','${s.signal==='acheter'?'acheter':s.signal==='vendre'?'vendre':'garder'}')">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:40px;height:40px;border-radius:12px;background:${sigColor[s.signal]}20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${sigColor[s.signal]}">${sigIcon[s.signal]}</div>
-            <div>
-              <div style="font-size:14px;font-weight:800;color:#1c1c1e">
-                ${s.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${s.ticker}</span>
-                ${isMine ? '<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:4px">📦 Portef.</span>' : ''}
-              </div>
-              <div style="font-size:11px;color:#8e8e93;margin-top:2px">${s.type} · ${s.secteur||''}</div>
-              <div style="margin-top:4px;display:flex;align-items:center;gap:4px">
-                <span style="font-size:10px;color:#8e8e93;font-weight:700">RISQUE</span>
-                ${riskBar(s.risque||3)}
-              </div>
-            </div>
-          </div>
-          <div style="background:${sigColor[s.signal]};color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800;white-space:nowrap">
-            ${sigLabel[s.signal]||s.signal.toUpperCase()}
-          </div>
-        </div>
-        <div style="font-size:13px;color:#1c1c1e;font-weight:500;margin-bottom:8px">${s.raison}</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px">
-          <div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
-            <div style="font-size:10px;color:#8e8e93;font-weight:700">HORIZON</div>
-            <div style="font-size:11px;font-weight:800;color:#1c1c1e;margin-top:1px">${s.horizon}</div>
-          </div>
-          ${s.objectif > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center;position:relative">
-            <div style="font-size:10px;color:#1a7f5a;font-weight:700">OBJECTIF
-              <span title="Prix cible estimé par l'IA — si l'action atteint ce prix, c'est le bon moment de vendre une partie" style="display:inline-block;width:13px;height:13px;background:#1a7f5a20;color:#1a7f5a;border-radius:50%;font-size:9px;font-weight:800;line-height:13px;text-align:center;cursor:help;margin-left:2px">?</span>
-            </div>
-            <div style="font-size:11px;font-weight:800;color:#1a7f5a;margin-top:1px">${s.objectif}€</div>
-          </div>` : ''}
-          ${s.stop_loss > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center;position:relative">
-            <div style="font-size:10px;color:#cc2f26;font-weight:700">STOP LOSS
-              <span title="Prix limite — si l'action descend à ce niveau, il vaut mieux vendre pour limiter les pertes" style="display:inline-block;width:13px;height:13px;background:#cc2f2620;color:#cc2f26;border-radius:50%;font-size:9px;font-weight:800;line-height:13px;text-align:center;cursor:help;margin-left:2px">?</span>
-            </div>
-            <div style="font-size:11px;font-weight:800;color:#cc2f26;margin-top:1px">${s.stop_loss}€</div>
-          </div>` : ''}
-          ${isMine && myPnl !== null ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
-            <div style="font-size:10px;color:#8e8e93;font-weight:700">MA PERF.</div>
-            <div style="font-size:11px;font-weight:800;color:${parseFloat(myPnl)>=0?'#1a7f5a':'#cc2f26'};margin-top:1px">${parseFloat(myPnl)>=0?'+':''}${myPnl}%</div>
-          </div>` : ''}
-        </div>
-        <div style="margin-top:8px;font-size:11px;color:${sigColor[s.signal]};font-weight:600;text-align:right">Analyser & investir →</div>
-      </div>`;
-    }
-
-    list.innerHTML = `
-      <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">
-        ⚡ Signaux IA — ${date}
-      </div>
-
-      ${mySignaux.length ? `
-      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px;display:flex;align-items:center;gap:6px">
-        📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:500">${mySignaux.length} actifs</span>
-      </div>
-      ${mySignaux.map(s => signalCard(s, true)).join('')}` : ''}
-
-      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px;display:flex;align-items:center;gap:6px">
-        🔭 Opportunités du marché <span style="font-size:11px;color:#8e8e93;font-weight:500">${oppoSignaux.length} actifs</span>
-      </div>
-      ${oppoSignaux.map(s => signalCard(s, false)).join('')}
-
-      <div style="padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
-        ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
-      </div>`;
-
   } catch(e) {
     list.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
       <div style="font-size:20px;margin-bottom:8px">⚠️</div>
@@ -1658,7 +1622,6 @@ signal: acheter/attendre/vendre/eviter. risque: 1 à 5.`;
     </div>`;
   }
 }
-
 
 function setNewsFilter(filter, el) {
   newsFilter = filter;
