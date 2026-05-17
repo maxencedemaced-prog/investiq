@@ -1599,8 +1599,29 @@ Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`;
   }
 
   const date = new Date().toLocaleDateString('fr-FR');
-  const myTickers = [...new Set(positions.map(p => p.name))].slice(0, 3);
-  const oppoTickers = ['NVDA','MSFT','AAPL','MC.PA','TTE.PA'].filter(t => !myTickers.includes(t)).slice(0, 4);
+  const myTickers = [...new Set(positions.map(p => p.name))];
+  
+  // L'IA choisit elle-même les meilleures opportunités du jour
+  async function getOppoTickers() {
+    const exclude = myTickers.join(', ');
+    const prompt = `Analyste financier, le ${date}. Donne-moi 9 tickers d'actions avec les meilleures opportunités aujourd'hui.
+Mix : grandes capitalisations US + actions françaises/européennes + quelques mid-cap moins connues mais prometteuses.
+Exclus ces tickers déjà en portefeuille : ${exclude || 'aucun'}.
+Réponds UNIQUEMENT avec un JSON : ["AAPL","MC.PA","ASML","..."]`;
+    try {
+      const raw = await callClaude(prompt, 'Réponds UNIQUEMENT avec un tableau JSON de tickers. Rien d autre.');
+      const clean = raw.replace(/```json|```/g,'').trim();
+      const s = clean.indexOf('['), e = clean.lastIndexOf(']');
+      if (s === -1 || e === -1) throw new Error('no array');
+      const tickers = JSON.parse(clean.slice(s, e+1));
+      return tickers.filter(t => !myTickers.includes(t)).slice(0, 9);
+    } catch(e) {
+      // Fallback varié si l'IA échoue
+      return ['NVDA','ASML','MSFT','TTE.PA','SAN.PA','NOVO-B.CO','SAP.DE','CRWD','BNP.PA']
+        .filter(t => !myTickers.includes(t)).slice(0, 9);
+    }
+  }
+  const oppoTickers = await getOppoTickers();
 
   list.innerHTML = `<div style="text-align:center;padding:30px;color:#8e8e93">
     <div style="font-size:28px;margin-bottom:8px">🧠</div>
@@ -1608,11 +1629,23 @@ Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`;
   </div>`;
 
   try {
-    const mySignaux = myTickers.length ? await fetchSignaux(myTickers) : [];
+    // Batch mes positions par 5
+    const myBatches = [];
+    for (let i = 0; i < myTickers.length; i += 3) myBatches.push(myTickers.slice(i, i+3));
+    let mySignaux = [];
+    for (const batch of myBatches) {
+      const res = await fetchSignaux(batch);
+      mySignaux = [...mySignaux, ...res];
+      // Affichage progressif après chaque batch
+      const posSection = document.getElementById('my-positions-section');
+      if (posSection) posSection.innerHTML = mySignaux.map(s => signalCard(s, true)).join('');
+    }
 
     list.innerHTML = `
       <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⚡ Signaux IA — ${date}</div>
-      ${mySignaux.length ? `<div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px">📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:400">${mySignaux.length} actifs</span></div>${mySignaux.map(s => signalCard(s, true)).join('')}` : ''}
+      ${mySignaux.length ? `
+        <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px">📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:400">${mySignaux.length} actifs</span></div>
+        <div id="my-positions-section">${mySignaux.map(s => signalCard(s, true)).join('')}</div>` : ''}
       <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px">🔭 Opportunités du marché</div>
       <div id="oppo-loading" style="text-align:center;padding:20px;color:#8e8e93">
         <div style="font-size:20px;margin-bottom:6px">🧠</div>
