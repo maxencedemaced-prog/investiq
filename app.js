@@ -1604,12 +1604,16 @@ signal: acheter/attendre/vendre/eviter. risque: 1(très faible) à 5(très élev
             <div style="font-size:10px;color:#8e8e93;font-weight:700">HORIZON</div>
             <div style="font-size:11px;font-weight:800;color:#1c1c1e;margin-top:1px">${s.horizon}</div>
           </div>
-          ${s.objectif > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
-            <div style="font-size:10px;color:#1a7f5a;font-weight:700">OBJECTIF</div>
+          ${s.objectif > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center;position:relative">
+            <div style="font-size:10px;color:#1a7f5a;font-weight:700">OBJECTIF
+              <span title="Prix cible estimé par l'IA — si l'action atteint ce prix, c'est le bon moment de vendre une partie" style="display:inline-block;width:13px;height:13px;background:#1a7f5a20;color:#1a7f5a;border-radius:50%;font-size:9px;font-weight:800;line-height:13px;text-align:center;cursor:help;margin-left:2px">?</span>
+            </div>
             <div style="font-size:11px;font-weight:800;color:#1a7f5a;margin-top:1px">${s.objectif}€</div>
           </div>` : ''}
-          ${s.stop_loss > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
-            <div style="font-size:10px;color:#cc2f26;font-weight:700">STOP LOSS</div>
+          ${s.stop_loss > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center;position:relative">
+            <div style="font-size:10px;color:#cc2f26;font-weight:700">STOP LOSS
+              <span title="Prix limite — si l'action descend à ce niveau, il vaut mieux vendre pour limiter les pertes" style="display:inline-block;width:13px;height:13px;background:#cc2f2620;color:#cc2f26;border-radius:50%;font-size:9px;font-weight:800;line-height:13px;text-align:center;cursor:help;margin-left:2px">?</span>
+            </div>
             <div style="font-size:11px;font-weight:800;color:#cc2f26;margin-top:1px">${s.stop_loss}€</div>
           </div>` : ''}
           ${isMine && myPnl !== null ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
@@ -2588,11 +2592,15 @@ function renderPortfolio() {
               </div>
               ${sig.prix_cible > 0 ? `
               <div style="background:#e8f8f0;border-radius:8px;padding:8px 10px;text-align:center">
-                <div style="font-size:10px;color:#1a7f5a;font-weight:700;text-transform:uppercase">Objectif</div>
+                <div style="font-size:10px;color:#1a7f5a;font-weight:700;text-transform:uppercase">Objectif
+                  <span title="Prix cible estimé — bon moment de vendre une partie si atteint" style="display:inline-block;width:12px;height:12px;background:#1a7f5a20;color:#1a7f5a;border-radius:50%;font-size:8px;font-weight:800;line-height:12px;text-align:center;cursor:help;margin-left:2px">?</span>
+                </div>
                 <div style="font-size:12px;font-weight:800;color:#1a7f5a;margin-top:2px">${fmt(sig.prix_cible)}€</div>
               </div>
               <div style="background:#fff0f0;border-radius:8px;padding:8px 10px;text-align:center">
-                <div style="font-size:10px;color:#cc2f26;font-weight:700;text-transform:uppercase">Stop loss</div>
+                <div style="font-size:10px;color:#cc2f26;font-weight:700;text-transform:uppercase">Stop loss
+                  <span title="Si l'action descend à ce prix, vends pour limiter tes pertes" style="display:inline-block;width:12px;height:12px;background:#cc2f2620;color:#cc2f26;border-radius:50%;font-size:8px;font-weight:800;line-height:12px;text-align:center;cursor:help;margin-left:2px">?</span>
+                </div>
                 <div style="font-size:12px;font-weight:800;color:#cc2f26;margin-top:2px">${fmt(sig.stop_loss)}€</div>
               </div>` : ''}
             </div>
