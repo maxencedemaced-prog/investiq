@@ -1932,8 +1932,8 @@ function renderPortfolio() {
     const sigHtml=sig?`<span class="signal-badge-large ${sig.action==='acheter'?'sig-buy':sig.action==='vendre'?'sig-sell':'sig-hold'}">${sig.action==='acheter'?'↑ Renforcer':sig.action==='vendre'?'↓ Alléger':'→ Garder'}</span>`:`<span class="signal-badge-large sig-loading">Analyse...</span>`;
     const chgHtml=p.change_pct!==undefined?`<span style="font-size:12px;color:${p.change_pct>=0?'#1a7f5a':'#ff3b30'};font-weight:700">${p.change_pct>=0?'+':''}${p.change_pct?.toFixed(1)}% auj.</span>`:'';
     const alertHtml=p.alert_price?`<span style="font-size:11px;color:#8e8e93;font-weight:600">🔔 Alerte: ${fmt(p.alert_price)}€</span>`:'';
-    const multiHtml=p._ids.length>1?`<span style="font-size:11px;color:#8e8e93;font-weight:600">📦 ${p._ids.length} lignes regroupées · PRU moy. ${fmt(p.pru)}€</span>`:'';
-    const delBtns=p._ids.map(id=>`<button class="btn-del" onclick="delPos('${id}')" style="margin-left:4px">Supprimer</button>`).join('');
+    const multiHtml=p._ids.length>1?`<span style="font-size:11px;color:#8e8e93;font-weight:600">📦 ${p._ids.length} lignes · PRU moy. ${fmt(p.pru)}€</span>`:'';
+    const idsJson=JSON.stringify(p._ids).replace(/"/g,"'");
     return`<div class="pos-card">
       <div class="pos-card-head" onclick="togglePosSignal('${p._ids[0]}')">
         <div class="pos-card-left">
@@ -1962,7 +1962,7 @@ function renderPortfolio() {
             <button class="btn-sm" onclick="openDecisionFromPos('${p.name}','garder')">Analyser</button>
             <button class="btn-sm sell" onclick="openDecisionFromPos('${p.name}','vendre')">− Alléger</button>
             ${!isDemo?`<button class="btn-sm" onclick="openEditPos('${p._ids[0]}')">✏ Modifier</button>`:''}
-            ${!isDemo?delBtns:''}
+            ${!isDemo?`<button class="btn-del" onclick="delPosGroup(${idsJson})">🗑 Supprimer</button>`:''}
           </div>
         </div>
       </div>
@@ -2047,10 +2047,23 @@ async function addPos() {
   }
 }
 async function delPos(id) {
-  if(!confirm('Supprimer ?'))return;
+  if(!confirm('Supprimer cette position ?'))return;
   if(!isDemo)await sb.from('positions').delete().eq('id',id);
   positions=positions.filter(p=>p.id!==id);delete posSignals[id];
   renderPortfolio();renderHome();
+}
+
+async function delPosGroup(ids) {
+  const msg = ids.length > 1
+    ? `Supprimer les ${ids.length} lignes de cette position ?`
+    : 'Supprimer cette position ?';
+  if(!confirm(msg)) return;
+  for (const id of ids) {
+    if(!isDemo) await sb.from('positions').delete().eq('id', id);
+    positions = positions.filter(p => p.id !== id);
+    delete posSignals[id];
+  }
+  renderPortfolio(); renderHome();
 }
 async function loadDemo() {
   const demo=[
