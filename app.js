@@ -931,6 +931,8 @@ let obGoals = { long: false, court: false };
 
 function showOnboarding(force) {
   if (!force && localStorage.getItem(OB_KEY)) return;
+  obGoals = { long: false, court: false };
+  obNext(1);
   document.getElementById('onboarding-modal').style.display = 'flex';
 }
 
@@ -989,50 +991,92 @@ function obSelectRisk(risk) {
 
 async function obGeneratePlan() {
   const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 1000;
-  const monthly = parseFloat(document.getElementById('ob-monthly')?.value) || 200;
-  const risk = document.getElementById('ob-risk')?.value || 'faible';
-  const goals = [];
-  if (obGoals.long) goals.push('construire un patrimoine long terme avec des ETF');
-  if (obGoals.court) goals.push('générer un complément de salaire avec des actions court terme');
+  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 200;
+  const risk     = document.getElementById('ob-risk')?.value || 'faible';
+  const planEl   = document.getElementById('ob-plan-content');
 
-  const planEl = document.getElementById('ob-plan-content');
+  // Calculs de projection
+  const r10 = Math.pow(1.07, 10);
+  const projLong  = Math.round(bankroll * r10 + monthly * 12 * ((r10 - 1) / 0.07));
+  // Court terme : budget réduit, horizon 2 ans, rendement cible 12%
+  const budgetCourt = Math.round(bankroll * 0.3);
+  const budgetLong  = bankroll - budgetCourt;
 
-  // Show immediate static plan while AI loads
-  const etfReco = risk === 'eleve' ? '60% IWDA · 40% actions individuelles' : risk === 'modere' ? '80% IWDA/VWCE · 20% actions' : '90% IWDA · 10% VWCE';
-  const dcaMsg = monthly > 0 ? `${monthly}€/mois en DCA automatique` : 'Versements réguliers recommandés';
-  const projFV = Math.round(bankroll * Math.pow(1.07, 10) + monthly * 12 * ((Math.pow(1.07, 10) - 1) / 0.07));
+  // Allocation ETF selon risque
+  const etfAlloc = risk === 'eleve'
+    ? ['70% IWDA (ETF Monde)', '30% VWCE (ETF All-World)']
+    : risk === 'modere'
+    ? ['80% IWDA (ETF Monde)', '20% VWCE (ETF All-World)']
+    : ['90% IWDA (ETF Monde)', '10% VWCE (ETF All-World)'];
 
-  planEl.innerHTML = `
-    <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px;margin-bottom:12px;border-left:4px solid #1a7f5a">
-      <div style="font-size:13px;font-weight:800;color:#1a7f5a;margin-bottom:8px">✅ Ton plan InvestIQ</div>
+  const both = obGoals.long && obGoals.court;
+
+  let html = '';
+
+  // PLAN LONG TERME
+  if (obGoals.long) {
+    const capitalLong = both ? budgetLong : bankroll;
+    const monthlyLong = both ? Math.round(monthly * 0.7) : monthly;
+    const proj = Math.round(capitalLong * r10 + monthlyLong * 12 * ((r10 - 1) / 0.07));
+    html += `
+    <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #1a7f5a">
+      <div style="font-size:12px;font-weight:800;color:#1a7f5a;margin-bottom:10px">🏦 PLAN LONG TERME — Construire ton patrimoine</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${obGoals.long ? `<div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px">
-          <span style="font-size:18px">🏦</span>
-          <div><div style="font-size:12px;font-weight:700">Long terme — Patrimoine</div><div style="font-size:12px;color:#3c3c43">${etfReco}</div></div>
-        </div>` : ''}
-        ${obGoals.court ? `<div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px">
-          <span style="font-size:18px">⚡</span>
-          <div><div style="font-size:12px;font-weight:700">Court terme — Complément</div><div style="font-size:12px;color:#3c3c43">Actions avec signaux IA d'achat/vente</div></div>
-        </div>` : ''}
-        <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px">
-          <span style="font-size:18px">📅</span>
-          <div><div style="font-size:12px;font-weight:700">DCA mensuel</div><div style="font-size:12px;color:#3c3c43">${dcaMsg}</div></div>
+        <div style="background:#fff;border-radius:10px;padding:10px 12px">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;margin-bottom:4px">ALLOCATION RECOMMANDÉE</div>
+          ${etfAlloc.map(e => `<div style="font-size:13px;color:#1c1c1e">• ${e}</div>`).join('')}
         </div>
-        <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px">
-          <span style="font-size:18px">📈</span>
-          <div><div style="font-size:12px;font-weight:700">Projection à 10 ans</div><div style="font-size:12px;color:#1a7f5a;font-weight:700">~${fmtK(projFV)} estimés à 7%/an</div></div>
+        <div style="background:#fff;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between">
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">CAPITAL DE DÉPART</div><div style="font-size:14px;font-weight:800">${fmtK(capitalLong)}</div></div>
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">MENSUEL DCA</div><div style="font-size:14px;font-weight:800">${monthlyLong}€/mois</div></div>
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DANS 10 ANS</div><div style="font-size:14px;font-weight:800;color:#1a7f5a">~${fmtK(proj)}</div></div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#8e8e93">
+          ⏱ Horizon : 10-20 ans · Ne pas toucher · Réinvestir les dividendes
         </div>
       </div>
-    </div>
-    <div id="ob-ai-advice" style="font-size:13px;color:#8e8e93;text-align:center">💬 Conseil IA personnalisé en cours...</div>`;
+    </div>`;
+  }
 
-  // AI personalized advice
+  // PLAN COURT TERME
+  if (obGoals.court) {
+    const capitalCourt = both ? budgetCourt : bankroll;
+    const monthlyTrade = both ? Math.round(monthly * 0.3) : monthly;
+    html += `
+    <div style="background:#fff9e6;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #f59e0b">
+      <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:10px">⚡ PLAN COURT TERME — Complément de salaire</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="background:#fff;border-radius:10px;padding:10px 12px">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;margin-bottom:4px">STRATÉGIE</div>
+          <div style="font-size:13px;color:#1c1c1e">• Actions individuelles avec signaux IA</div>
+          <div style="font-size:13px;color:#1c1c1e">• L'app te dit quand acheter et quand vendre</div>
+          <div style="font-size:13px;color:#1c1c1e">• Objectif : +5 à 15%/an sur ce capital</div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between">
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">CAPITAL ALLOUÉ</div><div style="font-size:14px;font-weight:800">${fmtK(capitalCourt)}</div></div>
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">MENSUEL</div><div style="font-size:14px;font-weight:800">${monthlyTrade}€/mois</div></div>
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">RISQUE</div><div style="font-size:14px;font-weight:800;color:#f59e0b">Moyen</div></div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#8e8e93">
+          ⚠️ Ne jamais investir plus que tu peux te permettre de perdre
+        </div>
+      </div>
+    </div>`;
+  }
+
+  html += `<div id="ob-ai-advice" style="text-align:center;padding:12px;color:#8e8e93;font-size:13px">💬 Conseil IA en cours...</div>`;
+  planEl.innerHTML = html;
+
+  // Conseil IA personnalisé
   try {
-    const prompt = `Débutant en bourse. Objectifs : ${goals.join(' ET ')}. Budget : ${bankroll}€ de départ, ${monthly}€/mois. Profil risque : ${risk}.
-Donne un conseil de départ en 3 phrases MAX, très simple, concret, encourageant. Pas de jargon. Commence par "Pour toi,"`;
+    const goalsTxt = both ? 'patrimoine long terme (ETF) ET complément de salaire (actions)'
+      : obGoals.long ? 'patrimoine long terme avec ETF'
+      : 'complément de salaire avec actions court terme';
+    const prompt = `Débutant en bourse. Objectif : ${goalsTxt}. Budget : ${bankroll}€, ${monthly}€/mois. Profil : ${risk}.
+En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de jargon. Commence par "Pour toi,"`;
     const advice = await callClaude(prompt);
-    const advEl = document.getElementById('ob-ai-advice');
-    if (advEl) advEl.innerHTML = `<div style="background:#f9f9f9;border-radius:12px;padding:12px 14px;font-size:13px;color:#3c3c43;line-height:1.6;text-align:left">💬 ${advice}</div>`;
+    const el = document.getElementById('ob-ai-advice');
+    if (el) el.innerHTML = `<div style="background:#f9f9f9;border-radius:12px;padding:12px 14px;font-size:13px;color:#3c3c43;line-height:1.6">💬 ${advice}</div>`;
   } catch(e) {}
 }
 
@@ -1599,7 +1643,10 @@ function enterDemo() {
     {id:'d4',name:'Air Liquide',qty:5,pru:162,price:179,type:'Action',sector:'Industrie',platform:'XTB',alert_price:null},
   ];
   nav('home');
-  setTimeout(() => showOnboarding(true), 300);
+  // Reset et affiche l'onboarding depuis l'étape 1
+  obGoals = { long: false, court: false };
+  obNext(1);
+  document.getElementById('onboarding-modal').style.display = 'flex';
 }
 
 function showAuthScreen() {
