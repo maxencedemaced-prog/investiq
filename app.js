@@ -1436,6 +1436,8 @@ function renderNewsPage() {
     <div class="filter-row" style="margin-top:14px">
       <button class="filter-pill active" id="news-fil-tous" onclick="setNewsFilter('tous',this)">Toutes les actus</button>
       <button class="filter-pill" id="news-fil-signaux" onclick="setNewsFilter('signaux',this)" style="background:#1c1c1e;color:#fff;border-color:#1c1c1e">⚡ Signaux</button>
+      <button class="filter-pill" id="news-fil-entreprises" onclick="setNewsFilter('entreprises',this)">🏢 Entreprises</button>
+      <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)">📅 Agenda</button>
       <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)">
         ⭐ Mes favoris ${allTracked.length > 0 ? `<span class="pill-count">${allTracked.length}</span>` : ''}
       </button>
@@ -1503,6 +1505,545 @@ function renderNewsPage() {
   // Load news
   if (!loadNewsCache()) loadNews(false);
   else renderNewsList();
+}
+
+// ===== ONGLET AGENDA =====
+let agendaView = 'semaine'; // 'semaine' | 'mois' | 'liste'
+let agendaEvents = [];
+let agendaCurrentDate = new Date();
+let agendaSelectedEvent = null;
+
+async function renderAgenda() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+
+  list.innerHTML = `<div style="text-align:center;padding:30px;color:#8e8e93">
+    <div style="font-size:28px;margin-bottom:8px">📅</div>
+    <div style="font-size:13px">Chargement du calendrier...</div>
+  </div>`;
+
+  try {
+    const res = await fetch('/api/agenda');
+    const data = await res.json();
+    agendaEvents = data.events || [];
+  } catch(e) {
+    agendaEvents = [];
+  }
+
+  renderAgendaView();
+}
+
+function renderAgendaView() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+
+  const impactColor = { high:'#cc2f26', medium:'#f59e0b', low:'#8e8e93' };
+  const impactBg    = { high:'#fff0f0', medium:'#fff9e6', low:'#f5f5f5' };
+  const impactLabel = { high:'Fort', medium:'Moyen', low:'Faible' };
+  const paysFlag    = { US:'🇺🇸', EU:'🇪🇺', FR:'🇫🇷', DE:'🇩🇪', UK:'🇬🇧', JP:'🇯🇵', CN:'🇨🇳' };
+
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+
+  // Navigation header
+  const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const dayNames = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+
+  function getWeekDates(baseDate) {
+    const d = new Date(baseDate);
+    const day = d.getDay();
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+    return Array.from({length:7}, (_,i) => {
+      const dd = new Date(monday);
+      dd.setDate(monday.getDate() + i);
+      return dd;
+    });
+  }
+
+  function getMonthDates(baseDate) {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month+1, 0);
+    const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+    const days = [];
+    for (let i = 0; i < startDay; i++) {
+      const d = new Date(firstDay);
+      d.setDate(firstDay.getDate() - startDay + i);
+      days.push({ date: d, current: false });
+    }
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      days.push({ date: new Date(year, month, i), current: true });
+    }
+    while (days.length % 7 !== 0) {
+      const d = new Date(days[days.length-1].date);
+      d.setDate(d.getDate()+1);
+      days.push({ date: d, current: false });
+    }
+    return days;
+  }
+
+  function eventsForDate(date) {
+    const str = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+    return agendaEvents.filter(e => e.date === str);
+  }
+
+  function eventDot(evt) {
+    return `<div style="width:6px;height:6px;border-radius:50%;background:${impactColor[evt.impact]||'#8e8e93'};display:inline-block;margin:1px"></div>`;
+  }
+
+  function eventDetailCard(evt) {
+    return `
+    <div style="background:${impactBg[evt.impact]||'#f5f5f5'};border-radius:12px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${impactColor[evt.impact]||'#8e8e93'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:700;color:#1c1c1e;flex:1">${paysFlag[evt.pays]||'🌍'} ${evt.titre}</div>
+        <span style="background:${impactColor[evt.impact]};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap;margin-left:8px">${impactLabel[evt.impact]||'Faible'}</span>
+      </div>
+      <div style="display:flex;gap:12px;font-size:12px;color:#8e8e93;margin-bottom:8px">
+        <span>🕐 ${evt.heure}</span>
+        <span>${evt.pays}</span>
+      </div>
+      ${evt.prevision || evt.precedent ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+        ${evt.precedent ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:#8e8e93;font-weight:700">PRÉCÉDENT</div><div style="font-size:12px;font-weight:800">${evt.precedent}</div></div>` : ''}
+        ${evt.prevision ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:#8e8e93;font-weight:700">PRÉVISION</div><div style="font-size:12px;font-weight:800">${evt.prevision}</div></div>` : ''}
+        ${evt.actual ? `<div style="background:#e8f8f0;border-radius:8px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">RÉSULTAT</div><div style="font-size:12px;font-weight:800;color:#1a7f5a">${evt.actual}</div></div>` : ''}
+      </div>` : ''}
+      <div id="evt-impact-${evt.id}" style="font-size:12px;color:#8e8e93;cursor:pointer" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\'")}','${evt.impact}')">
+        💬 <span style="text-decoration:underline">Voir l'impact potentiel sur les marchés →</span>
+      </div>
+    </div>`;
+  }
+
+  // Build view
+  let calHtml = '';
+
+  if (agendaView === 'semaine') {
+    const days = getWeekDates(agendaCurrentDate);
+    calHtml = `
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:12px">
+      ${dayNames.map(d=>`<div style="text-align:center;font-size:10px;font-weight:700;color:#8e8e93;padding:4px 0">${d}</div>`).join('')}
+      ${days.map(d => {
+        const evts = eventsForDate(d);
+        const isToday = d.toDateString() === now.toDateString();
+        const isPast = d < now && !isToday;
+        return `<div onclick="agendaSelectDay('${d.toISOString()}')"
+          style="min-height:70px;background:${isToday?'#1c1c1e':'#fff'};border-radius:10px;padding:6px;cursor:pointer;border:2px solid ${isToday?'#1c1c1e':'#f0f0f0'};opacity:${isPast?0.5:1};transition:all 0.2s"
+          onmouseover="if(!${isToday})this.style.borderColor='#1c1c1e'" onmouseout="if(!${isToday})this.style.borderColor='#f0f0f0'">
+          <div style="font-size:12px;font-weight:800;color:${isToday?'#fff':'#1c1c1e'};margin-bottom:4px">${d.getDate()}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:2px">${evts.map(e=>eventDot(e)).join('')}</div>
+          ${evts.length > 0 ? `<div style="font-size:9px;color:${isToday?'#a3a3a3':'#8e8e93'};margin-top:2px">${evts.length} event${evts.length>1?'s':''}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <div id="agenda-day-detail"></div>`;
+
+  } else if (agendaView === 'mois') {
+    const days = getMonthDates(agendaCurrentDate);
+    calHtml = `
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:12px">
+      ${dayNames.map(d=>`<div style="text-align:center;font-size:10px;font-weight:700;color:#8e8e93;padding:4px 0">${d}</div>`).join('')}
+      ${days.map(({date:d, current}) => {
+        const evts = eventsForDate(d);
+        const isToday = d.toDateString() === now.toDateString();
+        return `<div onclick="agendaSelectDay('${d.toISOString()}')"
+          style="min-height:50px;background:${isToday?'#1c1c1e':current?'#fff':'#fafafa'};border-radius:8px;padding:4px;cursor:pointer;border:1px solid ${isToday?'#1c1c1e':'#f0f0f0'};opacity:${current?1:0.4}">
+          <div style="font-size:11px;font-weight:${isToday?800:500};color:${isToday?'#fff':current?'#1c1c1e':'#8e8e93'}">${d.getDate()}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:1px;margin-top:2px">${evts.slice(0,3).map(e=>eventDot(e)).join('')}${evts.length>3?`<div style="font-size:8px;color:#8e8e93">+${evts.length-3}</div>`:''}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div id="agenda-day-detail"></div>`;
+
+  } else { // liste
+    const upcoming = agendaEvents
+      .filter(e => new Date(e.date) >= new Date(now.toDateString()))
+      .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
+
+    let lastDate = '';
+    calHtml = upcoming.map(e => {
+      let dateHeader = '';
+      if (e.date !== lastDate) {
+        lastDate = e.date;
+        const d = new Date(e.date);
+        const isToday = d.toDateString() === now.toDateString();
+        const isTomorrow = d.toDateString() === new Date(now.getTime()+86400000).toDateString();
+        const label = isToday ? "📅 Aujourd'hui" : isTomorrow ? '⏭ Demain' : `${dayNames[d.getDay()]} ${d.getDate()} ${monthNames[d.getMonth()]}`;
+        dateHeader = `<div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:12px 0 6px;padding-bottom:4px;border-bottom:2px solid #f0f0f0">${label}</div>`;
+      }
+      return dateHeader + eventDetailCard(e);
+    }).join('') || `<div style="text-align:center;padding:30px;color:#8e8e93">Aucun événement à venir</div>`;
+  }
+
+  const monthLabel = `${monthNames[agendaCurrentDate.getMonth()]} ${agendaCurrentDate.getFullYear()}`;
+  const weekStart = getWeekDates(agendaCurrentDate)[0];
+  const weekEnd = getWeekDates(agendaCurrentDate)[6];
+  const weekLabel = `${weekStart.getDate()} - ${weekEnd.getDate()} ${monthNames[weekEnd.getMonth()]}`;
+
+  list.innerHTML = `
+    <!-- HEADER NAVIGATION -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <button onclick="agendaNav(-1)" style="background:#f5f5f5;border:none;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer">←</button>
+      <div style="text-align:center">
+        <div style="font-size:14px;font-weight:800;color:#1c1c1e">${agendaView==='semaine'?weekLabel:agendaView==='mois'?monthLabel:'Événements à venir'}</div>
+      </div>
+      <button onclick="agendaNav(1)" style="background:#f5f5f5;border:none;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer">→</button>
+    </div>
+
+    <!-- VUE SWITCHER -->
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      ${['semaine','mois','liste'].map(v=>`
+      <button onclick="agendaView='${v}';renderAgendaView()" 
+        style="flex:1;padding:7px;border-radius:8px;border:2px solid ${agendaView===v?'#1c1c1e':'#e5e5ea'};background:${agendaView===v?'#1c1c1e':'#fff'};color:${agendaView===v?'#fff':'#1c1c1e'};font-size:12px;font-weight:700;cursor:pointer">
+        ${v==='semaine'?'Semaine':v==='mois'?'Mois':'Liste'}
+      </button>`).join('')}
+    </div>
+
+    <!-- LÉGENDE IMPACT -->
+    <div style="display:flex;gap:10px;margin-bottom:12px;font-size:11px">
+      ${Object.entries(impactColor).map(([k,c])=>`<div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:${c}"></div><span style="color:#8e8e93">${impactLabel[k]}</span></div>`).join('')}
+    </div>
+
+    <!-- CALENDRIER -->
+    ${calHtml}`;
+}
+
+function agendaNav(dir) {
+  if (agendaView === 'semaine') {
+    agendaCurrentDate.setDate(agendaCurrentDate.getDate() + dir * 7);
+  } else if (agendaView === 'mois') {
+    agendaCurrentDate.setMonth(agendaCurrentDate.getMonth() + dir);
+  }
+  renderAgendaView();
+}
+
+function agendaSelectDay(isoDate) {
+  const d = new Date(isoDate);
+  const pad = n => String(n).padStart(2,'0');
+  const str = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const evts = agendaEvents.filter(e => e.date === str);
+  const detail = document.getElementById('agenda-day-detail');
+  if (!detail) return;
+
+  const dayNames = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const impactColor = { high:'#cc2f26', medium:'#f59e0b', low:'#8e8e93' };
+  const impactBg    = { high:'#fff0f0', medium:'#fff9e6', low:'#f5f5f5' };
+  const impactLabel = { high:'Fort', medium:'Moyen', low:'Faible' };
+  const paysFlag    = { US:'🇺🇸', EU:'🇪🇺', FR:'🇫🇷', DE:'🇩🇪', UK:'🇬🇧', JP:'🇯🇵', CN:'🇨🇳' };
+
+  if (!evts.length) {
+    detail.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93;font-size:13px">Aucun événement ce jour</div>`;
+    return;
+  }
+
+  detail.innerHTML = `
+    <div style="font-size:13px;font-weight:800;color:#1c1c1e;margin-bottom:10px;padding-top:10px;border-top:2px solid #f0f0f0">
+      ${dayNames[d.getDay()]} ${d.getDate()} ${monthNames[d.getMonth()]} — ${evts.length} événement${evts.length>1?'s':''}
+    </div>
+    ${evts.sort((a,b)=>a.heure.localeCompare(b.heure)).map(evt => `
+    <div style="background:${impactBg[evt.impact]||'#f5f5f5'};border-radius:12px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${impactColor[evt.impact]||'#8e8e93'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:700;color:#1c1c1e;flex:1">${paysFlag[evt.pays]||'🌍'} ${evt.titre}</div>
+        <span style="background:${impactColor[evt.impact]};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:8px">${impactLabel[evt.impact]||''}</span>
+      </div>
+      <div style="font-size:12px;color:#8e8e93;margin-bottom:8px">🕐 ${evt.heure} · ${evt.pays}</div>
+      ${evt.prevision || evt.precedent ? `
+      <div style="display:grid;grid-template-columns:${evt.actual?'1fr 1fr 1fr':'1fr 1fr'};gap:6px;margin-bottom:8px">
+        ${evt.precedent?`<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#8e8e93;font-weight:700">PRÉCÉDENT</div><div style="font-size:12px;font-weight:800">${evt.precedent}</div></div>`:''}
+        ${evt.prevision?`<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#8e8e93;font-weight:700">PRÉVISION</div><div style="font-size:12px;font-weight:800">${evt.prevision}</div></div>`:''}
+        ${evt.actual?`<div style="background:#e8f8f0;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">RÉSULTAT</div><div style="font-size:12px;font-weight:800;color:#1a7f5a">${evt.actual}</div></div>`:''}
+      </div>` : ''}
+      <div id="evt-impact-${evt.id}" style="font-size:12px;color:#8e8e93;cursor:pointer" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\'")}','${evt.impact}')">
+        💬 <span style="text-decoration:underline">Voir l'impact potentiel →</span>
+      </div>
+    </div>`).join('')}`;
+}
+
+async function loadEventImpact(id, titre, impact) {
+  const el = document.getElementById('evt-impact-' + id);
+  if (!el) return;
+  el.innerHTML = '🧠 Analyse en cours...';
+
+  try {
+    const impactDesc = { high:'très fort', medium:'modéré', low:'faible' }[impact] || 'modéré';
+    const prompt = `Événement économique : "${titre}" (impact ${impactDesc}).
+En 3 points courts et simples pour un débutant, explique :
+1. Ce que c'est
+2. Si le résultat est meilleur que prévu → impact sur les marchés
+3. Si le résultat est moins bon que prévu → impact sur les marchés
+Sois très concret (ex: "Les actions tech montent", "L'euro baisse"). Max 4 lignes au total.`;
+
+    const resp = await callClaude(prompt, 'Tu es un expert financier pédagogue. Sois bref et clair.');
+    el.innerHTML = '<div style="background:rgba(255,255,255,0.9);border-radius:10px;padding:10px 12px;margin-top:6px;font-size:12px;color:#1c1c1e;line-height:1.6">' + resp.split('\n').join('<br>') + '</div>';
+  } catch(e) {
+    el.innerHTML = '<span style="color:#cc2f26;font-size:12px">Impossible de charger l\'analyse</span>';
+  }
+}
+
+// ===== ONGLET ENTREPRISES =====
+let entrepriseSearchTimeout = null;
+
+async function renderEntreprises() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+
+  // Compile la liste : mes positions + watchlist + populaires
+  const myTickers = [...new Set(positions.map(p => ({
+    ticker: p.name, name: p.name, inPortfolio: true,
+    pnl: ((p.price - p.pru) / p.pru * 100).toFixed(1),
+    value: fmt(p.qty * p.price)
+  })))];
+  const watchItems = watchlist.map(w => ({ ticker: w.ticker, name: w.name || w.ticker, inPortfolio: false, pnl: null }));
+  const popular = [
+    { ticker:'AAPL', name:'Apple', secteur:'Tech' },
+    { ticker:'MSFT', name:'Microsoft', secteur:'Tech' },
+    { ticker:'NVDA', name:'NVIDIA', secteur:'Tech' },
+    { ticker:'TSLA', name:'Tesla', secteur:'Auto' },
+    { ticker:'MC.PA', name:'LVMH', secteur:'Luxe' },
+    { ticker:'TTE.PA', name:'TotalEnergies', secteur:'Énergie' },
+    { ticker:'AI.PA', name:'Air Liquide', secteur:'Industrie' },
+    { ticker:'BNP.PA', name:'BNP Paribas', secteur:'Banque' },
+    { ticker:'ASML', name:'ASML', secteur:'Semi-conducteurs' },
+    { ticker:'SAP.DE', name:'SAP', secteur:'Tech' },
+    { ticker:'NOVO-B.CO', name:'Novo Nordisk', secteur:'Santé' },
+    { ticker:'ALTEN.PA', name:'Alten', secteur:'Conseil IT' },
+  ].filter(p => !myTickers.find(m => m.ticker === p.ticker) && !watchItems.find(w => w.ticker === p.ticker));
+
+  const allCompanies = [...myTickers, ...watchItems, ...popular];
+
+  list.innerHTML = `
+    <!-- Barre de recherche entreprise -->
+    <div style="position:relative;margin-bottom:16px">
+      <input type="text" id="ent-search" placeholder="🔍 Rechercher une entreprise ou un ticker..."
+        style="width:100%;padding:12px 14px;border-radius:12px;border:2px solid #e5e5ea;font-size:14px;outline:none;box-sizing:border-box"
+        oninput="searchEntreprise(this.value)"
+        onfocus="this.style.borderColor='#1c1c1e'"
+        onblur="this.style.borderColor='#e5e5ea'">
+      <div id="ent-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border-radius:12px;border:2px solid #e5e5ea;z-index:100;max-height:200px;overflow-y:auto;margin-top:4px"></div>
+    </div>
+
+    <!-- Mes positions -->
+    ${myTickers.length ? `
+    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📦 Dans mon portefeuille</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      ${myTickers.map(c => `
+      <div onclick="showEntrepriseDetail('${c.ticker}','${c.name}')"
+           style="background:#f9f9f9;border-radius:12px;padding:12px;cursor:pointer;border:2px solid transparent;transition:all 0.2s"
+           onmouseover="this.style.borderColor='#1c1c1e'" onmouseout="this.style.borderColor='transparent'">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">${c.name}</div>
+          <div style="font-size:11px;font-weight:700;color:${parseFloat(c.pnl)>=0?'#1a7f5a':'#cc2f26'}">${parseFloat(c.pnl)>=0?'+':''}${c.pnl}%</div>
+        </div>
+        <div style="font-size:11px;color:#8e8e93">${c.ticker} · ${c.value}</div>
+      </div>`).join('')}
+    </div>` : ''}
+
+    <!-- Watchlist -->
+    ${watchItems.length ? `
+    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">⭐ Mes favoris</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      ${watchItems.map(c => `
+      <div onclick="showEntrepriseDetail('${c.ticker}','${c.name}')"
+           style="background:#fff9e6;border-radius:12px;padding:12px;cursor:pointer;border:2px solid transparent;transition:all 0.2s"
+           onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='transparent'">
+        <div style="font-size:13px;font-weight:800;color:#1c1c1e">${c.name}</div>
+        <div style="font-size:11px;color:#8e8e93">${c.ticker}</div>
+      </div>`).join('')}
+    </div>` : ''}
+
+    <!-- Entreprises populaires -->
+    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🔭 À découvrir</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${popular.map(c => `
+      <div onclick="showEntrepriseDetail('${c.ticker}','${c.name}')"
+           style="background:#fff;border-radius:12px;padding:12px;cursor:pointer;border:2px solid #f0f0f0;transition:all 0.2s"
+           onmouseover="this.style.borderColor='#1c1c1e';this.style.background='#f9f9f9'" onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'">
+        <div style="font-size:13px;font-weight:800;color:#1c1c1e">${c.name}</div>
+        <div style="font-size:11px;color:#8e8e93">${c.ticker} · ${c.secteur}</div>
+      </div>`).join('')}
+    </div>`;
+}
+
+function searchEntreprise(query) {
+  clearTimeout(entrepriseSearchTimeout);
+  const drop = document.getElementById('ent-search-results');
+  if (!query || query.length < 2) { drop.style.display = 'none'; return; }
+  entrepriseSearchTimeout = setTimeout(async () => {
+    try {
+      const res = await fetch('/api/search?q=' + encodeURIComponent(query));
+      const data = await res.json();
+      const results = (data.quotes || []).slice(0, 6);
+      if (!results.length) { drop.style.display = 'none'; return; }
+      drop.style.display = 'block';
+      drop.innerHTML = results.map(r => `
+        <div onclick="showEntrepriseDetail('${r.symbol}','${(r.shortname||r.longname||r.symbol).replace(/'/g,"\'")}');document.getElementById('ent-search-results').style.display='none'"
+             style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px"
+             onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='#fff'">
+          <strong>${r.shortname || r.symbol}</strong> <span style="color:#8e8e93">${r.symbol}</span>
+        </div>`).join('');
+    } catch(e) { drop.style.display = 'none'; }
+  }, 400);
+}
+
+async function showEntrepriseDetail(ticker, name) {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+
+  const myPos = positions.find(p => p.name === ticker);
+  const isFav = watchlist.some(w => w.ticker === ticker);
+
+  list.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button onclick="renderEntreprises()" style="background:#f5f5f5;border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;font-weight:600">← Retour</button>
+      <div style="font-size:16px;font-weight:800;color:#1c1c1e">${name}</div>
+      <span style="font-size:12px;color:#8e8e93">${ticker}</span>
+    </div>
+    <div id="ent-detail-content" style="display:flex;flex-direction:column;gap:12px">
+      <div style="text-align:center;padding:30px;color:#8e8e93">
+        <div style="font-size:28px;margin-bottom:8px">🧠</div>
+        <div style="font-size:13px">Analyse de ${name} en cours...</div>
+      </div>
+    </div>`;
+
+  try {
+    // Prix live + fiche IA en parallèle
+    const [priceRes, ficheRaw] = await Promise.all([
+      fetch('/api/prices?symbols=' + encodeURIComponent(ticker)).then(r => r.json()).catch(() => ({})),
+      callClaude(
+        `Fais une fiche complète sur ${name} (${ticker}) pour un investisseur débutant. Date: ${new Date().toLocaleDateString('fr-FR')}.
+Réponds UNIQUEMENT en JSON :
+{
+  "description": "Ce que fait l'entreprise en 2 phrases simples",
+  "secteur": "Secteur d'activité",
+  "pays": "Pays/Bourse",
+  "points_forts": ["point 1","point 2","point 3"],
+  "points_faibles": ["risque 1","risque 2"],
+  "signal": "acheter" ou "attendre" ou "vendre",
+  "conviction": "forte" ou "modérée" ou "faible",
+  "risque": 3,
+  "horizon_ideal": "Ex: 2-5 ans",
+  "pour_qui": "Pour quel type d'investisseur",
+  "catalyseur": "Principale raison d'acheter maintenant",
+  "per_estime": "Ex: 25x",
+  "dividende": "Ex: 2.5% ou Aucun"
+}`,
+        'Tu es analyste financier. Réponds UNIQUEMENT en JSON valide.'
+      )
+    ]);
+
+    const price = priceRes.quotes?.[0]?.price || priceRes.price || 0;
+    const change = priceRes.quotes?.[0]?.change_pct || 0;
+
+    const clean = ficheRaw.replace(/```json|```/g,'').trim();
+    const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    const fiche = JSON.parse(clean.slice(s, e+1));
+
+    const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26' };
+    const sigBg    = { acheter:'#e8f8f0', attendre:'#fff9e6', vendre:'#fff0f0' };
+    const sigLabel = { acheter:'ACHETER', attendre:'ATTENDRE', vendre:'VENDRE' };
+
+    document.getElementById('ent-detail-content').innerHTML = `
+      <!-- HEADER PRIX -->
+      <div style="background:#1c1c1e;border-radius:14px;padding:16px;color:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:24px;font-weight:900">${price ? fmt(price)+'€' : 'Prix N/A'}</div>
+            <div style="font-size:13px;margin-top:2px;color:${change>=0?'#4ade80':'#f87171'}">${change>=0?'+':''}${change.toFixed(2)}% aujourd'hui</div>
+          </div>
+          <div style="background:${sigBg[fiche.signal]};color:${sigColor[fiche.signal]};border-radius:10px;padding:8px 14px;font-weight:800;font-size:13px">
+            ${sigLabel[fiche.signal]||fiche.signal.toUpperCase()}
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
+          <span style="font-size:12px;color:#a3a3a3">${fiche.secteur}</span>
+          <span style="font-size:12px;color:#a3a3a3">${fiche.pays}</span>
+          <span style="font-size:12px;color:#a3a3a3">PER : ${fiche.per_estime}</span>
+          <span style="font-size:12px;color:#a3a3a3">Dividende : ${fiche.dividende}</span>
+        </div>
+      </div>
+
+      <!-- MON EXPOSITION si en portefeuille -->
+      ${myPos ? `
+      <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px">
+        <div style="font-size:12px;font-weight:800;color:#1a7f5a;margin-bottom:8px">📦 Ma position</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div style="text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">QUANTITÉ</div><div style="font-size:14px;font-weight:800">${myPos.qty}</div></div>
+          <div style="text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">PRU</div><div style="font-size:14px;font-weight:800">${fmt(myPos.pru)}€</div></div>
+          <div style="text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">PERF.</div><div style="font-size:14px;font-weight:800;color:${((myPos.price-myPos.pru)/myPos.pru*100)>=0?'#1a7f5a':'#cc2f26'}">${((myPos.price-myPos.pru)/myPos.pru*100)>=0?'+':''}${((myPos.price-myPos.pru)/myPos.pru*100).toFixed(1)}%</div></div>
+        </div>
+      </div>` : ''}
+
+      <!-- DESCRIPTION -->
+      <div style="background:#f9f9f9;border-radius:14px;padding:14px 16px">
+        <div style="font-size:12px;font-weight:800;color:#8e8e93;text-transform:uppercase;margin-bottom:6px">À propos</div>
+        <div style="font-size:14px;color:#1c1c1e;line-height:1.6">${fiche.description}</div>
+        <div style="margin-top:10px;padding:10px 12px;background:#fff;border-radius:10px;font-size:13px;color:#1c1c1e">
+          <strong>Pour qui ?</strong> ${fiche.pour_qui}
+        </div>
+        <div style="margin-top:6px;padding:10px 12px;background:#fff;border-radius:10px;font-size:13px;color:#1a7f5a">
+          <strong>💡 Catalyseur :</strong> ${fiche.catalyseur}
+        </div>
+      </div>
+
+      <!-- POUR / CONTRE -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:#e8f8f0;border-radius:14px;padding:12px 14px">
+          <div style="font-size:11px;font-weight:700;color:#1a7f5a;margin-bottom:8px">✅ Points forts</div>
+          ${fiche.points_forts.map(p=>`<div style="font-size:12px;color:#1c1c1e;margin-bottom:4px">• ${p}</div>`).join('')}
+        </div>
+        <div style="background:#fff0f0;border-radius:14px;padding:12px 14px">
+          <div style="font-size:11px;font-weight:700;color:#cc2f26;margin-bottom:8px">⚠️ Risques</div>
+          ${fiche.points_faibles.map(p=>`<div style="font-size:12px;color:#1c1c1e;margin-bottom:4px">• ${p}</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- MÉTRIQUES -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:#fff;border-radius:12px;padding:12px 14px;border:2px solid #f0f0f0;text-align:center">
+          <div style="font-size:10px;color:#8e8e93;font-weight:700">HORIZON IDÉAL</div>
+          <div style="font-size:14px;font-weight:800;color:#1c1c1e;margin-top:4px">${fiche.horizon_ideal}</div>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:12px 14px;border:2px solid #f0f0f0;text-align:center">
+          <div style="font-size:10px;color:#8e8e93;font-weight:700">CONVICTION IA</div>
+          <div style="font-size:14px;font-weight:800;color:${sigColor[fiche.signal]};margin-top:4px">${fiche.conviction}</div>
+        </div>
+      </div>
+
+      <!-- ACTIONS -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="openDecisionFromPos('${ticker}','acheter')" style="background:#1a7f5a;color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+          💰 Analyser pour acheter
+        </button>
+        <div style="display:flex;gap:8px">
+          ${!myPos ? `<button onclick="addToPortfolioFromDecision('${ticker}',${Math.round((profile.bankroll||1000)*0.1)})" style="flex:1;background:#f5f5f5;border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:600;cursor:pointer">➕ Ajouter au portef.</button>` : ''}
+          <button onclick="${isFav?`removeFromWatchlist`:`addToWatchlistBtn`}('${ticker}','${name}')" style="flex:1;background:#f5f5f5;border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:600;cursor:pointer">
+            ${isFav ? '⭐ Retirer des favoris' : '⭐ Ajouter aux favoris'}
+          </button>
+        </div>
+      </div>`;
+
+  } catch(e) {
+    document.getElementById('ent-detail-content').innerHTML = `
+      <div style="text-align:center;padding:20px;color:#8e8e93">
+        <div style="font-size:20px;margin-bottom:8px">⚠️</div>
+        <div>Impossible de charger la fiche. Réessaie.</div>
+        <button onclick="showEntrepriseDetail('${ticker}','${name}')" style="margin-top:12px;background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">🔄 Réessayer</button>
+      </div>`;
+  }
+}
+
+function addToWatchlistBtn(ticker, name) {
+  toggleFavorite(ticker, name, '');
+  renderEntreprises();
+  showToast('⭐ ' + name + ' ajouté aux favoris !');
+}
+
+function removeFromWatchlist(ticker, name) {
+  toggleFavorite(ticker, name, '');
+  renderEntreprises();
+  showToast('Retiré des favoris');
 }
 
 async function renderSignaux() {
@@ -1680,6 +2221,10 @@ function setNewsFilter(filter, el) {
   if (el) el.classList.add('active');
   if (filter === 'signaux') {
     renderSignaux();
+  } else if (filter === 'entreprises') {
+    renderEntreprises();
+  } else if (filter === 'agenda') {
+    renderAgenda();
   } else {
     renderNewsList();
   }
