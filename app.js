@@ -1604,10 +1604,15 @@ Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`;
   // L'IA choisit elle-même les meilleures opportunités du jour
   async function getOppoTickers() {
     const exclude = myTickers.join(', ');
-    const prompt = `Analyste financier, le ${date}. Donne-moi 9 tickers d'actions avec les meilleures opportunités aujourd'hui.
-Mix : grandes capitalisations US + actions françaises/européennes + quelques mid-cap moins connues mais prometteuses.
-Exclus ces tickers déjà en portefeuille : ${exclude || 'aucun'}.
-Réponds UNIQUEMENT avec un JSON : ["AAPL","MC.PA","ASML","..."]`;
+    const prompt = `Analyste financier, le ${date}. Sélectionne 9 tickers avec les meilleures opportunités aujourd'hui.
+OBLIGATOIRE : exactement ce mix :
+- 2 grandes caps US (ex: NVDA, MSFT, AAPL, AMZN, TSLA)
+- 2 actions françaises CAC40 (ex: MC.PA, TTE.PA, BNP.PA, AI.PA, SAN.PA, ORA.PA)
+- 2 actions européennes hors France (ex: ASML, SAP.DE, NOVO-B.CO, NESN.SW, SHEL.L)
+- 2 mid-cap moins connues prometteuses (ex: ALTEN.PA, SOITEC.PA, CRWD, DDOG, PLTR, NET)
+- 1 action de n'importe quel secteur avec une opportunité spéciale aujourd'hui
+Exclus : ${exclude || 'aucun'}.
+Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
     try {
       const raw = await callClaude(prompt, 'Réponds UNIQUEMENT avec un tableau JSON de tickers. Rien d autre.');
       const clean = raw.replace(/```json|```/g,'').trim();
