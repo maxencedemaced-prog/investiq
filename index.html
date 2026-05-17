@@ -288,24 +288,13 @@
     <!-- HOME -->
     <section id="sec-home" class="sec active">
       <div class="page-header">
-        <div><h1 id="home-greeting">Bonjour !</h1><p class="page-sub">Voici un résumé de ton portefeuille</p></div>
+        <div><h1 id="home-greeting">Bonjour !</h1><p class="page-sub" id="home-date"></p></div>
         <button class="btn-add" onclick="nav('ajouter')">+ Ajouter</button>
       </div>
       <div class="metrics-grid" id="home-metrics"></div>
-      <div class="cards-row">
-        <div class="card flex-2">
-          <div class="card-head"><div class="card-title"><span class="card-icon green">▲</span>Santé du portefeuille</div></div>
-          <div id="home-score"></div>
-        </div>
-        <div class="card flex-1">
-          <div class="card-head"><div class="card-title"><span class="card-icon amber">!</span>Alertes</div></div>
-          <div id="home-alerts"></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon dark">◎</span>Progression objectif</div></div>
-        <div id="home-obj"></div>
-      </div>
+      <div id="home-score"></div>
+      <div id="home-alerts" style="display:none"></div>
+      <div id="home-obj" style="display:none"></div>
       <div class="card">
         <div class="card-head"><div class="card-title"><span class="card-icon blue">≡</span>Par plateforme</div></div>
         <div id="home-platforms"></div>
