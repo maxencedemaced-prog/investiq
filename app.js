@@ -1514,38 +1514,24 @@ async function renderSignaux() {
     <div style="font-size:13px;font-weight:600">Analyse du marché en cours...</div>
   </div>`;
 
-  // Tes positions en premier
-  const myTickers = positions.map(p => p.name);
-  
-  // Actions populaires à surveiller
-  const watchTickers = watchlist.map(w => w.ticker);
-  const popularTickers = ['AAPL','MSFT','NVDA','TSLA','MC.PA','AI.PA','IWDA.L','VWCE.DE','TTE.PA','AMZN'];
-  const allTickers = [...new Set([...myTickers, ...watchTickers, ...popularTickers])].slice(0, 8);
+  // Max 5 tickers : tes positions groupées d'abord, puis populaires
+  const myTickers = [...new Set(positions.map(p => p.name))].slice(0, 3);
+  const popularTickers = ['AAPL','MSFT','NVDA','MC.PA','IWDA.L'];
+  const allTickers = [...new Set([...myTickers, ...popularTickers])].slice(0, 5);
 
   const date = new Date().toLocaleDateString('fr-FR');
-  const prompt = `Tu es analyste financier. Aujourd'hui le ${date}, génère des signaux de trading pour ces actifs : ${allTickers.join(', ')}.
-Pour chaque actif, analyse les conditions actuelles du marché.
-
-Réponds UNIQUEMENT en JSON valide :
-[
-  {
-    "ticker": "AAPL",
-    "name": "Apple",
-    "signal": "acheter" ou "attendre" ou "vendre" ou "eviter",
-    "conviction": "forte" ou "modérée" ou "faible",
-    "prix_entree": 0,
-    "objectif": 0,
-    "stop_loss": 0,
-    "horizon": "1-4 semaines",
-    "raison": "Raison principale en 1 phrase",
-    "type": "Action" ou "ETF"
-  }
-]`;
+  const prompt = `Analyste financier. Le ${date}, donne un signal pour chaque actif : ${allTickers.join(', ')}.
+Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après) :
+[{"ticker":"AAPL","name":"Apple","signal":"acheter","conviction":"modérée","objectif":200,"stop_loss":180,"horizon":"2-4 semaines","raison":"Raison courte","type":"Action"}]
+Signaux possibles : acheter, attendre, vendre, eviter.`;
 
   try {
-    const raw = await callClaude(prompt, 'Tu es analyste financier expert. Réponds UNIQUEMENT en JSON valide sans markdown.');
+    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT avec du JSON valide. Pas de markdown, pas de texte.');
     const clean = raw.replace(/```json|```/g,'').trim();
-    const signaux = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']')+1));
+    const start = clean.indexOf('[');
+    const end = clean.lastIndexOf(']');
+    if (start === -1 || end === -1) throw new Error('No JSON array found');
+    const signaux = JSON.parse(clean.slice(start, end+1));
 
     const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#cc2f26' };
     const sigBg    = { acheter:'#e8f8f0', attendre:'#fff9e6', vendre:'#fff0f0', eviter:'#fff0f0' };
