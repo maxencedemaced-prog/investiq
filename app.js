@@ -1863,20 +1863,11 @@ async function loadEntrepriseNews(companies) {
     
     // Génère un résumé des actualités importantes via l'IA
     const date = new Date().toLocaleDateString('fr-FR');
-    const prompt = `Journaliste financier. Le ${date}, donne les actualités importantes récentes pour ces entreprises : ${companies.map(c=>c.name).join(', ')}.
-Pour chaque entreprise avec une actualité notable, génère un article court.
-Réponds UNIQUEMENT en JSON :
-[{
-  "ticker": "AAPL",
-  "entreprise": "Apple",
-  "titre": "Titre accrocheur de l'actualité",
-  "resume": "Résumé en 2 phrases maximum, simple et clair",
-  "impact": "positif" ou "negatif" ou "neutre",
-  "categorie": "Résultats" ou "Produit" ou "Direction" ou "Marché" ou "Réglementation" ou "Fusion",
-  "date": "Aujourd'hui" ou "Cette semaine" ou "Ce mois",
-  "url": "https://www.google.com/search?q=${encodeURIComponent('AAPL actualité 2026')}"
-}]
-Génère 6 à 8 articles. Mets de vraies URLs de recherche Google pour chaque.`;
+    const companiesList = companies.map(c=>c.name).join(', ');
+    const prompt = `Journaliste financier, le ${date}. Donne 6 actualités importantes récentes pour ces entreprises : ${companiesList}.
+Réponds UNIQUEMENT en JSON valide, sans markdown :
+[{"ticker":"AAPL","entreprise":"Apple","titre":"Titre court","resume":"2 phrases max","impact":"positif","categorie":"Résultats","date":"Cette semaine"}]
+impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/Réglementation.`;
 
     const raw = await callClaude(prompt, 'Tu es journaliste financier. Réponds UNIQUEMENT en JSON valide.');
     const clean = raw.replace(/```json|```/g,'').trim();
@@ -1889,7 +1880,7 @@ Génère 6 à 8 articles. Mets de vraies URLs de recherche Google pour chaque.`;
 
     newsEl.innerHTML = articles.map(a => {
       const myPos = positions.find(p => p.name === a.ticker);
-      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(a.entreprise + ' actualité bourse 2026')}`;
+      const searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(a.entreprise + ' actualité bourse 2026');
       return `
       <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;transition:all 0.2s"
            onmouseover="this.style.borderColor='#1c1c1e'" onmouseout="this.style.borderColor='#f0f0f0'">
