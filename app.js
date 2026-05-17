@@ -1524,10 +1524,25 @@ async function renderAgenda() {
 
   try {
     const res = await fetch('/api/agenda');
+    if (!res.ok) throw new Error('API ' + res.status);
     const data = await res.json();
     agendaEvents = data.events || [];
   } catch(e) {
-    agendaEvents = [];
+    console.warn('Agenda API failed, using AI fallback');
+    // Fallback : génère les événements via l'IA
+    try {
+      const date = new Date().toLocaleDateString('fr-FR');
+      const raw = await callClaude(
+        `Liste 8 événements économiques importants prévus dans les 30 prochains jours à partir du ${date}. Mix : BCE, Fed, inflation, PIB, emploi, résultats d'entreprises.
+Réponds UNIQUEMENT en JSON :
+[{"id":"1","date":"2026-05-20","heure":"14:30","titre":"Décision taux Fed","pays":"US","impact":"high","prevision":"4.25%","precedent":"4.25%"}]
+impact: high/medium/low. pays: US/EU/FR/DE/UK.`,
+        'Réponds UNIQUEMENT en JSON valide.'
+      );
+      const clean = raw.replace(/\`\`\`json|\`\`\`/g,'').trim();
+      const s = clean.indexOf('['), e = clean.lastIndexOf(']');
+      if (s !== -1 && e !== -1) agendaEvents = JSON.parse(clean.slice(s, e+1));
+    } catch(e2) { agendaEvents = []; }
   }
 
   renderAgendaView();
