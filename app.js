@@ -1609,24 +1609,26 @@ function renderAgendaView() {
   }
 
   function eventDetailCard(evt) {
+    const borderW = evt.impact === 'high' ? '4px' : evt.impact === 'medium' ? '3px' : '2px';
+    const cardBg = evt.impact === 'high' ? '#fff5f5' : evt.impact === 'medium' ? '#fffbf0' : '#fafafa';
     return `
-    <div style="background:${impactBg[evt.impact]||'#f5f5f5'};border-radius:12px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${impactColor[evt.impact]||'#8e8e93'}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-        <div style="font-size:13px;font-weight:700;color:#1c1c1e;flex:1">${paysFlag[evt.pays]||'🌍'} ${evt.titre}</div>
-        <span style="background:${impactColor[evt.impact]};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap;margin-left:8px">${impactLabel[evt.impact]||'Faible'}</span>
+    <div style="background:${cardBg};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:${borderW} solid ${impactColor[evt.impact]||'#8e8e93'};box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div style="font-size:15px;font-weight:800;color:#1c1c1e;flex:1;line-height:1.3">${paysFlag[evt.pays]||'🌍'} ${evt.titre}</div>
+        <span style="background:${impactColor[evt.impact]};color:#fff;font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;white-space:nowrap;margin-left:10px">${impactLabel[evt.impact]||'Faible'}</span>
       </div>
-      <div style="display:flex;gap:12px;font-size:12px;color:#8e8e93;margin-bottom:8px">
+      <div style="display:flex;gap:14px;font-size:13px;color:#555;font-weight:600;margin-bottom:10px">
         <span>🕐 ${evt.heure}</span>
         <span>${evt.pays}</span>
       </div>
       ${evt.prevision || evt.precedent ? `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
-        ${evt.precedent ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:#8e8e93;font-weight:700">PRÉCÉDENT</div><div style="font-size:12px;font-weight:800">${evt.precedent}</div></div>` : ''}
-        ${evt.prevision ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:#8e8e93;font-weight:700">PRÉVISION</div><div style="font-size:12px;font-weight:800">${evt.prevision}</div></div>` : ''}
-        ${evt.actual ? `<div style="background:#e8f8f0;border-radius:8px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">RÉSULTAT</div><div style="font-size:12px;font-weight:800;color:#1a7f5a">${evt.actual}</div></div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr${evt.actual?' 1fr':''};gap:8px;margin-bottom:10px">
+        ${evt.precedent ? `<div style="background:#fff;border-radius:10px;padding:8px 10px;text-align:center;border:1px solid #e5e5ea"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:3px">PRÉCÉDENT</div><div style="font-size:14px;font-weight:800;color:#1c1c1e">${evt.precedent}</div></div>` : ''}
+        ${evt.prevision ? `<div style="background:#fff;border-radius:10px;padding:8px 10px;text-align:center;border:1px solid #e5e5ea"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:3px">PRÉVISION</div><div style="font-size:14px;font-weight:800;color:#1c1c1e">${evt.prevision}</div></div>` : ''}
+        ${evt.actual ? `<div style="background:#e8f8f0;border-radius:10px;padding:8px 10px;text-align:center;border:1px solid #1a7f5a40"><div style="font-size:11px;color:#1a7f5a;font-weight:700;margin-bottom:3px">RÉSULTAT</div><div style="font-size:14px;font-weight:800;color:#1a7f5a">${evt.actual}</div></div>` : ''}
       </div>` : ''}
-      <div id="evt-impact-${evt.id}" style="font-size:12px;color:#8e8e93;cursor:pointer" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\'")}','${evt.impact}')">
-        💬 <span style="text-decoration:underline">Voir l'impact potentiel sur les marchés →</span>
+      <div id="evt-impact-${evt.id}" style="font-size:13px;color:#1c1c1e;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\'")}','${evt.impact}')">
+        💬 <span style="text-decoration:underline;color:#1a7f5a">Voir l'impact potentiel sur les marchés →</span>
       </div>
     </div>`;
   }
@@ -1663,9 +1665,11 @@ function renderAgendaView() {
         const evts = eventsForDate(d);
         const isToday = d.toDateString() === now.toDateString();
         return `<div onclick="agendaSelectDay('${d.toISOString()}')"
-          style="min-height:50px;background:${isToday?'#1c1c1e':current?'#fff':'#fafafa'};border-radius:8px;padding:4px;cursor:pointer;border:1px solid ${isToday?'#1c1c1e':'#f0f0f0'};opacity:${current?1:0.4}">
-          <div style="font-size:11px;font-weight:${isToday?800:500};color:${isToday?'#fff':current?'#1c1c1e':'#8e8e93'}">${d.getDate()}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:1px;margin-top:2px">${evts.slice(0,3).map(e=>eventDot(e)).join('')}${evts.length>3?`<div style="font-size:8px;color:#8e8e93">+${evts.length-3}</div>`:''}</div>
+          style="min-height:58px;background:${isToday?'#1c1c1e':current?'#fff':'#f8f8f8'};border-radius:10px;padding:6px;cursor:pointer;border:2px solid ${isToday?'#1c1c1e':evts.length>0?'#e0e0e0':'#f0f0f0'};opacity:${current?1:0.35};transition:all 0.15s"
+          onmouseover="if(!${isToday})this.style.borderColor='#1c1c1e'" onmouseout="if(!${isToday})this.style.borderColor='${evts.length>0?'#e0e0e0':'#f0f0f0'}'">
+          <div style="font-size:13px;font-weight:${isToday?900:600};color:${isToday?'#fff':current?'#1c1c1e':'#aaa'}">${d.getDate()}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px">${evts.slice(0,4).map(e=>eventDot(e)).join('')}</div>
+          ${evts.length>0?`<div style="font-size:10px;font-weight:700;color:${isToday?'#aaa':'#555'};margin-top:1px">${evts.length} evt</div>`:''}
         </div>`;
       }).join('')}
     </div>
@@ -1758,20 +1762,20 @@ function agendaSelectDay(isoDate) {
       ${dayNames[d.getDay()]} ${d.getDate()} ${monthNames[d.getMonth()]} — ${evts.length} événement${evts.length>1?'s':''}
     </div>
     ${evts.sort((a,b)=>a.heure.localeCompare(b.heure)).map(evt => `
-    <div style="background:${impactBg[evt.impact]||'#f5f5f5'};border-radius:12px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${impactColor[evt.impact]||'#8e8e93'}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-        <div style="font-size:13px;font-weight:700;color:#1c1c1e;flex:1">${paysFlag[evt.pays]||'🌍'} ${evt.titre}</div>
-        <span style="background:${impactColor[evt.impact]};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:8px">${impactLabel[evt.impact]||''}</span>
+    <div style="background:${evt.impact==='high'?'#fff5f5':evt.impact==='medium'?'#fffbf0':'#fafafa'};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:${evt.impact==='high'?'4px':evt.impact==='medium'?'3px':'2px'} solid ${impactColor[evt.impact]||'#8e8e93'};box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div style="font-size:15px;font-weight:800;color:#1c1c1e;flex:1;line-height:1.3">${paysFlag[evt.pays]||'🌍'} ${evt.titre}</div>
+        <span style="background:${impactColor[evt.impact]};color:#fff;font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;margin-left:10px">${impactLabel[evt.impact]||''}</span>
       </div>
-      <div style="font-size:12px;color:#8e8e93;margin-bottom:8px">🕐 ${evt.heure} · ${evt.pays}</div>
+      <div style="font-size:13px;color:#555;font-weight:600;margin-bottom:10px">🕐 ${evt.heure} · ${evt.pays}</div>
       ${evt.prevision || evt.precedent ? `
-      <div style="display:grid;grid-template-columns:${evt.actual?'1fr 1fr 1fr':'1fr 1fr'};gap:6px;margin-bottom:8px">
-        ${evt.precedent?`<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#8e8e93;font-weight:700">PRÉCÉDENT</div><div style="font-size:12px;font-weight:800">${evt.precedent}</div></div>`:''}
-        ${evt.prevision?`<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#8e8e93;font-weight:700">PRÉVISION</div><div style="font-size:12px;font-weight:800">${evt.prevision}</div></div>`:''}
-        ${evt.actual?`<div style="background:#e8f8f0;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">RÉSULTAT</div><div style="font-size:12px;font-weight:800;color:#1a7f5a">${evt.actual}</div></div>`:''}
+      <div style="display:grid;grid-template-columns:${evt.actual?'1fr 1fr 1fr':'1fr 1fr'};gap:8px;margin-bottom:10px">
+        ${evt.precedent?`<div style="background:#fff;border-radius:10px;padding:8px;text-align:center;border:1px solid #e5e5ea"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:3px">PRÉCÉDENT</div><div style="font-size:14px;font-weight:800;color:#1c1c1e">${evt.precedent}</div></div>`:''}
+        ${evt.prevision?`<div style="background:#fff;border-radius:10px;padding:8px;text-align:center;border:1px solid #e5e5ea"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:3px">PRÉVISION</div><div style="font-size:14px;font-weight:800;color:#1c1c1e">${evt.prevision}</div></div>`:''}
+        ${evt.actual?`<div style="background:#e8f8f0;border-radius:10px;padding:8px;text-align:center;border:1px solid #1a7f5a40"><div style="font-size:11px;color:#1a7f5a;font-weight:700;margin-bottom:3px">RÉSULTAT</div><div style="font-size:14px;font-weight:800;color:#1a7f5a">${evt.actual}</div></div>`:''}
       </div>` : ''}
-      <div id="evt-impact-${evt.id}" style="font-size:12px;color:#8e8e93;cursor:pointer" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\'")}','${evt.impact}')">
-        💬 <span style="text-decoration:underline">Voir l'impact potentiel →</span>
+      <div id="evt-impact-${evt.id}" style="font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\'")}','${evt.impact}')">
+        💬 <span style="text-decoration:underline;color:#1a7f5a">Voir l'impact potentiel →</span>
       </div>
     </div>`).join('')}`;
 }
