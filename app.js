@@ -94,6 +94,7 @@ let objChartCapital = 0;
 let objChartMonthly = 200;
 let objChartRate = 7;
 let objChartTarget = 100000;
+let objRisk = 'equilibre';
 
 function buildObjChart(capital, monthly, target, years, annualRate) {
   objChartCapital = capital;
@@ -1457,6 +1458,14 @@ async function initApp(user) {
   await loadProfile(); await loadPositions(); await loadObjective();
   loadChatHistory();
   nav('home');
+  // Si objectif chargé depuis Supabase, prêt à afficher au clic sur Objectif
+  if (objChartCapital && objChartTarget) {
+    try { localStorage.setItem('iq_validated_objective', JSON.stringify({
+      capital: objChartCapital, monthly: objChartMonthly, target: objChartTarget,
+      years: objChartYears, rate: objChartRate, risk: objRisk,
+      validatedAt: new Date().toISOString()
+    })); } catch {}
+  }
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   setTimeout(() => showOnboarding(), 500);
   startSmartRefresh();
@@ -2054,7 +2063,6 @@ function renderSante() {
 }
 
 // ===== OBJECTIF WIZARD =====
-let objRisk = 'equilibre';
 let objPlan = null;
 
 function objGo(step) {
