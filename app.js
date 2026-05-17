@@ -1905,19 +1905,43 @@ function renderPortfolio() {
   document.getElementById('alloc-card').style.display=positions.length?'block':'none';
   if(!positions.length){grid.innerHTML='';return;}
   loadSignalsCache();
-  grid.innerHTML=positions.map((p,idx)=>{
+
+  // Groupe les positions par ticker
+  const grouped = {};
+  positions.forEach(p => {
+    if (!grouped[p.name]) {
+      grouped[p.name] = { ...p, _ids: [p.id], _lines: [p] };
+    } else {
+      const g = grouped[p.name];
+      const totalQty = g.qty + p.qty;
+      // PRU moyen pondéré
+      g.pru = (g.qty * g.pru + p.qty * p.pru) / totalQty;
+      g.qty = totalQty;
+      g.price = p.price; // même prix live
+      g.change_pct = p.change_pct;
+      g.alert_price = g.alert_price || p.alert_price;
+      g._ids.push(p.id);
+      g._lines.push(p);
+    }
+  });
+  const grouped_arr = Object.values(grouped);
+
+  grid.innerHTML=grouped_arr.map((p,idx)=>{
     const val=p.qty*p.price,inv=p.qty*p.pru,pnl=val-inv,pct=inv?pnl/inv*100:0;
-    const sig=posSignals[p.id];
+    const sig=posSignals[p.id] || posSignals[p._ids[0]];
     const sigHtml=sig?`<span class="signal-badge-large ${sig.action==='acheter'?'sig-buy':sig.action==='vendre'?'sig-sell':'sig-hold'}">${sig.action==='acheter'?'↑ Renforcer':sig.action==='vendre'?'↓ Alléger':'→ Garder'}</span>`:`<span class="signal-badge-large sig-loading">Analyse...</span>`;
     const chgHtml=p.change_pct!==undefined?`<span style="font-size:12px;color:${p.change_pct>=0?'#1a7f5a':'#ff3b30'};font-weight:700">${p.change_pct>=0?'+':''}${p.change_pct?.toFixed(1)}% auj.</span>`:'';
     const alertHtml=p.alert_price?`<span style="font-size:11px;color:#8e8e93;font-weight:600">🔔 Alerte: ${fmt(p.alert_price)}€</span>`:'';
+    const multiHtml=p._ids.length>1?`<span style="font-size:11px;color:#8e8e93;font-weight:600">📦 ${p._ids.length} lignes regroupées · PRU moy. ${fmt(p.pru)}€</span>`:'';
+    const delBtns=p._ids.map(id=>`<button class="btn-del" onclick="delPos('${id}')" style="margin-left:4px">Supprimer</button>`).join('');
     return`<div class="pos-card">
-      <div class="pos-card-head" onclick="togglePosSignal('${p.id}')">
+      <div class="pos-card-head" onclick="togglePosSignal('${p._ids[0]}')">
         <div class="pos-card-left">
           <div class="pos-avatar" style="background:${COLORS[idx%COLORS.length]}">${p.name.slice(0,2).toUpperCase()}</div>
           <div>
             <div class="pos-name">${p.name} ${chgHtml}</div>
             <div class="pos-meta">${p.type} · ${p.qty} parts · ${p.platform||''} ${alertHtml}</div>
+            ${multiHtml}
           </div>
         </div>
         <div class="pos-card-right">
@@ -1925,11 +1949,11 @@ function renderPortfolio() {
           <div class="pos-pnl ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${pct.toFixed(1)}% (${pnl>=0?'+':''}${fmt(pnl)}€)</div>
         </div>
       </div>
-      <div class="pos-signal-row" id="sig-${p.id}">
+      <div class="pos-signal-row" id="sig-${p._ids[0]}">
         <div class="pos-signal-content">
           <div class="signal-header"><div style="font-size:12px;color:#8e8e93;font-weight:700">Signal IA</div>${sigHtml}</div>
           <div class="perf-bar-wrap">
-            <div class="perf-bar-label"><span>PRU : ${fmt(p.pru)}€</span><span>Actuel : ${fmt(p.price)}€</span></div>
+            <div class="perf-bar-label"><span>PRU moy. : ${fmt(p.pru)}€</span><span>Actuel : ${fmt(p.price)}€</span></div>
             <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${Math.min(Math.abs(pct)/30*100,100)}%;background:${pnl>=0?'#1a7f5a':'#ff3b30'}"></div></div>
           </div>
           ${sig?`<div class="signal-text" style="margin-top:8px">${sig.texte}</div>`:''}
@@ -1937,15 +1961,15 @@ function renderPortfolio() {
             <button class="btn-sm buy" onclick="openDecisionFromPos('${p.name}','acheter')">+ Renforcer</button>
             <button class="btn-sm" onclick="openDecisionFromPos('${p.name}','garder')">Analyser</button>
             <button class="btn-sm sell" onclick="openDecisionFromPos('${p.name}','vendre')">− Alléger</button>
-            ${!isDemo?`<button class="btn-sm" onclick="openEditPos('${p.id}')">✏ Modifier</button>`:''}
-            ${!isDemo?`<button class="btn-del" onclick="delPos('${p.id}')" style="margin-left:auto">Supprimer</button>`:''}
+            ${!isDemo?`<button class="btn-sm" onclick="openEditPos('${p._ids[0]}')">✏ Modifier</button>`:''}
+            ${!isDemo?delBtns:''}
           </div>
         </div>
       </div>
     </div>`;
   }).join('');
   if(tv>0) {
-    document.getElementById('alloc-bars').innerHTML=positions.map((p,i)=>{
+    document.getElementById('alloc-bars').innerHTML=grouped_arr.map((p,i)=>{
       const pc=p.qty*p.price/tv*100;
       return`<div class="bar-row"><div class="bar-label"><span>${p.name}</span><span>${pc.toFixed(1)}%</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pc}%;background:${COLORS[i%COLORS.length]}"></div></div></div>`;
     }).join('');
