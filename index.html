@@ -211,10 +211,16 @@
 </div>
 
 <!-- DEMO BANNER -->
-  <div id="demo-banner" style="display:none" class="demo-banner">
-    👀 Mode démo — <strong>données fictives</strong> · 
-    <a onclick="showOnboarding(true)" style="cursor:pointer;text-decoration:underline;margin-right:16px">📋 Créer mon plan →</a>
-    <a onclick="showAuthScreen()" style="cursor:pointer;text-decoration:underline">Créer un compte gratuit →</a>
+  <div id="demo-banner" style="display:none;background:#1c1c1e;color:#fff;padding:10px 20px;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap" class="demo-banner">
+    <span style="font-size:13px">👀 Mode démo — <strong>données fictives</strong></span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="showOnboarding(true)" style="background:#fff;color:#1c1c1e;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">
+        📋 Créer mon plan
+      </button>
+      <button onclick="showAuthScreen('signup')" style="background:#1a7f5a;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">
+        ✨ Créer un compte gratuit
+      </button>
+    </div>
   </div>
 
   <!-- TOPBAR -->
