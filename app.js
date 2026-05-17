@@ -3545,6 +3545,24 @@ function objGo(step) {
       wp.classList.toggle('done', i<step);
     }
   });
+  // Étape 1 : pré-remplit le capital avec la valeur du portefeuille
+  if (step === 1) {
+    const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+    const capitalEl = document.getElementById('obj-capital');
+    const monthlyEl = document.getElementById('obj-monthly');
+    if (capitalEl && tv > 0 && !capitalEl.value) {
+      capitalEl.value = Math.round(tv);
+    }
+    if (monthlyEl && objChartMonthly > 0 && !monthlyEl.value) {
+      monthlyEl.value = objChartMonthly;
+    }
+    // Affiche un message informatif
+    const hint = document.getElementById('obj-capital-hint');
+    if (hint && tv > 0) {
+      hint.textContent = `💡 Pré-rempli avec ton portefeuille actuel (${fmtK(tv)})`;
+      hint.style.display = 'block';
+    }
+  }
 }
 
 function selectRisk(risk) {
