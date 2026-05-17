@@ -386,29 +386,48 @@
 
     <!-- DECISION -->
     <section id="sec-decision" class="sec">
-      <div class="page-header"><h1>Aide à la décision</h1></div>
-      <div id="prefill-notice" class="prefill-notice" style="display:none"></div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon dark">⚙</span>Profil</div></div>
-        <div class="form-grid">
-          <div class="field"><label>Horizon</label><select id="d-horizon"><option value="court">Court (&lt;3 ans)</option><option value="moyen" selected>Moyen (3–7 ans)</option><option value="long">Long (&gt;7 ans)</option></select></div>
-          <div class="field"><label>Risque</label><select id="d-risk"><option value="faible" selected>Faible</option><option value="modere">Modéré</option><option value="eleve">Élevé</option></select></div>
-        </div>
+      <div class="page-header">
+        <div><h1>Aide à la décision</h1><p class="page-sub">Analyse personnalisée pour chaque actif</p></div>
       </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon amber">💡</span>Évaluer un actif</div></div>
-        <div class="form-grid">
-          <div class="field"><label>Ticker ou nom</label><input type="text" id="d-name" placeholder="Ex: IWDA, LVMH, Apple"></div>
-          <div class="field"><label>Montant <span id="d-pct-lbl" class="field-hint"></span></label><input type="number" id="d-amount" placeholder="500"></div>
+
+      <!-- STEP 1 : Quel actif ? -->
+      <div class="card" id="d-step1">
+        <div class="card-head"><div class="card-title"><span class="card-icon amber">🔍</span>Quel actif tu veux analyser ?</div></div>
+        <div class="field">
+          <input type="text" id="d-name" placeholder="Ex: IWDA, LVMH, Apple, Bitcoin..." style="font-size:16px;padding:14px">
         </div>
-        <div class="field" style="margin-bottom:16px">
-          <label>% bankroll : <strong id="d-pct-num">10</strong>%</label>
-          <input type="range" id="d-pct" min="1" max="50" step="1" value="10" oninput="updatePct()" class="slider">
-          <div class="slider-labels"><span>Prudent 1%</span><span>Équilibré 15%</span><span>Agressif 50%</span></div>
+        <!-- Intention -->
+        <div style="margin-top:12px">
+          <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Qu'est-ce que tu veux faire ?</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="d-intent-btn active" id="d-int-garder" onclick="setDecisionIntent('garder')">🤔 Je sais pas / Que faire ?</button>
+            <button class="d-intent-btn" id="d-int-acheter" onclick="setDecisionIntent('acheter')">💰 Acheter / Renforcer</button>
+            <button class="d-intent-btn" id="d-int-vendre" onclick="setDecisionIntent('vendre')">📤 Vendre / Réduire</button>
+          </div>
         </div>
-        <button class="btn-primary" onclick="analyseDecision()">Analyser avec l'IA →</button>
-        <div id="d-result" style="margin-top:16px"></div>
+        <!-- Montant -->
+        <div style="margin-top:16px">
+          <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Montant envisagé</div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <input type="range" id="d-pct" min="1" max="50" step="1" value="10" oninput="updatePct()" class="slider" style="flex:1">
+            <div style="background:#f5f5f5;border-radius:10px;padding:8px 14px;min-width:100px;text-align:center">
+              <div style="font-size:18px;font-weight:800;color:#1c1c1e" id="d-pct-num">10</div>
+              <div style="font-size:11px;color:#8e8e93">% · <span id="d-pct-lbl">500 €</span></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8e93;margin-top:4px"><span>Prudent 1%</span><span>Équilibré 15%</span><span>Agressif 50%</span></div>
+        </div>
+        <!-- Hidden fields pour compatibilité -->
+        <input type="hidden" id="d-horizon">
+        <input type="hidden" id="d-risk">
+        <input type="number" id="d-amount" style="display:none">
+        <button class="btn-primary" onclick="analyseDecision()" style="margin-top:20px;width:100%;font-size:16px;padding:16px">
+          🧠 Obtenir mon analyse personnalisée
+        </button>
       </div>
+
+      <!-- RÉSULTAT -->
+      <div id="d-result" style="margin-top:16px"></div>
     </section>
 
     <!-- DCA -->
