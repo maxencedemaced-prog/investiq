@@ -2,6 +2,11 @@
 // ===== VALIDATE & PERSIST OBJECTIF =====
 const OBJ_STORAGE = 'iq_validated_objective';
 
+function hasValidObj(o) {
+  // Vérifie qu'un objet objectif est valide (capital peut être 0)
+  return o && o.target && o.target > 0;
+}
+
 async function validateObjectif() {
   const data = {
     capital: objChartCapital,
@@ -15,13 +20,18 @@ async function validateObjectif() {
   try { localStorage.setItem(OBJ_STORAGE, JSON.stringify(data)); } catch {}
   if (!isDemo && currentUser) {
     try {
-      await sb.from('objectives').update({
-        capital: data.capital, monthly: data.monthly,
-        target: data.target, years: data.years,
-        rate: data.rate, risk: data.risk,
+      const { error } = await sb.from('objectives').update({
+        capital: data.capital,
+        monthly: data.monthly,
+        target: data.target,
+        years: data.years,
+        rate: data.rate,
+        risk: data.risk,
         validated_at: data.validatedAt,
         updated_at: new Date().toISOString()
       }).eq('user_id', currentUser.id);
+      if (error) console.warn('Supabase objectif save failed:', error);
+      else console.log('[validateObjectif] Saved to Supabase OK');
     } catch(e) { console.warn('Supabase objectif save failed:', e); }
   }
   const btn = document.querySelector('.btn-obj-validate');
@@ -29,50 +39,52 @@ async function validateObjectif() {
   showToast('🎯 Objectif sauvegardé sur ton compte !');
 }
 
+function applyObjData(d) {
+  // Applique les données objectif aux variables globales
+  objChartCapital = d.capital !== null && d.capital !== undefined ? d.capital : 0;
+  objChartMonthly = d.monthly || 200;
+  objChartTarget  = d.target  || 100000;
+  objChartYears   = d.years   || 10;
+  objChartRate    = d.rate    || 7;
+  objRisk         = d.risk    || 'equilibre';
+}
+
 async function loadValidatedObjectif() {
-  let saved = null;
-  // 1. Try Supabase first
+  // 1. Supabase en priorité (déjà chargé dans loadObjective au login)
+  if (hasValidObj({ target: objChartTarget }) && objChartTarget !== 100000) {
+    console.log('[loadValidatedObjectif] Already loaded from Supabase');
+    return true;
+  }
+  // 2. Recharge depuis Supabase si connecté
   if (!isDemo && currentUser) {
     try {
       const { data } = await sb.from('objectives').select('*').eq('user_id', currentUser.id).maybeSingle();
-      if (data && (data.capital || data.target)) {
-        saved = { capital: data.capital, monthly: data.monthly, target: data.target, years: data.years, rate: data.rate, risk: data.risk || 'equilibre', validatedAt: data.validated_at };
-        localStorage.setItem(OBJ_STORAGE, JSON.stringify(saved));
+      console.log('[loadValidatedObjectif] Supabase data:', JSON.stringify(data));
+      if (data && hasValidObj(data)) {
+        applyObjData(data);
+        try { localStorage.setItem(OBJ_STORAGE, JSON.stringify({...data, validatedAt: data.validated_at})); } catch {}
+        return true;
       }
-    } catch(e) {}
+    } catch(e) { console.warn('[loadValidatedObjectif] Supabase error:', e); }
   }
-  // 2. Fallback to localStorage
-  if (!saved) { try { saved = JSON.parse(localStorage.getItem(OBJ_STORAGE) || 'null'); } catch {} }
-  if (!saved || !saved.capital) return false;
-  objChartCapital = saved.capital; objChartMonthly = saved.monthly;
-  objChartTarget = saved.target; objChartYears = saved.years;
-  objChartRate = saved.rate; objRisk = saved.risk || 'equilibre';
-  if (document.getElementById('obj-capital')) document.getElementById('obj-capital').value = saved.capital;
-  if (document.getElementById('obj-monthly')) document.getElementById('obj-monthly').value = saved.monthly;
-  if (document.getElementById('obj-target')) document.getElementById('obj-target').value = saved.target;
-  if (document.getElementById('obj-years')) document.getElementById('obj-years').value = saved.years;
-  return true;
+  // 3. Fallback localStorage
+  try {
+    const saved = JSON.parse(localStorage.getItem(OBJ_STORAGE) || 'null');
+    if (saved && hasValidObj(saved)) {
+      applyObjData(saved);
+      return true;
+    }
+  } catch {}
+  return false;
 }
 
 function showValidatedChart() {
-  // Use already-loaded variables (set by loadValidatedObjectif)
-  if (!objChartCapital || !objChartTarget) {
-    // Fallback: try localStorage
-    const saved = (() => { try { return JSON.parse(localStorage.getItem(OBJ_STORAGE) || 'null'); } catch { return null; } })();
-    if (!saved || !saved.capital) return;
-    objChartCapital = saved.capital; objChartMonthly = saved.monthly;
-    objChartTarget = saved.target; objChartYears = saved.years;
-    objChartRate = saved.rate; objRisk = saved.risk || 'equilibre';
-  }
-
+  if (!hasValidObj({ target: objChartTarget })) return;
   document.getElementById('obj-wizard').style.display = 'none';
   document.getElementById('obj-results').style.display = 'block';
-
   setTimeout(() => {
     buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
   }, 100);
-
-  // Show validated badge
   const el = document.getElementById('obj-ai-simple');
   if (el && el.innerHTML.trim() === '') {
     el.innerHTML = `
@@ -1567,31 +1579,16 @@ async function loadPositions() {
   positions = data||[];
 }
 async function loadObjective() {
-  const { data, error } = await sb.from('objectives').select('*').eq('user_id',currentUser.id).maybeSingle();
-  console.log('[loadObjective] data=', JSON.stringify(data), 'error=', error);
+  const { data } = await sb.from('objectives').select('*').eq('user_id',currentUser.id).maybeSingle();
+  console.log('[loadObjective] data=', JSON.stringify(data));
   if (data) {
     objective = { target:data.target, years:data.years, rate:data.rate, monthly:data.monthly };
-    // Charge aussi les variables du wizard objectif
-    if (data.capital !== null && data.capital !== undefined) {
-      objChartCapital  = data.capital;
-      objChartMonthly  = data.monthly;
-      objChartTarget   = data.target;
-      objChartYears    = data.years;
-      objChartRate     = data.rate;
-      objRisk          = data.risk || 'equilibre';
-      // Sauvegarde locale pour fallback
-      try { localStorage.setItem('iq_validated_objective', JSON.stringify({
-        capital: data.capital, monthly: data.monthly, target: data.target,
-        years: data.years, rate: data.rate, risk: data.risk || 'equilibre',
-        validatedAt: data.validated_at || new Date().toISOString()
-      })); } catch {}
-    }
-    const tEl = document.getElementById('obj-target');
-    const yEl = document.getElementById('obj-years');
-    const mEl = document.getElementById('obj-monthly');
-    if (tEl) tEl.value = objective.target;
-    if (yEl) yEl.value = objective.years;
-    if (mEl) mEl.value = objective.monthly;
+    if (data.target) applyObjData(data);
+    try { localStorage.setItem('iq_validated_objective', JSON.stringify({
+      capital: data.capital || 0, monthly: data.monthly, target: data.target,
+      years: data.years, rate: data.rate, risk: data.risk || 'equilibre',
+      validatedAt: data.validated_at || new Date().toISOString()
+    })); } catch {}
   }
 }
 
