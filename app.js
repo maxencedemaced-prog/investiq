@@ -1583,6 +1583,7 @@ impact: high/medium/low. pays: US/EU/FR/DE/UK.`,
   }
 
   renderAgendaView();
+  saveToCache('agenda');
 }
 
 function renderAgendaView() {
@@ -1887,6 +1888,7 @@ async function renderEntreprises() {
 
   // Charge les actualités
   await loadEntrepriseNews(allCompanies);
+  saveToCache('entreprises');
 }
 
 async function loadEntrepriseNews(companies) {
@@ -2101,7 +2103,7 @@ Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`;
   }
 
   const date = new Date().toLocaleDateString('fr-FR');
-  const myTickers = [...new Set(positions.map(p => p.name))];
+  const myTickers = [...new Set(positions.map(p => p.name))].slice(0, 6); // max 6 = 2 batches
   
   // L'IA choisit elle-même les meilleures opportunités du jour
   async function getOppoTickers() {
@@ -2174,6 +2176,7 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
       <button onclick="renderSignaux()" style="margin-top:12px;background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">🔄 Réessayer</button>
     </div>`;
   }
+  saveToCache('signaux');
 }
 
 function setNewsFilter(filter, el) {
@@ -2183,13 +2186,13 @@ function setNewsFilter(filter, el) {
 
   if (filter === 'signaux') {
     if (isCacheValid('signaux')) { restoreFromCache('signaux'); return; }
-    renderSignaux().then(() => saveToCache('signaux'));
+    renderSignaux();
   } else if (filter === 'entreprises') {
     if (isCacheValid('entreprises')) { restoreFromCache('entreprises'); return; }
-    renderEntreprises().then(() => saveToCache('entreprises'));
+    renderEntreprises();
   } else if (filter === 'agenda') {
     if (isCacheValid('agenda')) { restoreFromCache('agenda'); return; }
-    renderAgenda().then(() => saveToCache('agenda'));
+    renderAgenda();
   } else {
     renderNewsList();
   }
