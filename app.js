@@ -2002,15 +2002,20 @@ function togglePosSignal(id) {
 let decisionIntention = null;
 function openDecisionFromPos(name, action) {
   decisionIntention = action;
-  document.getElementById('d-name').value = name;
-  document.getElementById('d-horizon').value = profile.horizon;
-  document.getElementById('d-risk').value = profile.risk;
-  updatePct();
-  const notice = document.getElementById('prefill-notice');
-  notice.style.display = 'block';
-  const labels = { acheter: '🟢 Acheter / Renforcer', vendre: '🔴 Vendre / Alléger', garder: '🟡 Analyser' };
-  notice.innerHTML = `<strong>${name}</strong> — ${labels[action] || action} <span style="font-size:12px;color:#8e8e93;margin-left:8px">L'IA va tenir compte de ton intention</span>`;
   nav('decision');
+  // Attendre que le DOM soit prêt
+  setTimeout(() => {
+    const nameEl = document.getElementById('d-name');
+    if (nameEl) nameEl.value = name;
+    const hEl = document.getElementById('d-horizon');
+    if (hEl) hEl.value = profile.horizon;
+    const rEl = document.getElementById('d-risk');
+    if (rEl) rEl.value = profile.risk;
+    updatePct();
+    setDecisionIntent(action);
+    // Scroll vers le haut
+    document.getElementById('sec-decision')?.scrollTo(0,0);
+  }, 50);
 }
 
 async function addPos() {
