@@ -1808,81 +1808,135 @@ async function renderEntreprises() {
   const list = document.getElementById('news-list');
   if (!list) return;
 
-  // Compile la liste : mes positions + watchlist + populaires
-  const myTickers = [...new Set(positions.map(p => ({
-    ticker: p.name, name: p.name, inPortfolio: true,
-    pnl: ((p.price - p.pru) / p.pru * 100).toFixed(1),
-    value: fmt(p.qty * p.price)
-  })))];
-  const watchItems = watchlist.map(w => ({ ticker: w.ticker, name: w.name || w.ticker, inPortfolio: false, pnl: null }));
-  const popular = [
-    { ticker:'AAPL', name:'Apple', secteur:'Tech' },
-    { ticker:'MSFT', name:'Microsoft', secteur:'Tech' },
-    { ticker:'NVDA', name:'NVIDIA', secteur:'Tech' },
-    { ticker:'TSLA', name:'Tesla', secteur:'Auto' },
-    { ticker:'MC.PA', name:'LVMH', secteur:'Luxe' },
-    { ticker:'TTE.PA', name:'TotalEnergies', secteur:'Énergie' },
-    { ticker:'AI.PA', name:'Air Liquide', secteur:'Industrie' },
-    { ticker:'BNP.PA', name:'BNP Paribas', secteur:'Banque' },
-    { ticker:'ASML', name:'ASML', secteur:'Semi-conducteurs' },
-    { ticker:'SAP.DE', name:'SAP', secteur:'Tech' },
-    { ticker:'NOVO-B.CO', name:'Novo Nordisk', secteur:'Santé' },
-    { ticker:'ALTEN.PA', name:'Alten', secteur:'Conseil IT' },
-  ].filter(p => !myTickers.find(m => m.ticker === p.ticker) && !watchItems.find(w => w.ticker === p.ticker));
+  // Entreprises vedettes à afficher par défaut
+  const featured = [
+    { ticker:'AAPL',   name:'Apple' },
+    { ticker:'MSFT',   name:'Microsoft' },
+    { ticker:'NVDA',   name:'NVIDIA' },
+    { ticker:'TSLA',   name:'Tesla' },
+    { ticker:'MC.PA',  name:'LVMH' },
+    { ticker:'TTE.PA', name:'TotalEnergies' },
+    { ticker:'AI.PA',  name:'Air Liquide' },
+    { ticker:'BNP.PA', name:'BNP Paribas' },
+    { ticker:'ASML',   name:'ASML' },
+    { ticker:'AMZN',   name:'Amazon' },
+  ];
 
-  const allCompanies = [...myTickers, ...watchItems, ...popular];
+  // Ajoute mes positions en premier
+  const myCompanies = [...new Set(positions.map(p => ({ ticker: p.name, name: p.name })))];
+  const allCompanies = [...myCompanies, ...featured.filter(f => !myCompanies.find(m => m.ticker === f.ticker))].slice(0, 12);
 
   list.innerHTML = `
-    <!-- Barre de recherche entreprise -->
+    <!-- Barre de recherche -->
     <div style="position:relative;margin-bottom:16px">
-      <input type="text" id="ent-search" placeholder="🔍 Rechercher une entreprise ou un ticker..."
-        style="width:100%;padding:12px 14px;border-radius:12px;border:2px solid #e5e5ea;font-size:14px;outline:none;box-sizing:border-box"
+      <input type="text" id="ent-search" placeholder="🔍 Rechercher une entreprise (ex: Apple, LVMH, Tesla...)"
+        style="width:100%;padding:13px 16px;border-radius:14px;border:2px solid #e5e5ea;font-size:14px;outline:none;box-sizing:border-box;background:#fafafa"
         oninput="searchEntreprise(this.value)"
-        onfocus="this.style.borderColor='#1c1c1e'"
-        onblur="this.style.borderColor='#e5e5ea'">
-      <div id="ent-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border-radius:12px;border:2px solid #e5e5ea;z-index:100;max-height:200px;overflow-y:auto;margin-top:4px"></div>
+        onfocus="this.style.borderColor='#1c1c1e';this.style.background='#fff'"
+        onblur="this.style.borderColor='#e5e5ea';this.style.background='#fafafa'">
+      <div id="ent-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border-radius:12px;border:2px solid #e5e5ea;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.1)"></div>
     </div>
 
-    <!-- Mes positions -->
-    ${myTickers.length ? `
-    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📦 Dans mon portefeuille</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-      ${myTickers.map(c => `
-      <div onclick="showEntrepriseDetail('${c.ticker}','${c.name}')"
-           style="background:#f9f9f9;border-radius:12px;padding:12px;cursor:pointer;border:2px solid transparent;transition:all 0.2s"
-           onmouseover="this.style.borderColor='#1c1c1e'" onmouseout="this.style.borderColor='transparent'">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <div style="font-size:13px;font-weight:800;color:#1c1c1e">${c.name}</div>
-          <div style="font-size:11px;font-weight:700;color:${parseFloat(c.pnl)>=0?'#1a7f5a':'#cc2f26'}">${parseFloat(c.pnl)>=0?'+':''}${c.pnl}%</div>
-        </div>
-        <div style="font-size:11px;color:#8e8e93">${c.ticker} · ${c.value}</div>
-      </div>`).join('')}
-    </div>` : ''}
-
-    <!-- Watchlist -->
-    ${watchItems.length ? `
-    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">⭐ Mes favoris</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-      ${watchItems.map(c => `
-      <div onclick="showEntrepriseDetail('${c.ticker}','${c.name}')"
-           style="background:#fff9e6;border-radius:12px;padding:12px;cursor:pointer;border:2px solid transparent;transition:all 0.2s"
-           onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='transparent'">
-        <div style="font-size:13px;font-weight:800;color:#1c1c1e">${c.name}</div>
-        <div style="font-size:11px;color:#8e8e93">${c.ticker}</div>
-      </div>`).join('')}
-    </div>` : ''}
-
-    <!-- Entreprises populaires -->
-    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🔭 À découvrir</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      ${popular.map(c => `
-      <div onclick="showEntrepriseDetail('${c.ticker}','${c.name}')"
-           style="background:#fff;border-radius:12px;padding:12px;cursor:pointer;border:2px solid #f0f0f0;transition:all 0.2s"
-           onmouseover="this.style.borderColor='#1c1c1e';this.style.background='#f9f9f9'" onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'">
-        <div style="font-size:13px;font-weight:800;color:#1c1c1e">${c.name}</div>
-        <div style="font-size:11px;color:#8e8e93">${c.ticker} · ${c.secteur}</div>
-      </div>`).join('')}
+    <!-- Actualités par entreprise -->
+    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">
+      📰 Actualités des entreprises — clic pour voir les détails
+    </div>
+    <div id="ent-news-list">
+      <div style="text-align:center;padding:30px;color:#8e8e93">
+        <div style="font-size:24px;margin-bottom:8px">🧠</div>
+        <div style="font-size:13px">Chargement des actualités...</div>
+      </div>
     </div>`;
+
+  // Charge les actualités
+  await loadEntrepriseNews(allCompanies);
+}
+
+async function loadEntrepriseNews(companies) {
+  const newsEl = document.getElementById('ent-news-list');
+  if (!newsEl) return;
+
+  try {
+    // Récupère les news via l'API existante
+    const tickers = companies.map(c => c.ticker).join(',');
+    const res = await fetch('/api/search?q=' + encodeURIComponent(companies.map(c=>c.name).join(' OR ')));
+    
+    // Génère un résumé des actualités importantes via l'IA
+    const date = new Date().toLocaleDateString('fr-FR');
+    const prompt = `Journaliste financier. Le ${date}, donne les actualités importantes récentes pour ces entreprises : ${companies.map(c=>c.name).join(', ')}.
+Pour chaque entreprise avec une actualité notable, génère un article court.
+Réponds UNIQUEMENT en JSON :
+[{
+  "ticker": "AAPL",
+  "entreprise": "Apple",
+  "titre": "Titre accrocheur de l'actualité",
+  "resume": "Résumé en 2 phrases maximum, simple et clair",
+  "impact": "positif" ou "negatif" ou "neutre",
+  "categorie": "Résultats" ou "Produit" ou "Direction" ou "Marché" ou "Réglementation" ou "Fusion",
+  "date": "Aujourd'hui" ou "Cette semaine" ou "Ce mois",
+  "url": "https://www.google.com/search?q=${encodeURIComponent('AAPL actualité 2026')}"
+}]
+Génère 6 à 8 articles. Mets de vraies URLs de recherche Google pour chaque.`;
+
+    const raw = await callClaude(prompt, 'Tu es journaliste financier. Réponds UNIQUEMENT en JSON valide.');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const s = clean.indexOf('['), e = clean.lastIndexOf(']');
+    const articles = JSON.parse(clean.slice(s, e+1));
+
+    const impactColor = { positif:'#1a7f5a', negatif:'#cc2f26', neutre:'#8e8e93' };
+    const impactBg    = { positif:'#e8f8f0', negatif:'#fff0f0', neutre:'#f5f5f5' };
+    const impactIcon  = { positif:'📈', negatif:'📉', neutre:'📊' };
+
+    newsEl.innerHTML = articles.map(a => {
+      const myPos = positions.find(p => p.name === a.ticker);
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(a.entreprise + ' actualité bourse 2026')}`;
+      return `
+      <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;transition:all 0.2s"
+           onmouseover="this.style.borderColor='#1c1c1e'" onmouseout="this.style.borderColor='#f0f0f0'">
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:36px;height:36px;border-radius:10px;background:${impactBg[a.impact]};display:flex;align-items:center;justify-content:center;font-size:16px">${impactIcon[a.impact]}</div>
+            <div>
+              <div style="font-size:13px;font-weight:800;color:#1c1c1e">${a.entreprise} <span style="font-size:11px;color:#8e8e93;font-weight:500">${a.ticker}</span>
+                ${myPos ? '<span style="background:#1c1c1e;color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:5px;margin-left:4px">📦 Portef.</span>' : ''}
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;margin-top:2px">
+                <span style="background:${impactBg[a.impact]};color:${impactColor[a.impact]};font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px">${a.categorie}</span>
+                <span style="font-size:11px;color:#8e8e93">${a.date}</span>
+              </div>
+            </div>
+          </div>
+          <div style="width:8px;height:8px;border-radius:50%;background:${impactColor[a.impact]};margin-top:6px;flex-shrink:0"></div>
+        </div>
+        <!-- Titre -->
+        <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px;line-height:1.3">${a.titre}</div>
+        <!-- Résumé -->
+        <div style="font-size:13px;color:#3c3c43;line-height:1.6;margin-bottom:10px">${a.resume}</div>
+        <!-- Actions -->
+        <div style="display:flex;gap:8px;align-items:center">
+          <a href="${searchUrl}" target="_blank" rel="noopener"
+             style="flex:1;background:#f5f5f5;color:#1c1c1e;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;display:block">
+            🔗 Voir les articles
+          </a>
+          <button onclick="openDecisionFromPos('${a.ticker}','garder')"
+             style="flex:1;background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer">
+            🤔 Analyser l'impact
+          </button>
+        </div>
+      </div>`;
+    }).join('') + `
+    <div style="text-align:center;padding:12px;color:#8e8e93;font-size:12px">
+      ⚠️ Actualités générées par IA à titre informatif · Vérifiez via les liens fournis
+    </div>`;
+
+  } catch(e) {
+    newsEl.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
+      <div style="font-size:20px;margin-bottom:8px">⚠️</div>
+      <div style="font-size:13px">Impossible de charger les actualités.<br>Réessaie dans quelques secondes.</div>
+      <button onclick="renderEntreprises()" style="margin-top:12px;background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">🔄 Réessayer</button>
+    </div>`;
+  }
 }
 
 function searchEntreprise(query) {
@@ -1897,173 +1951,33 @@ function searchEntreprise(query) {
       if (!results.length) { drop.style.display = 'none'; return; }
       drop.style.display = 'block';
       drop.innerHTML = results.map(r => `
-        <div onclick="showEntrepriseDetail('${r.symbol}','${(r.shortname||r.longname||r.symbol).replace(/'/g,"\'")}');document.getElementById('ent-search-results').style.display='none'"
-             style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px"
+        <div onclick="searchEntrepriseNews('${r.symbol}','${(r.shortname||r.longname||r.symbol).replace(/'/g,'\\')}');document.getElementById('ent-search-results').style.display='none';document.getElementById('ent-search').value='${(r.shortname||r.symbol).replace(/'/g,'\\')}'"
+             style="padding:12px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0"
              onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='#fff'">
-          <strong>${r.shortname || r.symbol}</strong> <span style="color:#8e8e93">${r.symbol}</span>
+          <div style="font-size:13px;font-weight:700;color:#1c1c1e">${r.shortname || r.symbol}</div>
+          <div style="font-size:12px;color:#8e8e93">${r.symbol} · ${r.exchDisp || r.exchange || ''}</div>
         </div>`).join('');
     } catch(e) { drop.style.display = 'none'; }
   }, 400);
 }
 
-async function showEntrepriseDetail(ticker, name) {
-  const list = document.getElementById('news-list');
-  if (!list) return;
-
-  const myPos = positions.find(p => p.name === ticker);
-  const isFav = watchlist.some(w => w.ticker === ticker);
-
-  list.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-      <button onclick="renderEntreprises()" style="background:#f5f5f5;border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;font-weight:600">← Retour</button>
-      <div style="font-size:16px;font-weight:800;color:#1c1c1e">${name}</div>
-      <span style="font-size:12px;color:#8e8e93">${ticker}</span>
-    </div>
-    <div id="ent-detail-content" style="display:flex;flex-direction:column;gap:12px">
-      <div style="text-align:center;padding:30px;color:#8e8e93">
-        <div style="font-size:28px;margin-bottom:8px">🧠</div>
-        <div style="font-size:13px">Analyse de ${name} en cours...</div>
-      </div>
-    </div>`;
-
-  try {
-    // Prix live + fiche IA en parallèle
-    const [priceRes, ficheRaw] = await Promise.all([
-      fetch('/api/prices?symbols=' + encodeURIComponent(ticker)).then(r => r.json()).catch(() => ({})),
-      callClaude(
-        `Fais une fiche complète sur ${name} (${ticker}) pour un investisseur débutant. Date: ${new Date().toLocaleDateString('fr-FR')}.
-Réponds UNIQUEMENT en JSON :
-{
-  "description": "Ce que fait l'entreprise en 2 phrases simples",
-  "secteur": "Secteur d'activité",
-  "pays": "Pays/Bourse",
-  "points_forts": ["point 1","point 2","point 3"],
-  "points_faibles": ["risque 1","risque 2"],
-  "signal": "acheter" ou "attendre" ou "vendre",
-  "conviction": "forte" ou "modérée" ou "faible",
-  "risque": 3,
-  "horizon_ideal": "Ex: 2-5 ans",
-  "pour_qui": "Pour quel type d'investisseur",
-  "catalyseur": "Principale raison d'acheter maintenant",
-  "per_estime": "Ex: 25x",
-  "dividende": "Ex: 2.5% ou Aucun"
-}`,
-        'Tu es analyste financier. Réponds UNIQUEMENT en JSON valide.'
-      )
-    ]);
-
-    const price = priceRes.quotes?.[0]?.price || priceRes.price || 0;
-    const change = priceRes.quotes?.[0]?.change_pct || 0;
-
-    const clean = ficheRaw.replace(/```json|```/g,'').trim();
-    const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
-    const fiche = JSON.parse(clean.slice(s, e+1));
-
-    const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26' };
-    const sigBg    = { acheter:'#e8f8f0', attendre:'#fff9e6', vendre:'#fff0f0' };
-    const sigLabel = { acheter:'ACHETER', attendre:'ATTENDRE', vendre:'VENDRE' };
-
-    document.getElementById('ent-detail-content').innerHTML = `
-      <!-- HEADER PRIX -->
-      <div style="background:#1c1c1e;border-radius:14px;padding:16px;color:#fff">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>
-            <div style="font-size:24px;font-weight:900">${price ? fmt(price)+'€' : 'Prix N/A'}</div>
-            <div style="font-size:13px;margin-top:2px;color:${change>=0?'#4ade80':'#f87171'}">${change>=0?'+':''}${change.toFixed(2)}% aujourd'hui</div>
-          </div>
-          <div style="background:${sigBg[fiche.signal]};color:${sigColor[fiche.signal]};border-radius:10px;padding:8px 14px;font-weight:800;font-size:13px">
-            ${sigLabel[fiche.signal]||fiche.signal.toUpperCase()}
-          </div>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:#a3a3a3">${fiche.secteur}</span>
-          <span style="font-size:12px;color:#a3a3a3">${fiche.pays}</span>
-          <span style="font-size:12px;color:#a3a3a3">PER : ${fiche.per_estime}</span>
-          <span style="font-size:12px;color:#a3a3a3">Dividende : ${fiche.dividende}</span>
-        </div>
-      </div>
-
-      <!-- MON EXPOSITION si en portefeuille -->
-      ${myPos ? `
-      <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px">
-        <div style="font-size:12px;font-weight:800;color:#1a7f5a;margin-bottom:8px">📦 Ma position</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-          <div style="text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">QUANTITÉ</div><div style="font-size:14px;font-weight:800">${myPos.qty}</div></div>
-          <div style="text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">PRU</div><div style="font-size:14px;font-weight:800">${fmt(myPos.pru)}€</div></div>
-          <div style="text-align:center"><div style="font-size:10px;color:#1a7f5a;font-weight:700">PERF.</div><div style="font-size:14px;font-weight:800;color:${((myPos.price-myPos.pru)/myPos.pru*100)>=0?'#1a7f5a':'#cc2f26'}">${((myPos.price-myPos.pru)/myPos.pru*100)>=0?'+':''}${((myPos.price-myPos.pru)/myPos.pru*100).toFixed(1)}%</div></div>
-        </div>
-      </div>` : ''}
-
-      <!-- DESCRIPTION -->
-      <div style="background:#f9f9f9;border-radius:14px;padding:14px 16px">
-        <div style="font-size:12px;font-weight:800;color:#8e8e93;text-transform:uppercase;margin-bottom:6px">À propos</div>
-        <div style="font-size:14px;color:#1c1c1e;line-height:1.6">${fiche.description}</div>
-        <div style="margin-top:10px;padding:10px 12px;background:#fff;border-radius:10px;font-size:13px;color:#1c1c1e">
-          <strong>Pour qui ?</strong> ${fiche.pour_qui}
-        </div>
-        <div style="margin-top:6px;padding:10px 12px;background:#fff;border-radius:10px;font-size:13px;color:#1a7f5a">
-          <strong>💡 Catalyseur :</strong> ${fiche.catalyseur}
-        </div>
-      </div>
-
-      <!-- POUR / CONTRE -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div style="background:#e8f8f0;border-radius:14px;padding:12px 14px">
-          <div style="font-size:11px;font-weight:700;color:#1a7f5a;margin-bottom:8px">✅ Points forts</div>
-          ${fiche.points_forts.map(p=>`<div style="font-size:12px;color:#1c1c1e;margin-bottom:4px">• ${p}</div>`).join('')}
-        </div>
-        <div style="background:#fff0f0;border-radius:14px;padding:12px 14px">
-          <div style="font-size:11px;font-weight:700;color:#cc2f26;margin-bottom:8px">⚠️ Risques</div>
-          ${fiche.points_faibles.map(p=>`<div style="font-size:12px;color:#1c1c1e;margin-bottom:4px">• ${p}</div>`).join('')}
-        </div>
-      </div>
-
-      <!-- MÉTRIQUES -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div style="background:#fff;border-radius:12px;padding:12px 14px;border:2px solid #f0f0f0;text-align:center">
-          <div style="font-size:10px;color:#8e8e93;font-weight:700">HORIZON IDÉAL</div>
-          <div style="font-size:14px;font-weight:800;color:#1c1c1e;margin-top:4px">${fiche.horizon_ideal}</div>
-        </div>
-        <div style="background:#fff;border-radius:12px;padding:12px 14px;border:2px solid #f0f0f0;text-align:center">
-          <div style="font-size:10px;color:#8e8e93;font-weight:700">CONVICTION IA</div>
-          <div style="font-size:14px;font-weight:800;color:${sigColor[fiche.signal]};margin-top:4px">${fiche.conviction}</div>
-        </div>
-      </div>
-
-      <!-- ACTIONS -->
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <button onclick="openDecisionFromPos('${ticker}','acheter')" style="background:#1a7f5a;color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
-          💰 Analyser pour acheter
-        </button>
-        <div style="display:flex;gap:8px">
-          ${!myPos ? `<button onclick="addToPortfolioFromDecision('${ticker}',${Math.round((profile.bankroll||1000)*0.1)})" style="flex:1;background:#f5f5f5;border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:600;cursor:pointer">➕ Ajouter au portef.</button>` : ''}
-          <button onclick="${isFav?`removeFromWatchlist`:`addToWatchlistBtn`}('${ticker}','${name}')" style="flex:1;background:#f5f5f5;border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:600;cursor:pointer">
-            ${isFav ? '⭐ Retirer des favoris' : '⭐ Ajouter aux favoris'}
-          </button>
-        </div>
-      </div>`;
-
-  } catch(e) {
-    document.getElementById('ent-detail-content').innerHTML = `
-      <div style="text-align:center;padding:20px;color:#8e8e93">
-        <div style="font-size:20px;margin-bottom:8px">⚠️</div>
-        <div>Impossible de charger la fiche. Réessaie.</div>
-        <button onclick="showEntrepriseDetail('${ticker}','${name}')" style="margin-top:12px;background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">🔄 Réessayer</button>
-      </div>`;
-  }
+async function searchEntrepriseNews(ticker, name) {
+  const newsEl = document.getElementById('ent-news-list');
+  if (!newsEl) return;
+  newsEl.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93"><div style="font-size:20px;margin-bottom:6px">🧠</div><div>Recherche des actualités de ${name}...</div></div>`;
+  await loadEntrepriseNews([{ ticker, name }]);
 }
 
 function addToWatchlistBtn(ticker, name) {
   toggleFavorite(ticker, name, '');
-  renderEntreprises();
   showToast('⭐ ' + name + ' ajouté aux favoris !');
 }
 
 function removeFromWatchlist(ticker, name) {
   toggleFavorite(ticker, name, '');
-  renderEntreprises();
   showToast('Retiré des favoris');
 }
+
 
 async function renderSignaux() {
   const list = document.getElementById('news-list');
