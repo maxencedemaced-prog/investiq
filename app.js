@@ -84,6 +84,7 @@ function showValidatedChart() {
   document.getElementById('obj-results').style.display = 'block';
   setTimeout(() => {
     buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
+    renderCourtTermePlan();
   }, 100);
   const el = document.getElementById('obj-ai-simple');
   if (el && el.innerHTML.trim() === '') {
@@ -96,6 +97,92 @@ function showValidatedChart() {
   }
 }
 
+
+// ===== PLAN COURT TERME =====
+function renderCourtTermePlan() {
+  const el = document.getElementById('obj-court-terme');
+  const actionsEl = document.getElementById('obj-court-actions');
+  if (!el || !actionsEl) return;
+
+  // Récupère le budget court terme (30% du capital ou bankroll)
+  const capital = objChartCapital || profile.bankroll || 1000;
+  const budgetCourt = Math.round(capital * 0.3);
+  const perAction = Math.round(budgetCourt / 3);
+  const risk = objRisk || profile.risk || 'faible';
+
+  const actionRecs = risk === 'agressif' || risk === 'eleve'
+    ? [
+        { ticker:'NVDA',   name:'NVIDIA',       gain:'+12-20%', horizon:'3-6 mois', desc:'Leader IA & GPU',           color:'#6366f1' },
+        { ticker:'TSLA',   name:'Tesla',         gain:'+8-15%',  horizon:'2-4 mois', desc:'Volatile, fort potentiel',  color:'#ec4899' },
+        { ticker:'META',   name:'Meta',          gain:'+8-12%',  horizon:'3-6 mois', desc:'Pub digitale en croissance',color:'#3b82f6' },
+      ]
+    : risk === 'equilibre' || risk === 'modere'
+    ? [
+        { ticker:'AAPL',   name:'Apple',         gain:'+5-10%',  horizon:'3-6 mois', desc:'Stable, dividendes',        color:'#8b5cf6' },
+        { ticker:'MSFT',   name:'Microsoft',     gain:'+6-10%',  horizon:'3-6 mois', desc:'Cloud & IA solide',         color:'#0ea5e9' },
+        { ticker:'MC.PA',  name:'LVMH',          gain:'+5-10%',  horizon:'4-8 mois', desc:'Luxe, leader mondial',      color:'#f59e0b' },
+      ]
+    : [
+        { ticker:'AI.PA',  name:'Air Liquide',   gain:'+4-8%',   horizon:'6-12 mois', desc:'Défensif, dividendes',     color:'#10b981' },
+        { ticker:'OR.PA',  name:'LOreal',        gain:'+4-7%',   horizon:'6-12 mois', desc:'Consommation stable',      color:'#f43f5e' },
+        { ticker:'TTE.PA', name:'TotalEnergies', gain:'+5-9%',   horizon:'4-8 mois',  desc:'Énergie, bon dividende',   color:'#f97316' },
+      ];
+
+  el.style.display = 'block';
+  actionsEl.innerHTML = `
+    <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">
+      Budget alloué : <strong style="color:#1c1c1e">${fmtK(budgetCourt)}</strong> · 
+      ~${fmtK(perAction)} par action · 
+      Clique pour analyser et ajouter au portefeuille
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${actionRecs.map(a => `
+      <div onclick="openActionFromObjectif('${a.ticker}','${a.name}',${perAction})"
+           style="background:#fff;border-radius:14px;padding:14px 16px;border:2px solid #f0f0f0;cursor:pointer;transition:all 0.2s"
+           onmouseover="this.style.borderColor='#f59e0b';this.style.background='#fffdf5'"
+           onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:42px;height:42px;border-radius:12px;background:${a.color}20;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${a.color}">${a.ticker.slice(0,2)}</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#1c1c1e">${a.name} <span style="font-size:12px;color:#8e8e93;font-weight:500">${a.ticker}</span></div>
+              <div style="font-size:12px;color:#8e8e93;margin-top:1px">${a.desc}</div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:14px;font-weight:800;color:#1a7f5a">${a.gain}</div>
+            <div style="font-size:11px;color:#8e8e93">${a.horizon}</div>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8e93;margin-bottom:4px">
+            <span>Espérance de gain</span>
+            <span style="font-weight:700;color:#f59e0b">Analyser & Acheter →</span>
+          </div>
+          <div style="background:#f5f5f5;border-radius:6px;height:6px;overflow:hidden">
+            <div style="height:100%;background:linear-gradient(90deg,${a.color}60,${a.color});width:${45 + actionRecs.indexOf(a)*15}%"></div>
+          </div>
+          <div style="font-size:11px;color:#8e8e93;margin-top:4px">Montant suggéré : <strong style="color:#1c1c1e">${fmtK(perAction)}</strong></div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div style="margin-top:10px;padding:10px 14px;background:#fff9e6;border-radius:12px;font-size:12px;color:#92400e">
+      ⚠️ Ces recommandations sont éducatives. Clique sur une action pour l'analyser avant d'investir.
+    </div>`;
+}
+
+async function openActionFromObjectif(ticker, name, amount) {
+  decisionIntention = 'acheter';
+  nav('decision');
+  setTimeout(() => {
+    const nameEl = document.getElementById('d-name');
+    if (nameEl) nameEl.value = ticker;
+    const pct = Math.max(1, Math.min(50, Math.round(amount / (profile.bankroll || 1000) * 100)));
+    const pctEl = document.getElementById('d-pct');
+    if (pctEl) { pctEl.value = pct; updatePct(); }
+    setDecisionIntent('acheter');
+  }, 100);
+}
 
 // ===== OBJECTIF INTERACTIVE CHART =====
 let objChartInstance = null;
@@ -1003,13 +1090,11 @@ function obSelectRisk(risk) {
   if (btn) btn.disabled = false;
 }
 
-function obOpenAction(ticker, name, amount) {
-  // Ferme l'onboarding
+async function obOpenAction(ticker, name, amount) {
+  // Ferme l'onboarding et sauvegarde
   document.getElementById('onboarding-modal').style.display = 'none';
   localStorage.setItem(OB_KEY, '1');
-
-  // Sauvegarde le profil
-  obFinishSilent();
+  await obFinishSilent();
 
   // Ouvre aide décision avec tout pré-rempli
   decisionIntention = 'acheter';
@@ -1017,11 +1102,13 @@ function obOpenAction(ticker, name, amount) {
   setTimeout(() => {
     const nameEl = document.getElementById('d-name');
     if (nameEl) nameEl.value = ticker;
-    const pct = Math.round(amount / (profile.bankroll || 1000) * 100);
+    const pct = Math.max(1, Math.min(50, Math.round(amount / (profile.bankroll || 1000) * 100)));
     const pctEl = document.getElementById('d-pct');
-    if (pctEl) { pctEl.value = Math.min(pct, 50); updatePct(); }
+    if (pctEl) { pctEl.value = pct; updatePct(); }
     setDecisionIntent('acheter');
-  }, 100);
+    // Lance l'analyse automatiquement
+    setTimeout(() => analyseDecision(), 200);
+  }, 150);
 }
 
 async function obFinishSilent() {
