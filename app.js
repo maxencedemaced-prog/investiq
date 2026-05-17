@@ -15,14 +15,13 @@ async function validateObjectif() {
   try { localStorage.setItem(OBJ_STORAGE, JSON.stringify(data)); } catch {}
   if (!isDemo && currentUser) {
     try {
-      await sb.from('objectives').upsert({
-        user_id: currentUser.id,
+      await sb.from('objectives').update({
         capital: data.capital, monthly: data.monthly,
         target: data.target, years: data.years,
         rate: data.rate, risk: data.risk,
         validated_at: data.validatedAt,
         updated_at: new Date().toISOString()
-      });
+      }).eq('user_id', currentUser.id);
     } catch(e) { console.warn('Supabase objectif save failed:', e); }
   }
   const btn = document.querySelector('.btn-obj-validate');
@@ -1573,7 +1572,7 @@ async function loadObjective() {
   if (data) {
     objective = { target:data.target, years:data.years, rate:data.rate, monthly:data.monthly };
     // Charge aussi les variables du wizard objectif
-    if (data.capital) {
+    if (data.capital !== null && data.capital !== undefined) {
       objChartCapital  = data.capital;
       objChartMonthly  = data.monthly;
       objChartTarget   = data.target;
