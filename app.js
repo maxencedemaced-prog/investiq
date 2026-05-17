@@ -989,11 +989,22 @@ function obSelectRisk(risk) {
   if (btn) btn.disabled = false;
 }
 
+function obCheckBudget() {
+  const bankroll = document.getElementById('ob-bankroll')?.value;
+  const monthly  = document.getElementById('ob-monthly')?.value;
+  const filled = bankroll !== '' && monthly !== '';
+  const btn = document.getElementById('ob-btn-3');
+  const err = document.getElementById('ob-budget-error');
+  if (btn) btn.disabled = !filled;
+  if (err) err.style.display = filled ? 'none' : 'block';
+}
+
 async function obGeneratePlan() {
   const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 1000;
   const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 200;
   const risk     = document.getElementById('ob-risk')?.value || 'faible';
   const planEl   = document.getElementById('ob-plan-content');
+  console.log('[obGeneratePlan] goals=', JSON.stringify(obGoals), 'bankroll=', bankroll, 'monthly=', monthly, 'risk=', risk);
 
   // Calculs de projection
   const r10 = Math.pow(1.07, 10);
