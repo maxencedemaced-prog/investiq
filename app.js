@@ -929,8 +929,8 @@ function buildEmptyHome() {
 const OB_KEY = 'iq_onboarded';
 let obGoals = { long: false, court: false };
 
-function showOnboarding() {
-  if (localStorage.getItem(OB_KEY)) return;
+function showOnboarding(force) {
+  if (!force && localStorage.getItem(OB_KEY)) return;
   document.getElementById('onboarding-modal').style.display = 'flex';
 }
 
@@ -1598,10 +1598,8 @@ function enterDemo() {
     {id:'d3',name:'LVMH',qty:2,pru:730,price:685,type:'Action',sector:'Luxe',platform:'XTB',alert_price:650},
     {id:'d4',name:'Air Liquide',qty:5,pru:162,price:179,type:'Action',sector:'Industrie',platform:'XTB',alert_price:null},
   ];
-  // Toujours montrer l'onboarding en mode démo
-  localStorage.removeItem(OB_KEY);
   nav('home');
-  setTimeout(() => showOnboarding(), 300);
+  setTimeout(() => showOnboarding(true), 300);
 }
 
 function showAuthScreen() {
