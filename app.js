@@ -1598,7 +1598,10 @@ function enterDemo() {
     {id:'d3',name:'LVMH',qty:2,pru:730,price:685,type:'Action',sector:'Luxe',platform:'XTB',alert_price:650},
     {id:'d4',name:'Air Liquide',qty:5,pru:162,price:179,type:'Action',sector:'Industrie',platform:'XTB',alert_price:null},
   ];
+  // Toujours montrer l'onboarding en mode démo
+  localStorage.removeItem(OB_KEY);
   nav('home');
+  setTimeout(() => showOnboarding(), 300);
 }
 
 function showAuthScreen() {
