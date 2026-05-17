@@ -927,6 +927,7 @@ function buildEmptyHome() {
 
 // ===== ONBOARDING =====
 const OB_KEY = 'iq_onboarded';
+let obGoals = { long: false, court: false };
 
 function showOnboarding() {
   if (localStorage.getItem(OB_KEY)) return;
@@ -937,33 +938,132 @@ function obNext(step) {
   document.querySelectorAll('.onboard-step').forEach(s => s.style.display = 'none');
   const el = document.getElementById('ob-step-' + step);
   if (el) el.style.display = 'block';
+  // Update progress bars
+  for (let i = 1; i <= 5; i++) {
+    const bar = document.getElementById('ob-bar-' + i);
+    if (bar) bar.classList.toggle('active', i <= step);
+  }
+  // Generate plan on step 5
+  if (step === 5) obGeneratePlan();
+}
+
+function obToggleGoal(goal) {
+  obGoals[goal] = !obGoals[goal];
+  const card = document.getElementById('ob-goal-' + goal);
+  const check = document.getElementById('ob-check-' + goal);
+  if (obGoals[goal]) {
+    card.style.border = '2px solid #1c1c1e';
+    card.style.background = '#f5f5f5';
+    check.textContent = '✓';
+    check.style.color = '#1c1c1e';
+    check.style.fontWeight = '800';
+  } else {
+    card.style.border = '2px solid #e5e5ea';
+    card.style.background = '#fff';
+    check.textContent = '○';
+  }
+  // Update horizon based on goals
+  const hEl = document.getElementById('ob-horizon');
+  if (hEl) {
+    if (obGoals.long && obGoals.court) hEl.value = 'mixte';
+    else if (obGoals.long) hEl.value = 'long';
+    else if (obGoals.court) hEl.value = 'court';
+  }
+  // Enable next button
+  const btn = document.getElementById('ob-btn-2');
+  if (btn) btn.disabled = !obGoals.long && !obGoals.court;
+}
+
+function obSelectRisk(risk) {
+  ['faible','modere','eleve'].forEach(r => {
+    const card = document.getElementById('ob-risk-' + r);
+    const check = document.getElementById('ob-rcheck-' + r);
+    if (card) { card.style.border = r === risk ? '2px solid #1c1c1e' : '2px solid #e5e5ea'; card.style.background = r === risk ? '#f5f5f5' : '#fff'; }
+    if (check) { check.textContent = r === risk ? '✓' : '○'; check.style.fontWeight = r === risk ? '800' : '400'; }
+  });
+  const rEl = document.getElementById('ob-risk');
+  if (rEl) rEl.value = risk;
+  const btn = document.getElementById('ob-btn-4');
+  if (btn) btn.disabled = false;
+}
+
+async function obGeneratePlan() {
+  const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 1000;
+  const monthly = parseFloat(document.getElementById('ob-monthly')?.value) || 200;
+  const risk = document.getElementById('ob-risk')?.value || 'faible';
+  const goals = [];
+  if (obGoals.long) goals.push('construire un patrimoine long terme avec des ETF');
+  if (obGoals.court) goals.push('générer un complément de salaire avec des actions court terme');
+
+  const planEl = document.getElementById('ob-plan-content');
+
+  // Show immediate static plan while AI loads
+  const etfReco = risk === 'eleve' ? '60% IWDA · 40% actions individuelles' : risk === 'modere' ? '80% IWDA/VWCE · 20% actions' : '90% IWDA · 10% VWCE';
+  const dcaMsg = monthly > 0 ? `${monthly}€/mois en DCA automatique` : 'Versements réguliers recommandés';
+  const projFV = Math.round(bankroll * Math.pow(1.07, 10) + monthly * 12 * ((Math.pow(1.07, 10) - 1) / 0.07));
+
+  planEl.innerHTML = `
+    <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px;margin-bottom:12px;border-left:4px solid #1a7f5a">
+      <div style="font-size:13px;font-weight:800;color:#1a7f5a;margin-bottom:8px">✅ Ton plan InvestIQ</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${obGoals.long ? `<div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px">
+          <span style="font-size:18px">🏦</span>
+          <div><div style="font-size:12px;font-weight:700">Long terme — Patrimoine</div><div style="font-size:12px;color:#3c3c43">${etfReco}</div></div>
+        </div>` : ''}
+        ${obGoals.court ? `<div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px">
+          <span style="font-size:18px">⚡</span>
+          <div><div style="font-size:12px;font-weight:700">Court terme — Complément</div><div style="font-size:12px;color:#3c3c43">Actions avec signaux IA d'achat/vente</div></div>
+        </div>` : ''}
+        <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px">
+          <span style="font-size:18px">📅</span>
+          <div><div style="font-size:12px;font-weight:700">DCA mensuel</div><div style="font-size:12px;color:#3c3c43">${dcaMsg}</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px">
+          <span style="font-size:18px">📈</span>
+          <div><div style="font-size:12px;font-weight:700">Projection à 10 ans</div><div style="font-size:12px;color:#1a7f5a;font-weight:700">~${fmtK(projFV)} estimés à 7%/an</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="ob-ai-advice" style="font-size:13px;color:#8e8e93;text-align:center">💬 Conseil IA personnalisé en cours...</div>`;
+
+  // AI personalized advice
+  try {
+    const prompt = `Débutant en bourse. Objectifs : ${goals.join(' ET ')}. Budget : ${bankroll}€ de départ, ${monthly}€/mois. Profil risque : ${risk}.
+Donne un conseil de départ en 3 phrases MAX, très simple, concret, encourageant. Pas de jargon. Commence par "Pour toi,"`;
+    const advice = await callClaude(prompt);
+    const advEl = document.getElementById('ob-ai-advice');
+    if (advEl) advEl.innerHTML = `<div style="background:#f9f9f9;border-radius:12px;padding:12px 14px;font-size:13px;color:#3c3c43;line-height:1.6;text-align:left">💬 ${advice}</div>`;
+  } catch(e) {}
 }
 
 async function obFinish(action) {
-  // Save profile from onboarding
   const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 1000;
-  const risk = document.getElementById('ob-risk')?.value || 'faible';
-  const horizon = document.getElementById('ob-horizon')?.value || 'moyen';
-  
+  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 200;
+  const risk     = document.getElementById('ob-risk')?.value    || 'faible';
+  const horizon  = document.getElementById('ob-horizon')?.value || 'long';
+
   profile.bankroll = bankroll;
-  profile.risk = risk;
-  profile.horizon = horizon;
-  
-  // Update settings fields
+  profile.risk     = risk;
+  profile.horizon  = horizon === 'mixte' ? 'moyen' : horizon;
+
   if (document.getElementById('s-bankroll')) document.getElementById('s-bankroll').value = bankroll;
-  if (document.getElementById('s-risk')) document.getElementById('s-risk').value = risk;
-  if (document.getElementById('s-horizon')) document.getElementById('s-horizon').value = horizon;
-  
+  if (document.getElementById('s-risk'))     document.getElementById('s-risk').value     = risk;
+  if (document.getElementById('s-horizon'))  document.getElementById('s-horizon').value  = horizon === 'mixte' ? 'moyen' : horizon;
+
+  // Pre-fill objectif with monthly
+  if (monthly > 0) {
+    objChartMonthly = monthly;
+    objChartCapital = bankroll;
+    if (document.getElementById('obj-monthly')) document.getElementById('obj-monthly').value = monthly;
+    if (document.getElementById('obj-capital')) document.getElementById('obj-capital').value = bankroll;
+  }
+
   if (!isDemo) await saveProfile();
-  
   localStorage.setItem(OB_KEY, '1');
   document.getElementById('onboarding-modal').style.display = 'none';
-  
-  if (action === 'demo') {
-    await loadDemo();
-  } else {
-    nav(action);
-  }
+
+  if (action === 'demo') await loadDemo();
+  else nav(action);
 }
 
 
