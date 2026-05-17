@@ -560,3 +560,26 @@ input:focus,select:focus{outline:none;background:#ebebeb}
   border-color: #1c1c1e;
   color: #fff;
 }
+
+/* ===== ONBOARDING V2 ===== */
+.ob-prog-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: #e5e5ea;
+  transition: background 0.3s;
+}
+.ob-prog-bar.active { background: #1c1c1e; }
+
+.ob-goal-card, .ob-risk-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 2px solid #e5e5ea;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ob-goal-card:hover, .ob-risk-card:hover { border-color: #1c1c1e; }
