@@ -1999,15 +1999,18 @@ function togglePosSignal(id) {
   const el=document.getElementById('sig-'+id);
   if(el) el.style.display=el.style.display==='block'?'none':'block';
 }
-function openDecisionFromPos(name,action) {
-  document.getElementById('d-name').value=name;
-  document.getElementById('d-horizon').value=profile.horizon;
-  document.getElementById('d-risk').value=profile.risk;
+let decisionIntention = null;
+function openDecisionFromPos(name, action) {
+  decisionIntention = action;
+  document.getElementById('d-name').value = name;
+  document.getElementById('d-horizon').value = profile.horizon;
+  document.getElementById('d-risk').value = profile.risk;
   updatePct();
-  const notice=document.getElementById('prefill-notice');
-  notice.style.display='block';
-  notice.textContent=`→ Analyse de ${name} — intention : ${action}`;
-  nav('decision'); document.getElementById('nav-decision').classList.add('active');
+  const notice = document.getElementById('prefill-notice');
+  notice.style.display = 'block';
+  const labels = { acheter: '🟢 Acheter / Renforcer', vendre: '🔴 Vendre / Alléger', garder: '🟡 Analyser' };
+  notice.innerHTML = `<strong>${name}</strong> — ${labels[action] || action} <span style="font-size:12px;color:#8e8e93;margin-left:8px">L'IA va tenir compte de ton intention</span>`;
+  nav('decision');
 }
 
 async function addPos() {
@@ -2448,10 +2451,27 @@ async function analyseDecision(){
   const horizon=document.getElementById('d-horizon').value;
   const risk=document.getElementById('d-risk').value;
   if(!name){alert('Indique un actif.');return;}
-  const prompt=`Actif : ${name} | Montant : ${amount||'?'}€ (${pct}% bankroll ${profile.bankroll}€) | Horizon : ${HL[horizon]} | Risque : ${RL[risk]} | Profil : débutant prudent ETF/actions. Analyse en 5 lignes : 1) ce que c'est 2) risque 3) adapté ? 4) montant raisonnable ? 5) alternative.`;
+
+  // Trouve la position groupée si elle existe
+  const pos = positions.find(p => p.name === name);
+  const posContext = pos ? `PRU : ${pos.pru}€, prix actuel : ${pos.price}€, perf : ${((pos.price-pos.pru)/pos.pru*100).toFixed(1)}%, qty : ${pos.qty} parts.` : '';
+
+  const intentionLabel = { acheter: 'ACHETER / RENFORCER cette position', vendre: 'VENDRE / ALLÉGER cette position', garder: 'décider quoi faire avec' };
+  const intentionCtx = decisionIntention ? `L'utilisateur veut ${intentionLabel[decisionIntention] || decisionIntention}.` : '';
+
+  const prompt = `Actif : ${name}. ${posContext} ${intentionCtx}
+Montant envisagé : ${amount||'?'}€ (${pct}% de la bankroll de ${profile.bankroll}€).
+Horizon : ${HL[horizon]} | Tolérance au risque : ${RL[risk]} | Profil : débutant.
+Réponds en français en 4 points clairs :
+1) Analyse rapide de l'actif aujourd'hui
+2) ${decisionIntention === 'vendre' ? 'Faut-il vraiment vendre ? Quand et combien ?' : decisionIntention === 'acheter' ? 'Est-ce le bon moment pour renforcer ?' : 'Que faire avec cette position ?'}
+3) Risques à connaître
+4) Recommandation concrète en 1 phrase`;
+
   document.getElementById('d-result').innerHTML='<div class="bubble bot">Analyse en cours...</div>';
   const r=await callClaude(prompt);
   document.getElementById('d-result').innerHTML=`<div class="bubble bot">${formatMD(r)}</div>`;
+  decisionIntention = null;
 }
 
 // ===== DCA =====
