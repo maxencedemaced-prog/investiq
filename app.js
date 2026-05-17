@@ -99,45 +99,70 @@ function showValidatedChart() {
 
 
 // ===== PLAN COURT TERME =====
-function renderCourtTermePlan() {
-  const el = document.getElementById('obj-court-terme');
-  const actionsEl = document.getElementById('obj-court-actions');
-  if (!el || !actionsEl) return;
+async function getAIActionRecommendations(risk, capital) {
+  // Nombre d'actions selon capital
+  const nbActions = capital < 2000 ? 3 : capital < 5000 ? 4 : capital < 10000 ? 5 : 6;
+  const profil = risk === 'agressif' || risk === 'eleve' ? 'agressif (accepte forte volatilité)'
+    : risk === 'equilibre' || risk === 'modere' ? 'équilibré (mix rendement/sécurité)'
+    : 'prudent (préfère stabilité et dividendes)';
 
-  // Récupère le budget court terme (30% du capital ou bankroll)
-  const capital = objChartCapital || profile.bankroll || 1000;
-  const budgetCourt = Math.round(capital * 0.3);
-  const perAction = Math.round(budgetCourt / 3);
-  const risk = objRisk || profile.risk || 'faible';
+  const prompt = `Tu es un conseiller en investissement. Aujourd'hui ${new Date().toLocaleDateString('fr-FR')}, propose exactement ${nbActions} actions pour un investisseur ${profil} avec ${capital}€ de capital court terme.
 
-  const actionRecs = risk === 'agressif' || risk === 'eleve'
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication :
+[
+  {
+    "ticker": "AAPL",
+    "name": "Apple",
+    "gain": "+5-10%",
+    "horizon": "3-6 mois",
+    "desc": "Raison courte en 4 mots max",
+    "color": "#8b5cf6",
+    "montant": 300
+  }
+]
+
+Règles strictes :
+- Tickers réels et valides (ex: AAPL, MC.PA, IWDA.L)
+- Adapte aux conditions de marché actuelles
+- Profil ${profil} : ${risk === 'agressif' || risk === 'eleve' ? 'actions croissance tech/IA' : risk === 'equilibre' || risk === 'modere' ? 'mix tech + blue chips' : 'blue chips défensives + dividendes'}
+- Répartis le capital de ${capital}€ en montants cohérents
+- Colors hex variées et distinctes
+- desc MAX 4 mots`;
+
+  try {
+    const raw = await callClaude(prompt, 'Tu es un expert en investissement. Réponds UNIQUEMENT en JSON valide sans markdown.');
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const actions = JSON.parse(clean);
+    if (Array.isArray(actions) && actions.length > 0) return actions;
+  } catch(e) {
+    console.warn('AI recs failed, using fallback', e);
+  }
+
+  // Fallback statique si l'IA échoue
+  return risk === 'agressif' || risk === 'eleve'
     ? [
-        { ticker:'NVDA',   name:'NVIDIA',       gain:'+12-20%', horizon:'3-6 mois', desc:'Leader IA & GPU',           color:'#6366f1' },
-        { ticker:'TSLA',   name:'Tesla',         gain:'+8-15%',  horizon:'2-4 mois', desc:'Volatile, fort potentiel',  color:'#ec4899' },
-        { ticker:'META',   name:'Meta',          gain:'+8-12%',  horizon:'3-6 mois', desc:'Pub digitale en croissance',color:'#3b82f6' },
+        { ticker:'NVDA', name:'NVIDIA',   gain:'+12-20%', horizon:'3-6 mois', desc:'Leader IA & GPU',    color:'#6366f1', montant: Math.round(capital*0.4) },
+        { ticker:'TSLA', name:'Tesla',    gain:'+8-15%',  horizon:'2-4 mois', desc:'Volatile potentiel', color:'#ec4899', montant: Math.round(capital*0.35) },
+        { ticker:'META', name:'Meta',     gain:'+8-12%',  horizon:'3-6 mois', desc:'Pub digitale',       color:'#3b82f6', montant: Math.round(capital*0.25) },
       ]
     : risk === 'equilibre' || risk === 'modere'
     ? [
-        { ticker:'AAPL',   name:'Apple',         gain:'+5-10%',  horizon:'3-6 mois', desc:'Stable, dividendes',        color:'#8b5cf6' },
-        { ticker:'MSFT',   name:'Microsoft',     gain:'+6-10%',  horizon:'3-6 mois', desc:'Cloud & IA solide',         color:'#0ea5e9' },
-        { ticker:'MC.PA',  name:'LVMH',          gain:'+5-10%',  horizon:'4-8 mois', desc:'Luxe, leader mondial',      color:'#f59e0b' },
+        { ticker:'AAPL',  name:'Apple',     gain:'+5-10%', horizon:'3-6 mois', desc:'Stable dividendes',  color:'#8b5cf6', montant: Math.round(capital*0.35) },
+        { ticker:'MSFT',  name:'Microsoft', gain:'+6-10%', horizon:'3-6 mois', desc:'Cloud IA solide',    color:'#0ea5e9', montant: Math.round(capital*0.35) },
+        { ticker:'MC.PA', name:'LVMH',      gain:'+5-10%', horizon:'4-8 mois', desc:'Luxe mondial',       color:'#f59e0b', montant: Math.round(capital*0.30) },
       ]
     : [
-        { ticker:'AI.PA',  name:'Air Liquide',   gain:'+4-8%',   horizon:'6-12 mois', desc:'Défensif, dividendes',     color:'#10b981' },
-        { ticker:'OR.PA',  name:'LOreal',        gain:'+4-7%',   horizon:'6-12 mois', desc:'Consommation stable',      color:'#f43f5e' },
-        { ticker:'TTE.PA', name:'TotalEnergies', gain:'+5-9%',   horizon:'4-8 mois',  desc:'Énergie, bon dividende',   color:'#f97316' },
+        { ticker:'AI.PA',  name:'Air Liquide',   gain:'+4-8%', horizon:'6-12 mois', desc:'Défensif dividendes', color:'#10b981', montant: Math.round(capital*0.4) },
+        { ticker:'OR.PA',  name:'LOreal',        gain:'+4-7%', horizon:'6-12 mois', desc:'Consommation stable', color:'#f43f5e', montant: Math.round(capital*0.3) },
+        { ticker:'TTE.PA', name:'TotalEnergies', gain:'+5-9%', horizon:'4-8 mois',  desc:'Énergie dividende',   color:'#f97316', montant: Math.round(capital*0.3) },
       ];
+}
 
-  el.style.display = 'block';
-  actionsEl.innerHTML = `
-    <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">
-      Budget alloué : <strong style="color:#1c1c1e">${fmtK(budgetCourt)}</strong> · 
-      ~${fmtK(perAction)} par action · 
-      Clique pour analyser et ajouter au portefeuille
-    </div>
+function renderActionCards(actionRecs, containerEl) {
+  containerEl.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px">
-      ${actionRecs.map(a => `
-      <div onclick="openActionFromObjectif('${a.ticker}','${a.name}',${perAction})"
+      ${actionRecs.map((a, i) => `
+      <div onclick="openActionFromObjectif('${a.ticker}','${a.name}',${a.montant})"
            style="background:#fff;border-radius:14px;padding:14px 16px;border:2px solid #f0f0f0;cursor:pointer;transition:all 0.2s"
            onmouseover="this.style.borderColor='#f59e0b';this.style.background='#fffdf5'"
            onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'">
@@ -156,19 +181,45 @@ function renderCourtTermePlan() {
         </div>
         <div style="margin-top:10px">
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8e93;margin-bottom:4px">
-            <span>Espérance de gain</span>
+            <span>Montant suggéré : <strong style="color:#1c1c1e">${fmtK(a.montant)}</strong></span>
             <span style="font-weight:700;color:#f59e0b">Analyser & Acheter →</span>
           </div>
           <div style="background:#f5f5f5;border-radius:6px;height:6px;overflow:hidden">
-            <div style="height:100%;background:linear-gradient(90deg,${a.color}60,${a.color});width:${45 + actionRecs.indexOf(a)*15}%"></div>
+            <div style="height:100%;background:linear-gradient(90deg,${a.color}60,${a.color});width:${40 + i*12}%"></div>
           </div>
-          <div style="font-size:11px;color:#8e8e93;margin-top:4px">Montant suggéré : <strong style="color:#1c1c1e">${fmtK(perAction)}</strong></div>
         </div>
       </div>`).join('')}
     </div>
     <div style="margin-top:10px;padding:10px 14px;background:#fff9e6;border-radius:12px;font-size:12px;color:#92400e">
-      ⚠️ Ces recommandations sont éducatives. Clique sur une action pour l'analyser avant d'investir.
+      ⚠️ Recommandations éducatives générées par IA. Clique pour analyser avant d'investir.
     </div>`;
+}
+
+async function renderCourtTermePlan() {
+  const el = document.getElementById('obj-court-terme');
+  const actionsEl = document.getElementById('obj-court-actions');
+  if (!el || !actionsEl) return;
+
+  const capital = objChartCapital || profile.bankroll || 1000;
+  const budgetCourt = Math.round(capital * 0.3);
+  const risk = objRisk || profile.risk || 'faible';
+
+  el.style.display = 'block';
+  actionsEl.innerHTML = `
+    <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">
+      Budget alloué : <strong style="color:#1c1c1e">${fmtK(budgetCourt)}</strong> · Clique pour analyser et ajouter au portefeuille
+    </div>
+    <div style="text-align:center;padding:20px;color:#8e8e93">
+      <div style="font-size:24px;margin-bottom:8px">🧠</div>
+      <div style="font-size:13px">Analyse du marché en cours...</div>
+    </div>`;
+
+  const actionRecs = await getAIActionRecommendations(risk, budgetCourt);
+  actionsEl.innerHTML = `
+    <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">
+      Budget alloué : <strong style="color:#1c1c1e">${fmtK(budgetCourt)}</strong> · ${actionRecs.length} opportunités selon le marché aujourd'hui
+    </div>`;
+  renderActionCards(actionRecs, actionsEl.appendChild(document.createElement('div')));
 }
 
 async function openActionFromObjectif(ticker, name, amount) {
@@ -1184,72 +1235,35 @@ async function obGeneratePlan() {
     </div>`;
   }
 
-  // PLAN COURT TERME
+  // PLAN COURT TERME — placeholder, actions chargées après
   if (obGoals.court) {
     const capitalCourt = both ? budgetCourt : bankroll;
     const monthlyTrade = both ? Math.round(monthly * 0.3) : monthly;
-
-    // Actions recommandées selon profil
-    const actionRecs = risk === 'eleve'
-      ? [
-          { ticker:'NVDA',  name:'NVIDIA',       gain:'+12-20%', horizon:'3-6 mois', desc:'Leader IA & GPU' },
-          { ticker:'TSLA',  name:'Tesla',         gain:'+8-15%',  horizon:'2-4 mois', desc:'Volatile, fort potentiel' },
-          { ticker:'META',  name:'Meta',          gain:'+8-12%',  horizon:'3-6 mois', desc:'Pub digitale en croissance' },
-        ]
-      : risk === 'modere'
-      ? [
-          { ticker:'AAPL',  name:'Apple',         gain:'+5-10%',  horizon:'3-6 mois', desc:'Stable, dividendes' },
-          { ticker:'MSFT',  name:'Microsoft',     gain:'+6-10%',  horizon:'3-6 mois', desc:'Cloud & IA solide' },
-          { ticker:'MC.PA', name:'LVMH',          gain:'+5-10%',  horizon:'4-8 mois', desc:'Luxe, leader mondial' },
-        ]
-      : [
-          { ticker:'AI.PA', name:'Air Liquide',   gain:'+4-8%',   horizon:'6-12 mois', desc:'Défensif, dividendes réguliers' },
-          { ticker:'OR.PA', name:'LOréal',      gain:'+4-7%',   horizon:'6-12 mois', desc:'Consommation stable' },
-          { ticker:'TTE.PA',name:'TotalEnergies', gain:'+5-9%',   horizon:'4-8 mois',  desc:'Énergie, bon dividende' },
-        ];
-
-    const perAction = Math.round(capitalCourt / actionRecs.length);
-
     html += `
     <div style="background:#fff9e6;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #f59e0b">
       <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:4px">⚡ PLAN COURT TERME — Complément de salaire</div>
       <div style="font-size:12px;color:#92400e;margin-bottom:12px">Capital : ${fmtK(capitalCourt)} · ${monthlyTrade}€/mois · Objectif +5 à 15%/an</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${actionRecs.map(a => `
-        <div style="background:#fff;border-radius:12px;padding:12px 14px;cursor:pointer;border:2px solid transparent;transition:border 0.2s"
-             onclick="obOpenAction('${a.ticker}','${a.name}',${perAction})"
-             onmouseover="this.style.border='2px solid #f59e0b'"
-             onmouseout="this.style.border='2px solid transparent'">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:36px;height:36px;border-radius:10px;background:#fff9e6;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#92400e">${a.ticker.slice(0,2)}</div>
-              <div>
-                <div style="font-size:13px;font-weight:700">${a.name} <span style="font-size:11px;color:#8e8e93;font-weight:400">${a.ticker}</span></div>
-                <div style="font-size:11px;color:#8e8e93">${a.desc}</div>
-              </div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:13px;font-weight:800;color:#1a7f5a">${a.gain}</div>
-              <div style="font-size:11px;color:#8e8e93">${a.horizon}</div>
-            </div>
-          </div>
-          <div style="margin-top:8px;background:#f5f5f5;border-radius:6px;height:6px;overflow:hidden">
-            <div style="height:100%;background:linear-gradient(90deg,#f59e0b,#1a7f5a);width:${40 + Math.random()*40}%"></div>
-          </div>
-          <div style="margin-top:4px;font-size:11px;color:#8e8e93;display:flex;justify-content:space-between">
-            <span>Montant suggéré : <strong>${fmtK(perAction)}</strong></span>
-            <span style="color:#f59e0b;font-weight:600">Analyser →</span>
-          </div>
-        </div>`).join('')}
-      </div>
-      <div style="margin-top:8px;padding:8px 12px;background:#fff;border-radius:10px;font-size:11px;color:#8e8e93">
-        ⚠️ Clique sur une action pour l'analyser et l'ajouter à ton portefeuille
+      <div id="ob-action-recs" style="text-align:center;padding:16px;color:#8e8e93">
+        <div style="font-size:20px;margin-bottom:6px">🧠</div>
+        <div style="font-size:13px">Analyse du marché en cours...</div>
       </div>
     </div>`;
   }
 
   html += `<div id="ob-ai-advice" style="text-align:center;padding:12px;color:#8e8e93;font-size:13px">💬 Conseil IA en cours...</div>`;
   planEl.innerHTML = html;
+
+  // Charge les actions en parallèle
+  if (obGoals.court) {
+    const capitalCourt = both ? budgetCourt : bankroll;
+    getAIActionRecommendations(risk, capitalCourt).then(actionRecs => {
+      const recsEl = document.getElementById('ob-action-recs');
+      if (!recsEl) return;
+      const wrapper = document.createElement('div');
+      recsEl.replaceWith(wrapper);
+      renderActionCards(actionRecs, wrapper);
+    });
+  }
 
   // Conseil IA personnalisé
   try {
