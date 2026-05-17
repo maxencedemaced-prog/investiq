@@ -1000,6 +1000,38 @@ function obSelectRisk(risk) {
   if (btn) btn.disabled = false;
 }
 
+function obOpenAction(ticker, name, amount) {
+  // Ferme l'onboarding
+  document.getElementById('onboarding-modal').style.display = 'none';
+  localStorage.setItem(OB_KEY, '1');
+
+  // Sauvegarde le profil
+  obFinishSilent();
+
+  // Ouvre aide décision avec tout pré-rempli
+  decisionIntention = 'acheter';
+  nav('decision');
+  setTimeout(() => {
+    const nameEl = document.getElementById('d-name');
+    if (nameEl) nameEl.value = ticker;
+    const pct = Math.round(amount / (profile.bankroll || 1000) * 100);
+    const pctEl = document.getElementById('d-pct');
+    if (pctEl) { pctEl.value = Math.min(pct, 50); updatePct(); }
+    setDecisionIntent('acheter');
+  }, 100);
+}
+
+async function obFinishSilent() {
+  const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 1000;
+  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 200;
+  const risk     = document.getElementById('ob-risk')?.value    || 'faible';
+  const horizon  = document.getElementById('ob-horizon')?.value || 'long';
+  profile.bankroll = bankroll;
+  profile.risk     = risk;
+  profile.horizon  = horizon === 'mixte' ? 'moyen' : horizon;
+  if (!isDemo) await saveProfile();
+}
+
 function obCheckBudget() {
   const bankroll = document.getElementById('ob-bankroll')?.value;
   const monthly  = document.getElementById('ob-monthly')?.value;
@@ -1064,24 +1096,62 @@ async function obGeneratePlan() {
   if (obGoals.court) {
     const capitalCourt = both ? budgetCourt : bankroll;
     const monthlyTrade = both ? Math.round(monthly * 0.3) : monthly;
+
+    // Actions recommandées selon profil
+    const actionRecs = risk === 'eleve'
+      ? [
+          { ticker:'NVDA',  name:'NVIDIA',       gain:'+12-20%', horizon:'3-6 mois', desc:'Leader IA & GPU' },
+          { ticker:'TSLA',  name:'Tesla',         gain:'+8-15%',  horizon:'2-4 mois', desc:'Volatile, fort potentiel' },
+          { ticker:'META',  name:'Meta',          gain:'+8-12%',  horizon:'3-6 mois', desc:'Pub digitale en croissance' },
+        ]
+      : risk === 'modere'
+      ? [
+          { ticker:'AAPL',  name:'Apple',         gain:'+5-10%',  horizon:'3-6 mois', desc:'Stable, dividendes' },
+          { ticker:'MSFT',  name:'Microsoft',     gain:'+6-10%',  horizon:'3-6 mois', desc:'Cloud & IA solide' },
+          { ticker:'MC.PA', name:'LVMH',          gain:'+5-10%',  horizon:'4-8 mois', desc:'Luxe, leader mondial' },
+        ]
+      : [
+          { ticker:'AI.PA', name:'Air Liquide',   gain:'+4-8%',   horizon:'6-12 mois', desc:'Défensif, dividendes réguliers' },
+          { ticker:'OR.PA', name:'LOréal',      gain:'+4-7%',   horizon:'6-12 mois', desc:'Consommation stable' },
+          { ticker:'TTE.PA',name:'TotalEnergies', gain:'+5-9%',   horizon:'4-8 mois',  desc:'Énergie, bon dividende' },
+        ];
+
+    const perAction = Math.round(capitalCourt / actionRecs.length);
+
     html += `
     <div style="background:#fff9e6;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #f59e0b">
-      <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:10px">⚡ PLAN COURT TERME — Complément de salaire</div>
+      <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:4px">⚡ PLAN COURT TERME — Complément de salaire</div>
+      <div style="font-size:12px;color:#92400e;margin-bottom:12px">Capital : ${fmtK(capitalCourt)} · ${monthlyTrade}€/mois · Objectif +5 à 15%/an</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <div style="background:#fff;border-radius:10px;padding:10px 12px">
-          <div style="font-size:11px;font-weight:700;color:#8e8e93;margin-bottom:4px">STRATÉGIE</div>
-          <div style="font-size:13px;color:#1c1c1e">• Actions individuelles avec signaux IA</div>
-          <div style="font-size:13px;color:#1c1c1e">• L'app te dit quand acheter et quand vendre</div>
-          <div style="font-size:13px;color:#1c1c1e">• Objectif : +5 à 15%/an sur ce capital</div>
-        </div>
-        <div style="background:#fff;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between">
-          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">CAPITAL ALLOUÉ</div><div style="font-size:14px;font-weight:800">${fmtK(capitalCourt)}</div></div>
-          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">MENSUEL</div><div style="font-size:14px;font-weight:800">${monthlyTrade}€/mois</div></div>
-          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">RISQUE</div><div style="font-size:14px;font-weight:800;color:#f59e0b">Moyen</div></div>
-        </div>
-        <div style="background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#8e8e93">
-          ⚠️ Ne jamais investir plus que tu peux te permettre de perdre
-        </div>
+        ${actionRecs.map(a => `
+        <div style="background:#fff;border-radius:12px;padding:12px 14px;cursor:pointer;border:2px solid transparent;transition:border 0.2s"
+             onclick="obOpenAction('${a.ticker}','${a.name}',${perAction})"
+             onmouseover="this.style.border='2px solid #f59e0b'"
+             onmouseout="this.style.border='2px solid transparent'">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:36px;height:36px;border-radius:10px;background:#fff9e6;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#92400e">${a.ticker.slice(0,2)}</div>
+              <div>
+                <div style="font-size:13px;font-weight:700">${a.name} <span style="font-size:11px;color:#8e8e93;font-weight:400">${a.ticker}</span></div>
+                <div style="font-size:11px;color:#8e8e93">${a.desc}</div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:800;color:#1a7f5a">${a.gain}</div>
+              <div style="font-size:11px;color:#8e8e93">${a.horizon}</div>
+            </div>
+          </div>
+          <div style="margin-top:8px;background:#f5f5f5;border-radius:6px;height:6px;overflow:hidden">
+            <div style="height:100%;background:linear-gradient(90deg,#f59e0b,#1a7f5a);width:${40 + Math.random()*40}%"></div>
+          </div>
+          <div style="margin-top:4px;font-size:11px;color:#8e8e93;display:flex;justify-content:space-between">
+            <span>Montant suggéré : <strong>${fmtK(perAction)}</strong></span>
+            <span style="color:#f59e0b;font-weight:600">Analyser →</span>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div style="margin-top:8px;padding:8px 12px;background:#fff;border-radius:10px;font-size:11px;color:#8e8e93">
+        ⚠️ Clique sur une action pour l'analyser et l'ajouter à ton portefeuille
       </div>
     </div>`;
   }
