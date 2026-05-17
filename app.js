@@ -1173,8 +1173,8 @@ En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de j
 }
 
 async function obFinish(action) {
-  const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 1000;
-  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 200;
+  const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
+  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
   const risk     = document.getElementById('ob-risk')?.value    || 'faible';
   const horizon  = document.getElementById('ob-horizon')?.value || 'long';
 
@@ -1186,15 +1186,33 @@ async function obFinish(action) {
   if (document.getElementById('s-risk'))     document.getElementById('s-risk').value     = risk;
   if (document.getElementById('s-horizon'))  document.getElementById('s-horizon').value  = horizon === 'mixte' ? 'moyen' : horizon;
 
-  // Pre-fill objectif with monthly
-  if (monthly > 0) {
-    objChartMonthly = monthly;
-    objChartCapital = bankroll;
-    if (document.getElementById('obj-monthly')) document.getElementById('obj-monthly').value = monthly;
-    if (document.getElementById('obj-capital')) document.getElementById('obj-capital').value = bankroll;
+  // Applique les variables objectif
+  objChartCapital = bankroll;
+  objChartMonthly = monthly;
+  objChartTarget  = 100000; // défaut
+  objChartYears   = 10;
+  objChartRate    = 7;
+  objRisk         = risk === 'eleve' ? 'agressif' : risk === 'modere' ? 'equilibre' : 'prudent';
+
+  // Sauvegarde profil + objectif en Supabase
+  if (!isDemo) {
+    await saveProfile();
+    try {
+      await sb.from('objectives').update({
+        capital: bankroll, monthly: monthly,
+        target: 100000, years: 10, rate: 7,
+        risk: objRisk, updated_at: new Date().toISOString()
+      }).eq('user_id', currentUser.id);
+    } catch(e) {}
   }
 
-  if (!isDemo) await saveProfile();
+  // localStorage fallback
+  try { localStorage.setItem('iq_validated_objective', JSON.stringify({
+    capital: bankroll, monthly: monthly, target: 100000,
+    years: 10, rate: 7, risk: objRisk,
+    validatedAt: new Date().toISOString()
+  })); } catch {}
+
   localStorage.setItem(OB_KEY, '1');
   document.getElementById('onboarding-modal').style.display = 'none';
 
@@ -1992,7 +2010,7 @@ function nav(page) {
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
   closeSidebar();
-  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async ()=>{ const alreadyLoaded = objChartCapital && objChartTarget; const hasValidated = alreadyLoaded || await loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async ()=>{ const alreadyLoaded = objChartCapital > 0 && objChartTarget > 0 && objChartTarget !== 100000; const hasValidated = alreadyLoaded || await loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
