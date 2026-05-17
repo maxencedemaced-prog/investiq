@@ -36,7 +36,7 @@ async function loadValidatedObjectif() {
   if (!isDemo && currentUser) {
     try {
       const { data } = await sb.from('objectives').select('*').eq('user_id', currentUser.id).maybeSingle();
-      if (data && data.capital) {
+      if (data && (data.capital || data.target)) {
         saved = { capital: data.capital, monthly: data.monthly, target: data.target, years: data.years, rate: data.rate, risk: data.risk || 'equilibre', validatedAt: data.validated_at };
         localStorage.setItem(OBJ_STORAGE, JSON.stringify(saved));
       }
@@ -56,24 +56,30 @@ async function loadValidatedObjectif() {
 }
 
 function showValidatedChart() {
-  const saved = (() => { try { return JSON.parse(localStorage.getItem(OBJ_STORAGE) || 'null'); } catch { return null; } })();
-  if (!saved) return;
-  
+  // Use already-loaded variables (set by loadValidatedObjectif)
+  if (!objChartCapital || !objChartTarget) {
+    // Fallback: try localStorage
+    const saved = (() => { try { return JSON.parse(localStorage.getItem(OBJ_STORAGE) || 'null'); } catch { return null; } })();
+    if (!saved || !saved.capital) return;
+    objChartCapital = saved.capital; objChartMonthly = saved.monthly;
+    objChartTarget = saved.target; objChartYears = saved.years;
+    objChartRate = saved.rate; objRisk = saved.risk || 'equilibre';
+  }
+
   document.getElementById('obj-wizard').style.display = 'none';
   document.getElementById('obj-results').style.display = 'block';
-  
+
   setTimeout(() => {
-    buildObjChart(saved.capital, saved.monthly, saved.target, saved.years, saved.rate);
+    buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
   }, 100);
-  
-  // Show validated badge in ai-simple
+
+  // Show validated badge
   const el = document.getElementById('obj-ai-simple');
   if (el && el.innerHTML.trim() === '') {
-    const daysAgo = Math.floor((Date.now() - new Date(saved.validatedAt)) / 86400000);
     el.innerHTML = `
       <div style="background:#e8f8f0;border-radius:14px;padding:16px;margin-bottom:12px">
-        <div style="font-size:14px;font-weight:800;color:#1a7f5a;margin-bottom:4px">✓ Objectif validé il y a ${daysAgo === 0 ? "aujourd'hui" : daysAgo + ' jour(s)'}</div>
-        <div style="font-size:13px;color:#1a7f5a">Capital : ${fmtK(saved.capital)} · ${saved.monthly}€/mois · Profil ${saved.risk}</div>
+        <div style="font-size:14px;font-weight:800;color:#1a7f5a;margin-bottom:4px">✓ Objectif sauvegardé sur ton compte</div>
+        <div style="font-size:13px;color:#1a7f5a">Capital : ${fmtK(objChartCapital)} · ${objChartMonthly}€/mois · Profil ${objRisk}</div>
       </div>
       <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px">Modifier l'objectif</button>`;
   }
