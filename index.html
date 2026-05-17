@@ -74,7 +74,10 @@
           <input type="email" id="login-email" class="auth-input" placeholder="ton@email.com" onkeydown="if(event.key==='Enter')login()">
         </div>
         <div class="auth-field">
-          <label class="auth-label">Mot de passe</label>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label class="auth-label" style="margin-bottom:0">Mot de passe</label>
+            <a href="#" onclick="resetPassword()" style="font-size:11px;color:#8e8e93;font-weight:600;text-decoration:none;cursor:pointer" onmouseover="this.style.color='#1c1c1e'" onmouseout="this.style.color='#8e8e93'">Mot de passe oublié ?</a>
+          </div>
           <input type="password" id="login-pass" class="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
         </div>
         <button class="btn-auth" onclick="login()">
