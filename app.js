@@ -2928,33 +2928,39 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
   decisionIntention = null;
 }
 
-function addToPortfolioFromDecision(ticker, amount) {
-  // Ouvre le formulaire d'ajout pré-rempli
+async function addToPortfolioFromDecision(ticker, amount) {
   nav('ajouter');
   setTimeout(async () => {
-    // Cherche le prix live
     try {
+      // Cherche le prix live
       const res = await fetch('/api/prices?symbols=' + encodeURIComponent(ticker));
       const data = await res.json();
       const quote = data.quotes?.[0];
       const price = quote?.price || 0;
-      const qty = price > 0 ? Math.floor(amount / price) || 1 : 1;
+      const qty = price > 0 ? Math.max(1, Math.floor(amount / price)) : 1;
 
-      const nameEl = document.getElementById('f-name');
-      const qtyEl  = document.getElementById('f-qty');
-      const pruEl  = document.getElementById('f-pru');
-      const priceEl = document.getElementById('f-price');
+      // Simule une sélection autocomplete
+      const company = {
+        ticker: ticker,
+        name: ticker,
+        type: ticker.includes('.') && !ticker.includes('.PA') ? 'ETF' : 'Action',
+        sector: ''
+      };
+      await acSelect(company);
 
-      if (nameEl) { nameEl.value = ticker; nameEl.dispatchEvent(new Event('input')); }
-      if (qtyEl)  qtyEl.value  = qty;
-      if (pruEl)  pruEl.value  = price;
-      if (priceEl) priceEl.value = price;
-
-      showToast(`✅ ${ticker} pré-rempli — vérifie la quantité et valide !`);
+      // Remplis qty et PRU après acSelect (qui charge le prix live)
+      setTimeout(() => {
+        const qtyEl = document.getElementById('f-qty');
+        const pruEl = document.getElementById('f-pru');
+        if (qtyEl && !qtyEl.value) qtyEl.value = qty;
+        if (pruEl && !pruEl.value && price) pruEl.value = price;
+        showToast(`✅ ${ticker} pré-rempli — vérifie et valide !`);
+      }, 1000);
     } catch(e) {
-      const nameEl = document.getElementById('f-name');
-      if (nameEl) { nameEl.value = ticker; nameEl.dispatchEvent(new Event('input')); }
-      showToast('✅ Remplis les détails et valide pour ajouter au portefeuille');
+      // Fallback manuel
+      const company = { ticker, name: ticker, type: 'Action', sector: '' };
+      acSelect(company);
+      showToast('✅ Remplis les détails et valide');
     }
   }, 200);
 }
