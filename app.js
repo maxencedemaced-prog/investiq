@@ -1853,10 +1853,12 @@ function enterDemo() {
   document.getElementById('onboarding-modal').style.display = 'flex';
 }
 
-function showAuthScreen() {
+function showAuthScreen(tab) {
   currentUser = null; isDemo = false; positions = []; posSignals = {}; chatHistory = [];
   document.getElementById('auth-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
+  document.getElementById('demo-banner').style.display = 'none';
+  if (tab === 'signup') setTimeout(() => switchAuth('signup'), 50);
 }
 
 // ===== AUTH =====
@@ -2927,25 +2929,34 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
 }
 
 function addToPortfolioFromDecision(ticker, amount) {
-  // Pré-remplit le formulaire d'ajout de position
+  // Ouvre le formulaire d'ajout pré-rempli
   nav('ajouter');
-  setTimeout(() => {
-    const nameEl = document.getElementById('f-name');
-    if (nameEl) {
-      nameEl.value = ticker;
-      nameEl.dispatchEvent(new Event('input'));
+  setTimeout(async () => {
+    // Cherche le prix live
+    try {
+      const res = await fetch('/api/prices?symbols=' + encodeURIComponent(ticker));
+      const data = await res.json();
+      const quote = data.quotes?.[0];
+      const price = quote?.price || 0;
+      const qty = price > 0 ? Math.floor(amount / price) || 1 : 1;
+
+      const nameEl = document.getElementById('f-name');
+      const qtyEl  = document.getElementById('f-qty');
+      const pruEl  = document.getElementById('f-pru');
+      const priceEl = document.getElementById('f-price');
+
+      if (nameEl) { nameEl.value = ticker; nameEl.dispatchEvent(new Event('input')); }
+      if (qtyEl)  qtyEl.value  = qty;
+      if (pruEl)  pruEl.value  = price;
+      if (priceEl) priceEl.value = price;
+
+      showToast(`✅ ${ticker} pré-rempli — vérifie la quantité et valide !`);
+    } catch(e) {
+      const nameEl = document.getElementById('f-name');
+      if (nameEl) { nameEl.value = ticker; nameEl.dispatchEvent(new Event('input')); }
+      showToast('✅ Remplis les détails et valide pour ajouter au portefeuille');
     }
-    // Calcule la quantité approximative si on a le prix
-    const pos = positions.find(p => p.name === ticker);
-    if (pos && pos.price && amount) {
-      const qtyEl = document.getElementById('f-qty');
-      const pruEl = document.getElementById('f-pru');
-      const qty = Math.floor(amount / pos.price) || 1;
-      if (qtyEl) qtyEl.value = qty;
-      if (pruEl) pruEl.value = pos.price;
-    }
-    showToast('✅ Remplis les détails et valide pour ajouter au portefeuille');
-  }, 150);
+  }, 200);
 }
 
 // ===== DCA =====
