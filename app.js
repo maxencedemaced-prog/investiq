@@ -29,7 +29,6 @@ async function validateObjectif() {
   if (btn) { btn.textContent = '✓ Objectif sauvegardé sur ton compte !'; btn.style.background = '#1a7f5a'; btn.disabled = true; }
   showToast('🎯 Objectif sauvegardé sur ton compte !');
 }
-}
 
 async function loadValidatedObjectif() {
   let saved = null;
@@ -54,7 +53,6 @@ async function loadValidatedObjectif() {
   if (document.getElementById('obj-target')) document.getElementById('obj-target').value = saved.target;
   if (document.getElementById('obj-years')) document.getElementById('obj-years').value = saved.years;
   return true;
-}
 }
 
 function showValidatedChart() {
