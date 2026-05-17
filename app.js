@@ -1514,28 +1514,33 @@ async function renderSignaux() {
     <div style="font-size:13px;font-weight:600">Analyse du marché en cours...</div>
   </div>`;
 
-  const myTickers = [...new Set(positions.map(p => p.name))].slice(0, 3);
-  // Opportunités variées que l'utilisateur ne possède probablement pas
-  const oppoTickers = ['NVDA','MSFT','AAPL','MC.PA','AI.PA','TTE.PA','BNP.PA','OR.PA','TSLA','AMZN'].filter(t => !myTickers.includes(t)).slice(0, 5);
-  const allTickers = [...myTickers, ...oppoTickers];
+  // Max 2 positions + 4 opportunités
+  const myTickers = [...new Set(positions.map(p => p.name))].slice(0, 2);
+  const oppoTickers = ['NVDA','MSFT','AAPL','MC.PA'].filter(t => !myTickers.includes(t)).slice(0, 4);
   const date = new Date().toLocaleDateString('fr-FR');
 
-  // Deux appels séparés pour plus de fiabilité
-  async function fetchSignaux(tickers, section) {
-    const prompt = `Analyste financier, le ${date}. Signal pour : ${tickers.join(', ')}.
-Réponds UNIQUEMENT avec du JSON valide, tableau d'objets :
-[{"ticker":"X","name":"Nom","signal":"acheter","conviction":"forte","risque":3,"objectif":0,"stop_loss":0,"horizon":"2-4 semaines","raison":"1 phrase","type":"Action","secteur":"Tech"}]
-signal: acheter/attendre/vendre/eviter. risque: 1(très faible) à 5(très élevé).`;
-    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT JSON valide sans markdown.');
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const s = clean.indexOf('['), e = clean.lastIndexOf(']');
-    if (s === -1 || e === -1) throw new Error('No array');
-    return JSON.parse(clean.slice(s, e+1));
+  async function fetchSignaux(tickers) {
+    if (!tickers.length) return [];
+    // Un seul ticker par appel pour fiabilité maximale
+    const results = [];
+    for (const ticker of tickers) {
+      try {
+        const prompt = `Signal de trading pour ${ticker} aujourd'hui ${date}.
+Réponds avec exactement ce JSON et rien d'autre :
+{"ticker":"${ticker}","name":"NomComplet","signal":"acheter","conviction":"modérée","risque":3,"objectif":0,"stop_loss":0,"horizon":"2-4 semaines","raison":"1 phrase max","type":"Action","secteur":"Tech"}
+signal: acheter/attendre/vendre/eviter. risque: 1 à 5.`;
+        const raw = await callClaude(prompt, 'Réponds UNIQUEMENT avec du JSON valide, un seul objet.');
+        const clean = raw.replace(/```json|```/g,'').trim();
+        const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+        if (s !== -1 && e !== -1) results.push(JSON.parse(clean.slice(s, e+1)));
+      } catch(e) { console.warn('Signal failed for', ticker); }
+    }
+    return results;
   }
 
   try {
     // Chargement progressif
-    const mySignaux = myTickers.length ? await fetchSignaux(myTickers, 'mine') : [];
+    const mySignaux = await fetchSignaux(myTickers);
     
     // Affiche mes positions immédiatement
     list.innerHTML = `
@@ -1547,7 +1552,7 @@ signal: acheter/attendre/vendre/eviter. risque: 1(très faible) à 5(très élev
         <div style="font-size:13px">Analyse des opportunités...</div>
       </div>`;
 
-    const oppoSignaux = await fetchSignaux(oppoTickers, 'oppo');
+    const oppoSignaux = await fetchSignaux(oppoTickers);
     
     // Remplace le loader par les opportunités
     const oppoLoader = document.getElementById('oppo-loading');
