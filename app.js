@@ -1514,90 +1514,121 @@ async function renderSignaux() {
     <div style="font-size:13px;font-weight:600">Analyse du marché en cours...</div>
   </div>`;
 
-  // Max 5 tickers : tes positions groupées d'abord, puis populaires
   const myTickers = [...new Set(positions.map(p => p.name))].slice(0, 3);
-  const popularTickers = ['AAPL','MSFT','NVDA','MC.PA','IWDA.L'];
-  const allTickers = [...new Set([...myTickers, ...popularTickers])].slice(0, 5);
-
+  // Opportunités variées que l'utilisateur ne possède probablement pas
+  const oppoTickers = ['NVDA','MSFT','AAPL','MC.PA','AI.PA','TTE.PA','BNP.PA','OR.PA','TSLA','AMZN'].filter(t => !myTickers.includes(t)).slice(0, 5);
+  const allTickers = [...myTickers, ...oppoTickers];
   const date = new Date().toLocaleDateString('fr-FR');
-  const prompt = `Analyste financier. Le ${date}, donne un signal pour chaque actif : ${allTickers.join(', ')}.
-Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après) :
-[{"ticker":"AAPL","name":"Apple","signal":"acheter","conviction":"modérée","objectif":200,"stop_loss":180,"horizon":"2-4 semaines","raison":"Raison courte","type":"Action"}]
-Signaux possibles : acheter, attendre, vendre, eviter.`;
+
+  // Deux appels séparés pour plus de fiabilité
+  async function fetchSignaux(tickers, section) {
+    const prompt = `Analyste financier, le ${date}. Signal pour : ${tickers.join(', ')}.
+Réponds UNIQUEMENT avec du JSON valide, tableau d'objets :
+[{"ticker":"X","name":"Nom","signal":"acheter","conviction":"forte","risque":3,"objectif":0,"stop_loss":0,"horizon":"2-4 semaines","raison":"1 phrase","type":"Action","secteur":"Tech"}]
+signal: acheter/attendre/vendre/eviter. risque: 1(très faible) à 5(très élevé).`;
+    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT JSON valide sans markdown.');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const s = clean.indexOf('['), e = clean.lastIndexOf(']');
+    if (s === -1 || e === -1) throw new Error('No array');
+    return JSON.parse(clean.slice(s, e+1));
+  }
 
   try {
-    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT avec du JSON valide. Pas de markdown, pas de texte.');
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const start = clean.indexOf('[');
-    const end = clean.lastIndexOf(']');
-    if (start === -1 || end === -1) throw new Error('No JSON array found');
-    const signaux = JSON.parse(clean.slice(start, end+1));
+    const [mySignaux, oppoSignaux] = await Promise.all([
+      myTickers.length ? fetchSignaux(myTickers, 'mine') : Promise.resolve([]),
+      fetchSignaux(oppoTickers, 'oppo')
+    ]);
 
-    const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#cc2f26' };
-    const sigBg    = { acheter:'#e8f8f0', attendre:'#fff9e6', vendre:'#fff0f0', eviter:'#fff0f0' };
+    const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#8e8e93' };
+    const sigBg    = { acheter:'#e8f8f0', attendre:'#fff9e6', vendre:'#fff0f0', eviter:'#f5f5f5' };
     const sigIcon  = { acheter:'↑', attendre:'⏸', vendre:'↓', eviter:'✕' };
     const sigLabel = { acheter:'ACHETER', attendre:'ATTENDRE', vendre:'VENDRE', eviter:'ÉVITER' };
 
-    list.innerHTML = `
-      <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">
-        Signaux IA — ${date} · ${signaux.length} actifs analysés
-      </div>
-      ${signaux.map(s => {
-        const isMine = myTickers.includes(s.ticker);
-        const myPos = positions.find(p => p.name === s.ticker);
-        const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
-        return `
-        <div style="background:${sigBg[s.signal]||'#f9f9f9'};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${sigColor[s.signal]||'#e5e5ea'};cursor:pointer"
-             onclick="openDecisionFromPos('${s.ticker}','${s.signal === 'acheter' ? 'acheter' : s.signal === 'vendre' ? 'vendre' : 'garder'}')">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:40px;height:40px;border-radius:12px;background:${sigColor[s.signal]}20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${sigColor[s.signal]}">${sigIcon[s.signal]}</div>
-              <div>
-                <div style="font-size:14px;font-weight:800;color:#1c1c1e">
-                  ${s.name} <span style="font-size:12px;color:#8e8e93;font-weight:500">${s.ticker}</span>
-                  ${isMine ? `<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:4px">📦 Dans ton portef.</span>` : ''}
-                </div>
-                <div style="font-size:12px;color:#8e8e93;margin-top:1px">${s.type} · Conviction : ${s.conviction}</div>
+    function riskBar(n) {
+      const colors = ['#1a7f5a','#1a7f5a','#f59e0b','#f59e0b','#cc2f26'];
+      const labels = ['','Très faible','Faible','Moyen','Élevé','Très élevé'];
+      return `<div style="display:flex;align-items:center;gap:4px">
+        ${[1,2,3,4,5].map(i => `<div style="width:14px;height:6px;border-radius:2px;background:${i<=n?colors[n-1]:'#e5e5ea'}"></div>`).join('')}
+        <span style="font-size:10px;color:#8e8e93;margin-left:2px">${labels[n]||''}</span>
+      </div>`;
+    }
+
+    function signalCard(s, isMine) {
+      const myPos = positions.find(p => p.name === s.ticker);
+      const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
+      return `
+      <div style="background:${sigBg[s.signal]||'#f9f9f9'};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${sigColor[s.signal]||'#e5e5ea'};cursor:pointer"
+           onclick="openDecisionFromPos('${s.ticker}','${s.signal==='acheter'?'acheter':s.signal==='vendre'?'vendre':'garder'}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:40px;height:40px;border-radius:12px;background:${sigColor[s.signal]}20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${sigColor[s.signal]}">${sigIcon[s.signal]}</div>
+            <div>
+              <div style="font-size:14px;font-weight:800;color:#1c1c1e">
+                ${s.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${s.ticker}</span>
+                ${isMine ? '<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:4px">📦 Portef.</span>' : ''}
+              </div>
+              <div style="font-size:11px;color:#8e8e93;margin-top:2px;display:flex;align-items:center;gap:8px">
+                <span>${s.type} · ${s.secteur||''}</span>
+                <span>Risque : ${riskBar(s.risque||3)}</span>
               </div>
             </div>
-            <div style="background:${sigColor[s.signal]};color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800">
-              ${sigLabel[s.signal]||s.signal.toUpperCase()}
-            </div>
           </div>
-          <div style="font-size:13px;color:#1c1c1e;font-weight:500;margin-bottom:8px">${s.raison}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr${s.prix_entree > 0 ? ' 1fr' : ''};gap:6px">
-            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:6px 8px;text-align:center">
-              <div style="font-size:10px;color:#8e8e93;font-weight:700">HORIZON</div>
-              <div style="font-size:11px;font-weight:800;color:#1c1c1e;margin-top:1px">${s.horizon}</div>
-            </div>
-            ${s.objectif > 0 ? `<div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:6px 8px;text-align:center">
-              <div style="font-size:10px;color:#1a7f5a;font-weight:700">OBJECTIF</div>
-              <div style="font-size:11px;font-weight:800;color:#1a7f5a;margin-top:1px">${s.objectif}€</div>
-            </div>` : ''}
-            ${s.stop_loss > 0 ? `<div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:6px 8px;text-align:center">
-              <div style="font-size:10px;color:#cc2f26;font-weight:700">STOP</div>
-              <div style="font-size:11px;font-weight:800;color:#cc2f26;margin-top:1px">${s.stop_loss}€</div>
-            </div>` : ''}
-            ${isMine && myPnl !== null ? `<div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:6px 8px;text-align:center">
-              <div style="font-size:10px;color:#8e8e93;font-weight:700">MA PERF.</div>
-              <div style="font-size:11px;font-weight:800;color:${parseFloat(myPnl)>=0?'#1a7f5a':'#cc2f26'};margin-top:1px">${parseFloat(myPnl)>=0?'+':''}${myPnl}%</div>
-            </div>` : ''}
+          <div style="background:${sigColor[s.signal]};color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800;white-space:nowrap">
+            ${sigLabel[s.signal]||s.signal.toUpperCase()}
           </div>
-          <div style="margin-top:8px;font-size:11px;color:${sigColor[s.signal]};font-weight:600;text-align:right">
-            Cliquer pour analyser →
+        </div>
+        <div style="font-size:13px;color:#1c1c1e;font-weight:500;margin-bottom:8px">${s.raison}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px">
+          <div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
+            <div style="font-size:10px;color:#8e8e93;font-weight:700">HORIZON</div>
+            <div style="font-size:11px;font-weight:800;color:#1c1c1e;margin-top:1px">${s.horizon}</div>
           </div>
-        </div>`;
-      }).join('')}
-      <div style="padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:4px">
+          ${s.objectif > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
+            <div style="font-size:10px;color:#1a7f5a;font-weight:700">OBJECTIF</div>
+            <div style="font-size:11px;font-weight:800;color:#1a7f5a;margin-top:1px">${s.objectif}€</div>
+          </div>` : ''}
+          ${s.stop_loss > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
+            <div style="font-size:10px;color:#cc2f26;font-weight:700">STOP LOSS</div>
+            <div style="font-size:11px;font-weight:800;color:#cc2f26;margin-top:1px">${s.stop_loss}€</div>
+          </div>` : ''}
+          ${isMine && myPnl !== null ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
+            <div style="font-size:10px;color:#8e8e93;font-weight:700">MA PERF.</div>
+            <div style="font-size:11px;font-weight:800;color:${parseFloat(myPnl)>=0?'#1a7f5a':'#cc2f26'};margin-top:1px">${parseFloat(myPnl)>=0?'+':''}${myPnl}%</div>
+          </div>` : ''}
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:${sigColor[s.signal]};font-weight:600;text-align:right">Analyser & investir →</div>
+      </div>`;
+    }
+
+    list.innerHTML = `
+      <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">
+        ⚡ Signaux IA — ${date}
+      </div>
+
+      ${mySignaux.length ? `
+      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:500">${mySignaux.length} actifs</span>
+      </div>
+      ${mySignaux.map(s => signalCard(s, true)).join('')}` : ''}
+
+      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px;display:flex;align-items:center;gap:6px">
+        🔭 Opportunités du marché <span style="font-size:11px;color:#8e8e93;font-weight:500">${oppoSignaux.length} actifs</span>
+      </div>
+      ${oppoSignaux.map(s => signalCard(s, false)).join('')}
+
+      <div style="padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
         ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
       </div>`;
+
   } catch(e) {
     list.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
       <div style="font-size:20px;margin-bottom:8px">⚠️</div>
-      <div>Impossible de charger les signaux. Réessaie dans quelques secondes.</div>
+      <div style="font-size:13px">Impossible de charger les signaux.<br>Réessaie dans quelques secondes.</div>
+      <button onclick="renderSignaux()" style="margin-top:12px;background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">🔄 Réessayer</button>
     </div>`;
   }
 }
+
 
 function setNewsFilter(filter, el) {
   newsFilter = filter;
