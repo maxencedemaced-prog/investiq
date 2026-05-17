@@ -541,3 +541,22 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 .btn-obj-validate{padding:14px 32px;background:#1c1c1e;border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:all 0.2s;letter-spacing:-0.2px}
 .btn-obj-validate:hover{background:#1a7f5a;transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,127,90,0.3)}
 .btn-obj-validate:disabled{opacity:0.8;cursor:default;transform:none}
+
+/* ===== DECISION INTENT BUTTONS ===== */
+.d-intent-btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 2px solid #e5e5ea;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3c3c43;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.d-intent-btn:hover { border-color: #1c1c1e; }
+.d-intent-btn.active {
+  background: #1c1c1e;
+  border-color: #1c1c1e;
+  color: #fff;
+}
