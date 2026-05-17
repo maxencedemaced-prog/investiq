@@ -1683,12 +1683,23 @@ function renderAgendaView() {
         const evts = eventsForDate(d);
         const isToday = d.toDateString() === now.toDateString();
         const isPast = d < now && !isToday;
+        const hasHigh2   = evts.some(e=>e.impact==='high');
+        const hasMedium2 = evts.some(e=>e.impact==='medium');
+        const wBg = isToday ? '#1c1c1e'
+          : hasHigh2   ? '#fff0f0'
+          : hasMedium2 ? '#fff9e6'
+          : evts.length > 0 ? '#f9f9f9'
+          : '#fff';
+        const wBorder = isToday ? '#1c1c1e' : hasHigh2 ? '#cc2f26' : hasMedium2 ? '#f59e0b' : '#f0f0f0';
+        const wNumColor = isToday ? '#fff' : hasHigh2 ? '#cc2f26' : hasMedium2 ? '#92400e' : '#1c1c1e';
+
         return `<div onclick="agendaSelectDay('${d.toISOString()}')"
-          style="min-height:70px;background:${isToday?'#1c1c1e':'#fff'};border-radius:10px;padding:6px;cursor:pointer;border:2px solid ${isToday?'#1c1c1e':'#f0f0f0'};opacity:${isPast?0.5:1};transition:all 0.2s"
-          onmouseover="if(!${isToday})this.style.borderColor='#1c1c1e'" onmouseout="if(!${isToday})this.style.borderColor='#f0f0f0'">
-          <div style="font-size:12px;font-weight:800;color:${isToday?'#fff':'#1c1c1e'};margin-bottom:4px">${d.getDate()}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:2px">${evts.map(e=>eventDot(e)).join('')}</div>
-          ${evts.length > 0 ? `<div style="font-size:9px;color:${isToday?'#a3a3a3':'#8e8e93'};margin-top:2px">${evts.length} event${evts.length>1?'s':''}</div>` : ''}
+          style="min-height:70px;background:${wBg};border-radius:10px;padding:8px 6px;cursor:pointer;border:2px solid ${wBorder};opacity:${isPast?0.5:1};transition:all 0.15s"
+          onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='${isPast?0.5:1}'">
+          <div style="font-size:14px;font-weight:800;color:${wNumColor};margin-bottom:4px">${d.getDate()}</div>
+          ${evts.length>0?`<div style="font-size:11px;font-weight:800;color:${isToday?'#aaa':hasHigh2?'#cc2f26':hasMedium2?'#92400e':'#555'}">${evts.length} evt</div>`:''}
+          ${hasHigh2?`<div style="font-size:10px;font-weight:700;color:#cc2f26;margin-top:2px">⚡ Fort</div>`:''}
+          ${!hasHigh2&&hasMedium2?`<div style="font-size:10px;font-weight:700;color:#f59e0b;margin-top:2px">● Moyen</div>`:''}
         </div>`;
       }).join('')}
     </div>
@@ -1702,12 +1713,29 @@ function renderAgendaView() {
       ${days.map(({date:d, current}) => {
         const evts = eventsForDate(d);
         const isToday = d.toDateString() === now.toDateString();
+        // Couleur de la journée selon l'impact dominant
+        const hasHigh   = evts.some(e=>e.impact==='high');
+        const hasMedium = evts.some(e=>e.impact==='medium');
+        const dayBg = isToday ? '#1c1c1e'
+          : !current ? '#f8f8f8'
+          : hasHigh   ? '#fff0f0'
+          : hasMedium ? '#fff9e6'
+          : evts.length > 0 ? '#f5f5f5'
+          : '#fff';
+        const dayBorder = isToday ? '#1c1c1e'
+          : hasHigh   ? '#cc2f26'
+          : hasMedium ? '#f59e0b'
+          : evts.length > 0 ? '#e0e0e0'
+          : '#f0f0f0';
+        const dayNumColor = isToday ? '#fff' : hasHigh ? '#cc2f26' : hasMedium ? '#92400e' : current ? '#1c1c1e' : '#aaa';
+        const evtCountColor = isToday ? '#aaa' : hasHigh ? '#cc2f26' : hasMedium ? '#92400e' : '#555';
+
         return `<div onclick="agendaSelectDay('${d.toISOString()}')"
-          style="min-height:58px;background:${isToday?'#1c1c1e':current?'#fff':'#f8f8f8'};border-radius:10px;padding:6px;cursor:pointer;border:2px solid ${isToday?'#1c1c1e':evts.length>0?'#e0e0e0':'#f0f0f0'};opacity:${current?1:0.35};transition:all 0.15s"
-          onmouseover="if(!${isToday})this.style.borderColor='#1c1c1e'" onmouseout="if(!${isToday})this.style.borderColor='${evts.length>0?'#e0e0e0':'#f0f0f0'}'">
-          <div style="font-size:13px;font-weight:${isToday?900:600};color:${isToday?'#fff':current?'#1c1c1e':'#aaa'}">${d.getDate()}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px">${evts.slice(0,4).map(e=>eventDot(e)).join('')}</div>
-          ${evts.length>0?`<div style="font-size:10px;font-weight:700;color:${isToday?'#aaa':'#555'};margin-top:1px">${evts.length} evt</div>`:''}
+          style="min-height:58px;background:${dayBg};border-radius:10px;padding:6px;cursor:pointer;border:2px solid ${dayBorder};opacity:${current?1:0.35};transition:all 0.15s"
+          onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='${current?1:0.35}'">
+          <div style="font-size:13px;font-weight:${isToday||hasHigh?900:600};color:${dayNumColor}">${d.getDate()}</div>
+          ${evts.length>0?`<div style="font-size:10px;font-weight:800;color:${evtCountColor};margin-top:4px">${evts.length} evt</div>`:''}
+          ${hasHigh?`<div style="font-size:9px;font-weight:700;color:#cc2f26;margin-top:1px">⚡ Fort</div>`:''}
         </div>`;
       }).join('')}
     </div>
