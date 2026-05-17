@@ -2145,36 +2145,131 @@ function fmtI(n) { return Math.round(n).toLocaleString('fr-FR'); }
 // ===== NOTIFICATIONS =====
 async function checkAndGenerateNotifications() {
   if (!positions.length) return;
-  const prompt = `Analyse ce portefeuille et génère 3-4 alertes importantes pour aujourd'hui.
-Positions : ${positions.map(p=>`${p.name}(${p.type}, PRU:${p.pru}€, actuel:${p.price}€)`).join(', ')}
-Retourne UNIQUEMENT un JSON (sans backticks) : [{"titre":"...","texte":"1 phrase","action":"quoi faire","impact":"high|medium|low","heure":"maintenant"}]`;
-  try {
-    const raw = await callClaude(prompt, 'Tu es analyste financier. Retourne uniquement du JSON valide.');
-    const s = raw.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(s.slice(s.indexOf('['),s.lastIndexOf(']')+1));
-    notifications = [...notifications, ...parsed];
-  } catch {
-    notifications = [{ titre:"Analyse du portefeuille", texte:"Ton portefeuille a été analysé avec succès.", action:"Consulte la section Santé pour les détails.", impact:"low", heure:"maintenant" }];
+  const newNotifs = [];
+
+  // ── 1. ALERTES PRIX (déjà existant, gardé ici) ──
+  positions.forEach(p => {
+    if (p.alert_price && p.price <= p.alert_price) {
+      newNotifs.push({ titre:`⚠️ Alerte prix — ${p.name}`, texte:`${p.name} est à ${fmt(p.price)}€, sous ton seuil de ${fmt(p.alert_price)}€.`, action:`Voir ${p.name}`, impact:'high', heure:'Maintenant', type:'prix' });
+    }
+  });
+
+  // ── 2. RÉÉQUILIBRAGE ──
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  if (tv > 0) {
+    const etfs = positions.filter(p=>p.type==='ETF');
+    const etfVal = etfs.reduce((a,p)=>a+p.qty*p.price,0);
+    const etfPct = etfVal/tv*100;
+    // Si ETF > 80% ou < 50% d'un portefeuille mixte avec actions
+    const hasActions = positions.some(p=>p.type==='Action'||p.type==='action');
+    if (hasActions && etfPct > 80) {
+      newNotifs.push({ titre:'⚖️ Rééquilibrage conseillé', texte:`Tes ETF représentent ${etfPct.toFixed(0)}% du portefeuille. Tu pourrais réduire légèrement pour garder un bon équilibre.`, action:'Voir Santé du portefeuille', impact:'medium', heure:'Analyse', type:'reequilibrage' });
+    } else if (hasActions && etfPct < 40) {
+      newNotifs.push({ titre:'⚖️ Trop concentré en actions', texte:`Tes ETF ne représentent que ${etfPct.toFixed(0)}% — tu prends plus de risque que nécessaire. Pense à renforcer tes ETF.`, action:'Aide à la décision', impact:'medium', heure:'Analyse', type:'reequilibrage' });
+    }
+    // Position trop dominante (>40% du portefeuille)
+    positions.forEach(p => {
+      const pct = p.qty*p.price/tv*100;
+      if (pct > 40 && positions.length > 2) {
+        newNotifs.push({ titre:`📊 ${p.name} trop dominant`, texte:`${p.name} représente ${pct.toFixed(0)}% de ton portefeuille. Une forte concentration augmente ton risque.`, action:`Analyser ${p.name}`, impact:'medium', heure:'Analyse', type:'concentration' });
+      }
+    });
   }
-  renderNotifications();
-  if (notifications.find(n=>n.impact==='high')) {
-    document.getElementById('notif-dot').classList.add('show');
-    if ('Notification' in window && Notification.permission==='granted') {
-      const h = notifications.find(n=>n.impact==='high');
-      new Notification('InvestIQ — Alerte importante', { body:h.titre+': '+h.texte, icon:'/icons/icon-192.png' });
+
+  // ── 3. MARCHÉ EN BAISSE — opportunité DCA ──
+  const avgChange = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  if (avgChange < -3) {
+    newNotifs.push({ titre:'📉 Marché en baisse — opportunité !', texte:`Ton portefeuille baisse de ${Math.abs(avgChange).toFixed(1)}% aujourd'hui. Historiquement, c'est le bon moment pour renforcer en DCA, pas pour vendre.`, action:'Simulateur DCA', impact:'medium', heure:"Aujourd'hui", type:'marche' });
+  } else if (avgChange < -1.5) {
+    newNotifs.push({ titre:'📊 Légère baisse du marché', texte:`Baisse de ${Math.abs(avgChange).toFixed(1)}% aujourd'hui — reste calme, c'est normal. Ton horizon long terme est ton meilleur allié.`, action:'Voir Objectif', impact:'low', heure:"Aujourd'hui", type:'marche' });
+  }
+
+  // ── 4. OBJECTIF EN DANGER ──
+  if (objChartTarget && objChartTarget > 0 && tv > 0) {
+    const pct = tv / objChartTarget * 100;
+    if (pct < 10 && objChartYears <= 5) {
+      newNotifs.push({ titre:'🎯 Objectif en danger', texte:`Tu as atteint ${pct.toFixed(1)}% de ton objectif de ${fmtK(objChartTarget)} avec ${objChartYears} ans devant toi. Augmente tes versements mensuels.`, action:'Voir Objectif', impact:'high', heure:'Analyse', type:'objectif' });
+    } else if (pct < 20 && objChartYears <= 3) {
+      newNotifs.push({ titre:'⚡ Accélère vers ton objectif', texte:`${pct.toFixed(1)}% de l'objectif atteint. Il te reste ${objChartYears} ans — le moment d'intensifier les versements.`, action:'Simulateur DCA', impact:'medium', heure:'Analyse', type:'objectif' });
     }
   }
+
+  // ── 5. ANNIVERSAIRE INVESTISSEUR ──
+  if (positions.length > 0) {
+    const oldest = positions.reduce((min, p) => {
+      const d = new Date(p.created_at || Date.now());
+      return d < min ? d : min;
+    }, new Date());
+    const daysSince = Math.floor((Date.now() - oldest) / 86400000);
+    if (daysSince === 365 || daysSince === 730 || daysSince === 180) {
+      const label = daysSince >= 365 ? `${Math.floor(daysSince/365)} an${daysSince>=730?'s':''}` : '6 mois';
+      const gain = tv - positions.reduce((a,p)=>a+p.qty*p.pru,0);
+      newNotifs.push({ titre:`🎉 ${label} d'investissement !`, texte:`Ça fait ${label} que tu investis ! Plus-value actuelle : ${gain>=0?'+':''}${fmtK(gain)}. Continue comme ça !`, action:'Voir Portefeuille', impact:'low', heure:'Anniversaire', type:'anniversaire' });
+    }
+  }
+
+  // ── 6. INACTIVITÉ (pas de position récente) ──
+  if (profile.bankroll > 0 && positions.length > 0) {
+    const lastAdded = positions.reduce((max, p) => {
+      const d = new Date(p.created_at || 0);
+      return d > max ? d : max;
+    }, new Date(0));
+    const daysSinceLast = Math.floor((Date.now() - lastAdded) / 86400000);
+    if (daysSinceLast > 60 && objChartMonthly > 0) {
+      newNotifs.push({ titre:'📅 Rappel versement mensuel', texte:`Ça fait ${daysSinceLast} jours sans nouvel investissement. Pense à placer tes ${objChartMonthly}€/mois pour profiter des intérêts composés.`, action:'Ajouter une position', impact:'medium', heure:`Il y a ${daysSinceLast} jours`, type:'inactivite' });
+    }
+  }
+
+  // Déduplique par type (garde seulement 1 par type)
+  const seen = new Set();
+  const deduped = newNotifs.filter(n => {
+    if (seen.has(n.type)) return false;
+    seen.add(n.type);
+    return true;
+  });
+
+  notifications = [...deduped, ...notifications.filter(n => n.type === 'prix')].slice(0, 10);
+  renderNotifications();
+
+  const hasHigh = notifications.find(n=>n.impact==='high');
+  if (notifications.length > 0) document.getElementById('notif-dot').classList.add('show');
+  if (hasHigh && 'Notification' in window && Notification.permission==='granted') {
+    new Notification('InvestIQ — Alerte importante', { body: hasHigh.texte, icon:'/icons/icon-192.png' });
+  }
 }
+const NOTIF_NAV = {
+  'Voir Portefeuille': 'portfolio',
+  'Voir Santé du portefeuille': 'sante',
+  'Aide à la décision': 'decision',
+  'Voir Objectif': 'objectif',
+  'Simulateur DCA': 'dca',
+  'Ajouter une position': 'ajouter',
+};
+
 function renderNotifications() {
   const list = document.getElementById('notif-list');
-  if (!notifications.length) { list.innerHTML='<div class="notif-empty">Aucune notification.</div>'; return; }
-  list.innerHTML = notifications.map(n=>`
-    <div class="notif-item ${n.impact}">
-      <div class="notif-item-title">${n.titre}</div>
-      <div class="notif-item-text">${n.texte}</div>
-      <button class="notif-item-action">→ ${n.action}</button>
-      <div class="notif-item-time">${n.heure}</div>
-    </div>`).join('');
+  if (!notifications.length) {
+    list.innerHTML = '<div class="notif-empty" style="padding:20px;text-align:center;color:#8e8e93;font-size:13px">✅ Tout va bien — aucune alerte</div>';
+    return;
+  }
+  const impactBg = { high:'#fff0f0', medium:'#fff9e6', low:'#f5f5f5' };
+  const impactBorder = { high:'#cc2f26', medium:'#f59e0b', low:'#e5e5ea' };
+  list.innerHTML = notifications.map((n,i) => {
+    const page = Object.entries(NOTIF_NAV).find(([k])=>n.action.includes(k.split(' ').pop()));
+    const navPage = page ? page[1] : null;
+    return `
+    <div class="notif-item ${n.impact}" style="background:${impactBg[n.impact]||'#f5f5f5'};border-left:3px solid ${impactBorder[n.impact]||'#e5e5ea'};border-radius:12px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+        <div style="font-size:13px;font-weight:800;color:#1c1c1e;line-height:1.3">${n.titre}</div>
+        <div style="font-size:11px;color:#8e8e93;white-space:nowrap;margin-left:8px">${n.heure}</div>
+      </div>
+      <div style="font-size:12px;color:#3c3c43;line-height:1.5;margin-bottom:8px">${n.texte}</div>
+      <button onclick="closeNotifPanel();${navPage?`nav('${navPage}')`:''}" 
+              style="background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">
+        → ${n.action}
+      </button>
+    </div>`;
+  }).join('');
 }
 
 // ===== HOME =====
