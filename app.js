@@ -1562,10 +1562,27 @@ async function loadObjective() {
   const { data } = await sb.from('objectives').select('*').eq('user_id',currentUser.id).maybeSingle();
   if (data) {
     objective = { target:data.target, years:data.years, rate:data.rate, monthly:data.monthly };
-    document.getElementById('obj-target').value = objective.target;
-    document.getElementById('obj-years').value = objective.years;
-    document.getElementById('obj-rate').value = objective.rate;
-    document.getElementById('obj-monthly').value = objective.monthly;
+    // Charge aussi les variables du wizard objectif
+    if (data.capital) {
+      objChartCapital  = data.capital;
+      objChartMonthly  = data.monthly;
+      objChartTarget   = data.target;
+      objChartYears    = data.years;
+      objChartRate     = data.rate;
+      objRisk          = data.risk || 'equilibre';
+      // Sauvegarde locale pour fallback
+      try { localStorage.setItem('iq_validated_objective', JSON.stringify({
+        capital: data.capital, monthly: data.monthly, target: data.target,
+        years: data.years, rate: data.rate, risk: data.risk || 'equilibre',
+        validatedAt: data.validated_at || new Date().toISOString()
+      })); } catch {}
+    }
+    const tEl = document.getElementById('obj-target');
+    const yEl = document.getElementById('obj-years');
+    const mEl = document.getElementById('obj-monthly');
+    if (tEl) tEl.value = objective.target;
+    if (yEl) yEl.value = objective.years;
+    if (mEl) mEl.value = objective.monthly;
   }
 }
 
@@ -1729,7 +1746,7 @@ function nav(page) {
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
   closeSidebar();
-  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async ()=>{ const hasValidated = await loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async ()=>{ const alreadyLoaded = objChartCapital && objChartTarget; const hasValidated = alreadyLoaded || await loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
