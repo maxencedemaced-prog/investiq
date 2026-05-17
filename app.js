@@ -941,10 +941,13 @@ function obNext(step) {
   if (step === 4) {
     const bankroll = document.getElementById('ob-bankroll')?.value;
     const monthly  = document.getElementById('ob-monthly')?.value;
-    if (!bankroll || !monthly || bankroll === '' || monthly === '') {
+    const target   = document.getElementById('ob-target')?.value;
+    if (!bankroll || !monthly || !target || bankroll === '' || monthly === '' || target === '') {
       const err = document.getElementById('ob-budget-error');
       if (err) err.style.display = 'block';
-      document.getElementById('ob-bankroll')?.focus();
+      if (!bankroll) document.getElementById('ob-bankroll')?.focus();
+      else if (!monthly) document.getElementById('ob-monthly')?.focus();
+      else document.getElementById('ob-target')?.focus();
       return;
     }
   }
@@ -1035,7 +1038,8 @@ async function obFinishSilent() {
 function obCheckBudget() {
   const bankroll = document.getElementById('ob-bankroll')?.value;
   const monthly  = document.getElementById('ob-monthly')?.value;
-  const filled = bankroll !== '' && monthly !== '';
+  const target   = document.getElementById('ob-target')?.value;
+  const filled = bankroll !== '' && monthly !== '' && target !== '';
   const btn = document.getElementById('ob-btn-3');
   const err = document.getElementById('ob-budget-error');
   if (btn) btn.disabled = !filled;
@@ -1043,16 +1047,14 @@ function obCheckBudget() {
 }
 
 async function obGeneratePlan() {
-  const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 1000;
-  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 200;
+  const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
+  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
+  const target   = parseFloat(document.getElementById('ob-target')?.value)   || 50000;
   const risk     = document.getElementById('ob-risk')?.value || 'faible';
   const planEl   = document.getElementById('ob-plan-content');
-  console.log('[obGeneratePlan] goals=', JSON.stringify(obGoals), 'bankroll=', bankroll, 'monthly=', monthly, 'risk=', risk);
 
   // Calculs de projection
   const r10 = Math.pow(1.07, 10);
-  const projLong  = Math.round(bankroll * r10 + monthly * 12 * ((r10 - 1) / 0.07));
-  // Court terme : budget réduit, horizon 2 ans, rendement cible 12%
   const budgetCourt = Math.round(bankroll * 0.3);
   const budgetLong  = bankroll - budgetCourt;
 
@@ -1071,7 +1073,9 @@ async function obGeneratePlan() {
   if (obGoals.long) {
     const capitalLong = both ? budgetLong : bankroll;
     const monthlyLong = both ? Math.round(monthly * 0.7) : monthly;
-    const proj = Math.round(capitalLong * r10 + monthlyLong * 12 * ((r10 - 1) / 0.07));
+    const yearsNeeded = calcNeededYears(capitalLong, monthlyLong, target, 7) || 10;
+    const rr = Math.pow(1.07, 10);
+    const proj = Math.round(capitalLong * rr + monthlyLong * 12 * ((rr - 1) / 0.07));
     html += `
     <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #1a7f5a">
       <div style="font-size:12px;font-weight:800;color:#1a7f5a;margin-bottom:10px">🏦 PLAN LONG TERME — Construire ton patrimoine</div>
@@ -1080,10 +1084,11 @@ async function obGeneratePlan() {
           <div style="font-size:11px;font-weight:700;color:#8e8e93;margin-bottom:4px">ALLOCATION RECOMMANDÉE</div>
           ${etfAlloc.map(e => `<div style="font-size:13px;color:#1c1c1e">• ${e}</div>`).join('')}
         </div>
-        <div style="background:#fff;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between">
-          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">CAPITAL DE DÉPART</div><div style="font-size:14px;font-weight:800">${fmtK(capitalLong)}</div></div>
-          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">MENSUEL DCA</div><div style="font-size:14px;font-weight:800">${monthlyLong}€/mois</div></div>
-          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DANS 10 ANS</div><div style="font-size:14px;font-weight:800;color:#1a7f5a">~${fmtK(proj)}</div></div>
+        <div style="background:#fff;border-radius:10px;padding:10px 12px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DÉPART</div><div style="font-size:13px;font-weight:800">${fmtK(capitalLong)}</div></div>
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">MENSUEL</div><div style="font-size:13px;font-weight:800">${monthlyLong}€/mois</div></div>
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">OBJECTIF</div><div style="font-size:13px;font-weight:800;color:#1c1c1e">${fmtK(target)}</div></div>
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DANS 10 ANS</div><div style="font-size:13px;font-weight:800;color:#1a7f5a">~${fmtK(proj)}</div></div>
         </div>
         <div style="background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#8e8e93">
           ⏱ Horizon : 10-20 ans · Ne pas toucher · Réinvestir les dividendes
@@ -1175,6 +1180,7 @@ En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de j
 async function obFinish(action) {
   const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
   const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
+  const target   = parseFloat(document.getElementById('ob-target')?.value)   || 50000;
   const risk     = document.getElementById('ob-risk')?.value    || 'faible';
   const horizon  = document.getElementById('ob-horizon')?.value || 'long';
 
@@ -1189,9 +1195,9 @@ async function obFinish(action) {
   // Applique les variables objectif
   objChartCapital = bankroll;
   objChartMonthly = monthly;
-  objChartTarget  = 100000; // défaut
+  objChartTarget  = target;
   objChartYears   = 10;
-  objChartRate    = 7;
+  objChartRate    = risk === 'eleve' ? 9 : risk === 'modere' ? 7 : 5;
   objRisk         = risk === 'eleve' ? 'agressif' : risk === 'modere' ? 'equilibre' : 'prudent';
 
   // Sauvegarde profil + objectif en Supabase
@@ -1200,16 +1206,17 @@ async function obFinish(action) {
     try {
       await sb.from('objectives').update({
         capital: bankroll, monthly: monthly,
-        target: 100000, years: 10, rate: 7,
-        risk: objRisk, updated_at: new Date().toISOString()
+        target: target, years: 10, rate: objChartRate,
+        risk: objRisk, validated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }).eq('user_id', currentUser.id);
     } catch(e) {}
   }
 
   // localStorage fallback
   try { localStorage.setItem('iq_validated_objective', JSON.stringify({
-    capital: bankroll, monthly: monthly, target: 100000,
-    years: 10, rate: 7, risk: objRisk,
+    capital: bankroll, monthly: monthly, target: target,
+    years: 10, rate: objChartRate, risk: objRisk,
     validatedAt: new Date().toISOString()
   })); } catch {}
 
