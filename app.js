@@ -3527,9 +3527,154 @@ function exportPDF() {
 }
 
 // ===== SANTE =====
-function renderSante() {
-  document.getElementById('sante-score').innerHTML=positions.length?buildScore():emptyMsg();
-  document.getElementById('sante-alerts').innerHTML=positions.length?buildAlerts():emptyMsg();
+async function renderSante() {
+  const el = document.getElementById('sante-content');
+  if (!el) return;
+
+  if (!positions.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:#8e8e93">
+      <div style="font-size:40px;margin-bottom:12px">📊</div>
+      <div style="font-size:16px;font-weight:700;color:#1c1c1e;margin-bottom:8px">Ajoute des positions</div>
+      <div style="font-size:13px">La santé de ton portefeuille s'affichera ici</div>
+      <button onclick="nav('ajouter')" style="margin-top:16px;background:#1c1c1e;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer">➕ Ajouter une position</button>
+    </div>`;
+    return;
+  }
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const tpnl = tv-ti, tpct = ti?tpnl/ti*100:0;
+  const {score, items} = calcScore();
+  const scoreColor = score>=7?'#1a7f5a':score>=5?'#f59e0b':'#cc2f26';
+  const scoreBg    = score>=7?'#e8f8f0':score>=5?'#fff9e6':'#fff0f0';
+  const scoreLabel = score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️';
+
+  // Calculs diversification
+  const etfs = positions.filter(p=>p.type==='ETF'||p.type==='etf');
+  const actions = positions.filter(p=>p.type==='Action'||p.type==='action');
+  const etfPct = tv > 0 ? etfs.reduce((a,p)=>a+p.qty*p.price,0)/tv*100 : 0;
+  const grouped = {};
+  positions.forEach(p => { grouped[p.name] = (grouped[p.name]||0) + p.qty*p.price; });
+  const maxPos = Object.entries(grouped).sort((a,b)=>b[1]-a[1])[0];
+  const maxPct = maxPos ? maxPos[1]/tv*100 : 0;
+  const platforms = {};
+  positions.forEach(p => { platforms[p.platform||'Autre'] = (platforms[p.platform||'Autre']||0) + p.qty*p.price; });
+
+  // Comparaison profil idéal
+  const idealEtf = profile.risk==='eleve' ? 50 : profile.risk==='modere' ? 70 : 80;
+  const idealMaxPos = profile.risk==='eleve' ? 40 : profile.risk==='modere' ? 30 : 25;
+  const idealNbPos = profile.risk==='eleve' ? 5 : profile.risk==='modere' ? 4 : 3;
+
+  el.innerHTML = `
+    <!-- SCORE GLOBAL -->
+    <div style="background:${scoreBg};border-radius:16px;padding:20px;margin-bottom:12px;border:2px solid ${scoreColor}20">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:${scoreColor};text-transform:uppercase;letter-spacing:0.5px">Score de santé</div>
+          <div style="font-size:42px;font-weight:900;color:${scoreColor};line-height:1">${score.toFixed(1)}<span style="font-size:20px">/10</span></div>
+          <div style="font-size:14px;font-weight:700;color:${scoreColor};margin-top:4px">${scoreLabel}</div>
+        </div>
+        <div style="width:80px;height:80px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;border:4px solid ${scoreColor}">
+          <div style="font-size:28px">${score>=7?'💚':score>=5?'🟡':'🔴'}</div>
+        </div>
+      </div>
+      <!-- Barres des critères -->
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${items.map(it => {
+          const c = it.score>=7?'#1a7f5a':it.score>=5?'#f59e0b':'#cc2f26';
+          return `<div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px">
+              <span style="color:#1c1c1e">${it.label}</span>
+              <span style="color:${c}">${it.score}/10</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.08);border-radius:4px;height:6px;overflow:hidden">
+              <div style="height:100%;background:${c};width:${it.score/10*100}%;border-radius:4px;transition:width 0.6s"></div>
+            </div>
+            ${it.tip?`<div style="font-size:11px;color:${c};margin-top:2px">→ ${it.tip}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- COMPOSITION -->
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border:2px solid #f0f0f0">
+      <div style="font-size:13px;font-weight:800;color:#1c1c1e;margin-bottom:12px">📊 Composition du portefeuille</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="background:#f9f9f9;border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:#8e8e93;font-weight:700;margin-bottom:4px">ETF</div>
+          <div style="font-size:20px;font-weight:900;color:${etfPct>=idealEtf?'#1a7f5a':'#f59e0b'}">${etfPct.toFixed(0)}%</div>
+          <div style="font-size:11px;color:#8e8e93">Idéal : ${idealEtf}%+</div>
+        </div>
+        <div style="background:#f9f9f9;border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:#8e8e93;font-weight:700;margin-bottom:4px">Concentration max</div>
+          <div style="font-size:20px;font-weight:900;color:${maxPct<=idealMaxPos?'#1a7f5a':'#cc2f26'}">${maxPct.toFixed(0)}%</div>
+          <div style="font-size:11px;color:#8e8e93">${maxPos?maxPos[0]:''} · Max : ${idealMaxPos}%</div>
+        </div>
+        <div style="background:#f9f9f9;border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:#8e8e93;font-weight:700;margin-bottom:4px">Nb. positions</div>
+          <div style="font-size:20px;font-weight:900;color:${Object.keys(grouped).length>=idealNbPos?'#1a7f5a':'#f59e0b'}">${Object.keys(grouped).length}</div>
+          <div style="font-size:11px;color:#8e8e93">Min conseillé : ${idealNbPos}</div>
+        </div>
+        <div style="background:#f9f9f9;border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:#8e8e93;font-weight:700;margin-bottom:4px">Performance</div>
+          <div style="font-size:20px;font-weight:900;color:${tpnl>=0?'#1a7f5a':'#cc2f26'}">${tpnl>=0?'+':''}${tpct.toFixed(1)}%</div>
+          <div style="font-size:11px;color:#8e8e93">${tpnl>=0?'+':''}${fmtK(tpnl)}</div>
+        </div>
+      </div>
+      <!-- Répartition par type -->
+      ${Object.entries(grouped).map(([name,val]) => `
+      <div style="margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:2px">
+          <span>${name}</span><span>${(val/tv*100).toFixed(1)}% · ${fmtK(val)}</span>
+        </div>
+        <div style="background:#f0f0f0;border-radius:4px;height:6px;overflow:hidden">
+          <div style="height:100%;background:#1c1c1e;width:${val/tv*100}%;border-radius:4px"></div>
+        </div>
+      </div>`).join('')}
+    </div>
+
+    <!-- CONSEILS IA -->
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border:2px solid #f0f0f0">
+      <div style="font-size:13px;font-weight:800;color:#1c1c1e;margin-bottom:8px">🧠 Conseils personnalisés</div>
+      <div id="sante-ia-conseils" style="text-align:center;padding:16px;color:#8e8e93">
+        <div style="font-size:18px;margin-bottom:6px">💬</div>
+        <div style="font-size:13px">Génération des conseils...</div>
+      </div>
+    </div>
+
+    <!-- ALERTES -->
+    <div id="sante-alertes-wrap"></div>
+  `;
+
+  // Alertes
+  const alerts = buildAlertsData();
+  const alertsHtml = alerts.filter(a=>a.type!=='ok').map(a => `
+    <div style="background:${a.type==='err'?'#fff0f0':'#fff9e6'};border-radius:12px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${a.type==='err'?'#cc2f26':'#f59e0b'}">
+      <div style="font-size:13px;color:#1c1c1e;font-weight:600">${a.msg}</div>
+    </div>`).join('');
+  const alertsWrap = document.getElementById('sante-alertes-wrap');
+  if (alertsWrap && alertsHtml) {
+    alertsWrap.innerHTML = `<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border:2px solid #f0f0f0">
+      <div style="font-size:13px;font-weight:800;color:#1c1c1e;margin-bottom:8px">⚠️ Points d'attention</div>
+      ${alertsHtml}
+    </div>`;
+  }
+
+  // Conseils IA
+  try {
+    const prompt = `Analyse ce portefeuille et donne 3 conseils courts et actionnables pour un débutant.
+Positions : ${Object.entries(grouped).map(([n,v])=>`${n} (${(v/tv*100).toFixed(0)}%)`).join(', ')}.
+ETF : ${etfPct.toFixed(0)}%, Actions : ${(100-etfPct).toFixed(0)}%, Performance : ${tpct.toFixed(1)}%.
+Profil : ${RL[profile.risk]}, horizon ${HL[profile.horizon]}.
+3 conseils max, 1 phrase chacun, simples, concrets. Commence chaque conseil par un emoji.`;
+    const conseils = await callClaude(prompt, 'Tu es conseiller financier pédagogue. Sois bref et concret.');
+    const conseilEl = document.getElementById('sante-ia-conseils');
+    if (conseilEl) {
+      const parts = conseils.split('\n').filter(l=>l.trim());
+      conseilEl.innerHTML = parts.map(l => `<div style="font-size:13px;color:#1c1c1e;padding:8px 10px;background:#f9f9f9;border-radius:10px;margin-bottom:6px;line-height:1.5">${l}</div>`).join('');
+        `<div style="font-size:13px;color:#1c1c1e;padding:8px 10px;background:#f9f9f9;border-radius:10px;margin-bottom:6px;line-height:1.5">${l}</div>`
+    }
+  } catch(e) {}
 }
 
 // ===== OBJECTIF WIZARD =====
