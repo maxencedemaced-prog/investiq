@@ -2,7 +2,7 @@
 // ===== VALIDATE & PERSIST OBJECTIF =====
 const OBJ_STORAGE = 'iq_validated_objective';
 
-function validateObjectif() {
+async function validateObjectif() {
   const data = {
     capital: objChartCapital,
     monthly: objChartMonthly,
@@ -13,38 +13,48 @@ function validateObjectif() {
     validatedAt: new Date().toISOString()
   };
   try { localStorage.setItem(OBJ_STORAGE, JSON.stringify(data)); } catch {}
-  
-  // Show success
-  const btn = document.querySelector('.btn-obj-validate');
-  if (btn) {
-    btn.textContent = '✓ Objectif validé et sauvegardé !';
-    btn.style.background = '#1a7f5a';
-    btn.disabled = true;
+  if (!isDemo && currentUser) {
+    try {
+      await sb.from('objectives').upsert({
+        user_id: currentUser.id,
+        capital: data.capital, monthly: data.monthly,
+        target: data.target, years: data.years,
+        rate: data.rate, risk: data.risk,
+        validated_at: data.validatedAt,
+        updated_at: new Date().toISOString()
+      });
+    } catch(e) { console.warn('Supabase objectif save failed:', e); }
   }
-  showToast('🎯 Objectif validé ! Le graphique sera persistant.');
+  const btn = document.querySelector('.btn-obj-validate');
+  if (btn) { btn.textContent = '✓ Objectif sauvegardé sur ton compte !'; btn.style.background = '#1a7f5a'; btn.disabled = true; }
+  showToast('🎯 Objectif sauvegardé sur ton compte !');
+}
 }
 
-function loadValidatedObjectif() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(OBJ_STORAGE) || 'null');
-    if (!saved) return false;
-    
-    // Restore state
-    objChartCapital = saved.capital;
-    objChartMonthly = saved.monthly;
-    objChartTarget = saved.target;
-    objChartYears = saved.years;
-    objChartRate = saved.rate;
-    objRisk = saved.risk || 'equilibre';
-    
-    // Fill form fields
-    if (document.getElementById('obj-capital')) document.getElementById('obj-capital').value = saved.capital;
-    if (document.getElementById('obj-monthly')) document.getElementById('obj-monthly').value = saved.monthly;
-    if (document.getElementById('obj-target')) document.getElementById('obj-target').value = saved.target;
-    if (document.getElementById('obj-years')) document.getElementById('obj-years').value = saved.years;
-    
-    return true;
-  } catch { return false; }
+async function loadValidatedObjectif() {
+  let saved = null;
+  // 1. Try Supabase first
+  if (!isDemo && currentUser) {
+    try {
+      const { data } = await sb.from('objectives').select('*').eq('user_id', currentUser.id).maybeSingle();
+      if (data && data.capital) {
+        saved = { capital: data.capital, monthly: data.monthly, target: data.target, years: data.years, rate: data.rate, risk: data.risk || 'equilibre', validatedAt: data.validated_at };
+        localStorage.setItem(OBJ_STORAGE, JSON.stringify(saved));
+      }
+    } catch(e) {}
+  }
+  // 2. Fallback to localStorage
+  if (!saved) { try { saved = JSON.parse(localStorage.getItem(OBJ_STORAGE) || 'null'); } catch {} }
+  if (!saved || !saved.capital) return false;
+  objChartCapital = saved.capital; objChartMonthly = saved.monthly;
+  objChartTarget = saved.target; objChartYears = saved.years;
+  objChartRate = saved.rate; objRisk = saved.risk || 'equilibre';
+  if (document.getElementById('obj-capital')) document.getElementById('obj-capital').value = saved.capital;
+  if (document.getElementById('obj-monthly')) document.getElementById('obj-monthly').value = saved.monthly;
+  if (document.getElementById('obj-target')) document.getElementById('obj-target').value = saved.target;
+  if (document.getElementById('obj-years')) document.getElementById('obj-years').value = saved.years;
+  return true;
+}
 }
 
 function showValidatedChart() {
@@ -980,18 +990,31 @@ const POPULAR = [
   {ticker:'VWCE.DE', name:'Vanguard FTSE All-World', sector:'ETF'},
 ];
 
-function loadWatchlist() {
-  try {
-    watchlist = JSON.parse(localStorage.getItem(CACHE_WATCHLIST) || '[]');
-  } catch { watchlist = []; }
+async function loadWatchlist() {
+  if (!isDemo && currentUser) {
+    try {
+      const { data } = await sb.from('profiles').select('watchlist').eq('id', currentUser.id).single();
+      if (data && Array.isArray(data.watchlist)) {
+        watchlist = data.watchlist;
+        localStorage.setItem(CACHE_WATCHLIST, JSON.stringify(watchlist));
+        return;
+      }
+    } catch(e) {}
+  }
+  try { watchlist = JSON.parse(localStorage.getItem(CACHE_WATCHLIST) || '[]'); } catch { watchlist = []; }
 }
 
-function saveWatchlist() {
+async function saveWatchlist() {
   try { localStorage.setItem(CACHE_WATCHLIST, JSON.stringify(watchlist)); } catch {}
+  if (!isDemo && currentUser) {
+    try {
+      await sb.from('profiles').update({ watchlist: watchlist }).eq('id', currentUser.id);
+    } catch(e) { console.warn('Watchlist save failed:', e); }
+  }
 }
 
-function toggleFavorite(ticker, name, sector) {
-  loadWatchlist();
+async function toggleFavorite(ticker, name, sector) {
+  await loadWatchlist();
   const idx = watchlist.findIndex(w => w.ticker === ticker);
   if (idx >= 0) {
     watchlist.splice(idx, 1);
@@ -1000,7 +1023,7 @@ function toggleFavorite(ticker, name, sector) {
     watchlist.push({ ticker, name: name||ticker, sector: sector||'Autre' });
     showToast('★ ' + (name||ticker) + ' ajouté aux favoris !');
   }
-  saveWatchlist();
+  await saveWatchlist();
 }
 
 function isFavorite(ticker) {
@@ -1702,7 +1725,7 @@ function nav(page) {
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
   closeSidebar();
-  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif:()=>{ const hasValidated = loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async ()=>{ const hasValidated = await loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
