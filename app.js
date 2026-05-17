@@ -1574,15 +1574,28 @@ async function renderSignaux() {
 
   async function fetchSignaux(tickers) {
     const date = new Date().toLocaleDateString('fr-FR');
-    const prompt = `Analyste financier, le ${date}. Signal pour : ${tickers.join(', ')}.
-Réponds UNIQUEMENT avec du JSON valide, tableau d'objets :
-[{"ticker":"X","name":"Nom","signal":"acheter","conviction":"forte","risque":3,"objectif":0,"stop_loss":0,"horizon":"2-4 semaines","raison":"1 phrase","type":"Action","secteur":"Tech"}]
-signal: acheter/attendre/vendre/eviter. risque: 1(très faible) à 5(très élevé).`;
-    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT JSON valide sans markdown.');
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const s = clean.indexOf('['), e = clean.lastIndexOf(']');
-    if (s === -1 || e === -1) throw new Error('No array');
-    return JSON.parse(clean.slice(s, e+1));
+    const prompt = `Analyste financier, le ${date}. Donne un signal pour ces actifs : ${tickers.join(', ')}.
+Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
+[{"ticker":"AAPL","name":"Apple","signal":"acheter","conviction":"forte","risque":2,"objectif":210,"stop_loss":185,"horizon":"2-4 semaines","raison":"Bonne dynamique","type":"Action","secteur":"Tech"}]
+Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`;
+    try {
+      const raw = await callClaude(prompt, 'Tu es analyste. Réponds UNIQUEMENT avec du JSON valide. Aucun texte avant ou après.');
+      console.log('[fetchSignaux] raw:', raw?.slice(0,200));
+      if (!raw || raw === 'Aucune réponse.' || raw === 'Erreur de connexion.') throw new Error('API error: ' + raw);
+      const clean = raw.replace(/```json|```/g,'').trim();
+      const s = clean.indexOf('['), e = clean.lastIndexOf(']');
+      if (s === -1 || e === -1) throw new Error('No JSON array in: ' + clean.slice(0,100));
+      return JSON.parse(clean.slice(s, e+1));
+    } catch(err) {
+      console.error('[fetchSignaux] error:', err.message);
+      // Fallback statique
+      return tickers.map(t => ({
+        ticker: t, name: t, signal: 'attendre', conviction: 'faible',
+        risque: 3, objectif: 0, stop_loss: 0,
+        horizon: '2-4 semaines', raison: 'Analyse temporairement indisponible',
+        type: t.includes('.') ? 'ETF' : 'Action', secteur: ''
+      }));
+    }
   }
 
   const date = new Date().toLocaleDateString('fr-FR');
