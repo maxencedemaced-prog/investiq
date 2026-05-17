@@ -2909,8 +2909,12 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
         <div style="font-size:14px;color:#1c1c1e;line-height:1.7;font-weight:500">${d.conseil_final}</div>
       </div>
 
-      <!-- NOUVELLE ANALYSE -->
-      <button class="btn-secondary" onclick="document.getElementById('d-result').innerHTML='';document.getElementById('d-name').value='';document.getElementById('d-name').focus()" style="width:100%;margin-top:10px">
+      <!-- AJOUTER AU PORTEFEUILLE -->
+      ${d.recommandation !== 'EVITER' ? `
+      <button class="btn-primary" onclick="addToPortfolioFromDecision('${name}', ${amt})" style="width:100%;margin-top:10px;background:#1a7f5a">
+        ➕ Ajouter au portefeuille
+      </button>` : ''}
+      <button class="btn-secondary" onclick="document.getElementById('d-result').innerHTML='';document.getElementById('d-name').value='';document.getElementById('d-name').focus()" style="width:100%;margin-top:8px">
         🔄 Analyser un autre actif
       </button>
       <div style="margin-top:8px;padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center">
@@ -2920,6 +2924,28 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
     result.innerHTML = `<div class="card"><div style="color:#cc2f26;font-weight:700">Erreur d'analyse</div><div style="font-size:13px;margin-top:4px">Réessaie dans quelques secondes.</div></div>`;
   }
   decisionIntention = null;
+}
+
+function addToPortfolioFromDecision(ticker, amount) {
+  // Pré-remplit le formulaire d'ajout de position
+  nav('ajouter');
+  setTimeout(() => {
+    const nameEl = document.getElementById('f-name');
+    if (nameEl) {
+      nameEl.value = ticker;
+      nameEl.dispatchEvent(new Event('input'));
+    }
+    // Calcule la quantité approximative si on a le prix
+    const pos = positions.find(p => p.name === ticker);
+    if (pos && pos.price && amount) {
+      const qtyEl = document.getElementById('f-qty');
+      const pruEl = document.getElementById('f-pru');
+      const qty = Math.floor(amount / pos.price) || 1;
+      if (qtyEl) qtyEl.value = qty;
+      if (pruEl) pruEl.value = pos.price;
+    }
+    showToast('✅ Remplis les détails et valide pour ajouter au portefeuille');
+  }, 150);
 }
 
 // ===== DCA =====
