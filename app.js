@@ -3666,12 +3666,12 @@ async function renderSante() {
 Positions : ${Object.entries(grouped).map(([n,v])=>`${n} (${(v/tv*100).toFixed(0)}%)`).join(', ')}.
 ETF : ${etfPct.toFixed(0)}%, Actions : ${(100-etfPct).toFixed(0)}%, Performance : ${tpct.toFixed(1)}%.
 Profil : ${RL[profile.risk]}, horizon ${HL[profile.horizon]}.
-3 conseils max, 1 phrase chacun, simples, concrets. Commence chaque conseil par un emoji.`;
+3 conseils max, 1 phrase chacun. PAS de markdown ni de ##. Commence chaque ligne par un emoji.`;
     const conseils = await callClaude(prompt, 'Tu es conseiller financier pédagogue. Sois bref et concret.');
     const conseilEl = document.getElementById('sante-ia-conseils');
     if (conseilEl) {
-      const parts = conseils.split('\n').filter(l=>l.trim());
-      conseilEl.innerHTML = parts.map(l => `<div style="font-size:13px;color:#1c1c1e;padding:8px 10px;background:#f9f9f9;border-radius:10px;margin-bottom:6px;line-height:1.5">${l}</div>`).join('');
+      const parts = conseils.replace(/#{1,3}\s/g,'').split('\n').filter(l=>l.trim());
+      conseilEl.innerHTML = parts.map(l => `<div style="font-size:13px;color:#1c1c1e;padding:8px 10px;background:#f9f9f9;border-radius:10px;margin-bottom:6px;line-height:1.5">${l.replace(/\*\*/g,'').replace(/\*/g,'')}</div>`).join('');
         `<div style="font-size:13px;color:#1c1c1e;padding:8px 10px;background:#f9f9f9;border-radius:10px;margin-bottom:6px;line-height:1.5">${l}</div>`
     }
   } catch(e) {}
