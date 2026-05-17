@@ -1494,7 +1494,7 @@ function renderNewsPage() {
     <!-- NEWS LIST -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div style="font-size:14px;font-weight:800;color:#1c1c1e">Actualités du marché</div>
-      <button class="btn-refresh" id="news-refresh-btn" onclick="loadNews(true)">
+      <button class="btn-refresh" id="news-refresh-btn" onclick="Object.keys(newsTabCache).forEach(k=>{newsTabCache[k].html='';newsTabCache[k].ts=0;});loadNews(true)">
         <svg id="news-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
         Actualiser
       </button>
@@ -1512,6 +1512,43 @@ let agendaView = 'semaine'; // 'semaine' | 'mois' | 'liste'
 let agendaEvents = [];
 let agendaCurrentDate = new Date();
 let agendaSelectedEvent = null;
+
+// ===== CACHE ONGLETS NEWS =====
+// Vide le cache quand l'utilisateur quitte et revient sur l'appli
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // Revenu sur l'appli — vide le cache si > 30 min
+    Object.keys(newsTabCache).forEach(k => {
+      if (Date.now() - newsTabCache[k].ts > NEWS_CACHE_TTL) {
+        newsTabCache[k].html = '';
+        newsTabCache[k].ts = 0;
+      }
+    });
+  }
+});
+const NEWS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const newsTabCache = {
+  signaux:     { data: null, ts: 0, html: '' },
+  entreprises: { data: null, ts: 0, html: '' },
+  agenda:      { data: null, ts: 0, html: '' },
+};
+
+function isCacheValid(key) {
+  return newsTabCache[key].html && (Date.now() - newsTabCache[key].ts) < NEWS_CACHE_TTL;
+}
+
+function restoreFromCache(key) {
+  const list = document.getElementById('news-list');
+  if (list) list.innerHTML = newsTabCache[key].html;
+}
+
+function saveToCache(key) {
+  const list = document.getElementById('news-list');
+  if (list) {
+    newsTabCache[key].html = list.innerHTML;
+    newsTabCache[key].ts = Date.now();
+  }
+}
 
 async function renderAgenda() {
   const list = document.getElementById('news-list');
@@ -2143,12 +2180,16 @@ function setNewsFilter(filter, el) {
   newsFilter = filter;
   document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
+
   if (filter === 'signaux') {
-    renderSignaux();
+    if (isCacheValid('signaux')) { restoreFromCache('signaux'); return; }
+    renderSignaux().then(() => saveToCache('signaux'));
   } else if (filter === 'entreprises') {
-    renderEntreprises();
+    if (isCacheValid('entreprises')) { restoreFromCache('entreprises'); return; }
+    renderEntreprises().then(() => saveToCache('entreprises'));
   } else if (filter === 'agenda') {
-    renderAgenda();
+    if (isCacheValid('agenda')) { restoreFromCache('agenda'); return; }
+    renderAgenda().then(() => saveToCache('agenda'));
   } else {
     renderNewsList();
   }
