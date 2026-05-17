@@ -2143,8 +2143,8 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
         Pour atteindre <strong>${fmtK(target)}</strong> en <strong>${years} ans</strong>, voici tes options :
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
           <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">💰 Augmenter à <strong>${fmtI(monthlyNeeded)}€/mois</strong> (au lieu de ${monthly}€)</div>
-          <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">📈 Viser <strong>${rateNeeded}%/an</strong> → profil ${rateNeeded > 9 ? 'Agressif 🚀' : 'Équilibré ⚖️'}</div>
-          <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">⏳ Allonger à <strong>${Math.ceil(years * (Math.log(target/capital) / Math.log(1+riskRates[objRisk]/100)))}+ ans</strong></div>
+          <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">📈 Viser <strong>${rateNeeded <= 15 ? rateNeeded + '%/an' : 'un rendement trop élevé'}</strong>${rateNeeded <= 15 ? ' → profil ' + (rateNeeded > 9 ? 'Agressif 🚀' : 'Équilibré ⚖️') : ' — non réaliste'}</div>
+          <div style="background:#fff;border-radius:10px;padding:10px 14px;font-weight:600">⏳ Allonger à <strong>${calcNeededYears(capital, monthly, target, riskRates[objRisk]) ? calcNeededYears(capital, monthly, target, riskRates[objRisk]) + '+ ans' : '60+ ans (très long terme)'}</strong></div>
         </div>
       </div>
     </div>` : `
@@ -2180,6 +2180,19 @@ function calcNeededRate(capital, monthly, target, years) {
     if (fv < target) lo = mid; else hi = mid;
   }
   return Math.round((lo+hi)/2 * 10) / 10;
+}
+
+function calcNeededYears(capital, monthly, target, annualRate) {
+  // Binary search: how many years to reach target at given rate
+  const r = annualRate / 100 / 12;
+  for (let y = 1; y <= 60; y++) {
+    const n = y * 12;
+    const fv = r > 0
+      ? capital * Math.pow(1+r, n) + monthly * ((Math.pow(1+r, n) - 1) / r)
+      : capital + monthly * n;
+    if (fv >= target) return y;
+  }
+  return null; // not reachable in 60 years
 }
 
 function renderProjectionTable(capital, monthly, target, years, annualRate) {
