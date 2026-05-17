@@ -18,35 +18,97 @@
 
 <!-- AUTH -->
 <div id="auth-screen" class="auth-screen">
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="logo-icon">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+  <!-- Fond animé -->
+  <div class="auth-bg">
+    <div class="auth-bg-circle c1"></div>
+    <div class="auth-bg-circle c2"></div>
+    <div class="auth-bg-circle c3"></div>
+  </div>
+
+  <div class="auth-wrap">
+    <!-- COLONNE GAUCHE : pitch -->
+    <div class="auth-pitch">
+      <div class="auth-pitch-logo">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        </div>
+        <span class="logo-name" style="color:#fff">InvestIQ</span>
       </div>
-      <div><div class="logo-name">InvestIQ</div><div class="logo-sub">Ton assistant investissement</div></div>
+      <h1 class="auth-pitch-title">Investis plus<br>intelligemment</h1>
+      <p class="auth-pitch-sub">Ton assistant IA pour suivre, analyser et faire grandir ton patrimoine.</p>
+      <div class="auth-features-list">
+        <div class="auth-feature-big">
+          <div class="auth-feature-icon">📈</div>
+          <div>
+            <div class="auth-feature-title">Portefeuille en temps réel</div>
+            <div class="auth-feature-desc">Prix live, plus-values, signaux IA sur chaque position</div>
+          </div>
+        </div>
+        <div class="auth-feature-big">
+          <div class="auth-feature-icon">🧠</div>
+          <div>
+            <div class="auth-feature-title">Conseils personnalisés</div>
+            <div class="auth-feature-desc">Analyse IA adaptée à ton profil et tes objectifs</div>
+          </div>
+        </div>
+        <div class="auth-feature-big">
+          <div class="auth-feature-icon">📅</div>
+          <div>
+            <div class="auth-feature-title">Agenda économique</div>
+            <div class="auth-feature-desc">BCE, Fed, résultats d'entreprises — ne rate rien</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="auth-tagline">
-      <div class="auth-feature"><span>📊</span> Suis ton portefeuille</div>
-      <div class="auth-feature"><span>🤖</span> Analyse IA en temps réel</div>
-      <div class="auth-feature"><span>📰</span> Actus & signaux marchés</div>
+
+    <!-- COLONNE DROITE : formulaire -->
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchAuth('login')">Connexion</button>
+        <button class="auth-tab" id="tab-signup" onclick="switchAuth('signup')">Inscription</button>
+      </div>
+
+      <div id="auth-login">
+        <div class="auth-field">
+          <label class="auth-label">Email</label>
+          <input type="email" id="login-email" class="auth-input" placeholder="ton@email.com" onkeydown="if(event.key==='Enter')login()">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">Mot de passe</label>
+          <input type="password" id="login-pass" class="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+        </div>
+        <button class="btn-auth" onclick="login()">
+          <span>Se connecter</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <div class="auth-divider"><span>ou</span></div>
+        <button class="btn-demo" onclick="enterDemo()">
+          👀 Essayer sans compte
+        </button>
+      </div>
+
+      <div id="auth-signup" style="display:none">
+        <div class="auth-field">
+          <label class="auth-label">Email</label>
+          <input type="email" id="signup-email" class="auth-input" placeholder="ton@email.com">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">Mot de passe</label>
+          <input type="password" id="signup-pass" class="auth-input" placeholder="Min. 6 caractères">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">Confirmer le mot de passe</label>
+          <input type="password" id="signup-pass2" class="auth-input" placeholder="••••••••">
+        </div>
+        <button class="btn-auth" onclick="signup()">
+          <span>Créer mon compte gratuit</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <p class="auth-terms">En créant un compte, tu acceptes nos conditions d'utilisation.</p>
+      </div>
+
+      <div id="auth-msg" class="auth-msg"></div>
     </div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login" onclick="switchAuth('login')">Connexion</button>
-      <button class="auth-tab" id="tab-signup" onclick="switchAuth('signup')">Inscription</button>
-    </div>
-    <div id="auth-login">
-      <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="ton@email.com"></div>
-      <div class="field"><label>Mot de passe</label><input type="password" id="login-pass" placeholder="••••••••"></div>
-      <button class="btn-auth" onclick="login()">Se connecter</button>
-      <button class="btn-demo" onclick="enterDemo()">👀 Essayer sans compte</button>
-    </div>
-    <div id="auth-signup" style="display:none">
-      <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="ton@email.com"></div>
-      <div class="field"><label>Mot de passe</label><input type="password" id="signup-pass" placeholder="Min. 6 caractères"></div>
-      <div class="field"><label>Confirmer</label><input type="password" id="signup-pass2" placeholder="••••••••"></div>
-      <button class="btn-auth" onclick="signup()">Créer mon compte</button>
-    </div>
-    <div id="auth-msg" class="auth-msg"></div>
   </div>
 </div>
 
