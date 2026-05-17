@@ -937,6 +937,17 @@ function showOnboarding(force) {
 }
 
 function obNext(step) {
+  // Validation étape 3 — budget obligatoire
+  if (step === 4) {
+    const bankroll = document.getElementById('ob-bankroll')?.value;
+    const monthly  = document.getElementById('ob-monthly')?.value;
+    if (!bankroll || !monthly || bankroll === '' || monthly === '') {
+      const err = document.getElementById('ob-budget-error');
+      if (err) err.style.display = 'block';
+      document.getElementById('ob-bankroll')?.focus();
+      return;
+    }
+  }
   document.querySelectorAll('.onboard-step').forEach(s => s.style.display = 'none');
   const el = document.getElementById('ob-step-' + step);
   if (el) el.style.display = 'block';
