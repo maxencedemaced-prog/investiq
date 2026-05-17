@@ -1435,6 +1435,7 @@ function renderNewsPage() {
     <!-- FILTER PILLS -->
     <div class="filter-row" style="margin-top:14px">
       <button class="filter-pill active" id="news-fil-tous" onclick="setNewsFilter('tous',this)">Toutes les actus</button>
+      <button class="filter-pill" id="news-fil-signaux" onclick="setNewsFilter('signaux',this)" style="background:#1c1c1e;color:#fff;border-color:#1c1c1e">⚡ Signaux</button>
       <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)">
         ⭐ Mes favoris ${allTracked.length > 0 ? `<span class="pill-count">${allTracked.length}</span>` : ''}
       </button>
@@ -1504,11 +1505,123 @@ function renderNewsPage() {
   else renderNewsList();
 }
 
+async function renderSignaux() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+
+  list.innerHTML = `<div style="text-align:center;padding:30px;color:#8e8e93">
+    <div style="font-size:28px;margin-bottom:8px">🧠</div>
+    <div style="font-size:13px;font-weight:600">Analyse du marché en cours...</div>
+  </div>`;
+
+  // Tes positions en premier
+  const myTickers = positions.map(p => p.name);
+  
+  // Actions populaires à surveiller
+  const watchTickers = watchlist.map(w => w.ticker);
+  const popularTickers = ['AAPL','MSFT','NVDA','TSLA','MC.PA','AI.PA','IWDA.L','VWCE.DE','TTE.PA','AMZN'];
+  const allTickers = [...new Set([...myTickers, ...watchTickers, ...popularTickers])].slice(0, 8);
+
+  const date = new Date().toLocaleDateString('fr-FR');
+  const prompt = `Tu es analyste financier. Aujourd'hui le ${date}, génère des signaux de trading pour ces actifs : ${allTickers.join(', ')}.
+Pour chaque actif, analyse les conditions actuelles du marché.
+
+Réponds UNIQUEMENT en JSON valide :
+[
+  {
+    "ticker": "AAPL",
+    "name": "Apple",
+    "signal": "acheter" ou "attendre" ou "vendre" ou "eviter",
+    "conviction": "forte" ou "modérée" ou "faible",
+    "prix_entree": 0,
+    "objectif": 0,
+    "stop_loss": 0,
+    "horizon": "1-4 semaines",
+    "raison": "Raison principale en 1 phrase",
+    "type": "Action" ou "ETF"
+  }
+]`;
+
+  try {
+    const raw = await callClaude(prompt, 'Tu es analyste financier expert. Réponds UNIQUEMENT en JSON valide sans markdown.');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const signaux = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']')+1));
+
+    const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#cc2f26' };
+    const sigBg    = { acheter:'#e8f8f0', attendre:'#fff9e6', vendre:'#fff0f0', eviter:'#fff0f0' };
+    const sigIcon  = { acheter:'↑', attendre:'⏸', vendre:'↓', eviter:'✕' };
+    const sigLabel = { acheter:'ACHETER', attendre:'ATTENDRE', vendre:'VENDRE', eviter:'ÉVITER' };
+
+    list.innerHTML = `
+      <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">
+        Signaux IA — ${date} · ${signaux.length} actifs analysés
+      </div>
+      ${signaux.map(s => {
+        const isMine = myTickers.includes(s.ticker);
+        const myPos = positions.find(p => p.name === s.ticker);
+        const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
+        return `
+        <div style="background:${sigBg[s.signal]||'#f9f9f9'};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${sigColor[s.signal]||'#e5e5ea'};cursor:pointer"
+             onclick="openDecisionFromPos('${s.ticker}','${s.signal === 'acheter' ? 'acheter' : s.signal === 'vendre' ? 'vendre' : 'garder'}')">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:40px;height:40px;border-radius:12px;background:${sigColor[s.signal]}20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${sigColor[s.signal]}">${sigIcon[s.signal]}</div>
+              <div>
+                <div style="font-size:14px;font-weight:800;color:#1c1c1e">
+                  ${s.name} <span style="font-size:12px;color:#8e8e93;font-weight:500">${s.ticker}</span>
+                  ${isMine ? `<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:4px">📦 Dans ton portef.</span>` : ''}
+                </div>
+                <div style="font-size:12px;color:#8e8e93;margin-top:1px">${s.type} · Conviction : ${s.conviction}</div>
+              </div>
+            </div>
+            <div style="background:${sigColor[s.signal]};color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800">
+              ${sigLabel[s.signal]||s.signal.toUpperCase()}
+            </div>
+          </div>
+          <div style="font-size:13px;color:#1c1c1e;font-weight:500;margin-bottom:8px">${s.raison}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr${s.prix_entree > 0 ? ' 1fr' : ''};gap:6px">
+            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:6px 8px;text-align:center">
+              <div style="font-size:10px;color:#8e8e93;font-weight:700">HORIZON</div>
+              <div style="font-size:11px;font-weight:800;color:#1c1c1e;margin-top:1px">${s.horizon}</div>
+            </div>
+            ${s.objectif > 0 ? `<div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:6px 8px;text-align:center">
+              <div style="font-size:10px;color:#1a7f5a;font-weight:700">OBJECTIF</div>
+              <div style="font-size:11px;font-weight:800;color:#1a7f5a;margin-top:1px">${s.objectif}€</div>
+            </div>` : ''}
+            ${s.stop_loss > 0 ? `<div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:6px 8px;text-align:center">
+              <div style="font-size:10px;color:#cc2f26;font-weight:700">STOP</div>
+              <div style="font-size:11px;font-weight:800;color:#cc2f26;margin-top:1px">${s.stop_loss}€</div>
+            </div>` : ''}
+            ${isMine && myPnl !== null ? `<div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:6px 8px;text-align:center">
+              <div style="font-size:10px;color:#8e8e93;font-weight:700">MA PERF.</div>
+              <div style="font-size:11px;font-weight:800;color:${parseFloat(myPnl)>=0?'#1a7f5a':'#cc2f26'};margin-top:1px">${parseFloat(myPnl)>=0?'+':''}${myPnl}%</div>
+            </div>` : ''}
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:${sigColor[s.signal]};font-weight:600;text-align:right">
+            Cliquer pour analyser →
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:4px">
+        ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
+      </div>`;
+  } catch(e) {
+    list.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
+      <div style="font-size:20px;margin-bottom:8px">⚠️</div>
+      <div>Impossible de charger les signaux. Réessaie dans quelques secondes.</div>
+    </div>`;
+  }
+}
+
 function setNewsFilter(filter, el) {
   newsFilter = filter;
   document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
-  renderNewsList();
+  if (filter === 'signaux') {
+    renderSignaux();
+  } else {
+    renderNewsList();
+  }
 }
 
 function renderNewsList() {
@@ -2393,6 +2506,10 @@ function renderPortfolio() {
     const val=p.qty*p.price,inv=p.qty*p.pru,pnl=val-inv,pct=inv?pnl/inv*100:0;
     const sig=posSignals[p.id] || posSignals[p._ids[0]];
     const sigHtml=sig?`<span class="signal-badge-large ${sig.action==='acheter'?'sig-buy':sig.action==='vendre'?'sig-sell':'sig-hold'}">${sig.action==='acheter'?'↑ Renforcer':sig.action==='vendre'?'↓ Alléger':'→ Garder'}</span>`:`<span class="signal-badge-large sig-loading">Analyse...</span>`;
+    // Mini badge visible sur la carte sans cliquer
+    const miniSigColor = sig ? (sig.action==='acheter'?'#1a7f5a':sig.action==='vendre'?'#cc2f26':'#f59e0b') : '#8e8e93';
+    const miniSigLabel = sig ? (sig.action==='acheter'?'↑ Renforcer':sig.action==='vendre'?'↓ Vendre':'→ Garder') : '···';
+    const miniSigBadge = `<span style="background:${miniSigColor}15;color:${miniSigColor};font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:6px">${miniSigLabel}</span>`;
     const chgHtml=p.change_pct!==undefined?`<span style="font-size:12px;color:${p.change_pct>=0?'#1a7f5a':'#ff3b30'};font-weight:700">${p.change_pct>=0?'+':''}${p.change_pct?.toFixed(1)}% auj.</span>`:'';
     const alertHtml=p.alert_price?`<span style="font-size:11px;color:#8e8e93;font-weight:600">🔔 Alerte: ${fmt(p.alert_price)}€</span>`:'';
     const multiHtml=p._ids.length>1?`<span style="font-size:11px;color:#8e8e93;font-weight:600">📦 ${p._ids.length} lignes · PRU moy. ${fmt(p.pru)}€</span>`:'';
@@ -2402,7 +2519,7 @@ function renderPortfolio() {
         <div class="pos-card-left">
           <div class="pos-avatar" style="background:${COLORS[idx%COLORS.length]}">${p.name.slice(0,2).toUpperCase()}</div>
           <div>
-            <div class="pos-name">${p.name} ${chgHtml}</div>
+            <div class="pos-name">${p.name} ${chgHtml}${miniSigBadge}</div>
             <div class="pos-meta">${p.type} · ${p.qty} parts · ${p.platform||''} ${alertHtml}</div>
             ${multiHtml}
           </div>
