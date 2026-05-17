@@ -3046,7 +3046,8 @@ async function renderHome() {
   const avgChange = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
   const {score} = calcScore();
   const scoreColor = score>=7?'#1a7f5a':score>=5?'#f59e0b':'#cc2f26';
-  const pctObj = objChartTarget > 0 ? Math.min(tv/objChartTarget*100,100) : 0;
+  const targetVal = objChartTarget > 1000 ? objChartTarget : (objective.target || objChartTarget || 0);
+  const pctObj = targetVal > 0 ? Math.min(tv/targetVal*100,100) : 0;
 
   // Prochain événement agenda important
   const today = new Date().toISOString().split('T')[0];
@@ -3079,7 +3080,7 @@ async function renderHome() {
     <div class="metric-card" onclick="nav('objectif')" style="cursor:pointer">
       <div class="metric-label">Objectif</div>
       <div class="metric-val">${pctObj.toFixed(1)}%</div>
-      <div class="metric-trend">${fmtK(tv)} / ${fmtK(objChartTarget||0)}</div>
+      <div class="metric-trend">${fmtK(tv)} / ${fmtK(targetVal)}</div>
     </div>`;
 
   // RÉSUMÉ DU JOUR
@@ -3121,7 +3122,7 @@ async function renderHome() {
   }
 
   // Progression objectif
-  if (objChartTarget > 0) {
+  if (targetVal > 0) {
     const yearsLeft = objChartYears - (tv > 0 ? Math.log(tv/objChartCapital||1)/Math.log(1.07) : 0);
     dayHtml += `
     <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;cursor:pointer" onclick="nav('objectif')">
@@ -3134,7 +3135,7 @@ async function renderHome() {
       </div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:#8e8e93">
         <span>${pctObj.toFixed(1)}% atteint</span>
-        <span>Reste : ${fmtK(Math.max((objChartTarget||0)-tv,0))}</span>
+        <span>Reste : ${fmtK(Math.max(targetVal-tv,0))}</span>
       </div>
     </div>`;
   }
@@ -3562,11 +3563,15 @@ function toggleObjDetail() {
 }
 
 function resetObj() {
+  // Reset les variables pour forcer le wizard
+  objChartTarget = 0;
+  objChartCapital = 0;
   document.getElementById('obj-results').style.display = 'none';
   document.getElementById('obj-wizard').style.display = 'block';
-  // Clear ai-simple so it gets regenerated
   const el = document.getElementById('obj-ai-simple');
   if (el) el.innerHTML = '';
+  // Efface aussi le cache localStorage pour éviter rechargement auto
+  try { localStorage.removeItem('iq_validated_objective'); } catch {}
   objGo(1);
 }
 
