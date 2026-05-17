@@ -8,7 +8,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 .demo-banner a{color:#a3a3a3;text-decoration:underline;cursor:pointer}
 
 /* AUTH */
-.auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#0f0f10;position:relative;overflow:hidden}
+.auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;background:#0a0a0b;position:relative;overflow:hidden}
 
 /* Fond animé */
 .auth-bg{position:absolute;inset:0;pointer-events:none}
@@ -21,27 +21,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 @keyframes float3{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-40%,-60%)}}
 
 /* Layout 2 colonnes */
-.auth-wrap{display:flex;gap:60px;align-items:center;max-width:900px;width:100%;position:relative;z-index:1}
+.auth-wrap{display:flex;gap:64px;align-items:center;max-width:920px;width:100%;position:relative;z-index:1}
 
 /* Colonne gauche — pitch */
 .auth-pitch{flex:1;color:#fff}
 .auth-pitch-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
-.auth-pitch-title{font-size:38px;font-weight:900;line-height:1.15;margin:0 0 14px;letter-spacing:-1px}
+.auth-pitch-title{font-size:42px;font-weight:900;line-height:1.1;margin:0 0 16px;letter-spacing:-1.5px;background:linear-gradient(135deg,#fff 60%,rgba(255,255,255,0.6));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .auth-pitch-sub{font-size:16px;color:rgba(255,255,255,0.6);margin:0 0 32px;line-height:1.6}
 .auth-features-list{display:flex;flex-direction:column;gap:16px}
 .auth-feature-big{display:flex;align-items:flex-start;gap:14px}
-.auth-feature-icon{font-size:22px;width:44px;height:44px;background:rgba(255,255,255,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.auth-feature-icon{font-size:20px;width:44px;height:44px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;backdrop-filter:blur(4px)}
 .auth-feature-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px}
 .auth-feature-desc{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5}
 
 /* Colonne droite — card */
-.auth-card{width:100%;max-width:400px;background:#fff;border-radius:24px;padding:36px 32px;box-shadow:0 24px 80px rgba(0,0,0,0.4);flex-shrink:0}
+.auth-card{width:100%;max-width:400px;background:#fff;border-radius:24px;padding:36px 32px;box-shadow:0 32px 100px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.05);flex-shrink:0}
 .auth-logo{display:flex;align-items:center;gap:14px;margin-bottom:32px}
 .logo-icon{width:48px;height:48px;background:#1c1c1e;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
 .logo-icon.sm{width:30px;height:30px;border-radius:9px}
 .logo-name{font-size:22px;font-weight:800;color:#1c1c1e;letter-spacing:-0.6px}
 .logo-sub{font-size:12px;color:#8e8e93;margin-top:2px;font-weight:500}
-.auth-tabs{display:flex;background:#f5f5f5;border-radius:12px;padding:4px;margin-bottom:24px}
+.auth-tabs{display:flex;background:#f5f5f5;border-radius:14px;padding:4px;margin-bottom:28px}
 .auth-tab{flex:1;padding:9px;border:none;background:transparent;color:#8e8e93;font-size:14px;font-weight:700;border-radius:9px;cursor:pointer;transition:all 0.2s;font-family:inherit}
 .auth-tab.active{background:#fff;color:#1c1c1e;box-shadow:0 1px 6px rgba(0,0,0,0.1)}
 .field{margin-bottom:14px}
@@ -51,7 +51,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 .auth-field{margin-bottom:14px}
 .auth-label{display:block;font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
 .auth-input{width:100%;padding:13px 14px;border:2px solid #f0f0f0;border-radius:12px;font-size:15px;outline:none;transition:border 0.2s;box-sizing:border-box;font-family:inherit;background:#fafafa}
-.auth-input:focus{border-color:#1c1c1e;background:#fff}
+.auth-input:focus{border-color:#1c1c1e;background:#fff;box-shadow:0 0 0 3px rgba(28,28,30,0.08)}
 .auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:#8e8e93;font-size:12px;font-weight:600}
 .auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:#f0f0f0}
 .auth-terms{font-size:11px;color:#8e8e93;text-align:center;margin-top:12px;line-height:1.5}
