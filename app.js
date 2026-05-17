@@ -1534,10 +1534,30 @@ signal: acheter/attendre/vendre/eviter. risque: 1(très faible) à 5(très élev
   }
 
   try {
-    const [mySignaux, oppoSignaux] = await Promise.all([
-      myTickers.length ? fetchSignaux(myTickers, 'mine') : Promise.resolve([]),
-      fetchSignaux(oppoTickers, 'oppo')
-    ]);
+    // Chargement progressif
+    const mySignaux = myTickers.length ? await fetchSignaux(myTickers, 'mine') : [];
+    
+    // Affiche mes positions immédiatement
+    list.innerHTML = `
+      <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⚡ Signaux IA — ${date}</div>
+      ${mySignaux.length ? `<div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px">📦 Mes positions</div>${mySignaux.map(s => signalCard(s, true)).join('')}` : ''}
+      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px">🔭 Opportunités du marché</div>
+      <div id="oppo-loading" style="text-align:center;padding:20px;color:#8e8e93">
+        <div style="font-size:20px;margin-bottom:6px">🧠</div>
+        <div style="font-size:13px">Analyse des opportunités...</div>
+      </div>`;
+
+    const oppoSignaux = await fetchSignaux(oppoTickers, 'oppo');
+    
+    // Remplace le loader par les opportunités
+    const oppoLoader = document.getElementById('oppo-loading');
+    if (oppoLoader) {
+      oppoLoader.outerHTML = oppoSignaux.map(s => signalCard(s, false)).join('') + 
+        `<div style="padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
+          ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
+        </div>`;
+    }
+    return; // Skip the big innerHTML below
 
     const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#8e8e93' };
     const sigBg    = { acheter:'#e8f8f0', attendre:'#fff9e6', vendre:'#fff0f0', eviter:'#f5f5f5' };
@@ -1567,9 +1587,10 @@ signal: acheter/attendre/vendre/eviter. risque: 1(très faible) à 5(très élev
                 ${s.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${s.ticker}</span>
                 ${isMine ? '<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:4px">📦 Portef.</span>' : ''}
               </div>
-              <div style="font-size:11px;color:#8e8e93;margin-top:2px;display:flex;align-items:center;gap:8px">
-                <span>${s.type} · ${s.secteur||''}</span>
-                <span>Risque : ${riskBar(s.risque||3)}</span>
+              <div style="font-size:11px;color:#8e8e93;margin-top:2px">${s.type} · ${s.secteur||''}</div>
+              <div style="margin-top:4px;display:flex;align-items:center;gap:4px">
+                <span style="font-size:10px;color:#8e8e93;font-weight:700">RISQUE</span>
+                ${riskBar(s.risque||3)}
               </div>
             </div>
           </div>
