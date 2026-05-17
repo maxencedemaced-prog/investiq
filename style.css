@@ -4,7 +4,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#d1d1d6;border-radius:99px}
 
 /* DEMO BANNER */
-.demo-banner{background:#1c1c1e;color:#fff;text-align:center;padding:9px;font-size:13px;font-weight:600}
+.demo-banner{background:#1c1c1e;color:#fff;padding:8px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .demo-banner a{color:#a3a3a3;text-decoration:underline;cursor:pointer}
 
 /* AUTH */
