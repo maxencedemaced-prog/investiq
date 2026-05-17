@@ -428,6 +428,50 @@ function updateObjSlider(val) {
 // ===== SMART AUTO REFRESH =====
 let priceInterval = null;
 
+// Vérifie les nouveaux événements agenda toutes les heures
+let lastAgendaCheck = 0;
+async function checkAgendaUpdates() {
+  if (Date.now() - lastAgendaCheck < 60 * 60 * 1000) return; // max 1x/heure
+  lastAgendaCheck = Date.now();
+  try {
+    const res = await fetch('/api/agenda');
+    if (!res.ok) return;
+    const data = await res.json();
+    const newEvents = data.events || [];
+
+    // Trouve les nouveaux événements forts d'aujourd'hui
+    const today = new Date().toISOString().split('T')[0];
+    const todayHigh = newEvents.filter(e => e.date === today && e.impact === 'high');
+
+    if (todayHigh.length > 0) {
+      // Invalide le cache agenda pour forcer un rechargement
+      newsTabCache.agenda.html = '';
+      newsTabCache.agenda.ts = 0;
+      agendaEvents = newEvents;
+
+      // Ajoute une notification
+      const notif = {
+        titre: `📅 ${todayHigh.length} événement${todayHigh.length>1?'s':''} important${todayHigh.length>1?'s':''} aujourd'hui`,
+        texte: todayHigh.slice(0,2).map(e=>e.titre).join(' · '),
+        action: 'Voir Agenda',
+        impact: 'high',
+        heure: 'Maintenant',
+        type: 'agenda'
+      };
+      // N'ajoute que si pas déjà présent
+      if (!notifications.find(n => n.type === 'agenda' && n.texte === notif.texte)) {
+        notifications = [notif, ...notifications].slice(0, 10);
+        renderNotifications();
+        document.getElementById('notif-dot').classList.add('show');
+        // Notification push
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('InvestIQ — Agenda', { body: notif.texte, icon: '/icons/icon-192.png' });
+        }
+      }
+    }
+  } catch(e) {}
+}
+
 function startSmartRefresh() {
   if (priceInterval) clearInterval(priceInterval);
   priceInterval = setInterval(() => {
@@ -437,6 +481,10 @@ function startSmartRefresh() {
     const onRelevantPage = activeId === 'sec-portfolio' || activeId === 'sec-home';
     if (document.visibilityState === 'visible' && onRelevantPage && positions.length) {
       refreshPrices();
+    }
+    // Vérifie les nouveaux événements agenda en arrière-plan
+    if (document.visibilityState === 'visible') {
+      checkAgendaUpdates();
     }
   }, 5 * 60 * 1000); // every 5 minutes
 }
