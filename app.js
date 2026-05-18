@@ -1467,6 +1467,32 @@ function isFavorite(ticker) {
   return watchlist.some(w => w.ticker === ticker);
 }
 
+function buildBloombergTicker(allTracked) {
+  const seen = new Set();
+  const unique = allTracked.filter(c => { if(seen.has(c.ticker)) return false; seen.add(c.ticker); return true; });
+  const items = [...unique, ...unique];
+  return items.map(c => {
+    const pos = positions.find(p => p.name === c.ticker);
+    const chg = pos && pos.change_pct !== undefined ? pos.change_pct : null;
+    const price = pos ? pos.price : null;
+    const up = chg !== null ? chg >= 0 : true;
+    const color = chg !== null ? (up ? '#4ade80' : '#f87171') : 'rgba(255,255,255,0.3)';
+    const arrow = up ? '&#9650;' : '&#9660;';
+    const chgStr = chg !== null ? (up?'+':'') + Number(chg).toFixed(2) + '%' : '';
+    const priceStr = price ? fmt(price) + '&euro;' : '';
+    const el = document.createElement('div');
+    el.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:0 20px;height:42px;cursor:pointer;border-right:1px solid rgba(255,255,255,0.05);flex-shrink:0';
+    el.onmouseover = function(){ this.style.background='rgba(255,255,255,0.06)'; };
+    el.onmouseout = function(){ this.style.background='transparent'; };
+    el.onclick = function(){ setNewsFilter('entreprises',document.getElementById('news-fil-entreprises')); setTimeout(()=>showEntrepriseDetail(c.ticker, c.name||c.ticker), 100); };
+    el.innerHTML = '<span style="font-size:12px;font-weight:800;color:#fff;letter-spacing:0.3px">' + c.ticker + '</span>'
+      + (priceStr ? ' <span style="font-size:12px;color:rgba(255,255,255,0.45)">' + priceStr + '</span>' : '')
+      + (chgStr ? ' <span style="font-size:11px;font-weight:700;color:' + color + '">' + arrow + ' ' + chgStr + '</span>'
+               : ' <span style="font-size:10px;color:rgba(255,255,255,0.25)">&#8212;</span>');
+    return el.outerHTML;
+  }).join('');
+}
+
 function renderNewsPage() {
   loadWatchlist();
   const container = document.getElementById('news-page-content');
@@ -1514,24 +1540,7 @@ function renderNewsPage() {
       <div style="background:#0f0f10;border-radius:12px;overflow:hidden;position:relative;height:42px">
         <div style="display:flex;overflow:hidden;position:relative;height:42px;align-items:center">
           <div class="bloomberg-ticker" id="bloomberg-strip">
-            ${[...allTracked,...allTracked].map(c => {
-              const pos = positions.find(p => p.name === c.ticker);
-              const chg = pos?.change_pct ?? null;
-              const pnl = pos ? ((pos.price - pos.pru) / pos.pru * 100) : null;
-              const price = pos?.price ?? null;
-              const up = chg !== null ? chg >= 0 : pnl !== null ? pnl >= 0 : true;
-              const color = up ? '#4ade80' : '#f87171';
-              const arrow = up ? '▲' : '▼';
-              const chgStr = chg !== null ? `${up?'+':''}${chg.toFixed(2)}%` : pnl !== null ? `${pnl>=0?'+':''}${pnl.toFixed(1)}%` : '';
-              return `<div onclick="setNewsFilter('entreprises',document.getElementById('news-fil-entreprises'));setTimeout(()=>showEntrepriseDetail('${c.ticker}','${c.name||c.ticker}'),100)"
-                style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0;transition:background 0.15s"
-                onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">
-                <span style="font-size:12px;font-weight:800;color:#fff;letter-spacing:0.3px">${c.ticker}</span>
-                ${price ? `<span style="font-size:12px;color:rgba(255,255,255,0.5)">${fmt(price)}€</span>` : ''}
-                ${chgStr ? `<span style="font-size:11px;font-weight:700;color:${color}">${arrow} ${chgStr}</span>` : ''}
-                ${!pos && c.inPortfolio===false ? `<span style="font-size:10px;color:rgba(255,255,255,0.3)">⭐</span>` : ''}
-              </div>`;
-            }).join('')}
+            ${buildBloombergTicker(allTracked)}
           </div>
         </div>
       </div>
