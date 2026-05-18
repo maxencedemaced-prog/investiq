@@ -1467,6 +1467,19 @@ function isFavorite(ticker) {
   return watchlist.some(w => w.ticker === ticker);
 }
 
+function toggleNewsItemFav(ticker, name) {
+  toggleFavorite(ticker, name, '');
+  // Met à jour toutes les étoiles pour ce ticker
+  document.querySelectorAll('[id^="star-"]').forEach(btn => {
+    if (btn.id.includes(ticker)) {
+      const isFav = isFavorite(ticker);
+      btn.textContent = isFav ? '★' : '☆';
+      btn.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.2)';
+    }
+  });
+  showToast(isFavorite(ticker) ? '★ ' + name + ' ajouté aux favoris !' : 'Retiré des favoris');
+}
+
 function buildBloombergTicker(allTracked) {
   const seen = new Set();
   const unique = allTracked.filter(c => { if(seen.has(c.ticker)) return false; seen.add(c.ticker); return true; });
@@ -1527,7 +1540,7 @@ function renderNewsPage() {
     <!-- FILTER PILLS -->
     <div class="filter-row" style="margin-top:14px">
       <button class="filter-pill active" id="news-fil-tous" onclick="setNewsFilter('tous',this)">Toutes les actus</button>
-      <button class="filter-pill" id="news-fil-signaux" onclick="setNewsFilter('signaux',this)" style="background:#1c1c1e;color:#fff;border-color:#1c1c1e">⚡ Signaux</button>
+      <button class="filter-pill" id="news-fil-signaux" onclick="setNewsFilter('signaux',this)" style="background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 12px rgba(204,47,38,0.4);font-weight:800">⚡ Signaux</button>
       <button class="filter-pill" id="news-fil-entreprises" onclick="setNewsFilter('entreprises',this)">🏢 Entreprises</button>
       <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)">📅 Agenda</button>
       <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)">
@@ -2149,9 +2162,11 @@ async function renderSignaux() {
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:40px;height:40px;border-radius:12px;background:${sigColor[s.signal]}20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${sigColor[s.signal]}">${sigIcon[s.signal]}</div>
           <div>
-            <div style="font-size:14px;font-weight:800;color:#1c1c1e">
+            <div style="font-size:14px;font-weight:800;color:#1c1c1e;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               ${s.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${s.ticker}</span>
-              ${isMine ? '<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:4px">📦 Portef.</span>' : ''}
+              ${isMine ? '<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px">📦 Portef.</span>' : ''}
+              <button onclick="event.stopPropagation();toggleNewsItemFav('${s.ticker}','${s.name}')"
+                style="background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1;color:${isFavorite(s.ticker)?'#f59e0b':'rgba(0,0,0,0.2)'}">${isFavorite(s.ticker)?'★':'☆'}</button>
             </div>
             <div style="font-size:11px;color:#8e8e93;margin-top:2px">${s.type||''} · ${s.secteur||''}</div>
             <div style="margin-top:4px;display:flex;align-items:center;gap:4px">
@@ -2293,7 +2308,19 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
 function setNewsFilter(filter, el) {
   newsFilter = filter;
   document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+  // Style spécial pour signaux
+  const sigBtn = document.getElementById('news-fil-signaux');
+  if (sigBtn) {
+    if (filter === 'signaux') {
+      sigBtn.style.cssText = 'background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 16px rgba(204,47,38,0.6);font-weight:800;transform:scale(1.03)';
+    } else {
+      sigBtn.style.cssText = 'background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 12px rgba(204,47,38,0.4);font-weight:800';
+    }
+  }
   if (el) el.classList.add('active');
+
+  // Scroll vers le haut
+  document.getElementById('news-list')?.scrollIntoView({behavior:'smooth', block:'start'});
 
   if (filter === 'signaux') {
     if (isCacheValid('signaux')) { restoreFromCache('signaux'); return; }
@@ -2352,12 +2379,20 @@ function renderNewsList() {
       return `<span class="pill pill-gray" style="cursor:pointer;${isFav?'background:#f0f0f0;font-weight:800':''}" onclick="openCompany('${a}','${a}','')">${isFav?'★ ':''} ${a}</span>`;
     }).join(' ');
     const oppBtn = n.signal !== 'éviter' ? `<button class="btn-analyse" onclick="openDecision('${first}','${n.signal}')">Analyser →</button>` : '';
+    const assetsForStar = n.actifs_cibles || [];
+    const firstTicker = assetsForStar[0] || '';
+    const starHtml = firstTicker ? `<button onclick="event.stopPropagation();toggleNewsItemFav('${firstTicker}','${firstTicker}')" 
+      style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:${isFavorite(firstTicker)?'#f59e0b':'rgba(0,0,0,0.2)'}" 
+      id="star-${firstTicker}-${i}" title="${isFavorite(firstTicker)?'Retirer des favoris':'Ajouter aux favoris'}">${isFavorite(firstTicker)?'★':'☆'}</button>` : '';
     return `<div class="news-item">
       <div class="news-item-head" onclick="toggleNews(${i})">
-        <div class="news-meta">
-          <span class="pill ${tagCls[n.categorie]||'pill-gray'}">${tagLbl[n.categorie]||n.categorie}</span>
-          <span class="pill ${impCls[n.impact]||'pill-gray'}">Impact ${n.impact}</span>
-          <span class="news-time">${n.heure}</span>
+        <div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="pill ${tagCls[n.categorie]||'pill-gray'}">${tagLbl[n.categorie]||n.categorie}</span>
+            <span class="pill ${impCls[n.impact]||'pill-gray'}">Impact ${n.impact}</span>
+            <span class="news-time">${n.heure}</span>
+          </div>
+          ${starHtml}
         </div>
         <div class="news-title">${n.titre}</div>
         <div class="news-summary">${n.resume}</div>
