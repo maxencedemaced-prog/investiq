@@ -764,6 +764,18 @@
         <div id="pass-msg" style="margin-top:10px;font-size:14px;display:none;font-weight:700"></div>
       </div>
       <div class="card">
+        <div class="card-head"><div class="card-title"><span class="card-icon" style="background:#e8f8f0;color:#1a7f5a">?</span>Aide & Tutoriel</div></div>
+        <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">Revoir le guide de démarrage ou explorer l'app avec des données fictives.</div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="showOnboarding(true)" style="flex:1">
+            📋 Revoir le tutoriel
+          </button>
+          <button class="btn-secondary" onclick="loadDemo();nav('portfolio')" style="flex:1">
+            👀 Mode démo
+          </button>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-head"><div class="card-title"><span class="card-icon red">⚠</span>Export & Danger</div></div>
         <div class="btn-row">
           <button class="btn-secondary" onclick="exportPDF()">📄 Exporter en PDF</button>
