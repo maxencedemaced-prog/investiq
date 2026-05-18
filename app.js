@@ -1327,11 +1327,26 @@ En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de j
 }
 
 async function obFinish(action) {
+  localStorage.setItem(OB_KEY, '1');
+  document.getElementById('onboarding-modal').style.display = 'none';
+
+  // Si "Voir un exemple" → pas de sauvegarde, juste charger la démo
+  if (action === 'demo') {
+    await loadDemo();
+    return;
+  }
+
   const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
   const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
   const target   = parseFloat(document.getElementById('ob-target')?.value)   || 50000;
   const risk     = document.getElementById('ob-risk')?.value    || 'faible';
   const horizon  = document.getElementById('ob-horizon')?.value || 'long';
+
+  // Ne sauvegarde que si les champs ont été remplis
+  if (bankroll === 0 && monthly === 0) {
+    nav(action);
+    return;
+  }
 
   profile.bankroll = bankroll;
   profile.risk     = risk;
@@ -1350,7 +1365,7 @@ async function obFinish(action) {
   objRisk         = risk === 'eleve' ? 'agressif' : risk === 'modere' ? 'equilibre' : 'prudent';
 
   // Sauvegarde profil + objectif en Supabase
-  if (!isDemo) {
+  if (!isDemo && currentUser) {
     await saveProfile();
     try {
       await sb.from('objectives').update({
@@ -1369,11 +1384,7 @@ async function obFinish(action) {
     validatedAt: new Date().toISOString()
   })); } catch {}
 
-  localStorage.setItem(OB_KEY, '1');
-  document.getElementById('onboarding-modal').style.display = 'none';
-
-  if (action === 'demo') await loadDemo();
-  else nav(action);
+  nav(action);
 }
 
 
