@@ -478,15 +478,15 @@ function startSmartRefresh() {
     // Only refresh if tab is visible AND on portfolio or home page
     const activeSec = document.querySelector('.sec.active');
     const activeId = activeSec ? activeSec.id : '';
-    const onRelevantPage = activeId === 'sec-portfolio' || activeId === 'sec-home';
-    if (document.visibilityState === 'visible' && onRelevantPage && positions.length) {
+    // Refresh prices on any page (topbar + bloomberg ticker need it everywhere)
+    if (document.visibilityState === 'visible' && positions.length) {
       refreshPrices();
     }
     // Vérifie les nouveaux événements agenda en arrière-plan
     if (document.visibilityState === 'visible') {
       checkAgendaUpdates();
     }
-  }, 5 * 60 * 1000); // every 5 minutes
+  }, 3 * 60 * 1000); // every 3 minutes
 }
 
 // Pause when tab hidden, resume when visible
