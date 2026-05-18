@@ -1498,34 +1498,42 @@ function renderNewsPage() {
       <button class="filter-pill" id="news-fil-entreprises" onclick="setNewsFilter('entreprises',this)">🏢 Entreprises</button>
       <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)">📅 Agenda</button>
       <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)">
-        ⭐ Mes favoris ${allTracked.length > 0 ? `<span class="pill-count">${allTracked.length}</span>` : ''}
+        ⭐ Mes favoris ${watchlist.length > 0 ? `<span class="pill-count">${watchlist.length}</span>` : ''}
       </button>
       <button class="filter-pill" id="news-fil-macro" onclick="setNewsFilter('macro',this)">Macro</button>
       <button class="filter-pill" id="news-fil-banque" onclick="setNewsFilter('banque',this)">Banques centrales</button>
       <button class="filter-pill" id="news-fil-marche" onclick="setNewsFilter('marche',this)">Marchés</button>
     </div>
 
-    <!-- WATCHLIST COMPANIES -->
+    <!-- BLOOMBERG TICKER STRIP -->
     ${allTracked.length > 0 ? `
     <div style="margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Mes valeurs suivies (${allTracked.length})</div>
-      <div class="watchlist-strip" id="watchlist-strip">
-        ${allTracked.map(c => {
-          const pos = positions.find(p => p.name === c.ticker);
-          const pnlPct = pos ? ((pos.price - pos.pru) / pos.pru * 100).toFixed(1) : null;
-          const pnlColor = pnlPct >= 0 ? '#1a7f5a' : '#cc2f26';
-          return `<div class="watchlist-chip ${c.inPortfolio ? 'in-portfolio' : ''}" onclick="openCompany('${c.ticker}','${c.name || c.ticker}','${c.sector || ''}')">
-            <div class="wchip-avatar">${c.ticker.slice(0,2).toUpperCase()}</div>
-            <div>
-              <div class="wchip-name">${c.ticker}</div>
-              <div class="wchip-sector" style="color:${pnlPct !== null ? pnlColor : '#8e8e93'}">${pnlPct !== null ? (pnlPct >= 0 ? '+' : '') + pnlPct + '%' : c.sector || 'Favori'}</div>
-            </div>
-            ${c.inPortfolio 
-              ? '<span class="wchip-badge">Portf.</span>' 
-              : `<button class="wchip-remove" onclick="event.stopPropagation();toggleFavorite('${c.ticker}','${c.name || c.ticker}','${c.sector || ''}');renderNewsPage()">×</button>`
-            }
-          </div>`;
-        }).join('')}
+      <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
+        Mes valeurs suivies · <span style="font-weight:400">${watchlist.length} favoris · ${positions.filter((p,i,a)=>a.findIndex(x=>x.name===p.name)===i).length} positions</span>
+      </div>
+      <div style="background:#0f0f10;border-radius:12px;overflow:hidden;position:relative">
+        <div style="display:flex;overflow:hidden;position:relative">
+          <div class="bloomberg-ticker" id="bloomberg-strip">
+            ${[...allTracked,...allTracked].map(c => {
+              const pos = positions.find(p => p.name === c.ticker);
+              const chg = pos?.change_pct ?? null;
+              const pnl = pos ? ((pos.price - pos.pru) / pos.pru * 100) : null;
+              const price = pos?.price ?? null;
+              const up = chg !== null ? chg >= 0 : pnl !== null ? pnl >= 0 : true;
+              const color = up ? '#4ade80' : '#f87171';
+              const arrow = up ? '▲' : '▼';
+              const chgStr = chg !== null ? `${up?'+':''}${chg.toFixed(2)}%` : pnl !== null ? `${pnl>=0?'+':''}${pnl.toFixed(1)}%` : '';
+              return `<div onclick="setNewsFilter('entreprises',document.getElementById('news-fil-entreprises'));setTimeout(()=>showEntrepriseDetail('${c.ticker}','${c.name||c.ticker}'),100)"
+                style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0;transition:background 0.15s"
+                onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">
+                <span style="font-size:12px;font-weight:800;color:#fff;letter-spacing:0.3px">${c.ticker}</span>
+                ${price ? `<span style="font-size:12px;color:rgba(255,255,255,0.5)">${fmt(price)}€</span>` : ''}
+                ${chgStr ? `<span style="font-size:11px;font-weight:700;color:${color}">${arrow} ${chgStr}</span>` : ''}
+                ${!pos && c.inPortfolio===false ? `<span style="font-size:10px;color:rgba(255,255,255,0.3)">⭐</span>` : ''}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
       </div>
     </div>` : `
     <div style="text-align:center;padding:16px;background:#f9f9f9;border-radius:14px;margin-bottom:14px">
