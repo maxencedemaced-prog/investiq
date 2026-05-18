@@ -1511,8 +1511,8 @@ function renderNewsPage() {
       <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
         Mes valeurs suivies · <span style="font-weight:400">${watchlist.length} favoris · ${positions.filter((p,i,a)=>a.findIndex(x=>x.name===p.name)===i).length} positions</span>
       </div>
-      <div style="background:#0f0f10;border-radius:12px;overflow:hidden;position:relative">
-        <div style="display:flex;overflow:hidden;position:relative">
+      <div style="background:#0f0f10;border-radius:12px;overflow:hidden;position:relative;height:42px">
+        <div style="display:flex;overflow:hidden;position:relative;height:42px;align-items:center">
           <div class="bloomberg-ticker" id="bloomberg-strip">
             ${[...allTracked,...allTracked].map(c => {
               const pos = positions.find(p => p.name === c.ticker);
