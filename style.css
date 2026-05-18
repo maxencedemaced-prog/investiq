@@ -624,3 +624,17 @@ input:focus,select:focus{outline:none;background:#ebebeb}
   transition: all 0.2s;
 }
 .ob-goal-card:hover, .ob-risk-card:hover { border-color: #1c1c1e; }
+
+/* ===== BLOOMBERG TICKER ===== */
+.bloomberg-ticker {
+  display: flex;
+  animation: ticker-scroll 30s linear infinite;
+  will-change: transform;
+}
+.bloomberg-ticker:hover {
+  animation-play-state: paused;
+}
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
