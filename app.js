@@ -2844,8 +2844,18 @@ async function refreshPrices() {
     console.log('Prix mis à jour:', updated, 'positions sur', positions.length);
     renderPortfolio();
     renderHome();
-    setTimeout(() => showPriceTicker(), 100); // after render
+    setTimeout(() => showPriceTicker(), 100);
     showToast('✓ ' + updated + ' prix mis à jour');
+    // Refresh bloomberg ticker with latest prices
+    const strip = document.getElementById('bloomberg-strip');
+    if (strip) {
+      const seen = new Set();
+      const myTickers = positions.filter(p=>{ if(seen.has(p.name)) return false; seen.add(p.name); return true; })
+        .map(p => ({ ticker: p.name, name: p.name, inPortfolio: true }));
+      const wlItems = watchlist.map(w => ({ ticker: w.ticker, name: w.name||w.ticker, inPortfolio: false }));
+      const allT = [...myTickers, ...wlItems.filter(w => !myTickers.find(m => m.ticker === w.ticker))];
+      strip.innerHTML = buildBloombergTicker(allT);
+    }
   } catch(e) {
     // Market may be closed - keep last known prices and ticker
     showPriceTicker(); // show last known
