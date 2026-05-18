@@ -64,8 +64,8 @@ async function fetchQuote(attempt, originalSymbol, apiKey) {
     const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(attempt.ticker)}&token=${apiKey}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const d = await r.json();
-    if (d && d.c && d.c > 0) {
-      return { symbol: originalSymbol, price: d.c, changePct: d.dp || 0, change: d.d || 0, source: 'finnhub' };
+    if (d && d.c && d.c > 0) { // Accept even if price unchanged
+      return { symbol: originalSymbol, price: d.c, changePct: typeof d.dp === 'number' ? d.dp : 0, change: d.d || 0, source: 'finnhub' };
     }
   } else {
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(attempt.ticker)}?interval=1d&range=1d`;
