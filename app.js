@@ -1470,26 +1470,33 @@ function isFavorite(ticker) {
 function buildBloombergTicker(allTracked) {
   const seen = new Set();
   const unique = allTracked.filter(c => { if(seen.has(c.ticker)) return false; seen.add(c.ticker); return true; });
-  const items = [...unique, ...unique];
+  // Triple pour avoir assez d'items (évite le blanc entre les boucles)
+  const items = [...unique, ...unique, ...unique];
   return items.map(c => {
     const pos = positions.find(p => p.name === c.ticker);
-    const chg = pos && pos.change_pct !== undefined ? pos.change_pct : null;
+    const chg = pos && pos.change_pct !== undefined ? Number(pos.change_pct) : null;
     const price = pos ? pos.price : null;
     const up = chg !== null ? chg >= 0 : true;
-    const color = chg !== null ? (up ? '#4ade80' : '#f87171') : 'rgba(255,255,255,0.3)';
-    const arrow = up ? '&#9650;' : '&#9660;';
-    const chgStr = chg !== null ? (up?'+':'') + Number(chg).toFixed(2) + '%' : '';
-    const priceStr = price ? fmt(price) + '&euro;' : '';
-    const el = document.createElement('div');
-    el.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:0 20px;height:42px;cursor:pointer;border-right:1px solid rgba(255,255,255,0.05);flex-shrink:0';
-    el.onmouseover = function(){ this.style.background='rgba(255,255,255,0.06)'; };
-    el.onmouseout = function(){ this.style.background='transparent'; };
-    el.onclick = function(){ setNewsFilter('entreprises',document.getElementById('news-fil-entreprises')); setTimeout(()=>showEntrepriseDetail(c.ticker, c.name||c.ticker), 100); };
-    el.innerHTML = '<span style="font-size:12px;font-weight:800;color:#fff;letter-spacing:0.3px">' + c.ticker + '</span>'
-      + (priceStr ? ' <span style="font-size:12px;color:rgba(255,255,255,0.45)">' + priceStr + '</span>' : '')
-      + (chgStr ? ' <span style="font-size:11px;font-weight:700;color:' + color + '">' + arrow + ' ' + chgStr + '</span>'
-               : ' <span style="font-size:10px;color:rgba(255,255,255,0.25)">&#8212;</span>');
-    return el.outerHTML;
+    const upColor = '#22c55e';   // vert vif
+    const downColor = '#ef4444'; // rouge vif
+    const color = chg !== null ? (up ? upColor : downColor) : 'rgba(255,255,255,0.3)';
+    const arrow = up ? '▲' : '▼';
+    const chgStr = chg !== null ? (up?'+':'') + chg.toFixed(2) + '%' : '';
+    const priceStr = price ? fmt(price) + '€' : '';
+    const sep = '<span style="color:rgba(255,255,255,0.1);margin:0 4px;font-size:10px">|</span>';
+    const tickerEl = document.createElement('span');
+    tickerEl.setAttribute('style', 'display:inline-flex;align-items:center;gap:6px;padding:0 18px;height:42px;cursor:pointer;flex-shrink:0');
+    tickerEl.setAttribute('onmouseover', "this.style.background='rgba(255,255,255,0.07)'");
+    tickerEl.setAttribute('onmouseout', "this.style.background='transparent'");
+    tickerEl.setAttribute('onclick', "setNewsFilter('entreprises',document.getElementById('news-fil-entreprises'));setTimeout(function(){showEntrepriseDetail('" + c.ticker + "','" + (c.name||c.ticker) + "')},100)");
+    const innerHtml = '<span style="font-size:12px;font-weight:800;color:#fff;letter-spacing:0.4px">' + c.ticker + '</span>'
+      + (priceStr ? '<span style="font-size:12px;color:rgba(255,255,255,0.4)">' + priceStr + '</span>' : '')
+      + (chgStr
+          ? '<span style="font-size:11px;font-weight:800;color:' + color + '">' + arrow + ' ' + chgStr + '</span>'
+          : '<span style="font-size:10px;color:rgba(255,255,255,0.2)">—</span>')
+      + sep;
+    tickerEl.innerHTML = innerHtml;
+    return tickerEl.outerHTML;
   }).join('');
 }
 
