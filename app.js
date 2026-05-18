@@ -2834,7 +2834,10 @@ async function refreshPrices() {
       );
       if (pos) {
         pos.price = parseFloat(q.price);
-        pos.change_pct = parseFloat(q.changePct) || 0;
+        // Keep existing change_pct if new value is 0 (API may reset)
+        const newChg = parseFloat(q.changePct);
+        if (!isNaN(newChg) && newChg !== 0) pos.change_pct = newChg;
+        else if (pos.change_pct === undefined) pos.change_pct = 0;
         if (!isDemo) {
           sb.from('positions').update({ price: pos.price }).eq('id', pos.id).then(()=>{});
         }
