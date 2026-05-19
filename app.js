@@ -1481,7 +1481,22 @@ function toggleNewsItemFav(ticker, name, starId) {
 
   if (isRealTicker) showToast(isFav ? '★ ' + name + ' ajouté !' : 'Retiré des favoris');
 
-  if (!isFav && newsFilter === 'favoris') setTimeout(() => renderFavorisNews(), 300);
+  // Si on retire un favori dans l'onglet Mes favoris → retire la carte immédiatement
+  if (!isFav && newsFilter === 'favoris' && starId) {
+    // Remonte jusqu'à la card parente et la supprime
+    const btn = document.getElementById(starId);
+    if (btn) {
+      let card = btn.closest('[style*="border-radius:14px"]') || btn.parentElement?.parentElement?.parentElement;
+      if (card) {
+        card.style.transition = 'opacity 0.2s';
+        card.style.opacity = '0';
+        setTimeout(() => { card.remove(); saveToCache('favoris'); }, 200);
+      }
+    }
+    // Invalide cache pour forcer rechargement propre au prochain clic
+    newsTabCache.favoris.html = '';
+    newsTabCache.favoris.ts = 0;
+  }
 
   const pill = document.getElementById('news-fil-favoris');
   if (pill) pill.innerHTML = '⭐ Mes favoris' + (watchlist.length > 0 ? ' <span class="pill-count">' + watchlist.length + '</span>' : '');
@@ -1638,6 +1653,7 @@ const newsTabCache = {
   signaux:     { data: null, ts: 0, html: '' },
   entreprises: { data: null, ts: 0, html: '' },
   agenda:      { data: null, ts: 0, html: '' },
+  favoris:     { data: null, ts: 0, html: '' },
 };
 
 function isCacheValid(key) {
@@ -2351,6 +2367,9 @@ function setNewsFilter(filter, el) {
   } else if (filter === 'agenda') {
     if (isCacheValid('agenda')) { restoreFromCache('agenda'); return; }
     renderAgenda();
+  } else if (filter === 'favoris') {
+    if (isCacheValid('favoris')) { restoreFromCache('favoris'); return; }
+    renderFavorisNews();
   } else {
     renderNewsList();
   }
@@ -2390,6 +2409,7 @@ async function renderFavorisNews() {
     const el = document.getElementById('favoris-news-content');
     if (el) el.innerHTML = '<div style="text-align:center;padding:20px;color:#8e8e93">Impossible de charger.<br><button onclick="renderFavorisNews()" style="background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;margin-top:8px">Réessayer</button></div>';
   }
+  setTimeout(() => saveToCache('favoris'), 500);
 }
 
 function renderNewsList() {
