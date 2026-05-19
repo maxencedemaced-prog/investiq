@@ -1528,6 +1528,18 @@ function toggleNewsItemFav(ticker, name, cardId) {
   updateFavPill();
 }
 
+function refreshAllStars() {
+  // Met à jour toutes les étoiles de la page selon la watchlist actuelle
+  document.querySelectorAll('[data-ticker]').forEach(btn => {
+    const ticker = btn.getAttribute('data-ticker');
+    if (ticker) {
+      const fav = isFavorite(ticker);
+      btn.textContent = fav ? '★' : '☆';
+      btn.style.color = fav ? '#f59e0b' : 'rgba(0,0,0,0.15)';
+    }
+  });
+}
+
 function updateFavPill() {
   const pill = document.getElementById('news-fil-favoris');
   if (pill) pill.innerHTML = '⭐ Mes favoris' + (watchlist.length > 0 ? ' <span class="pill-count">' + watchlist.length + '</span>' : '');
@@ -1571,7 +1583,7 @@ function buildBloombergTicker(allTracked) {
 }
 
 function renderNewsPage() {
-  loadWatchlist();
+  loadWatchlist().then(() => setTimeout(refreshAllStars, 100));
   const container = document.getElementById('news-page-content');
   if (!container) return;
 
@@ -2448,24 +2460,23 @@ function renderFavorisNews() {
 
   filtered.forEach((n, i) => {
     const cardId = 'fav-news-' + i;
-    const starFav = true; // déjà favori
+    const bodyId = 'fav-body-' + i;
     const div = document.createElement('div');
     div.id = cardId;
     div.className = 'news-item';
-    div.innerHTML = '<div class="news-item-head" onclick="toggleNews(' + i + ')">'
+    div.innerHTML = '<div class="news-item-head" onclick="document.getElementById(\'' + bodyId + '\').style.display=document.getElementById(\'' + bodyId + '\').style.display===\'none\'?\'block\':\'none\'">'
       + '<div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">'
       + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
       + '<span class="pill ' + (tagCls[n.categorie]||'pill-gray') + '">' + (tagLbl[n.categorie]||n.categorie) + '</span>'
       + '<span class="pill ' + (impCls[n.impact]||'pill-gray') + '">Impact ' + n.impact + '</span>'
       + '<span class="news-time">' + n.heure + '</span>'
       + '</div>'
-      + '<button class="fav-star" onclick="event.stopPropagation();removeFavCard(\'fav-news-' + i + '\',\'x\',\'x\')" style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;color:#f59e0b">★</button>'
+      + '<button class="fav-star" onclick="event.stopPropagation();removeFavCard(\'' + cardId + '\',\'x\',\'x\')" style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;color:#f59e0b">★</button>'
       + '</div>'
       + '<div class="news-title">' + n.titre + '</div>'
       + '</div>'
-      + '<div class="news-body" id="nb-' + i + '" style="display:none">'
-      + '<p>' + n.resume + '</p>'
-      + (n.recommandation ? '<div class="news-reco">→ ' + n.recommandation + '</div>' : '<div class="news-reco" id="reco-' + i + '"><span style="cursor:pointer;color:#1a7f5a;font-size:13px" onclick="loadReco(' + i + ')">▸ Voir recommandation IA</span></div>')
+      + '<div id="' + bodyId + '" style="display:none;padding:8px 0">'
+      + '<p style="font-size:13px;color:#3c3c43;line-height:1.6;margin:0 0 8px">' + (n.resume||'') + '</p>'
       + '</div>';
     list.appendChild(div);
   });
