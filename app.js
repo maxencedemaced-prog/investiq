@@ -2464,7 +2464,7 @@ function renderFavorisNews() {
         + '<div style="font-size:15px;font-weight:800;color:#1c1c1e">' + (w.name||w.ticker) + ' <span style="font-size:12px;color:#8e8e93;font-weight:500">' + w.ticker + '</span></div>'
         + (pos ? '<div style="font-size:13px;color:' + (parseFloat(pnl)>=0?'#1a7f5a':'#cc2f26') + ';font-weight:700;margin-top:2px">' + (parseFloat(pnl)>=0?'+':'') + pnl + '% · ' + fmt(pos.qty*pos.price) + '€</div>' : '<div style="font-size:12px;color:#8e8e93;margin-top:2px">Pas en portefeuille</div>')
         + '</div>'
-        + '<button onclick="unfollowCompany(\"' + w.ticker + '\",\"' + (w.name||w.ticker) + '\")" style="background:#fff0f0;color:#cc2f26;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Retirer</button>'
+        + '<button onclick="unfollowCompany(\'' + w.ticker + '\',\'' + (w.name||w.ticker).replace(/\'/g,"") + '\')" style="background:#fff0f0;color:#cc2f26;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Retirer</button>'
         + '</div>';
     }).join('');
 }
