@@ -2202,7 +2202,12 @@ async function renderSignaux() {
           <div style="font-size:11px;font-weight:800;color:${parseFloat(myPnl)>=0?'#1a7f5a':'#cc2f26'};margin-top:1px">${parseFloat(myPnl)>=0?'+':''}${myPnl}%</div>
         </div>` : ''}
       </div>
-      <div style="margin-top:8px;font-size:11px;color:${sigColor[s.signal]};font-weight:600;text-align:right">Analyser & investir →</div>
+      <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:11px;color:${sigColor[s.signal]};font-weight:600">Analyser & investir →</div>
+        <button onclick="event.stopPropagation();toggleNewsItemFav('${s.ticker}','${s.name}')"
+          style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFavorite(s.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s"
+          title="${isFavorite(s.ticker)?'Retirer des favoris':'Ajouter aux favoris'}">${isFavorite(s.ticker)?'★':'☆'}</button>
+      </div>
     </div>`;
   }
 
@@ -2415,10 +2420,11 @@ function renderNewsList() {
     }).join(' ');
     const oppBtn = n.signal !== 'éviter' ? `<button class="btn-analyse" onclick="openDecision('${first}','${n.signal}')">Analyser →</button>` : '';
     const assetsForStar = n.actifs_cibles || [];
-    const firstTicker = assetsForStar[0] || '';
-    const starHtml = firstTicker ? `<button onclick="event.stopPropagation();toggleNewsItemFav('${firstTicker}','${firstTicker}')" 
-      style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:${isFavorite(firstTicker)?'#f59e0b':'rgba(0,0,0,0.2)'}" 
-      id="star-${firstTicker}-${i}" title="${isFavorite(firstTicker)?'Retirer des favoris':'Ajouter aux favoris'}">${isFavorite(firstTicker)?'★':'☆'}</button>` : '';
+    const firstTicker = assetsForStar[0] || n.titre?.split(' ')[0] || 'news-' + i;
+    const starFav = isFavorite(firstTicker);
+    const starHtml = `<button onclick="event.stopPropagation();toggleNewsItemFav('${firstTicker}','${firstTicker}')" 
+      style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:${starFav?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s" 
+      title="${starFav?'Retirer des favoris':'Ajouter aux favoris'}">${starFav?'★':'☆'}</button>`;
     return `<div class="news-item">
       <div class="news-item-head" onclick="toggleNews(${i})">
         <div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">
