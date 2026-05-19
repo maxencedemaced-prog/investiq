@@ -1481,8 +1481,12 @@ function toggleNewsItemFav(ticker, name) {
 }
 
 function buildBloombergTicker(allTracked) {
+  const dupeMap = { 'MC.PA':'LVMH','AI.PA':'Air Liquide','TTE.PA':'TotalEnergies','VIE.PA':'Veolia Environnement','PAH3.DE':'Porsche Automobil Holding' };
   const seen = new Set();
-  const unique = allTracked.filter(c => { if(seen.has(c.ticker)) return false; seen.add(c.ticker); return true; });
+  const unique = allTracked.filter(c => {
+    const key = dupeMap[c.ticker] || c.ticker;
+    if(seen.has(key)) return false; seen.add(key); return true;
+  });
   // Triple pour avoir assez d'items (évite le blanc entre les boucles)
   const items = [...unique, ...unique, ...unique];
   return items.map(c => {
@@ -2336,28 +2340,59 @@ function setNewsFilter(filter, el) {
   }
 }
 
+async function renderFavorisNews() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+  const favNames = watchlist.map(w => w.name || w.ticker);
+  list.innerHTML = `<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⭐ Actualités de tes ${watchlist.length} favori${watchlist.length>1?'s':''}</div>
+    <div id="favoris-news-content" style="text-align:center;padding:24px;color:#8e8e93"><div style="font-size:24px;margin-bottom:8px">🧠</div><div>Chargement...</div></div>`;
+  try {
+    const date = new Date().toLocaleDateString('fr-FR');
+    const prompt = 'Journaliste financier, le ' + date + '. Actualités pour : ' + favNames.join(', ') + '.\nRéponds UNIQUEMENT JSON : [{"ticker":"X","entreprise":"Nom","titre":"Titre","resume":"2 phrases","impact":"positif","categorie":"Résultats","date":"Cette semaine"}]';
+    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const articles = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']')+1));
+    const ic = { positif:'#1a7f5a', negatif:'#cc2f26', neutre:'#8e8e93' };
+    const ib = { positif:'#e8f8f0', negatif:'#fff0f0', neutre:'#f5f5f5' };
+    const el = document.getElementById('favoris-news-content');
+    if (el) el.outerHTML = articles.map(a => {
+      const url = 'https://www.google.com/search?q=' + encodeURIComponent(a.entreprise + ' actualité bourse 2026');
+      return '<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+        + '<span style="background:' + (ib[a.impact]||'#f5f5f5') + ';color:' + (ic[a.impact]||'#8e8e93') + ';font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px">' + a.categorie + '</span>'
+        + '<span style="font-size:12px;font-weight:800;color:#1c1c1e">' + a.entreprise + '</span>'
+        + '<button onclick="toggleNewsItemFav(\"' + a.ticker + '\",\"' + a.entreprise + '\")" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:#f59e0b">★</button>'
+        + '</div>'
+        + '<div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">' + a.titre + '</div>'
+        + '<div style="font-size:13px;color:#3c3c43;line-height:1.6;margin-bottom:10px">' + a.resume + '</div>'
+        + '<div style="display:flex;gap:8px">'
+        + '<a href="' + url + '" target="_blank" style="flex:1;background:#f5f5f5;color:#1c1c1e;border-radius:10px;padding:8px;font-size:12px;font-weight:700;text-align:center;text-decoration:none">🔗 Articles</a>'
+        + '<button onclick="openDecisionFromPos(\"' + a.ticker + '\",\"garder\")" style="flex:1;background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer">🤔 Analyser</button>'
+        + '</div></div>';
+    }).join('');
+  } catch(e) {
+    const el = document.getElementById('favoris-news-content');
+    if (el) el.innerHTML = '<div style="text-align:center;padding:20px;color:#8e8e93">Impossible de charger.<br><button onclick="renderFavorisNews()" style="background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;margin-top:8px">Réessayer</button></div>';
+  }
+}
+
 function renderNewsList() {
   const list = document.getElementById('news-list');
   if (!list) return;
   let filtered = newsData;
   if (newsFilter === 'favoris') {
-    // Show news related to watchlist + portfolio companies
-    const trackedTickers = [
-      ...positions.map(p => p.name.toLowerCase()),
-      ...watchlist.map(w => w.ticker.toLowerCase())
-    ];
-    filtered = newsData.filter(n => {
-      const targets = (n.actifs_cibles || []).map(a => a.toLowerCase());
-      return targets.some(t => trackedTickers.some(tk => t.includes(tk) || tk.includes(t)));
-    });
-    if (!filtered.length) {
-      list.innerHTML = `<div class="empty-news-msg">
+    // Si pas de favoris, affiche message
+    if (watchlist.length === 0) {
+      list.innerHTML = `<div style="text-align:center;padding:30px;color:#8e8e93">
         <div style="font-size:32px;margin-bottom:10px">⭐</div>
-        <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Aucune actualité pour tes favoris</div>
-        <div style="font-size:13px;color:#8e8e93">Ajoute des entreprises à suivre ou actualise les news.</div>
+        <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Aucun favori</div>
+        <div style="font-size:13px">Clique sur l'étoile ☆ sur un signal ou une actu pour ajouter aux favoris.</div>
       </div>`;
       return;
     }
+    // Génère des actus IA pour les favoris
+    renderFavorisNews();
+    return;
   } else if (newsFilter !== 'tous') {
     filtered = newsData.filter(n => n.categorie === newsFilter);
   }
@@ -2829,14 +2864,27 @@ async function refreshPrices() {
     for (const q of quotes) {
       if (!q.price || q.price <= 0) continue;
       // Match by symbol (case insensitive)
-      const pos = positions.find(p => 
-        p.name.toUpperCase() === (q.symbol||'').toUpperCase()
-      );
+      // Match by symbol or by known name->ticker mapping
+      const nameMap = {
+        'LVMH': 'MC.PA', 'Air Liquide': 'AI.PA', 'TotalEnergies': 'TTE.PA',
+        'BNP Paribas': 'BNP.PA', 'Veolia Environnement': 'VIE.PA',
+        'Porsche Automobil Holding': 'PAH3.DE', 'LOreal': 'OR.PA'
+      };
+      const pos = positions.find(p => {
+        const sym = (q.symbol||'').toUpperCase();
+        const posName = p.name.toUpperCase();
+        const mapped = (nameMap[p.name]||'').toUpperCase();
+        return posName === sym || mapped === sym || 
+               posName === sym.replace('.PA','') || posName === sym.replace('.DE','');
+      });
       if (pos) {
         pos.price = parseFloat(q.price);
-        // Keep existing change_pct if new value is 0 (API may reset)
         const newChg = parseFloat(q.changePct);
-        if (!isNaN(newChg) && newChg !== 0) pos.change_pct = newChg;
+        if (!isNaN(newChg) && newChg !== 0) {
+          pos.change_pct = newChg;
+          // Also update grouped positions with same name
+          positions.filter(p => p.name === pos.name).forEach(p => { p.change_pct = newChg; p.price = pos.price; });
+        }
         else if (pos.change_pct === undefined) pos.change_pct = 0;
         if (!isDemo) {
           sb.from('positions').update({ price: pos.price }).eq('id', pos.id).then(()=>{});
