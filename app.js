@@ -2149,7 +2149,10 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
               </div>
             </div>
           </div>
-          <div style="width:8px;height:8px;border-radius:50%;background:${impactColor[a.impact]};margin-top:6px;flex-shrink:0"></div>
+          <button class="fav-star" data-ticker="${a.ticker}"
+            onclick="event.stopPropagation();toggleFavorite('${a.ticker}','${a.entreprise}','');refreshAllStars();updateFavPill()"
+            style="background:none;border:none;cursor:pointer;font-size:20px;padding:2px;line-height:1;color:${isFavorite(a.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.15s"
+            title="${isFavorite(a.ticker)?'Ne plus suivre':'Suivre'}">${isFavorite(a.ticker)?'★':'☆'}</button>
         </div>
         <!-- Titre -->
         <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px;line-height:1.3">${a.titre}</div>
@@ -2290,10 +2293,10 @@ async function renderSignaux() {
       </div>
       <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:11px;color:${sigColor[s.signal]};font-weight:600">Analyser & investir →</div>
-        <button class="fav-star"
-          onclick="event.stopPropagation();toggleNewsItemFav('${s.ticker}','${s.name}','sig-card-${s.ticker}')"
+        <button class="fav-star" data-ticker="${s.ticker}"
+          onclick="event.stopPropagation();toggleFavorite('${s.ticker}','${s.name}','');refreshAllStars();updateFavPill()"
           style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFavorite(s.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s"
-          title="${isFavorite(s.ticker)?'Retirer des favoris':'Ajouter aux favoris'}">${isFavorite(s.ticker)?'★':'☆'}</button>
+          title="${isFavorite(s.ticker)?'Ne plus suivre':'Suivre'}">${isFavorite(s.ticker)?'★':'☆'}</button>
       </div>
     </div>`;
   }
@@ -2551,10 +2554,10 @@ function renderNewsList() {
     const firstTicker = assetsForStar[0] || ('news-' + i);
     const starFav = isFavorite(firstTicker);
     const cardId = 'news-card-' + i;
-    const starHtml = `<button class="fav-star"
-      onclick="event.stopPropagation();toggleNewsItemFav('${firstTicker}','${firstTicker}','${cardId}')" 
+    const starHtml = `<button class="fav-star" data-ticker="${firstTicker}"
+      onclick="event.stopPropagation();toggleFavorite('${firstTicker}','${firstTicker}','');refreshAllStars();updateFavPill()" 
       style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:${starFav?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s" 
-      title="${starFav?'Retirer des favoris':'Ajouter aux favoris'}">${starFav?'★':'☆'}</button>`;
+      title="${starFav?'Ne plus suivre':'Suivre'}">${starFav?'★':'☆'}</button>`;
     return `<div class="news-item" id="${cardId}">
       <div class="news-item-head" onclick="toggleNews(${i})">
         <div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">
