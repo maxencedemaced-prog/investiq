@@ -2183,12 +2183,15 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
               </div>
             </div>
           </div>
-          <!-- Étoile Suivre en haut à droite -->
-          <button class="ent-star-${a.ticker}" 
-            onclick="event.stopPropagation();toggleStar(this,'${a.ticker}','${a.entreprise}');document.querySelectorAll('.ent-star-${a.ticker}').forEach(b=>{b.textContent=isFavorite('${a.ticker}')?'★':'☆';b.style.color=isFavorite('${a.ticker}')?'#f59e0b':'rgba(0,0,0,0.2)'})"
-            style="background:none;border:none;cursor:pointer;font-size:22px;padding:0;line-height:1;color:${isFavorite(a.ticker)?'#f59e0b':'rgba(0,0,0,0.2)'};flex-shrink:0">
-            ${isFavorite(a.ticker)?'★':'☆'}
-          </button>
+          <!-- Nom + Étoile Suivre en haut à droite -->
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;cursor:pointer"
+            onclick="event.stopPropagation();toggleStar(this.querySelector('button'),'${a.ticker}','${a.entreprise}');document.querySelectorAll('.ent-star-${a.ticker}').forEach(b=>{b.textContent=isFavorite('${a.ticker}')?'★':'☆';b.style.color=isFavorite('${a.ticker}')?'#f59e0b':'rgba(0,0,0,0.2)'});this.querySelector('span').style.color=isFavorite('${a.ticker}')?'#f59e0b':'#8e8e93'">
+            <span style="font-size:11px;font-weight:700;color:${isFavorite(a.ticker)?'#f59e0b':'#8e8e93'};transition:color 0.2s">${a.entreprise}</span>
+            <button class="ent-star-${a.ticker}"
+              style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFavorite(a.ticker)?'#f59e0b':'rgba(0,0,0,0.2)'};transition:color 0.2s">
+              ${isFavorite(a.ticker)?'★':'☆'}
+            </button>
+          </div>
         </div>
         <!-- Titre -->
         <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px;line-height:1.3">${a.titre}</div>
