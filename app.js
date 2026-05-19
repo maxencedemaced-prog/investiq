@@ -2420,7 +2420,8 @@ async function renderFavorisNews() {
     <div id="favoris-news-content" style="text-align:center;padding:24px;color:#8e8e93"><div style="font-size:24px;margin-bottom:8px">🧠</div><div>Chargement...</div></div>`;
   try {
     const date = new Date().toLocaleDateString('fr-FR');
-    const prompt = 'Journaliste financier, le ' + date + '. Actualités pour : ' + favNames.join(', ') + '.\nRéponds UNIQUEMENT JSON : [{"ticker":"X","entreprise":"Nom","titre":"Titre","resume":"2 phrases","impact":"positif","categorie":"Résultats","date":"Cette semaine"}]';
+    const favList = watchlist.map(w => w.ticker + ' (' + (w.name||w.ticker) + ')').join(', ');
+    const prompt = 'Journaliste financier, le ' + date + '. Donne uniquement des actualités RÉELLES et vérifiables pour ces actifs : ' + favList + '.\nSi tu ne connais pas d\'actualité récente pour un actif, ne l\'inclus pas.\nRéponds UNIQUEMENT JSON : [{"ticker":"X","entreprise":"Nom exact","titre":"Titre factuel","resume":"2 phrases factuelles","impact":"positif","categorie":"Résultats","date":"Cette semaine"}]\nNe génère PAS d\'actualités inventées.';
     const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.');
     const clean = raw.replace(/```json|```/g,'').trim();
     const articles = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']')+1));
