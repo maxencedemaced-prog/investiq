@@ -1644,6 +1644,7 @@ function renderNewsPage() {
       <button class="filter-pill active" id="news-fil-tous" onclick="setNewsFilter('tous',this)">Toutes les actus</button>
       <button class="filter-pill" id="news-fil-signaux" onclick="setNewsFilter('signaux',this)" style="background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 12px rgba(204,47,38,0.4);font-weight:800">⚡ Signaux</button>
       <button class="filter-pill" id="news-fil-entreprises" onclick="setNewsFilter('entreprises',this)">🏢 Entreprises</button>
+      <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)">⭐ Favoris ${watchlist.length > 0 ? `<span class="pill-count">${watchlist.length}</span>` : ''}</button>
       <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)">📅 Agenda</button>
 
       <button class="filter-pill" id="news-fil-macro" onclick="setNewsFilter('macro',this)">Macro</button>
@@ -2067,6 +2068,24 @@ Sois très concret (ex: "Les actions tech montent", "L'euro baisse"). Max 4 lign
 // ===== ONGLET ENTREPRISES =====
 let entrepriseSearchTimeout = null;
 
+function renderFavorisActus() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+
+  if (watchlist.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:#8e8e93"><div style="font-size:40px;margin-bottom:12px">⭐</div><div style="font-size:16px;font-weight:700;color:#1c1c1e;margin-bottom:8px">Aucune entreprise suivie</div><div style="font-size:13px">Va dans Entreprises et clique sur ☆ pour suivre</div></div>';
+    return;
+  }
+
+  // Charge les actus des entreprises suivies
+  const companies = watchlist.map(w => ({ ticker: w.ticker, name: w.name || w.ticker }));
+  
+  list.innerHTML = '<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⭐ Actus de tes ' + watchlist.length + ' entreprise' + (watchlist.length>1?'s suivies':' suivie') + '</div>'
+    + '<div id="fav-actus-content" style="text-align:center;padding:24px;color:#8e8e93"><div style="font-size:24px;margin-bottom:8px">🧠</div><div>Chargement...</div></div>';
+
+  loadEntrepriseNews(companies);
+}
+
 async function renderEntreprises() {
   const list = document.getElementById('news-list');
   if (!list) return;
@@ -2117,7 +2136,7 @@ async function renderEntreprises() {
 }
 
 async function loadEntrepriseNews(companies) {
-  const newsEl = document.getElementById('ent-news-list');
+  const newsEl = document.getElementById('fav-actus-content') || document.getElementById('ent-news-list');
   if (!newsEl) return;
 
   try {
@@ -2438,6 +2457,8 @@ function setNewsFilter(filter, el) {
   } else if (filter === 'entreprises') {
     if (isCacheValid('entreprises')) { restoreFromCache('entreprises'); return; }
     renderEntreprises();
+  } else if (filter === 'favoris') {
+    renderFavorisActus();
   } else if (filter === 'agenda') {
     if (isCacheValid('agenda')) { restoreFromCache('agenda'); return; }
     renderAgenda();
