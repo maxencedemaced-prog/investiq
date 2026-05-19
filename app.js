@@ -1546,6 +1546,12 @@ function toggleNewsItemFav(ticker, name, cardId) {
   updateFavPill();
 }
 
+function flipStar(btn) {
+  const on = btn.textContent === '☆';
+  btn.textContent = on ? '★' : '☆';
+  btn.style.color = on ? '#f59e0b' : 'rgba(0,0,0,0.15)';
+}
+
 function toggleStar(btn, ticker, name) {
   if (!ticker || ticker.startsWith('news-')) return;
   const isFav = favToggleSync(ticker, name || ticker);
@@ -2304,8 +2310,7 @@ async function renderSignaux() {
         <div style="font-size:11px;color:${sigColor[s.signal]};font-weight:600">Analyser & investir →</div>
         <button class="fav-star" data-ticker="${s.ticker}"
           onclick="event.stopPropagation();toggleStar(this,'${s.ticker}','${s.name}')"
-          style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFavorite(s.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s"
-          title="${isFavorite(s.ticker)?'Ne plus suivre':'Suivre'}">${isFavorite(s.ticker)?'★':'☆'}</button>
+          style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFavorite(s.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s">${isFavorite(s.ticker)?'★':'☆'}</button>
       </div>
     </div>`;
   }
@@ -2563,10 +2568,7 @@ function renderNewsList() {
     const firstTicker = assetsForStar.find(t => t && t.length < 15) || '';
     const starFav = firstTicker ? isFavorite(firstTicker) : false;
     const cardId = 'news-card-' + i;
-    // Étoile sur actu = visuel uniquement (toggle local)
-    const starHtml = `<button onclick="event.stopPropagation();this.textContent=this.textContent==='★'?'☆':'★';this.style.color=this.textContent==='★'?'#f59e0b':'rgba(0,0,0,0.15)'"
-      style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:rgba(0,0,0,0.15);transition:color 0.2s"
-      title="Marquer comme lu">☆</button>`;
+    const starHtml = '<button onclick="event.stopPropagation();flipStar(this)" style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:rgba(0,0,0,0.15);transition:color 0.2s" title="Marquer">☆</button>';
     return `<div class="news-item" id="${cardId}">
       <div class="news-item-head" onclick="toggleNews(${i})">
         <div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">
