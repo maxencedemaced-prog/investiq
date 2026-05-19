@@ -2451,7 +2451,7 @@ function renderFavorisNews() {
   if (!list) return;
 
   if (watchlist.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div style="font-size:15px;font-weight:700;color:#1c1c1e">Aucune entreprise suivie</div><div style="font-size:13px;margin-top:6px">Clique sur ☆ sur un signal pour suivre une entreprise</div></div>';
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div style="font-size:15px;font-weight:700;color:#1c1c1e">Aucune entreprise suivie</div><div style="font-size:13px;margin-top:6px">Clique sur Suivre dans Entreprises</div></div>';
     return;
   }
 
@@ -2553,7 +2553,7 @@ function renderNewsList() {
     const first = (n.actifs_cibles || [])[0] || '';
     const assets = (n.actifs_cibles || []).map(a => {
       const isFav = isFavorite(a) || positions.find(p => p.name === a);
-      return `<span class="pill pill-gray" style="cursor:pointer;${isFav?'background:#f0f0f0;font-weight:800':''}" onclick="openCompany('${a}','${a}','')">${isFav?'★ ':''} ${a}</span>`;
+      return `<span class="pill pill-gray" style="cursor:pointer;${isFav?'background:#f0f0f0;font-weight:800':''}" onclick="openCompany('${a}','${a}','')">${a}</span>`;
     }).join(' ');
     const oppBtn = n.signal !== 'éviter' ? `<button class="btn-analyse" onclick="openDecision('${first}','${n.signal}')">Analyser →</button>` : '';
     const assetsForStar = n.actifs_cibles || [];
