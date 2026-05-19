@@ -1467,37 +1467,35 @@ function isFavorite(ticker) {
   return watchlist.some(w => w.ticker === ticker);
 }
 
-function toggleNewsItemFav(ticker, name, starId) {
+function toggleNewsItemFav(ticker, name, cardId) {
   const isRealTicker = ticker && !ticker.startsWith('news-') && ticker.length < 20;
   if (isRealTicker) toggleFavorite(ticker, name, '');
   const isFav = isRealTicker ? isFavorite(ticker) : false;
 
-  // Met à jour UNIQUEMENT le bouton avec cet ID
-  const btn = starId ? document.getElementById(starId) : null;
-  if (btn) {
-    btn.textContent = isFav ? '★' : '☆';
-    btn.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.15)';
-  }
-
-  if (isRealTicker) showToast(isFav ? '★ ' + name + ' ajouté !' : 'Retiré des favoris');
-
-  // Si on retire un favori dans l'onglet Mes favoris → retire la carte immédiatement
-  if (!isFav && newsFilter === 'favoris' && starId) {
-    // Remonte jusqu'à la card parente et la supprime
-    const btn = document.getElementById(starId);
-    if (btn) {
-      let card = btn.closest('[style*="border-radius:14px"]') || btn.parentElement?.parentElement?.parentElement;
-      if (card) {
-        card.style.transition = 'opacity 0.2s';
-        card.style.opacity = '0';
-        setTimeout(() => { card.remove(); saveToCache('favoris'); }, 200);
-      }
+  // Met à jour l'étoile dans la carte via cardId
+  const card = cardId ? document.getElementById(cardId) : null;
+  if (card) {
+    const star = card.querySelector('.fav-star');
+    if (star) {
+      star.textContent = isFav ? '★' : '☆';
+      star.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.15)';
     }
-    // Invalide cache pour forcer rechargement propre au prochain clic
-    newsTabCache.favoris.html = '';
-    newsTabCache.favoris.ts = 0;
+    // Si on est dans favoris et on retire → fade out la carte
+    if (!isFav && newsFilter === 'favoris') {
+      card.style.transition = 'opacity 0.25s, transform 0.25s';
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(20px)';
+      setTimeout(() => {
+        card.remove();
+        newsTabCache.favoris.html = '';
+        newsTabCache.favoris.ts = 0;
+      }, 250);
+    }
   }
 
+  if (isRealTicker) showToast(isFav ? '★ ' + (name||ticker) + ' ajouté aux favoris !' : 'Retiré des favoris');
+
+  // Met à jour le compteur pill
   const pill = document.getElementById('news-fil-favoris');
   if (pill) pill.innerHTML = '⭐ Mes favoris' + (watchlist.length > 0 ? ' <span class="pill-count">' + watchlist.length + '</span>' : '');
 }
@@ -2183,7 +2181,7 @@ async function renderSignaux() {
     const myPos = positions.find(p => p.name === s.ticker);
     const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
     return `
-    <div style="background:${sigBg[s.signal]||'#f9f9f9'};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${sigColor[s.signal]||'#e5e5ea'};cursor:pointer"
+    <div id="sig-card-${s.ticker}" style="background:${sigBg[s.signal]||'#f9f9f9'};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${sigColor[s.signal]||'#e5e5ea'};cursor:pointer"
          onclick="openDecisionFromPos('${s.ticker}','${s.signal==='acheter'?'acheter':s.signal==='vendre'?'vendre':'garder'}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:10px">
@@ -2229,9 +2227,8 @@ async function renderSignaux() {
       </div>
       <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:11px;color:${sigColor[s.signal]};font-weight:600">Analyser & investir →</div>
-        <button data-fav-ticker="${s.ticker}"
-          id="sig-star-bot-${s.ticker}"
-          onclick="event.stopPropagation();toggleNewsItemFav('${s.ticker}','${s.name}','sig-star-bot-${s.ticker}')"
+        <button class="fav-star"
+          onclick="event.stopPropagation();toggleNewsItemFav('${s.ticker}','${s.name}','sig-card-${s.ticker}')"
           style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFavorite(s.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s"
           title="${isFavorite(s.ticker)?'Retirer des favoris':'Ajouter aux favoris'}">${isFavorite(s.ticker)?'★':'☆'}</button>
       </div>
@@ -2392,11 +2389,11 @@ async function renderFavorisNews() {
     const el = document.getElementById('favoris-news-content');
     if (el) el.outerHTML = articles.map(a => {
       const url = 'https://www.google.com/search?q=' + encodeURIComponent(a.entreprise + ' actualité bourse 2026');
-      return '<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0">'
+      return '<div id="fav-card-' + a.ticker + '" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0">'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
         + '<span style="background:' + (ib[a.impact]||'#f5f5f5') + ';color:' + (ic[a.impact]||'#8e8e93') + ';font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px">' + a.categorie + '</span>'
         + '<span style="font-size:12px;font-weight:800;color:#1c1c1e">' + a.entreprise + '</span>'
-        + '<button onclick="toggleNewsItemFav(\"' + a.ticker + '\",\"' + a.entreprise + '\")" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:#f59e0b">★</button>'
+        + '<button class="fav-star" onclick="toggleNewsItemFav(\"' + a.ticker + '\",\"' + a.entreprise + '\",\"fav-card-' + a.ticker + '\")" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:#f59e0b">★</button>'
         + '</div>'
         + '<div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">' + a.titre + '</div>'
         + '<div style="font-size:13px;color:#3c3c43;line-height:1.6;margin-bottom:10px">' + a.resume + '</div>'
@@ -2453,12 +2450,12 @@ function renderNewsList() {
     const assetsForStar = n.actifs_cibles || [];
     const firstTicker = assetsForStar[0] || ('news-' + i);
     const starFav = isFavorite(firstTicker);
-    const starUniqueId = 'star-news-' + i;
-    const starHtml = `<button id="${starUniqueId}" 
-      onclick="event.stopPropagation();toggleNewsItemFav('${firstTicker}','${firstTicker}','${starUniqueId}')" 
+    const cardId = 'news-card-' + i;
+    const starHtml = `<button class="fav-star"
+      onclick="event.stopPropagation();toggleNewsItemFav('${firstTicker}','${firstTicker}','${cardId}')" 
       style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:${starFav?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s" 
       title="${starFav?'Retirer des favoris':'Ajouter aux favoris'}">${starFav?'★':'☆'}</button>`;
-    return `<div class="news-item">
+    return `<div class="news-item" id="${cardId}">
       <div class="news-item-head" onclick="toggleNews(${i})">
         <div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
