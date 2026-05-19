@@ -2268,10 +2268,7 @@ async function renderSignaux() {
             <div style="font-size:14px;font-weight:800;color:#1c1c1e;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               ${s.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${s.ticker}</span>
               ${isMine ? '<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px">📦 Portef.</span>' : ''}
-              <button data-fav-ticker="${s.ticker}"
-                onclick="event.stopPropagation();toggleNewsItemFav('${s.ticker}','${s.name}','sig-star-${s.ticker}')"
-                id="sig-star-${s.ticker}"
-                style="background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1;color:${isFavorite(s.ticker)?'#f59e0b':'rgba(0,0,0,0.2)'};transition:color 0.2s">${isFavorite(s.ticker)?'★':'☆'}</button>
+
             </div>
             <div style="font-size:11px;color:#8e8e93;margin-top:2px">${s.type||''} · ${s.secteur||''}</div>
             <div style="margin-top:4px;display:flex;align-items:center;gap:4px">
@@ -2492,7 +2489,7 @@ function renderFavorisNews() {
       + '<span class="pill ' + (impCls[n.impact]||'pill-gray') + '">Impact ' + n.impact + '</span>'
       + '<span class="news-time">' + n.heure + '</span>'
       + '</div>'
-      + '<span style="font-size:16px;color:#f59e0b">★</span>'
+
       + '</div>'
       + '<div class="news-title">' + n.titre + '</div>'
       + '</div>'
