@@ -1467,17 +1467,29 @@ function isFavorite(ticker) {
   return watchlist.some(w => w.ticker === ticker);
 }
 
-function toggleNewsItemFav(ticker, name) {
+function toggleNewsItemFav(ticker, name, btnEl) {
   toggleFavorite(ticker, name, '');
-  // Met à jour toutes les étoiles pour ce ticker
-  document.querySelectorAll('[id^="star-"]').forEach(btn => {
-    if (btn.id.includes(ticker)) {
-      const isFav = isFavorite(ticker);
+  const isFav = isFavorite(ticker);
+
+  // Met à jour TOUTES les étoiles qui concernent ce ticker dans la page
+  document.querySelectorAll('button[onclick*="toggleNewsItemFav"]').forEach(btn => {
+    if (btn.getAttribute('onclick')?.includes("'" + ticker + "'") || 
+        btn.getAttribute('onclick')?.includes('"' + ticker + '"')) {
       btn.textContent = isFav ? '★' : '☆';
-      btn.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.2)';
+      btn.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.15)';
     }
   });
-  showToast(isFavorite(ticker) ? '★ ' + name + ' ajouté aux favoris !' : 'Retiré des favoris');
+
+  showToast(isFav ? '★ ' + name + ' ajouté aux favoris !' : 'Retiré des favoris');
+
+  // Si on est sur l'onglet Mes favoris et qu'on retire → recharge immédiatement
+  if (!isFav && newsFilter === 'favoris') {
+    setTimeout(() => renderFavorisNews(), 300);
+  }
+  
+  // Met à jour le compteur dans le pill
+  const pill = document.getElementById('news-fil-favoris');
+  if (pill) pill.innerHTML = '⭐ Mes favoris' + (watchlist.length > 0 ? ' <span class="pill-count">' + watchlist.length + '</span>' : '');
 }
 
 function buildBloombergTicker(allTracked) {
