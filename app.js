@@ -2164,10 +2164,7 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
               </div>
             </div>
           </div>
-          <button class="fav-star" data-ticker="${a.ticker}"
-            onclick="event.stopPropagation();toggleStar(this,'${a.ticker}','${a.entreprise}')"
-            style="background:none;border:none;cursor:pointer;font-size:20px;padding:2px;line-height:1;color:${isFavorite(a.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.15s"
-            title="${isFavorite(a.ticker)?'Ne plus suivre':'Suivre'}">${isFavorite(a.ticker)?'★':'☆'}</button>
+
         </div>
         <!-- Titre -->
         <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px;line-height:1.3">${a.titre}</div>
@@ -2308,9 +2305,7 @@ async function renderSignaux() {
       </div>
       <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:11px;color:${sigColor[s.signal]};font-weight:600">Analyser & investir →</div>
-        <button class="fav-star" data-ticker="${s.ticker}"
-          onclick="event.stopPropagation();toggleStar(this,'${s.ticker}','${s.name}')"
-          style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFavorite(s.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s">${isFavorite(s.ticker)?'★':'☆'}</button>
+
       </div>
     </div>`;
   }
@@ -2568,7 +2563,7 @@ function renderNewsList() {
     const firstTicker = assetsForStar.find(t => t && t.length < 15) || '';
     const starFav = firstTicker ? isFavorite(firstTicker) : false;
     const cardId = 'news-card-' + i;
-    const starHtml = '<button onclick="event.stopPropagation();flipStar(this)" style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:rgba(0,0,0,0.15);transition:color 0.2s" title="Marquer">☆</button>';
+    const starHtml = '';
     return `<div class="news-item" id="${cardId}">
       <div class="news-item-head" onclick="toggleNews(${i})">
         <div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">
