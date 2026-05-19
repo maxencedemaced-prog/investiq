@@ -2451,60 +2451,24 @@ function renderFavorisNews() {
   if (!list) return;
 
   if (watchlist.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div style="font-size:15px;font-weight:700;color:#1c1c1e">Aucune entreprise suivie</div><div style="font-size:13px;margin-top:6px">Clique sur Suivre dans Entreprises</div></div>';
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:#8e8e93"><div style="font-size:40px;margin-bottom:12px">⭐</div><div style="font-size:16px;font-weight:700;color:#1c1c1e;margin-bottom:8px">Aucune entreprise suivie</div><div style="font-size:13px">Va dans Signaux ou Entreprises et clique sur Suivre</div></div>';
     return;
   }
 
-  // Filtre les actus par entreprises suivies
-  const favTickers = watchlist.map(w => w.ticker.toLowerCase());
-  const favNames = watchlist.map(w => (w.name||w.ticker).toLowerCase());
-  let filtered = newsData.filter(n => {
-    const targets = (n.actifs_cibles||[]).map(a => a.toLowerCase());
-    const titre = (n.titre||'').toLowerCase();
-    return favTickers.some(t => targets.some(a => a.includes(t) || t.includes(a)) || titre.includes(t))
-        || favNames.some(name => name.split(' ').some(word => word.length > 3 && titre.includes(word)));
-  });
-  if (!filtered.length) filtered = newsData.slice(0, 8);
-
-  const impCls = { eleve:'pill-red', moyen:'pill-amber', faible:'pill-gray' };
-  const tagCls = { 'Banque centrale':'pill-dark','Macro':'pill-dark','Marchés':'pill-blue','Géopolitique':'pill-red','Secteurs':'pill-amber' };
-
-  let html = '<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">⭐ Entreprises suivies : ';
-  // Show watchlist companies with unfollow buttons
-  html += watchlist.map(w => 
-    '<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f0f0;border-radius:20px;padding:4px 10px;margin:4px 4px 4px 0;font-size:12px;font-weight:700">'
-    + w.ticker
-    + '<button onclick="unfollowCompany(\"' + w.ticker + '\",\"' + (w.name||w.ticker) + '\")" style="background:none;border:none;cursor:pointer;font-size:14px;color:#cc2f26;padding:0;line-height:1;margin-left:2px" title="Ne plus suivre">×</button>'
-    + '</span>'
-  ).join('');
-  html += '</div><div style="margin-bottom:12px"></div>';
-
-  filtered.forEach((n, i) => {
-    const bodyId = 'fav-body-' + i;
-    html += '<div class="news-item" id="fav-news-' + i + '">'
-      + '<div class="news-item-head" onclick="toggleFavBody(' + i + ')">' 
-      + '<div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">'
-      + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
-      + '<span class="pill ' + (tagCls[n.categorie]||'pill-gray') + '">' + n.categorie + '</span>'
-      + '<span class="pill ' + (impCls[n.impact]||'pill-gray') + '">Impact ' + n.impact + '</span>'
-      + '<span class="news-time">' + n.heure + '</span>'
-      + '</div>'
-
-      + '</div>'
-      + '<div class="news-title">' + n.titre + '</div>'
-      + '</div>'
-      + '<div id="' + bodyId + '" style="display:none;padding:8px 0">'
-      + '<p style="font-size:13px;color:#3c3c43;line-height:1.6;margin:0">' + (n.resume||'') + '</p>'
-      + '</div></div>';
-  });
-
-  list.innerHTML = html;
+  list.innerHTML = '<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px">⭐ ' + watchlist.length + ' entreprise' + (watchlist.length>1?'s':'') + ' suivie' + (watchlist.length>1?'s':'') + '</div>'
+    + watchlist.map(w => {
+      const pos = positions.find(p => p.name === w.ticker);
+      const pnl = pos ? ((pos.price - pos.pru) / pos.pru * 100).toFixed(1) : null;
+      return '<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center">'
+        + '<div>'
+        + '<div style="font-size:15px;font-weight:800;color:#1c1c1e">' + (w.name||w.ticker) + ' <span style="font-size:12px;color:#8e8e93;font-weight:500">' + w.ticker + '</span></div>'
+        + (pos ? '<div style="font-size:13px;color:' + (parseFloat(pnl)>=0?'#1a7f5a':'#cc2f26') + ';font-weight:700;margin-top:2px">' + (parseFloat(pnl)>=0?'+':'') + pnl + '% · ' + fmt(pos.qty*pos.price) + '€</div>' : '<div style="font-size:12px;color:#8e8e93;margin-top:2px">Pas en portefeuille</div>')
+        + '</div>'
+        + '<button onclick="unfollowCompany(\"' + w.ticker + '\",\"' + (w.name||w.ticker) + '\")" style="background:#fff0f0;color:#cc2f26;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Retirer</button>'
+        + '</div>';
+    }).join('');
 }
 
-function toggleFavBody(i) {
-  const b = document.getElementById('fav-body-' + i);
-  if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
-}
 
 function unfollowCompany(ticker, name) {
   // Retire de la watchlist
