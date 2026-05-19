@@ -2153,8 +2153,10 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
           <div style="display:flex;align-items:center;gap:8px">
             <div style="width:36px;height:36px;border-radius:10px;background:${impactBg[a.impact]};display:flex;align-items:center;justify-content:center;font-size:16px">${impactIcon[a.impact]}</div>
             <div>
-              <div style="font-size:13px;font-weight:800;color:#1c1c1e">${a.entreprise} <span style="font-size:11px;color:#8e8e93;font-weight:500">${a.ticker}</span>
-                ${myPos ? '<span style="background:#1c1c1e;color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:5px;margin-left:4px">📦 Portef.</span>' : ''}
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span style="font-size:13px;font-weight:800;color:#1c1c1e">${a.entreprise}</span>
+                <span style="font-size:11px;color:#8e8e93">${a.ticker}</span>
+                ${myPos ? '<span style="background:#1c1c1e;color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:5px">📦</span>' : ''}
               </div>
               <div style="display:flex;gap:6px;align-items:center;margin-top:2px">
                 <span style="background:${impactBg[a.impact]};color:${impactColor[a.impact]};font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px">${a.categorie}</span>
@@ -2162,7 +2164,12 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
               </div>
             </div>
           </div>
-
+          <!-- Étoile Suivre en haut à droite -->
+          <button class="ent-star-${a.ticker}" 
+            onclick="event.stopPropagation();toggleStar(this,'${a.ticker}','${a.entreprise}');document.querySelectorAll('.ent-star-${a.ticker}').forEach(b=>{b.textContent=isFavorite('${a.ticker}')?'★':'☆';b.style.color=isFavorite('${a.ticker}')?'#f59e0b':'rgba(0,0,0,0.2)'})"
+            style="background:none;border:none;cursor:pointer;font-size:22px;padding:0;line-height:1;color:${isFavorite(a.ticker)?'#f59e0b':'rgba(0,0,0,0.2)'};flex-shrink:0">
+            ${isFavorite(a.ticker)?'★':'☆'}
+          </button>
         </div>
         <!-- Titre -->
         <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px;line-height:1.3">${a.titre}</div>
@@ -2174,9 +2181,9 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
              style="flex:1;background:#f5f5f5;color:#1c1c1e;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;display:block">
             🔗 Voir les articles
           </a>
-          <button onclick="openDecisionFromPos('${a.ticker}','garder')"
+          <button onclick="showEntrepriseDetail('${a.ticker}','${a.entreprise}')"
              style="flex:1;background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer">
-            🤔 Analyser l'impact
+            📊 Voir la fiche
           </button>
         </div>
       </div>`;
