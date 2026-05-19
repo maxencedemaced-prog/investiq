@@ -2403,7 +2403,9 @@ function setNewsFilter(filter, el) {
     if (isCacheValid('agenda')) { restoreFromCache('agenda'); return; }
     renderAgenda();
   } else if (filter === 'favoris') {
-    if (isCacheValid('favoris')) { restoreFromCache('favoris'); return; }
+    // Toujours recharger les favoris (watchlist peut avoir changé)
+    newsTabCache.favoris.html = '';
+    newsTabCache.favoris.ts = 0;
     renderFavorisNews();
   } else {
     renderNewsList();
