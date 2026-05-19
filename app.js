@@ -1468,38 +1468,21 @@ function isFavorite(ticker) {
 }
 
 function toggleNewsItemFav(ticker, name, starId) {
-  // Vérifie si c'est un vrai ticker (pas un ID de news générique)
   const isRealTicker = ticker && !ticker.startsWith('news-') && ticker.length < 20;
-  
-  if (isRealTicker) {
-    toggleFavorite(ticker, name, '');
-  }
+  if (isRealTicker) toggleFavorite(ticker, name, '');
   const isFav = isRealTicker ? isFavorite(ticker) : false;
 
-  // Met à jour UNIQUEMENT l'étoile cliquée (par son ID unique)
-  if (starId) {
-    const btn = document.getElementById(starId);
-    if (btn) {
-      btn.textContent = isFav ? '★' : '☆';
-      btn.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.15)';
-    }
+  // Met à jour UNIQUEMENT le bouton avec cet ID
+  const btn = starId ? document.getElementById(starId) : null;
+  if (btn) {
+    btn.textContent = isFav ? '★' : '☆';
+    btn.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.15)';
   }
 
-  // Si c'est un vrai ticker, met aussi à jour les autres étoiles du même ticker (signaux, etc.)
-  if (isRealTicker) {
-    document.querySelectorAll('[data-fav-ticker="' + ticker + '"]').forEach(btn => {
-      btn.textContent = isFav ? '★' : '☆';
-      btn.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.15)';
-    });
-    showToast(isFav ? '★ ' + name + ' ajouté aux favoris !' : 'Retiré des favoris');
-  }
+  if (isRealTicker) showToast(isFav ? '★ ' + name + ' ajouté !' : 'Retiré des favoris');
 
-  // Si on est sur l'onglet Mes favoris et qu'on retire → recharge
-  if (!isFav && newsFilter === 'favoris') {
-    setTimeout(() => renderFavorisNews(), 300);
-  }
+  if (!isFav && newsFilter === 'favoris') setTimeout(() => renderFavorisNews(), 300);
 
-  // Met à jour le compteur pill
   const pill = document.getElementById('news-fil-favoris');
   if (pill) pill.innerHTML = '⭐ Mes favoris' + (watchlist.length > 0 ? ' <span class="pill-count">' + watchlist.length + '</span>' : '');
 }
@@ -2448,11 +2431,10 @@ function renderNewsList() {
     }).join(' ');
     const oppBtn = n.signal !== 'éviter' ? `<button class="btn-analyse" onclick="openDecision('${first}','${n.signal}')">Analyser →</button>` : '';
     const assetsForStar = n.actifs_cibles || [];
-    const firstTicker = assetsForStar[0] || n.titre?.split(' ')[0] || 'news-' + i;
+    const firstTicker = assetsForStar[0] || ('news-' + i);
     const starFav = isFavorite(firstTicker);
-    const starUniqueId = 'star-news-' + i + '-' + Date.now();
+    const starUniqueId = 'star-news-' + i;
     const starHtml = `<button id="${starUniqueId}" 
-      data-fav-ticker="${firstTicker}"
       onclick="event.stopPropagation();toggleNewsItemFav('${firstTicker}','${firstTicker}','${starUniqueId}')" 
       style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:${starFav?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s" 
       title="${starFav?'Retirer des favoris':'Ajouter aux favoris'}">${starFav?'★':'☆'}</button>`;
