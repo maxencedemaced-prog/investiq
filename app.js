@@ -1450,17 +1450,12 @@ async function saveWatchlist() {
   }
 }
 
-async function toggleFavorite(ticker, name, sector) {
-  await loadWatchlist();
-  const idx = watchlist.findIndex(w => w.ticker === ticker);
-  if (idx >= 0) {
-    watchlist.splice(idx, 1);
-    showToast('Retiré des favoris');
-  } else {
-    watchlist.push({ ticker, name: name||ticker, sector: sector||'Autre' });
-    showToast('★ ' + (name||ticker) + ' ajouté aux favoris !');
-  }
-  await saveWatchlist();
+function toggleFavorite(ticker, name, sector) {
+  // Synchrone et immédiat - plus de loadWatchlist() qui réinitialise
+  const isFav = favToggleSync(ticker, name || ticker);
+  showToast(isFav ? '★ ' + (name||ticker) + ' ajouté aux favoris !' : 'Retiré des favoris');
+  updateFavPill();
+  return isFav;
 }
 
 function isFavorite(ticker) {
