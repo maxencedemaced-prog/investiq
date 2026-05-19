@@ -1467,37 +1467,50 @@ function isFavorite(ticker) {
   return watchlist.some(w => w.ticker === ticker);
 }
 
+function favToggleSync(ticker, name) {
+  // Synchrone — modifie watchlist directement sans recharger depuis Supabase
+  const idx = watchlist.findIndex(w => w.ticker === ticker);
+  if (idx >= 0) {
+    watchlist.splice(idx, 1);
+  } else {
+    watchlist.push({ ticker, name: name||ticker, sector: '' });
+  }
+  // Sauvegarde en arrière-plan
+  saveWatchlist();
+  // Retourne true si maintenant en favori
+  return watchlist.some(w => w.ticker === ticker);
+}
+
 function removeFavCard(cardId, ticker, name) {
-  // Retire des favoris
-  toggleFavorite(ticker, name, '');
-  showToast('Retiré des favoris');
-  // Anime et retire la carte
+  // Retire des favoris de façon synchrone
+  favToggleSync(ticker, name);
+  // Animation immédiate
   const card = document.getElementById(cardId);
   if (card) {
+    card.style.transition = 'opacity 0.2s, transform 0.2s';
     card.style.opacity = '0';
     card.style.transform = 'translateX(30px)';
     setTimeout(() => {
       card.remove();
       newsTabCache.favoris.html = '';
-      newsTabCache.favoris.ts = 0;
-      // Si plus aucune carte, affiche message vide
       const list = document.getElementById('news-list');
       if (list && !list.querySelector('[id^="fav-card-"]')) {
-        list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div>Aucun favori</div></div>';
+        list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div style="font-size:15px;font-weight:700;color:#1c1c1e">Aucun favori</div><div style="font-size:13px;margin-top:6px">Clique sur ☆ pour ajouter</div></div>';
       }
-    }, 250);
+    }, 200);
   }
-  // Met à jour compteur pill
-  const pill = document.getElementById('news-fil-favoris');
-  if (pill) pill.innerHTML = '⭐ Mes favoris' + (watchlist.length > 0 ? ' <span class="pill-count">' + watchlist.length + '</span>' : '');
+  showToast('Retiré des favoris');
+  updateFavPill();
 }
 
 function toggleNewsItemFav(ticker, name, cardId) {
   const isRealTicker = ticker && !ticker.startsWith('news-') && ticker.length < 20;
-  if (isRealTicker) toggleFavorite(ticker, name, '');
-  const isFav = isRealTicker ? isFavorite(ticker) : false;
+  if (!isRealTicker) return;
+  
+  // Toggle synchrone
+  const isFav = favToggleSync(ticker, name);
 
-  // Met à jour l'étoile dans la carte via cardId
+  // Met à jour l'étoile dans la carte
   const card = cardId ? document.getElementById(cardId) : null;
   if (card) {
     const star = card.querySelector('.fav-star');
@@ -1505,22 +1518,23 @@ function toggleNewsItemFav(ticker, name, cardId) {
       star.textContent = isFav ? '★' : '☆';
       star.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.15)';
     }
-    // Si on est dans favoris et on retire → fade out la carte
+    // Dans Mes favoris, on retire → animation
     if (!isFav && newsFilter === 'favoris') {
-      card.style.transition = 'opacity 0.25s, transform 0.25s';
+      card.style.transition = 'opacity 0.2s, transform 0.2s';
       card.style.opacity = '0';
       card.style.transform = 'translateX(20px)';
       setTimeout(() => {
         card.remove();
         newsTabCache.favoris.html = '';
-        newsTabCache.favoris.ts = 0;
-      }, 250);
+      }, 200);
     }
   }
 
-  if (isRealTicker) showToast(isFav ? '★ ' + (name||ticker) + ' ajouté aux favoris !' : 'Retiré des favoris');
+  showToast(isFav ? '★ ' + (name||ticker) + ' ajouté !' : 'Retiré des favoris');
+  updateFavPill();
+}
 
-  // Met à jour le compteur pill
+function updateFavPill() {
   const pill = document.getElementById('news-fil-favoris');
   if (pill) pill.innerHTML = '⭐ Mes favoris' + (watchlist.length > 0 ? ' <span class="pill-count">' + watchlist.length + '</span>' : '');
 }
