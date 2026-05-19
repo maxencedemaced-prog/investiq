@@ -2442,65 +2442,70 @@ function renderFavorisNews() {
   if (!list) return;
 
   if (watchlist.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div style="font-size:15px;font-weight:700;color:#1c1c1e">Aucun favori</div><div style="font-size:13px;margin-top:6px">Clique sur ☆ sur un signal ou une actu pour ajouter</div></div>';
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div style="font-size:15px;font-weight:700;color:#1c1c1e">Aucune entreprise suivie</div><div style="font-size:13px;margin-top:6px">Clique sur ☆ sur un signal pour suivre une entreprise</div></div>';
     return;
   }
 
+  // Filtre les actus par entreprises suivies
   const favTickers = watchlist.map(w => w.ticker.toLowerCase());
   const favNames = watchlist.map(w => (w.name||w.ticker).toLowerCase());
-
-  // Filtre les actus déjà chargées qui concernent les favoris
   let filtered = newsData.filter(n => {
     const targets = (n.actifs_cibles||[]).map(a => a.toLowerCase());
     const titre = (n.titre||'').toLowerCase();
     return favTickers.some(t => targets.some(a => a.includes(t) || t.includes(a)) || titre.includes(t))
-        || favNames.some(name => titre.includes(name));
+        || favNames.some(name => name.split(' ').some(word => word.length > 3 && titre.includes(word)));
   });
+  if (!filtered.length) filtered = newsData.slice(0, 8);
 
-  // Si pas de match dans newsData, affiche toutes les actus avec étoile pleine
-  if (!filtered.length) filtered = newsData.slice(0, 10);
-
-  // Réutilise le rendu standard de renderNewsList
-  const prevFilter = newsFilter;
-  newsFilter = 'tous'; // temporaire pour éviter recursion
-  const savedData = [...newsData];
-  // @ts-ignore
-  window._tmpNewsData = newsData;
-  newsData = filtered;
-
-  list.innerHTML = '<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⭐ ' + watchlist.length + ' favori' + (watchlist.length>1?'s':'') + ' · ' + filtered.length + ' actu' + (filtered.length>1?'s':'') + ' trouvée' + (filtered.length>1?'s':'') + '</div>';
-
-  const tempDiv = document.createElement('div');
-  // Render news items directly
   const impCls = { eleve:'pill-red', moyen:'pill-amber', faible:'pill-gray' };
   const tagCls = { 'Banque centrale':'pill-dark','Macro':'pill-dark','Marchés':'pill-blue','Géopolitique':'pill-red','Secteurs':'pill-amber' };
-  const tagLbl = { 'Banque centrale':'Banque centrale','Macro':'Macro','Marchés':'Marchés','Géopolitique':'Géopolitique','Secteurs':'Secteurs' };
+
+  let html = '<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">⭐ Entreprises suivies : ';
+  // Show watchlist companies with unfollow buttons
+  html += watchlist.map(w => 
+    '<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f0f0;border-radius:20px;padding:4px 10px;margin:4px 4px 4px 0;font-size:12px;font-weight:700">'
+    + w.ticker
+    + '<button onclick="unfollowCompany(\"' + w.ticker + '\",\"' + (w.name||w.ticker) + '\")" style="background:none;border:none;cursor:pointer;font-size:14px;color:#cc2f26;padding:0;line-height:1;margin-left:2px" title="Ne plus suivre">×</button>'
+    + '</span>'
+  ).join('');
+  html += '</div><div style="margin-bottom:12px"></div>';
 
   filtered.forEach((n, i) => {
-    const cardId = 'fav-news-' + i;
     const bodyId = 'fav-body-' + i;
-    const div = document.createElement('div');
-    div.id = cardId;
-    div.className = 'news-item';
-    div.innerHTML = '<div class="news-item-head" onclick="document.getElementById(\'' + bodyId + '\').style.display=document.getElementById(\'' + bodyId + '\').style.display===\'none\'?\'block\':\'none\'">'
+    html += '<div class="news-item" id="fav-news-' + i + '">'
+      + '<div class="news-item-head" onclick="toggleFavBody(' + i + ')">' 
       + '<div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">'
       + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
-      + '<span class="pill ' + (tagCls[n.categorie]||'pill-gray') + '">' + (tagLbl[n.categorie]||n.categorie) + '</span>'
+      + '<span class="pill ' + (tagCls[n.categorie]||'pill-gray') + '">' + n.categorie + '</span>'
       + '<span class="pill ' + (impCls[n.impact]||'pill-gray') + '">Impact ' + n.impact + '</span>'
       + '<span class="news-time">' + n.heure + '</span>'
       + '</div>'
-      + '<button class="fav-star" onclick="event.stopPropagation();removeFavNewsCard(\'' + cardId + '\')" style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;color:#f59e0b">★</button>'
+      + '<span style="font-size:16px;color:#f59e0b">★</span>'
       + '</div>'
       + '<div class="news-title">' + n.titre + '</div>'
       + '</div>'
       + '<div id="' + bodyId + '" style="display:none;padding:8px 0">'
-      + '<p style="font-size:13px;color:#3c3c43;line-height:1.6;margin:0 0 8px">' + (n.resume||'') + '</p>'
-      + '</div>';
-    list.appendChild(div);
+      + '<p style="font-size:13px;color:#3c3c43;line-height:1.6;margin:0">' + (n.resume||'') + '</p>'
+      + '</div></div>';
   });
 
-  newsData = savedData;
-  newsFilter = prevFilter;
+  list.innerHTML = html;
+}
+
+function toggleFavBody(i) {
+  const b = document.getElementById('fav-body-' + i);
+  if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
+}
+
+function unfollowCompany(ticker, name) {
+  // Retire de la watchlist
+  favToggleSync(ticker, name);
+  showToast('Ne plus suivre ' + name);
+  updateFavPill();
+  // Rafraîchit l'affichage
+  renderFavorisNews();
+  // Met à jour les étoiles dans les autres onglets
+  refreshAllStars();
 }
 
 
