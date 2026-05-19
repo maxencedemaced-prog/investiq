@@ -2407,44 +2407,73 @@ function setNewsFilter(filter, el) {
   }
 }
 
-async function renderFavorisNews() {
+function renderFavorisNews() {
   const list = document.getElementById('news-list');
   if (!list) return;
-  const favNames = watchlist.map(w => w.name || w.ticker);
-  list.innerHTML = `<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⭐ Actualités de tes ${watchlist.length} favori${watchlist.length>1?'s':''}</div>
-    <div id="favoris-news-content" style="text-align:center;padding:24px;color:#8e8e93"><div style="font-size:24px;margin-bottom:8px">🧠</div><div>Chargement...</div></div>`;
-  try {
-    const date = new Date().toLocaleDateString('fr-FR');
-    const favList = watchlist.map(w => w.ticker + ' (' + (w.name||w.ticker) + ')').join(', ');
-    const prompt = 'Journaliste financier, le ' + date + '. Donne uniquement des actualités RÉELLES et vérifiables pour ces actifs : ' + favList + '.\nSi tu ne connais pas d\'actualité récente pour un actif, ne l\'inclus pas.\nRéponds UNIQUEMENT JSON : [{"ticker":"X","entreprise":"Nom exact","titre":"Titre factuel","resume":"2 phrases factuelles","impact":"positif","categorie":"Résultats","date":"Cette semaine"}]\nNe génère PAS d\'actualités inventées.';
-    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.');
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const articles = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']')+1));
-    const ic = { positif:'#1a7f5a', negatif:'#cc2f26', neutre:'#8e8e93' };
-    const ib = { positif:'#e8f8f0', negatif:'#fff0f0', neutre:'#f5f5f5' };
-    const el = document.getElementById('favoris-news-content');
-    if (el) el.outerHTML = articles.map((a, idx) => {
-      const cardId = 'fav-card-' + idx;
-      const url = 'https://www.google.com/search?q=' + encodeURIComponent(a.entreprise + ' actualité bourse 2026');
-      return '<div id="' + cardId + '" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;transition:opacity 0.25s,transform 0.25s">'
-        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-        + '<span style="background:' + (ib[a.impact]||'#f5f5f5') + ';color:' + (ic[a.impact]||'#8e8e93') + ';font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px">' + a.categorie + '</span>'
-        + '<span style="font-size:12px;font-weight:800;color:#1c1c1e">' + a.entreprise + '</span>'
-        + '<button class="fav-star" onclick="removeFavCard(\'' + cardId + '\',\'' + a.ticker + '\',\'' + a.entreprise + '\')" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:18px;color:#f59e0b;transition:color 0.2s">★</button>'
-        + '</div>'
-        + '<div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">' + a.titre + '</div>'
-        + '<div style="font-size:13px;color:#3c3c43;line-height:1.6;margin-bottom:10px">' + a.resume + '</div>'
-        + '<div style="display:flex;gap:8px">'
-        + '<a href="' + url + '" target="_blank" style="flex:1;background:#f5f5f5;color:#1c1c1e;border-radius:10px;padding:8px;font-size:12px;font-weight:700;text-align:center;text-decoration:none">🔗 Articles</a>'
-        + '<button onclick="openDecisionFromPos(\"' + a.ticker + '\",\"garder\")" style="flex:1;background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer">🤔 Analyser</button>'
-        + '</div></div>';
-    }).join('');
-  } catch(e) {
-    const el = document.getElementById('favoris-news-content');
-    if (el) el.innerHTML = '<div style="text-align:center;padding:20px;color:#8e8e93">Impossible de charger.<br><button onclick="renderFavorisNews()" style="background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;margin-top:8px">Réessayer</button></div>';
+
+  if (watchlist.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div style="font-size:15px;font-weight:700;color:#1c1c1e">Aucun favori</div><div style="font-size:13px;margin-top:6px">Clique sur ☆ sur un signal ou une actu pour ajouter</div></div>';
+    return;
   }
-  setTimeout(() => saveToCache('favoris'), 500);
+
+  const favTickers = watchlist.map(w => w.ticker.toLowerCase());
+  const favNames = watchlist.map(w => (w.name||w.ticker).toLowerCase());
+
+  // Filtre les actus déjà chargées qui concernent les favoris
+  let filtered = newsData.filter(n => {
+    const targets = (n.actifs_cibles||[]).map(a => a.toLowerCase());
+    const titre = (n.titre||'').toLowerCase();
+    return favTickers.some(t => targets.some(a => a.includes(t) || t.includes(a)) || titre.includes(t))
+        || favNames.some(name => titre.includes(name));
+  });
+
+  // Si pas de match dans newsData, affiche toutes les actus avec étoile pleine
+  if (!filtered.length) filtered = newsData.slice(0, 10);
+
+  // Réutilise le rendu standard de renderNewsList
+  const prevFilter = newsFilter;
+  newsFilter = 'tous'; // temporaire pour éviter recursion
+  const savedData = [...newsData];
+  // @ts-ignore
+  window._tmpNewsData = newsData;
+  newsData = filtered;
+
+  list.innerHTML = '<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⭐ ' + watchlist.length + ' favori' + (watchlist.length>1?'s':'') + ' · ' + filtered.length + ' actu' + (filtered.length>1?'s':'') + ' trouvée' + (filtered.length>1?'s':'') + '</div>';
+
+  const tempDiv = document.createElement('div');
+  // Render news items directly
+  const impCls = { eleve:'pill-red', moyen:'pill-amber', faible:'pill-gray' };
+  const tagCls = { 'Banque centrale':'pill-dark','Macro':'pill-dark','Marchés':'pill-blue','Géopolitique':'pill-red','Secteurs':'pill-amber' };
+  const tagLbl = { 'Banque centrale':'Banque centrale','Macro':'Macro','Marchés':'Marchés','Géopolitique':'Géopolitique','Secteurs':'Secteurs' };
+
+  filtered.forEach((n, i) => {
+    const cardId = 'fav-news-' + i;
+    const starFav = true; // déjà favori
+    const div = document.createElement('div');
+    div.id = cardId;
+    div.className = 'news-item';
+    div.innerHTML = '<div class="news-item-head" onclick="toggleNews(' + i + ')">'
+      + '<div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">'
+      + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+      + '<span class="pill ' + (tagCls[n.categorie]||'pill-gray') + '">' + (tagLbl[n.categorie]||n.categorie) + '</span>'
+      + '<span class="pill ' + (impCls[n.impact]||'pill-gray') + '">Impact ' + n.impact + '</span>'
+      + '<span class="news-time">' + n.heure + '</span>'
+      + '</div>'
+      + '<button class="fav-star" onclick="event.stopPropagation();removeFavCard(\'fav-news-' + i + '\',\'x\',\'x\')" style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;color:#f59e0b">★</button>'
+      + '</div>'
+      + '<div class="news-title">' + n.titre + '</div>'
+      + '</div>'
+      + '<div class="news-body" id="nb-' + i + '" style="display:none">'
+      + '<p>' + n.resume + '</p>'
+      + (n.recommandation ? '<div class="news-reco">→ ' + n.recommandation + '</div>' : '<div class="news-reco" id="reco-' + i + '"><span style="cursor:pointer;color:#1a7f5a;font-size:13px" onclick="loadReco(' + i + ')">▸ Voir recommandation IA</span></div>')
+      + '</div>';
+    list.appendChild(div);
+  });
+
+  newsData = savedData;
+  newsFilter = prevFilter;
 }
+
 
 function renderNewsList() {
   const list = document.getElementById('news-list');
