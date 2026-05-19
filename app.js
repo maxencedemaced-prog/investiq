@@ -1481,26 +1481,20 @@ function favToggleSync(ticker, name) {
   return watchlist.some(w => w.ticker === ticker);
 }
 
-function removeFavCard(btn, ticker, name) {
-  // btn = le bouton étoile cliqué (this)
+function removeFavCard(cardId, ticker, name) {
   favToggleSync(ticker, name);
-  // Remonte jusqu'au div parent de niveau carte
-  let card = btn;
-  for (let i = 0; i < 5; i++) {
-    card = card.parentElement;
-    if (!card) break;
-    if (card.style && card.style.borderRadius && card.style.borderRadius.includes('14px')) break;
-  }
-  if (card && card !== document.getElementById('news-list')) {
+  const card = document.getElementById(cardId);
+  if (card) {
     card.style.transition = 'opacity 0.2s, transform 0.2s';
     card.style.opacity = '0';
     card.style.transform = 'translateX(30px)';
     setTimeout(() => {
       card.remove();
       newsTabCache.favoris.html = '';
-      const list = document.getElementById('news-list');
-      if (list && list.querySelectorAll('[style*="border-radius: 14px"], [style*="border-radius:14px"]').length === 0) {
-        list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div style="font-size:15px;font-weight:700;color:#1c1c1e">Aucun favori</div><div style="font-size:13px;margin-top:6px">Clique sur ☆ pour ajouter</div></div>';
+      const remaining = document.querySelectorAll('[id^="fav-card-"]');
+      if (remaining.length === 0) {
+        const list = document.getElementById('news-list');
+        if (list) list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div style="font-size:15px;font-weight:700;color:#1c1c1e">Aucun favori</div></div>';
       }
     }, 200);
   }
@@ -2438,7 +2432,7 @@ async function renderFavorisNews() {
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
         + '<span style="background:' + (ib[a.impact]||'#f5f5f5') + ';color:' + (ic[a.impact]||'#8e8e93') + ';font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px">' + a.categorie + '</span>'
         + '<span style="font-size:12px;font-weight:800;color:#1c1c1e">' + a.entreprise + '</span>'
-        + '<button class="fav-star" onclick="removeFavCard(this,\"' + a.ticker + '\",\"' + a.entreprise + '\")" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:18px;color:#f59e0b;transition:color 0.2s">★</button>'
+        + '<button class="fav-star" onclick="removeFavCard(\'' + cardId + '\',\'' + a.ticker + '\',\'' + a.entreprise + '\')" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:18px;color:#f59e0b;transition:color 0.2s">★</button>'
         + '</div>'
         + '<div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">' + a.titre + '</div>'
         + '<div style="font-size:13px;color:#3c3c43;line-height:1.6;margin-bottom:10px">' + a.resume + '</div>'
