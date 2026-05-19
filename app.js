@@ -1645,9 +1645,7 @@ function renderNewsPage() {
       <button class="filter-pill" id="news-fil-signaux" onclick="setNewsFilter('signaux',this)" style="background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 12px rgba(204,47,38,0.4);font-weight:800">⚡ Signaux</button>
       <button class="filter-pill" id="news-fil-entreprises" onclick="setNewsFilter('entreprises',this)">🏢 Entreprises</button>
       <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)">📅 Agenda</button>
-      <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)">
-        ⭐ Mes favoris ${watchlist.length > 0 ? `<span class="pill-count">${watchlist.length}</span>` : ''}
-      </button>
+
       <button class="filter-pill" id="news-fil-macro" onclick="setNewsFilter('macro',this)">Macro</button>
       <button class="filter-pill" id="news-fil-banque" onclick="setNewsFilter('banque',this)">Banques centrales</button>
       <button class="filter-pill" id="news-fil-marche" onclick="setNewsFilter('marche',this)">Marchés</button>
@@ -2436,11 +2434,6 @@ function setNewsFilter(filter, el) {
   } else if (filter === 'agenda') {
     if (isCacheValid('agenda')) { restoreFromCache('agenda'); return; }
     renderAgenda();
-  } else if (filter === 'favoris') {
-    // Toujours recharger les favoris (watchlist peut avoir changé)
-    newsTabCache.favoris.html = '';
-    newsTabCache.favoris.ts = 0;
-    renderFavorisNews();
   } else {
     renderNewsList();
   }
