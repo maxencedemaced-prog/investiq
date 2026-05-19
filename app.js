@@ -1476,6 +1476,24 @@ function favToggleSync(ticker, name) {
   return watchlist.some(w => w.ticker === ticker);
 }
 
+function removeFavNewsCard(cardId) {
+  // Retire juste la carte de l'affichage (l'actu disparaît des favoris visuellement)
+  const card = document.getElementById(cardId);
+  if (card) {
+    card.style.transition = 'opacity 0.2s, transform 0.2s';
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(30px)';
+    setTimeout(() => {
+      card.remove();
+      const remaining = document.querySelectorAll('[id^="fav-news-"]');
+      if (remaining.length === 0) {
+        const list = document.getElementById('news-list');
+        if (list) list.innerHTML += '<div style="text-align:center;padding:20px;color:#8e8e93">Plus aucune actu</div>';
+      }
+    }, 200);
+  }
+}
+
 function removeFavCard(cardId, ticker, name) {
   favToggleSync(ticker, name);
   const card = document.getElementById(cardId);
@@ -2471,7 +2489,7 @@ function renderFavorisNews() {
       + '<span class="pill ' + (impCls[n.impact]||'pill-gray') + '">Impact ' + n.impact + '</span>'
       + '<span class="news-time">' + n.heure + '</span>'
       + '</div>'
-      + '<button class="fav-star" onclick="event.stopPropagation();removeFavCard(\'' + cardId + '\',\'x\',\'x\')" style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;color:#f59e0b">★</button>'
+      + '<button class="fav-star" onclick="event.stopPropagation();removeFavNewsCard(\'' + cardId + '\')" style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;color:#f59e0b">★</button>'
       + '</div>'
       + '<div class="news-title">' + n.titre + '</div>'
       + '</div>'
