@@ -2563,10 +2563,10 @@ function renderNewsList() {
     const firstTicker = assetsForStar.find(t => t && t.length < 15) || '';
     const starFav = firstTicker ? isFavorite(firstTicker) : false;
     const cardId = 'news-card-' + i;
-    const starHtml = firstTicker ? `<button class="fav-star" data-ticker="${firstTicker}"
-      onclick="event.stopPropagation();toggleStar(this,'${firstTicker}','${firstTicker}')" 
-      style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:${starFav?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s" 
-      title="${starFav?'Ne plus suivre':'Suivre'}">${starFav?'★':'☆'}</button>` : '';
+    // Étoile sur actu = visuel uniquement (toggle local)
+    const starHtml = `<button onclick="event.stopPropagation();this.textContent=this.textContent==='★'?'☆':'★';this.style.color=this.textContent==='★'?'#f59e0b':'rgba(0,0,0,0.15)'"
+      style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:rgba(0,0,0,0.15);transition:color 0.2s"
+      title="Marquer comme lu">☆</button>`;
     return `<div class="news-item" id="${cardId}">
       <div class="news-item-head" onclick="toggleNews(${i})">
         <div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">
