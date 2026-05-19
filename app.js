@@ -2551,13 +2551,13 @@ function renderNewsList() {
     }).join(' ');
     const oppBtn = n.signal !== 'éviter' ? `<button class="btn-analyse" onclick="openDecision('${first}','${n.signal}')">Analyser →</button>` : '';
     const assetsForStar = n.actifs_cibles || [];
-    const firstTicker = assetsForStar[0] || ('news-' + i);
-    const starFav = isFavorite(firstTicker);
+    const firstTicker = assetsForStar.find(t => t && t.length < 15) || '';
+    const starFav = firstTicker ? isFavorite(firstTicker) : false;
     const cardId = 'news-card-' + i;
-    const starHtml = `<button class="fav-star" data-ticker="${firstTicker}"
+    const starHtml = firstTicker ? `<button class="fav-star" data-ticker="${firstTicker}"
       onclick="event.stopPropagation();var f=toggleFavorite('${firstTicker}','${firstTicker}','');this.textContent=f?'★':'☆';this.style.color=f?'#f59e0b':'rgba(0,0,0,0.15)';updateFavPill()" 
       style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:${starFav?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s" 
-      title="${starFav?'Ne plus suivre':'Suivre'}">${starFav?'★':'☆'}</button>`;
+      title="${starFav?'Ne plus suivre':'Suivre'}">${starFav?'★':'☆'}</button>` : '';
     return `<div class="news-item" id="${cardId}">
       <div class="news-item-head" onclick="toggleNews(${i})">
         <div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">
@@ -2570,7 +2570,10 @@ function renderNewsList() {
         </div>
         <div class="news-title">${n.titre}</div>
         <div class="news-summary">${n.resume}</div>
-        <button class="news-expand" id="nexp-${i}">▾ Voir recommandation IA</button>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="news-expand" id="nexp-${i}" style="flex:1">▾ Voir recommandation IA</button>
+          ${firstTicker ? `<button onclick="event.stopPropagation();openDecisionFromPos('${firstTicker}','garder')" style="flex:1;background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer">🤔 Analyser</button>` : ''}
+        </div>
       </div>
       <div class="news-reco" id="nreco-${i}">
         <div class="${sigCls[n.signal]||'signal-neutral'} signal-badge">${sigLbl[n.signal]||'Neutre'}</div>
