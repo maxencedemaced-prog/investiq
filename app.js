@@ -2150,7 +2150,7 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
             </div>
           </div>
           <button class="fav-star" data-ticker="${a.ticker}"
-            onclick="event.stopPropagation();toggleFavorite('${a.ticker}','${a.entreprise}','');refreshAllStars();updateFavPill()"
+            onclick="event.stopPropagation();var f=toggleFavorite('${a.ticker}','${a.entreprise}','');this.textContent=f?'★':'☆';this.style.color=f?'#f59e0b':'rgba(0,0,0,0.15)';updateFavPill()"
             style="background:none;border:none;cursor:pointer;font-size:20px;padding:2px;line-height:1;color:${isFavorite(a.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.15s"
             title="${isFavorite(a.ticker)?'Ne plus suivre':'Suivre'}">${isFavorite(a.ticker)?'★':'☆'}</button>
         </div>
@@ -2294,7 +2294,7 @@ async function renderSignaux() {
       <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:11px;color:${sigColor[s.signal]};font-weight:600">Analyser & investir →</div>
         <button class="fav-star" data-ticker="${s.ticker}"
-          onclick="event.stopPropagation();toggleFavorite('${s.ticker}','${s.name}','');refreshAllStars();updateFavPill()"
+          onclick="event.stopPropagation();var f=toggleFavorite('${s.ticker}','${s.name}','');this.textContent=f?'★':'☆';this.style.color=f?'#f59e0b':'rgba(0,0,0,0.15)';updateFavPill()"
           style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFavorite(s.ticker)?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s"
           title="${isFavorite(s.ticker)?'Ne plus suivre':'Suivre'}">${isFavorite(s.ticker)?'★':'☆'}</button>
       </div>
@@ -2555,7 +2555,7 @@ function renderNewsList() {
     const starFav = isFavorite(firstTicker);
     const cardId = 'news-card-' + i;
     const starHtml = `<button class="fav-star" data-ticker="${firstTicker}"
-      onclick="event.stopPropagation();toggleFavorite('${firstTicker}','${firstTicker}','');refreshAllStars();updateFavPill()" 
+      onclick="event.stopPropagation();var f=toggleFavorite('${firstTicker}','${firstTicker}','');this.textContent=f?'★':'☆';this.style.color=f?'#f59e0b':'rgba(0,0,0,0.15)';updateFavPill()" 
       style="background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;line-height:1;color:${starFav?'#f59e0b':'rgba(0,0,0,0.15)'};transition:color 0.2s" 
       title="${starFav?'Ne plus suivre':'Suivre'}">${starFav?'★':'☆'}</button>`;
     return `<div class="news-item" id="${cardId}">
