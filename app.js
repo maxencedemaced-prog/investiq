@@ -1467,6 +1467,31 @@ function isFavorite(ticker) {
   return watchlist.some(w => w.ticker === ticker);
 }
 
+function removeFavCard(cardId, ticker, name) {
+  // Retire des favoris
+  toggleFavorite(ticker, name, '');
+  showToast('Retiré des favoris');
+  // Anime et retire la carte
+  const card = document.getElementById(cardId);
+  if (card) {
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(30px)';
+    setTimeout(() => {
+      card.remove();
+      newsTabCache.favoris.html = '';
+      newsTabCache.favoris.ts = 0;
+      // Si plus aucune carte, affiche message vide
+      const list = document.getElementById('news-list');
+      if (list && !list.querySelector('[id^="fav-card-"]')) {
+        list.innerHTML = '<div style="text-align:center;padding:30px;color:#8e8e93"><div style="font-size:32px;margin-bottom:10px">⭐</div><div>Aucun favori</div></div>';
+      }
+    }, 250);
+  }
+  // Met à jour compteur pill
+  const pill = document.getElementById('news-fil-favoris');
+  if (pill) pill.innerHTML = '⭐ Mes favoris' + (watchlist.length > 0 ? ' <span class="pill-count">' + watchlist.length + '</span>' : '');
+}
+
 function toggleNewsItemFav(ticker, name, cardId) {
   const isRealTicker = ticker && !ticker.startsWith('news-') && ticker.length < 20;
   if (isRealTicker) toggleFavorite(ticker, name, '');
@@ -2387,13 +2412,14 @@ async function renderFavorisNews() {
     const ic = { positif:'#1a7f5a', negatif:'#cc2f26', neutre:'#8e8e93' };
     const ib = { positif:'#e8f8f0', negatif:'#fff0f0', neutre:'#f5f5f5' };
     const el = document.getElementById('favoris-news-content');
-    if (el) el.outerHTML = articles.map(a => {
+    if (el) el.outerHTML = articles.map((a, idx) => {
+      const cardId = 'fav-card-' + idx;
       const url = 'https://www.google.com/search?q=' + encodeURIComponent(a.entreprise + ' actualité bourse 2026');
-      return '<div id="fav-card-' + a.ticker + '" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0">'
+      return '<div id="' + cardId + '" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;transition:opacity 0.25s,transform 0.25s">'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
         + '<span style="background:' + (ib[a.impact]||'#f5f5f5') + ';color:' + (ic[a.impact]||'#8e8e93') + ';font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px">' + a.categorie + '</span>'
         + '<span style="font-size:12px;font-weight:800;color:#1c1c1e">' + a.entreprise + '</span>'
-        + '<button class="fav-star" onclick="toggleNewsItemFav(\"' + a.ticker + '\",\"' + a.entreprise + '\",\"fav-card-' + a.ticker + '\")" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:#f59e0b">★</button>'
+        + '<button class="fav-star" onclick="removeFavCard(\"' + cardId + '\",\"' + a.ticker + '\",\"' + a.entreprise + '\")" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:18px;color:#f59e0b;transition:color 0.2s">★</button>'
         + '</div>'
         + '<div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">' + a.titre + '</div>'
         + '<div style="font-size:13px;color:#3c3c43;line-height:1.6;margin-bottom:10px">' + a.resume + '</div>'
