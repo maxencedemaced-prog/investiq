@@ -22,22 +22,25 @@ async function validateObjectif(labelOverride) {
       const existing = allObjectives.find(o => o.target === data.target && o.monthly === data.monthly);
       let savedId = null;
       if (existing) {
-        // Mise à jour
-        const { error } = await sb.from('objectives').update({
+        // Mise à jour — sans updated_at si la colonne n'existe pas
+        const updatePayload = {
           capital: data.capital, monthly: data.monthly, target: data.target,
           years: data.years, rate: data.rate, risk: data.risk, label: data.label,
-          validated_at: data.validated_at, updated_at: new Date().toISOString()
-        }).eq('id', existing.id);
-        if (!error) savedId = existing.id;
+          validated_at: data.validated_at
+        };
+        const { error } = await sb.from('objectives').update(updatePayload).eq('id', existing.id);
+        if (error) console.warn('[validateObjectif] update error:', error.message);
+        else savedId = existing.id;
       } else {
-        // Nouvel objectif
-        const { data: inserted, error } = await sb.from('objectives').insert({
+        // Nouvel objectif — sans updated_at
+        const insertPayload = {
           user_id: currentUser.id, capital: data.capital, monthly: data.monthly,
           target: data.target, years: data.years, rate: data.rate, risk: data.risk,
-          label: data.label, validated_at: data.validated_at,
-          updated_at: new Date().toISOString()
-        }).select().single();
-        if (!error && inserted) savedId = inserted.id;
+          label: data.label, validated_at: data.validated_at
+        };
+        const { data: inserted, error } = await sb.from('objectives').insert(insertPayload).select().single();
+        if (error) console.warn('[validateObjectif] insert error:', error.message);
+        else if (inserted) savedId = inserted.id;
       }
       // Recharge tous les objectifs
       await loadObjective();
@@ -3614,7 +3617,9 @@ async function loadPositions() {
 async function loadObjective() {
   if (isDemo) return;
   try {
-    const { data } = await sb.from('objectives').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true });
+    // Sans .order() pour compatibilité max avec toutes les versions de la table
+    const { data, error } = await sb.from('objectives').select('*').eq('user_id', currentUser.id);
+    if (error) { console.warn('[loadObjective] Supabase error:', error.message); }
     if (data && data.length > 0) {
       allObjectives = data.map((d, i) => ({
         id: d.id,
@@ -3629,7 +3634,6 @@ async function loadObjective() {
         validated_at: d.validated_at
       }));
       activeObjId = allObjectives[0].id;
-      // Charge le premier dans les variables globales (compat)
       applyObjData(allObjectives[0]);
       objective = { target: allObjectives[0].target, years: allObjectives[0].years, rate: allObjectives[0].rate, monthly: allObjectives[0].monthly };
       try { localStorage.setItem('iq_validated_objective', JSON.stringify({
