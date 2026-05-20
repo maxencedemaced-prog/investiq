@@ -4664,23 +4664,175 @@ async function addToPortfolioFromDecision(ticker, amount) {
 }
 
 // ===== DCA =====
-function updateDCA(){
-  const m=parseFloat(document.getElementById('dca-m').value);
-  const y=parseInt(document.getElementById('dca-y').value);
-  const rate=parseFloat(document.getElementById('dca-r').value)/100/12;
-  const s=parseFloat(document.getElementById('dca-s').value);
-  document.getElementById('dca-m-o').textContent=m.toLocaleString('fr-FR')+' €';
-  document.getElementById('dca-y-o').textContent=y+' ans';
-  document.getElementById('dca-r-o').textContent=parseFloat(document.getElementById('dca-r').value).toFixed(1)+' %';
-  document.getElementById('dca-s-o').textContent=s.toLocaleString('fr-FR')+' €';
-  const n=y*12,total=s*Math.pow(1+rate,n)+m*((Math.pow(1+rate,n)-1)/rate);
-  const invested=s+m*n,gain=total-invested;
-  document.getElementById('dca-metrics').innerHTML=`
-    <div class="metric-card"><div class="metric-label">Capital final estimé</div><div class="metric-val green">${fmtK(Math.round(total))}</div></div>
-    <div class="metric-card"><div class="metric-label">Total investi</div><div class="metric-val">${fmtK(Math.round(invested))}</div></div>
-    <div class="metric-card"><div class="metric-label">Intérêts composés</div><div class="metric-val green">+${fmtK(Math.round(gain))}</div></div>
-    <div class="metric-card"><div class="metric-label">Multiplicateur</div><div class="metric-val">×${(total/invested).toFixed(2)}</div></div>`;
-  document.getElementById('dca-tip').innerHTML=`<div class="alert alert-ok" style="margin-top:12px"><span>✓</span><div>${m.toLocaleString('fr-FR')} €/mois pendant ${y} ans génère <strong>${fmtK(Math.round(gain))}</strong> en intérêts composés.</div></div>`;
+let dcaChartInstance = null;
+
+function dcaPreset(m, y, r, s) {
+  document.getElementById('dca-m').value = m;
+  document.getElementById('dca-y').value = y;
+  document.getElementById('dca-r').value = r;
+  document.getElementById('dca-s').value = s;
+  updateDCA();
+}
+
+function updateDCA() {
+  const m    = parseFloat(document.getElementById('dca-m').value);
+  const y    = parseInt(document.getElementById('dca-y').value);
+  const rAnn = parseFloat(document.getElementById('dca-r').value);
+  const s    = parseFloat(document.getElementById('dca-s').value);
+  const rate = rAnn / 100 / 12;
+  const n    = y * 12;
+
+  // Labels
+  document.getElementById('dca-m-o').textContent = m.toLocaleString('fr-FR') + ' €';
+  document.getElementById('dca-y-o').textContent = y + ' an' + (y > 1 ? 's' : '');
+  document.getElementById('dca-r-o').textContent = rAnn.toFixed(1) + ' %';
+  document.getElementById('dca-s-o').textContent = s.toLocaleString('fr-FR') + ' €';
+
+  // Calcul final
+  const total    = s * Math.pow(1 + rate, n) + (rate > 0 ? m * ((Math.pow(1 + rate, n) - 1) / rate) : m * n);
+  const invested = s + m * n;
+  const gain     = total - invested;
+  const mult     = invested > 0 ? total / invested : 1;
+
+  // Métriques
+  document.getElementById('dca-metrics').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Capital final estimé</div>
+      <div class="metric-val green">${fmtK(Math.round(total))}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Total investi</div>
+      <div class="metric-val">${fmtK(Math.round(invested))}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Intérêts composés</div>
+      <div class="metric-val green">+${fmtK(Math.round(gain))}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Multiplicateur</div>
+      <div class="metric-val">×${mult.toFixed(2)}</div>
+    </div>`;
+
+  // Message tip
+  const tipEl = document.getElementById('dca-tip');
+  if (tipEl) {
+    const gainPct = invested > 0 ? ((gain / invested) * 100).toFixed(0) : 0;
+    tipEl.innerHTML = `<div class="alert alert-ok" style="margin-top:12px;margin-bottom:0">
+      <span>✓</span>
+      <div>${m > 0 ? m.toLocaleString('fr-FR') + ' €/mois' : ''}${m > 0 && s > 0 ? ' + ' : ''}${s > 0 ? s.toLocaleString('fr-FR') + '€ de départ' : ''} pendant ${y} an${y>1?'s':''} génère <strong>${fmtK(Math.round(gain))}</strong> en intérêts composés (+${gainPct}%).
+      </div>
+    </div>`;
+  }
+
+  // Graphique
+  const canvas = document.getElementById('dca-chart');
+  if (canvas) {
+    const step   = Math.max(1, Math.floor(n / 60));
+    const labels = [];
+    const valData = [];
+    const invData = [];
+    for (let mo = 0; mo <= n; mo += step) {
+      const yr = mo / 12;
+      labels.push(yr === 0 ? "Auj." : yr % 1 === 0 ? yr + 'a' : '');
+      const fv = s * Math.pow(1 + rate, mo) + (rate > 0 ? m * ((Math.pow(1 + rate, mo) - 1) / rate) : m * mo);
+      valData.push(Math.round(fv));
+      invData.push(Math.round(s + m * mo));
+    }
+
+    if (dcaChartInstance) dcaChartInstance.destroy();
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0, 'rgba(28,28,30,0.15)');
+    grad.addColorStop(1, 'rgba(28,28,30,0)');
+
+    dcaChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Capital projeté',
+            data: valData,
+            borderColor: '#1c1c1e',
+            backgroundColor: grad,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+          },
+          {
+            label: 'Capital investi',
+            data: invData,
+            borderColor: '#c7c7cc',
+            borderWidth: 1.5,
+            borderDash: [5, 4],
+            fill: false,
+            tension: 0,
+            pointRadius: 0,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ctx.dataset.label + ' : ' + fmtK(ctx.raw)
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' }, color: '#8e8e93', maxRotation: 0 } },
+          y: { grid: { color: '#f5f5f5' }, ticks: { font: { size: 10, weight: '600' }, color: '#8e8e93', callback: v => fmtK(v) } }
+        }
+      }
+    });
+  }
+
+  // Tableau annuel
+  const tableEl = document.getElementById('dca-table');
+  if (tableEl) {
+    const milestones = [];
+    for (let i = 1; i <= y; i++) {
+      if (y <= 10 || i % Math.ceil(y / 10) === 0 || i === 1 || i === y) milestones.push(i);
+    }
+    const uniqueMilestones = [...new Set(milestones)];
+
+    let rows = '';
+    for (const yr of uniqueMilestones) {
+      const mo  = yr * 12;
+      const fv  = s * Math.pow(1 + rate, mo) + (rate > 0 ? m * ((Math.pow(1 + rate, mo) - 1) / rate) : m * mo);
+      const inv = s + m * mo;
+      const g   = fv - inv;
+      const pct = inv > 0 ? ((g / inv) * 100).toFixed(1) : '0.0';
+      rows += `<tr style="border-bottom:1px solid #f5f5f5">
+        <td style="padding:8px 6px;font-weight:700;color:#1c1c1e;font-size:13px">Année ${yr}</td>
+        <td style="padding:8px 6px;font-weight:800;color:#1a7f5a;font-size:13px">${fmtK(Math.round(fv))}</td>
+        <td style="padding:8px 6px;color:#8e8e93;font-size:12px">${fmtK(Math.round(inv))}</td>
+        <td style="padding:8px 6px;color:#1a7f5a;font-weight:700;font-size:12px">+${fmtK(Math.round(g))}</td>
+        <td style="padding:8px 6px;font-size:12px">
+          <span style="background:${parseFloat(pct)>10?'#e8f8f0':parseFloat(pct)>5?'#fff9e6':'#f5f5f5'};color:${parseFloat(pct)>10?'#1a7f5a':parseFloat(pct)>5?'#92400e':'#8e8e93'};font-weight:700;padding:2px 7px;border-radius:6px;font-size:11px">+${pct}%</span>
+        </td>
+      </tr>`;
+    }
+
+    tableEl.innerHTML = `
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:2px solid #f0f0f0">
+            <th style="text-align:left;padding:8px 6px;font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase">Année</th>
+            <th style="text-align:left;padding:8px 6px;font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase">Capital</th>
+            <th style="text-align:left;padding:8px 6px;font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase">Investi</th>
+            <th style="text-align:left;padding:8px 6px;font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase">Gains</th>
+            <th style="text-align:left;padding:8px 6px;font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase">Perf.</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
 }
 
 // ===== AI WITH MEMORY =====
