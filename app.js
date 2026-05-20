@@ -3062,26 +3062,35 @@ function showTickerFallback() {
 }
 
 function checkPriceAlerts() {
-  // Vide d'abord TOUTES les anciennes alertes prix — on les recalcule proprement
+  // Vide d'abord TOUTES les anciennes alertes prix
   notifications = notifications.filter(n => n.type !== 'prix');
 
+  // Grouper par ticker pour éviter les doublons (positions avec plusieurs lignes)
+  const grouped = {};
   positions.forEach(p => {
-    if (p.alert_price && p.price <= p.alert_price) {
+    if (!grouped[p.name]) {
+      grouped[p.name] = { name: p.name, price: p.price, alert_price: p.alert_price };
+    }
+    // Garde l'alerte la plus haute (seuil le plus récent)
+    if (p.alert_price && (!grouped[p.name].alert_price || p.alert_price > grouped[p.name].alert_price)) {
+      grouped[p.name].alert_price = p.alert_price;
+      grouped[p.name].price = p.price;
+    }
+  });
+
+  Object.values(grouped).forEach(g => {
+    if (g.alert_price && g.price <= g.alert_price) {
       const notif = {
-        titre: `⚠ Alerte prix — ${p.name}`,
-        texte: `${p.name} est à ${fmt(p.price)}€, sous ton seuil d'alerte de ${fmt(p.alert_price)}€.`,
-        action: `Consulter ${p.name} dans ton portefeuille`,
+        titre: `⚠ Alerte prix — ${g.name}`,
+        texte: `${g.name} est à ${fmt(g.price)}€, sous ton seuil d'alerte de ${fmt(g.alert_price)}€.`,
+        action: `Consulter ${g.name} dans ton portefeuille`,
         impact: 'high',
         heure: 'Maintenant',
         type: 'prix'
       };
-      // Une seule alerte par ticker
-      const exists = notifications.some(n => n.type === 'prix' && n.titre.includes(p.name));
-      if (!exists) {
-        notifications.unshift(notif);
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(`InvestIQ — Alerte ${p.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
-        }
+      notifications.unshift(notif);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(`InvestIQ — Alerte ${g.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
       }
     }
   });
@@ -3439,18 +3448,41 @@ async function renderHome() {
 }
 
 function buildAlertsData() {
-  const tv=positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const tv = positions.reduce((a,p) => a + p.qty*p.price, 0);
   if (!tv) return [];
-  let alerts=[];
-  positions.forEach(p=>{
-    const w=p.qty*p.price/tv*100;
-    if(w>40) alerts.push({type:'err',msg:`⚡ <strong>${p.name}</strong> = ${w.toFixed(0)}% — concentration excessive`});
-    else if(w>25) alerts.push({type:'warn',msg:`<strong>${p.name}</strong> = ${w.toFixed(0)}% — surveille`});
-    if(p.alert_price&&p.price<=p.alert_price) alerts.push({type:'err',msg:`🔔 <strong>${p.name}</strong> sous ton alerte ${fmt(p.alert_price)}€`});
+
+  // Grouper par ticker pour éviter les doublons
+  const grouped = {};
+  positions.forEach(p => {
+    if (!grouped[p.name]) {
+      grouped[p.name] = { name: p.name, type: p.type, val: 0, alert_price: p.alert_price, price: p.price };
+    }
+    grouped[p.name].val += p.qty * p.price;
+    // Conserve l'alerte la plus basse définie
+    if (p.alert_price && (!grouped[p.name].alert_price || p.alert_price > grouped[p.name].alert_price)) {
+      grouped[p.name].alert_price = p.alert_price;
+    }
   });
-  const etfPct=positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/tv*100;
-  if(etfPct<30) alerts.push({type:'warn',msg:`Seulement ${etfPct.toFixed(0)}% d'ETF — vise 60–80%`});
-  if(!alerts.length) alerts.push({type:'ok',msg:'✅ Portefeuille bien équilibré'});
+
+  let alerts = [];
+  const seenAlerts = new Set();
+
+  Object.values(grouped).forEach(g => {
+    const w = g.val / tv * 100;
+    const key = g.name;
+    if (seenAlerts.has(key)) return;
+    seenAlerts.add(key);
+
+    if (w > 40) alerts.push({type:'err', msg:`⚡ <strong>${g.name}</strong> = ${w.toFixed(0)}% — concentration excessive`});
+    else if (w > 25) alerts.push({type:'warn', msg:`<strong>${g.name}</strong> = ${w.toFixed(0)}% — surveille`});
+    if (g.alert_price && g.price <= g.alert_price) {
+      alerts.push({type:'err', msg:`🔔 <strong>${g.name}</strong> sous ton alerte ${fmt(g.alert_price)}€`});
+    }
+  });
+
+  const etfPct = positions.filter(p => p.type==='ETF').reduce((a,p) => a+p.qty*p.price, 0) / tv * 100;
+  if (etfPct < 30) alerts.push({type:'warn', msg:`Seulement ${etfPct.toFixed(0)}% d'ETF — vise 60–80%`});
+  if (!alerts.length) alerts.push({type:'ok', msg:'✅ Portefeuille bien équilibré'});
   return alerts;
 }
 
