@@ -92,6 +92,11 @@ function showValidatedChart() {
   if (!hasValidObj({ target: objChartTarget })) return;
   document.getElementById('obj-wizard').style.display = 'none';
   document.getElementById('obj-results').style.display = 'block';
+
+  const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
+  const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
+  const color = active ? active.color : '#1a7f5a';
+
   setTimeout(() => {
     if (allObjectives.length > 0) {
       renderMultiObjChart();
@@ -100,22 +105,28 @@ function showValidatedChart() {
     }
     renderCourtTermePlan();
   }, 100);
-  // Génère toujours le plan IA (ETF + actions) — ne pas garder un contenu statique
+
+  // Plan pour l'objectif ACTIF
   const el = document.getElementById('obj-ai-simple');
   if (el) {
     el.innerHTML = `
-      <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px;margin-bottom:12px">
-        <div style="font-size:14px;font-weight:800;color:#1a7f5a;margin-bottom:4px">✓ Objectif sauvegardé sur ton compte</div>
-        <div style="font-size:13px;color:#1a7f5a">Capital : ${fmtK(objChartCapital)} · ${objChartMonthly}€/mois · Profil ${objRisk}</div>
-      </div>
-      <div id="obj-etf-plan" style="margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:8px;padding:16px;color:#8e8e93">
-          <svg class="spinning" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          <span style="font-size:13px;font-weight:600">Génération du plan ETF en cours...</span>
+      <div style="background:${color}12;border-radius:14px;padding:14px 16px;margin-bottom:14px;border-left:4px solid ${color}">
+        <div style="font-size:13px;font-weight:800;color:${color};margin-bottom:2px">✓ ${active ? active.label : 'Objectif'} — Profil ${riskLabel}</div>
+        <div style="font-size:12px;color:#555">
+          ${objChartCapital > 0 ? fmtK(objChartCapital) + ' de départ · ' : ''}${objChartMonthly}€/mois · ${objChartYears} ans · ${objChartRate}%/an
         </div>
       </div>
-      <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px">Modifier l'objectif</button>`;
-    // Génère le plan ETF en arrière-plan
+
+      <!-- Plan ETF -->
+      <div style="font-size:12px;font-weight:700;color:#1c1c1e;margin-bottom:8px">🏦 Plan ETF long terme</div>
+      <div id="obj-etf-plan" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;padding:14px;color:#8e8e93;background:#f9f9f9;border-radius:12px">
+          <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <span style="font-size:13px;font-weight:600">Génération du plan ETF...</span>
+        </div>
+      </div>
+
+      <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px">✏ Modifier l'objectif</button>`;
     generateETFPlan();
   }
 }
@@ -773,59 +784,82 @@ function renderMultiObjChart() {
 }
 
 function renderObjLegend(tv) {
-  // Injecte ou met à jour la légende sous le graphique
+  // Cherche ou crée le conteneur légende + onglets
   let legend = document.getElementById('obj-multi-legend');
   if (!legend) {
     const wrap = document.querySelector('.obj-chart-card');
     if (!wrap) return;
     legend = document.createElement('div');
     legend.id = 'obj-multi-legend';
-    legend.style.cssText = 'padding:12px 16px 4px;display:flex;flex-direction:column;gap:8px';
-    // Insérer avant la barre de progression
     const realProg = wrap.querySelector('.obj-real-progress');
     if (realProg) wrap.insertBefore(legend, realProg);
     else wrap.appendChild(legend);
   }
 
-  legend.innerHTML = allObjectives.map((obj, i) => {
-    const rate = obj.rate/100/12;
-    const n = obj.years*12;
-    const fv = Math.round(obj.capital*Math.pow(1+rate,n)+(rate>0?obj.monthly*((Math.pow(1+rate,n)-1)/rate):obj.monthly*n));
-    const pct = tv > 0 && obj.target > 0 ? Math.min(tv/obj.target*100, 100) : 0;
-    const isActive = obj.id === activeObjId;
-    return `
-    <div style="background:${isActive?obj.color+'12':'#f9f9f9'};border:1.5px solid ${isActive?obj.color+'40':'#f0f0f0'};border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.2s"
-         onclick="setActiveObj('${obj.id}')">
-      <div style="width:12px;height:12px;border-radius:50%;background:${obj.color};flex-shrink:0"></div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:800;color:#1c1c1e;display:flex;align-items:center;gap:6px">
+  // ── ONGLETS (tabs) ──
+  const tabsHtml = `
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:12px 16px 0;scrollbar-width:none">
+      ${allObjectives.map((obj) => {
+        const isActive = obj.id === activeObjId;
+        return `<button onclick="setActiveObj('${obj.id}')"
+          style="flex-shrink:0;padding:7px 14px;border-radius:99px;border:2px solid ${isActive ? obj.color : '#e5e5ea'};
+                 background:${isActive ? obj.color : '#fff'};color:${isActive ? '#fff' : '#1c1c1e'};
+                 font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;
+                 display:flex;align-items:center;gap:6px;white-space:nowrap">
+          <span style="width:8px;height:8px;border-radius:50%;background:${isActive ? '#fff' : obj.color};display:inline-block;flex-shrink:0"></span>
           ${obj.label}
-          ${isActive ? `<span style="font-size:10px;background:${obj.color};color:#fff;padding:1px 6px;border-radius:5px;font-weight:700">ACTIF</span>` : ''}
-        </div>
-        <div style="font-size:11px;color:#8e8e93;margin-top:1px">${obj.monthly}€/mois · ${obj.years}ans · ${obj.rate}%/an · → <strong style="color:${obj.color}">${fmtK(fv)}</strong></div>
-        <div style="margin-top:5px;background:#e5e5ea;border-radius:4px;height:4px;overflow:hidden">
-          <div style="height:100%;background:${obj.color};width:${pct}%;border-radius:4px;transition:width 0.5s"></div>
-        </div>
-        <div style="font-size:10px;color:#8e8e93;margin-top:2px">${pct.toFixed(1)}% atteint · Objectif : ${fmtK(obj.target)}</div>
-      </div>
-      <button onclick="event.stopPropagation();deleteObjective('${obj.id}')"
-        style="background:#fff0f0;border:none;border-radius:8px;width:28px;height:28px;cursor:pointer;color:#cc2f26;font-size:16px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center"
-        title="Supprimer cet objectif">×</button>
+          <button onclick="event.stopPropagation();deleteObjective('${obj.id}')"
+            style="background:${isActive?'rgba(255,255,255,0.25)':'#f5f5f5'};border:none;border-radius:50%;width:16px;height:16px;cursor:pointer;
+                   color:${isActive?'#fff':'#cc2f26'};font-size:11px;font-weight:900;line-height:1;display:inline-flex;align-items:center;justify-content:center;margin-left:2px"
+            title="Supprimer">×</button>
+        </button>`;
+      }).join('')}
+      <button onclick="resetObj()"
+        style="flex-shrink:0;padding:7px 14px;border-radius:99px;border:2px dashed #e5e5ea;
+               background:#fff;color:#8e8e93;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+        + Nouveau
+      </button>
     </div>`;
-  }).join('') + `
-  <button onclick="resetObj()"
-    style="width:100%;background:#f5f5f5;border:1.5px dashed #e5e5ea;border-radius:12px;padding:10px;font-size:13px;font-weight:700;color:#8e8e93;cursor:pointer;margin-top:4px;transition:all 0.15s"
-    onmouseover="this.style.borderColor='#1c1c1e';this.style.color='#1c1c1e'"
-    onmouseout="this.style.borderColor='#e5e5ea';this.style.color='#8e8e93'">
-    + Créer un nouvel objectif
-  </button>`;
+
+  // ── PANEL ACTIF ──
+  const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
+  let panelHtml = '';
+  if (active) {
+    const rate = active.rate/100/12;
+    const n = active.years*12;
+    const fv = Math.round(active.capital*Math.pow(1+rate,n)+(rate>0?active.monthly*((Math.pow(1+rate,n)-1)/rate):active.monthly*n));
+    const pct = tv > 0 && active.target > 0 ? Math.min(tv/active.target*100, 100) : 0;
+    panelHtml = `
+    <div style="margin:10px 16px 12px;background:${active.color}08;border:1.5px solid ${active.color}25;border-radius:14px;padding:12px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:800;color:#1c1c1e">${active.label}</div>
+        <div style="font-size:13px;font-weight:900;color:${active.color}">→ ${fmtK(fv)}</div>
+      </div>
+      <div style="font-size:11px;color:#8e8e93;margin-bottom:8px">
+        ${active.capital > 0 ? fmtK(active.capital) + ' de départ · ' : ''}${active.monthly}€/mois · ${active.years} ans · ${active.rate}%/an
+      </div>
+      <div style="background:#e5e5ea;border-radius:4px;height:5px;overflow:hidden;margin-bottom:4px">
+        <div style="height:100%;background:${active.color};width:${pct}%;border-radius:4px;transition:width 0.5s"></div>
+      </div>
+      <div style="font-size:10px;color:#8e8e93">${pct.toFixed(1)}% de l'objectif atteint · Reste : ${fmtK(Math.max(active.target - tv, 0))}</div>
+    </div>`;
+  }
+
+  legend.innerHTML = tabsHtml + panelHtml;
 }
 
 function setActiveObj(id) {
   activeObjId = id;
   const obj = allObjectives.find(o => o.id === id);
-  if (obj) applyObjData(obj);
+  if (obj) {
+    applyObjData(obj);
+    // Vide les caches ETF et actions pour régénérer le plan du nouvel objectif actif
+    try { localStorage.removeItem(CACHE_ETF_PLAN); } catch {}
+    try { localStorage.removeItem(CACHE_ACTIONS); } catch {}
+  }
   renderMultiObjChart();
+  // Régénère le plan pour l'objectif sélectionné
+  showValidatedChart();
 }
 
 async function deleteObjective(id) {
