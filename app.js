@@ -100,14 +100,49 @@ function showValidatedChart() {
     }
     renderCourtTermePlan();
   }, 100);
+  // Génère toujours le plan IA (ETF + actions) — ne pas garder un contenu statique
   const el = document.getElementById('obj-ai-simple');
-  if (el && el.innerHTML.trim() === '') {
+  if (el) {
     el.innerHTML = `
-      <div style="background:#e8f8f0;border-radius:14px;padding:16px;margin-bottom:12px">
+      <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px;margin-bottom:12px">
         <div style="font-size:14px;font-weight:800;color:#1a7f5a;margin-bottom:4px">✓ Objectif sauvegardé sur ton compte</div>
         <div style="font-size:13px;color:#1a7f5a">Capital : ${fmtK(objChartCapital)} · ${objChartMonthly}€/mois · Profil ${objRisk}</div>
       </div>
+      <div id="obj-etf-plan" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px;padding:16px;color:#8e8e93">
+          <svg class="spinning" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <span style="font-size:13px;font-weight:600">Génération du plan ETF en cours...</span>
+        </div>
+      </div>
       <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px">Modifier l'objectif</button>`;
+    // Génère le plan ETF en arrière-plan
+    generateETFPlan();
+  }
+}
+
+async function generateETFPlan() {
+  const el = document.getElementById('obj-etf-plan');
+  if (!el) return;
+  const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
+  const etfAlloc = objRisk === 'agressif'
+    ? '70% IWDA.L (ETF Monde) + 30% VWCE.DE (All-World)'
+    : objRisk === 'equilibre'
+    ? '80% IWDA.L (ETF Monde) + 20% VWCE.DE (All-World)'
+    : '90% IWDA.L (ETF Monde) + 10% VWCE.DE (All-World)';
+  const prompt = `Conseiller financier. Plan d'investissement ETF pour profil ${riskLabel}.
+Capital : ${objChartCapital}€ · ${objChartMonthly}€/mois · Objectif : ${fmtK(objChartTarget)} en ${objChartYears} ans · Rendement visé : ${objChartRate}%/an.
+Allocation de base : ${etfAlloc}.
+Réponds en 2 blocs courts avec titres en gras :
+**Où investir ton capital de départ (${objChartCapital}€)**
+Répartition exacte avec tickers et montants. Max 3 lignes.
+**Chaque mois : ${objChartMonthly}€**
+Répartition exacte. Max 3 lignes.
+Sois ULTRA concret. Donne les vrais tickers et montants exacts.`;
+  try {
+    const r = await callClaude(prompt, 'Tu es conseiller financier. Sois concret et bref.');
+    if (el) el.innerHTML = `<div style="font-size:13px;color:#1c1c1e;line-height:1.8">${formatMD(r)}</div>`;
+  } catch(e) {
+    if (el) el.innerHTML = `<div style="font-size:13px;color:#8e8e93">Plan ETF : ${etfAlloc}</div>`;
   }
 }
 
@@ -231,6 +266,8 @@ async function renderCourtTermePlan() {
 
 async function openActionFromObjectif(ticker, name, amount) {
   decisionIntention = 'acheter';
+  // Vider l'ancienne analyse
+  document.getElementById('d-result').innerHTML = '';
   nav('decision');
   setTimeout(() => {
     const nameEl = document.getElementById('d-name');
@@ -239,6 +276,7 @@ async function openActionFromObjectif(ticker, name, amount) {
     const pctEl = document.getElementById('d-pct');
     if (pctEl) { pctEl.value = pct; updatePct(); }
     setDecisionIntent('acheter');
+    document.getElementById('sec-decision')?.scrollTo(0,0);
   }, 100);
 }
 
@@ -4171,8 +4209,9 @@ function togglePosSignal(id) {
 let decisionIntention = null;
 function openDecisionFromPos(name, action) {
   decisionIntention = action;
+  // Vider l'ancienne analyse
+  document.getElementById('d-result').innerHTML = '';
   nav('decision');
-  // Attendre que le DOM soit prêt
   setTimeout(() => {
     const nameEl = document.getElementById('d-name');
     if (nameEl) nameEl.value = name;
@@ -4182,7 +4221,6 @@ function openDecisionFromPos(name, action) {
     if (rEl) rEl.value = profile.risk;
     updatePct();
     setDecisionIntent(action);
-    // Scroll vers le haut
     document.getElementById('sec-decision')?.scrollTo(0,0);
   }, 50);
 }
@@ -4918,6 +4956,8 @@ function toggleNews(i) {
 function openDecision(ticker,signal){
   const pct=signal==='éviter'?0:suggestedPct(signal,profile.risk,profile.horizon);
   const amt=Math.round(profile.bankroll*pct/100);
+  // Vider l'ancienne analyse à chaque nouveau ticker
+  document.getElementById('d-result').innerHTML = '';
   document.getElementById('d-name').value=ticker;
   document.getElementById('d-horizon').value=profile.horizon;
   document.getElementById('d-risk').value=profile.risk;
