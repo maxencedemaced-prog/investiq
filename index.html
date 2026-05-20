@@ -5,18 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="theme-color" content="#00b386">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="InvestIQ">
   <title>InvestIQ — Ton assistant investissement</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="icon" type="image/png" href="icons/icon-192.png">
-  <link rel="shortcut icon" href="icons/icon-192.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <link rel="stylesheet" href="style.css">
   <style>
+    /* ===== DCA PRESETS ===== */
+    .dca-preset {
+      white-space: nowrap;
+      flex-shrink: 0;
+      background: #fff;
+      border: 1.5px solid #e5e5ea;
+      border-radius: 99px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1c1c1e;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .dca-preset:hover, .dca-preset.active {
+      background: #1c1c1e;
+      color: #fff;
+      border-color: #1c1c1e;
+    }
     /* ===== SKELETON LOADER ===== */
     .skeleton {
       background: linear-gradient(90deg, #f0f0f0 25%, #e4e4e4 50%, #f0f0f0 75%);
@@ -27,9 +43,7 @@
       0%   { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
-
-    /* ===== NEWS CARDS — reset complet + border-left forcé ===== */
-    /* On laisse le JS injecter les styles inline — on neutralise juste le CSS global */
+    /* ===== NEWS CARDS ===== */
     .news-item {
       border: none !important;
       background: transparent !important;
@@ -38,36 +52,9 @@
       border-radius: 0 !important;
       box-shadow: none !important;
     }
-    /* La carte interne (div direct enfant de .news-item) hérite du style inline JS */
-    .news-item > div:first-child {
-      transition: box-shadow 0.2s;
-    }
-
-    /* ===== FILTER PILLS — scroll horizontal sans scrollbar ===== */
-    .filter-row,
-    div[id^="news-fil-"]:not(button),
-    div[style*="overflow-x:auto"] {
-      scrollbar-width: none !important;
-      -ms-overflow-style: none !important;
-    }
-    .filter-row::-webkit-scrollbar,
-    div[style*="overflow-x:auto"]::-webkit-scrollbar { display: none !important; }
-
-    /* ===== FILTER PILLS style ===== */
-    .filter-pill {
-      transition: all 0.15s ease !important;
-    }
-    .filter-pill:hover:not(.active) {
-      background: #f0f0f0 !important;
-      border-color: #d0d0d0 !important;
-    }
-    .filter-pill.active {
-      background: #1c1c1e !important;
-      color: #fff !important;
-      border-color: #1c1c1e !important;
-    }
-
-    /* ===== NEWS EXPAND BUTTON ===== */
+    .filter-pill { transition: all 0.15s ease !important; }
+    .filter-pill:hover:not(.active) { background: #f0f0f0 !important; border-color: #d0d0d0 !important; }
+    .filter-pill.active { background: #1c1c1e !important; color: #fff !important; border-color: #1c1c1e !important; }
     .news-expand {
       background: rgba(255,255,255,0.9) !important;
       border: 1.5px solid rgba(0,0,0,0.1) !important;
@@ -80,64 +67,16 @@
       transition: all 0.15s !important;
       white-space: nowrap;
     }
-    .news-expand:hover {
-      background: #fff !important;
-      border-color: #1c1c1e !important;
-      color: #1c1c1e !important;
-    }
-
-    /* ===== SIGNAL BADGE dans la reco ===== */
-    .signal-badge {
-      display: inline-block !important;
-      padding: 6px 14px !important;
-      border-radius: 10px !important;
-      font-size: 13px !important;
-      font-weight: 800 !important;
-      margin-bottom: 12px !important;
-      letter-spacing: 0.2px;
-    }
+    .signal-badge { display: inline-block !important; padding: 6px 14px !important; border-radius: 10px !important; font-size: 13px !important; font-weight: 800 !important; margin-bottom: 12px !important; }
     .signal-buy     { background: #e8f8f0 !important; color: #1a7f5a !important; border: 1.5px solid rgba(26,127,90,0.25) !important; }
     .signal-wait    { background: #fff9e6 !important; color: #b45309 !important; border: 1.5px solid rgba(245,158,11,0.25) !important; }
     .signal-avoid   { background: #fff0f0 !important; color: #cc2f26 !important; border: 1.5px solid rgba(204,47,38,0.25) !important; }
     .signal-neutral { background: #f5f5f5 !important; color: #3c3c43  !important; border: 1.5px solid #e5e5ea !important; }
-
-    /* ===== NEWS RECO — masqué par défaut ===== */
     .news-reco { display: none !important; }
     .news-reco.open { display: block !important; }
-
-    /* ===== OPP STRIP ===== */
     .opp-strip  { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
-    .opp-label  { font-size:12px; font-weight:700; color:#1c1c1e; }
-    .opp-sub    { font-size:11px; color:#8e8e93; margin-top:2px; }
-    .opp-amount { font-size:18px; font-weight:900; }
-
-    /* ===== SEARCH DROP ===== */
-    .search-drop {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0; right: 0;
-      background: #fff;
-      border-radius: 14px;
-      border: 1.5px solid #e5e5ea;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-      z-index: 200;
-      max-height: 260px;
-      overflow-y: auto;
-    }
-
-    /* ===== BLOOMBERG TICKER animation ===== */
-    .bloomberg-ticker {
-      display: flex;
-      animation: ticker-scroll 30s linear infinite;
-      white-space: nowrap;
-    }
-    .bloomberg-ticker:hover { animation-play-state: paused; }
-
-    /* ===== SPINNING ===== */
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
+    div[style*="overflow-x:auto"]::-webkit-scrollbar { display:none !important; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .spinning { animation: spin 0.8s linear infinite; }
   </style>
 </head>
@@ -740,16 +679,64 @@
     <!-- DCA -->
     <section id="sec-dca" class="sec">
       <div class="page-header"><h1>Simulateur DCA</h1></div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon green">↻</span>Investissement régulier</div></div>
-        <div class="slider-group">
-          <div class="slider-row"><label>Versement mensuel</label><input type="range" id="dca-m" min="50" max="2000" step="50" value="200" oninput="updateDCA()" class="slider"><span id="dca-m-o">200 €</span></div>
-          <div class="slider-row"><label>Durée</label><input type="range" id="dca-y" min="1" max="30" step="1" value="10" oninput="updateDCA()" class="slider"><span id="dca-y-o">10 ans</span></div>
-          <div class="slider-row"><label>Rendement estimé</label><input type="range" id="dca-r" min="1" max="15" step="0.5" value="7" oninput="updateDCA()" class="slider"><span id="dca-r-o">7 %</span></div>
-          <div class="slider-row"><label>Capital de départ</label><input type="range" id="dca-s" min="0" max="10000" step="500" value="1000" oninput="updateDCA()" class="slider"><span id="dca-s-o">1 000 €</span></div>
-        </div>
-        <div class="dca-result"><div class="metrics-grid" id="dca-metrics"></div><div id="dca-tip"></div></div>
+
+      <!-- PRESETS -->
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:12px">
+        <button class="dca-preset" onclick="dcaPreset(200,10,7,1000)">📊 ETF Monde</button>
+        <button class="dca-preset" onclick="dcaPreset(500,20,8,5000)">🚀 Agressif</button>
+        <button class="dca-preset" onclick="dcaPreset(100,15,5,0)">🛡 Prudent</button>
+        <button class="dca-preset" onclick="dcaPreset(1000,30,9,10000)">💎 Premium</button>
+        <button class="dca-preset" onclick="dcaPreset(300,10,7,0)">🎓 Débutant</button>
       </div>
+
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="card-icon green">↻</span>Paramètres</div></div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <label>Versement mensuel</label>
+            <input type="range" id="dca-m" min="0" max="10000" step="50" value="200" oninput="updateDCA()" class="slider">
+            <span id="dca-m-o">200 €</span>
+          </div>
+          <div class="slider-row">
+            <label>Durée</label>
+            <input type="range" id="dca-y" min="1" max="40" step="1" value="10" oninput="updateDCA()" class="slider">
+            <span id="dca-y-o">10 ans</span>
+          </div>
+          <div class="slider-row">
+            <label>Rendement annuel estimé</label>
+            <input type="range" id="dca-r" min="1" max="20" step="0.5" value="7" oninput="updateDCA()" class="slider">
+            <span id="dca-r-o">7.0 %</span>
+          </div>
+          <div class="slider-row">
+            <label>Capital de départ</label>
+            <input type="range" id="dca-s" min="0" max="200000" step="1000" value="1000" oninput="updateDCA()" class="slider">
+            <span id="dca-s-o">1 000 €</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RÉSULTATS -->
+      <div class="metrics-grid" id="dca-metrics" style="margin-bottom:12px"></div>
+
+      <!-- GRAPHIQUE -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-head"><div class="card-title"><span class="card-icon dark">📈</span>Projection de croissance</div></div>
+        <div style="position:relative;height:200px;margin-top:8px">
+          <canvas id="dca-chart"></canvas>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;font-weight:600;color:#8e8e93">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#1c1c1e;display:inline-block;border-radius:2px"></span>Capital projeté</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#c7c7cc;display:inline-block;border-radius:2px;border-top:1px dashed #c7c7cc"></span>Capital investi</span>
+        </div>
+      </div>
+
+      <!-- TABLEAU ANNUEL -->
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="card-icon dark">📅</span>Progression année par année</div></div>
+        <div id="dca-table" style="overflow-x:auto"></div>
+      </div>
+
+      <div id="dca-tip"></div>
     </section>
 
     <!-- AJOUTER -->
