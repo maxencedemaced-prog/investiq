@@ -120,30 +120,131 @@ function showValidatedChart() {
   }
 }
 
+const CACHE_ETF_PLAN = 'iq_etf_plan';
+const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // 24h
+
 async function generateETFPlan() {
   const el = document.getElementById('obj-etf-plan');
   if (!el) return;
-  const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
-  const etfAlloc = objRisk === 'agressif'
-    ? '70% IWDA.L (ETF Monde) + 30% VWCE.DE (All-World)'
-    : objRisk === 'equilibre'
-    ? '80% IWDA.L (ETF Monde) + 20% VWCE.DE (All-World)'
-    : '90% IWDA.L (ETF Monde) + 10% VWCE.DE (All-World)';
-  const prompt = `Conseiller financier. Plan d'investissement ETF pour profil ${riskLabel}.
-Capital : ${objChartCapital}€ · ${objChartMonthly}€/mois · Objectif : ${fmtK(objChartTarget)} en ${objChartYears} ans · Rendement visé : ${objChartRate}%/an.
-Allocation de base : ${etfAlloc}.
-Réponds en 2 blocs courts avec titres en gras :
-**Où investir ton capital de départ (${objChartCapital}€)**
-Répartition exacte avec tickers et montants. Max 3 lignes.
-**Chaque mois : ${objChartMonthly}€**
-Répartition exacte. Max 3 lignes.
-Sois ULTRA concret. Donne les vrais tickers et montants exacts.`;
+
+  // Vérifie le cache
   try {
-    const r = await callClaude(prompt, 'Tu es conseiller financier. Sois concret et bref.');
-    if (el) el.innerHTML = `<div style="font-size:13px;color:#1c1c1e;line-height:1.8">${formatMD(r)}</div>`;
-  } catch(e) {
-    if (el) el.innerHTML = `<div style="font-size:13px;color:#8e8e93">Plan ETF : ${etfAlloc}</div>`;
+    const cached = JSON.parse(localStorage.getItem(CACHE_ETF_PLAN) || 'null');
+    if (cached && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk) {
+      renderETFCards(cached.etfs, el);
+      return;
+    }
+  } catch {}
+
+  const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
+
+  const prompt = `Conseiller financier. Propose exactement 3 ETF pour un profil ${riskLabel}.
+Capital de départ : ${objChartCapital}€ · Versement mensuel : ${objChartMonthly}€ · Durée : ${objChartYears} ans.
+Réponds UNIQUEMENT en JSON valide sans markdown :
+[
+  {
+    "ticker": "IWDA.L",
+    "name": "iShares Core MSCI World",
+    "desc": "1600+ entreprises mondiales diversifiées",
+    "pct_capital": 70,
+    "pct_mensuel": 70,
+    "color": "#1a7f5a",
+    "pourquoi": "Cœur du portefeuille — diversification maximale"
   }
+]
+Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, adapté au profil ${riskLabel}.`;
+
+  try {
+    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.');
+    const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
+    const etfs = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']') + 1));
+    if (Array.isArray(etfs) && etfs.length > 0) {
+      try { localStorage.setItem(CACHE_ETF_PLAN, JSON.stringify({ etfs, risk: objRisk, ts: Date.now() })); } catch {}
+      renderETFCards(etfs, el);
+      return;
+    }
+  } catch(e) {}
+
+  // Fallback
+  const fallback = objRisk === 'agressif'
+    ? [
+        { ticker:'IWDA.L',  name:'iShares MSCI World',      desc:'1600+ entreprises mondiales',    pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Base solide du portefeuille' },
+        { ticker:'VWCE.DE', name:'Vanguard FTSE All-World',  desc:'Inclut les marchés émergents',   pct_capital:20, pct_mensuel:20, color:'#6366f1', pourquoi:'Diversification globale' },
+        { ticker:'IITU.L',  name:'iShares S&P 500 IT ETF',   desc:'Top tech US : Apple, NVIDIA...', pct_capital:20, pct_mensuel:20, color:'#f59e0b', pourquoi:'Exposition tech croissance' },
+      ]
+    : objRisk === 'equilibre'
+    ? [
+        { ticker:'IWDA.L',  name:'iShares MSCI World',       desc:'1600+ entreprises mondiales',   pct_capital:80, pct_mensuel:80, color:'#1a7f5a', pourquoi:'Cœur du portefeuille' },
+        { ticker:'VWCE.DE', name:'Vanguard FTSE All-World',   desc:'Inclut les marchés émergents',  pct_capital:20, pct_mensuel:20, color:'#6366f1', pourquoi:'Complément diversifié' },
+      ]
+    : [
+        { ticker:'IWDA.L',  name:'iShares MSCI World',       desc:'1600+ entreprises mondiales',   pct_capital:90, pct_mensuel:90, color:'#1a7f5a', pourquoi:'Maximum de diversification' },
+        { ticker:'AGGH.L',  name:'iShares Global Aggregate', desc:'Obligations mondiales stables', pct_capital:10, pct_mensuel:10, color:'#0ea5e9', pourquoi:'Stabilité et protection' },
+      ];
+  renderETFCards(fallback, el);
+}
+
+function renderETFCards(etfs, containerEl) {
+  const montantCapital  = objChartCapital  || 0;
+  const montantMensuel  = objChartMonthly  || 200;
+
+  containerEl.innerHTML = `
+    <!-- Apport initial -->
+    ${montantCapital > 0 ? `
+    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">
+      🏦 Apport initial — ${montantCapital.toLocaleString('fr-FR')} €
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      ${etfs.map((e) => {
+        const montant = Math.round(montantCapital * e.pct_capital / 100);
+        return `<div onclick="openActionFromObjectif('${e.ticker}','${e.name}',${montant})"
+          style="background:#fff;border-radius:14px;padding:13px 16px;border:2px solid #f0f0f0;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:12px"
+          onmouseover="this.style.borderColor='${e.color}';this.style.background='${e.color}08'"
+          onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'">
+          <div style="width:44px;height:44px;border-radius:12px;background:${e.color}15;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${e.color};flex-shrink:0">${e.ticker.slice(0,2)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:800;color:#1c1c1e">${e.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${e.ticker}</span></div>
+            <div style="font-size:11px;color:#8e8e93;margin-top:1px">${e.desc}</div>
+            <div style="margin-top:5px;background:#f0f0f0;border-radius:4px;height:4px;overflow:hidden">
+              <div style="height:100%;background:${e.color};width:${e.pct_capital}%;border-radius:4px"></div>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:16px;font-weight:900;color:${e.color}">${montant.toLocaleString('fr-FR')} €</div>
+            <div style="font-size:11px;color:#8e8e93">${e.pct_capital}% · Analyser →</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+
+    <!-- Mensuel -->
+    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">
+      📅 Chaque mois — ${montantMensuel.toLocaleString('fr-FR')} €
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      ${etfs.map((e) => {
+        const montant = Math.round(montantMensuel * e.pct_mensuel / 100);
+        return `<div onclick="openActionFromObjectif('${e.ticker}','${e.name}',${montant})"
+          style="background:#fff;border-radius:14px;padding:13px 16px;border:2px solid #f0f0f0;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:12px"
+          onmouseover="this.style.borderColor='${e.color}';this.style.background='${e.color}08'"
+          onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'">
+          <div style="width:44px;height:44px;border-radius:12px;background:${e.color}15;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${e.color};flex-shrink:0">${e.ticker.slice(0,2)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:800;color:#1c1c1e">${e.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${e.ticker}</span></div>
+            <div style="font-size:11px;color:#1a7f5a;font-weight:600;margin-top:1px">${e.pourquoi}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:16px;font-weight:900;color:${e.color}">${montant.toLocaleString('fr-FR')} €</div>
+            <div style="font-size:11px;color:#8e8e93">${e.pct_mensuel}% · Analyser →</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div style="padding:10px 14px;background:#f0faf6;border-radius:12px;font-size:12px;color:#065f46;font-weight:600;display:flex;justify-content:space-between;align-items:center">
+      <span>💡 Clique sur un ETF pour l'analyser avant d'investir</span>
+      <button onclick="localStorage.removeItem('${CACHE_ETF_PLAN}');generateETFPlan()" style="background:none;border:none;color:#1a7f5a;font-weight:700;cursor:pointer;font-size:11px;text-decoration:underline">Actualiser</button>
+    </div>`;
 }
 
 
