@@ -784,68 +784,49 @@ function renderMultiObjChart() {
 }
 
 function renderObjLegend(tv) {
-  // Cherche ou crée le conteneur légende + onglets
-  let legend = document.getElementById('obj-multi-legend');
-  if (!legend) {
-    const wrap = document.querySelector('.obj-chart-card');
-    if (!wrap) return;
-    legend = document.createElement('div');
-    legend.id = 'obj-multi-legend';
-    const realProg = wrap.querySelector('.obj-real-progress');
-    if (realProg) wrap.insertBefore(legend, realProg);
-    else wrap.appendChild(legend);
-  }
+  // Utilise le div dédié #obj-tabs dans le HTML
+  const tabsEl = document.getElementById('obj-tabs');
+  if (!tabsEl) return;
 
-  // ── ONGLETS (tabs) ──
-  const tabsHtml = `
-    <div style="display:flex;gap:6px;overflow-x:auto;padding:12px 16px 0;scrollbar-width:none">
-      ${allObjectives.map((obj) => {
-        const isActive = obj.id === activeObjId;
-        return `<button onclick="setActiveObj('${obj.id}')"
-          style="flex-shrink:0;padding:7px 14px;border-radius:99px;border:2px solid ${isActive ? obj.color : '#e5e5ea'};
-                 background:${isActive ? obj.color : '#fff'};color:${isActive ? '#fff' : '#1c1c1e'};
-                 font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;
-                 display:flex;align-items:center;gap:6px;white-space:nowrap">
-          <span style="width:8px;height:8px;border-radius:50%;background:${isActive ? '#fff' : obj.color};display:inline-block;flex-shrink:0"></span>
-          ${obj.label}
-          <button onclick="event.stopPropagation();deleteObjective('${obj.id}')"
-            style="background:${isActive?'rgba(255,255,255,0.25)':'#f5f5f5'};border:none;border-radius:50%;width:16px;height:16px;cursor:pointer;
-                   color:${isActive?'#fff':'#cc2f26'};font-size:11px;font-weight:900;line-height:1;display:inline-flex;align-items:center;justify-content:center;margin-left:2px"
-            title="Supprimer">×</button>
-        </button>`;
-      }).join('')}
-      <button onclick="resetObj()"
-        style="flex-shrink:0;padding:7px 14px;border-radius:99px;border:2px dashed #e5e5ea;
-               background:#fff;color:#8e8e93;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
-        + Nouveau
-      </button>
-    </div>`;
-
-  // ── PANEL ACTIF ──
   const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
+
+  // ── ONGLETS ──
+  const tabsHtml = allObjectives.map((obj) => {
+    const isActive = obj.id === activeObjId;
+    return `<button class="obj-tab-btn${isActive?' active':''}"
+      style="${isActive ? 'background:'+obj.color+';border-color:'+obj.color : ''}"
+      onclick="setActiveObj('${obj.id}')">
+      <span class="obj-tab-dot" style="background:${isActive?'rgba(255,255,255,0.8)':obj.color}"></span>
+      ${obj.label}
+      <span class="obj-tab-del" onclick="event.stopPropagation();deleteObjective('${obj.id}')" title="Supprimer">×</span>
+    </button>`;
+  }).join('') +
+  `<button class="obj-tab-new" onclick="resetObj()">+ Nouveau objectif</button>`;
+
+  // ── PANEL résumé de l'objectif actif ──
   let panelHtml = '';
   if (active) {
     const rate = active.rate/100/12;
     const n = active.years*12;
     const fv = Math.round(active.capital*Math.pow(1+rate,n)+(rate>0?active.monthly*((Math.pow(1+rate,n)-1)/rate):active.monthly*n));
     const pct = tv > 0 && active.target > 0 ? Math.min(tv/active.target*100, 100) : 0;
-    panelHtml = `
-    <div style="margin:10px 16px 12px;background:${active.color}08;border:1.5px solid ${active.color}25;border-radius:14px;padding:12px 14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+    panelHtml = `<div style="width:100%;margin-top:6px;background:${active.color}10;border:1.5px solid ${active.color}30;border-radius:14px;padding:11px 14px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px">
+      <div>
         <div style="font-size:13px;font-weight:800;color:#1c1c1e">${active.label}</div>
-        <div style="font-size:13px;font-weight:900;color:${active.color}">→ ${fmtK(fv)}</div>
+        <div style="font-size:11px;color:#8e8e93;margin-top:1px">${active.capital>0?fmtK(active.capital)+' départ · ':''}${active.monthly}€/mois · ${active.years}ans · ${active.rate}%/an</div>
+        <div style="margin-top:5px;background:#e5e5ea;border-radius:4px;height:4px;width:180px;overflow:hidden">
+          <div style="height:100%;background:${active.color};width:${pct}%;border-radius:4px"></div>
+        </div>
+        <div style="font-size:10px;color:#8e8e93;margin-top:2px">${pct.toFixed(1)}% atteint</div>
       </div>
-      <div style="font-size:11px;color:#8e8e93;margin-bottom:8px">
-        ${active.capital > 0 ? fmtK(active.capital) + ' de départ · ' : ''}${active.monthly}€/mois · ${active.years} ans · ${active.rate}%/an
+      <div style="text-align:right">
+        <div style="font-size:18px;font-weight:900;color:${active.color}">${fmtK(fv)}</div>
+        <div style="font-size:10px;color:#8e8e93">projection finale</div>
       </div>
-      <div style="background:#e5e5ea;border-radius:4px;height:5px;overflow:hidden;margin-bottom:4px">
-        <div style="height:100%;background:${active.color};width:${pct}%;border-radius:4px;transition:width 0.5s"></div>
-      </div>
-      <div style="font-size:10px;color:#8e8e93">${pct.toFixed(1)}% de l'objectif atteint · Reste : ${fmtK(Math.max(active.target - tv, 0))}</div>
     </div>`;
   }
 
-  legend.innerHTML = tabsHtml + panelHtml;
+  tabsEl.innerHTML = tabsHtml + panelHtml;
 }
 
 function setActiveObj(id) {
