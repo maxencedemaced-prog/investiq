@@ -200,41 +200,106 @@ Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Co
       ];
 }
 
-function renderActionCards(actionRecs, containerEl) {
-  containerEl.innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:10px">
-      ${actionRecs.map((a, i) => `
-      <div onclick="openActionFromObjectif('${a.ticker}','${a.name}',${a.montant})"
-           style="background:#fff;border-radius:14px;padding:14px 16px;border:2px solid #f0f0f0;cursor:pointer;transition:all 0.2s"
-           onmouseover="this.style.borderColor='#f59e0b';this.style.background='#fffdf5'"
-           onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:42px;height:42px;border-radius:12px;background:${a.color}20;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${a.color}">${a.ticker.slice(0,2)}</div>
-            <div>
-              <div style="font-size:14px;font-weight:700;color:#1c1c1e">${a.name} <span style="font-size:12px;color:#8e8e93;font-weight:500">${a.ticker}</span></div>
-              <div style="font-size:12px;color:#8e8e93;margin-top:1px">${a.desc}</div>
-            </div>
+// ===== CACHE ACTIONS COURT TERME =====
+const CACHE_ACTIONS = 'iq_court_actions';
+const CACHE_ACTIONS_TTL = 24 * 60 * 60 * 1000; // 24h
+
+function loadActionsCache(risk) {
+  try {
+    const cached = JSON.parse(localStorage.getItem(CACHE_ACTIONS) || 'null');
+    if (!cached) return null;
+    const age = Date.now() - cached.ts;
+    if (age > CACHE_ACTIONS_TTL || cached.risk !== risk) return null;
+    return cached; // { actions, ts, risk, date }
+  } catch { return null; }
+}
+
+function saveActionsCache(actions, risk) {
+  try {
+    localStorage.setItem(CACHE_ACTIONS, JSON.stringify({
+      actions, risk, ts: Date.now(),
+      date: new Date().toLocaleDateString('fr-FR')
+    }));
+  } catch {}
+}
+
+function forceRefreshActions() {
+  try { localStorage.removeItem(CACHE_ACTIONS); } catch {}
+  renderCourtTermePlan();
+}
+
+function renderActionCard(a, i, isOld) {
+  const opacity = isOld ? '0.45' : '1';
+  const strikeStyle = isOld ? 'text-decoration:line-through;color:#c7c7cc' : '';
+  const badgeHtml = isOld
+    ? '<span style="background:#f0f0f0;color:#8e8e93;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px">Remplacé</span>'
+    : '<span style="background:#e8f8f0;color:#1a7f5a;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px">⚡ Actuel</span>';
+  const cursor = isOld ? 'default' : 'pointer';
+  const onclick = isOld ? '' : `onclick="openActionFromObjectif('${a.ticker}','${a.name}',${a.montant})"`;
+  const hover = isOld ? '' : `onmouseover="this.style.borderColor='#f59e0b';this.style.background='#fffdf5'" onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'"`;
+
+  return `<div ${onclick} ${hover}
+       style="background:#fff;border-radius:14px;padding:14px 16px;border:2px solid #f0f0f0;cursor:${cursor};transition:all 0.2s;opacity:${opacity}">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:42px;height:42px;border-radius:12px;background:${a.color}20;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${a.color};${isOld?'filter:grayscale(0.7)':''}">${a.ticker.slice(0,2)}</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:${isOld?'#c7c7cc':'#1c1c1e'};${strikeStyle}">
+            ${a.name} <span style="font-size:12px;color:#8e8e93;font-weight:500">${a.ticker}</span>
+            ${badgeHtml}
           </div>
-          <div style="text-align:right">
-            <div style="font-size:14px;font-weight:800;color:#1a7f5a">${a.gain}</div>
-            <div style="font-size:11px;color:#8e8e93">${a.horizon}</div>
-          </div>
+          <div style="font-size:12px;color:#8e8e93;margin-top:1px">${a.desc}</div>
         </div>
-        <div style="margin-top:10px">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8e93;margin-bottom:4px">
-            <span>Montant suggéré : <strong style="color:#1c1c1e">${fmtK(a.montant)}</strong></span>
-            <span style="font-weight:700;color:#f59e0b">Analyser & Acheter →</span>
-          </div>
-          <div style="background:#f5f5f5;border-radius:6px;height:6px;overflow:hidden">
-            <div style="height:100%;background:linear-gradient(90deg,${a.color}60,${a.color});width:${40 + i*12}%"></div>
-          </div>
-        </div>
-      </div>`).join('')}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:14px;font-weight:800;color:${isOld?'#c7c7cc':'#1a7f5a'}">${a.gain}</div>
+        <div style="font-size:11px;color:#8e8e93">${a.horizon}</div>
+      </div>
     </div>
-    <div style="margin-top:10px;padding:10px 14px;background:#fff9e6;border-radius:12px;font-size:12px;color:#92400e">
-      ⚠️ Recommandations éducatives générées par IA. Clique pour analyser avant d'investir.
-    </div>`;
+    ${!isOld ? `<div style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8e93;margin-bottom:4px">
+        <span>Montant suggéré : <strong style="color:#1c1c1e">${fmtK(a.montant)}</strong></span>
+        <span style="font-weight:700;color:#f59e0b">Analyser & Acheter →</span>
+      </div>
+      <div style="background:#f5f5f5;border-radius:6px;height:6px;overflow:hidden">
+        <div style="height:100%;background:linear-gradient(90deg,${a.color}60,${a.color});width:${40 + i*12}%"></div>
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+function renderActionCards(actionRecs, containerEl, oldRecs) {
+  const hasOld = oldRecs && oldRecs.length > 0;
+  // Détecte les nouvelles actions (tickers différents des anciennes)
+  const newTickers = new Set(actionRecs.map(a => a.ticker));
+  const oldTickers = hasOld ? new Set(oldRecs.map(a => a.ticker)) : new Set();
+  const hasChanges = hasOld && [...newTickers].some(t => !oldTickers.has(t));
+
+  let html = '<div style="display:flex;flex-direction:column;gap:10px">';
+
+  if (hasOld && hasChanges) {
+    // Affiche les nouvelles en premier avec badge "Actuel"
+    html += `<div style="font-size:11px;font-weight:700;color:#1a7f5a;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px">⚡ Nouvelles opportunités du marché</div>`;
+    html += actionRecs.map((a, i) => renderActionCard(a, i, false)).join('');
+
+    // Anciennes barrées en dessous
+    const deprecated = oldRecs.filter(a => !newTickers.has(a.ticker));
+    if (deprecated.length > 0) {
+      html += `<div style="font-size:11px;font-weight:700;color:#c7c7cc;text-transform:uppercase;letter-spacing:0.4px;margin-top:6px;margin-bottom:2px">Anciennes recommandations</div>`;
+      html += deprecated.map((a, i) => renderActionCard(a, i, true)).join('');
+    }
+  } else {
+    // Pas d'historique ou pas de changement — affiche normalement
+    html += actionRecs.map((a, i) => renderActionCard(a, i, false)).join('');
+  }
+
+  html += '</div>';
+  html += `<div style="margin-top:10px;padding:10px 14px;background:#fff9e6;border-radius:12px;font-size:12px;color:#92400e">
+    ⚠️ Recommandations éducatives IA · Actualisation automatique chaque 24h ·
+    <button onclick="forceRefreshActions()" style="background:none;border:none;color:#f59e0b;font-weight:700;cursor:pointer;font-size:12px;text-decoration:underline">Actualiser maintenant</button>
+  </div>`;
+
+  containerEl.innerHTML = html;
 }
 
 async function renderCourtTermePlan() {
@@ -247,21 +312,62 @@ async function renderCourtTermePlan() {
   const risk = objRisk || profile.risk || 'faible';
 
   el.style.display = 'block';
+
+  // Vérifie le cache
+  const cached = loadActionsCache(risk);
+  if (cached) {
+    // Cache valide — affiche directement sans appel IA
+    const ageH = Math.floor((Date.now() - cached.ts) / 3600000);
+    actionsEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+        <div style="font-size:13px;color:#8e8e93">
+          Budget alloué : <strong style="color:#1c1c1e">${fmtK(budgetCourt)}</strong> · ${cached.actions.length} opportunités
+        </div>
+        <div style="font-size:11px;color:#c7c7cc;font-weight:500">
+          Mis à jour ${ageH < 1 ? 'il y a moins d\'1h' : 'il y a ' + ageH + 'h'} · ${cached.date}
+        </div>
+      </div>
+      <div id="action-cards-wrap"></div>`;
+    renderActionCards(cached.actions, document.getElementById('action-cards-wrap'));
+    return;
+  }
+
+  // Cache expiré ou absent — récupère les anciennes depuis localStorage pour les afficher barrées
+  let oldActions = null;
+  try {
+    const old = JSON.parse(localStorage.getItem(CACHE_ACTIONS) || 'null');
+    if (old && old.actions) oldActions = old.actions;
+  } catch {}
+
+  // Affiche loading avec les anciennes si dispo
   actionsEl.innerHTML = `
-    <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">
-      Budget alloué : <strong style="color:#1c1c1e">${fmtK(budgetCourt)}</strong> · Clique pour analyser et ajouter au portefeuille
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+      <div style="font-size:13px;color:#8e8e93">Budget alloué : <strong style="color:#1c1c1e">${fmtK(budgetCourt)}</strong></div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#1a7f5a;font-weight:600">
+        <svg class="spinning" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        Analyse du marché en cours...
+      </div>
     </div>
+    ${oldActions ? `<div style="font-size:11px;font-weight:700;color:#c7c7cc;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Dernières recommandations (en cours d'actualisation)</div>
+      ${oldActions.map((a,i) => renderActionCard(a, i, true)).join('')}` : `
     <div style="text-align:center;padding:20px;color:#8e8e93">
       <div style="font-size:24px;margin-bottom:8px">🧠</div>
       <div style="font-size:13px">Analyse du marché en cours...</div>
-    </div>`;
+    </div>`}`;
 
+  // Génère les nouvelles recommandations
   const actionRecs = await getAIActionRecommendations(risk, budgetCourt);
+  saveActionsCache(actionRecs, risk);
+
   actionsEl.innerHTML = `
-    <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">
-      Budget alloué : <strong style="color:#1c1c1e">${fmtK(budgetCourt)}</strong> · ${actionRecs.length} opportunités selon le marché aujourd'hui
-    </div>`;
-  renderActionCards(actionRecs, actionsEl.appendChild(document.createElement('div')));
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+      <div style="font-size:13px;color:#8e8e93">
+        Budget alloué : <strong style="color:#1c1c1e">${fmtK(budgetCourt)}</strong> · ${actionRecs.length} opportunités
+      </div>
+      <div style="font-size:11px;color:#c7c7cc;font-weight:500">Mis à jour aujourd'hui</div>
+    </div>
+    <div id="action-cards-wrap"></div>`;
+  renderActionCards(actionRecs, document.getElementById('action-cards-wrap'), oldActions);
 }
 
 async function openActionFromObjectif(ticker, name, amount) {
