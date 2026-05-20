@@ -120,28 +120,21 @@ async function getAIActionRecommendations(risk, capital) {
     : risk === 'equilibre' || risk === 'modere' ? 'équilibré (mix rendement/sécurité)'
     : 'prudent (préfère stabilité et dividendes)';
 
-  const prompt = `Tu es un conseiller en investissement. Aujourd'hui ${new Date().toLocaleDateString('fr-FR')}, propose exactement ${nbActions} actions pour un investisseur ${profil} avec ${capital}€ de capital court terme.
+  const prompt = `Tu es un conseiller en investissement ÉDUCATIF et RESPONSABLE. Aujourd'hui ${new Date().toLocaleDateString('fr-FR')}, propose exactement ${nbActions} actifs RÉALISTES pour un investisseur ${profil} avec ${capital}€.
 
-Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication :
-[
-  {
-    "ticker": "AAPL",
-    "name": "Apple",
-    "gain": "+5-10%",
-    "horizon": "3-6 mois",
-    "desc": "Raison courte en 4 mots max",
-    "color": "#8b5cf6",
-    "montant": 300
-  }
-]
+RÈGLES ABSOLUES DE RÉALISME :
+- Gains attendus RÉALISTES uniquement : prudent +3-6%/an, équilibré +5-10%/an, agressif +8-15%/an MAX
+- JAMAIS de gains > 20% sauf mention explicite "très spéculatif" avec avertissement
+- Privilégie les ETF (IWDA, VWCE, SP500) et les grandes caps stables (AAPL, MSFT, LVMH, TTE.PA)
+- INTERDITS : actifs micro-cap, penny stocks, quantique pur, levier
+- Pour profil prudent/équilibré : 60-70% ETF monde + 30-40% actions blue chip
+- Pour profil agressif : max 50% actions croissance, 50% ETF monde obligatoire
+- Horizon réaliste : 6-18 mois minimum, pas de "3-6 mois" pour les ETF
 
-Règles strictes :
-- Tickers réels et valides (ex: AAPL, MC.PA, IWDA.L)
-- Adapte aux conditions de marché actuelles
-- Profil ${profil} : ${risk === 'agressif' || risk === 'eleve' ? 'actions croissance tech/IA' : risk === 'equilibre' || risk === 'modere' ? 'mix tech + blue chips' : 'blue chips défensives + dividendes'}
-- Répartis le capital de ${capital}€ en montants cohérents
-- Colors hex variées et distinctes
-- desc MAX 4 mots`;
+Réponds UNIQUEMENT en JSON valide, sans markdown :
+[{"ticker":"IWDA.L","name":"iShares MSCI World","gain":"+6-9%","horizon":"12+ mois","desc":"ETF monde diversifié","color":"#1a7f5a","montant":${Math.round(capital*0.5)}}]
+
+Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Colors hex variées.`;
 
   try {
     const raw = await callClaude(prompt, 'Tu es un expert en investissement. Réponds UNIQUEMENT en JSON valide sans markdown.');
@@ -4935,7 +4928,7 @@ let dcaChartInstance = null;
 function dcaPreset(m, y, r, s, btn) {
   document.getElementById('dca-m').value = m;
   document.getElementById('dca-y').value = y;
-  document.getElementById('dca-r').value = r;
+  document.getElementById('dca-r').value = Math.min(r, 12); // max 12% réaliste
   document.getElementById('dca-s').value = s;
   // Marquer la carte active
   document.querySelectorAll('.dca-preset-card').forEach(b => b.classList.remove('active'));
@@ -5000,11 +4993,33 @@ function updateDCA() {
       <div class="metric-val">×${mult.toFixed(2)}</div>
     </div>`;
 
-  // Message tip
+  // Message tip + warning si rendement irréaliste
   const tipEl = document.getElementById('dca-tip');
   if (tipEl) {
     const gainPct = invested > 0 ? ((gain / invested) * 100).toFixed(0) : 0;
-    tipEl.innerHTML = `<div class="alert alert-ok" style="margin-top:12px;margin-bottom:0">
+    let warningHtml = '';
+    if (rAnn > 12) {
+      warningHtml = `
+      <div style="background:#fff0f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:4px solid #cc2f26">
+        <div style="font-size:13px;font-weight:800;color:#cc2f26;margin-bottom:6px">⚠️ Rendement irréaliste — ${rAnn}%/an</div>
+        <div style="font-size:12px;color:#7f1d1d;line-height:1.6">
+          Un rendement de <strong>${rAnn}%/an</strong> n'est <strong>pas réaliste</strong> sur le long terme sans prise de risque extrême.
+          <br>Repères réels : ETF monde <strong>~7%/an</strong> · Portefeuille équilibré <strong>~8-9%/an</strong> · Actions agressif <strong>10-12%/an max</strong>
+          <br>Au-delà, c'est de la spéculation ou du levier — risque de perte totale.
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button onclick="document.getElementById('dca-r').value=7;updateDCA()" style="background:#fff;border:1.5px solid #cc2f26;color:#cc2f26;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">→ Passer à 7% (ETF monde)</button>
+          <button onclick="document.getElementById('dca-r').value=9;updateDCA()" style="background:#fff;border:1.5px solid #f59e0b;color:#92400e;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">→ Passer à 9% (agressif réaliste)</button>
+        </div>
+      </div>`;
+    } else if (rAnn > 9) {
+      warningHtml = `
+      <div style="background:#fff9e6;border-radius:12px;padding:10px 14px;margin-bottom:10px;border-left:3px solid #f59e0b">
+        <div style="font-size:12px;font-weight:700;color:#92400e">⚡ Rendement ambitieux — ${rAnn}%/an</div>
+        <div style="font-size:12px;color:#78350f;margin-top:3px">Atteignable avec un portefeuille d'actions growth bien sélectionné, mais implique une forte volatilité. Pas garanti.</div>
+      </div>`;
+    }
+    tipEl.innerHTML = warningHtml + `<div class="alert alert-ok" style="margin-top:0;margin-bottom:0">
       <span>✓</span>
       <div>${m > 0 ? m.toLocaleString('fr-FR') + ' €/mois' : ''}${m > 0 && s > 0 ? ' + ' : ''}${s > 0 ? s.toLocaleString('fr-FR') + '€ de départ' : ''} pendant ${y} an${y>1?'s':''} génère <strong>${fmtK(Math.round(gain))}</strong> en intérêts composés (+${gainPct}%).
       </div>
