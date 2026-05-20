@@ -1658,8 +1658,8 @@ function renderNewsPage() {
       <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)" style="white-space:nowrap;flex-shrink:0">📅 Agenda</button>
     </div>
 
-    <!-- FILTER PILLS LIGNE 2 : filtres catégories -->
-    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:14px;scrollbar-width:none;-ms-overflow-style:none">
+    <!-- FILTER PILLS LIGNE 2 : filtres catégories (visibles seulement sur "Toutes") -->
+    <div id="news-cat-filters" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:14px;scrollbar-width:none;-ms-overflow-style:none">
       <span style="font-size:11px;font-weight:700;color:#c7c7cc;text-transform:uppercase;letter-spacing:0.4px;align-self:center;white-space:nowrap;flex-shrink:0">Filtrer :</span>
       <button class="filter-pill" id="news-fil-macro" onclick="setNewsFilter('macro',this)" style="white-space:nowrap;flex-shrink:0;font-size:12px;padding:5px 11px">🌍 Macro</button>
       <button class="filter-pill" id="news-fil-banque" onclick="setNewsFilter('banque',this)" style="white-space:nowrap;flex-shrink:0;font-size:12px;padding:5px 11px">🏦 Banques centrales</button>
@@ -2471,6 +2471,13 @@ function setNewsFilter(filter, el) {
   }
 
   if (el) el.classList.add('active');
+
+  // Afficher/masquer les filtres catégories (seulement sur "Toutes")
+  const catFilters = document.getElementById('news-cat-filters');
+  if (catFilters) {
+    const showCats = (filter === 'tous' || ['macro','banque','marche','geo','secteur'].includes(filter));
+    catFilters.style.display = showCats ? 'flex' : 'none';
+  }
 
   // Titre dynamique de la section
   const titleMap = {
