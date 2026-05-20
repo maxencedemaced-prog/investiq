@@ -2506,83 +2506,6 @@ function unfollowCompany(ticker, name) {
 }
 
 
-function renderNewsList() {
-  const list = document.getElementById('news-list');
-  if (!list) return;
-  let filtered = newsData;
-  if (newsFilter === 'favoris') {
-    // Si pas de favoris, affiche message
-    if (watchlist.length === 0) {
-      list.innerHTML = `<div style="text-align:center;padding:30px;color:#8e8e93">
-        <div style="font-size:32px;margin-bottom:10px">⭐</div>
-        <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Aucun favori</div>
-        <div style="font-size:13px">Clique sur l'étoile ☆ sur un signal ou une actu pour ajouter aux favoris.</div>
-      </div>`;
-      return;
-    }
-    // Génère des actus IA pour les favoris
-    renderFavorisNews();
-    return;
-  } else if (newsFilter !== 'tous') {
-    filtered = newsData.filter(n => n.categorie === newsFilter);
-  }
-
-  if (!filtered.length) { list.innerHTML = '<p style="color:#c7c7cc;font-size:14px;padding:20px 0;font-weight:500">Aucune actualité.</p>'; return; }
-
-  const tagCls = { macro:'pill-dark', banque:'pill-amber', marche:'pill-blue', geo:'pill-red', secteur:'pill-green' };
-  const tagLbl = { macro:'Macro', banque:'Banque centrale', marche:'Marchés', geo:'Géopolitique', secteur:'Secteurs' };
-  const impCls = { 'élevé':'pill-red', 'moyen':'pill-amber', 'faible':'pill-green' };
-  const sigCls = { acheter:'signal-buy', attendre:'signal-wait', 'éviter':'signal-avoid', neutre:'signal-neutral' };
-  const sigLbl = { acheter:'↑ Opportunité', attendre:'⏸ Attendre', 'éviter':'↓ Éviter', neutre:'→ Neutre' };
-
-  list.innerHTML = filtered.map((n, i) => {
-    const pct = suggestedPct(n.signal, profile.risk, profile.horizon);
-    const amt = Math.round(profile.bankroll * pct / 100);
-    const first = (n.actifs_cibles || [])[0] || '';
-    const assets = (n.actifs_cibles || []).map(a => {
-      const isFav = isFavorite(a) || positions.find(p => p.name === a);
-      return `<span class="pill pill-gray" style="cursor:pointer;${isFav?'background:#f0f0f0;font-weight:800':''}" onclick="openCompany('${a}','${a}','')">${a}</span>`;
-    }).join(' ');
-    const oppBtn = n.signal !== 'éviter' ? `<button class="btn-analyse" onclick="openDecision('${first}','${n.signal}')">Analyser →</button>` : '';
-    const assetsForStar = n.actifs_cibles || [];
-    const firstTicker = assetsForStar.find(t => t && t.length < 15) || '';
-    const starFav = firstTicker ? isFavorite(firstTicker) : false;
-    const cardId = 'news-card-' + i;
-    const starHtml = '';
-    return `<div class="news-item" id="${cardId}">
-      <div class="news-item-head" onclick="toggleNews(${i})">
-        <div class="news-meta" style="display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span class="pill ${tagCls[n.categorie]||'pill-gray'}">${tagLbl[n.categorie]||n.categorie}</span>
-            <span class="pill ${impCls[n.impact]||'pill-gray'}">Impact ${n.impact}</span>
-            <span class="news-time">${n.heure}</span>
-          </div>
-          ${starHtml}
-        </div>
-        <div class="news-title">${n.titre}</div>
-        <div class="news-summary">${n.resume}</div>
-        <div style="display:flex;gap:6px;margin-top:6px">
-          <button class="news-expand" id="nexp-${i}" style="flex:1">▾ Voir recommandation IA</button>
-          ${firstTicker ? `<button onclick="event.stopPropagation();openDecisionFromPos('${firstTicker}','garder')" style="flex:1;background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer">🤔 Analyser</button>` : ''}
-        </div>
-      </div>
-      <div class="news-reco" id="nreco-${i}">
-        <div class="${sigCls[n.signal]||'signal-neutral'} signal-badge">${sigLbl[n.signal]||'Neutre'}</div>
-        <div class="news-reco-text">${n.reco_texte}</div>
-        ${assets ? `<div style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:6px">${assets}</div>` : ''}
-        <div class="opp-strip">
-          <div><div class="opp-label">${n.signal==='éviter'?'Pas conseillé':n.signal==='acheter'?'Opportunité':'À surveiller'}</div>
-          <div class="opp-sub">${n.signal!=='éviter'?`${pct}% bankroll · ${HL[profile.horizon]}`:'Signal négatif'}</div></div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div class="opp-amount">${n.signal==='éviter'?'0 €':amt.toLocaleString('fr-FR')+' €'}</div>
-            ${oppBtn}
-          </div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
 // ===== COMPANY DETAIL PAGE =====
 async function openCompany(ticker, name, sector) {
   activeCompany = { ticker, name, sector };
@@ -4223,85 +4146,226 @@ async function saveSettings() {
 
 // ===== NEWS =====
 async function loadNews(force=false) {
-  if(!force&&loadNewsCache()){renderNews();return;}
-  const ico=document.getElementById('news-ico');
-  const btn=document.getElementById('news-refresh-btn');
-  ico.classList.add('spinning');btn.disabled=true;
-  document.getElementById('news-list').innerHTML='<p style="color:#c7c7cc;font-size:14px;padding:20px 0;text-align:center;font-weight:500">Chargement des actualités...</p>';
-  const prompt=`Recherche les 6 annonces économiques les plus importantes d'aujourd'hui. Retourne UNIQUEMENT un tableau JSON (sans backticks) de 6 objets : {"titre":"...","resume":"1-2 phrases","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","heure":"...","signal":"acheter|attendre|éviter|neutre","reco_texte":"2-3 phrases pour débutant","actifs_cibles":["ticker1","ticker2"]}`;
-  const raw=await callClaude(prompt,'Tu es analyste financier. Retourne uniquement du JSON valide sans texte autour ni backticks.');
-  try{const s=raw.replace(/```json|```/g,'').trim();newsData=JSON.parse(s.slice(s.indexOf('['),s.lastIndexOf(']')+1));}
-  catch{newsData=fallbackNews();}
+  if (!force && loadNewsCache()) { renderNewsList(); return; }
+  const ico = document.getElementById('news-ico');
+  const btn = document.getElementById('news-refresh-btn');
+  if (ico) ico.classList.add('spinning');
+  if (btn) btn.disabled = true;
+
+  // Skeleton loader
+  const list = document.getElementById('news-list');
+  if (list) list.innerHTML = [1,2,3,4,5,6,7,8].map(() => `
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:10px;border:1.5px solid #f0f0f0;overflow:hidden">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div class="skeleton" style="width:70px;height:20px;border-radius:8px"></div>
+        <div class="skeleton" style="width:55px;height:20px;border-radius:8px"></div>
+        <div class="skeleton" style="width:45px;height:20px;border-radius:8px;margin-left:auto"></div>
+      </div>
+      <div class="skeleton" style="height:18px;border-radius:6px;margin-bottom:8px"></div>
+      <div class="skeleton" style="height:14px;border-radius:6px;width:85%;margin-bottom:5px"></div>
+      <div class="skeleton" style="height:14px;border-radius:6px;width:65%"></div>
+    </div>`).join('');
+
+  const today = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const myAssets = positions.map(p => p.name).join(', ') || 'IWDA, VWCE';
+  const prompt = `Tu es analyste financier senior. Nous sommes le ${today}.
+Génère 8 actualités économiques et financières importantes et récentes, diversifiées (macro, banques centrales, marchés, géopolitique, secteurs).
+Mets en priorité les actus pertinentes pour ces actifs : ${myAssets}.
+Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
+[{"titre":"Titre accrocheur max 10 mots","resume":"2 phrases concrètes et précises","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","heure":"Il y a 2h|Ce matin|Hier soir|Cette semaine","signal":"acheter|attendre|éviter|neutre","reco_texte":"Conseil actionnable en 2-3 phrases pour débutant, adapté au signal","actifs_cibles":["TICKER1","TICKER2"]}]`;
+
+  const raw = await callClaude(prompt, 'Tu es analyste financier. Retourne uniquement du JSON valide sans texte autour ni backticks.');
+  try {
+    const s = raw.replace(/```json|```/g, '').trim();
+    newsData = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1));
+  } catch { newsData = fallbackNews(); }
+
   saveNewsCache();
-  ico.classList.remove('spinning');btn.disabled=false;
-  renderNews();
+  if (ico) ico.classList.remove('spinning');
+  if (btn) btn.disabled = false;
+  renderNewsList();
   addNewsNotifications();
 }
 
 function addNewsNotifications() {
-  newsData.filter(n=>n.impact==='élevé').forEach(n=>{
-    notifications.unshift({titre:n.titre,texte:n.resume,action:n.reco_texte,impact:'high',heure:n.heure});
+  newsData.filter(n => n.impact === 'élevé').forEach(n => {
+    notifications.unshift({ titre: n.titre, texte: n.resume, action: n.reco_texte, impact: 'high', heure: n.heure });
   });
-  if(notifications.length){renderNotifications();document.getElementById('notif-dot').classList.add('show');}
+  if (notifications.length) { renderNotifications(); document.getElementById('notif-dot').classList.add('show'); }
 }
 
 function fallbackNews() {
-  return[
-    {titre:"BCE : taux inchangés",resume:"La BCE maintient ses taux directeurs.",categorie:"banque",impact:"élevé",heure:"Aujourd'hui",signal:"attendre",reco_texte:"Continue ton DCA normalement.",actifs_cibles:["IWDA","VWCE"]},
-    {titre:"Inflation zone euro à 2,2%",resume:"L'inflation continue de ralentir.",categorie:"macro",impact:"moyen",heure:"Aujourd'hui",signal:"acheter",reco_texte:"Bon signal pour renforcer les ETF monde.",actifs_cibles:["IWDA","VWCE"]},
-    {titre:"S&P 500 en hausse",resume:"Marchés US portés par la tech.",categorie:"marche",impact:"moyen",heure:"Hier",signal:"neutre",reco_texte:"Pas d'action urgente.",actifs_cibles:["IWDA"]},
-    {titre:"Tensions Chine-UE",resume:"Droits de douane maintenus sur véhicules.",categorie:"geo",impact:"élevé",heure:"Aujourd'hui",signal:"éviter",reco_texte:"Évite les ETF automobile.",actifs_cibles:["ETF Auto"]},
-    {titre:"LVMH : résultats décevants",resume:"Ventes en baisse en Asie.",categorie:"secteur",impact:"moyen",heure:"Ce matin",signal:"attendre",reco_texte:"Garde si tu as LVMH.",actifs_cibles:["LVMH"]},
-    {titre:"Fed : Powell prudent",resume:"Pas de baisse de taux prévue.",categorie:"banque",impact:"élevé",heure:"Hier soir",signal:"attendre",reco_texte:"Prudence sur les achats.",actifs_cibles:["IWDA"]},
+  return [
+    { titre:"BCE : taux inchangés à 2,5%", resume:"La BCE maintient ses taux directeurs lors de sa réunion de mai. Christine Lagarde signale une vigilance persistante sur l'inflation.", categorie:"banque", impact:"élevé", heure:"Ce matin", signal:"attendre", reco_texte:"Continue ton DCA normalement. Pas de changement de cap à prévoir pour les ETF obligataires.", actifs_cibles:["IWDA","VWCE"] },
+    { titre:"Inflation zone euro : 2,2% en avril", resume:"L'inflation ralentit légèrement en zone euro, proche de la cible des 2% de la BCE. Les données de mai seront décisives.", categorie:"macro", impact:"moyen", heure:"Hier", signal:"acheter", reco_texte:"Bon signal pour renforcer les ETF monde. L'environnement macro est favorable aux actions.", actifs_cibles:["IWDA","VWCE"] },
+    { titre:"S&P 500 : nouveau record historique", resume:"L'indice américain franchit un nouveau sommet porté par les valeurs technologiques. NVIDIA et Microsoft tirent la hausse.", categorie:"marche", impact:"moyen", heure:"Hier soir", signal:"neutre", reco_texte:"Pas d'action urgente. Si tu as déjà des ETF monde, tu profites de la hausse automatiquement.", actifs_cibles:["IWDA","NVDA","MSFT"] },
+    { titre:"Tensions commerciales USA-Chine relancées", resume:"Washington annonce de nouveaux droits de douane sur les semi-conducteurs chinois. Pékin menace de représailles.", categorie:"geo", impact:"élevé", heure:"Ce matin", signal:"éviter", reco_texte:"Évite les ETF exposés à la Chine à court terme. Diversifie sur des ETF monde pour limiter le risque géopolitique.", actifs_cibles:["IWDA"] },
+    { titre:"LVMH : résultats T1 inférieurs aux attentes", resume:"Le chiffre d'affaires de LVMH recule de 3% en Asie. Le titre chute de 4% à l'ouverture de Paris.", categorie:"secteur", impact:"moyen", heure:"Ce matin", signal:"attendre", reco_texte:"Si tu détiens LVMH, garde et surveille. Le luxe reste solide long terme malgré la faiblesse asiatique.", actifs_cibles:["MC.PA"] },
+    { titre:"Fed : Powell exclut une baisse des taux avant l'automne", resume:"Jerome Powell réaffirme la prudence de la Fed face à une inflation américaine encore trop haute. Taux maintenus à 4,25-4,5%.", categorie:"banque", impact:"élevé", heure:"Hier soir", signal:"attendre", reco_texte:"L'environnement de taux élevés favorise les obligations court terme. Pour tes ETF actions, reste en DCA.", actifs_cibles:["IWDA","VWCE"] },
+    { titre:"TotalEnergies : dividende relevé de 7%", resume:"Le géant pétrolier annonce une hausse de son dividende et un programme de rachat d'actions de 2 milliards d'euros.", categorie:"secteur", impact:"moyen", heure:"Ce matin", signal:"acheter", reco_texte:"Signal positif pour les actionnaires. TotalEnergies offre un rendement dividende attractif en période de volatilité.", actifs_cibles:["TTE.PA"] },
+    { titre:"Emploi US : 180 000 créations en avril", resume:"Le marché du travail américain reste solide avec 180 000 créations d'emplois. Le taux de chômage stable à 4,1%.", categorie:"macro", impact:"faible", heure:"Vendredi dernier", signal:"neutre", reco_texte:"Un marché du travail solide soutient la consommation et donc les bénéfices des entreprises. Pas d'action immédiate.", actifs_cibles:["IWDA","VWCE"] },
   ];
 }
 
-function filterNews(cat,el){newsFilter=cat;document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');renderNews();}
+function filterNews(cat, el) {
+  newsFilter = cat;
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderNewsList();
+}
 
-function suggestedPct(signal,risk,horizon){
-  const base={acheter:{faible:5,modere:10,eleve:20},attendre:{faible:2,modere:4,eleve:5},'éviter':{faible:0,modere:0,eleve:0},neutre:{faible:3,modere:7,eleve:10}};
-  let p=((base[signal]||base.neutre)[risk])||5;
-  if(horizon==='long')p=Math.min(p*1.5,40);
-  if(horizon==='court')p=Math.max(p*0.5,1);
+function suggestedPct(signal, risk, horizon) {
+  const base = { acheter:{faible:5,modere:10,eleve:20}, attendre:{faible:2,modere:4,eleve:5}, 'éviter':{faible:0,modere:0,eleve:0}, neutre:{faible:3,modere:7,eleve:10} };
+  let p = ((base[signal] || base.neutre)[risk]) || 5;
+  if (horizon === 'long') p = Math.min(p * 1.5, 40);
+  if (horizon === 'court') p = Math.max(p * 0.5, 1);
   return Math.round(p);
 }
 
-function renderNews(){
-  const list=document.getElementById('news-list');
-  const filtered=newsFilter==='tous'?newsData:newsData.filter(n=>n.categorie===newsFilter);
-  if(!filtered.length){list.innerHTML='<p style="color:#c7c7cc;font-size:14px;padding:20px 0;font-weight:500">Aucune actualité dans cette catégorie.</p>';return;}
-  const tagCls={macro:'pill-dark',banque:'pill-amber',marche:'pill-blue',geo:'pill-red',secteur:'pill-green'};
-  const tagLbl={macro:'Macro',banque:'Banque centrale',marche:'Marchés',geo:'Géopolitique',secteur:'Secteurs'};
-  const impCls={'élevé':'pill-red','moyen':'pill-amber','faible':'pill-green'};
-  const sigCls={acheter:'signal-buy',attendre:'signal-wait','éviter':'signal-avoid',neutre:'signal-neutral'};
-  const sigLbl={acheter:"↑ Opportunité",attendre:'⏸ Attendre','éviter':'↓ Éviter',neutre:'→ Neutre'};
-  list.innerHTML=filtered.map((n,i)=>{
-    const pct=suggestedPct(n.signal,profile.risk,profile.horizon);
-    const amt=Math.round(profile.bankroll*pct/100);
-    const first=(n.actifs_cibles||[])[0]||n.titre.slice(0,8);
-    const assets=(n.actifs_cibles||[]).map(a=>`<span class="pill pill-gray" style="margin-right:4px">${a}</span>`).join('');
-    const oppBtn=n.signal!=='éviter'?`<button class="btn-analyse" onclick="openDecision('${first}','${n.signal}')">Analyser →</button>`:'';
-    return`<div class="news-item">
-      <div class="news-item-head" onclick="toggleNews(${i})">
-        <div class="news-meta"><span class="pill ${tagCls[n.categorie]||'pill-gray'}">${tagLbl[n.categorie]||n.categorie}</span><span class="pill ${impCls[n.impact]||'pill-gray'}">Impact ${n.impact}</span><span class="news-time">${n.heure}</span></div>
-        <div class="news-title">${n.titre}</div>
-        <div class="news-summary">${n.resume}</div>
-        <button class="news-expand" id="nexp-${i}">▾ Voir recommandation IA</button>
+// ===== RENDER TOUTES LES ACTUS (version améliorée) =====
+function renderNewsList() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+
+  // Si on est sur un sous-filtre géré ailleurs → déléguer
+  if (newsFilter === 'favoris') { renderFavorisNews(); return; }
+  if (newsFilter === 'signaux') { if (isCacheValid('signaux')) { restoreFromCache('signaux'); } else { renderSignaux(); } return; }
+  if (newsFilter === 'entreprises') { if (isCacheValid('entreprises')) { restoreFromCache('entreprises'); } else { renderEntreprises(); } return; }
+  if (newsFilter === 'agenda') { if (isCacheValid('agenda')) { restoreFromCache('agenda'); } else { renderAgenda(); } return; }
+
+  // Filtrage "Toutes" ou par catégorie
+  let filtered = newsFilter === 'tous' ? newsData : newsData.filter(n => n.categorie === newsFilter);
+
+  if (!filtered.length) {
+    list.innerHTML = `<div style="text-align:center;padding:40px;color:#8e8e93">
+      <div style="font-size:32px;margin-bottom:10px">📭</div>
+      <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Aucune actualité</div>
+      <div style="font-size:13px">Actualise pour charger les dernières infos.</div>
+    </div>`;
+    return;
+  }
+
+  const tagCls = { macro:'pill-dark', banque:'pill-amber', marche:'pill-blue', geo:'pill-red', secteur:'pill-green' };
+  const tagLbl = { macro:'🌍 Macro', banque:'🏦 Banque centrale', marche:'📈 Marchés', geo:'⚡ Géopolitique', secteur:'🏢 Secteurs' };
+  const impCls = { 'élevé':'pill-red', 'moyen':'pill-amber', 'faible':'pill-green' };
+  // Barre latérale colorée selon signal
+  const sigBorderColor = { acheter:'#1a7f5a', attendre:'#f59e0b', 'éviter':'#cc2f26', neutre:'#c7c7cc' };
+  const sigBg          = { acheter:'#f0faf6', attendre:'#fffbf0', 'éviter':'#fff5f5', neutre:'#fafafa' };
+  const sigCls         = { acheter:'signal-buy', attendre:'signal-wait', 'éviter':'signal-avoid', neutre:'signal-neutral' };
+  const sigLbl         = { acheter:'↑ Opportunité', attendre:'⏸ Attendre', 'éviter':'↓ Éviter', neutre:'→ Neutre' };
+  const sigIcon        = { acheter:'📈', attendre:'⏸️', 'éviter':'🚫', neutre:'➡️' };
+
+  list.innerHTML = filtered.map((n, i) => {
+    const pct   = suggestedPct(n.signal, profile.risk, profile.horizon);
+    const amt   = Math.round((profile.bankroll || 5000) * pct / 100);
+    const first = (n.actifs_cibles || [])[0] || '';
+    const border = sigBorderColor[n.signal] || '#c7c7cc';
+    const bg     = sigBg[n.signal] || '#fafafa';
+
+    // Pills des actifs cibles — cliquables + badge portefeuille
+    const assets = (n.actifs_cibles || []).map(a => {
+      const inPortf = positions.find(p => p.name === a);
+      const isFav   = isFavorite(a);
+      const style   = inPortf
+        ? 'background:#1c1c1e;color:#fff;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:3px'
+        : 'background:#f0f0f0;color:#3c3c43;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:3px';
+      return `<span style="${style}" onclick="event.stopPropagation();openCompany('${a}','${a}','')">
+        ${inPortf ? '📦 ' : ''}${a}${isFav ? ' ★' : ''}
+      </span>`;
+    }).join('');
+
+    // Étoile favori sur le premier ticker valide
+    const starTicker = (n.actifs_cibles || []).find(t => t && t.length < 15 && !t.includes(' ')) || '';
+    const starName   = starTicker;
+    const isFav      = starTicker ? isFavorite(starTicker) : false;
+    const starHtml   = starTicker ? `
+      <button id="star-news-${i}"
+        onclick="event.stopPropagation();toggleNewsItemFav('${starTicker}','${starName}','news-item-${i}')"
+        style="background:none;border:none;cursor:pointer;font-size:20px;padding:2px 4px;line-height:1;color:${isFav?'#f59e0b':'#c7c7cc'};transition:color 0.2s;flex-shrink:0"
+        title="${isFav ? 'Retiré des favoris' : 'Ajouter aux favoris'}">${isFav ? '★' : '☆'}</button>` : '';
+
+    // Bouton analyser
+    const analyseBtn = n.signal !== 'éviter' && first
+      ? `<button onclick="event.stopPropagation();openDecision('${first}','${n.signal}')"
+           style="background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+           🤔 Analyser
+         </button>`
+      : '';
+
+    // Badge portefeuille si actu concerne une de mes positions
+    const inMyPortfolio = (n.actifs_cibles || []).some(a => positions.find(p => p.name === a));
+
+    return `
+    <div class="news-item" id="news-item-${i}" style="background:${bg};border-radius:16px;margin-bottom:10px;border:1.5px solid ${border}30;border-left:4px solid ${border};overflow:hidden;transition:box-shadow 0.2s"
+         onmouseover="this.style.boxShadow='0 4px 16px ${border}20'" onmouseout="this.style.boxShadow='none'">
+
+      <!-- HEAD cliquable -->
+      <div class="news-item-head" onclick="toggleNews(${i})" style="padding:14px 14px 10px;cursor:pointer">
+
+        <!-- Ligne 1 : pills + étoile -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="pill ${tagCls[n.categorie] || 'pill-gray'}" style="font-size:11px">${tagLbl[n.categorie] || n.categorie}</span>
+            <span class="pill ${impCls[n.impact] || 'pill-gray'}" style="font-size:11px">Impact ${n.impact}</span>
+            ${inMyPortfolio ? '<span style="background:#1c1c1e;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px">📦 Mon portf.</span>' : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;color:#8e8e93;font-weight:500;white-space:nowrap">${n.heure}</span>
+            ${starHtml}
+          </div>
+        </div>
+
+        <!-- Titre -->
+        <div class="news-title" style="font-size:15px;font-weight:800;color:#1c1c1e;line-height:1.35;margin-bottom:6px">${n.titre}</div>
+
+        <!-- Résumé -->
+        <div class="news-summary" style="font-size:13px;color:#3c3c43;line-height:1.5;margin-bottom:10px">${n.resume}</div>
+
+        <!-- Actifs cibles -->
+        ${assets ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${assets}</div>` : ''}
+
+        <!-- Bas : signal + bouton expand -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:16px">${sigIcon[n.signal] || '➡️'}</span>
+            <span style="font-size:12px;font-weight:700;color:${border}">${sigLbl[n.signal] || 'Neutre'}</span>
+          </div>
+          <button class="news-expand" id="nexp-${i}" style="font-size:12px;padding:6px 12px;border-radius:8px">▾ Recommandation IA</button>
+        </div>
       </div>
-      <div class="news-reco" id="nreco-${i}">
-        <div class="${sigCls[n.signal]||'signal-neutral'} signal-badge">${sigLbl[n.signal]||'Neutre'}</div>
-        <div class="news-reco-text">${n.reco_texte}</div>
-        ${assets?`<div style="margin-bottom:12px">${assets}</div>`:''}
-        <div class="opp-strip">
-          <div><div class="opp-label">${n.signal==='éviter'?'Pas conseillé':n.signal==='acheter'?'Opportunité':'À surveiller'}</div><div class="opp-sub">${n.signal!=='éviter'?`${pct}% bankroll · ${HL[profile.horizon]}`:'Signal négatif'}</div></div>
-          <div style="display:flex;align-items:center;gap:10px"><div class="opp-amount">${n.signal==='éviter'?'0 €':amt.toLocaleString('fr-FR')+' €'}</div>${oppBtn}</div>
+
+      <!-- RECO expandable -->
+      <div class="news-reco" id="nreco-${i}" style="display:none;padding:0 14px 14px">
+        <div style="border-top:1px solid ${border}20;padding-top:12px">
+          <div class="${sigCls[n.signal] || 'signal-neutral'} signal-badge" style="margin-bottom:10px">${sigLbl[n.signal] || 'Neutre'}</div>
+          <div class="news-reco-text" style="font-size:13px;color:#1c1c1e;line-height:1.6;margin-bottom:12px">${n.reco_texte}</div>
+          <div class="opp-strip" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.8);border-radius:12px;padding:10px 14px;gap:10px">
+            <div>
+              <div class="opp-label" style="font-size:12px;font-weight:700;color:#1c1c1e">${n.signal==='éviter' ? 'Pas conseillé' : n.signal==='acheter' ? '💡 Opportunité' : '👀 À surveiller'}</div>
+              <div class="opp-sub" style="font-size:11px;color:#8e8e93;margin-top:2px">${n.signal !== 'éviter' ? `${pct}% bankroll · ${HL[profile.horizon]}` : 'Signal négatif — ne pas investir'}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="opp-amount" style="font-size:18px;font-weight:900;color:${border}">${n.signal==='éviter' ? '0 €' : amt.toLocaleString('fr-FR') + ' €'}</div>
+              ${analyseBtn}
+            </div>
+          </div>
         </div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + `
+  <div style="text-align:center;padding:12px 0 4px;color:#c7c7cc;font-size:11px;font-weight:500">
+    ⚠️ Actualités générées par IA à titre informatif · Pas des conseils financiers réglementés
+  </div>`;
 }
 
-function toggleNews(i){const r=document.getElementById('nreco-'+i),b=document.getElementById('nexp-'+i);const open=r.style.display==='block';r.style.display=open?'none':'block';b.textContent=open?'▾ Voir recommandation IA':'▴ Masquer';}
+function toggleNews(i) {
+  const r = document.getElementById('nreco-' + i);
+  const b = document.getElementById('nexp-' + i);
+  if (!r || !b) return;
+  const open = r.style.display === 'block';
+  r.style.display = open ? 'none' : 'block';
+  b.textContent   = open ? '▾ Recommandation IA' : '▴ Masquer';
+}
 
 // ===== DECISION =====
 function openDecision(ticker,signal){
