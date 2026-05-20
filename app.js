@@ -3062,13 +3062,31 @@ function showTickerFallback() {
 function checkPriceAlerts() {
   positions.forEach(p => {
     if (p.alert_price && p.price <= p.alert_price) {
-      const notif = { titre:`⚠ Alerte prix — ${p.name}`, texte:`${p.name} est à ${fmt(p.price)}€, sous ton seuil d'alerte de ${fmt(p.alert_price)}€.`, action:`Consulter ${p.name} dans ton portefeuille`, impact:'high', heure:'Maintenant' };
+      // Déduplique : n'ajoute pas si une alerte pour ce ticker existe déjà
+      const alreadyExists = notifications.some(n => n.type === 'prix' && n.titre && n.titre.includes(p.name));
+      if (alreadyExists) return;
+      const notif = {
+        titre: `⚠ Alerte prix — ${p.name}`,
+        texte: `${p.name} est à ${fmt(p.price)}€, sous ton seuil d'alerte de ${fmt(p.alert_price)}€.`,
+        action: `Consulter ${p.name} dans ton portefeuille`,
+        impact: 'high',
+        heure: 'Maintenant',
+        type: 'prix'
+      };
       notifications.unshift(notif);
       document.getElementById('notif-dot').classList.add('show');
-      if ('Notification' in window && Notification.permission==='granted') {
-        new Notification(`InvestIQ — Alerte ${p.name}`, { body: notif.texte, icon:'/icons/icon-192.png' });
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(`InvestIQ — Alerte ${p.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
       }
     }
+  });
+  // Déduplique aussi les doublons existants (nettoyage)
+  const seen = new Set();
+  notifications = notifications.filter(n => {
+    const key = n.titre + n.texte;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
   renderNotifications();
 }
@@ -3234,7 +3252,18 @@ async function checkAndGenerateNotifications() {
     return true;
   });
 
-  notifications = [...deduped, ...notifications.filter(n => n.type === 'prix')].slice(0, 10);
+  // Remplace complètement les notifications générées — pas d'accumulation
+  // On conserve uniquement les notifs "agenda" déjà présentes (car chargées séparément)
+  const agendaNotifs = notifications.filter(n => n.type === 'agenda');
+  const merged = [...deduped, ...agendaNotifs];
+  // Déduplication finale par titre+texte
+  const finalSeen = new Set();
+  notifications = merged.filter(n => {
+    const key = n.titre + '|' + n.texte;
+    if (finalSeen.has(key)) return false;
+    finalSeen.add(key);
+    return true;
+  }).slice(0, 10);
   renderNotifications();
 
   const hasHigh = notifications.find(n=>n.impact==='high');
