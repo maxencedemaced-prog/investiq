@@ -604,7 +604,7 @@ async function deleteObjective(id) {
   showToast('Objectif supprimé');
 }
 
-// Sauvegarder la simulation DCA comme nouvel objectif
+// Sauvegarder la simulation DCA comme nouvel objectif — avec plan IA
 async function saveDCAAsObjective() {
   const m  = parseFloat(document.getElementById('dca-m')?.value) || 200;
   const y  = parseInt(document.getElementById('dca-y')?.value)   || 10;
@@ -612,21 +612,105 @@ async function saveDCAAsObjective() {
   const s  = parseFloat(document.getElementById('dca-s')?.value) || 0;
   const rate = r/100/12, n = y*12;
   const total = s*Math.pow(1+rate,n)+(rate>0?m*((Math.pow(1+rate,n)-1)/rate):m*n);
+  const invested = s + m*n;
+  const gain = total - invested;
 
-  // Pré-remplit les variables globales
-  objChartCapital = s;
-  objChartMonthly = m;
-  objChartTarget  = Math.round(total);
-  objChartYears   = y;
-  objChartRate    = r;
-  objRisk         = r >= 9 ? 'agressif' : r >= 6 ? 'equilibre' : 'prudent';
+  // Métriques dans la modale
+  const mEl    = document.getElementById('dca-plan-m');
+  const yEl    = document.getElementById('dca-plan-y');
+  const totEl  = document.getElementById('dca-plan-total');
+  const subEl  = document.getElementById('dca-plan-subtitle');
+  if (mEl)   mEl.textContent   = m.toLocaleString('fr-FR') + ' €/mois';
+  if (yEl)   yEl.textContent   = y + ' an' + (y>1?'s':'');
+  if (totEl) totEl.textContent = fmtK(Math.round(total));
+  if (subEl) subEl.textContent = `${s>0?s.toLocaleString('fr-FR')+'€ de départ · ':''}${r}%/an · +${fmtK(Math.round(gain))} d'intérêts composés`;
 
-  const label = `DCA ${m}€/mois · ${y}ans`;
+  // Reset contenu + désactiver le bouton save
+  const contentEl = document.getElementById('dca-plan-content');
+  const saveBtn   = document.getElementById('dca-plan-save-btn');
+  if (contentEl) contentEl.innerHTML = `
+    <div style="text-align:center;padding:30px;color:#8e8e93">
+      <svg class="spinning" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      <div style="font-size:14px;font-weight:600;margin-top:12px;color:#1c1c1e">Génération de ton plan personnalisé...</div>
+      <div style="font-size:12px;color:#c7c7cc;margin-top:4px">L'IA analyse tes paramètres DCA</div>
+    </div>`;
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; }
+
+  // Ouvre la modale
+  document.getElementById('dca-plan-modal').style.display = 'flex';
+
+  // Stocke les params pour la sauvegarde finale
+  window._dcaPlanParams = { m, y, r, s, total };
+
+  // Génère le plan IA
+  const risk = r >= 9 ? 'agressif' : r >= 6 ? 'equilibre' : 'prudent';
+  const riskLabel = r >= 9 ? 'Agressif' : r >= 6 ? 'Équilibré' : 'Prudent';
+  const portfolioCtx = positions.length
+    ? `Portefeuille actuel : ${positions.slice(0,4).map(p=>`${p.name} (${p.type})`).join(', ')}.`
+    : 'Pas encore de positions.';
+
+  const prompt = `Tu es conseiller financier pour débutants. Un investisseur veut mettre en place ce DCA :
+- Versement mensuel : ${m}€/mois
+- Capital de départ : ${s}€
+- Durée : ${y} ans
+- Rendement visé : ${r}%/an (profil ${riskLabel})
+- Objectif final estimé : ${fmtK(Math.round(total))}
+${portfolioCtx}
+
+Génère un plan d'action CONCRET en 4 blocs avec des titres en gras :
+
+**🏦 Quoi acheter avec ton apport initial de ${s>0?s.toLocaleString('fr-FR')+'€':m.toLocaleString('fr-FR')+'€ (premier mois)'}**
+Liste les actifs précis avec les montants exacts (ex: 300€ → IWDA.L sur Trade Republic)
+
+**📅 Chaque mois : ${m.toLocaleString('fr-FR')}€ à répartir comme suit**
+Répartition exacte mensuelle avec tickers et montants
+
+**🎯 Pourquoi cette stratégie est adaptée à ton profil ${riskLabel}**
+2 phrases claires et pédagogiques
+
+**⚡ 3 actions concrètes pour démarrer cette semaine**
+Étapes simples et actionnables (ouvrir compte, faire le 1er achat, activer DCA auto)
+
+Sois ULTRA concret. Donne de vrais tickers (IWDA.L, VWCE.DE, AAPL, etc.) et de vrais montants.`;
+
+  try {
+    const r_resp = await callClaude(prompt, 'Tu es conseiller financier pédagogue. Sois concret et donne des vrais noms et montants.');
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="font-size:14px;color:#1c1c1e;line-height:1.8">${formatMD(r_resp)}</div>
+        <div style="margin-top:14px;background:#e8f8f0;border-radius:12px;padding:12px 14px;border-left:3px solid #1a7f5a">
+          <div style="font-size:12px;font-weight:700;color:#1a7f5a">✓ Plan généré — prêt à sauvegarder</div>
+          <div style="font-size:12px;color:#065f46;margin-top:3px">Ce plan sera sauvegardé dans ta page Objectif avec le graphique de projection.</div>
+        </div>`;
+    }
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
+  } catch(e) {
+    if (contentEl) contentEl.innerHTML = `<div style="color:#cc2f26;padding:16px;font-size:13px">Erreur de génération — réessaie.</div>`;
+  }
+}
+
+function closeDCAPlanModal() {
+  document.getElementById('dca-plan-modal').style.display = 'none';
+}
+
+async function confirmSaveDCAObjective() {
+  const p = window._dcaPlanParams;
+  if (!p) return;
+
+  // Pré-remplit les variables globales objectif
+  objChartCapital = p.s;
+  objChartMonthly = p.m;
+  objChartTarget  = Math.round(p.total);
+  objChartYears   = p.y;
+  objChartRate    = p.r;
+  objRisk         = p.r >= 9 ? 'agressif' : p.r >= 6 ? 'equilibre' : 'prudent';
+
+  const label = `DCA ${p.m.toLocaleString('fr-FR')}€/mois · ${p.y}ans`;
   await validateObjectif(label);
 
-  // Navigue vers la page objectif
+  closeDCAPlanModal();
   nav('objectif');
-  showToast('🎯 Objectif DCA sauvegardé ! Retrouve-le dans Objectif.');
+  showToast('🎯 Objectif sauvegardé ! Suis ta progression dans Objectif.');
 }
 
 function updateObjSlider(val) {
