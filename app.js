@@ -4334,56 +4334,63 @@ function renderNewsList() {
     const inMyPortfolio = (n.actifs_cibles || []).some(a => positions.find(p => p.name === a));
 
     return `
-    <div class="news-item" id="news-item-${i}" style="background:${bg};border-radius:16px;margin-bottom:10px;border:1.5px solid ${border}30;border-left:4px solid ${border};overflow:hidden;transition:box-shadow 0.2s"
-         onmouseover="this.style.boxShadow='0 4px 16px ${border}20'" onmouseout="this.style.boxShadow='none'">
+    <div class="news-item" id="news-item-${i}"
+         style="background:#fff;border-radius:16px;margin-bottom:14px;border:1.5px solid #ebebeb;border-left:5px solid ${border};overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:box-shadow 0.2s,transform 0.15s"
+         onmouseover="this.style.boxShadow='0 6px 20px rgba(0,0,0,0.11)';this.style.transform='translateY(-1px)'"
+         onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)';this.style.transform='translateY(0)'">
 
-      <!-- HEAD cliquable -->
-      <div class="news-item-head" onclick="toggleNews(${i})" style="padding:14px 14px 10px;cursor:pointer">
-
-        <!-- Ligne 1 : pills + étoile -->
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <!-- Bandeau coloré haut -->
+      <div style="background:${bg};padding:8px 16px 7px;border-bottom:1px solid ${border}18">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span class="pill ${tagCls[n.categorie] || 'pill-gray'}" style="font-size:11px">${tagLbl[n.categorie] || n.categorie}</span>
             <span class="pill ${impCls[n.impact] || 'pill-gray'}" style="font-size:11px">Impact ${n.impact}</span>
-            ${inMyPortfolio ? '<span style="background:#1c1c1e;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px">📦 Mon portf.</span>' : ''}
+            ${inMyPortfolio ? '<span style="background:#1c1c1e;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px">📦 Portf.</span>' : ''}
           </div>
-          <div style="display:flex;align-items:center;gap:6px">
+          <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:11px;color:#8e8e93;font-weight:500;white-space:nowrap">${n.heure}</span>
             ${starHtml}
           </div>
         </div>
+      </div>
+
+      <!-- CORPS cliquable -->
+      <div class="news-item-head" onclick="toggleNews(${i})" style="padding:14px 16px 12px;cursor:pointer">
 
         <!-- Titre -->
-        <div class="news-title" style="font-size:15px;font-weight:800;color:#1c1c1e;line-height:1.35;margin-bottom:6px">${n.titre}</div>
+        <div style="font-size:15px;font-weight:800;color:#1c1c1e;line-height:1.4;margin-bottom:7px">${n.titre}</div>
 
         <!-- Résumé -->
-        <div class="news-summary" style="font-size:13px;color:#3c3c43;line-height:1.5;margin-bottom:10px">${n.resume}</div>
+        <div style="font-size:13px;color:#555;line-height:1.55;margin-bottom:10px">${n.resume}</div>
 
         <!-- Actifs cibles -->
         ${assets ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${assets}</div>` : ''}
 
         <!-- Bas : signal + bouton expand -->
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:16px">${sigIcon[n.signal] || '➡️'}</span>
-            <span style="font-size:12px;font-weight:700;color:${border}">${sigLbl[n.signal] || 'Neutre'}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:6px;border-top:1px solid #f0f0f0">
+          <div style="display:flex;align-items:center;gap:7px;background:${bg};border-radius:8px;padding:5px 10px">
+            <span style="font-size:15px">${sigIcon[n.signal] || '➡️'}</span>
+            <span style="font-size:12px;font-weight:800;color:${border}">${sigLbl[n.signal] || 'Neutre'}</span>
           </div>
-          <button class="news-expand" id="nexp-${i}" style="font-size:12px;padding:6px 12px;border-radius:8px;border-color:${border}40;color:${border}">▾ Recommandation IA</button>
+          <button class="news-expand" id="nexp-${i}"
+            style="font-size:12px;padding:7px 14px;border-radius:8px;background:${bg};border:1.5px solid ${border}50;color:${border};font-weight:700">
+            ▾ Recommandation IA
+          </button>
         </div>
       </div>
 
       <!-- RECO expandable -->
-      <div class="news-reco" id="nreco-${i}" style="padding:0 14px 14px">
-        <div style="border-top:1px solid ${border}20;padding-top:12px">
-          <div class="${sigCls[n.signal] || 'signal-neutral'} signal-badge" style="margin-bottom:10px">${sigLbl[n.signal] || 'Neutre'}</div>
-          <div class="news-reco-text" style="font-size:13px;color:#1c1c1e;line-height:1.6;margin-bottom:12px">${n.reco_texte}</div>
-          <div class="opp-strip" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.8);border-radius:12px;padding:10px 14px;gap:10px">
+      <div class="news-reco" id="nreco-${i}" style="padding:0 16px 16px">
+        <div style="border-top:2px solid ${border}20;padding-top:14px">
+          <div class="${sigCls[n.signal] || 'signal-neutral'} signal-badge">${sigLbl[n.signal] || 'Neutre'}</div>
+          <div style="font-size:13px;color:#1c1c1e;line-height:1.7;margin-bottom:14px">${n.reco_texte}</div>
+          <div style="background:${bg};border-radius:12px;padding:12px 14px;border:1.5px solid ${border}25;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
             <div>
-              <div class="opp-label" style="font-size:12px;font-weight:700;color:#1c1c1e">${n.signal==='éviter' ? 'Pas conseillé' : n.signal==='acheter' ? '💡 Opportunité' : '👀 À surveiller'}</div>
-              <div class="opp-sub" style="font-size:11px;color:#8e8e93;margin-top:2px">${n.signal !== 'éviter' ? `${pct}% bankroll · ${HL[profile.horizon]}` : 'Signal négatif — ne pas investir'}</div>
+              <div style="font-size:12px;font-weight:800;color:#1c1c1e">${n.signal==='éviter' ? '🚫 Pas conseillé' : n.signal==='acheter' ? '💡 Opportunité d\'achat' : '👀 À surveiller'}</div>
+              <div style="font-size:11px;color:#8e8e93;margin-top:3px">${n.signal !== 'éviter' ? `${pct}% de ta bankroll · ${HL[profile.horizon]}` : 'Signal négatif — ne pas investir maintenant'}</div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <div class="opp-amount" style="font-size:18px;font-weight:900;color:${border}">${n.signal==='éviter' ? '0 €' : amt.toLocaleString('fr-FR') + ' €'}</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="font-size:22px;font-weight:900;color:${border}">${n.signal==='éviter' ? '0 €' : amt.toLocaleString('fr-FR') + ' €'}</div>
               ${analyseBtn}
             </div>
           </div>
