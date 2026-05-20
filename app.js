@@ -676,11 +676,34 @@ Sois ULTRA concret. Donne de vrais tickers (IWDA.L, VWCE.DE, AAPL, etc.) et de v
   try {
     const r_resp = await callClaude(prompt, 'Tu es conseiller financier pédagogue. Sois concret et donne des vrais noms et montants.');
     if (contentEl) {
+      // Extrait les lignes clés : première ligne de chaque bloc **titre**
+      const keyLines = r_resp.split('\n')
+        .filter(l => l.trim() && !l.startsWith('|') && !l.match(/^[-\s]+$/) && !l.match(/^\d+\./))
+        .slice(0, 6)
+        .map(l => l.replace(/\*\*/g,'').replace(/^#{1,3}\s*/,'').replace(/^[-•>]\s*/,'').trim())
+        .filter(l => l.length > 5 && l.length < 80);
+
+      const summaryHtml = keyLines.length ? `
+        <div style="margin-bottom:14px">
+          ${keyLines.map(l => `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #f5f5f5">
+            <span style="color:#1a7f5a;font-weight:800;flex-shrink:0">✓</span>
+            <span style="font-size:13px;color:#1c1c1e;font-weight:500">${l}</span>
+          </div>`).join('')}
+        </div>` : '';
+
       contentEl.innerHTML = `
-        <div style="font-size:14px;color:#1c1c1e;line-height:1.8">${formatMD(r_resp)}</div>
-        <div style="margin-top:14px;background:#e8f8f0;border-radius:12px;padding:12px 14px;border-left:3px solid #1a7f5a">
-          <div style="font-size:12px;font-weight:700;color:#1a7f5a">✓ Plan généré — prêt à sauvegarder</div>
-          <div style="font-size:12px;color:#065f46;margin-top:3px">Ce plan sera sauvegardé dans ta page Objectif avec le graphique de projection.</div>
+        ${summaryHtml}
+        <!-- Analyse complète masquée par défaut -->
+        <div id="dca-full-analysis" style="display:none">
+          <div style="font-size:14px;color:#1c1c1e;line-height:1.8;margin-bottom:12px">${formatMD(r_resp)}</div>
+        </div>
+        <button onclick="const el=document.getElementById('dca-full-analysis');const btn=this;if(el.style.display==='none'){el.style.display='block';btn.textContent='▴ Masquer l\'analyse';btn.style.background='#f0f0f0';}else{el.style.display='none';btn.textContent='🔬 Voir l\'analyse complète';btn.style.background='#fff';}"
+          style="width:100%;background:#fff;border:1.5px solid #e5e5ea;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#1c1c1e;cursor:pointer;margin-bottom:12px;transition:all 0.15s">
+          🔬 Voir l'analyse complète
+        </button>
+        <div style="background:#e8f8f0;border-radius:12px;padding:12px 14px;border-left:3px solid #1a7f5a">
+          <div style="font-size:12px;font-weight:700;color:#1a7f5a">✓ Plan prêt — clique sur Sauvegarder</div>
+          <div style="font-size:12px;color:#065f46;margin-top:3px">Retrouve ce plan et ton graphique de projection dans la page Objectif.</div>
         </div>`;
     }
     if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
@@ -1723,14 +1746,84 @@ async function obFinish(action) {
 // ===== MARKDOWN FORMATTER =====
 function formatMD(text) {
   if (!text) return '';
-  return text
-    .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #f0f0f0;margin:10px 0">')
+
+  // ── Parse les tableaux markdown en HTML ──
+  function parseTable(block) {
+    const lines = block.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) return null;
+    const isSep = l => /^[\|\s\-:]+$/.test(l);
+    // Cherche la ligne séparateur
+    const sepIdx = lines.findIndex(isSep);
+    if (sepIdx < 1) return null;
+    const parseRow = l => l.split('|').map(c => c.trim()).filter((c,i,a) => i > 0 && i < a.length-1);
+    const headers = parseRow(lines[sepIdx - 1]);
+    const rows    = lines.slice(sepIdx + 1).filter(l => l.includes('|')).map(parseRow);
+    if (!headers.length) return null;
+
+    const thHtml = headers.map(h =>
+      `<th style="padding:8px 10px;font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;text-align:left;border-bottom:2px solid #f0f0f0;white-space:nowrap">${h}</th>`
+    ).join('');
+
+    const trHtml = rows.map((row, ri) =>
+      `<tr style="background:${ri%2===0?'#fff':'#fafafa'}">` +
+      row.map((cell, ci) => {
+        // Mise en valeur : ticker (tout caps court), montant (€), pourcentage
+        const isTicker  = /^[A-Z]{2,6}(\.[A-Z]{1,3})?$/.test(cell.replace(/\*\*/g,''));
+        const isAmount  = /\d+[€%]|\d+ €/.test(cell);
+        const bold      = cell.includes('**');
+        const clean     = cell.replace(/\*\*/g,'').replace(/\*/g,'');
+        let style = `padding:8px 10px;font-size:13px;border-bottom:1px solid #f5f5f5;`;
+        if (ci === 0 && isTicker) style += 'font-weight:800;color:#1c1c1e;font-family:monospace;font-size:12px;';
+        else if (bold || isAmount) style += 'font-weight:800;color:#1a7f5a;';
+        else style += 'color:#3c3c43;font-weight:500;';
+        return `<td style="${style}">${clean}</td>`;
+      }).join('') +
+      `</tr>`
+    ).join('');
+
+    return `<div style="overflow-x:auto;margin:10px 0 14px;border-radius:12px;border:1.5px solid #f0f0f0;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:#f9f9f9">${thHtml}</tr></thead>
+        <tbody>${trHtml}</tbody>
+      </table>
+    </div>`;
+  }
+
+  // Découpe le texte en blocs, repère les blocs tableau
+  const lines = text.split('\n');
+  const result = [];
+  let tableBuffer = [];
+  let inTable = false;
+
+  for (const line of lines) {
+    const isTableLine = /^\s*\|/.test(line) || /^[\|\s\-:]+$/.test(line);
+    if (isTableLine) {
+      inTable = true;
+      tableBuffer.push(line);
+    } else {
+      if (inTable && tableBuffer.length) {
+        const tableHtml = parseTable(tableBuffer.join('\n'));
+        result.push(tableHtml || tableBuffer.join('<br>'));
+        tableBuffer = [];
+        inTable = false;
+      }
+      result.push(line);
+    }
+  }
+  if (tableBuffer.length) {
+    const tableHtml = parseTable(tableBuffer.join('\n'));
+    result.push(tableHtml || tableBuffer.join('<br>'));
+  }
+
+  return result.join('\n')
+    .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #f0f0f0;margin:12px 0">')
     .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#1c1c1e;font-weight:800">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^#{1,3}\s+(.+)$/gm, '<div style="font-size:15px;font-weight:800;color:#1c1c1e;margin:14px 0 6px;letter-spacing:-0.2px;padding-top:8px;border-top:1px solid #f5f5f5">$1</div>')
-    .replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;font-size:14px"><span style="color:#1a7f5a;font-weight:800;flex-shrink:0">→</span><span>$1</span></div>')
-    .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:10px;margin:6px 0;align-items:flex-start"><span style="background:#1c1c1e;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px">$1</span><span style="font-size:14px">$2</span></div>')
-    .replace(/\n\n/g, '<div style="height:10px"></div>')
+    .replace(/^>{1,2}\s*(.+)$/gm, '<div style="background:#f0faf6;border-left:3px solid #1a7f5a;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:13px;color:#065f46;font-weight:600">$1</div>')
+    .replace(/^#{1,3}\s+(.+)$/gm, '<div style="font-size:15px;font-weight:800;color:#1c1c1e;margin:18px 0 8px;letter-spacing:-0.2px;display:flex;align-items:center;gap:8px">$1</div>')
+    .replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;font-size:13px"><span style="color:#1a7f5a;font-weight:800;flex-shrink:0;margin-top:1px">→</span><span style="color:#3c3c43">$1</span></div>')
+    .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:10px;margin:6px 0;align-items:flex-start"><span style="background:#1c1c1e;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px">$1</span><span style="font-size:13px;color:#3c3c43">$2</span></div>')
+    .replace(/\n\n/g, '<div style="height:8px"></div>')
     .replace(/\n/g, '<br>');
 }
 
