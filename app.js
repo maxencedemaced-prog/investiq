@@ -1151,6 +1151,7 @@ function obNext(step) {
 
 function obToggleGoal(goal) {
   obGoals[goal] = !obGoals[goal];
+  try { localStorage.setItem('iq_ob_goals', JSON.stringify(obGoals)); } catch {}
   const card = document.getElementById('ob-goal-' + goal);
   const check = document.getElementById('ob-check-' + goal);
   if (obGoals[goal]) {
@@ -1233,6 +1234,11 @@ function obCheckBudget() {
 }
 
 async function obGeneratePlan() {
+  // Restaure les goals depuis localStorage si obGoals a été réinitialisé (rechargement de page)
+  try {
+    const saved = JSON.parse(localStorage.getItem('iq_ob_goals') || 'null');
+    if (saved && (saved.long || saved.court)) obGoals = saved;
+  } catch {}
   const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
   const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
   const target   = parseFloat(document.getElementById('ob-target')?.value)   || 50000;
@@ -1255,11 +1261,10 @@ async function obGeneratePlan() {
 
   let html = '';
 
-  // PLAN LONG TERME
+  // PLAN LONG TERME — uniquement si l'utilisateur a coché "long terme"
   if (obGoals.long) {
     const capitalLong = both ? budgetLong : bankroll;
     const monthlyLong = both ? Math.round(monthly * 0.7) : monthly;
-    const yearsNeeded = calcNeededYears(capitalLong, monthlyLong, target, 7) || 10;
     const rr = Math.pow(1.07, 10);
     const proj = Math.round(capitalLong * rr + monthlyLong * 12 * ((rr - 1) / 0.07));
     html += `
@@ -1328,6 +1333,7 @@ En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de j
 
 async function obFinish(action) {
   localStorage.setItem(OB_KEY, '1');
+  try { localStorage.removeItem('iq_ob_goals'); } catch {}
   document.getElementById('onboarding-modal').style.display = 'none';
 
   // Si "Voir un exemple" → pas de sauvegarde, juste charger la démo
