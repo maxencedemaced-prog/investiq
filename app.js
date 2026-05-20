@@ -2991,6 +2991,8 @@ async function refreshPrices() {
     renderHome();
     setTimeout(() => showPriceTicker(), 100);
     showToast('✓ ' + updated + ' prix mis à jour');
+    // Recalcule les alertes prix avec les nouveaux cours (remplace les anciennes)
+    checkPriceAlerts();
     // Refresh bloomberg ticker with latest prices
     const strip = document.getElementById('bloomberg-strip');
     if (strip) {
@@ -3060,11 +3062,11 @@ function showTickerFallback() {
 }
 
 function checkPriceAlerts() {
+  // Vide d'abord TOUTES les anciennes alertes prix — on les recalcule proprement
+  notifications = notifications.filter(n => n.type !== 'prix');
+
   positions.forEach(p => {
     if (p.alert_price && p.price <= p.alert_price) {
-      // Déduplique : n'ajoute pas si une alerte pour ce ticker existe déjà
-      const alreadyExists = notifications.some(n => n.type === 'prix' && n.titre && n.titre.includes(p.name));
-      if (alreadyExists) return;
       const notif = {
         titre: `⚠ Alerte prix — ${p.name}`,
         texte: `${p.name} est à ${fmt(p.price)}€, sous ton seuil d'alerte de ${fmt(p.alert_price)}€.`,
@@ -3073,21 +3075,18 @@ function checkPriceAlerts() {
         heure: 'Maintenant',
         type: 'prix'
       };
-      notifications.unshift(notif);
-      document.getElementById('notif-dot').classList.add('show');
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(`InvestIQ — Alerte ${p.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
+      // Une seule alerte par ticker
+      const exists = notifications.some(n => n.type === 'prix' && n.titre.includes(p.name));
+      if (!exists) {
+        notifications.unshift(notif);
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(`InvestIQ — Alerte ${p.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
+        }
       }
     }
   });
-  // Déduplique aussi les doublons existants (nettoyage)
-  const seen = new Set();
-  notifications = notifications.filter(n => {
-    const key = n.titre + n.texte;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+
+  if (notifications.length) document.getElementById('notif-dot').classList.add('show');
   renderNotifications();
 }
 
@@ -3171,12 +3170,8 @@ async function checkAndGenerateNotifications() {
   if (!positions.length) return;
   const newNotifs = [];
 
-  // ── 1. ALERTES PRIX (déjà existant, gardé ici) ──
-  positions.forEach(p => {
-    if (p.alert_price && p.price <= p.alert_price) {
-      newNotifs.push({ titre:`⚠️ Alerte prix — ${p.name}`, texte:`${p.name} est à ${fmt(p.price)}€, sous ton seuil de ${fmt(p.alert_price)}€.`, action:`Voir ${p.name}`, impact:'high', heure:'Maintenant', type:'prix' });
-    }
-  });
+  // ── 1. ALERTES PRIX — gérées exclusivement par checkPriceAlerts() ──
+  // (pas de duplication ici)
 
   // ── 2. RÉÉQUILIBRAGE ──
   const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
