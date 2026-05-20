@@ -1518,31 +1518,41 @@ function removeFavCard(cardId, ticker, name) {
 function toggleNewsItemFav(ticker, name, cardId) {
   const isRealTicker = ticker && !ticker.startsWith('news-') && ticker.length < 20;
   if (!isRealTicker) return;
-  
-  // Toggle synchrone
+
   const isFav = favToggleSync(ticker, name);
 
-  // Met à jour l'étoile dans la carte
+  // Met à jour toutes les étoiles liées à ce ticker dans la page
+  // 1. Étoile dans la card (id="star-news-N")
   const card = cardId ? document.getElementById(cardId) : null;
   if (card) {
-    const star = card.querySelector('.fav-star');
-    if (star) {
-      star.textContent = isFav ? '★' : '☆';
-      star.style.color = isFav ? '#f59e0b' : 'rgba(0,0,0,0.15)';
+    const starInCard = card.querySelector('[id^="star-news-"]');
+    if (starInCard) {
+      starInCard.textContent = isFav ? '★' : '☆';
+      starInCard.style.color = isFav ? '#f59e0b' : '#c7c7cc';
+      starInCard.title = isFav ? 'Retirer des favoris' : 'Ajouter aux favoris';
     }
-    // Dans Mes favoris, on retire → animation
+    // Animation retrait si on est dans favoris
     if (!isFav && newsFilter === 'favoris') {
       card.style.transition = 'opacity 0.2s, transform 0.2s';
       card.style.opacity = '0';
       card.style.transform = 'translateX(20px)';
-      setTimeout(() => {
-        card.remove();
-        newsTabCache.favoris.html = '';
-      }, 200);
+      setTimeout(() => { card.remove(); newsTabCache.favoris.html = ''; }, 200);
     }
   }
+  // 2. Étoiles dans les autres onglets (classe ent-star-TICKER)
+  document.querySelectorAll(`.ent-star-${ticker}`).forEach(b => {
+    b.textContent = isFav ? '★' : '☆';
+    b.style.color  = isFav ? '#f59e0b' : 'rgba(0,0,0,0.2)';
+  });
+  // 3. Bouton popular-chip si visible
+  const popBtn = document.getElementById('pop-btn-' + ticker);
+  if (popBtn) {
+    popBtn.textContent = isFav ? '★ Suivi' : '+ Suivre';
+    popBtn.style.background = isFav ? '#e8f8f0' : '#f5f5f5';
+    popBtn.style.color = isFav ? '#1a7f5a' : '#1c1c1e';
+  }
 
-  showToast(isFav ? '★ ' + (name||ticker) + ' ajouté !' : 'Retiré des favoris');
+  showToast(isFav ? '★ ' + (name || ticker) + ' ajouté !' : 'Retiré des favoris');
   updateFavPill();
 }
 
@@ -1620,13 +1630,13 @@ function renderNewsPage() {
   const container = document.getElementById('news-page-content');
   if (!container) return;
 
-  // Get all companies to track (portfolio + watchlist)
-  loadWatchlist(); // make sure watchlist is loaded fresh
+  loadWatchlist();
   const portfolioCompanies = positions.map(p => ({
     ticker: p.name, name: p.name, sector: p.sector || 'Portefeuille', inPortfolio: true
   }));
   const watchCompanies = watchlist.map(w => ({ ...w, inPortfolio: false }));
   const allTracked = [...portfolioCompanies, ...watchCompanies.filter(w => !portfolioCompanies.find(p => p.ticker === w.ticker))];
+  const uniqPos = positions.filter((p,i,a) => a.findIndex(x => x.name === p.name) === i).length;
 
   container.innerHTML = `
     <!-- SEARCH BAR -->
@@ -1639,59 +1649,68 @@ function renderNewsPage() {
       <div id="search-results-drop" class="search-drop" style="display:none"></div>
     </div>
 
-    <!-- FILTER PILLS -->
-    <div class="filter-row" style="margin-top:14px">
-      <button class="filter-pill active" id="news-fil-tous" onclick="setNewsFilter('tous',this)">Toutes les actus</button>
-      <button class="filter-pill" id="news-fil-signaux" onclick="setNewsFilter('signaux',this)" style="background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 12px rgba(204,47,38,0.4);font-weight:800">⚡ Signaux</button>
-      <button class="filter-pill" id="news-fil-entreprises" onclick="setNewsFilter('entreprises',this)">🏢 Entreprises</button>
-      <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)">⭐ Favoris ${watchlist.length > 0 ? `<span class="pill-count">${watchlist.length}</span>` : ''}</button>
-      <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)">📅 Agenda</button>
+    <!-- FILTER PILLS LIGNE 1 : onglets principaux -->
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:14px 0 6px;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch">
+      <button class="filter-pill active" id="news-fil-tous" onclick="setNewsFilter('tous',this)" style="white-space:nowrap;flex-shrink:0">📰 Toutes</button>
+      <button class="filter-pill" id="news-fil-signaux" onclick="setNewsFilter('signaux',this)" style="white-space:nowrap;flex-shrink:0;background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 10px rgba(204,47,38,0.35);font-weight:800">⚡ Signaux</button>
+      <button class="filter-pill" id="news-fil-entreprises" onclick="setNewsFilter('entreprises',this)" style="white-space:nowrap;flex-shrink:0">🏢 Entreprises</button>
+      <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)" style="white-space:nowrap;flex-shrink:0">⭐ Favoris${watchlist.length > 0 ? ` <span style="background:#f59e0b;color:#fff;border-radius:99px;font-size:10px;font-weight:800;padding:1px 6px;margin-left:2px">${watchlist.length}</span>` : ''}</button>
+      <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)" style="white-space:nowrap;flex-shrink:0">📅 Agenda</button>
+    </div>
 
-      <button class="filter-pill" id="news-fil-macro" onclick="setNewsFilter('macro',this)">Macro</button>
-      <button class="filter-pill" id="news-fil-banque" onclick="setNewsFilter('banque',this)">Banques centrales</button>
-      <button class="filter-pill" id="news-fil-marche" onclick="setNewsFilter('marche',this)">Marchés</button>
+    <!-- FILTER PILLS LIGNE 2 : filtres catégories -->
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:14px;scrollbar-width:none;-ms-overflow-style:none">
+      <span style="font-size:11px;font-weight:700;color:#c7c7cc;text-transform:uppercase;letter-spacing:0.4px;align-self:center;white-space:nowrap;flex-shrink:0">Filtrer :</span>
+      <button class="filter-pill" id="news-fil-macro" onclick="setNewsFilter('macro',this)" style="white-space:nowrap;flex-shrink:0;font-size:12px;padding:5px 11px">🌍 Macro</button>
+      <button class="filter-pill" id="news-fil-banque" onclick="setNewsFilter('banque',this)" style="white-space:nowrap;flex-shrink:0;font-size:12px;padding:5px 11px">🏦 Banques centrales</button>
+      <button class="filter-pill" id="news-fil-marche" onclick="setNewsFilter('marche',this)" style="white-space:nowrap;flex-shrink:0;font-size:12px;padding:5px 11px">📈 Marchés</button>
+      <button class="filter-pill" id="news-fil-geo" onclick="setNewsFilter('geo',this)" style="white-space:nowrap;flex-shrink:0;font-size:12px;padding:5px 11px">⚡ Géopolitique</button>
+      <button class="filter-pill" id="news-fil-secteur" onclick="setNewsFilter('secteur',this)" style="white-space:nowrap;flex-shrink:0;font-size:12px;padding:5px 11px">🏢 Secteurs</button>
     </div>
 
     <!-- BLOOMBERG TICKER STRIP -->
     ${allTracked.length > 0 ? `
-    <div style="margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
-        Mes valeurs suivies · <span style="font-weight:400">${watchlist.length} favoris · ${positions.filter((p,i,a)=>a.findIndex(x=>x.name===p.name)===i).length} positions</span>
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">
+        Mes valeurs · <span style="font-weight:400;color:#c7c7cc">${watchlist.length} favoris · ${uniqPos} position${uniqPos > 1 ? 's' : ''}</span>
       </div>
       <div style="background:#0f0f10;border-radius:12px;overflow:hidden;position:relative;height:42px">
         <div style="display:flex;overflow:hidden;position:relative;height:42px;align-items:center">
-          <div class="bloomberg-ticker" id="bloomberg-strip">
-            ${buildBloombergTicker(allTracked)}
-          </div>
+          <div class="bloomberg-ticker" id="bloomberg-strip">${buildBloombergTicker(allTracked)}</div>
         </div>
       </div>
     </div>` : `
-    <div style="text-align:center;padding:16px;background:#f9f9f9;border-radius:14px;margin-bottom:14px">
-      <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucune valeur suivie — recherche une entreprise ci-dessus et clique ☆ Suivre</div>
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f9f9f9;border-radius:12px;margin-bottom:14px;border:1.5px dashed #e5e5ea">
+      <span style="font-size:20px">🔍</span>
+      <div style="font-size:13px;color:#8e8e93;font-weight:500">Recherche une entreprise ci-dessus et clique <strong>+ Suivre</strong> pour la tracker</div>
     </div>`}
 
-    <!-- POPULAR TO ADD -->
-    ${allTracked.length < 5 ? `
-    <div class="popular-section">
-      <div class="popular-title">Entreprises populaires à suivre</div>
-      <div class="popular-grid">
-        ${POPULAR.filter(p => !allTracked.find(t => t.ticker === p.ticker)).slice(0, 8).map(p => `
-          <div class="popular-chip" onclick="openCompany('${p.ticker}','${p.name}','${p.sector}')">
-            <div class="popular-left">
-              <div class="popular-avatar">${p.ticker.slice(0,2)}</div>
-              <div><div class="popular-name">${p.name}</div><div class="popular-ticker">${p.ticker} · ${p.sector}</div></div>
+    <!-- POPULAR TO ADD (seulement si < 3 suivis) -->
+    ${allTracked.length < 3 ? `
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Populaires à suivre</div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">
+        ${POPULAR.filter(p => !allTracked.find(t => t.ticker === p.ticker)).slice(0, 6).map(p => `
+          <div style="background:#fff;border-radius:12px;padding:10px 12px;border:1.5px solid #f0f0f0;flex-shrink:0;min-width:130px;cursor:pointer" onclick="openCompany('${p.ticker}','${p.name}','${p.sector}')">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+              <div style="width:28px;height:28px;border-radius:8px;background:#1c1c1e;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${p.ticker.slice(0,2)}</div>
+              <div>
+                <div style="font-size:12px;font-weight:800;color:#1c1c1e;line-height:1.2">${p.name}</div>
+                <div style="font-size:10px;color:#8e8e93">${p.sector}</div>
+              </div>
             </div>
-            <button class="btn-follow ${isFavorite(p.ticker)?'following':''}" onclick="event.stopPropagation();toggleFavorite('${p.ticker}','${p.name}','${p.sector}')">
-              ${isFavorite(p.ticker) ? '✓ Suivi' : '+ Suivre'}
+            <button onclick="event.stopPropagation();toggleFavorite('${p.ticker}','${p.name}','${p.sector}')" id="pop-btn-${p.ticker}"
+              style="width:100%;background:${isFavorite(p.ticker)?'#e8f8f0':'#f5f5f5'};color:${isFavorite(p.ticker)?'#1a7f5a':'#1c1c1e'};border:none;border-radius:8px;padding:5px 0;font-size:11px;font-weight:700;cursor:pointer">
+              ${isFavorite(p.ticker) ? '★ Suivi' : '+ Suivre'}
             </button>
           </div>`).join('')}
       </div>
     </div>` : ''}
 
-    <!-- NEWS LIST -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:800;color:#1c1c1e">Actualités du marché</div>
-      <button class="btn-refresh" id="news-refresh-btn" onclick="Object.keys(newsTabCache).forEach(k=>{newsTabCache[k].html='';newsTabCache[k].ts=0;});setNewsFilter(newsFilter,document.getElementById('news-fil-'+newsFilter))||loadNews(true)">
+    <!-- NEWS HEADER -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:14px;font-weight:800;color:#1c1c1e" id="news-section-title">Actualités du marché</div>
+      <button class="btn-refresh" id="news-refresh-btn" onclick="Object.keys(newsTabCache).forEach(k=>{newsTabCache[k].html='';newsTabCache[k].ts=0;});newsData=[];loadNews(true)">
         <svg id="news-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
         Actualiser
       </button>
@@ -2439,20 +2458,31 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
 
 function setNewsFilter(filter, el) {
   newsFilter = filter;
+
+  // Reset toutes les pills
   document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
-  // Style spécial pour signaux
+
+  // Style spécial permanent pour Signaux
   const sigBtn = document.getElementById('news-fil-signaux');
   if (sigBtn) {
-    if (filter === 'signaux') {
-      sigBtn.style.cssText = 'background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 16px rgba(204,47,38,0.6);font-weight:800;transform:scale(1.03)';
-    } else {
-      sigBtn.style.cssText = 'background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 12px rgba(204,47,38,0.4);font-weight:800';
-    }
+    sigBtn.style.cssText = filter === 'signaux'
+      ? 'white-space:nowrap;flex-shrink:0;background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 18px rgba(204,47,38,0.7);font-weight:800;transform:scale(1.04)'
+      : 'white-space:nowrap;flex-shrink:0;background:linear-gradient(135deg,#cc2f26,#ff5c5c);color:#fff;border-color:#cc2f26;box-shadow:0 0 10px rgba(204,47,38,0.35);font-weight:800';
   }
+
   if (el) el.classList.add('active');
 
-  // Scroll vers le haut
-  document.getElementById('news-list')?.scrollIntoView({behavior:'smooth', block:'start'});
+  // Titre dynamique de la section
+  const titleMap = {
+    tous:'Actualités du marché', signaux:'⚡ Signaux IA', entreprises:'🏢 Actualités entreprises',
+    favoris:'⭐ Mes favoris', agenda:'📅 Agenda économique',
+    macro:'🌍 Macro-économie', banque:'🏦 Banques centrales', marche:'📈 Marchés', geo:'⚡ Géopolitique', secteur:'🏢 Secteurs'
+  };
+  const titleEl = document.getElementById('news-section-title');
+  if (titleEl) titleEl.textContent = titleMap[filter] || 'Actualités du marché';
+
+  // Scroll doux vers la liste
+  setTimeout(() => document.getElementById('news-list')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 
   if (filter === 'signaux') {
     if (isCacheValid('signaux')) { restoreFromCache('signaux'); return; }
@@ -2466,6 +2496,7 @@ function setNewsFilter(filter, el) {
     if (isCacheValid('agenda')) { restoreFromCache('agenda'); return; }
     renderAgenda();
   } else {
+    // tous / macro / banque / marche / geo / secteur → renderNewsList filtre
     renderNewsList();
   }
 }
@@ -4281,7 +4312,7 @@ function renderNewsList() {
     const starHtml   = starTicker ? `
       <button id="star-news-${i}"
         onclick="event.stopPropagation();toggleNewsItemFav('${starTicker}','${starName}','news-item-${i}')"
-        style="background:none;border:none;cursor:pointer;font-size:20px;padding:2px 4px;line-height:1;color:${isFav?'#f59e0b':'#c7c7cc'};transition:color 0.2s;flex-shrink:0"
+        style="background:none;border:none;cursor:pointer;font-size:22px;padding:2px 6px;line-height:1;color:${isFav?'#f59e0b':'#d0d0d0'};transition:all 0.2s;flex-shrink:0;transform:${isFav?'scale(1.1)':'scale(1)'}"
         title="${isFav ? 'Retiré des favoris' : 'Ajouter aux favoris'}">${isFav ? '★' : '☆'}</button>` : '';
 
     // Bouton analyser
@@ -4330,12 +4361,12 @@ function renderNewsList() {
             <span style="font-size:16px">${sigIcon[n.signal] || '➡️'}</span>
             <span style="font-size:12px;font-weight:700;color:${border}">${sigLbl[n.signal] || 'Neutre'}</span>
           </div>
-          <button class="news-expand" id="nexp-${i}" style="font-size:12px;padding:6px 12px;border-radius:8px">▾ Recommandation IA</button>
+          <button class="news-expand" id="nexp-${i}" style="font-size:12px;padding:6px 12px;border-radius:8px;border-color:${border}40;color:${border}">▾ Recommandation IA</button>
         </div>
       </div>
 
       <!-- RECO expandable -->
-      <div class="news-reco" id="nreco-${i}" style="display:none;padding:0 14px 14px">
+      <div class="news-reco" id="nreco-${i}" style="padding:0 14px 14px">
         <div style="border-top:1px solid ${border}20;padding-top:12px">
           <div class="${sigCls[n.signal] || 'signal-neutral'} signal-badge" style="margin-bottom:10px">${sigLbl[n.signal] || 'Neutre'}</div>
           <div class="news-reco-text" style="font-size:13px;color:#1c1c1e;line-height:1.6;margin-bottom:12px">${n.reco_texte}</div>
@@ -4362,9 +4393,13 @@ function toggleNews(i) {
   const r = document.getElementById('nreco-' + i);
   const b = document.getElementById('nexp-' + i);
   if (!r || !b) return;
-  const open = r.style.display === 'block';
-  r.style.display = open ? 'none' : 'block';
-  b.textContent   = open ? '▾ Recommandation IA' : '▴ Masquer';
+  const isOpen = r.classList.contains('open');
+  r.classList.toggle('open', !isOpen);
+  b.textContent = isOpen ? '▾ Recommandation IA' : '▴ Masquer';
+  if (!isOpen) {
+    const card = r.closest ? r.closest('[id^="news-item-"]') : null;
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 // ===== DECISION =====
