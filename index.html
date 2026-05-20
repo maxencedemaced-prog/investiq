@@ -14,24 +14,55 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <link rel="stylesheet" href="style.css">
   <style>
-    /* ===== DCA PRESETS ===== */
-    .dca-preset {
-      white-space: nowrap;
-      flex-shrink: 0;
+    /* ===== DCA PRESET CARDS ===== */
+    .dca-preset-card {
+      width: 100%;
       background: #fff;
       border: 1.5px solid #e5e5ea;
-      border-radius: 99px;
-      padding: 7px 14px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #1c1c1e;
+      border-radius: 14px;
+      padding: 12px 14px;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.18s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-align: left;
     }
-    .dca-preset:hover, .dca-preset.active {
-      background: #1c1c1e;
-      color: #fff;
+    .dca-preset-card:hover {
       border-color: #1c1c1e;
+      background: #f9f9f9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .dca-preset-card.active {
+      border-color: #1a7f5a;
+      background: #f0faf6;
+      box-shadow: 0 0 0 2px rgba(26,127,90,0.15);
+    }
+    .dca-preset-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+    .dca-preset-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #1c1c1e;
+      margin-bottom: 2px;
+    }
+    .dca-preset-sub {
+      font-size: 11px;
+      color: #8e8e93;
+      font-weight: 500;
+    }
+    .dca-preset-result {
+      font-size: 14px;
+      font-weight: 900;
+      color: #1a7f5a;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     /* ===== SKELETON LOADER ===== */
     .skeleton {
@@ -681,12 +712,66 @@
       <div class="page-header"><h1>Simulateur DCA</h1></div>
 
       <!-- PRESETS -->
-      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:12px">
-        <button class="dca-preset" onclick="dcaPreset(200,10,7,1000)">📊 ETF Monde</button>
-        <button class="dca-preset" onclick="dcaPreset(500,20,8,5000)">🚀 Agressif</button>
-        <button class="dca-preset" onclick="dcaPreset(100,15,5,0)">🛡 Prudent</button>
-        <button class="dca-preset" onclick="dcaPreset(1000,30,9,10000)">💎 Premium</button>
-        <button class="dca-preset" onclick="dcaPreset(300,10,7,0)">🎓 Débutant</button>
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Profils types — cliquez pour charger</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+
+          <button class="dca-preset-card" onclick="dcaPreset(200,20,7,1000,this)">
+            <div class="dca-preset-left">
+              <span style="font-size:22px">📊</span>
+              <div>
+                <div class="dca-preset-title">ETF Monde — Débutant</div>
+                <div class="dca-preset-sub">200€/mois · 20 ans · 7%/an · IWDA ou VWCE</div>
+              </div>
+            </div>
+            <div class="dca-preset-result" id="pre-res-0"></div>
+          </button>
+
+          <button class="dca-preset-card" onclick="dcaPreset(100,15,5,0,this)">
+            <div class="dca-preset-left">
+              <span style="font-size:22px">🛡️</span>
+              <div>
+                <div class="dca-preset-title">Prudent — Sécurité avant tout</div>
+                <div class="dca-preset-sub">100€/mois · 15 ans · 5%/an · ETF obligations + monde</div>
+              </div>
+            </div>
+            <div class="dca-preset-result" id="pre-res-1"></div>
+          </button>
+
+          <button class="dca-preset-card" onclick="dcaPreset(500,15,9,5000,this)">
+            <div class="dca-preset-left">
+              <span style="font-size:22px">🚀</span>
+              <div>
+                <div class="dca-preset-title">Agressif — Croissance forte</div>
+                <div class="dca-preset-sub">500€/mois · 15 ans · 9%/an · ETF tech + actions growth</div>
+              </div>
+            </div>
+            <div class="dca-preset-result" id="pre-res-2"></div>
+          </button>
+
+          <button class="dca-preset-card" onclick="dcaPreset(1000,30,9,10000,this)">
+            <div class="dca-preset-left">
+              <span style="font-size:22px">💎</span>
+              <div>
+                <div class="dca-preset-title">Premium — Retraite anticipée</div>
+                <div class="dca-preset-sub">1 000€/mois · 30 ans · 9%/an · Mix ETF + actions dividendes</div>
+              </div>
+            </div>
+            <div class="dca-preset-result" id="pre-res-3"></div>
+          </button>
+
+          <button class="dca-preset-card" onclick="dcaPreset(50,10,7,0,this)">
+            <div class="dca-preset-left">
+              <span style="font-size:22px">🎓</span>
+              <div>
+                <div class="dca-preset-title">Micro-DCA — Petit budget</div>
+                <div class="dca-preset-sub">50€/mois · 10 ans · 7%/an · ETF monde fractionné</div>
+              </div>
+            </div>
+            <div class="dca-preset-result" id="pre-res-4"></div>
+          </button>
+
+        </div>
       </div>
 
       <div class="card">
