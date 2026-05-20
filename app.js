@@ -7,36 +7,46 @@ function hasValidObj(o) {
   return o && o.target && o.target > 0;
 }
 
-async function validateObjectif() {
+async function validateObjectif(labelOverride) {
+  const label = labelOverride || ('Objectif ' + (allObjectives.length + 1));
   const data = {
-    capital: objChartCapital,
-    monthly: objChartMonthly,
-    target: objChartTarget,
-    years: objChartYears,
-    rate: objChartRate,
-    risk: objRisk,
-    validatedAt: new Date().toISOString()
+    capital: objChartCapital, monthly: objChartMonthly,
+    target: objChartTarget, years: objChartYears,
+    rate: objChartRate, risk: objRisk,
+    label, validated_at: new Date().toISOString()
   };
-  try { localStorage.setItem(OBJ_STORAGE, JSON.stringify(data)); } catch {}
+  try { localStorage.setItem(OBJ_STORAGE, JSON.stringify({...data, validatedAt: data.validated_at})); } catch {}
   if (!isDemo && currentUser) {
     try {
-      const { error } = await sb.from('objectives').update({
-        capital: data.capital,
-        monthly: data.monthly,
-        target: data.target,
-        years: data.years,
-        rate: data.rate,
-        risk: data.risk,
-        validated_at: data.validatedAt,
-        updated_at: new Date().toISOString()
-      }).eq('user_id', currentUser.id);
-      if (error) console.warn('Supabase objectif save failed:', error);
-      else console.log('[validateObjectif] Saved to Supabase OK');
+      // Vérifie si un objectif identique existe déjà (même target+monthly = mise à jour)
+      const existing = allObjectives.find(o => o.target === data.target && o.monthly === data.monthly);
+      let savedId = null;
+      if (existing) {
+        // Mise à jour
+        const { error } = await sb.from('objectives').update({
+          capital: data.capital, monthly: data.monthly, target: data.target,
+          years: data.years, rate: data.rate, risk: data.risk, label: data.label,
+          validated_at: data.validated_at, updated_at: new Date().toISOString()
+        }).eq('id', existing.id);
+        if (!error) savedId = existing.id;
+      } else {
+        // Nouvel objectif
+        const { data: inserted, error } = await sb.from('objectives').insert({
+          user_id: currentUser.id, capital: data.capital, monthly: data.monthly,
+          target: data.target, years: data.years, rate: data.rate, risk: data.risk,
+          label: data.label, validated_at: data.validated_at,
+          updated_at: new Date().toISOString()
+        }).select().single();
+        if (!error && inserted) savedId = inserted.id;
+      }
+      // Recharge tous les objectifs
+      await loadObjective();
+      renderMultiObjChart();
     } catch(e) { console.warn('Supabase objectif save failed:', e); }
   }
   const btn = document.querySelector('.btn-obj-validate');
-  if (btn) { btn.textContent = '✓ Objectif sauvegardé sur ton compte !'; btn.style.background = '#1a7f5a'; btn.disabled = true; }
-  showToast('🎯 Objectif sauvegardé sur ton compte !');
+  if (btn) { btn.textContent = '✓ Objectif sauvegardé !'; btn.style.background = '#1a7f5a'; btn.disabled = true; }
+  showToast('🎯 Objectif sauvegardé !');
 }
 
 function applyObjData(d) {
@@ -83,7 +93,11 @@ function showValidatedChart() {
   document.getElementById('obj-wizard').style.display = 'none';
   document.getElementById('obj-results').style.display = 'block';
   setTimeout(() => {
-    buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
+    if (allObjectives.length > 0) {
+      renderMultiObjChart();
+    } else {
+      buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
+    }
     renderCourtTermePlan();
   }, 100);
   const el = document.getElementById('obj-ai-simple');
@@ -244,6 +258,10 @@ let objChartMonthly = 200;
 let objChartRate = 7;
 let objChartTarget = 100000;
 let objRisk = 'equilibre';
+// Multi-objectifs
+let allObjectives = []; // [{id, label, capital, monthly, target, years, rate, risk, color}]
+let activeObjId = null;
+const OBJ_COLORS = ['#1a7f5a','#6366f1','#f59e0b','#ec4899','#0ea5e9','#10b981'];
 
 function buildObjChart(capital, monthly, target, years, annualRate) {
   objChartCapital = capital;
@@ -385,6 +403,237 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
       badge.className = 'obj-track-badge off-track';
     }
   }
+}
+
+// ===== MULTI-OBJECTIFS CHART =====
+function renderMultiObjChart() {
+  const el = document.getElementById('obj-results');
+  const wizard = document.getElementById('obj-wizard');
+  if (!allObjectives.length) return;
+  if (el) el.style.display = 'block';
+  if (wizard) wizard.style.display = 'none';
+
+  const tv = positions.reduce((a,p) => a + p.qty*p.price, 0);
+
+  // Calcule la durée max parmi tous les objectifs
+  const maxYears = Math.max(...allObjectives.map(o => o.years));
+  const maxMonths = maxYears * 12;
+  const step = Math.max(1, Math.floor(maxMonths / 60));
+
+  // Labels communs
+  const labels = [];
+  for (let m = 0; m <= maxMonths; m += step) {
+    const yr = m / 12;
+    labels.push(yr === 0 ? "Auj." : yr % 1 === 0 ? Math.round(yr) + 'a' : '');
+  }
+
+  // Datasets : une courbe par objectif
+  const datasets = allObjectives.flatMap((obj, i) => {
+    const rate = obj.rate / 100 / 12;
+    const projData = [];
+    const invData  = [];
+    for (let m = 0; m <= maxMonths; m += step) {
+      const n = Math.min(m, obj.years * 12);
+      const fv = obj.capital * Math.pow(1+rate,n) + (rate>0 ? obj.monthly*((Math.pow(1+rate,n)-1)/rate) : obj.monthly*n);
+      projData.push(Math.round(fv));
+      invData.push(Math.round(obj.capital + obj.monthly*n));
+    }
+    return [
+      {
+        label: obj.label,
+        data: projData,
+        borderColor: obj.color,
+        backgroundColor: obj.color + '18',
+        borderWidth: 2.5,
+        fill: false,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: obj.color,
+        objId: obj.id
+      },
+      {
+        label: obj.label + ' (investi)',
+        data: invData,
+        borderColor: obj.color + '55',
+        borderWidth: 1,
+        borderDash: [4,4],
+        fill: false,
+        tension: 0,
+        pointRadius: 0,
+        hidden: true
+      }
+    ];
+  });
+
+  // Mise à jour ou création du graphique
+  const canvas = document.getElementById('obj-chart');
+  if (!canvas) return;
+  if (objChartInstance) objChartInstance.destroy();
+
+  const ctx = canvas.getContext('2d');
+  objChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 500 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => c.dataset.label + ' : ' + fmtK(c.raw)
+          },
+          backgroundColor: 'rgba(255,255,255,0.12)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: 'rgba(255,255,255,0.2)',
+          borderWidth: 1,
+        }
+      },
+      scales: { x: { display: false }, y: { display: false } },
+      interaction: { mode: 'index', intersect: false }
+    }
+  });
+
+  // Légende + gestion des objectifs
+  renderObjLegend(tv);
+
+  // Slider : utilise le 1er objectif actif pour le curseur
+  const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
+  if (active) {
+    objChartCapital = active.capital;
+    objChartMonthly = active.monthly;
+    objChartTarget  = active.target;
+    objChartYears   = active.years;
+    objChartRate    = active.rate;
+    objProjectionData = [];
+    const r = active.rate/100/12;
+    for (let m = 0; m <= active.years*12; m++) {
+      objProjectionData.push(Math.round(active.capital*Math.pow(1+r,m)+(r>0?active.monthly*((Math.pow(1+r,m)-1)/r):active.monthly*m)));
+    }
+  }
+  const sliderEnd = document.getElementById('obj-slider-end');
+  if (sliderEnd && active) sliderEnd.textContent = `Dans ${active.years} an${active.years>1?'s':''}`;
+  updateObjSlider(100);
+
+  // Barre progression réelle
+  if (active) {
+    const pct = Math.min(tv / active.target * 100, 100);
+    const bar = document.getElementById('obj-real-bar');
+    const marker = document.getElementById('obj-real-marker');
+    const pctEl = document.getElementById('obj-real-pct');
+    const valEl = document.getElementById('obj-real-val');
+    const targetEl = document.getElementById('obj-real-target');
+    if (bar) bar.style.width = pct + '%';
+    if (marker) marker.style.left = pct + '%';
+    if (pctEl) pctEl.textContent = pct.toFixed(1) + '%';
+    if (valEl) valEl.textContent = fmtK(tv);
+    if (targetEl) targetEl.textContent = fmtK(active.target);
+  }
+}
+
+function renderObjLegend(tv) {
+  // Injecte ou met à jour la légende sous le graphique
+  let legend = document.getElementById('obj-multi-legend');
+  if (!legend) {
+    const wrap = document.querySelector('.obj-chart-card');
+    if (!wrap) return;
+    legend = document.createElement('div');
+    legend.id = 'obj-multi-legend';
+    legend.style.cssText = 'padding:12px 16px 4px;display:flex;flex-direction:column;gap:8px';
+    // Insérer avant la barre de progression
+    const realProg = wrap.querySelector('.obj-real-progress');
+    if (realProg) wrap.insertBefore(legend, realProg);
+    else wrap.appendChild(legend);
+  }
+
+  legend.innerHTML = allObjectives.map((obj, i) => {
+    const rate = obj.rate/100/12;
+    const n = obj.years*12;
+    const fv = Math.round(obj.capital*Math.pow(1+rate,n)+(rate>0?obj.monthly*((Math.pow(1+rate,n)-1)/rate):obj.monthly*n));
+    const pct = tv > 0 && obj.target > 0 ? Math.min(tv/obj.target*100, 100) : 0;
+    const isActive = obj.id === activeObjId;
+    return `
+    <div style="background:${isActive?obj.color+'12':'#f9f9f9'};border:1.5px solid ${isActive?obj.color+'40':'#f0f0f0'};border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.2s"
+         onclick="setActiveObj('${obj.id}')">
+      <div style="width:12px;height:12px;border-radius:50%;background:${obj.color};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800;color:#1c1c1e;display:flex;align-items:center;gap:6px">
+          ${obj.label}
+          ${isActive ? `<span style="font-size:10px;background:${obj.color};color:#fff;padding:1px 6px;border-radius:5px;font-weight:700">ACTIF</span>` : ''}
+        </div>
+        <div style="font-size:11px;color:#8e8e93;margin-top:1px">${obj.monthly}€/mois · ${obj.years}ans · ${obj.rate}%/an · → <strong style="color:${obj.color}">${fmtK(fv)}</strong></div>
+        <div style="margin-top:5px;background:#e5e5ea;border-radius:4px;height:4px;overflow:hidden">
+          <div style="height:100%;background:${obj.color};width:${pct}%;border-radius:4px;transition:width 0.5s"></div>
+        </div>
+        <div style="font-size:10px;color:#8e8e93;margin-top:2px">${pct.toFixed(1)}% atteint · Objectif : ${fmtK(obj.target)}</div>
+      </div>
+      <button onclick="event.stopPropagation();deleteObjective('${obj.id}')"
+        style="background:#fff0f0;border:none;border-radius:8px;width:28px;height:28px;cursor:pointer;color:#cc2f26;font-size:16px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center"
+        title="Supprimer cet objectif">×</button>
+    </div>`;
+  }).join('') + `
+  <button onclick="resetObj()"
+    style="width:100%;background:#f5f5f5;border:1.5px dashed #e5e5ea;border-radius:12px;padding:10px;font-size:13px;font-weight:700;color:#8e8e93;cursor:pointer;margin-top:4px;transition:all 0.15s"
+    onmouseover="this.style.borderColor='#1c1c1e';this.style.color='#1c1c1e'"
+    onmouseout="this.style.borderColor='#e5e5ea';this.style.color='#8e8e93'">
+    + Créer un nouvel objectif
+  </button>`;
+}
+
+function setActiveObj(id) {
+  activeObjId = id;
+  const obj = allObjectives.find(o => o.id === id);
+  if (obj) applyObjData(obj);
+  renderMultiObjChart();
+}
+
+async function deleteObjective(id) {
+  if (!confirm('Supprimer cet objectif ?')) return;
+  if (!isDemo && currentUser) {
+    try { await sb.from('objectives').delete().eq('id', id); } catch(e) {}
+  }
+  allObjectives = allObjectives.filter(o => o.id !== id);
+  if (activeObjId === id) activeObjId = allObjectives[0]?.id || null;
+  if (allObjectives.length === 0) {
+    // Plus d'objectifs — retour au wizard
+    const el = document.getElementById('obj-results');
+    const wizard = document.getElementById('obj-wizard');
+    if (el) el.style.display = 'none';
+    if (wizard) wizard.style.display = 'block';
+    showToast('Objectif supprimé');
+    return;
+  }
+  if (activeObjId) applyObjData(allObjectives.find(o => o.id === activeObjId) || allObjectives[0]);
+  renderMultiObjChart();
+  showToast('Objectif supprimé');
+}
+
+// Sauvegarder la simulation DCA comme nouvel objectif
+async function saveDCAAsObjective() {
+  const m  = parseFloat(document.getElementById('dca-m')?.value) || 200;
+  const y  = parseInt(document.getElementById('dca-y')?.value)   || 10;
+  const r  = parseFloat(document.getElementById('dca-r')?.value) || 7;
+  const s  = parseFloat(document.getElementById('dca-s')?.value) || 0;
+  const rate = r/100/12, n = y*12;
+  const total = s*Math.pow(1+rate,n)+(rate>0?m*((Math.pow(1+rate,n)-1)/rate):m*n);
+
+  // Pré-remplit les variables globales
+  objChartCapital = s;
+  objChartMonthly = m;
+  objChartTarget  = Math.round(total);
+  objChartYears   = y;
+  objChartRate    = r;
+  objRisk         = r >= 9 ? 'agressif' : r >= 6 ? 'equilibre' : 'prudent';
+
+  const label = `DCA ${m}€/mois · ${y}ans`;
+  await validateObjectif(label);
+
+  // Navigue vers la page objectif
+  nav('objectif');
+  showToast('🎯 Objectif DCA sauvegardé ! Retrouve-le dans Objectif.');
 }
 
 function updateObjSlider(val) {
@@ -2933,17 +3182,34 @@ async function loadPositions() {
   positions = data||[];
 }
 async function loadObjective() {
-  const { data } = await sb.from('objectives').select('*').eq('user_id',currentUser.id).maybeSingle();
-  console.log('[loadObjective] data=', JSON.stringify(data));
-  if (data) {
-    objective = { target:data.target, years:data.years, rate:data.rate, monthly:data.monthly };
-    if (data.target) applyObjData(data);
-    try { localStorage.setItem('iq_validated_objective', JSON.stringify({
-      capital: data.capital || 0, monthly: data.monthly, target: data.target,
-      years: data.years, rate: data.rate, risk: data.risk || 'equilibre',
-      validatedAt: data.validated_at || new Date().toISOString()
-    })); } catch {}
-  }
+  if (isDemo) return;
+  try {
+    const { data } = await sb.from('objectives').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true });
+    if (data && data.length > 0) {
+      allObjectives = data.map((d, i) => ({
+        id: d.id,
+        label: d.label || ('Objectif ' + (i + 1)),
+        capital: d.capital || 0,
+        monthly: d.monthly || 200,
+        target: d.target || 100000,
+        years: d.years || 10,
+        rate: d.rate || 7,
+        risk: d.risk || 'equilibre',
+        color: OBJ_COLORS[i % OBJ_COLORS.length],
+        validated_at: d.validated_at
+      }));
+      activeObjId = allObjectives[0].id;
+      // Charge le premier dans les variables globales (compat)
+      applyObjData(allObjectives[0]);
+      objective = { target: allObjectives[0].target, years: allObjectives[0].years, rate: allObjectives[0].rate, monthly: allObjectives[0].monthly };
+      try { localStorage.setItem('iq_validated_objective', JSON.stringify({
+        capital: allObjectives[0].capital, monthly: allObjectives[0].monthly,
+        target: allObjectives[0].target, years: allObjectives[0].years,
+        rate: allObjectives[0].rate, risk: allObjectives[0].risk,
+        validatedAt: allObjectives[0].validated_at || new Date().toISOString()
+      })); } catch {}
+    }
+  } catch(e) { console.warn('[loadObjective] error:', e); }
 }
 
 
@@ -4159,7 +4425,7 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
   });
 
   // Build interactive chart
-  setTimeout(() => buildObjChart(capital, monthly, target, years, riskRates[objRisk]), 100);
+  setTimeout(() => { if (allObjectives.length > 0) { renderMultiObjChart(); } else { buildObjChart(capital, monthly, target, years, riskRates[objRisk]); } }, 100);
   // Projection table in background
   renderProjectionTable(capital, monthly, target, years, riskRates[objRisk]);
 }
