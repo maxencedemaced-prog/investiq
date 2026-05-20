@@ -3158,7 +3158,7 @@ function nav(page) {
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
   closeSidebar();
-  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async ()=>{ const alreadyLoaded = objChartCapital > 0 && objChartTarget > 0 && objChartTarget !== 100000; const hasValidated = alreadyLoaded || await loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:updateDCA, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async ()=>{ const alreadyLoaded = objChartCapital > 0 && objChartTarget > 0 && objChartTarget !== 100000; const hasValidated = alreadyLoaded || await loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
@@ -4666,12 +4666,33 @@ async function addToPortfolioFromDecision(ticker, amount) {
 // ===== DCA =====
 let dcaChartInstance = null;
 
-function dcaPreset(m, y, r, s) {
+function dcaPreset(m, y, r, s, btn) {
   document.getElementById('dca-m').value = m;
   document.getElementById('dca-y').value = y;
   document.getElementById('dca-r').value = r;
   document.getElementById('dca-s').value = s;
+  // Marquer la carte active
+  document.querySelectorAll('.dca-preset-card').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
   updateDCA();
+}
+
+// Pré-calcule et affiche le résultat final sur chaque carte preset au chargement
+function initDCAPresets() {
+  const presets = [
+    { m:200, y:20, r:7,  s:1000  },
+    { m:100, y:15, r:5,  s:0     },
+    { m:500, y:15, r:9,  s:5000  },
+    { m:1000,y:30, r:9,  s:10000 },
+    { m:50,  y:10, r:7,  s:0     },
+  ];
+  presets.forEach((p, i) => {
+    const rate = p.r / 100 / 12;
+    const n    = p.y * 12;
+    const total = p.s * Math.pow(1+rate,n) + (rate>0 ? p.m*((Math.pow(1+rate,n)-1)/rate) : p.m*n);
+    const el = document.getElementById('pre-res-' + i);
+    if (el) el.textContent = '→ ' + fmtK(Math.round(total));
+  });
 }
 
 function updateDCA() {
