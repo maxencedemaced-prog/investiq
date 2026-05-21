@@ -128,20 +128,21 @@ function showValidatedChart() {
       </div>
 
       <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px">✏ Modifier l'objectif</button>`;
-    generateETFPlan();
+    generateETFPlan(activeObjId);
   }
 }
 
 const CACHE_ETF_PLAN = 'iq_etf_plan';
 const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // 24h
 
-async function generateETFPlan() {
+async function generateETFPlan(objId) {
   const el = document.getElementById('obj-etf-plan');
   if (!el) return;
+  const cacheKey = objId ? CACHE_ETF_PLAN + '_' + objId : CACHE_ETF_PLAN;
 
-  // Vérifie le cache
+  // Vérifie le cache spécifique à cet objectif
   try {
-    const cached = JSON.parse(localStorage.getItem(CACHE_ETF_PLAN) || 'null');
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
     if (cached && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk) {
       renderETFCards(cached.etfs, el);
       return;
@@ -171,7 +172,11 @@ Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, a
     const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
     const etfs = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']') + 1));
     if (Array.isArray(etfs) && etfs.length > 0) {
-      try { localStorage.setItem(CACHE_ETF_PLAN, JSON.stringify({ etfs, risk: objRisk, ts: Date.now() })); } catch {}
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({ etfs, risk: objRisk, ts: Date.now() }));
+        // Sauvegarde aussi avec la clé globale pour compat
+        localStorage.setItem(CACHE_ETF_PLAN, JSON.stringify({ etfs, risk: objRisk, ts: Date.now() }));
+      } catch {}
       renderETFCards(etfs, el);
       return;
     }
@@ -835,12 +840,14 @@ function setActiveObj(id) {
   const obj = allObjectives.find(o => o.id === id);
   if (obj) {
     applyObjData(obj);
-    // Vide les caches ETF et actions pour régénérer le plan du nouvel objectif actif
-    try { localStorage.removeItem(CACHE_ETF_PLAN); } catch {}
-    try { localStorage.removeItem(CACHE_ACTIONS); } catch {}
+    // Cache spécifique à cet objectif — vide seulement si c'est un nouvel objectif
+    const cacheKeyETF     = CACHE_ETF_PLAN + '_' + id;
+    const cacheKeyActions = CACHE_ACTIONS  + '_' + id;
+    // Swap les caches : sauvegarde le cache de l'ancien objectif, charge celui du nouveau
+    try { localStorage.setItem(CACHE_ETF_PLAN,  localStorage.getItem(cacheKeyETF)     || ''); } catch {}
+    try { localStorage.setItem(CACHE_ACTIONS,   localStorage.getItem(cacheKeyActions) || ''); } catch {}
   }
   renderMultiObjChart();
-  // Régénère le plan pour l'objectif sélectionné
   showValidatedChart();
 }
 
@@ -1024,12 +1031,52 @@ function updateObjSlider(val) {
     }
   }
 
-  // Update chart vertical line (point highlight)
+  // Update chart — highlight le point sur TOUTES les courbes (une par objectif)
   if (objChartInstance) {
-    const step = Math.max(1, Math.floor((objChartYears*12) / 60));
+    const maxYears = Math.max(...allObjectives.map(o => o.years));
+    const maxMonths = maxYears * 12;
+    const step = Math.max(1, Math.floor(maxMonths / 60));
     const chartIndex = Math.round(monthIndex / step);
-    objChartInstance.data.datasets[0].pointRadius = objChartInstance.data.datasets[0].data.map((_,i) => i === chartIndex ? 8 : 0);
-    objChartInstance.data.datasets[0].pointBackgroundColor = '#fff';
+
+    // Calcule les valeurs de tous les objectifs à ce point
+    const vals = allObjectives.map(obj => {
+      const r = obj.rate/100/12;
+      const m = Math.min(monthIndex, obj.years*12);
+      return Math.round(obj.capital*Math.pow(1+r,m)+(r>0?obj.monthly*((Math.pow(1+r,m)-1)/r):obj.monthly*m));
+    });
+    const totalVal = vals.reduce((a,b) => a+b, 0);
+    const totalInvested = allObjectives.reduce((a, obj) => {
+      const m = Math.min(monthIndex, obj.years*12);
+      return a + Math.round(obj.capital + obj.monthly*m);
+    }, 0);
+    const totalGains = Math.max(0, totalVal - totalInvested);
+
+    // Met à jour l'affichage avec la somme de tous les objectifs
+    if (amountEl) {
+      amountEl.textContent = fmtK(totalVal);
+      const allReached = allObjectives.every((obj, i) => vals[i] >= obj.target);
+      amountEl.style.color = allReached ? '#4ade80' : '#fff';
+    }
+    if (labelEl) {
+      const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
+      const activeVal = active ? vals[allObjectives.indexOf(active)] : totalVal;
+      const activeReached = active && activeVal >= active.target;
+      if (monthIndex === 0) {
+        labelEl.textContent = "Point de départ";
+      } else if (activeReached) {
+        labelEl.innerHTML = `<span style="color:#4ade80">🎯 ${active?.label || 'Objectif'} atteint !</span> · Total : ${fmtK(totalVal)}`;
+      } else {
+        labelEl.innerHTML = `Dans ${years} ans · <span style="color:#4ade80">+${fmtK(totalGains)} de gains</span>`;
+      }
+    }
+
+    // Point highlight sur chaque courbe principale (une par objectif)
+    objChartInstance.data.datasets.forEach((ds, di) => {
+      if (di % 2 === 0) { // Courbes principales (pas les pointillées)
+        ds.pointRadius = ds.data.map((_,i) => i === chartIndex ? 7 : 0);
+        ds.pointBackgroundColor = ds.borderColor;
+      }
+    });
     objChartInstance.update('none');
   }
 }
