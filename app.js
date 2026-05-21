@@ -762,29 +762,24 @@ function renderMultiObjChart() {
   // Légende + gestion des objectifs
   renderObjLegend(tv);
 
-  // Slider : couvre la durée MAX de tous les objectifs
+  // Slider : suit UNIQUEMENT l'objectif actif
   const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
   if (active) {
     objChartCapital = active.capital;
     objChartMonthly = active.monthly;
     objChartTarget  = active.target;
-    objChartYears   = maxYears; // durée max pour que le slider couvre tout
+    objChartYears   = active.years;
     objChartRate    = active.rate;
-  }
-
-  // Construit objProjectionData = somme de tous les objectifs sur maxMonths
-  objProjectionData = [];
-  for (let m = 0; m <= maxMonths; m++) {
-    const total = allObjectives.reduce((sum, obj) => {
-      const r = obj.rate/100/12;
-      const mo = Math.min(m, obj.years*12);
-      return sum + Math.round(obj.capital*Math.pow(1+r,mo)+(r>0?obj.monthly*((Math.pow(1+r,mo)-1)/r):obj.monthly*mo));
-    }, 0);
-    objProjectionData.push(total);
+    // Projection de l'objectif actif seulement
+    objProjectionData = [];
+    const rActive = active.rate/100/12;
+    for (let m = 0; m <= active.years*12; m++) {
+      objProjectionData.push(Math.round(active.capital*Math.pow(1+rActive,m)+(rActive>0?active.monthly*((Math.pow(1+rActive,m)-1)/rActive):active.monthly*m)));
+    }
   }
 
   const sliderEnd = document.getElementById('obj-slider-end');
-  if (sliderEnd) sliderEnd.textContent = `Dans ${maxYears} an${maxYears>1?'s':''}`;
+  if (sliderEnd && active) sliderEnd.textContent = `Dans ${active.years} an${active.years>1?'s':''}`;
   updateObjSlider(100);
 
   // Barre progression réelle
@@ -1045,50 +1040,29 @@ function updateObjSlider(val) {
     }
   }
 
-  // Update chart — highlight le point sur TOUTES les courbes (une par objectif)
+  // Update chart — highlight UNIQUEMENT la courbe de l'objectif actif
   if (objChartInstance) {
     const maxYears = Math.max(...allObjectives.map(o => o.years));
     const maxMonths = maxYears * 12;
     const step = Math.max(1, Math.floor(maxMonths / 60));
+    // monthIndex est basé sur l'objectif actif, on le convertit en index chart
     const chartIndex = Math.round(monthIndex / step);
 
-    // Calcule les valeurs de tous les objectifs à ce point
-    const vals = allObjectives.map(obj => {
-      const r = obj.rate/100/12;
-      const m = Math.min(monthIndex, obj.years*12);
-      return Math.round(obj.capital*Math.pow(1+r,m)+(r>0?obj.monthly*((Math.pow(1+r,m)-1)/r):obj.monthly*m));
-    });
-    const totalVal = vals.reduce((a,b) => a+b, 0);
-    const totalInvested = allObjectives.reduce((a, obj) => {
-      const m = Math.min(monthIndex, obj.years*12);
-      return a + Math.round(obj.capital + obj.monthly*m);
-    }, 0);
-    const totalGains = Math.max(0, totalVal - totalInvested);
-
-    // Met à jour l'affichage avec la somme de tous les objectifs
-    if (amountEl) {
-      amountEl.textContent = fmtK(totalVal);
-      const allReached = allObjectives.every((obj, i) => vals[i] >= obj.target);
-      amountEl.style.color = allReached ? '#4ade80' : '#fff';
-    }
-    if (labelEl) {
-      const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
-      const activeVal = active ? vals[allObjectives.indexOf(active)] : totalVal;
-      const activeReached = active && activeVal >= active.target;
-      if (monthIndex === 0) {
-        labelEl.textContent = "Point de départ";
-      } else if (activeReached) {
-        labelEl.innerHTML = `<span style="color:#4ade80">🎯 ${active?.label || 'Objectif'} atteint !</span> · Total : ${fmtK(totalVal)}`;
-      } else {
-        labelEl.innerHTML = `Dans ${years} ans · <span style="color:#4ade80">+${fmtK(totalGains)} de gains</span>`;
-      }
-    }
-
-    // Point highlight sur chaque courbe principale (une par objectif)
+    // Highlight uniquement la courbe active (dataset index = position dans allObjectives * 2)
+    const activeIdx = allObjectives.findIndex(o => o.id === activeObjId);
     objChartInstance.data.datasets.forEach((ds, di) => {
-      if (di % 2 === 0) { // Courbes principales (pas les pointillées)
-        ds.pointRadius = ds.data.map((_,i) => i === chartIndex ? 7 : 0);
-        ds.pointBackgroundColor = ds.borderColor;
+      if (di % 2 === 0) {
+        if (di === activeIdx * 2) {
+          // Courbe active : point visible
+          ds.pointRadius = ds.data.map((_,i) => i === chartIndex ? 8 : 0);
+          ds.pointBackgroundColor = ds.borderColor;
+          ds.borderWidth = 3;
+          ds.borderColor = allObjectives[activeIdx]?.color || ds.borderColor;
+        } else {
+          // Autres courbes : pas de point, légèrement estompées
+          ds.pointRadius = ds.data.map(() => 0);
+          ds.borderWidth = 1.5;
+        }
       }
     });
     objChartInstance.update('none');
