@@ -1986,12 +1986,21 @@ async function obFinish(action) {
   if (!isDemo && currentUser) {
     await saveProfile();
     try {
-      await sb.from('objectives').update({
-        capital: bankroll, monthly: monthly,
-        target: target, years: 10, rate: objChartRate,
-        risk: objRisk, validated_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }).eq('user_id', currentUser.id);
+      // Update si objectif existant, sinon insert
+      if (allObjectives.length > 0) {
+        await sb.from('objectives').update({
+          capital: bankroll, monthly: monthly,
+          target: target, years: 10, rate: objChartRate,
+          risk: objRisk, validated_at: new Date().toISOString()
+        }).eq('id', allObjectives[0].id);
+      } else {
+        await sb.from('objectives').insert({
+          user_id: currentUser.id, capital: bankroll, monthly: monthly,
+          target: target, years: 10, rate: objChartRate,
+          risk: objRisk, validated_at: new Date().toISOString()
+        });
+      }
+      await loadObjective();
     } catch(e) {}
   }
 
@@ -4773,9 +4782,42 @@ async function generateObjPlan() {
   const rate = riskRates[objRisk] / 100 / 12;
   const n = years * 12;
 
-  // Save objective
+  // Save objective — variables globales
   objective = { target, years, rate: riskRates[objRisk], monthly };
-  if (!isDemo) { try { await sb.from('objectives').upsert({ ...objective, user_id: currentUser.id, updated_at: new Date().toISOString() }); } catch(e) {} }
+  objChartCapital = capital;
+  objChartMonthly = monthly;
+  objChartTarget  = target;
+  objChartYears   = years;
+  objChartRate    = riskRates[objRisk];
+
+  if (!isDemo && currentUser) {
+    try {
+      // Cherche si un objectif identique existe déjà
+      const existing = allObjectives.find(o => o.target === target && o.monthly === monthly);
+      if (existing) {
+        await sb.from('objectives').update({
+          capital, monthly, target, years,
+          rate: riskRates[objRisk], risk: objRisk,
+          validated_at: new Date().toISOString()
+        }).eq('id', existing.id);
+      } else {
+        await sb.from('objectives').insert({
+          user_id: currentUser.id, capital, monthly, target, years,
+          rate: riskRates[objRisk], risk: objRisk,
+          validated_at: new Date().toISOString()
+        });
+      }
+      // Recharge les objectifs pour mettre à jour allObjectives + onglets
+      await loadObjective();
+    } catch(e) { console.warn('[generateObjPlan] save error:', e); }
+  }
+
+  // localStorage fallback
+  try { localStorage.setItem('iq_validated_objective', JSON.stringify({
+    capital, monthly, target, years,
+    rate: riskRates[objRisk], risk: objRisk,
+    validatedAt: new Date().toISOString()
+  })); } catch {}
 
   // Show results section
   document.getElementById('obj-wizard').style.display = 'none';
