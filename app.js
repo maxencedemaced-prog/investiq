@@ -1812,74 +1812,196 @@ function buildEmptyHome() {
 const OB_KEY = 'iq_onboarded';
 let obGoals = { long: false, court: false };
 
+// ===== PROFILS PARCOURS CLIENT =====
+const OB_PROFILES = {
+  debutant: {
+    label: 'Débutant complet 🌱',
+    icon: '🌱',
+    risk: 'faible',
+    horizon: 'long',
+    presets: [{capital:500, monthly:50, target:10000, label:'Petit budget'}, {capital:1000, monthly:100, target:20000, label:'Standard'}, {capital:2000, monthly:200, target:50000, label:'Ambitieux'}],
+    riskReco: '💡 En tant que débutant, on te recommande de commencer <strong>Prudent</strong> — 90% ETF monde, zéro stress.',
+    defaultRisk: 'faible',
+  },
+  curieux: {
+    label: 'Curieux / Amateur 📚',
+    icon: '📚',
+    risk: 'faible',
+    horizon: 'long',
+    presets: [{capital:1000, monthly:100, target:25000, label:'Démarrage'}, {capital:3000, monthly:200, target:50000, label:'Sérieux'}, {capital:5000, monthly:300, target:100000, label:'Objectif 100k'}],
+    riskReco: '💡 Tu as des bases — profil <strong>Équilibré</strong> recommandé : 70% ETF + 30% actions.',
+    defaultRisk: 'modere',
+  },
+  initie: {
+    label: 'Initié 📈',
+    icon: '📈',
+    risk: 'modere',
+    horizon: 'moyen',
+    presets: [{capital:5000, monthly:300, target:50000, label:'Croissance'}, {capital:10000, monthly:500, target:100000, label:'100k€'}, {capital:20000, monthly:1000, target:200000, label:'Premium'}],
+    riskReco: '💡 Profil <strong>Équilibré à Agressif</strong> selon ta tolérance — tu connais déjà les ETF.',
+    defaultRisk: 'modere',
+  },
+  confirme: {
+    label: 'Confirmé 💼',
+    icon: '💼',
+    risk: 'modere',
+    horizon: 'moyen',
+    presets: [{capital:20000, monthly:1000, target:200000, label:'Patrimoine'}, {capital:50000, monthly:2000, target:500000, label:'Demi-million'}, {capital:100000, monthly:3000, target:1000000, label:'Million'}],
+    riskReco: '💡 Tu maîtrises — <strong>Agressif</strong> si tu acceptes la volatilité, <strong>Équilibré</strong> pour dormir tranquille.',
+    defaultRisk: 'eleve',
+  },
+  expert: {
+    label: 'Expert / Trader 🏆',
+    icon: '🏆',
+    risk: 'eleve',
+    horizon: 'court',
+    presets: [{capital:50000, monthly:2000, target:500000, label:'Objectif'}, {capital:100000, monthly:5000, target:1000000, label:'Million'}, {capital:200000, monthly:10000, target:2000000, label:'2M€'}],
+    riskReco: '💡 Mode expert activé — toutes les fonctionnalités avancées sont disponibles.',
+    defaultRisk: 'eleve',
+  },
+};
+
+let obProfileLevel = 'debutant';
+
+function obSelectProfile(level) {
+  obProfileLevel = level;
+  document.getElementById('ob-profile-level').value = level;
+  // Visuels
+  Object.keys(OB_PROFILES).forEach(l => {
+    const card  = document.getElementById('obp-' + l);
+    const check = document.getElementById('obpc-' + l);
+    if (card)  { card.style.border = l===level ? '2px solid #1c1c1e' : '2px solid #e5e5ea'; card.style.background = l===level ? '#f5f5f5' : '#fff'; }
+    if (check) { check.textContent = l===level ? '✓' : '○'; check.style.fontWeight = l===level ? '800' : '400'; }
+  });
+  // Active le bouton suivant
+  const btn = document.getElementById('ob-btn-1');
+  if (btn) btn.disabled = false;
+  // Pré-sélectionne le risque recommandé
+  const p = OB_PROFILES[level];
+  if (p) obSelectRisk(p.defaultRisk);
+}
+
 function showOnboarding(force) {
   if (!force && localStorage.getItem(OB_KEY)) return;
-  obGoals = { long: false, court: false };
+  obGoals = { long: false, court: false, retraite: false, projet: false };
   obNext(1);
   document.getElementById('onboarding-modal').style.display = 'flex';
 }
 
 function obNext(step) {
-  // Validation étape 3 — budget obligatoire
   if (step === 4) {
     const bankroll = document.getElementById('ob-bankroll')?.value;
     const monthly  = document.getElementById('ob-monthly')?.value;
     const target   = document.getElementById('ob-target')?.value;
-    if (!bankroll || !monthly || !target || bankroll === '' || monthly === '' || target === '') {
+    if (!bankroll || !monthly || !target) {
       const err = document.getElementById('ob-budget-error');
       if (err) err.style.display = 'block';
-      if (!bankroll) document.getElementById('ob-bankroll')?.focus();
-      else if (!monthly) document.getElementById('ob-monthly')?.focus();
-      else document.getElementById('ob-target')?.focus();
       return;
     }
   }
   document.querySelectorAll('.onboard-step').forEach(s => s.style.display = 'none');
   const el = document.getElementById('ob-step-' + step);
   if (el) el.style.display = 'block';
-  // Update progress bars
-  for (let i = 1; i <= 5; i++) {
-    const bar = document.getElementById('ob-bar-' + i);
-    if (bar) bar.classList.toggle('active', i <= step);
+
+  // Étape 2 : adapter le titre selon le profil
+  if (step === 2) {
+    const p = OB_PROFILES[obProfileLevel];
+    const titleEl = document.getElementById('ob-step2-title');
+    const subEl   = document.getElementById('ob-step2-sub');
+    if (titleEl && p) titleEl.textContent = `Objectif — ${p.label}`;
+    if (subEl   && p) subEl.textContent   = "Qu'est-ce que tu veux accomplir ?";
   }
-  // Generate plan on step 5
-  if (step === 5) obGeneratePlan();
+
+  // Étape 3 : afficher les presets budget selon le profil
+  if (step === 3) {
+    const p = OB_PROFILES[obProfileLevel];
+    const presetsEl = document.getElementById('ob-budget-presets');
+    if (presetsEl && p) {
+      presetsEl.innerHTML = p.presets.map(pr => `
+        <button onclick="obApplyPreset(${pr.capital},${pr.monthly},${pr.target})"
+          style="background:#f0f0f0;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;transition:all 0.15s"
+          onmouseover="this.style.background='#1c1c1e';this.style.color='#fff'"
+          onmouseout="this.style.background='#f0f0f0';this.style.color='#1c1c1e'">
+          ${pr.label}
+        </button>`).join('');
+    }
+  }
+
+  // Étape 4 : afficher la reco risque selon le profil
+  if (step === 4) {
+    const p = OB_PROFILES[obProfileLevel];
+    const recoEl = document.getElementById('ob-risk-reco');
+    if (recoEl && p) { recoEl.innerHTML = p.riskReco; recoEl.style.display = 'block'; }
+    if (p) obSelectRisk(p.defaultRisk);
+  }
+
+  // Étape 5 : label profil + générer plan
+  if (step === 5) {
+    const p = OB_PROFILES[obProfileLevel];
+    const labelEl = document.getElementById('ob-plan-profile-label');
+    if (labelEl && p) labelEl.textContent = p.label;
+    obGeneratePlan();
+  }
+}
+
+function obApplyPreset(capital, monthly, target) {
+  const b = document.getElementById('ob-bankroll');
+  const m = document.getElementById('ob-monthly');
+  const t = document.getElementById('ob-target');
+  if (b) b.value = capital;
+  if (m) m.value = monthly;
+  if (t) t.value = target;
+  obCheckBudget();
+  obUpdateBudgetPreview();
+}
+
+function obUpdateBudgetPreview() {
+  const capital  = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
+  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
+  const target   = parseFloat(document.getElementById('ob-target')?.value)   || 0;
+  const preview  = document.getElementById('ob-budget-preview');
+  const previewT = document.getElementById('ob-preview-text');
+  if (!preview || !previewT) return;
+  if (capital > 0 || monthly > 0) {
+    const rate = 0.07/12, n = 10*12;
+    const fv = capital * Math.pow(1+rate,n) + (monthly > 0 ? monthly*((Math.pow(1+rate,n)-1)/rate) : 0);
+    preview.style.display = 'block';
+    const onTrack = target > 0 && fv >= target;
+    previewT.innerHTML = `En 10 ans : <strong style="color:#1a7f5a">${fmtK(Math.round(fv))}</strong>${target > 0 ? ` · Objectif ${fmtK(target)} : <strong style="color:${onTrack?'#1a7f5a':'#f59e0b'}">${onTrack?'✓ Atteignable':'⚠ Adapter le plan'}</strong>` : ''}`;
+  } else {
+    preview.style.display = 'none';
+  }
 }
 
 function obToggleGoal(goal) {
+  if (!obGoals.hasOwnProperty(goal)) obGoals[goal] = false;
   obGoals[goal] = !obGoals[goal];
   try { localStorage.setItem('iq_ob_goals', JSON.stringify(obGoals)); } catch {}
-  const card = document.getElementById('ob-goal-' + goal);
+  const card  = document.getElementById('ob-goal-' + goal);
   const check = document.getElementById('ob-check-' + goal);
   if (obGoals[goal]) {
-    card.style.border = '2px solid #1c1c1e';
-    card.style.background = '#f5f5f5';
-    check.textContent = '✓';
-    check.style.color = '#1c1c1e';
-    check.style.fontWeight = '800';
+    if (card)  { card.style.border = '2px solid #1c1c1e'; card.style.background = '#f5f5f5'; }
+    if (check) { check.textContent = '✓'; check.style.color = '#1c1c1e'; check.style.fontWeight = '800'; }
   } else {
-    card.style.border = '2px solid #e5e5ea';
-    card.style.background = '#fff';
-    check.textContent = '○';
+    if (card)  { card.style.border = '2px solid #e5e5ea'; card.style.background = '#fff'; }
+    if (check) { check.textContent = '○'; check.style.fontWeight = '400'; }
   }
-  // Update horizon based on goals
   const hEl = document.getElementById('ob-horizon');
   if (hEl) {
-    if (obGoals.long && obGoals.court) hEl.value = 'mixte';
-    else if (obGoals.long) hEl.value = 'long';
-    else if (obGoals.court) hEl.value = 'court';
+    if (obGoals.long || obGoals.retraite) hEl.value = 'long';
+    else if (obGoals.court || obGoals.projet) hEl.value = 'moyen';
   }
-  // Enable next button
+  const anySelected = Object.values(obGoals).some(v => v);
   const btn = document.getElementById('ob-btn-2');
-  if (btn) btn.disabled = !obGoals.long && !obGoals.court;
+  if (btn) btn.disabled = !anySelected;
 }
 
 function obSelectRisk(risk) {
   ['faible','modere','eleve'].forEach(r => {
-    const card = document.getElementById('ob-risk-' + r);
+    const card  = document.getElementById('ob-risk-' + r);
     const check = document.getElementById('ob-rcheck-' + r);
-    if (card) { card.style.border = r === risk ? '2px solid #1c1c1e' : '2px solid #e5e5ea'; card.style.background = r === risk ? '#f5f5f5' : '#fff'; }
-    if (check) { check.textContent = r === risk ? '✓' : '○'; check.style.fontWeight = r === risk ? '800' : '400'; }
+    if (card)  { card.style.border = r===risk ? '2px solid #1c1c1e' : '2px solid #e5e5ea'; card.style.background = r===risk ? '#f5f5f5' : '#fff'; }
+    if (check) { check.textContent = r===risk ? '✓' : '○'; check.style.fontWeight = r===risk ? '800' : '400'; }
   });
   const rEl = document.getElementById('ob-risk');
   if (rEl) rEl.value = risk;
