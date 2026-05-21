@@ -4365,7 +4365,7 @@ function renderPortfolio() {
           <div class="pos-avatar" style="background:${COLORS[idx%COLORS.length]}">${p.name.slice(0,2).toUpperCase()}</div>
           <div>
             <div class="pos-name">${p.name} ${chgHtml}${miniSigBadge}</div>
-            <div class="pos-meta">${p.type} · ${p.qty} parts · ${p.platform||''} ${alertHtml}</div>
+            <div class="pos-meta">${(() => { const k = AC_DB.find(c => c.ticker.toUpperCase() === p.name.toUpperCase()); return k ? `<span style="color:#3c3c43;font-weight:600">${k.name}</span> · ` : ''; })()} ${p.type} · ${p.qty} parts · ${p.platform||''} ${alertHtml}</div>
             ${multiHtml}
           </div>
         </div>
@@ -5810,8 +5810,10 @@ Profil : horizon ${profile.horizon || 'moyen'} · risque ${profile.risk || 'faib
 
   if (positions.length) {
     ctx += `Positions : ${positions.map(p => {
+      const known = AC_DB.find(c => c.ticker.toUpperCase() === p.name.toUpperCase());
+      const fullName = known ? `${p.name} (${known.name})` : p.name;
       const ppnl = ((p.price-p.pru)/p.pru*100).toFixed(1);
-      return `${p.name} ${p.qty}parts PRU${p.pru}€ actuel${p.price}€ (${ppnl>=0?'+':''}${ppnl}%)`;
+      return `${fullName} ${p.qty}parts PRU${p.pru}€ actuel${p.price}€ (${ppnl>=0?'+':''}${ppnl}%)`;
     }).join(' | ')}
 `;
   }
@@ -5928,14 +5930,28 @@ function executeAgentAction(action) {
   switch(action.type) {
     case 'ajouter_position':
       nav('ajouter');
-      setTimeout(() => {
-        const company = { ticker: action.ticker, name: action.ticker, type: action.type_actif || 'Action', sector: '' };
-        acSelect(company);
-        setTimeout(() => {
-          if (action.qty) document.getElementById('f-qty').value = action.qty;
-          if (action.prix) { document.getElementById('f-price').value = action.prix; document.getElementById('f-pru').value = action.prix; }
-          showToast('✅ Formulaire pré-rempli — vérifie et valide !');
-        }, 800);
+      setTimeout(async () => {
+        // Cherche le nom réel dans la base locale
+        const known = AC_DB.find(c => c.ticker.toUpperCase() === (action.ticker||'').toUpperCase());
+        const company = {
+          ticker: action.ticker,
+          name: known ? known.name : action.ticker,
+          type: known ? known.type : (action.type_actif || 'Action'),
+          sector: known ? known.sector : (action.secteur || ''),
+          exchange: known ? known.exchange : ''
+        };
+        await acSelect(company);
+        // Attend que le prix live soit chargé (max 2s)
+        await new Promise(r => setTimeout(r, 1200));
+        if (action.qty) document.getElementById('f-qty').value = action.qty;
+        if (action.prix) {
+          const priceEl = document.getElementById('f-price');
+          const pruEl   = document.getElementById('f-pru');
+          // Ne remplace que si pas déjà rempli par le live
+          if (priceEl && (!priceEl.value || priceEl.value === '')) priceEl.value = action.prix;
+          if (pruEl   && (!pruEl.value   || pruEl.value   === '')) pruEl.value   = action.prix;
+        }
+        showToast('✅ Formulaire pré-rempli — vérifie et valide !');
       }, 200);
       break;
     case 'alerte':
