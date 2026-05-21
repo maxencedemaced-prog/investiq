@@ -1510,8 +1510,10 @@ async function acSelect(company) {
       // Also pre-fill PRU with current price as suggestion
       const pruInput = document.getElementById('f-pru');
       if (pruInput && !pruInput.value) {
-        pruInput.placeholder = q.price.toFixed(2) + ' (suggestion)';
+        pruInput.placeholder = q.price.toFixed(2) + ' (si achat maintenant)';
       }
+      // Met à jour le total
+      updatePosTotal();
     } else {
       if (priceInput) { priceInput.placeholder = 'Saisir manuellement'; priceInput.style.color = '#1c1c1e'; }
       // Try with .DE suffix for European stocks
@@ -1526,6 +1528,42 @@ async function acSelect(company) {
 
 function acSelectManual(ticker) {
   acSelect({ ticker, name: ticker, type: 'Action', sector: '', exchange: '' });
+}
+
+function updatePosTotal() {
+  const qty   = parseFloat(document.getElementById('f-qty')?.value)   || 0;
+  const pru   = parseFloat(document.getElementById('f-pru')?.value)   || 0;
+  const price = parseFloat(document.getElementById('f-price')?.value) || 0;
+  const preview = document.getElementById('pos-total-preview');
+  const detailEl = document.getElementById('pos-total-detail');
+  const valEl    = document.getElementById('pos-total-val');
+  const pnlEl    = document.getElementById('pos-total-pnl');
+
+  if (!preview) return;
+
+  if (qty > 0 && price > 0) {
+    preview.style.display = 'block';
+    const totalInvesti = qty * pru;
+    const valActuelle  = qty * price;
+    const pnl = pru > 0 ? valActuelle - totalInvesti : 0;
+    const pnlPct = totalInvesti > 0 ? (pnl / totalInvesti * 100).toFixed(1) : null;
+
+    if (detailEl) detailEl.textContent = `${qty} × ${price.toLocaleString('fr-FR', {minimumFractionDigits:2})}€`;
+    if (valEl)    valEl.textContent    = `= ${(valActuelle).toLocaleString('fr-FR', {minimumFractionDigits:2})}€`;
+
+    if (pnlEl) {
+      if (pru > 0 && pru !== price) {
+        const sign = pnl >= 0 ? '+' : '';
+        pnlEl.innerHTML = `<span style="color:${pnl>=0?'#1a7f5a':'#cc2f26'}">
+          PRU ${pru.toLocaleString('fr-FR', {minimumFractionDigits:2})}€ · Investi ${totalInvesti.toLocaleString('fr-FR', {minimumFractionDigits:2})}€ · P&L ${sign}${pnl.toLocaleString('fr-FR', {minimumFractionDigits:2})}€ (${sign}${pnlPct}%)
+        </span>`;
+      } else {
+        pnlEl.innerHTML = `<span style="color:#8e8e93">PRU = prix actuel · Investissement : ${totalInvesti.toLocaleString('fr-FR', {minimumFractionDigits:2})}€</span>`;
+      }
+    }
+  } else {
+    preview.style.display = 'none';
+  }
 }
 
 function acClear() {
