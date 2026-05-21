@@ -323,26 +323,32 @@ const CACHE_ACTIONS = 'iq_court_actions';
 const CACHE_ACTIONS_TTL = 24 * 60 * 60 * 1000; // 24h
 
 function loadActionsCache(risk) {
+  return loadActionsCacheKey(CACHE_ACTIONS, risk);
+}
+
+function loadActionsCacheKey(key, risk) {
   try {
-    const cached = JSON.parse(localStorage.getItem(CACHE_ACTIONS) || 'null');
+    const cached = JSON.parse(localStorage.getItem(key) || 'null');
     if (!cached) return null;
     const age = Date.now() - cached.ts;
     if (age > CACHE_ACTIONS_TTL || cached.risk !== risk) return null;
-    return cached; // { actions, ts, risk, date }
+    return cached;
   } catch { return null; }
 }
 
 function saveActionsCache(actions, risk) {
-  try {
-    localStorage.setItem(CACHE_ACTIONS, JSON.stringify({
-      actions, risk, ts: Date.now(),
-      date: new Date().toLocaleDateString('fr-FR')
-    }));
-  } catch {}
+  // Sauvegarde dans la clé globale ET dans la clé spécifique à l'objectif
+  const data = JSON.stringify({ actions, risk, ts: Date.now(), date: new Date().toLocaleDateString('fr-FR') });
+  try { localStorage.setItem(CACHE_ACTIONS, data); } catch {}
+  if (activeObjId) {
+    try { localStorage.setItem(CACHE_ACTIONS + '_' + activeObjId, data); } catch {}
+  }
 }
 
 function forceRefreshActions() {
+  // Vide le cache de l'objectif actif
   try { localStorage.removeItem(CACHE_ACTIONS); } catch {}
+  if (activeObjId) { try { localStorage.removeItem(CACHE_ACTIONS + '_' + activeObjId); } catch {} }
   renderCourtTermePlan();
 }
 
@@ -431,8 +437,9 @@ async function renderCourtTermePlan() {
 
   el.style.display = 'block';
 
-  // Vérifie le cache
-  const cached = loadActionsCache(risk);
+  // Cache spécifique à l'objectif actif
+  const cacheKey = activeObjId ? CACHE_ACTIONS + '_' + activeObjId : CACHE_ACTIONS;
+  const cached = loadActionsCacheKey(cacheKey, risk);
   if (cached) {
     // Cache valide — affiche directement sans appel IA
     const ageH = Math.floor((Date.now() - cached.ts) / 3600000);
@@ -453,7 +460,7 @@ async function renderCourtTermePlan() {
   // Cache expiré ou absent — récupère les anciennes depuis localStorage pour les afficher barrées
   let oldActions = null;
   try {
-    const old = JSON.parse(localStorage.getItem(CACHE_ACTIONS) || 'null');
+    const old = JSON.parse(localStorage.getItem(cacheKey) || localStorage.getItem(CACHE_ACTIONS) || 'null');
     if (old && old.actions) oldActions = old.actions;
   } catch {}
 
@@ -475,7 +482,7 @@ async function renderCourtTermePlan() {
 
   // Génère les nouvelles recommandations
   const actionRecs = await getAIActionRecommendations(risk, budgetCourt);
-  saveActionsCache(actionRecs, risk);
+  saveActionsCache(actionRecs, risk); // sauvegarde dans les 2 clés
 
   actionsEl.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
@@ -755,22 +762,29 @@ function renderMultiObjChart() {
   // Légende + gestion des objectifs
   renderObjLegend(tv);
 
-  // Slider : utilise le 1er objectif actif pour le curseur
+  // Slider : couvre la durée MAX de tous les objectifs
   const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
   if (active) {
     objChartCapital = active.capital;
     objChartMonthly = active.monthly;
     objChartTarget  = active.target;
-    objChartYears   = active.years;
+    objChartYears   = maxYears; // durée max pour que le slider couvre tout
     objChartRate    = active.rate;
-    objProjectionData = [];
-    const r = active.rate/100/12;
-    for (let m = 0; m <= active.years*12; m++) {
-      objProjectionData.push(Math.round(active.capital*Math.pow(1+r,m)+(r>0?active.monthly*((Math.pow(1+r,m)-1)/r):active.monthly*m)));
-    }
   }
+
+  // Construit objProjectionData = somme de tous les objectifs sur maxMonths
+  objProjectionData = [];
+  for (let m = 0; m <= maxMonths; m++) {
+    const total = allObjectives.reduce((sum, obj) => {
+      const r = obj.rate/100/12;
+      const mo = Math.min(m, obj.years*12);
+      return sum + Math.round(obj.capital*Math.pow(1+r,mo)+(r>0?obj.monthly*((Math.pow(1+r,mo)-1)/r):obj.monthly*mo));
+    }, 0);
+    objProjectionData.push(total);
+  }
+
   const sliderEnd = document.getElementById('obj-slider-end');
-  if (sliderEnd && active) sliderEnd.textContent = `Dans ${active.years} an${active.years>1?'s':''}`;
+  if (sliderEnd) sliderEnd.textContent = `Dans ${maxYears} an${maxYears>1?'s':''}`;
   updateObjSlider(100);
 
   // Barre progression réelle
