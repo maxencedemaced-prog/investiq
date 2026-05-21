@@ -25,7 +25,7 @@ async function validateObjectif(labelOverride) {
         // Mise à jour — sans updated_at si la colonne n'existe pas
         const updatePayload = {
           capital: data.capital, monthly: data.monthly, target: data.target,
-          years: data.years, rate: data.rate, risk: data.risk, label: data.label,
+          years: data.years, rate: data.rate, risk: data.risk,
           validated_at: data.validated_at
         };
         const { error } = await sb.from('objectives').update(updatePayload).eq('id', existing.id);
@@ -36,7 +36,7 @@ async function validateObjectif(labelOverride) {
         const insertPayload = {
           user_id: currentUser.id, capital: data.capital, monthly: data.monthly,
           target: data.target, years: data.years, rate: data.rate, risk: data.risk,
-          label: data.label, validated_at: data.validated_at
+          validated_at: data.validated_at
         };
         const { data: inserted, error } = await sb.from('objectives').insert(insertPayload).select().single();
         if (error) console.warn('[validateObjectif] insert error:', error.message);
@@ -3623,7 +3623,7 @@ async function loadObjective() {
     if (data && data.length > 0) {
       allObjectives = data.map((d, i) => ({
         id: d.id,
-        label: d.label || ('Objectif ' + (i + 1)),
+        label: ('Objectif ' + (i + 1)),
         capital: d.capital || 0,
         monthly: d.monthly || 200,
         target: d.target || 100000,
@@ -3858,7 +3858,25 @@ function nav(page) {
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
   closeSidebar();
-  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async ()=>{ const alreadyLoaded = objChartCapital > 0 && objChartTarget > 0 && objChartTarget !== 100000; const hasValidated = alreadyLoaded || await loadValidatedObjectif(); if(hasValidated && document.getElementById('obj-results')?.style.display !== 'block') { showValidatedChart(); } else if(document.getElementById('obj-results')?.style.display === 'block') { setTimeout(()=>buildObjChart(objChartCapital,objChartMonthly,objChartTarget,objChartYears,objChartRate),100); } }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async () => {
+  // Essaie d'abord de recharger depuis Supabase
+  if (!isDemo && currentUser && allObjectives.length === 0) {
+    await loadObjective();
+  }
+  // Si on a des objectifs en base → affiche le graphique
+  if (allObjectives.length > 0) {
+    applyObjData(allObjectives.find(o => o.id === activeObjId) || allObjectives[0]);
+    showValidatedChart();
+    return;
+  }
+  // Sinon essaie le localStorage
+  const hasValidated = await loadValidatedObjectif();
+  if (hasValidated) {
+    showValidatedChart();
+  } else if (document.getElementById('obj-results')?.style.display === 'block') {
+    setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
+  }
+}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
