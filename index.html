@@ -13,6 +13,15 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .ob-profile-card {
+      display:flex;align-items:center;gap:12px;padding:12px 16px;
+      background:#fff;border:2px solid #e5e5ea;border-radius:14px;
+      cursor:pointer;transition:all 0.15s;
+    }
+    .ob-profile-card:hover { border-color:#1c1c1e;background:#f9f9f9; }
+    .ob-profile-check { font-size:16px;font-weight:700;color:#8e8e93;flex-shrink:0; }
+  </style>
 </head>
 <body>
 
@@ -127,155 +136,191 @@
   
 <!-- ONBOARDING MODAL -->
 <div id="onboarding-modal" class="modal-overlay" style="display:none">
-  <div class="modal-card" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+  <div class="modal-card" style="max-width:520px;width:100%;max-height:92vh;overflow-y:auto;padding:0;border-radius:20px">
 
-    <!-- Barre de progression -->
-    <div style="display:flex;gap:4px;margin-bottom:24px">
-      <div class="ob-prog-bar active" id="ob-bar-1"></div>
-      <div class="ob-prog-bar" id="ob-bar-2"></div>
-      <div class="ob-prog-bar" id="ob-bar-3"></div>
-      <div class="ob-prog-bar" id="ob-bar-4"></div>
-      <div class="ob-prog-bar" id="ob-bar-5"></div>
-    </div>
-
-    <!-- ÉTAPE 1 : Bienvenue -->
+    <!-- ÉTAPE 1 : Profil niveau -->
     <div class="onboard-step" id="ob-step-1">
-      <div class="ob-icon">👋</div>
-      <div class="ob-title">Bienvenue sur InvestIQ !</div>
-      <div class="ob-text">Ton assistant investissement personnel. On va créer ton plan en 2 minutes.</div>
-      <div style="margin:20px 0;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;align-items:center;gap:12px;background:#f5f5f5;border-radius:12px;padding:12px 14px">
-          <span style="font-size:20px">📈</span>
-          <div><div style="font-weight:700;font-size:13px">Plan ETF long terme</div><div style="font-size:12px;color:#8e8e93">Construire ton patrimoine sur 10-20 ans</div></div>
+      <div style="background:linear-gradient(135deg,#1c1c1e,#2d2d30);padding:28px 24px 20px;border-radius:20px 20px 0 0;text-align:center">
+        <div style="font-size:36px;margin-bottom:8px">👋</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:6px">Bienvenue sur InvestIQ</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.6)">Quel est ton niveau en investissement ?</div>
+      </div>
+      <div style="padding:20px 24px">
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+          <div class="ob-profile-card" id="obp-debutant" onclick="obSelectProfile('debutant')">
+            <span style="font-size:22px">🌱</span>
+            <div style="flex:1"><div style="font-weight:800;font-size:14px;color:#1c1c1e">Débutant complet</div><div style="font-size:12px;color:#8e8e93;margin-top:2px">Je ne connais rien à la bourse</div></div>
+            <div class="ob-profile-check" id="obpc-debutant">○</div>
+          </div>
+          <div class="ob-profile-card" id="obp-curieux" onclick="obSelectProfile('curieux')">
+            <span style="font-size:22px">📚</span>
+            <div style="flex:1"><div style="font-weight:800;font-size:14px;color:#1c1c1e">Curieux / Amateur</div><div style="font-size:12px;color:#8e8e93;margin-top:2px">J'ai lu des articles, jamais investi</div></div>
+            <div class="ob-profile-check" id="obpc-curieux">○</div>
+          </div>
+          <div class="ob-profile-card" id="obp-initie" onclick="obSelectProfile('initie')">
+            <span style="font-size:22px">📈</span>
+            <div style="flex:1"><div style="font-weight:800;font-size:14px;color:#1c1c1e">Initié</div><div style="font-size:12px;color:#8e8e93;margin-top:2px">J'ai déjà investi, je connais les ETF</div></div>
+            <div class="ob-profile-check" id="obpc-initie">○</div>
+          </div>
+          <div class="ob-profile-card" id="obp-confirme" onclick="obSelectProfile('confirme')">
+            <span style="font-size:22px">💼</span>
+            <div style="flex:1"><div style="font-weight:800;font-size:14px;color:#1c1c1e">Confirmé</div><div style="font-size:12px;color:#8e8e93;margin-top:2px">Portefeuille diversifié, je gère activement</div></div>
+            <div class="ob-profile-check" id="obpc-confirme">○</div>
+          </div>
+          <div class="ob-profile-card" id="obp-expert" onclick="obSelectProfile('expert')">
+            <span style="font-size:22px">🏆</span>
+            <div style="flex:1"><div style="font-weight:800;font-size:14px;color:#1c1c1e">Expert / Trader</div><div style="font-size:12px;color:#8e8e93;margin-top:2px">Analyse technique, stratégies avancées</div></div>
+            <div class="ob-profile-check" id="obpc-expert">○</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;background:#f5f5f5;border-radius:12px;padding:12px 14px">
-          <span style="font-size:20px">⚡</span>
-          <div><div style="font-weight:700;font-size:13px">Signaux actions court terme</div><div style="font-size:12px;color:#8e8e93">Complément de salaire avec les actions</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;background:#f5f5f5;border-radius:12px;padding:12px 14px">
-          <span style="font-size:20px">🔔</span>
-          <div><div style="font-weight:700;font-size:13px">Alertes intelligentes</div><div style="font-size:12px;color:#8e8e93">L'app te prévient quand il faut agir</div></div>
+        <input type="hidden" id="ob-profile-level" value="">
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" onclick="obFinish('demo')" style="flex:1;font-size:13px">Voir un exemple</button>
+          <button class="btn-primary" onclick="obNext(2)" style="flex:2" id="ob-btn-1" disabled>Suivant →</button>
         </div>
       </div>
-      <button class="btn-primary" style="width:100%" onclick="obNext(2)">C'est parti →</button>
-      <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="localStorage.setItem(OB_KEY,'1');document.getElementById('onboarding-modal').style.display='none';loadDemo()">👀 Voir un exemple</button>
     </div>
 
     <!-- ÉTAPE 2 : Objectif -->
     <div class="onboard-step" id="ob-step-2" style="display:none">
-      <div class="ob-icon">🎯</div>
-      <div class="ob-title">Quel est ton objectif ?</div>
-      <div class="ob-text">Tu peux choisir les deux — c'est ce que font la plupart des investisseurs.</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin:20px 0">
-        <div class="ob-goal-card" id="ob-goal-long" onclick="obToggleGoal('long')">
-          <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-size:24px">🏦</span>
-            <div>
-              <div style="font-weight:700;font-size:14px">Construire un patrimoine</div>
-              <div style="font-size:12px;color:#8e8e93">ETF monde · Long terme · 10-20 ans</div>
-            </div>
-            <div class="ob-check" id="ob-check-long" style="margin-left:auto">○</div>
-          </div>
-        </div>
-        <div class="ob-goal-card" id="ob-goal-court" onclick="obToggleGoal('court')">
-          <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-size:24px">💸</span>
-            <div>
-              <div style="font-weight:700;font-size:14px">Complément de salaire</div>
-              <div style="font-size:12px;color:#8e8e93">Actions · Court terme · 1-3 ans</div>
-            </div>
-            <div class="ob-check" id="ob-check-court" style="margin-left:auto">○</div>
+      <div style="background:linear-gradient(135deg,#1c1c1e,#2d2d30);padding:20px 24px;border-radius:20px 20px 0 0">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:28px">🎯</div>
+          <div>
+            <div style="font-size:16px;font-weight:800;color:#fff" id="ob-step2-title">Ton objectif</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.6)">Qu'est-ce que tu veux accomplir ?</div>
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn-secondary" onclick="obNext(1)" style="flex:1">← Retour</button>
-        <button class="btn-primary" onclick="obNext(3)" style="flex:2" id="ob-btn-2" disabled>Suivant →</button>
+      <div style="padding:20px 24px">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+          <div class="ob-goal-card" id="ob-goal-long" onclick="obToggleGoal('long')">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:22px">🏦</span>
+              <div><div style="font-weight:700;font-size:14px">Construire un patrimoine</div><div style="font-size:12px;color:#8e8e93">ETF monde · Long terme · 10-20 ans</div></div>
+              <div class="ob-check" id="ob-check-long" style="margin-left:auto">○</div>
+            </div>
+          </div>
+          <div class="ob-goal-card" id="ob-goal-court" onclick="obToggleGoal('court')">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:22px">💸</span>
+              <div><div style="font-weight:700;font-size:14px">Complément de salaire</div><div style="font-size:12px;color:#8e8e93">Actions · Court terme · 1-3 ans</div></div>
+              <div class="ob-check" id="ob-check-court" style="margin-left:auto">○</div>
+            </div>
+          </div>
+          <div class="ob-goal-card" id="ob-goal-retraite" onclick="obToggleGoal('retraite')">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:22px">🌴</span>
+              <div><div style="font-weight:700;font-size:14px">Retraite anticipée (FIRE)</div><div style="font-size:12px;color:#8e8e93">Indépendance financière · 15-25 ans</div></div>
+              <div class="ob-check" id="ob-check-retraite" style="margin-left:auto">○</div>
+            </div>
+          </div>
+          <div class="ob-goal-card" id="ob-goal-projet" onclick="obToggleGoal('projet')">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:22px">🏠</span>
+              <div><div style="font-weight:700;font-size:14px">Projet spécifique</div><div style="font-size:12px;color:#8e8e93">Immobilier, études, voyage · 3-10 ans</div></div>
+              <div class="ob-check" id="ob-check-projet" style="margin-left:auto">○</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" onclick="obNext(1)" style="flex:1">← Retour</button>
+          <button class="btn-primary" onclick="obNext(3)" style="flex:2" id="ob-btn-2" disabled>Suivant →</button>
+        </div>
       </div>
     </div>
 
-    <!-- ÉTAPE 3 : Capital -->
+    <!-- ÉTAPE 3 : Budget -->
     <div class="onboard-step" id="ob-step-3" style="display:none">
-      <div class="ob-icon">💰</div>
-      <div class="ob-title">Ton budget</div>
-      <div class="ob-text">Sois honnête — tu peux modifier ça plus tard dans les paramètres.</div>
-      <div style="margin:20px 0;display:flex;flex-direction:column;gap:14px">
-        <div class="field">
-          <label>Capital de départ disponible (€) <span style="color:#cc2f26">*</span></label>
-          <input type="number" id="ob-bankroll" placeholder="Ex: 1 000" style="font-size:16px;padding:14px" oninput="obCheckBudget()" min="0">
-          <div style="font-size:11px;color:#8e8e93;margin-top:4px">Ce que tu peux investir maintenant (peut être 0)</div>
-        </div>
-        <div class="field">
-          <label>Versement mensuel (€) <span style="color:#cc2f26">*</span></label>
-          <input type="number" id="ob-monthly" placeholder="Ex: 200" style="font-size:16px;padding:14px" oninput="obCheckBudget()" min="0">
-          <div style="font-size:11px;color:#8e8e93;margin-top:4px">Ce que tu mets de côté chaque mois</div>
-        </div>
-        <div class="field">
-          <label>Objectif financier (€) <span style="color:#cc2f26">*</span></label>
-          <input type="number" id="ob-target" placeholder="Ex: 50 000" style="font-size:16px;padding:14px" oninput="obCheckBudget()" min="0">
-          <div style="font-size:11px;color:#8e8e93;margin-top:4px">Le montant que tu veux atteindre</div>
-        </div>
-        <div id="ob-budget-error" style="display:none;background:#fff0f0;border-radius:10px;padding:10px 14px;font-size:13px;color:#cc2f26;font-weight:600">
-          ⚠ Remplis tous les champs pour continuer
+      <div style="background:linear-gradient(135deg,#1c1c1e,#2d2d30);padding:20px 24px;border-radius:20px 20px 0 0">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:28px">💰</div>
+          <div><div style="font-size:16px;font-weight:800;color:#fff">Ton budget</div><div style="font-size:12px;color:rgba(255,255,255,0.6)">Sois honnête — modifiable plus tard</div></div>
         </div>
       </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn-secondary" onclick="obNext(2)" style="flex:1">← Retour</button>
-        <button class="btn-primary" onclick="obNext(4)" style="flex:2" id="ob-btn-3" disabled>Suivant →</button>
+      <div style="padding:20px 24px">
+        <div id="ob-budget-presets" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+          <div class="field">
+            <label>Capital de départ (€) <span style="color:#cc2f26">*</span></label>
+            <input type="number" id="ob-bankroll" placeholder="Ex: 1 000" style="font-size:16px;padding:14px" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
+            <div style="font-size:11px;color:#8e8e93;margin-top:4px">Ce que tu peux investir maintenant (peut être 0)</div>
+          </div>
+          <div class="field">
+            <label>Versement mensuel (€) <span style="color:#cc2f26">*</span></label>
+            <input type="number" id="ob-monthly" placeholder="Ex: 200" style="font-size:16px;padding:14px" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
+          </div>
+          <div class="field">
+            <label>Objectif financier (€) <span style="color:#cc2f26">*</span></label>
+            <input type="number" id="ob-target" placeholder="Ex: 50 000" style="font-size:16px;padding:14px" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
+          </div>
+          <div id="ob-budget-preview" style="display:none;background:#e8f8f0;border-radius:12px;padding:12px 14px;border-left:3px solid #1a7f5a">
+            <div style="font-size:12px;font-weight:700;color:#1a7f5a;margin-bottom:4px">📊 Projection rapide à 7%/an</div>
+            <div style="font-size:13px;color:#1c1c1e" id="ob-preview-text">—</div>
+          </div>
+          <div id="ob-budget-error" style="display:none;background:#fff0f0;border-radius:10px;padding:10px 14px;font-size:13px;color:#cc2f26;font-weight:600">⚠ Remplis tous les champs pour continuer</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" onclick="obNext(2)" style="flex:1">← Retour</button>
+          <button class="btn-primary" onclick="obNext(4)" style="flex:2" id="ob-btn-3" disabled>Suivant →</button>
+        </div>
       </div>
     </div>
 
     <!-- ÉTAPE 4 : Profil risque -->
     <div class="onboard-step" id="ob-step-4" style="display:none">
-      <div class="ob-icon">⚖️</div>
-      <div class="ob-title">Ton profil de risque</div>
-      <div class="ob-text">Ça change les recommandations que tu reçois.</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin:20px 0">
-        <div class="ob-risk-card" id="ob-risk-faible" onclick="obSelectRisk('faible')">
-          <div style="font-size:20px">🛡️</div>
-          <div>
-            <div style="font-weight:700;font-size:14px">Prudent</div>
-            <div style="font-size:12px;color:#8e8e93">Je veux limiter les pertes. ETF diversifiés.</div>
-          </div>
-          <div class="ob-check" id="ob-rcheck-faible" style="margin-left:auto">○</div>
-        </div>
-        <div class="ob-risk-card" id="ob-risk-modere" onclick="obSelectRisk('modere')">
-          <div style="font-size:20px">⚖️</div>
-          <div>
-            <div style="font-weight:700;font-size:14px">Équilibré</div>
-            <div style="font-size:12px;color:#8e8e93">Mix ETF + quelques actions. Rendement raisonnable.</div>
-          </div>
-          <div class="ob-check" id="ob-rcheck-modere" style="margin-left:auto">○</div>
-        </div>
-        <div class="ob-risk-card" id="ob-risk-eleve" onclick="obSelectRisk('eleve')">
-          <div style="font-size:20px">🚀</div>
-          <div>
-            <div style="font-weight:700;font-size:14px">Agressif</div>
-            <div style="font-size:12px;color:#8e8e93">Je vise la performance. J'accepte les baisses.</div>
-          </div>
-          <div class="ob-check" id="ob-rcheck-eleve" style="margin-left:auto">○</div>
+      <div style="background:linear-gradient(135deg,#1c1c1e,#2d2d30);padding:20px 24px;border-radius:20px 20px 0 0">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:28px">⚖️</div>
+          <div><div style="font-size:16px;font-weight:800;color:#fff">Profil de risque</div><div style="font-size:12px;color:rgba(255,255,255,0.6)">Change tes recommandations</div></div>
         </div>
       </div>
-      <input type="hidden" id="ob-risk" value="">
-      <input type="hidden" id="ob-horizon" value="long">
-      <div style="display:flex;gap:8px">
-        <button class="btn-secondary" onclick="obNext(3)" style="flex:1">← Retour</button>
-        <button class="btn-primary" onclick="obNext(5)" style="flex:2" id="ob-btn-4" disabled>Suivant →</button>
+      <div style="padding:20px 24px">
+        <div id="ob-risk-reco" style="display:none;background:#f9f9f9;border-radius:12px;padding:10px 14px;font-size:12px;color:#3c3c43;margin-bottom:12px"></div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin:0 0 20px">
+          <div class="ob-risk-card" id="ob-risk-faible" onclick="obSelectRisk('faible')">
+            <div style="font-size:20px">🛡️</div>
+            <div><div style="font-weight:700;font-size:14px">Prudent</div><div style="font-size:12px;color:#8e8e93">Limiter les pertes · ETF diversifiés · ~5%/an</div></div>
+            <div class="ob-check" id="ob-rcheck-faible" style="margin-left:auto">○</div>
+          </div>
+          <div class="ob-risk-card" id="ob-risk-modere" onclick="obSelectRisk('modere')">
+            <div style="font-size:20px">⚖️</div>
+            <div><div style="font-weight:700;font-size:14px">Équilibré</div><div style="font-size:12px;color:#8e8e93">Mix ETF + actions · Rendement raisonnable · ~7%/an</div></div>
+            <div class="ob-check" id="ob-rcheck-modere" style="margin-left:auto">○</div>
+          </div>
+          <div class="ob-risk-card" id="ob-risk-eleve" onclick="obSelectRisk('eleve')">
+            <div style="font-size:20px">🚀</div>
+            <div><div style="font-weight:700;font-size:14px">Agressif</div><div style="font-size:12px;color:#8e8e93">Performance maximale · J'accepte -40% · ~10%/an</div></div>
+            <div class="ob-check" id="ob-rcheck-eleve" style="margin-left:auto">○</div>
+          </div>
+        </div>
+        <input type="hidden" id="ob-risk" value="">
+        <input type="hidden" id="ob-horizon" value="long">
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" onclick="obNext(3)" style="flex:1">← Retour</button>
+          <button class="btn-primary" onclick="obNext(5)" style="flex:2" id="ob-btn-4" disabled>Suivant →</button>
+        </div>
       </div>
     </div>
 
     <!-- ÉTAPE 5 : Plan généré -->
     <div class="onboard-step" id="ob-step-5" style="display:none">
-      <div class="ob-icon">🎉</div>
-      <div class="ob-title">Ton plan personnalisé</div>
-      <div id="ob-plan-content" style="margin:16px 0">
-        <div style="text-align:center;padding:20px;color:#8e8e93">
-          <div style="font-size:24px;margin-bottom:8px">🧠</div>
-          <div>Génération de ton plan...</div>
-        </div>
+      <div style="background:linear-gradient(135deg,#1a7f5a,#059669);padding:20px 24px;border-radius:20px 20px 0 0;text-align:center">
+        <div style="font-size:32px;margin-bottom:6px">🎉</div>
+        <div style="font-size:18px;font-weight:900;color:#fff">Ton plan personnalisé est prêt !</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:4px" id="ob-plan-profile-label"></div>
       </div>
-      <div id="ob-step5-btn" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-        <button class="btn-primary" style="width:100%;font-size:15px;padding:16px" onclick="obFinish('objectif')">📊 Voir mon plan complet →</button>
+      <div style="padding:16px 20px">
+        <div id="ob-plan-content" style="margin-bottom:16px">
+          <div style="text-align:center;padding:24px;color:#8e8e93">
+            <svg class="spinning" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <div style="margin-top:10px;font-size:13px;font-weight:600">Génération de ton plan...</div>
+          </div>
+        </div>
+        <div id="ob-step5-btn" style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn-primary" style="width:100%;font-size:15px;padding:16px" onclick="obFinish('objectif')">📊 Voir mon plan complet →</button>
+          <button class="btn-secondary" style="width:100%;font-size:13px" onclick="obFinish('home')">Accéder à l'app directement</button>
+        </div>
       </div>
     </div>
 
@@ -657,24 +702,16 @@
           <div class="form-grid three">
             <div class="field">
               <label>Quantité *</label>
-              <input type="number" id="f-qty" step="0.01" placeholder="10" oninput="updatePosTotal()">
+              <input type="number" id="f-qty" step="0.01" placeholder="10">
             </div>
             <div class="field">
-              <label>PRU (€) * <span class="tooltip-icon" data-tip="Ton prix d'achat moyen — si tu achètes maintenant, mets le prix actuel">?</span></label>
-              <input type="number" id="f-pru" step="0.01" placeholder="Ton prix d'achat" oninput="updatePosTotal()">
+              <label>PRU (€) * <span class="tooltip-icon" data-tip="Prix moyen auquel tu as acheté">?</span></label>
+              <input type="number" id="f-pru" step="0.01" placeholder="150.00">
             </div>
             <div class="field">
               <label>Prix actuel (€) <span class="ac-live-badge" id="ac-live-label" style="display:none">⚡ live</span></label>
-              <input type="number" id="f-price" step="0.01" placeholder="165.00" oninput="updatePosTotal()">
+              <input type="number" id="f-price" step="0.01" placeholder="165.00">
             </div>
-          </div>
-          <!-- TOTAL EN TEMPS RÉEL -->
-          <div id="pos-total-preview" style="display:none;background:#f0faf6;border-radius:12px;padding:12px 16px;margin-bottom:4px;border-left:3px solid #1a7f5a">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-              <div style="font-size:13px;color:#1a7f5a;font-weight:600" id="pos-total-detail">—</div>
-              <div style="font-size:18px;font-weight:900;color:#1a7f5a" id="pos-total-val">—</div>
-            </div>
-            <div style="font-size:11px;color:#8e8e93;margin-top:4px" id="pos-total-pnl"></div>
           </div>
           <div class="form-grid">
             <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Tech, Monde..."></div>
