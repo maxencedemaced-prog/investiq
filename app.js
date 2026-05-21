@@ -25,8 +25,7 @@ async function validateObjectif(labelOverride) {
         // Mise à jour — sans updated_at si la colonne n'existe pas
         const updatePayload = {
           capital: data.capital, monthly: data.monthly, target: data.target,
-          years: data.years, rate: data.rate, risk: data.risk,
-          validated_at: data.validated_at
+          years: data.years, rate: data.rate, risk: data.risk
         };
         const { error } = await sb.from('objectives').update(updatePayload).eq('id', existing.id);
         if (error) console.warn('[validateObjectif] update error:', error.message);
@@ -35,8 +34,7 @@ async function validateObjectif(labelOverride) {
         // Nouvel objectif — sans updated_at
         const insertPayload = {
           user_id: currentUser.id, capital: data.capital, monthly: data.monthly,
-          target: data.target, years: data.years, rate: data.rate, risk: data.risk,
-          validated_at: data.validated_at
+          target: data.target, years: data.years, rate: data.rate, risk: data.risk
         };
         const { data: inserted, error } = await sb.from('objectives').insert(insertPayload).select().single();
         if (error) console.warn('[validateObjectif] insert error:', error.message);
@@ -1988,17 +1986,19 @@ async function obFinish(action) {
     try {
       // Update si objectif existant, sinon insert
       if (allObjectives.length > 0) {
-        await sb.from('objectives').update({
+        const { error: oue } = await sb.from('objectives').update({
           capital: bankroll, monthly: monthly,
           target: target, years: 10, rate: objChartRate,
-          risk: objRisk, validated_at: new Date().toISOString()
+          risk: objRisk
         }).eq('id', allObjectives[0].id);
+        if (oue) console.warn('[obFinish] update error:', oue.message);
       } else {
-        await sb.from('objectives').insert({
+        const { error: oie } = await sb.from('objectives').insert({
           user_id: currentUser.id, capital: bankroll, monthly: monthly,
           target: target, years: 10, rate: objChartRate,
-          risk: objRisk, validated_at: new Date().toISOString()
+          risk: objRisk
         });
+        if (oie) console.warn('[obFinish] insert error:', oie.message);
       }
       await loadObjective();
     } catch(e) {}
@@ -4795,17 +4795,18 @@ async function generateObjPlan() {
       // Cherche si un objectif identique existe déjà
       const existing = allObjectives.find(o => o.target === target && o.monthly === monthly);
       if (existing) {
-        await sb.from('objectives').update({
+        const { error: ue } = await sb.from('objectives').update({
           capital, monthly, target, years,
-          rate: riskRates[objRisk], risk: objRisk,
-          validated_at: new Date().toISOString()
+          rate: riskRates[objRisk], risk: objRisk
         }).eq('id', existing.id);
+        if (ue) console.warn('[generateObjPlan] update error:', ue.message);
       } else {
-        await sb.from('objectives').insert({
+        const { data: ins, error: ie } = await sb.from('objectives').insert({
           user_id: currentUser.id, capital, monthly, target, years,
-          rate: riskRates[objRisk], risk: objRisk,
-          validated_at: new Date().toISOString()
-        });
+          rate: riskRates[objRisk], risk: objRisk
+        }).select().single();
+        if (ie) console.warn('[generateObjPlan] insert error:', ie.message);
+        else console.log('[generateObjPlan] insert OK:', ins?.id);
       }
       // Recharge les objectifs pour mettre à jour allObjectives + onglets
       await loadObjective();
