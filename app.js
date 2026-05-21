@@ -4814,6 +4814,38 @@ async function generateObjPlan() {
     renderMultiObjChart();
     return;
   }
+
+  // ── Feedback visuel immédiat ──
+  const genBtn = document.querySelector('.btn-obj-generate');
+  if (genBtn) {
+    genBtn.disabled = true;
+    genBtn.innerHTML = '<svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Sauvegarde en cours...';
+  }
+
+  // Overlay de progression dans le wizard
+  const wizardEl = document.getElementById('obj-wizard');
+  const stepCards = wizardEl?.querySelectorAll('.obj-step-card');
+  stepCards?.forEach(c => c.style.opacity = '0.4');
+
+  // Injecte un bandeau de progression
+  let progressEl = document.getElementById('obj-gen-progress');
+  if (!progressEl) {
+    progressEl = document.createElement('div');
+    progressEl.id = 'obj-gen-progress';
+    progressEl.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1c1c1e;color:#fff;border-radius:14px;padding:14px 20px;font-size:14px;font-weight:700;z-index:9999;display:flex;align-items:center;gap:10px;box-shadow:0 8px 30px rgba(0,0,0,0.3);min-width:260px;justify-content:center';
+    document.body.appendChild(progressEl);
+  }
+
+  function setProgress(msg) {
+    if (progressEl) progressEl.innerHTML = `<svg class="spinning" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span>${msg}</span>`;
+  }
+  function setProgressDone(msg) {
+    if (progressEl) progressEl.innerHTML = `<span style="color:#4ade80;font-size:18px">✓</span><span>${msg}</span>`;
+    setTimeout(() => { progressEl?.remove(); progressEl = null; }, 2000);
+  }
+
+  setProgress('Enregistrement...');
+
   const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
   const capital = parseFloat(document.getElementById('obj-capital').value) || tv || 0;
   const monthly = parseFloat(document.getElementById('obj-monthly').value) || 200;
@@ -4852,6 +4884,7 @@ async function generateObjPlan() {
         else console.log('[generateObjPlan] insert OK:', ins?.id);
       }
       // Recharge les objectifs pour mettre à jour allObjectives + onglets
+      setProgress('Chargement du plan...');
       await loadObjective();
     } catch(e) { console.warn('[generateObjPlan] save error:', e); }
   }
@@ -4863,7 +4896,10 @@ async function generateObjPlan() {
     validatedAt: new Date().toISOString()
   })); } catch {}
 
-  // Show results section
+  // Show results section — reset feedback
+  stepCards?.forEach(c => c.style.opacity = '1');
+  if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '🤖 Générer mon plan'; }
+  setProgress('Génération du plan IA...');
   document.getElementById('obj-wizard').style.display = 'none';
   document.getElementById('obj-results').style.display = 'block';
 
@@ -4966,6 +5002,8 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
   setTimeout(() => { if (allObjectives.length > 0) { renderMultiObjChart(); } else { buildObjChart(capital, monthly, target, years, riskRates[objRisk]); } }, 100);
   // Projection table in background
   renderProjectionTable(capital, monthly, target, years, riskRates[objRisk]);
+  // Done
+  setProgressDone('Objectif créé !');
 }
 
 function calcNeededRate(capital, monthly, target, years) {
