@@ -3920,7 +3920,8 @@ function nav(page) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);},
+    ai:()=>{ loadChatHistory(); initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
@@ -5732,22 +5733,236 @@ async function callClaude(prompt,sys){
   }catch{return'Erreur de connexion.';}
 }
 
-function sq(q){document.getElementById('ai-in').value=q;sendAI();}
-async function sendAI(){
-  const inp=document.getElementById('ai-in');
-  const q=inp.value.trim();if(!q)return;
-  inp.value='';
-  // Keep quick questions visible
+// ===== AGENT IA =====
+function sq(q) { document.getElementById('ai-in').value = q; sendAI(); }
 
-  const chat=document.getElementById('ai-chat');
-  chatHistory.push({role:'user',content:q});
-  chat.innerHTML+=`<div class="bubble user">${q}</div><div class="bubble bot" id="ai-loading">Réflexion...</div>`;
-  const pCtx=positions.length?`Mon portefeuille : ${positions.map(p=>`${p.name}(${p.type}, ${p.qty} parts, PRU ${p.pru}€, actuel ${p.price}€)`).join(', ')}. `:'';
-  const histCtx=chatHistory.slice(-6).map(m=>`${m.role==='user'?'Utilisateur':'Assistant'}: ${m.content}`).join('\n');
-  const fullPrompt=`${pCtx}Historique récent:\n${histCtx}`;
-  const r=await callClaude(fullPrompt);
-  chatHistory.push({role:'assistant',content:r});
-  saveChatHistory();
-  document.getElementById('ai-loading').outerHTML=`<div class="bubble bot">${formatMD(r)}</div>`;
-  chat.scrollTop=chat.scrollHeight;
+function buildAgentContext() {
+  // Barre de contexte — résumé de la situation actuelle
+  const bar = document.getElementById('agent-context-bar');
+  if (!bar) return;
+  const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
+  const ti = positions.reduce((a,p) => a+p.qty*p.pru, 0);
+  const pnl = tv - ti;
+  const pct = ti > 0 ? (pnl/ti*100).toFixed(1) : 0;
+  const chips = [];
+  if (tv > 0) chips.push(`<span style="background:#e8f8f0;color:#1a7f5a;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700">💼 ${fmtK(tv)} · ${pnl>=0?'+':''}${pct}%</span>`);
+  if (objChartTarget > 0) chips.push(`<span style="background:#f0f0f0;color:#1c1c1e;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700">🎯 Objectif ${fmtK(objChartTarget)}</span>`);
+  if (profile.risk) chips.push(`<span style="background:#f0f0f0;color:#1c1c1e;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700">⚖️ Profil ${profile.risk}</span>`);
+  chips.push(`<span style="background:#f0f0f0;color:#8e8e93;padding:5px 10px;border-radius:8px;font-size:12px">🧠 Mémoire active</span>`);
+  bar.innerHTML = chips.join('');
+}
+
+function buildAgentSuggestions() {
+  // Questions contextuelles intelligentes selon la situation
+  const el = document.getElementById('agent-suggestions');
+  if (!el) return;
+
+  const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
+  const pnl = tv - positions.reduce((a,p) => a+p.qty*p.pru, 0);
+  const avgChg = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const pctObj = objChartTarget > 0 ? (tv/objChartTarget*100) : 0;
+
+  // Suggestions dynamiques selon le contexte
+  const suggestions = [];
+
+  if (positions.length === 0) {
+    suggestions.push({ label: '🚀 Par où commencer ?', q: 'Je débute en bourse, par où commencer avec mon profil ?' });
+    suggestions.push({ label: '💡 Quel ETF acheter ?', q: 'Quel ETF monde me recommandes-tu pour débuter ?' });
+    suggestions.push({ label: '🏦 Quelle plateforme ?', q: 'Trade Republic ou XTB, laquelle me conseilles-tu ?' });
+  } else {
+    if (avgChg < -2) suggestions.push({ label: '📉 Marché en baisse — quoi faire ?', q: `Mon portefeuille baisse de ${Math.abs(avgChg).toFixed(1)}% aujourd'hui. Je fais quoi ?` });
+    if (pnl < 0) suggestions.push({ label: '⚠️ Mes pertes — que faire ?', q: `J'ai une perte de ${fmtK(Math.abs(pnl))} sur mon portefeuille. Dois-je couper ou tenir ?` });
+    if (pctObj > 0 && pctObj < 50) suggestions.push({ label: '🎯 Accélérer vers mon objectif', q: `Je suis à ${pctObj.toFixed(0)}% de mon objectif. Comment accélérer ?` });
+    suggestions.push({ label: '📊 Analyse mon portefeuille', q: 'Analyse mon portefeuille et dis-moi ce que tu en penses.' });
+    suggestions.push({ label: '🔄 Dois-je rééquilibrer ?', q: 'Mon portefeuille est-il bien équilibré ou dois-je rééquilibrer ?' });
+  }
+
+  // Questions générales toujours utiles
+  suggestions.push({ label: '📅 Plan ce mois-ci', q: 'Que dois-je faire avec mon argent ce mois-ci ?' });
+  suggestions.push({ label: '🧮 Simuler un scénario', q: 'Si j\'investis 200€ de plus par mois, quel impact sur mon objectif ?' });
+
+  el.innerHTML = `<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">💬 Questions rapides</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    ${suggestions.slice(0,5).map(s => `
+    <button onclick="sq(${JSON.stringify(s.q)})"
+      style="background:#fff;border:1.5px solid #e5e5ea;border-radius:99px;padding:7px 13px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;transition:all 0.15s;white-space:nowrap"
+      onmouseover="this.style.borderColor='#1c1c1e'" onmouseout="this.style.borderColor='#e5e5ea'">
+      ${s.label}
+    </button>`).join('')}
+  </div>`;
+}
+
+function getFullContext() {
+  // Contexte complet pour l'agent
+  const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
+  const ti = positions.reduce((a,p) => a+p.qty*p.pru, 0);
+  const pnl = tv - ti;
+  const pct = ti > 0 ? (pnl/ti*100).toFixed(1) : 0;
+  const avgChg = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+
+  let ctx = `=== CONTEXTE UTILISATEUR ===
+Portefeuille : ${positions.length} positions · Valeur ${fmtK(tv)} · P&L ${pnl>=0?'+':''}${fmtK(pnl)} (${pct}%) · Variation aujourd'hui : ${avgChg>=0?'+':''}${avgChg.toFixed(1)}%
+Profil : horizon ${profile.horizon || 'moyen'} · risque ${profile.risk || 'faible'} · bankroll ${profile.bankroll || 5000}€
+`;
+
+  if (positions.length) {
+    ctx += `Positions : ${positions.map(p => {
+      const ppnl = ((p.price-p.pru)/p.pru*100).toFixed(1);
+      return `${p.name} ${p.qty}parts PRU${p.pru}€ actuel${p.price}€ (${ppnl>=0?'+':''}${ppnl}%)`;
+    }).join(' | ')}
+`;
+  }
+
+  if (objChartTarget > 0) {
+    const pctObj = (tv/objChartTarget*100).toFixed(1);
+    ctx += `Objectif : ${fmtK(objChartTarget)} en ${objChartYears}ans · ${objChartMonthly}€/mois · ${pctObj}% atteint · profil ${objRisk}
+`;
+  }
+
+  if (allObjectives.length > 1) {
+    ctx += `Objectifs multiples : ${allObjectives.map(o => `${o.label} (${fmtK(o.target)}, ${o.monthly}€/mois, ${o.years}ans)`).join(' | ')}
+`;
+  }
+
+  return ctx;
+}
+
+function detectIntent(q) {
+  // Détecte si l'utilisateur veut effectuer une action
+  const lower = q.toLowerCase();
+  if (lower.match(/ajoute?|achète?|add/)) return 'ajouter';
+  if (lower.match(/supprime?|retire?|enlève?|delete/)) return 'supprimer';
+  if (lower.match(/alerte?|notif/)) return 'alerte';
+  if (lower.match(/objectif|goal/)) return 'objectif';
+  if (lower.match(/simul|si j.investis|si j.ajoute|et si/)) return 'simulation';
+  if (lower.match(/analyse|bilan|état|comment va/)) return 'analyse';
+  return 'question';
+}
+
+async function sendAI() {
+  const inp = document.getElementById('ai-in');
+  const q = inp.value.trim();
+  if (!q) return;
+  inp.value = '';
+
+  const chat = document.getElementById('ai-chat');
+  const sendBtn = document.getElementById('ai-send-btn');
+  if (sendBtn) sendBtn.disabled = true;
+
+  chatHistory.push({ role: 'user', content: q });
+  chat.innerHTML += `<div class="bubble user">${q}</div><div class="bubble bot" id="ai-loading" style="display:flex;align-items:center;gap:8px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="color:#8e8e93">Réflexion...</span></div>`;
+  chat.scrollTop = chat.scrollHeight;
+
+  const intent = detectIntent(q);
+  const ctx = getFullContext();
+  const histCtx = chatHistory.slice(-8).map(m => `${m.role==='user'?'Utilisateur':'Assistant'}: ${m.content}`).join('\n');
+
+  let systemPrompt = `Tu es un agent IA financier personnel expert et pédagogue, intégré dans l'app InvestIQ.
+Tu as accès au contexte complet de l'utilisateur ci-dessous.
+Réponds TOUJOURS en français. Sois concis, direct et actionnable.
+Si l'utilisateur demande une ACTION (ajouter position, créer alerte, modifier objectif), réponds avec le plan d'action ET ajoute à la fin une ligne JSON spéciale :
+[ACTION:{"type":"ajouter_position","ticker":"AAPL","qty":5,"prix":180}] ou [ACTION:{"type":"alerte","ticker":"LVMH","prix":650}] ou [ACTION:{"type":"simuler","monthly_add":200}]
+Pour les SIMULATIONS, calcule toi-même et montre le résultat chiffré.
+Tu ne fournis pas de conseils financiers réglementés.`;
+
+  const fullPrompt = `${ctx}\n=== HISTORIQUE ===\n${histCtx}\n\n=== QUESTION ===\n${q}`;
+
+  try {
+    const r = await callClaude(fullPrompt, systemPrompt);
+    chatHistory.push({ role: 'assistant', content: r });
+    saveChatHistory();
+
+    // Détecte et parse les actions
+    const actionMatch = r.match(/\[ACTION:(.*?)\]/s);
+    let displayR = r.replace(/\[ACTION:.*?\]/s, '').trim();
+
+    const loadingEl = document.getElementById('ai-loading');
+    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot">${formatMD(displayR)}</div>`;
+
+    // Affiche le bouton d'action si détecté
+    if (actionMatch) {
+      try {
+        const action = JSON.parse(actionMatch[1]);
+        renderAgentAction(action, chat);
+      } catch(e) {}
+    }
+
+    // Rafraîchit les suggestions
+    buildAgentSuggestions();
+  } catch(e) {
+    const loadingEl = document.getElementById('ai-loading');
+    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot" style="color:#cc2f26">Erreur — réessaie.</div>`;
+  }
+
+  if (sendBtn) sendBtn.disabled = false;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function renderAgentAction(action, chat) {
+  // Affiche un bouton d'action confirmable dans le chat
+  const labels = {
+    ajouter_position: `➕ Ajouter ${action.qty} ${action.ticker} à ${action.prix}€`,
+    alerte: `🔔 Créer alerte ${action.ticker} à ${action.prix}€`,
+    simuler: `📊 Voir la simulation`,
+    objectif: `🎯 Modifier l'objectif`,
+  };
+  const label = labels[action.type] || "✓ Confirmer l'action";
+  const actionHtml = `
+  <div class="bubble bot" style="padding:0">
+    <div style="background:#f0faf6;border-radius:12px;padding:12px 14px;border-left:3px solid #1a7f5a">
+      <div style="font-size:12px;font-weight:700;color:#1a7f5a;margin-bottom:8px">⚡ Action suggérée</div>
+      <button onclick="executeAgentAction(${JSON.stringify(action).replace(/"/g,'&quot;')})"
+        style="background:#1a7f5a;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;width:100%">
+        ${label}
+      </button>
+      <div style="font-size:11px;color:#8e8e93;margin-top:6px;text-align:center">Clique pour exécuter · Tu peux vérifier avant de valider</div>
+    </div>
+  </div>`;
+  chat.innerHTML += actionHtml;
+}
+
+function executeAgentAction(action) {
+  switch(action.type) {
+    case 'ajouter_position':
+      nav('ajouter');
+      setTimeout(() => {
+        const company = { ticker: action.ticker, name: action.ticker, type: action.type_actif || 'Action', sector: '' };
+        acSelect(company);
+        setTimeout(() => {
+          if (action.qty) document.getElementById('f-qty').value = action.qty;
+          if (action.prix) { document.getElementById('f-price').value = action.prix; document.getElementById('f-pru').value = action.prix; }
+          showToast('✅ Formulaire pré-rempli — vérifie et valide !');
+        }, 800);
+      }, 200);
+      break;
+    case 'alerte':
+      nav('portfolio');
+      showToast(`🔔 Va dans ta position ${action.ticker} → Modifier → Alerte prix : ${action.prix}€`);
+      break;
+    case 'simuler':
+      nav('dca');
+      if (action.monthly_add) {
+        setTimeout(() => {
+          const mEl = document.getElementById('dca-m');
+          if (mEl) { mEl.value = (objChartMonthly||200) + action.monthly_add; updateDCA(); }
+        }, 200);
+      }
+      break;
+    case 'objectif':
+      nav('objectif');
+      break;
+  }
+}
+
+function initAgent() {
+  buildAgentContext();
+  buildAgentSuggestions();
+  // Message de bienvenue personnalisé
+  const welcome = document.getElementById('ai-welcome');
+  if (welcome && positions.length > 0) {
+    const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
+    const pnl = tv - positions.reduce((a,p) => a+p.qty*p.pru, 0);
+    const color = pnl >= 0 ? '#1a7f5a' : '#cc2f26';
+    welcome.innerHTML = `Bonjour ! Ton portefeuille est à <strong style="color:${color}">${fmtK(tv)}</strong> (${pnl>=0?'+':''}${fmtK(pnl)}). Je connais toutes tes positions, tes objectifs et ton profil. Que veux-tu faire ?`;
+  }
 }
