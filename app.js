@@ -821,7 +821,7 @@ function renderObjLegend(tv) {
       <span class="obj-tab-del" onclick="event.stopPropagation();deleteObjective('${obj.id}')" title="Supprimer">×</span>
     </button>`;
   }).join('') +
-  `<button class="obj-tab-new" onclick="resetObj()">+ Nouveau objectif</button>`;
+  `${allObjectives.length < 4 ? '<button class="obj-tab-new" onclick="resetObj()">+ Nouveau objectif</button>' : ''}`;
 
   // ── PANEL résumé de l'objectif actif ──
   let panelHtml = '';
@@ -4832,6 +4832,14 @@ function resetObj() {
 }
 
 async function generateObjPlan() {
+  // Limite max objectifs
+  if (allObjectives.length >= 4) {
+    showToast('⚠ Maximum 4 objectifs — supprime-en un pour en créer un nouveau.');
+    document.getElementById('obj-wizard').style.display = 'none';
+    document.getElementById('obj-results').style.display = 'block';
+    renderMultiObjChart();
+    return;
+  }
   const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
   const capital = parseFloat(document.getElementById('obj-capital').value) || tv || 0;
   const monthly = parseFloat(document.getElementById('obj-monthly').value) || 200;
