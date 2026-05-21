@@ -1507,10 +1507,10 @@ async function acSelect(company) {
         priceInput.style.color = '#1c1c1e';
       }
       if (liveLabel) liveLabel.style.display = 'inline';
-      // Also pre-fill PRU with current price as suggestion
+      // Pré-remplit le PRU avec le prix actuel (modifiable par l'utilisateur)
       const pruInput = document.getElementById('f-pru');
       if (pruInput && !pruInput.value) {
-        pruInput.placeholder = q.price.toFixed(2) + ' (si achat maintenant)';
+        pruInput.value = q.price.toFixed(2);
       }
       // Met à jour le total
       updatePosTotal();
