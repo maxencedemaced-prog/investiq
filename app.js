@@ -5735,6 +5735,7 @@ async function callClaude(prompt,sys){
 
 // ===== AGENT IA =====
 function sq(q) { document.getElementById('ai-in').value = q; sendAI(); }
+function sqIdx(i) { const s = window._agentSuggestions?.[i]; if (s) sq(s.q); }
 
 function buildAgentContext() {
   // Barre de contexte — résumé de la situation actuelle
@@ -5781,10 +5782,12 @@ function buildAgentSuggestions() {
   suggestions.push({ label: '📅 Plan ce mois-ci', q: 'Que dois-je faire avec mon argent ce mois-ci ?' });
   suggestions.push({ label: '🧮 Simuler un scénario', q: 'Si j\'investis 200€ de plus par mois, quel impact sur mon objectif ?' });
 
+  // Stocke les questions dans un objet global pour éviter les problèmes d'échappement
+  window._agentSuggestions = suggestions.slice(0,5);
   el.innerHTML = `<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">💬 Questions rapides</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
-    ${suggestions.slice(0,5).map(s => `
-    <button onclick="sq(${JSON.stringify(s.q)})"
+    ${suggestions.slice(0,5).map((s, i) => `
+    <button onclick="sqIdx(${i})"
       style="background:#fff;border:1.5px solid #e5e5ea;border-radius:99px;padding:7px 13px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;transition:all 0.15s;white-space:nowrap"
       onmouseover="this.style.borderColor='#1c1c1e'" onmouseout="this.style.borderColor='#e5e5ea'">
       ${s.label}
