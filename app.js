@@ -1869,8 +1869,8 @@ const OB_PROFILES = {
     riskReco: "💡 Équilibré à Agressif selon ta tolérance. Tu as l'expérience pour gérer la volatilité.",
     defaultRisk: "modere",
     planSteps: [
-      {icon:"🌍", titre:"Core : 60% VWCE + 20% S&P 500 ETF", desc:"Base mondiale solide + surpondération US qui surperforme historiquement."},
-      {icon:"🎯", titre:"Satellite : 20% actions thématiques IA, santé", desc:"Signaux IA du jour dans Actualités pour identifier les entrées."},
+      {icon:"🌍", titre:"70% IWDA.L — le cœur de ton portef.", desc:"ETF MSCI World en DCA mensuel automatique. La base indispensable."},
+      {icon:"🔵", titre:"30% VWCE.DE — diversification émergents", desc:"Complète IWDA avec les marchés émergents pour une couverture mondiale totale."},
       {icon:"📅", titre:"Suis les signaux IA quotidiens", desc:"Signal Acheter/Attendre/Éviter + prix cible + stop-loss sur tes positions."},
       {icon:"🏦", titre:"Multi-objectifs : patrimoine + court terme", desc:"Crée 2-3 objectifs distincts dans l'app avec allocations séparées."},
     ]
