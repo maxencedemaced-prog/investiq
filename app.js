@@ -1826,9 +1826,9 @@ const OB_PROFILES = {
     risk: "faible", horizon: "long",
     preview: "On te guide pas à pas. 100% ETF monde, zéro jargon. Tu n'as besoin de rien savoir pour commencer.",
     presets: [
-      {l:"Micro-investisseur", c:0,   m:50,  t:5000,  desc:"50€/mois · Objectif 5 000€"},
-      {l:"Démarrage",         c:500, m:100, t:15000, desc:"500€ + 100€/mois"},
-      {l:"Standard",          c:1000,m:200, t:30000, desc:"1 000€ + 200€/mois"},
+      {l:"Micro (50€/mois)", c:0,   m:50,  t:5000},
+      {l:"Démarrage",        c:500, m:100, t:15000},
+      {l:"Standard",         c:1000,m:200, t:30000},
     ],
     riskReco: "💡 Profil Prudent fortement recommandé — 90% ETF monde IWDA. Rendement historique ~7%/an, simple et efficace.",
     defaultRisk: "faible",
@@ -1842,11 +1842,11 @@ const OB_PROFILES = {
   curieux: {
     label: "Curieux 📚", icon: "📚",
     risk: "modere", horizon: "long",
-    preview: "Tu as des bases théoriques. On t'aide à passer à l'action avec un plan concret ETF + 1-2 actions que tu comprends.",
+    preview: "Tu as des bases théoriques. On t'aide à passer à l'action avec un plan concret ETF + 1-2 actions.",
     presets: [
-      {l:"Prudent",   c:1000,m:100,t:20000, desc:"1 000€ + 100€/mois"},
-      {l:"Sérieux",   c:2000,m:200,t:50000, desc:"2 000€ + 200€/mois"},
-      {l:"Ambitieux", c:5000,m:300,t:100000,desc:"5 000€ + 300€/mois"},
+      {l:"Prudent",   c:1000,m:100,t:20000},
+      {l:"Sérieux",   c:2000,m:200,t:50000},
+      {l:"Ambitieux", c:5000,m:300,t:100000},
     ],
     riskReco: "💡 Profil Équilibré recommandé — 70% ETF monde + 30% grandes caps stables (LVMH, Apple, Air Liquide).",
     defaultRisk: "modere",
@@ -1854,79 +1854,79 @@ const OB_PROFILES = {
       {icon:"🏦", titre:"70% ETF monde — la base solide", desc:"IWDA.L ou VWCE.DE en DCA mensuel automatique. Ne changes pas ça."},
       {icon:"🎯", titre:"30% en 1-2 actions que tu connais", desc:"LVMH, Apple, Air Liquide... Des entreprises dont tu comprends le business."},
       {icon:"🤖", titre:"Utilise l'Aide à la décision avant chaque achat", desc:"L'IA te donne un signal clair : Acheter / Attendre / Éviter avec les raisons."},
-      {icon:"📊", titre:"Rééquilibre 1 fois par an", desc:"Si une position dépasse 40% de ton portef., revends un peu et rachète de l'ETF."},
+      {icon:"📊", titre:"Rééquilibre 1 fois par an", desc:"Si une position dépasse 40%, revends un peu et rachète de l'ETF."},
     ]
   },
   initie: {
     label: "Initié 📈", icon: "📈",
     risk: "modere", horizon: "moyen",
-    preview: "Tu maîtrises les ETF. On optimise ton allocation, on t'aide à sélectionner les meilleures opportunités et à gérer le risque.",
+    preview: "Tu maîtrises les ETF. On optimise ton allocation et t'aide à sélectionner les meilleures opportunités.",
     presets: [
-      {l:"Croissance",   c:5000, m:300, t:50000,  desc:"5 000€ + 300€/mois"},
-      {l:"100k€",        c:10000,m:500, t:100000, desc:"10 000€ + 500€/mois"},
-      {l:"Ambitieux",    c:20000,m:1000,t:250000, desc:"20 000€ + 1 000€/mois"},
+      {l:"Croissance",c:5000, m:300, t:50000},
+      {l:"100k€",     c:10000,m:500, t:100000},
+      {l:"Ambitieux", c:20000,m:1000,t:250000},
     ],
-    riskReco: "💡 Équilibré à Agressif selon ta tolérance. Tu as l'expérience pour gérer la volatilité court terme.",
+    riskReco: "💡 Équilibré à Agressif selon ta tolérance. Tu as l'expérience pour gérer la volatilité.",
     defaultRisk: "modere",
     planSteps: [
       {icon:"🌍", titre:"Core : 60% VWCE + 20% S&P 500 ETF", desc:"Base mondiale solide + surpondération US qui surperforme historiquement."},
-      {icon:"🎯", titre:"Satellite : 20% actions thématiques IA, santé", desc:"Signaux IA du jour dans Actualités → Opportunités pour identifier les entrées."},
-      {icon:"📅", titre:"Suis les signaux IA quotidiens", desc:"Chaque jour : signal Acheter/Attendre/Éviter + prix cible + stop-loss sur tes positions."},
-      {icon:"🏦", titre:"Multi-objectifs : patrimoine + court terme", desc:"Crée 2 objectifs distincts dans l'app avec allocations séparées."},
+      {icon:"🎯", titre:"Satellite : 20% actions thématiques IA, santé", desc:"Signaux IA du jour dans Actualités pour identifier les entrées."},
+      {icon:"📅", titre:"Suis les signaux IA quotidiens", desc:"Signal Acheter/Attendre/Éviter + prix cible + stop-loss sur tes positions."},
+      {icon:"🏦", titre:"Multi-objectifs : patrimoine + court terme", desc:"Crée 2-3 objectifs distincts dans l'app avec allocations séparées."},
     ]
   },
   confirme: {
     label: "Confirmé 💼", icon: "💼",
     risk: "eleve", horizon: "moyen",
-    preview: "Tu gères activement. Signaux IA avancés, rééquilibrage automatique, multi-objectifs, analyse technique — tout est pour toi.",
+    preview: "Tu gères activement. Signaux IA avancés, rééquilibrage, multi-objectifs — tout est pour toi.",
     presets: [
-      {l:"Patrimoine",   c:20000, m:1000, t:200000,  desc:"20 000€ + 1 000€/mois"},
-      {l:"Demi-million", c:50000, m:2000, t:500000,  desc:"50 000€ + 2 000€/mois"},
-      {l:"Million",      c:100000,m:3000, t:1000000, desc:"100 000€ + 3 000€/mois"},
+      {l:"Patrimoine",  c:20000, m:1000,t:200000},
+      {l:"500k€",       c:50000, m:2000,t:500000},
+      {l:"Million",     c:100000,m:3000,t:1000000},
     ],
     riskReco: "💡 Agressif si tu acceptes -40% temporairement. Équilibré pour protéger le capital accumulé.",
     defaultRisk: "eleve",
     planSteps: [
-      {icon:"⚡", titre:"Core/Satellite avancé 50/50", desc:"50% ETF (VWCE, CSPX) + 50% sélection active sur signaux IA et actualités."},
-      {icon:"🎯", titre:"3 objectifs en parallèle", desc:"Patrimoine 20 ans / Retraite FIRE / Projet court terme — chacun sa courbe et son plan."},
-      {icon:"🔔", titre:"Alertes prix sur toutes tes positions", desc:"Configure stop-loss et objectifs de prise de profit dans Portefeuille → Modifier."},
-      {icon:"🤖", titre:"Bilan mensuel avec l'Agent IA", desc:"Demande à l'Agent IA un audit complet : P&L, rééquilibrage, nouvelles opportunités."},
+      {icon:"⚡", titre:"Core/Satellite avancé 50/50", desc:"50% ETF (VWCE, CSPX) + 50% sélection active sur signaux IA."},
+      {icon:"🎯", titre:"3 objectifs en parallèle", desc:"Patrimoine 20 ans / Retraite FIRE / Projet court terme — chacun sa courbe."},
+      {icon:"🔔", titre:"Alertes prix sur toutes tes positions", desc:"Configure stop-loss et objectifs de prise de profit dans Portefeuille."},
+      {icon:"🤖", titre:"Bilan mensuel avec l'Agent IA", desc:"Audit complet : P&L, rééquilibrage, nouvelles opportunités."},
     ]
   },
   gros: {
     label: "Gros investisseur 🐳", icon: "🐳",
     risk: "modere", horizon: "long",
-    preview: "50k€+ à structurer. On t'aide à bâtir une allocation multi-poches, à diversifier les plateformes et à protéger le capital.",
+    preview: "50k€+ à structurer. Allocation multi-poches, diversification plateformes, protection du capital.",
     presets: [
-      {l:"Structuré",      c:50000, m:2000, t:300000,  desc:"50 000€ + 2 000€/mois"},
-      {l:"Haut patrimoine",c:100000,m:5000, t:750000,  desc:"100 000€ + 5 000€/mois"},
-      {l:"2M€",            c:200000,m:10000,t:2000000, desc:"200 000€ + 10 000€/mois"},
+      {l:"Structuré",      c:50000, m:2000, t:300000},
+      {l:"Haut patrimoine",c:100000,m:5000, t:750000},
+      {l:"2M€",            c:200000,m:10000,t:2000000},
     ],
     riskReco: "💡 Équilibré recommandé — à ton niveau, la protection du capital prime sur la performance brute.",
     defaultRisk: "modere",
     planSteps: [
-      {icon:"🏛️", titre:"4 poches : Sécu 20% / Revenus 30% / Croissance 40% / Spéculatif 10%", desc:"Chaque poche a son ETF ou actif dédié. Ne mélange pas les logiques."},
-      {icon:"🛡️", titre:"Poche sécurité : AGGH.L + or (IGLN.L)", desc:"Obligations mondiales + or physique pour protéger contre les crises systémiques."},
-      {icon:"🏦", titre:"Diversifie sur 3 plateformes", desc:"XTB + Trade Republic + CTO banque classique. Risque de contrepartie réparti."},
-      {icon:"📄", titre:"Export PDF mensuel pour ta comptabilité", desc:"Rapport complet téléchargeable depuis Portefeuille → Exporter."},
+      {icon:"🏛️", titre:"4 poches : Sécu 20% / Revenus 30% / Croissance 40% / Spéculatif 10%", desc:"Chaque poche a son ETF ou actif dédié."},
+      {icon:"🛡️", titre:"Poche sécurité : AGGH.L + or (IGLN.L)", desc:"Obligations mondiales + or physique pour protéger contre les crises."},
+      {icon:"🏦", titre:"Diversifie sur 3 plateformes", desc:"XTB + Trade Republic + CTO banque. Risque de contrepartie réparti."},
+      {icon:"📄", titre:"Export PDF mensuel pour ta comptabilité", desc:"Rapport complet depuis Portefeuille → Exporter."},
     ]
   },
   expert: {
     label: "Expert / Trader 🏆", icon: "🏆",
     risk: "eleve", horizon: "court",
-    preview: "Mode expert activé. Tous les signaux IA, scénarios de crise, agent IA pour les ordres — toutes les fonctions avancées disponibles.",
+    preview: "Mode expert activé. Tous les signaux IA, scénarios de crise, agent IA pour les ordres.",
     presets: [
-      {l:"Trading actif", c:10000, m:2000, t:200000,  desc:"10 000€ + 2 000€/mois"},
-      {l:"Pro",           c:50000, m:5000, t:500000,  desc:"50 000€ + 5 000€/mois"},
-      {l:"Million",       c:100000,m:10000,t:1000000, desc:"100 000€ + 10 000€/mois"},
+      {l:"Trading actif",c:10000, m:2000, t:200000},
+      {l:"Pro",          c:50000, m:5000, t:500000},
+      {l:"Million",      c:100000,m:10000,t:1000000},
     ],
-    riskReco: "💡 Agressif — tu sais ce que tu fais. Toutes les fonctions avancées sont déjà actives.",
+    riskReco: "💡 Agressif — tu sais ce que tu fais. Toutes les fonctions avancées sont actives.",
     defaultRisk: "eleve",
     planSteps: [
-      {icon:"⚡", titre:"Signaux IA temps réel sur chaque position", desc:"Conviction, prix cible, stop-loss et horizon sur chaque actif de ton portef."},
-      {icon:"💥", titre:"Scénarios de crise intégrés", desc:"Simule -10%, -30%, -40% sur ton portefeuille pour calibrer ton risque réel."},
-      {icon:"🤖", titre:"Agent IA pour passer les ordres", desc:"'Ajoute 5 NVDA à 900€' dans le chat → formulaire pré-rempli en 1 clic."},
-      {icon:"📊", titre:"Multi-objectifs trading + patrimoine", desc:"Sépare ton book actif et ton capital de fond avec des courbes et plans distincts."},
+      {icon:"⚡", titre:"Signaux IA temps réel sur chaque position", desc:"Conviction, prix cible, stop-loss et horizon sur chaque actif."},
+      {icon:"💥", titre:"Scénarios de crise intégrés", desc:"Simule -10%, -30%, -40% pour calibrer ton risque réel."},
+      {icon:"🤖", titre:"Agent IA pour passer les ordres", desc:"Dis ce que tu veux acheter dans le chat — formulaire pré-rempli en 1 clic."},
+      {icon:"📊", titre:"Multi-objectifs trading + patrimoine", desc:"Sépare ton book actif et ton capital de fond avec courbes distinctes."},
     ]
   },
 };
@@ -1937,46 +1937,33 @@ function obSelectProfile(level) {
   obProfileLevel = level;
   document.getElementById("ob-profile-level").value = level;
   const p = OB_PROFILES[level];
-
-  // Visuels cartes
   Object.keys(OB_PROFILES).forEach(l => {
     const card = document.getElementById("obp-" + l);
     if (card) {
       card.style.borderColor = l === level ? "#1c1c1e" : "#e5e5ea";
       card.style.background  = l === level ? "#f5f5f5" : "#fff";
       card.style.transform   = l === level ? "scale(1.02)" : "scale(1)";
-      card.style.boxShadow   = l === level ? "0 4px 16px rgba(0,0,0,0.1)" : "none";
     }
   });
-
-  // Preview adaptatif
   const prev = document.getElementById("ob-profile-preview");
   if (prev) {
     prev.style.display = "block";
-    document.getElementById("ob-preview-label").textContent = p.label + " — ce qu'on va faire pour toi :";
-    document.getElementById("ob-preview-text").textContent  = p.preview;
+    const lbl = document.getElementById("ob-preview-label");
+    const txt = document.getElementById("ob-preview-text");
+    if (lbl) lbl.textContent = p.label + " — ce qu'on va faire pour toi :";
+    if (txt) txt.textContent = p.preview;
   }
-
-  // Active bouton suivant
   document.getElementById("ob-btn-1").disabled = false;
-
-  // Pré-sélectionne le risque recommandé
   obSelectRisk(p.defaultRisk);
-
-  // Prépare les presets pour l'étape 2
   const presetsEl = document.getElementById("ob-budget-presets");
   if (presetsEl) {
     presetsEl.innerHTML = p.presets.map(pr =>
       `<button onclick="obApplyPreset(${pr.c},${pr.m},${pr.t})"
-        style="background:#f0f0f0;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;white-space:nowrap;transition:all 0.15s"
+        style="background:#f0f0f0;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;white-space:nowrap"
         onmouseover="this.style.background='#1c1c1e';this.style.color='#fff'"
-        onmouseout="this.style.background='#f0f0f0';this.style.color='#1c1c1e'">
-        ${pr.l}
-      </button>`
+        onmouseout="this.style.background='#f0f0f0';this.style.color='#1c1c1e'">${pr.l}</button>`
     ).join("");
   }
-
-  // Prépare la reco risque pour étape 3
   const recoEl = document.getElementById("ob-risk-reco");
   if (recoEl) { recoEl.textContent = p.riskReco; recoEl.style.display = "block"; }
 }
@@ -1989,12 +1976,11 @@ function showOnboarding(force) {
 }
 
 function obNext(step) {
-  // Validation budget (étape 2→3)
   if (step === 3) {
-    const bankroll = document.getElementById("ob-bankroll")?.value;
-    const monthly  = document.getElementById("ob-monthly")?.value;
-    const target   = document.getElementById("ob-target")?.value;
-    if (!bankroll || !monthly || !target) {
+    const b = document.getElementById("ob-bankroll")?.value;
+    const m = document.getElementById("ob-monthly")?.value;
+    const t = document.getElementById("ob-target")?.value;
+    if (!b || !m || !t) {
       const err = document.getElementById("ob-budget-error");
       if (err) err.style.display = "block";
       return;
@@ -2002,26 +1988,19 @@ function obNext(step) {
     const err = document.getElementById("ob-budget-error");
     if (err) err.style.display = "none";
   }
-
   document.querySelectorAll(".onboard-step").forEach(s => s.style.display = "none");
   const el = document.getElementById("ob-step-" + step);
   if (el) el.style.display = "block";
-
-  // Étape 3 : auto-sélectionne le risque du profil
   if (step === 3) {
     const p = OB_PROFILES[obProfileLevel];
-    if (p) {
-      obSelectRisk(p.defaultRisk);
-      const recoEl = document.getElementById("ob-risk-reco");
-      if (recoEl) { recoEl.textContent = p.riskReco; recoEl.style.display = "block"; }
-    }
+    if (p) { obSelectRisk(p.defaultRisk); }
+    const recoEl = document.getElementById("ob-risk-reco");
+    if (recoEl) { recoEl.textContent = OB_PROFILES[obProfileLevel]?.riskReco || ""; recoEl.style.display = "block"; }
   }
-
-  // Étape 4 : génère le plan
   if (step === 4) {
     const p = OB_PROFILES[obProfileLevel];
-    const labelEl = document.getElementById("ob-plan-profile-label");
-    if (labelEl && p) labelEl.textContent = p.label;
+    const lbl = document.getElementById("ob-plan-profile-label");
+    if (lbl && p) lbl.textContent = p.label;
     obGeneratePlan();
   }
 }
@@ -2049,7 +2028,7 @@ function obUpdateBudgetPreview() {
     const fv = capital * Math.pow(1+rate,n) + (monthly > 0 ? monthly*((Math.pow(1+rate,n)-1)/rate) : 0);
     preview.style.display = "block";
     const onTrack = target > 0 && fv >= target;
-    previewT.innerHTML = `En 10 ans : <strong style="color:#1a7f5a">${fmtK(Math.round(fv))}</strong>${target > 0 ? ` · Objectif ${fmtK(target)} : <strong style="color:${onTrack?"#1a7f5a":"#f59e0b"}">${onTrack?"✓ Atteignable":"⚠ Augmente le versement ou la durée"}</strong>` : ""}`;
+    previewT.innerHTML = `En 10 ans : <strong style="color:#1a7f5a">${fmtK(Math.round(fv))}</strong>${target > 0 ? ` · Objectif ${fmtK(target)} : <strong style="color:${onTrack?"#1a7f5a":"#f59e0b"}">${onTrack?"✓ Atteignable":"⚠ Augmente le versement"}</strong>` : ""}`;
   } else {
     preview.style.display = "none";
   }
@@ -2088,6 +2067,118 @@ function obSelectRisk(risk) {
   if (rEl) rEl.value = risk;
   const btn = document.getElementById("ob-btn-4");
   if (btn) btn.disabled = false;
+}
+
+async function obGeneratePlan() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("iq_ob_goals") || "null");
+    if (saved) obGoals = {...obGoals, ...saved};
+  } catch {}
+
+  const p        = OB_PROFILES[obProfileLevel] || OB_PROFILES.debutant;
+  const bankroll = parseFloat(document.getElementById("ob-bankroll")?.value) || 0;
+  const monthly  = parseFloat(document.getElementById("ob-monthly")?.value)  || 0;
+  const target   = parseFloat(document.getElementById("ob-target")?.value)   || 50000;
+  const risk     = document.getElementById("ob-risk")?.value || p.defaultRisk;
+  const planEl   = document.getElementById("ob-plan-content");
+  if (!planEl) return;
+
+  const riskRate  = risk === "eleve" ? 9 : risk === "modere" ? 7 : 5;
+  const rate      = riskRate/100/12, n10 = 120;
+  const fv10      = Math.round(bankroll * Math.pow(1+rate,n10) + (monthly > 0 ? monthly*((Math.pow(1+rate,n10)-1)/rate) : 0));
+  const invested10 = bankroll + monthly*120;
+  const gains10   = Math.max(0, fv10 - invested10);
+  const onTrack   = fv10 >= target;
+  const monthlyNeeded = target > 0 && !onTrack && rate > 0
+    ? Math.ceil((target - bankroll*Math.pow(1+rate,n10)) * rate / (Math.pow(1+rate,n10)-1))
+    : 0;
+
+  const alloc = risk === "eleve"
+    ? [{etf:"VWCE.DE",pct:50,nom:"Vanguard FTSE All-World"},{etf:"CSPX.L",pct:30,nom:"iShares S&P 500"},{etf:"IITU.L",pct:20,nom:"iShares Tech S&P 500"}]
+    : risk === "modere"
+    ? [{etf:"IWDA.L",pct:70,nom:"iShares MSCI World"},{etf:"VWCE.DE",pct:30,nom:"Vanguard FTSE All-World"}]
+    : [{etf:"IWDA.L",pct:90,nom:"iShares MSCI World"},{etf:"AGGH.L",pct:10,nom:"iShares Global Aggregate Bond"}];
+
+  const colors = {"#1a7f5a":true};
+  const etfColors = ["#1a7f5a","#6366f1","#f59e0b"];
+
+  let html = `<div style="background:#f9f9f9;border-radius:14px;padding:14px 16px;margin-bottom:12px">
+    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">📊 Résumé</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1.5px solid #f0f0f0">
+        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">CAPITAL</div>
+        <div style="font-size:15px;font-weight:900;color:#1c1c1e">${bankroll > 0 ? fmtK(bankroll) : "0€"}</div>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1.5px solid #f0f0f0">
+        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">MENSUEL</div>
+        <div style="font-size:15px;font-weight:900;color:#1c1c1e">${monthly}€</div>
+      </div>
+      <div style="background:${onTrack?"#e8f8f0":"#fff9e6"};border-radius:10px;padding:10px;text-align:center;border:1.5px solid ${onTrack?"#1a7f5a":"#f59e0b"}">
+        <div style="font-size:10px;color:${onTrack?"#1a7f5a":"#92400e"};font-weight:700;margin-bottom:3px">DANS 10 ANS</div>
+        <div style="font-size:15px;font-weight:900;color:${onTrack?"#1a7f5a":"#92400e"}">${fmtK(fv10)}</div>
+      </div>
+    </div>
+    <div style="background:${onTrack?"#e8f8f0":"#fff9e6"};border-radius:10px;padding:10px 12px;border-left:3px solid ${onTrack?"#1a7f5a":"#f59e0b"}">
+      <div style="font-size:13px;font-weight:700;color:${onTrack?"#1a7f5a":"#92400e"}">
+        ${onTrack
+          ? `✓ Objectif ${fmtK(target)} atteignable — +${fmtK(gains10)} d'intérêts composés sur 10 ans`
+          : `⚠ Objectif ${fmtK(target)} : il faudrait ${fmtK(monthlyNeeded)}€/mois au lieu de ${monthly}€`}
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;border:1.5px solid #f0f0f0">
+    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">🏦 Allocation recommandée — ${monthly}€/mois</div>
+    ${alloc.map((a, i) => {
+      const montant = Math.round(monthly * a.pct / 100);
+      const color = etfColors[i] || "#1a7f5a";
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f9f9f9;border-radius:10px;margin-bottom:8px">
+        <div style="width:38px;height:38px;border-radius:10px;background:${color}18;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${color};flex-shrink:0">${a.etf.slice(0,2)}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:#1c1c1e">${a.nom} <span style="font-size:11px;color:#8e8e93">${a.etf}</span></div>
+          <div style="margin-top:4px;background:#e5e5ea;border-radius:4px;height:4px;overflow:hidden"><div style="height:100%;background:${color};width:${a.pct}%"></div></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:15px;font-weight:900;color:${color}">${montant}€</div>
+          <div style="font-size:11px;color:#8e8e93">${a.pct}%</div>
+        </div>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;border:1.5px solid #f0f0f0">
+    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">⚡ Tes 4 actions prioritaires</div>
+    ${p.planSteps.map((s, i) => `
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:#f9f9f9;border-radius:10px;margin-bottom:8px">
+      <div style="width:26px;height:26px;border-radius:50%;background:#1c1c1e;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</div>
+      <div><div style="font-size:13px;font-weight:700;color:#1c1c1e;margin-bottom:2px">${s.icon} ${s.titre}</div><div style="font-size:12px;color:#3c3c43;line-height:1.5">${s.desc}</div></div>
+    </div>`).join("")}
+  </div>
+
+  <div id="ob-ai-advice" style="background:#f0faf6;border-radius:14px;padding:14px 16px;border-left:3px solid #1a7f5a">
+    <div style="display:flex;align-items:center;gap:8px;color:#8e8e93;font-size:13px">
+      <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      Génération du conseil personnalisé...
+    </div>
+  </div>`;
+
+  planEl.innerHTML = html;
+
+  // Conseil IA personnalisé
+  try {
+    const goalsArr = Object.entries(obGoals).filter(([,v])=>v).map(([k])=>k);
+    const goalsTxt = goalsArr.length
+      ? goalsArr.map(g => ({long:"patrimoine long terme",court:"revenus passifs",retraite:"retraite FIRE",projet:"projet spécifique"})[g]||g).join(" ET ")
+      : "investissement général";
+    const prompt = `Conseiller financier. Profil : "${p.label}". Budget : ${bankroll}€ + ${monthly}€/mois. Objectif : ${fmtK(target)}. Risque : ${risk}. Objectifs : ${goalsTxt}. Projection 10 ans : ${fmtK(fv10)}.
+En 2-3 phrases MAX, donne un conseil de départ concret. Commence par "Pour toi,". Mentionne 1 ETF précis. Max 60 mots.`;
+    const advice = await callClaude(prompt, "Tu es conseiller financier concis. Réponds en 2-3 phrases maximum.");
+    const advEl = document.getElementById("ob-ai-advice");
+    if (advEl) advEl.innerHTML = `<div style="font-size:11px;font-weight:700;color:#1a7f5a;margin-bottom:6px">💬 CONSEIL PERSONNALISÉ</div><div style="font-size:13px;color:#065f46;line-height:1.6;font-weight:500">${advice}</div>`;
+  } catch(e) {
+    const advEl = document.getElementById("ob-ai-advice");
+    if (advEl) advEl.style.display = "none";
+  }
 }
 
 async function obFinish(action) {
@@ -4708,7 +4799,7 @@ function exportPDF() {
   setTimeout(()=>win.print(),500);
 }
 
-
+// ===== SANTE =====
 async function renderSante() {
   const el = document.getElementById('sante-content');
   if (!el) return;
@@ -6098,250 +6189,4 @@ function initAgent() {
     const color = pnl >= 0 ? '#1a7f5a' : '#cc2f26';
     welcome.innerHTML = `Bonjour ! Ton portefeuille est à <strong style="color:${color}">${fmtK(tv)}</strong> (${pnl>=0?'+':''}${fmtK(pnl)}). Je connais toutes tes positions, tes objectifs et ton profil. Que veux-tu faire ?`;
   }
-}async function obGeneratePlan() {
-  try {
-    const saved = JSON.parse(localStorage.getItem("iq_ob_goals") || "null");
-    if (saved) obGoals = {...obGoals, ...saved};
-  } catch {}
-
-  const p        = OB_PROFILES[obProfileLevel] || OB_PROFILES.debutant;
-  const bankroll = parseFloat(document.getElementById("ob-bankroll")?.value) || 0;
-  const monthly  = parseFloat(document.getElementById("ob-monthly")?.value)  || 0;
-  const target   = parseFloat(document.getElementById("ob-target")?.value)   || 50000;
-  const risk     = document.getElementById("ob-risk")?.value || p.defaultRisk;
-  const planEl   = document.getElementById("ob-plan-content");
-  if (!planEl) return;
-
-  // ── Métriques de projection ──
-  const riskRate  = risk === "eleve" ? 9 : risk === "modere" ? 7 : 5;
-  const rate      = riskRate/100/12;
-  const n10       = 120;
-  const fv10      = Math.round(bankroll * Math.pow(1+rate,n10) + (monthly > 0 ? monthly*((Math.pow(1+rate,n10)-1)/rate) : 0));
-  const invested10 = bankroll + monthly*120;
-  const gains10   = Math.max(0, fv10 - invested10);
-  const onTrack   = fv10 >= target;
-  const monthlyNeeded = target > 0 && !onTrack && rate > 0
-    ? Math.ceil((target - bankroll*Math.pow(1+rate,n10)) * rate / (Math.pow(1+rate,n10)-1))
-    : 0;
-
-  // ── Allocation selon profil + risque ──
-  const alloc = risk === "eleve"
-    ? [{etf:"VWCE.DE", pct:50, nom:"Vanguard FTSE All-World"}, {etf:"CSPX.L", pct:30, nom:"iShares S&P 500"}, {etf:"IITU.L", pct:20, nom:"iShares Tech S&P 500"}]
-    : risk === "modere"
-    ? [{etf:"IWDA.L", pct:70, nom:"iShares MSCI World"}, {etf:"VWCE.DE", pct:30, nom:"Vanguard FTSE All-World"}]
-    : [{etf:"IWDA.L", pct:90, nom:"iShares MSCI World"}, {etf:"AGGH.L", pct:10, nom:"iShares Global Aggregate Bond"}];
-
-  // ── Construction du plan HTML ──
-  let html = "";
-
-  // 1. Résumé métriques
-  html += `<div style="background:#f9f9f9;border-radius:14px;padding:14px 16px;margin-bottom:14px">
-    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">📊 Résumé de ta situation</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
-      <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1.5px solid #f0f0f0">
-        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">CAPITAL</div>
-        <div style="font-size:15px;font-weight:900;color:#1c1c1e">${bankroll > 0 ? fmtK(bankroll) : "0€"}</div>
-      </div>
-      <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1.5px solid #f0f0f0">
-        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">MENSUEL</div>
-        <div style="font-size:15px;font-weight:900;color:#1c1c1e">${monthly}€</div>
-      </div>
-      <div style="background:${onTrack?"#e8f8f0":"#fff9e6"};border-radius:10px;padding:10px;text-align:center;border:1.5px solid ${onTrack?"#1a7f5a":"#f59e0b"}">
-        <div style="font-size:10px;color:${onTrack?"#1a7f5a":"#92400e"};font-weight:700;margin-bottom:3px">DANS 10 ANS</div>
-        <div style="font-size:15px;font-weight:900;color:${onTrack?"#1a7f5a":"#92400e"}">${fmtK(fv10)}</div>
-      </div>
-    </div>
-    <div style="background:${onTrack?"#e8f8f0":"#fff9e6"};border-radius:10px;padding:10px 12px;border-left:3px solid ${onTrack?"#1a7f5a":"#f59e0b"}">
-      <div style="font-size:13px;font-weight:700;color:${onTrack?"#1a7f5a":"#92400e"}">
-        ${onTrack
-          ? `✓ Objectif ${fmtK(target)} atteignable — +${fmtK(gains10)} d'intérêts composés sur 10 ans`
-          : `⚠ Objectif ${fmtK(target)} : il manque ${fmtK(monthlyNeeded - monthly)}€/mois — ou allonge la durée`}
-      </div>
-    </div>
-  </div>`;
-
-  // 2. Allocation recommandée
-  html += `<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;border:1.5px solid #f0f0f0">
-    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">🏦 Ton allocation recommandée — ${monthly}€/mois</div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
-      ${alloc.map(a => {
-        const montant = Math.round(monthly * a.pct / 100);
-        const colors  = {70:"#1a7f5a",30:"#6366f1",90:"#1a7f5a",50:"#1a7f5a",20:"#f59e0b",10:"#0ea5e9"};
-        const color   = colors[a.pct] || "#1a7f5a";
-        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f9f9f9;border-radius:10px">
-          <div style="width:40px;height:40px;border-radius:10px;background:${color}18;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${color};flex-shrink:0">${a.etf.slice(0,2)}</div>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:700;color:#1c1c1e">${a.nom} <span style="font-size:11px;color:#8e8e93;font-weight:500">${a.etf}</span></div>
-            <div style="margin-top:4px;background:#e5e5ea;border-radius:4px;height:4px;overflow:hidden"><div style="height:100%;background:${color};width:${a.pct}%;border-radius:4px"></div></div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:15px;font-weight:900;color:${color}">${montant}€</div>
-            <div style="font-size:11px;color:#8e8e93">${a.pct}%</div>
-          </div>
-        </div>`;
-      }).join("")}
-    </div>
-    <div style="font-size:11px;color:#8e8e93;padding:8px 12px;background:#f9f9f9;border-radius:8px">
-      ℹ️ Profil <strong>${risk === "eleve" ? "Agressif" : risk === "modere" ? "Équilibré" : "Prudent"}</strong> · ~${riskRate}%/an historique · Données à titre informatif
-    </div>
-  </div>`;
-
-  // 3. Plan d'action personnalisé selon le profil
-  html += `<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;border:1.5px solid #f0f0f0">
-    <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">⚡ Tes 4 actions prioritaires</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${p.planSteps.map((s, i) => `
-      <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:#f9f9f9;border-radius:10px">
-        <div style="width:28px;height:28px;border-radius:50%;background:#1c1c1e;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${i+1}</div>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:#1c1c1e;margin-bottom:2px">${s.icon} ${s.titre}</div>
-          <div style="font-size:12px;color:#3c3c43;line-height:1.5">${s.desc}</div>
-        </div>
-      </div>`).join("")}
-    </div>
-  </div>`;
-
-  // 4. Conseil IA personnalisé (chargé en async)
-  html += `<div id="ob-ai-advice" style="background:#f0faf6;border-radius:14px;padding:14px 16px;margin-bottom:4px;border-left:3px solid #1a7f5a">
-    <div style="display:flex;align-items:center;gap:8px;color:#8e8e93;font-size:13px">
-      <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-      Génération du conseil personnalisé...
-    </div>
-  </div>`;
-
-  planEl.innerHTML = html;
-
-  // Génère le conseil IA en arrière-plan
-  try {
-    const goalsArr = Object.entries(obGoals).filter(([,v])=>v).map(([k])=>k);
-    const goalsTxt = goalsArr.length
-      ? goalsArr.map(g => ({long:"patrimoine long terme",court:"revenus passifs",retraite:"retraite anticipée FIRE",projet:"projet spécifique"})[g] || g).join(" ET ")
-      : "investissement général";
-
-    const prompt = `Tu es conseiller financier pour un investisseur profil "${p.label}".
-Budget : ${bankroll}€ de départ + ${monthly}€/mois. Objectif : ${fmtK(target)}. Risque : ${risk}.
-Objectifs : ${goalsTxt}.
-Projection 10 ans à ${riskRate}%/an : ${fmtK(fv10)}.
-
-En 3 phrases MAX, donne UN conseil de départ très concret et personnalisé.
-- Commence par "Pour toi," 
-- Mentionne UN actif précis (ETF ou action) à acheter en premier
-- Donne UN conseil psychologique adapté au profil
-- Pas de jargon pour débutant, un peu plus technique pour initié/expert
-- Maximum 80 mots`;
-
-    const advice = await callClaude(prompt, "Tu es conseiller financier concis et pédagogue. Réponds en 3 phrases maximum.");
-    const advEl = document.getElementById("ob-ai-advice");
-    if (advEl) {
-      advEl.innerHTML = `<div style="font-size:11px;font-weight:700;color:#1a7f5a;margin-bottom:6px">💬 CONSEIL PERSONNALISÉ</div>
-        <div style="font-size:13px;color:#065f46;line-height:1.6;font-weight:500">${advice}</div>`;
-    }
-  } catch(e) {
-    const advEl = document.getElementById("ob-ai-advice");
-    if (advEl) advEl.style.display = "none";
-  }
 }
-
-async function obFinish(action) {
-  localStorage.setItem(OB_KEY, '1');
-  try { localStorage.removeItem('iq_ob_goals'); } catch {}
-  document.getElementById('onboarding-modal').style.display = 'none';
-
-  // Si "Voir un exemple" → pas de sauvegarde, juste charger la démo
-  if (action === 'demo') {
-    await loadDemo();
-    return;
-  }
-
-  const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
-  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
-  const target   = parseFloat(document.getElementById('ob-target')?.value)   || 50000;
-  const risk     = document.getElementById('ob-risk')?.value    || 'faible';
-  const horizon  = document.getElementById('ob-horizon')?.value || 'long';
-
-  // Ne sauvegarde que si les champs ont été remplis
-  if (bankroll === 0 && monthly === 0) {
-    nav(action);
-    return;
-  }
-
-  profile.bankroll = bankroll;
-  profile.risk     = risk;
-  profile.horizon  = horizon === 'mixte' ? 'moyen' : horizon;
-
-  if (document.getElementById('s-bankroll')) document.getElementById('s-bankroll').value = bankroll;
-  if (document.getElementById('s-risk'))     document.getElementById('s-risk').value     = risk;
-  if (document.getElementById('s-horizon'))  document.getElementById('s-horizon').value  = horizon === 'mixte' ? 'moyen' : horizon;
-
-  // Applique les variables objectif
-  objChartCapital = bankroll;
-  objChartMonthly = monthly;
-  objChartTarget  = target;
-  objChartYears   = 10;
-  objChartRate    = risk === 'eleve' ? 9 : risk === 'modere' ? 7 : 5;
-  objRisk         = risk === 'eleve' ? 'agressif' : risk === 'modere' ? 'equilibre' : 'prudent';
-
-  // Sauvegarde profil + objectif en Supabase
-  if (!isDemo && currentUser) {
-    await saveProfile();
-    try {
-      // Update si objectif existant, sinon insert
-      if (allObjectives.length > 0) {
-        const { error: oue } = await sb.from('objectives').update({
-          capital: bankroll, monthly: monthly,
-          target: target, years: 10, rate: objChartRate,
-          risk: objRisk
-        }).eq('id', allObjectives[0].id);
-        if (oue) console.warn('[obFinish] update error:', oue.message);
-      } else {
-        const { error: oie } = await sb.from('objectives').insert({
-          user_id: currentUser.id, capital: bankroll, monthly: monthly,
-          target: target, years: 10, rate: objChartRate,
-          risk: objRisk
-        });
-        if (oie) console.warn('[obFinish] insert error:', oie.message);
-      }
-      await loadObjective();
-    } catch(e) {}
-  }
-
-  // localStorage fallback
-  try { localStorage.setItem('iq_validated_objective', JSON.stringify({
-    capital: bankroll, monthly: monthly, target: target,
-    years: 10, rate: objChartRate, risk: objRisk,
-    validatedAt: new Date().toISOString()
-  })); } catch {}
-
-  nav(action);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
