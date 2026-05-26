@@ -4082,8 +4082,12 @@ function saveChatHistory() {
 function clearChat() {
   chatHistory = [];
   try { localStorage.removeItem(CACHE_CHAT); } catch {}
-  document.getElementById('ai-chat').innerHTML = '<div class="bubble bot">Conversation effacée. Comment puis-je t\'aider ?</div>';
-  document.getElementById('qbtns').style.display = 'flex';
+  const chat = document.getElementById('ai-chat');
+  if (chat) chat.innerHTML = '<div class="bubble bot" id="ai-welcome">Conversation effacée. Comment puis-je t\'aider ?</div>';
+  const qbtns = document.getElementById('qbtns');
+  if (qbtns) qbtns.style.display = 'flex';
+  // Reconstruit les suggestions si l'agent est actif
+  if (typeof buildAgentContext === 'function') { buildAgentContext(); buildAgentSuggestions(); }
 }
 
 // ===== SIGNALS CACHE =====
