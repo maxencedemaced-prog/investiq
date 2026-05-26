@@ -2016,6 +2016,19 @@ function obApplyPreset(capital, monthly, target) {
   obUpdateBudgetPreview();
 }
 
+function obCheckBudget() {
+  const bankroll = document.getElementById("ob-bankroll")?.value;
+  const monthly  = document.getElementById("ob-monthly")?.value;
+  const target   = document.getElementById("ob-target")?.value;
+  const filled   = bankroll !== "" && monthly !== "" && target !== "";
+  ["ob-btn-3","ob-btn-2"].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = !filled;
+  });
+  const err = document.getElementById("ob-budget-error");
+  if (err) err.style.display = filled ? "none" : "block";
+}
+
 function obUpdateBudgetPreview() {
   const capital = parseFloat(document.getElementById("ob-bankroll")?.value) || 0;
   const monthly = parseFloat(document.getElementById("ob-monthly")?.value)  || 0;
