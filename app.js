@@ -3733,6 +3733,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initApp(user) {
+  try {
   currentUser = user; isDemo = false;
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
@@ -3741,7 +3742,7 @@ async function initApp(user) {
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
   await loadProfile(); await loadPositions(); await loadObjective();
-  loadChatHistory();
+  try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory error:', e); }
   nav('home');
   // Si objectif chargé depuis Supabase, prêt à afficher au clic sur Objectif
   if (objChartCapital && objChartTarget) {
@@ -3755,8 +3756,9 @@ async function initApp(user) {
   setTimeout(() => showOnboarding(), 500);
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
-  setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
+  setTimeout(() => showPriceTicker(), 1000);
   if ('Notification' in window) Notification.requestPermission();
+  } catch(e) { console.error('initApp error:', e); }
 }
 
 function enterDemo() {
