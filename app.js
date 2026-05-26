@@ -138,12 +138,15 @@ const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // 24h
 async function generateETFPlan(objId) {
   const el = document.getElementById('obj-etf-plan');
   if (!el) return;
-  const cacheKey = objId ? CACHE_ETF_PLAN + '_' + objId : CACHE_ETF_PLAN;
 
-  // Vérifie le cache spécifique à cet objectif
+  // Utilise l'ID passé, sinon l'objectif actif global
+  const effectiveId = objId || activeObjId;
+  const cacheKey = effectiveId ? CACHE_ETF_PLAN + '_' + effectiveId : CACHE_ETF_PLAN;
+
+  // Vérifie le cache — d'abord par ID, puis global
   try {
-    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-    if (cached && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk) {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || localStorage.getItem(CACHE_ETF_PLAN) || 'null');
+    if (cached && cached.etfs && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk) {
       renderETFCards(cached.etfs, el);
       return;
     }
@@ -173,9 +176,13 @@ Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, a
     const etfs = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']') + 1));
     if (Array.isArray(etfs) && etfs.length > 0) {
       try {
-        localStorage.setItem(cacheKey, JSON.stringify({ etfs, risk: objRisk, ts: Date.now() }));
-        // Sauvegarde aussi avec la clé globale pour compat
-        localStorage.setItem(CACHE_ETF_PLAN, JSON.stringify({ etfs, risk: objRisk, ts: Date.now() }));
+        const cacheData = JSON.stringify({ etfs, risk: objRisk, ts: Date.now() });
+        localStorage.setItem(cacheKey, cacheData);
+        localStorage.setItem(CACHE_ETF_PLAN, cacheData);
+        // Sauvegarde aussi avec l'activeObjId si différent
+        if (activeObjId && activeObjId !== effectiveId) {
+          localStorage.setItem(CACHE_ETF_PLAN + '_' + activeObjId, cacheData);
+        }
       } catch {}
       renderETFCards(etfs, el);
       return;
@@ -260,7 +267,7 @@ function renderETFCards(etfs, containerEl) {
 
     <div style="padding:10px 14px;background:#f0faf6;border-radius:12px;font-size:12px;color:#065f46;font-weight:600;display:flex;justify-content:space-between;align-items:center">
       <span>💡 Clique sur un ETF pour l'analyser avant d'investir</span>
-      <button onclick="localStorage.removeItem('${CACHE_ETF_PLAN}');generateETFPlan()" style="background:none;border:none;color:#1a7f5a;font-weight:700;cursor:pointer;font-size:11px;text-decoration:underline">Actualiser</button>
+      <button onclick="const id=activeObjId;if(id)localStorage.removeItem('${CACHE_ETF_PLAN}_'+id);localStorage.removeItem('${CACHE_ETF_PLAN}');generateETFPlan(id)" style="background:none;border:none;color:#1a7f5a;font-weight:700;cursor:pointer;font-size:11px;text-decoration:underline">Actualiser</button>
     </div>`;
 }
 
@@ -1815,48 +1822,51 @@ let obGoals = { long: false, court: false };
 // ===== PROFILS PARCOURS CLIENT =====
 const OB_PROFILES = {
   debutant: {
-    label: 'Débutant complet 🌱',
-    icon: '🌱',
-    risk: 'faible',
-    horizon: 'long',
-    presets: [{capital:500, monthly:50, target:10000, label:'Petit budget'}, {capital:1000, monthly:100, target:20000, label:'Standard'}, {capital:2000, monthly:200, target:50000, label:'Ambitieux'}],
-    riskReco: '💡 En tant que débutant, on te recommande de commencer <strong>Prudent</strong> — 90% ETF monde, zéro stress.',
+    label: 'Débutant 🌱', icon: '🌱',
+    risk: 'faible', horizon: 'long',
+    preview: "On va tout t'expliquer. 100% ETF monde, zéro jargon, maximum de sécurité.",
+    presets: [{capital:0, monthly:50, target:5000, label:'Micro (50€/mois)'}, {capital:500, monthly:100, target:15000, label:'Démarrage'}, {capital:1000, monthly:200, target:30000, label:'Standard'}],
+    riskReco: "💡 Profil <strong>Prudent</strong> recommandé — 90% ETF monde IWDA. Pas de stress, rendement régulier.",
     defaultRisk: 'faible',
   },
   curieux: {
-    label: 'Curieux / Amateur 📚',
-    icon: '📚',
-    risk: 'faible',
-    horizon: 'long',
-    presets: [{capital:1000, monthly:100, target:25000, label:'Démarrage'}, {capital:3000, monthly:200, target:50000, label:'Sérieux'}, {capital:5000, monthly:300, target:100000, label:'Objectif 100k'}],
-    riskReco: '💡 Tu as des bases — profil <strong>Équilibré</strong> recommandé : 70% ETF + 30% actions.',
+    label: 'Curieux 📚', icon: '📚',
+    risk: 'faible', horizon: 'long',
+    preview: "Tu as des bases. On t'aide à passer à l'action avec un plan ETF + 1-2 actions.",
+    presets: [{capital:1000, monthly:100, target:20000, label:'Prudent'}, {capital:2000, monthly:200, target:50000, label:'Sérieux'}, {capital:5000, monthly:300, target:100000, label:'Objectif 100k'}],
+    riskReco: "💡 Profil <strong>Équilibré</strong> recommandé — 70% ETF + 30% grandes caps.",
     defaultRisk: 'modere',
   },
   initie: {
-    label: 'Initié 📈',
-    icon: '📈',
-    risk: 'modere',
-    horizon: 'moyen',
-    presets: [{capital:5000, monthly:300, target:50000, label:'Croissance'}, {capital:10000, monthly:500, target:100000, label:'100k€'}, {capital:20000, monthly:1000, target:200000, label:'Premium'}],
-    riskReco: '💡 Profil <strong>Équilibré à Agressif</strong> selon ta tolérance — tu connais déjà les ETF.',
+    label: 'Initié 📈', icon: '📈',
+    risk: 'modere', horizon: 'moyen',
+    preview: "Tu connais les ETF. On optimise ton allocation et on t'aide à sélectionner les meilleures actions.",
+    presets: [{capital:5000, monthly:300, target:50000, label:'Croissance'}, {capital:10000, monthly:500, target:100000, label:'100k€'}, {capital:20000, monthly:1000, target:250000, label:'Ambitieux'}],
+    riskReco: "💡 <strong>Équilibré à Agressif</strong> selon ta tolérance — tu as l'expérience pour gérer la volatilité.",
     defaultRisk: 'modere',
   },
   confirme: {
-    label: 'Confirmé 💼',
-    icon: '💼',
-    risk: 'modere',
-    horizon: 'moyen',
+    label: 'Confirmé 💼', icon: '💼',
+    risk: 'eleve', horizon: 'moyen',
+    preview: 'Portefeuille actif. Signaux IA, analyse technique, rééquilibrage — toutes les fonctions avancées sont pour toi.',
     presets: [{capital:20000, monthly:1000, target:200000, label:'Patrimoine'}, {capital:50000, monthly:2000, target:500000, label:'Demi-million'}, {capital:100000, monthly:3000, target:1000000, label:'Million'}],
-    riskReco: '💡 Tu maîtrises — <strong>Agressif</strong> si tu acceptes la volatilité, <strong>Équilibré</strong> pour dormir tranquille.',
+    riskReco: "💡 <strong>Agressif</strong> recommandé si tu acceptes la volatilité. Sinon reste sur Équilibré.",
     defaultRisk: 'eleve',
   },
+  gros: {
+    label: 'Gros investisseur 🐳', icon: '🐳',
+    risk: 'modere', horizon: 'long',
+    preview: '50k€+ à structurer. Diversification avancée, multi-objectifs, optimisation fiscale.',
+    presets: [{capital:50000, monthly:2000, target:300000, label:'Structuré'}, {capital:100000, monthly:5000, target:750000, label:'Haut patrimoine'}, {capital:200000, monthly:10000, target:2000000, label:'2M€'}],
+    riskReco: "💡 <strong>Équilibré</strong> recommandé — à ton niveau le capital protection prime sur la performance brute.",
+    defaultRisk: 'modere',
+  },
   expert: {
-    label: 'Expert / Trader 🏆',
-    icon: '🏆',
-    risk: 'eleve',
-    horizon: 'court',
-    presets: [{capital:50000, monthly:2000, target:500000, label:'Objectif'}, {capital:100000, monthly:5000, target:1000000, label:'Million'}, {capital:200000, monthly:10000, target:2000000, label:'2M€'}],
-    riskReco: '💡 Mode expert activé — toutes les fonctionnalités avancées sont disponibles.',
+    label: 'Expert / Trader 🏆', icon: '🏆',
+    risk: 'eleve', horizon: 'court',
+    preview: 'Mode expert activé. Accès à tous les signaux IA, analyse avancée et outils de trading.',
+    presets: [{capital:10000, monthly:2000, target:200000, label:'Trading actif'}, {capital:50000, monthly:5000, target:500000, label:'Pro'}, {capital:100000, monthly:10000, target:1000000, label:'Million'}],
+    riskReco: "💡 <strong>Agressif</strong> — tu sais ce que tu fais. Toutes les fonctions avancées sont activées.",
     defaultRisk: 'eleve',
   },
 };
@@ -1866,19 +1876,34 @@ let obProfileLevel = 'debutant';
 function obSelectProfile(level) {
   obProfileLevel = level;
   document.getElementById('ob-profile-level').value = level;
-  // Visuels
+  const p = OB_PROFILES[level];
+
+  // Visuels cartes
   Object.keys(OB_PROFILES).forEach(l => {
-    const card  = document.getElementById('obp-' + l);
-    const check = document.getElementById('obpc-' + l);
-    if (card)  { card.style.border = l===level ? '2px solid #1c1c1e' : '2px solid #e5e5ea'; card.style.background = l===level ? '#f5f5f5' : '#fff'; }
-    if (check) { check.textContent = l===level ? '✓' : '○'; check.style.fontWeight = l===level ? '800' : '400'; }
+    const card = document.getElementById('obp-' + l);
+    if (card) {
+      card.style.borderColor = l === level ? '#1c1c1e' : '#e5e5ea';
+      card.style.background  = l === level ? '#f5f5f5' : '#fff';
+      card.style.transform   = l === level ? 'scale(1.02)' : 'scale(1)';
+    }
   });
-  // Active le bouton suivant
+
+  // Preview adaptatif
+  const prev = document.getElementById('ob-profile-preview');
+  const prevLabel = document.getElementById('ob-preview-label');
+  const prevDesc  = document.getElementById('ob-preview-desc');
+  if (prev && p) {
+    prev.style.display = 'block';
+    if (prevLabel) prevLabel.textContent = p.label + " — Ce qu'on va faire pour toi :";
+    if (prevDesc)  prevDesc.textContent  = p.preview;
+  }
+
+  // Active bouton suivant
   const btn = document.getElementById('ob-btn-1');
   if (btn) btn.disabled = false;
+
   // Pré-sélectionne le risque recommandé
-  const p = OB_PROFILES[level];
-  if (p) obSelectRisk(p.defaultRisk);
+  obSelectRisk(p.defaultRisk);
 }
 
 function showOnboarding(force) {
@@ -1889,7 +1914,8 @@ function showOnboarding(force) {
 }
 
 function obNext(step) {
-  if (step === 4) {
+  // Validation étape 2→3 : budget obligatoire
+  if (step === 3) {
     const bankroll = document.getElementById('ob-bankroll')?.value;
     const monthly  = document.getElementById('ob-monthly')?.value;
     const target   = document.getElementById('ob-target')?.value;
@@ -1898,45 +1924,40 @@ function obNext(step) {
       if (err) err.style.display = 'block';
       return;
     }
+    const err = document.getElementById('ob-budget-error');
+    if (err) err.style.display = 'none';
   }
+
   document.querySelectorAll('.onboard-step').forEach(s => s.style.display = 'none');
   const el = document.getElementById('ob-step-' + step);
   if (el) el.style.display = 'block';
 
-  // Étape 2 : adapter le titre selon le profil
+  // Étape 2 : presets selon profil
   if (step === 2) {
-    const p = OB_PROFILES[obProfileLevel];
-    const titleEl = document.getElementById('ob-step2-title');
-    const subEl   = document.getElementById('ob-step2-sub');
-    if (titleEl && p) titleEl.textContent = `Objectif — ${p.label}`;
-    if (subEl   && p) subEl.textContent   = "Qu'est-ce que tu veux accomplir ?";
-  }
-
-  // Étape 3 : afficher les presets budget selon le profil
-  if (step === 3) {
     const p = OB_PROFILES[obProfileLevel];
     const presetsEl = document.getElementById('ob-budget-presets');
     if (presetsEl && p) {
-      presetsEl.innerHTML = p.presets.map(pr => `
-        <button onclick="obApplyPreset(${pr.capital},${pr.monthly},${pr.target})"
-          style="background:#f0f0f0;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;transition:all 0.15s"
+      presetsEl.innerHTML = p.presets.map(pr =>
+        `<button onclick="obApplyPreset(${pr.capital},${pr.monthly},${pr.target})"
+          style="background:#f0f0f0;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;white-space:nowrap"
           onmouseover="this.style.background='#1c1c1e';this.style.color='#fff'"
           onmouseout="this.style.background='#f0f0f0';this.style.color='#1c1c1e'">
           ${pr.label}
-        </button>`).join('');
+        </button>`
+      ).join('');
     }
   }
 
-  // Étape 4 : afficher la reco risque selon le profil
-  if (step === 4) {
+  // Étape 3 : reco risque selon profil
+  if (step === 3) {
     const p = OB_PROFILES[obProfileLevel];
     const recoEl = document.getElementById('ob-risk-reco');
     if (recoEl && p) { recoEl.innerHTML = p.riskReco; recoEl.style.display = 'block'; }
     if (p) obSelectRisk(p.defaultRisk);
   }
 
-  // Étape 5 : label profil + générer plan
-  if (step === 5) {
+  // Étape 4 : label profil + générer plan
+  if (step === 4) {
     const p = OB_PROFILES[obProfileLevel];
     const labelEl = document.getElementById('ob-plan-profile-label');
     if (labelEl && p) labelEl.textContent = p.label;
@@ -1956,9 +1977,9 @@ function obApplyPreset(capital, monthly, target) {
 }
 
 function obUpdateBudgetPreview() {
-  const capital  = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
-  const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
-  const target   = parseFloat(document.getElementById('ob-target')?.value)   || 0;
+  const capital = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
+  const monthly = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
+  const target  = parseFloat(document.getElementById('ob-target')?.value)   || 0;
   const preview  = document.getElementById('ob-budget-preview');
   const previewT = document.getElementById('ob-preview-text');
   if (!preview || !previewT) return;
@@ -1967,7 +1988,7 @@ function obUpdateBudgetPreview() {
     const fv = capital * Math.pow(1+rate,n) + (monthly > 0 ? monthly*((Math.pow(1+rate,n)-1)/rate) : 0);
     preview.style.display = 'block';
     const onTrack = target > 0 && fv >= target;
-    previewT.innerHTML = `En 10 ans : <strong style="color:#1a7f5a">${fmtK(Math.round(fv))}</strong>${target > 0 ? ` · Objectif ${fmtK(target)} : <strong style="color:${onTrack?'#1a7f5a':'#f59e0b'}">${onTrack?'✓ Atteignable':'⚠ Adapter le plan'}</strong>` : ''}`;
+    previewT.innerHTML = `En 10 ans : <strong style="color:#1a7f5a">${fmtK(Math.round(fv))}</strong>${target > 0 ? ` · Objectif ${fmtK(target)} : <strong style="color:${onTrack?'#1a7f5a':'#f59e0b'}">${onTrack?'✓ Atteignable en 10 ans':'⚠ Allonge la durée ou augmente le versement'}</strong>` : ''}`;
   } else {
     preview.style.display = 'none';
   }
@@ -1991,9 +2012,9 @@ function obToggleGoal(goal) {
     if (obGoals.long || obGoals.retraite) hEl.value = 'long';
     else if (obGoals.court || obGoals.projet) hEl.value = 'moyen';
   }
-  const anySelected = Object.values(obGoals).some(v => v);
-  const btn = document.getElementById('ob-btn-2');
-  if (btn) btn.disabled = !anySelected;
+  // Ne bloque pas le bouton suivant
+  const btn = document.getElementById('ob-btn-4');
+  if (btn && document.getElementById('ob-risk')?.value) btn.disabled = false;
 }
 
 function obSelectRisk(risk) {
@@ -2005,6 +2026,7 @@ function obSelectRisk(risk) {
   });
   const rEl = document.getElementById('ob-risk');
   if (rEl) rEl.value = risk;
+  // Active bouton dès que le risque est sélectionné
   const btn = document.getElementById('ob-btn-4');
   if (btn) btn.disabled = false;
 }
@@ -2046,9 +2068,12 @@ function obCheckBudget() {
   const monthly  = document.getElementById('ob-monthly')?.value;
   const target   = document.getElementById('ob-target')?.value;
   const filled = bankroll !== '' && monthly !== '' && target !== '';
-  const btn = document.getElementById('ob-btn-3');
+  // Tente les deux IDs possibles (ob-btn-3 ou ob-btn-3)
+  ['ob-btn-3','ob-btn-2'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = !filled;
+  });
   const err = document.getElementById('ob-budget-error');
-  if (btn) btn.disabled = !filled;
   if (err) err.style.display = filled ? 'none' : 'block';
 }
 
