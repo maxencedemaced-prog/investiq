@@ -393,14 +393,13 @@ window.addEventListener('load', function() {
   
 <!-- ONBOARDING MODAL -->
 <div id="onboarding-modal" class="modal-overlay" style="display:none">
-  <div class="modal-card" style="max-width:560px;width:96%;max-height:90vh;overflow-y:auto;padding:0;border-radius:16px">
+  <div class="modal-card" style="max-width:520px;width:96%;max-height:90vh;overflow-y:auto;padding:0;border-radius:20px">
 
-    <!-- ÉTAPE 1 -->
+    <!-- ÉTAPE 1 : Profil -->
     <div class="onboard-step" id="ob-step-1">
-      <div style="background:#1c1c1e;padding:24px 28px 20px;border-radius:16px 16px 0 0">
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:4px">Étape 1 / 4</div>
+      <div style="background:#1c1c1e;padding:24px 28px 20px;border-radius:20px 20px 0 0">
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600">Étape 1 / 4</div>
         <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:2px">Quel est ton niveau ?</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.45)">On adapte toute l'expérience selon ton profil</div>
         <div style="display:flex;gap:4px;margin-top:14px">
           <div style="height:3px;flex:1;border-radius:2px;background:#fff"></div>
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
@@ -408,91 +407,91 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
         </div>
       </div>
-      <div style="padding:20px 28px;background:#fff;border-radius:0 0 16px 16px">
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      <div style="padding:20px 28px;background:#fff;border-radius:0 0 20px 20px">
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
 
           <div class="ob-profile-card" id="obp-debutant" onclick="obSelectProfile('debutant')">
-            <div style="display:flex;align-items:center;gap:14px">
-              <div style="font-size:22px;width:36px;text-align:center;flex-shrink:0">🌱</div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">🌱</div>
               <div style="flex:1">
-                <div style="font-weight:700;font-size:14px;color:#1c1c1e">Débutant</div>
-                <div style="font-size:12px;color:#8e8e93;margin-top:1px">Je ne connais rien à la bourse</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Débutant</div>
+                <div style="font-size:12px;color:#8e8e93">Jamais investi</div>
               </div>
-              <div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:#e8f8f0;color:#065f46;flex-shrink:0">Guidé</div>
-              <div class="ob-profile-check" id="obpc-debutant" style="font-size:16px;color:#c7c7cc;margin-left:4px">○</div>
+              <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#e8f8f0;color:#065f46;flex-shrink:0">Guidé</div>
+              <div class="ob-profile-check" id="obpc-debutant">○</div>
             </div>
           </div>
 
           <div class="ob-profile-card" id="obp-curieux" onclick="obSelectProfile('curieux')">
-            <div style="display:flex;align-items:center;gap:14px">
-              <div style="font-size:22px;width:36px;text-align:center;flex-shrink:0">📚</div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">📚</div>
               <div style="flex:1">
-                <div style="font-weight:700;font-size:14px;color:#1c1c1e">Curieux / Amateur</div>
-                <div style="font-size:12px;color:#8e8e93;margin-top:1px">J'ai lu des articles, jamais investi</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Curieux</div>
+                <div style="font-size:12px;color:#8e8e93">Bases théoriques, pas encore investi</div>
               </div>
-              <div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:#eeedfe;color:#3c3489;flex-shrink:0">Pédago</div>
-              <div class="ob-profile-check" id="obpc-curieux" style="font-size:16px;color:#c7c7cc;margin-left:4px">○</div>
+              <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#eeedfe;color:#3c3489;flex-shrink:0">Pédago</div>
+              <div class="ob-profile-check" id="obpc-curieux">○</div>
             </div>
           </div>
 
           <div class="ob-profile-card" id="obp-initie" onclick="obSelectProfile('initie')">
-            <div style="display:flex;align-items:center;gap:14px">
-              <div style="font-size:22px;width:36px;text-align:center;flex-shrink:0">📈</div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">📈</div>
               <div style="flex:1">
-                <div style="font-weight:700;font-size:14px;color:#1c1c1e">Initié</div>
-                <div style="font-size:12px;color:#8e8e93;margin-top:1px">J'ai investi, je connais les ETF</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Initié</div>
+                <div style="font-size:12px;color:#8e8e93">Connais les ETF, déjà investi</div>
               </div>
-              <div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:#faeeda;color:#633806;flex-shrink:0">Équilibré</div>
-              <div class="ob-profile-check" id="obpc-initie" style="font-size:16px;color:#c7c7cc;margin-left:4px">○</div>
+              <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#faeeda;color:#633806;flex-shrink:0">Équilibré</div>
+              <div class="ob-profile-check" id="obpc-initie">○</div>
             </div>
           </div>
 
           <div class="ob-profile-card" id="obp-confirme" onclick="obSelectProfile('confirme')">
-            <div style="display:flex;align-items:center;gap:14px">
-              <div style="font-size:22px;width:36px;text-align:center;flex-shrink:0">💼</div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">💼</div>
               <div style="flex:1">
-                <div style="font-weight:700;font-size:14px;color:#1c1c1e">Confirmé</div>
-                <div style="font-size:12px;color:#8e8e93;margin-top:1px">Portefeuille actif, gestion autonome</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Confirmé</div>
+                <div style="font-size:12px;color:#8e8e93">Gestion active, autonome</div>
               </div>
-              <div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:#fff0f0;color:#791f1f;flex-shrink:0">Avancé</div>
-              <div class="ob-profile-check" id="obpc-confirme" style="font-size:16px;color:#c7c7cc;margin-left:4px">○</div>
+              <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#fff0f0;color:#791f1f;flex-shrink:0">Avancé</div>
+              <div class="ob-profile-check" id="obpc-confirme">○</div>
             </div>
           </div>
 
           <div class="ob-profile-card" id="obp-gros" onclick="obSelectProfile('gros')">
-            <div style="display:flex;align-items:center;gap:14px">
-              <div style="font-size:22px;width:36px;text-align:center;flex-shrink:0">🐳</div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">🐳</div>
               <div style="flex:1">
-                <div style="font-weight:700;font-size:14px;color:#1c1c1e">Gros investisseur</div>
-                <div style="font-size:12px;color:#8e8e93;margin-top:1px">50k€+ · Patrimoine structuré</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Gros investisseur</div>
+                <div style="font-size:12px;color:#8e8e93">50k€+ · Patrimoine structuré</div>
               </div>
-              <div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:#e1f5ee;color:#04342c;flex-shrink:0">Premium</div>
-              <div class="ob-profile-check" id="obpc-gros" style="font-size:16px;color:#c7c7cc;margin-left:4px">○</div>
+              <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#e1f5ee;color:#04342c;flex-shrink:0">Premium</div>
+              <div class="ob-profile-check" id="obpc-gros">○</div>
             </div>
           </div>
 
           <div class="ob-profile-card" id="obp-expert" onclick="obSelectProfile('expert')">
-            <div style="display:flex;align-items:center;gap:14px">
-              <div style="font-size:22px;width:36px;text-align:center;flex-shrink:0">🏆</div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">🏆</div>
               <div style="flex:1">
-                <div style="font-weight:700;font-size:14px;color:#1c1c1e">Expert / Trader</div>
-                <div style="font-size:12px;color:#8e8e93;margin-top:1px">Analyse technique, stratégies actives</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Expert / Trader</div>
+                <div style="font-size:12px;color:#8e8e93">Analyse tech · Stratégies actives</div>
               </div>
-              <div style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:#1c1c1e;color:#fff;flex-shrink:0">Pro</div>
-              <div class="ob-profile-check" id="obpc-expert" style="font-size:16px;color:#c7c7cc;margin-left:4px">○</div>
+              <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#1c1c1e;color:#fff;flex-shrink:0">Pro</div>
+              <div class="ob-profile-check" id="obpc-expert">○</div>
             </div>
           </div>
 
         </div>
 
-        <div id="ob-profile-preview" style="display:none;background:#f5f5f5;border-radius:10px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #1c1c1e">
+        <div id="ob-profile-preview" style="display:none;background:#f5f5f5;border-radius:12px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #1c1c1e">
           <div style="font-size:11px;font-weight:700;color:#1c1c1e;margin-bottom:3px" id="ob-preview-label">—</div>
           <div style="font-size:12px;color:#3c3c43;line-height:1.55" id="ob-preview-text">—</div>
         </div>
 
         <input type="hidden" id="ob-profile-level" value="">
         <div style="display:flex;gap:8px">
-          <button class="btn-secondary" onclick="obFinish('demo')" style="flex:1;font-size:13px">Voir un exemple</button>
+          <button class="btn-secondary" onclick="obFinish('demo')" style="flex:1;font-size:13px">Démo</button>
           <button class="btn-primary" onclick="obNext(2)" style="flex:2" id="ob-btn-1" disabled>Suivant →</button>
         </div>
       </div>
@@ -500,10 +499,10 @@ window.addEventListener('load', function() {
 
     <!-- ÉTAPE 2 : Budget -->
     <div class="onboard-step" id="ob-step-2" style="display:none">
-      <div style="background:#1c1c1e;padding:24px 28px 20px;border-radius:16px 16px 0 0">
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:4px">Étape 2 / 4</div>
+      <div style="background:#1c1c1e;padding:24px 28px 20px;border-radius:20px 20px 0 0">
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600">Étape 2 / 4</div>
         <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:2px">Ton budget</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.45)">Sois honnête — tout est modifiable après</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.4)">Modifiable après</div>
         <div style="display:flex;gap:4px;margin-top:14px">
           <div style="height:3px;flex:1;border-radius:2px;background:#fff"></div>
           <div style="height:3px;flex:1;border-radius:2px;background:#fff"></div>
@@ -511,28 +510,26 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
         </div>
       </div>
-      <div style="padding:20px 28px;background:#fff;border-radius:0 0 16px 16px">
-        <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Suggestions pour ton profil</div>
+      <div style="padding:20px 28px;background:#fff;border-radius:0 0 20px 20px">
         <div id="ob-budget-presets" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
           <div class="field">
-            <label>Capital disponible maintenant (€) <span style="color:#cc2f26">*</span></label>
+            <label>Capital disponible (€)</label>
             <input type="number" id="ob-bankroll" placeholder="Ex: 1 000" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
-            <div style="font-size:11px;color:#8e8e93;margin-top:3px">Peut être 0 si tu démarres de zéro</div>
           </div>
           <div class="field">
-            <label>Versement mensuel (€) <span style="color:#cc2f26">*</span></label>
+            <label>Versement mensuel (€)</label>
             <input type="number" id="ob-monthly" placeholder="Ex: 200" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
           </div>
           <div class="field">
-            <label>Objectif à atteindre (€) <span style="color:#cc2f26">*</span></label>
+            <label>Objectif à atteindre (€)</label>
             <input type="number" id="ob-target" placeholder="Ex: 50 000" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
           </div>
           <div id="ob-budget-preview" style="display:none;background:#e8f8f0;border-radius:10px;padding:10px 14px;border-left:3px solid #1a7f5a">
             <div style="font-size:11px;font-weight:700;color:#1a7f5a;margin-bottom:3px">Projection à 7%/an</div>
             <div style="font-size:13px;color:#1c1c1e;font-weight:600" id="ob-preview-text">—</div>
           </div>
-          <div id="ob-budget-error" style="display:none;background:#fff0f0;border-radius:10px;padding:10px 14px;font-size:13px;color:#cc2f26;font-weight:600">⚠ Remplis les 3 champs pour continuer</div>
+          <div id="ob-budget-error" style="display:none;background:#fff0f0;border-radius:10px;padding:10px 14px;font-size:13px;color:#cc2f26;font-weight:600">⚠ Remplis les 3 champs</div>
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn-secondary" onclick="obNext(1)" style="flex:1">← Retour</button>
@@ -543,10 +540,9 @@ window.addEventListener('load', function() {
 
     <!-- ÉTAPE 3 : Objectif & Risque -->
     <div class="onboard-step" id="ob-step-3" style="display:none">
-      <div style="background:#1c1c1e;padding:24px 28px 20px;border-radius:16px 16px 0 0">
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:4px">Étape 3 / 4</div>
+      <div style="background:#1c1c1e;padding:24px 28px 20px;border-radius:20px 20px 0 0">
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600">Étape 3 / 4</div>
         <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:2px">Objectif & Risque</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.45)">Adapte tes recommandations IA</div>
         <div style="display:flex;gap:4px;margin-top:14px">
           <div style="height:3px;flex:1;border-radius:2px;background:#fff"></div>
           <div style="height:3px;flex:1;border-radius:2px;background:#fff"></div>
@@ -554,25 +550,25 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
         </div>
       </div>
-      <div style="padding:20px 28px;background:#fff;border-radius:0 0 16px 16px">
-        <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">Objectif principal (plusieurs possible)</div>
+      <div style="padding:20px 28px;background:#fff;border-radius:0 0 20px 20px">
+        <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">Objectif principal</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px">
-          <div class="ob-goal-card" id="ob-goal-long" onclick="obToggleGoal('long')" style="padding:11px 14px;display:flex;align-items:center;gap:10px">
+          <div class="ob-goal-card" id="ob-goal-long" onclick="obToggleGoal('long')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🏦</span>
             <div><div style="font-weight:700;font-size:13px">Patrimoine</div><div style="font-size:11px;color:#8e8e93">10-20 ans</div></div>
             <div class="ob-check" id="ob-check-long" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
-          <div class="ob-goal-card" id="ob-goal-court" onclick="obToggleGoal('court')" style="padding:11px 14px;display:flex;align-items:center;gap:10px">
+          <div class="ob-goal-card" id="ob-goal-court" onclick="obToggleGoal('court')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">💸</span>
             <div><div style="font-weight:700;font-size:13px">Revenus passifs</div><div style="font-size:11px;color:#8e8e93">1-3 ans</div></div>
             <div class="ob-check" id="ob-check-court" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
-          <div class="ob-goal-card" id="ob-goal-retraite" onclick="obToggleGoal('retraite')" style="padding:11px 14px;display:flex;align-items:center;gap:10px">
+          <div class="ob-goal-card" id="ob-goal-retraite" onclick="obToggleGoal('retraite')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🌴</span>
             <div><div style="font-weight:700;font-size:13px">Retraite FIRE</div><div style="font-size:11px;color:#8e8e93">15-25 ans</div></div>
             <div class="ob-check" id="ob-check-retraite" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
-          <div class="ob-goal-card" id="ob-goal-projet" onclick="obToggleGoal('projet')" style="padding:11px 14px;display:flex;align-items:center;gap:10px">
+          <div class="ob-goal-card" id="ob-goal-projet" onclick="obToggleGoal('projet')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🏠</span>
             <div><div style="font-weight:700;font-size:13px">Projet précis</div><div style="font-size:11px;color:#8e8e93">3-10 ans</div></div>
             <div class="ob-check" id="ob-check-projet" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
@@ -583,19 +579,19 @@ window.addEventListener('load', function() {
         <div id="ob-risk-reco" style="display:none;background:#f5f5f5;border-radius:10px;padding:9px 13px;font-size:12px;color:#3c3c43;margin-bottom:10px;border-left:3px solid #1c1c1e"></div>
 
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
-          <div class="ob-risk-card" id="ob-risk-faible" onclick="obSelectRisk('faible')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;background:#fff;cursor:pointer">
+          <div class="ob-risk-card" id="ob-risk-faible" onclick="obSelectRisk('faible')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;cursor:pointer">
             <div style="width:36px;height:36px;border-radius:10px;background:#e8f8f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🛡️</div>
-            <div style="flex:1"><div style="font-weight:700;font-size:13px">Prudent</div><div style="font-size:11px;color:#8e8e93">90% ETF · Perte max ~10% · ~5%/an</div></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px">Prudent</div><div style="font-size:11px;color:#8e8e93">~5%/an · Perte max 10%</div></div>
             <div class="ob-check" id="ob-rcheck-faible" style="font-size:16px;color:#c7c7cc">○</div>
           </div>
-          <div class="ob-risk-card" id="ob-risk-modere" onclick="obSelectRisk('modere')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;background:#fff;cursor:pointer">
+          <div class="ob-risk-card" id="ob-risk-modere" onclick="obSelectRisk('modere')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;cursor:pointer">
             <div style="width:36px;height:36px;border-radius:10px;background:#fff9e6;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚖️</div>
-            <div style="flex:1"><div style="font-weight:700;font-size:13px">Équilibré</div><div style="font-size:11px;color:#8e8e93">ETF + actions · Perte max ~25% · ~7%/an</div></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px">Équilibré</div><div style="font-size:11px;color:#8e8e93">~7%/an · Perte max 25%</div></div>
             <div class="ob-check" id="ob-rcheck-modere" style="font-size:16px;color:#c7c7cc">○</div>
           </div>
-          <div class="ob-risk-card" id="ob-risk-eleve" onclick="obSelectRisk('eleve')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;background:#fff;cursor:pointer">
+          <div class="ob-risk-card" id="ob-risk-eleve" onclick="obSelectRisk('eleve')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;cursor:pointer">
             <div style="width:36px;height:36px;border-radius:10px;background:#fff0f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚀</div>
-            <div style="flex:1"><div style="font-weight:700;font-size:13px">Agressif</div><div style="font-size:11px;color:#8e8e93">Actions growth · Perte max ~40% · ~10%/an</div></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px">Agressif</div><div style="font-size:11px;color:#8e8e93">~10%/an · Perte max 40%</div></div>
             <div class="ob-check" id="ob-rcheck-eleve" style="font-size:16px;color:#c7c7cc">○</div>
           </div>
         </div>
@@ -611,10 +607,10 @@ window.addEventListener('load', function() {
 
     <!-- ÉTAPE 4 : Plan -->
     <div class="onboard-step" id="ob-step-4" style="display:none">
-      <div style="background:linear-gradient(135deg,#1a7f5a,#059669);padding:24px 28px 20px;border-radius:16px 16px 0 0">
-        <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:4px">Étape 4 / 4 — Terminé !</div>
-        <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:2px">Ton plan personnalisé</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.6)" id="ob-plan-profile-label">Personnalisé pour toi</div>
+      <div style="background:linear-gradient(135deg,#1a7f5a,#059669);padding:24px 28px 20px;border-radius:20px 20px 0 0;text-align:center">
+        <div style="font-size:32px;margin-bottom:6px">🎉</div>
+        <div style="font-size:20px;font-weight:800;color:#fff">Ton plan est prêt !</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.65);margin-top:4px" id="ob-plan-profile-label">Personnalisé pour toi</div>
         <div style="display:flex;gap:4px;margin-top:14px">
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.85)"></div>
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.85)"></div>
@@ -622,7 +618,7 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.85)"></div>
         </div>
       </div>
-      <div style="padding:16px 28px;background:#fff;border-radius:0 0 16px 16px">
+      <div style="padding:16px 28px;background:#fff;border-radius:0 0 20px 20px">
         <div id="ob-plan-content">
           <div style="text-align:center;padding:24px;color:#8e8e93">
             <svg class="spinning" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -631,7 +627,7 @@ window.addEventListener('load', function() {
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
           <button class="btn-primary" style="width:100%;font-size:15px;padding:14px" onclick="obFinish('objectif')">📊 Voir mon tableau de bord →</button>
-          <button class="btn-secondary" style="width:100%;font-size:13px" onclick="obFinish('home')">Accéder à l'app directement</button>
+          <button class="btn-secondary" style="width:100%;font-size:13px" onclick="obFinish('home')">Accéder à l'app</button>
         </div>
       </div>
     </div>
