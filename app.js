@@ -1945,9 +1945,31 @@ function obNext(step) {
     if (err) err.style.display = 'none';
   }
 
-  document.querySelectorAll('.onboard-step').forEach(s => s.style.display = 'none');
-  const el = document.getElementById('ob-step-' + step);
-  if (el) el.style.display = 'block';
+  // Transition fluide entre étapes
+  const currentStep = document.querySelector('.onboard-step[style*="block"]');
+  const nextStep = document.getElementById('ob-step-' + step);
+  if (!nextStep) return;
+
+  const currentNum = currentStep ? parseInt(currentStep.id.replace('ob-step-','')) : 0;
+  const dir = step > currentNum ? 1 : -1;
+
+  if (currentStep && currentStep !== nextStep) {
+    currentStep.style.cssText += 'transition:opacity 0.18s ease,transform 0.18s ease;opacity:0;transform:translateX(' + (dir * -24) + 'px)';
+    setTimeout(() => {
+      document.querySelectorAll('.onboard-step').forEach(s => { s.style.display = 'none'; s.style.opacity = ''; s.style.transform = ''; s.style.transition = ''; });
+      nextStep.style.display = 'block';
+      nextStep.style.opacity = '0';
+      nextStep.style.transform = 'translateX(' + (dir * 24) + 'px)';
+      nextStep.style.transition = 'opacity 0.22s ease,transform 0.22s ease';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        nextStep.style.opacity = '1';
+        nextStep.style.transform = 'translateX(0)';
+      }));
+    }, 180);
+  } else {
+    document.querySelectorAll('.onboard-step').forEach(s => s.style.display = 'none');
+    nextStep.style.display = 'block';
+  }
 
   // Étape 2 : presets selon profil
   if (step === 2) {
