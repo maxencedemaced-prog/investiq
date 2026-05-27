@@ -31,17 +31,18 @@ Host not in allowlist
 .bnav-center svg { stroke: #fff; }
 
 @media (max-width: 767px) {
-  /* Afficher la bottom nav */
+  /* Afficher la bottom nav SEULEMENT sur mobile */
   #bottom-nav { display: block !important; }
 
   /* Pousser le contenu au-dessus de la bottom nav */
   .main { padding-bottom: 76px !important; }
 
-  /* Masquer la sidebar sur mobile */
+  /* Masquer la sidebar sur mobile — elle est remplacée par la bottom nav */
   .sidebar { display: none !important; }
+  .menu-btn { display: flex !important; }
 
-  /* Main sans margin-left */
-  .main { margin-left: 0 !important; padding: 16px 14px; }
+  /* Main sans margin-left sur mobile */
+  .main { margin-left: 0 !important; padding: 16px 14px !important; }
 
   /* Topbar compacte */
   .topbar { height: 50px; padding: 0 12px; }
