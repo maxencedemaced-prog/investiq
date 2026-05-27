@@ -4140,55 +4140,99 @@ function saveNewsCache() {
 
 
 // ===== ANIMATIONS UTILITAIRES =====
-function animateNumber(el, from, to, duration=800, prefix='', suffix='') {
+// ===== MOTION DESIGN SYSTEM =====
+// Easing functions
+const ease = {
+  out3: p => 1 - Math.pow(1-p, 3),
+  out4: p => 1 - Math.pow(1-p, 4),
+  spring: p => {
+    const c4 = (2*Math.PI)/3;
+    return p===0?0:p===1?1:Math.pow(2,-10*p)*Math.sin((p*10-0.75)*c4)+1;
+  }
+};
+
+function animateNumber(el, from, to, duration=900, prefix='', suffix='') {
   if (!el) return;
   const start = performance.now();
   const range = to - from;
   function step(now) {
-    const elapsed = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-    // Easing ease-out
-    const ease = 1 - Math.pow(1 - progress, 3);
-    const current = from + range * ease;
+    const p = Math.min((now-start)/duration, 1);
+    const e = ease.out4(p);
+    const current = from + range * e;
     el.textContent = prefix + fmtK(Math.round(current)) + suffix;
-    if (progress < 1) requestAnimationFrame(step);
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = prefix + fmtK(Math.round(to)) + suffix;
   }
   requestAnimationFrame(step);
 }
 
-function animatePercent(el, to, duration=600) {
+function animateNumberRaw(el, from, to, duration=800, decimals=1, suffix='') {
   if (!el) return;
   const start = performance.now();
   function step(now) {
-    const p = Math.min((now - start) / duration, 1);
-    const ease = 1 - Math.pow(1 - p, 3);
-    el.textContent = (to * ease).toFixed(1) + '%';
+    const p = Math.min((now-start)/duration, 1);
+    const e = ease.out3(p);
+    el.textContent = (from + (to-from)*e).toFixed(decimals) + suffix;
     if (p < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
 }
 
-function animateBar(el, targetPct, duration=800, delay=0) {
+function animatePercent(el, to, duration=700) {
+  animateNumberRaw(el, 0, to, duration, 1, '%');
+}
+
+function animateBar(el, targetPct, duration=900, delay=0) {
   if (!el) return;
   el.style.width = '0%';
   el.style.transition = 'none';
   setTimeout(() => {
     el.style.transition = `width ${duration}ms cubic-bezier(0.16,1,0.3,1)`;
-    el.style.width = targetPct + '%';
+    el.style.width = Math.min(targetPct, 100) + '%';
   }, delay);
 }
 
-function fadeInCards(selector, delay=60) {
+function fadeInCards(selector, delay=70) {
   const els = document.querySelectorAll(selector);
   els.forEach((el, i) => {
     el.style.opacity = '0';
-    el.style.transform = 'translateY(12px)';
-    el.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-    setTimeout(() => {
+    el.style.transform = 'translateY(10px)';
+    el.style.transition = `opacity 0.3s ease ${i*delay+30}ms, transform 0.3s ease ${i*delay+30}ms`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       el.style.opacity = '1';
       el.style.transform = 'translateY(0)';
-    }, i * delay + 50);
+    }));
   });
+}
+
+function fadeInEl(el, delay=0) {
+  if (!el) return;
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(8px)';
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.28s ease, transform 0.28s ease';
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  }, delay);
+}
+
+function staggerFadeIn(els, delay=60) {
+  els.forEach((el, i) => { if(el) fadeInEl(el, i*delay); });
+}
+
+// Counter avec séparateurs de milliers animé
+function animateCounter(el, to, duration=1000) {
+  if (!el) return;
+  const start = performance.now();
+  function step(now) {
+    const p = Math.min((now-start)/duration, 1);
+    const e = ease.spring(p);
+    const v = Math.round(to * e);
+    el.textContent = v.toLocaleString('fr-FR');
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = to.toLocaleString('fr-FR');
+  }
+  requestAnimationFrame(step);
 }
 
 // ===== NAV =====
@@ -4541,16 +4585,28 @@ async function renderHome() {
   document.getElementById('home-obj').innerHTML = '';
   renderPlatforms();
 
-  // ── Animations ──
-  // Compteur valeur totale
+  // ── Motion design home ──
   setTimeout(() => {
-    animateNumber(document.getElementById('home-tv-counter'), 0, tv);
-  }, 100);
-  // Barre objectif animée
-  const progBar = document.querySelector('#home-metrics .a-prog-fill');
-  if (progBar) animateBar(progBar, pctObj, 1000, 200);
-  // Fade-in des widgets secondaires
-  fadeInCards('#home-score > div', 80);
+    // Compteur valeur totale — spring animation
+    const tvEl = document.getElementById('home-tv-counter');
+    if (tvEl) animateNumber(tvEl, tv * 0.85, tv, 1000);
+    // Barre objectif
+    const progBar = document.querySelector('#home-metrics .a-prog-fill');
+    if (progBar) animateBar(progBar, pctObj, 1100, 300);
+    // Métriques en cascade
+    const chips = document.querySelectorAll('#home-metrics .a-chip');
+    chips.forEach((chip, i) => {
+      chip.style.opacity = '0';
+      chip.style.transform = 'scale(0.9)';
+      chip.style.transition = `opacity 0.25s ease ${i*80+200}ms, transform 0.25s ease ${i*80+200}ms`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        chip.style.opacity = '1';
+        chip.style.transform = 'scale(1)';
+      }));
+    });
+  }, 80);
+  // Fade-in staggered des widgets
+  setTimeout(() => fadeInCards('#home-score > div', 90), 150);
 }
 
 
@@ -4783,34 +4839,32 @@ function renderPortfolio() {
   // Load transactions if visible
   if (document.getElementById('tx-list')) { loadTransactions().then(renderTransactions); }
 
-  // ── Animations portefeuille ──
-  // Fade-in des cartes positions
-  const posCards = document.querySelectorAll('#pos-grid .pos-card');
-  posCards.forEach((card, i) => {
-    card.style.opacity = '0';
-    card.style.transform = 'translateY(14px)';
-    card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    setTimeout(() => {
-      card.style.opacity = '1';
-      card.style.transform = 'translateY(0)';
-    }, i * 70 + 50);
-  });
-  // Compteurs métriques animés
+  // ── Motion design portefeuille ──
+  // Fade-in staggeré des cards positions
   setTimeout(() => {
-    const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-    const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
-    const tpnl = tv - ti;
-    // Animer les valeurs dans les metric-cards
+    const posCards = document.querySelectorAll('#pos-grid .pos-card');
+    posCards.forEach((card, i) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(12px)';
+      card.style.transition = `opacity 0.28s ease ${i*65+40}ms, transform 0.28s ease ${i*65+40}ms`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }));
+    });
+  }, 30);
+  // Métriques — pop in avec spring
+  setTimeout(() => {
     document.querySelectorAll('#port-metrics .metric-val').forEach((el, i) => {
       el.style.opacity = '0';
-      el.style.transform = 'translateY(8px)';
-      el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-      setTimeout(() => {
+      el.style.transform = 'translateY(6px)';
+      el.style.transition = `opacity 0.25s ease ${i*60}ms, transform 0.25s ease ${i*60}ms`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
         el.style.opacity = '1';
         el.style.transform = 'translateY(0)';
-      }, i * 80 + 100);
+      }));
     });
-  }, 50);
+  }, 20);
 }
 
 async function generatePosSignal(p) {
