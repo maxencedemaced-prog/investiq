@@ -667,8 +667,8 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
   const pct = Math.min(tv / target * 100, 100);
   const el = document.getElementById('obj-real-bar');
   const marker = document.getElementById('obj-real-marker');
-  if (el) el.style.width = pct + '%';
-  if (marker) marker.style.left = pct + '%';
+  if (el) { el.style.width = '0%'; el.style.transition = 'width 1s cubic-bezier(0.16,1,0.3,1)'; setTimeout(() => { el.style.width = pct + '%'; }, 150); }
+  if (marker) { marker.style.left = '0%'; marker.style.transition = 'left 1s cubic-bezier(0.16,1,0.3,1)'; setTimeout(() => { marker.style.left = pct + '%'; }, 150); }
   const pctEl = document.getElementById('obj-real-pct');
   if (pctEl) pctEl.textContent = pct.toFixed(1) + '%';
   const valEl = document.getElementById('obj-real-val');
@@ -1680,13 +1680,13 @@ function animatePageIn(sectionId) {
   const el = document.getElementById(sectionId);
   if (!el) return;
   el.style.opacity = '0';
-  el.style.transform = 'translateY(8px)';
+  el.style.transform = 'translateY(10px)';
   el.classList.add('active');
-  setTimeout(() => {
-    el.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+  requestAnimationFrame(() => {
+    el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
     el.style.opacity = '1';
     el.style.transform = 'translateY(0)';
-  }, 10);
+  });
 }
 
 
@@ -4116,6 +4116,59 @@ function saveNewsCache() {
   try { localStorage.setItem(CACHE_NEWS, JSON.stringify({ date: new Date().toDateString(), data: newsData })); } catch {}
 }
 
+
+// ===== ANIMATIONS UTILITAIRES =====
+function animateNumber(el, from, to, duration=800, prefix='', suffix='') {
+  if (!el) return;
+  const start = performance.now();
+  const range = to - from;
+  function step(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    // Easing ease-out
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const current = from + range * ease;
+    el.textContent = prefix + fmtK(Math.round(current)) + suffix;
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function animatePercent(el, to, duration=600) {
+  if (!el) return;
+  const start = performance.now();
+  function step(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = (to * ease).toFixed(1) + '%';
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function animateBar(el, targetPct, duration=800, delay=0) {
+  if (!el) return;
+  el.style.width = '0%';
+  el.style.transition = 'none';
+  setTimeout(() => {
+    el.style.transition = `width ${duration}ms cubic-bezier(0.16,1,0.3,1)`;
+    el.style.width = targetPct + '%';
+  }, delay);
+}
+
+function fadeInCards(selector, delay=60) {
+  const els = document.querySelectorAll(selector);
+  els.forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(12px)';
+    el.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+    setTimeout(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    }, i * delay + 50);
+  });
+}
+
 // ===== NAV =====
 function nav(page) {
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
@@ -4358,7 +4411,7 @@ async function renderHome() {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
         <div>
           <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Valeur du portefeuille</div>
-          <div style="font-size:clamp(36px,6vw,52px);font-weight:900;color:#fff;letter-spacing:-2px;line-height:1" id="home-tv-counter">${fmtK(tv)}</div>
+          <div style="font-size:clamp(36px,6vw,52px);font-weight:900;color:#fff;letter-spacing:-2px;line-height:1" id="home-tv-counter">—</div>
         </div>
         <div style="background:${pnlBg};border-radius:12px;padding:10px 14px;text-align:right">
           <div style="font-size:20px;font-weight:900;color:${pnlColor}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div>
@@ -4461,6 +4514,17 @@ async function renderHome() {
   document.getElementById('home-alerts').innerHTML = '';
   document.getElementById('home-obj').innerHTML = '';
   renderPlatforms();
+
+  // ── Animations ──
+  // Compteur valeur totale
+  setTimeout(() => {
+    animateNumber(document.getElementById('home-tv-counter'), 0, tv);
+  }, 100);
+  // Barre objectif animée
+  const progBar = document.querySelector('#home-metrics .a-prog-fill');
+  if (progBar) animateBar(progBar, pctObj, 1000, 200);
+  // Fade-in des widgets secondaires
+  fadeInCards('#home-score > div', 80);
 }
 
 
@@ -4678,8 +4742,16 @@ function renderPortfolio() {
   if(tv>0) {
     document.getElementById('alloc-bars').innerHTML=grouped_arr.map((p,i)=>{
       const pc=p.qty*p.price/tv*100;
-      return`<div class="bar-row"><div class="bar-label"><span>${p.name}</span><span>${pc.toFixed(1)}%</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pc}%;background:${COLORS[i%COLORS.length]}"></div></div></div>`;
+      return`<div class="bar-row"><div class="bar-label"><span>${p.name}</span><span>${pc.toFixed(1)}%</span></div><div class="bar-bg"><div class="bar-fill" id="abar-${i}" style="width:0%;background:${COLORS[i%COLORS.length]};transition:width 0.7s cubic-bezier(0.16,1,0.3,1)"></div></div></div>`;
     }).join('');
+    // Anime les barres après rendu
+    setTimeout(() => {
+      grouped_arr.forEach((p,i) => {
+        const pc = p.qty*p.price/tv*100;
+        const bar = document.getElementById('abar-'+i);
+        if (bar) bar.style.width = pc + '%';
+      });
+    }, 100);
   }
   positions.forEach(p=>{if(!posSignals[p.id])generatePosSignal(p);});
   // Load transactions if visible
