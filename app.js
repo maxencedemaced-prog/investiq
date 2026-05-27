@@ -4447,20 +4447,7 @@ async function renderHome() {
     </div>`;
   }
 
-  // Plateformes
-  const platforms = {};
-  positions.forEach(p=>{ const v=p.qty*p.price; platforms[p.platform||'Autre']=(platforms[p.platform||'Autre']||0)+v; });
-  if (Object.keys(platforms).length > 1) {
-    dayHtml += `
-    <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #f0f0f0">
-      <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Par plateforme</div>
-      ${Object.entries(platforms).map(([name,val])=>`
-      <div style="margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px"><span>${name}</span><span>${fmtK(val)}</span></div>
-        <div style="background:#f0f0f0;border-radius:4px;height:5px;overflow:hidden"><div style="height:100%;background:#1c1c1e;width:${(val/tv*100)}%;border-radius:4px"></div></div>
-      </div>`).join('')}
-    </div>`;
-  }
+
 
   // Actions rapides
   dayHtml += `
