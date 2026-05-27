@@ -459,7 +459,8 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 @media(max-width:767px){
   #bottom-nav{display:block !important}
   .main{padding-bottom:76px !important;margin-left:0 !important;padding:16px 14px 76px}
-  .sidebar{display:none !important}
+  .sidebar{display:flex !important;left:-180px}
+  .sidebar.open{left:0;display:flex !important}
   .menu-btn{display:flex !important}
   .topbar{height:50px;padding:0 12px}
   #topbar-email{max-width:80px;font-size:11px}
