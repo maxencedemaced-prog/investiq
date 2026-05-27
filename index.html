@@ -14,6 +14,25 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <link rel="stylesheet" href="style.css">
   <style>
+    /* ── Animations globales ── */
+    .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
+    .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .metric-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .metric-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+    .pos-card { transition: box-shadow 0.2s ease; }
+    .pos-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .nav-btn { transition: background 0.15s ease, color 0.15s ease; }
+    .btn-primary { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+    .btn-primary:active { transform: translateY(0) scale(0.98); }
+    .toast { animation: toastIn 0.3s cubic-bezier(0.16,1,0.3,1); }
+    @keyframes toastIn { from { opacity:0; transform:translateY(20px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+    /* Skeleton loader */
+    @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+    .skeleton { background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%); background-size:400px 100%; animation:shimmer 1.2s infinite; border-radius:6px; }
+    /* Nombre animé — évite le flash */
+    #home-tv-counter { min-width:120px; display:inline-block; }
+
     .ob-profile-card {
       padding:12px 14px;background:#fff;border:1.5px solid #e5e5ea;
       border-radius:12px;cursor:pointer;transition:all 0.15s;
