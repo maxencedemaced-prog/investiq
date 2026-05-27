@@ -756,17 +756,109 @@
     <!-- DCA -->
     <section id="sec-dca" class="sec">
       <div class="page-header"><h1>Simulateur DCA</h1></div>
+
+      <!-- PRESETS -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px">
+        <div class="dca-preset-card card" onclick="dcaPreset(200,20,7,1000,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Classique</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">200€/mois · 20 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-0"></div>
+        </div>
+        <div class="dca-preset-card card" onclick="dcaPreset(100,15,5,0,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Débutant</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">100€/mois · 15 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-1"></div>
+        </div>
+        <div class="dca-preset-card card" onclick="dcaPreset(500,15,9,5000,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Agressif</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">500€/mois · 15 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-2"></div>
+        </div>
+        <div class="dca-preset-card card" onclick="dcaPreset(1000,30,9,10000,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Retraite</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">1 000€/mois · 30 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-3"></div>
+        </div>
+        <div class="dca-preset-card card" onclick="dcaPreset(50,10,7,0,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Mini</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">50€/mois · 10 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-4"></div>
+        </div>
+      </div>
+
+      <!-- SLIDERS -->
       <div class="card">
         <div class="card-head"><div class="card-title"><span class="card-icon green">↻</span>Investissement régulier</div></div>
         <div class="slider-group">
-          <div class="slider-row"><label>Versement mensuel</label><input type="range" id="dca-m" min="50" max="2000" step="50" value="200" oninput="updateDCA()" class="slider"><span id="dca-m-o">200 €</span></div>
-          <div class="slider-row"><label>Durée</label><input type="range" id="dca-y" min="1" max="30" step="1" value="10" oninput="updateDCA()" class="slider"><span id="dca-y-o">10 ans</span></div>
-          <div class="slider-row"><label>Rendement estimé</label><input type="range" id="dca-r" min="1" max="15" step="0.5" value="7" oninput="updateDCA()" class="slider"><span id="dca-r-o">7 %</span></div>
-          <div class="slider-row"><label>Capital de départ</label><input type="range" id="dca-s" min="0" max="10000" step="500" value="1000" oninput="updateDCA()" class="slider"><span id="dca-s-o">1 000 €</span></div>
+          <div class="slider-row"><label>Versement mensuel</label><span id="dca-m-o">200 €</span></div>
+          <input type="range" min="10" max="5000" step="10" value="200" id="dca-m" oninput="updateDCA()">
+          <div class="slider-row"><label>Durée</label><span id="dca-y-o">10 ans</span></div>
+          <input type="range" min="1" max="40" step="1" value="10" id="dca-y" oninput="updateDCA()">
+          <div class="slider-row"><label>Rendement estimé</label><span id="dca-r-o">7.0 %</span></div>
+          <input type="range" min="1" max="20" step="0.5" value="7" id="dca-r" oninput="updateDCA()">
+          <div class="slider-row"><label>Capital de départ</label><span id="dca-s-o">0 €</span></div>
+          <input type="range" min="0" max="100000" step="500" value="0" id="dca-s" oninput="updateDCA()">
         </div>
-        <div class="dca-result"><div class="metrics-grid" id="dca-metrics"></div><div id="dca-tip"></div></div>
+        <div id="dca-metrics" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px"></div>
+        <div id="dca-tip" style="margin-top:12px"></div>
+      </div>
+
+      <!-- GRAPHIQUE -->
+      <div class="card" style="margin-top:12px">
+        <div class="card-head"><div class="card-title"><span class="card-icon dark">📈</span>Projection graphique</div></div>
+        <div style="height:220px;position:relative"><canvas id="dca-chart"></canvas></div>
+        <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:#8e8e93;font-weight:600">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:3px;background:#1c1c1e;display:inline-block;border-radius:2px"></span>Capital projeté</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:3px;background:#c7c7cc;display:inline-block;border-radius:2px;border-top:2px dashed #c7c7cc"></span>Capital investi</span>
+        </div>
+      </div>
+
+      <!-- TABLEAU ANNUEL -->
+      <div class="card" style="margin-top:12px">
+        <div class="card-head"><div class="card-title"><span class="card-icon dark">📋</span>Projection annuelle</div></div>
+        <div id="dca-table" style="overflow-x:auto"></div>
+      </div>
+
+      <!-- BOUTON SAUVEGARDER -->
+      <div style="margin-top:12px">
+        <button class="btn-primary" onclick="saveDCAAsObjective()" style="width:100%;padding:14px;font-size:15px;font-weight:700">
+          🎯 Sauvegarder comme objectif & générer mon plan IA
+        </button>
       </div>
     </section>
+
+    <!-- MODAL PLAN DCA -->
+    <div id="dca-plan-modal" class="modal-overlay" style="display:none">
+      <div class="modal-card" style="max-width:520px;width:100%;max-height:88vh;overflow-y:auto">
+        <div style="background:#1c1c1e;border-radius:20px 20px 0 0;padding:22px 24px">
+          <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:6px">🎯 Ton plan DCA personnalisé</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
+            <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:700;margin-bottom:2px">MENSUEL</div>
+              <div style="font-size:15px;font-weight:800;color:#fff" id="dca-plan-m">—</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.1);border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:700;margin-bottom:2px">DURÉE</div>
+              <div style="font-size:15px;font-weight:800;color:#fff" id="dca-plan-y">—</div>
+            </div>
+            <div style="background:rgba(26,127,90,0.4);border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:700;margin-bottom:2px">FINAL</div>
+              <div style="font-size:15px;font-weight:800;color:#4ade80" id="dca-plan-total">—</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px" id="dca-plan-subtitle"></div>
+        </div>
+        <div style="padding:20px 24px;background:#fff;border-radius:0 0 20px 20px">
+          <div id="dca-plan-content"></div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn-secondary" onclick="closeDCAPlanModal()" style="flex:1">Fermer</button>
+            <button class="btn-primary" id="dca-plan-save-btn" onclick="confirmSaveDCAObjective()" style="flex:2" disabled>
+              💾 Sauvegarder dans Objectif
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- AJOUTER -->
     <section id="sec-ajouter" class="sec">
