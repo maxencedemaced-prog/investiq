@@ -8,6 +8,22 @@ function hasValidObj(o) {
 }
 
 async function validateObjectif(labelOverride) {
+  // Vérifie si c'est une mise à jour d'un objectif existant
+  const isUpdate = allObjectives.some(o => o.target === objChartTarget && o.monthly === objChartMonthly);
+  if (!isUpdate && allObjectives.length >= 3) {
+    // Bandeau rouge
+    const existing = document.getElementById('obj-max-banner');
+    if (!existing) {
+      const banner = document.createElement('div');
+      banner.id = 'obj-max-banner';
+      banner.style.cssText = 'background:#fff0f0;border:2px solid #cc2f26;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px';
+      banner.innerHTML = '<div><div style="font-size:14px;font-weight:800;color:#cc2f26">⚠ Maximum 3 objectifs atteint</div><div style="font-size:13px;color:#7f1d1d;margin-top:3px">Supprime un objectif existant (bouton ×) pour en créer un nouveau.</div></div><button onclick="document.getElementById(\'obj-max-banner\').remove()" style="background:#cc2f26;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">OK</button>';
+      const resultsEl = document.getElementById('obj-results');
+      if (resultsEl) resultsEl.insertBefore(banner, resultsEl.firstChild);
+    }
+    renderMultiObjChart();
+    return;
+  }
   const label = labelOverride || ('Objectif ' + (allObjectives.length + 1));
   const data = {
     capital: objChartCapital, monthly: objChartMonthly,
@@ -2221,13 +2237,15 @@ async function obFinish(action) {
     try {
       // Update si objectif existant, sinon insert
       if (allObjectives.length > 0) {
+        // Mise à jour du premier objectif existant
         const { error: oue } = await sb.from('objectives').update({
           capital: bankroll, monthly: monthly,
           target: target, years: 10, rate: objChartRate,
           risk: objRisk
         }).eq('id', allObjectives[0].id);
         if (oue) console.warn('[obFinish] update error:', oue.message);
-      } else {
+      } else if (allObjectives.length < 3) {
+        // Nouvel objectif seulement si moins de 3
         const { error: oie } = await sb.from('objectives').insert({
           user_id: currentUser.id, capital: bankroll, monthly: monthly,
           target: target, years: 10, rate: objChartRate,
