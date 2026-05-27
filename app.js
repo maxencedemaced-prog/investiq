@@ -4680,8 +4680,8 @@ function renderPortfolio() {
         <div class="pos-card-left">
           <div class="pos-avatar" style="background:${COLORS[idx%COLORS.length]}">${p.name.slice(0,2).toUpperCase()}</div>
           <div>
-            <div class="pos-name">${p.name} ${chgHtml}${miniSigBadge}</div>
-            <div class="pos-meta">${(() => { const k = AC_DB.find(c => c.ticker.toUpperCase() === p.name.toUpperCase()); return k ? `<span style="color:#3c3c43;font-weight:600">${k.name}</span> · ` : ''; })()} ${p.type} · ${p.qty} parts · ${p.platform||''} ${alertHtml}</div>
+            <div class="pos-name">${p.name}${(() => { const k = AC_DB.find(c => c.ticker.toUpperCase() === p.name.toUpperCase()); return k ? ` <span style="font-size:12px;color:#8e8e93;font-weight:500">(${k.name})</span>` : ''; })()} ${chgHtml}${miniSigBadge}</div>
+            <div class="pos-meta">${p.type} · ${p.qty} parts · ${p.platform||''} ${alertHtml}</div>
             ${multiHtml}
           </div>
         </div>
