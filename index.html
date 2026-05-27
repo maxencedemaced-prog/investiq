@@ -66,112 +66,329 @@
 <body>
 
 <!-- AUTH -->
-<div id="auth-screen" class="auth-screen">
-  <!-- Fond animé -->
-  <div class="auth-bg">
-    <div class="auth-bg-circle c1"></div>
-    <div class="auth-bg-circle c2"></div>
-    <div class="auth-bg-circle c3"></div>
-  </div>
+<div id="auth-screen" class="auth-screen" style="display:flex;min-height:100vh;background:#0a0a0f;position:relative;overflow:hidden">
 
-  <div class="auth-wrap">
-    <!-- COLONNE GAUCHE : pitch -->
-    <div class="auth-pitch">
-      <div class="auth-pitch-logo">
-        <div class="logo-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+  <!-- FOND ANIMÉ PREMIUM -->
+  <canvas id="hero-canvas" style="position:absolute;inset:0;width:100%;height:100%;opacity:0.6;pointer-events:none"></canvas>
+
+  <!-- GLOW EFFECTS -->
+  <div style="position:absolute;top:-200px;left:-100px;width:600px;height:600px;background:radial-gradient(circle,rgba(26,127,90,0.15) 0%,transparent 70%);pointer-events:none"></div>
+  <div style="position:absolute;bottom:-200px;right:-100px;width:500px;height:500px;background:radial-gradient(circle,rgba(99,102,241,0.12) 0%,transparent 70%);pointer-events:none"></div>
+
+  <div style="display:flex;width:100%;max-width:1100px;margin:0 auto;padding:40px 24px;gap:60px;align-items:center;position:relative;z-index:2;flex-wrap:wrap">
+
+    <!-- COLONNE GAUCHE -->
+    <div style="flex:1;min-width:300px;max-width:540px">
+
+      <!-- LOGO -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:48px">
+        <div style="width:40px;height:40px;background:linear-gradient(135deg,#1a7f5a,#059669);border-radius:12px;display:flex;align-items:center;justify-content:center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
         </div>
-        <span class="logo-name" style="color:#fff">InvestIQ</span>
+        <span style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px">InvestIQ</span>
+        <span style="background:rgba(26,127,90,0.2);border:1px solid rgba(26,127,90,0.4);color:#4ade80;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;margin-left:4px">BETA</span>
       </div>
-      <h1 class="auth-pitch-title">Investis plus<br>intelligemment</h1>
-      <p class="auth-pitch-sub">Ton assistant IA pour suivre, analyser et faire grandir ton patrimoine.</p>
-      <div class="auth-features-list">
-        <div class="auth-feature-big">
-          <div class="auth-feature-icon" style="background:rgba(26,127,90,0.2);border-color:rgba(26,127,90,0.3)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+
+      <!-- TITRE PRINCIPAL -->
+      <div style="margin-bottom:20px">
+        <h1 style="font-size:clamp(36px,5vw,56px);font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px;margin:0 0 16px">
+          Investis plus<br>
+          <span style="background:linear-gradient(135deg,#4ade80,#1a7f5a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">intelligemment.</span>
+        </h1>
+        <p style="font-size:17px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:420px;margin:0">
+          Ton copilote IA pour suivre, analyser et faire grandir ton patrimoine — même en partant de zéro.
+        </p>
+      </div>
+
+      <!-- STATS SOCIALES -->
+      <div style="display:flex;gap:24px;margin-bottom:36px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:22px;font-weight:900;color:#fff" id="hero-count-users">—</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">utilisateurs actifs</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,0.1)"></div>
+        <div>
+          <div style="font-size:22px;font-weight:900;color:#4ade80" id="hero-count-portf">—</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">portefeuilles suivis</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,0.1)"></div>
+        <div>
+          <div style="font-size:22px;font-weight:900;color:#a5b4fc">IA</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">signaux quotidiens</div>
+        </div>
+      </div>
+
+      <!-- FEATURES -->
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:40px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;background:rgba(26,127,90,0.15);border:1px solid rgba(26,127,90,0.3);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
           </div>
           <div>
-            <div class="auth-feature-title">Portefeuille en temps réel</div>
-            <div class="auth-feature-desc">Prix live, plus-values, signaux IA sur chaque position</div>
+            <div style="font-size:14px;font-weight:700;color:#fff">Portefeuille en temps réel</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4)">Prix live · Signaux IA · Alertes personnalisées</div>
           </div>
         </div>
-        <div class="auth-feature-big">
-          <div class="auth-feature-icon" style="background:rgba(99,102,241,0.2);border-color:rgba(99,102,241,0.3)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="18" cy="6" r="3" fill="#a5b4fc" stroke="none"/></svg>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </div>
           <div>
-            <div class="auth-feature-title">Conseils personnalisés</div>
-            <div class="auth-feature-desc">Analyse IA adaptée à ton profil et tes objectifs</div>
+            <div style="font-size:14px;font-weight:700;color:#fff">Agent IA personnel</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4)">Analyse · Conseils · Actions sur commande</div>
           </div>
         </div>
-        <div class="auth-feature-big">
-          <div class="auth-feature-icon" style="background:rgba(245,158,11,0.2);border-color:rgba(245,158,11,0.3)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           </div>
           <div>
-            <div class="auth-feature-title">Agenda économique</div>
-            <div class="auth-feature-desc">BCE, Fed, résultats d'entreprises — ne rate rien</div>
+            <div style="font-size:14px;font-weight:700;color:#fff">Objectifs & projections</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4)">Plan personnalisé · Simulateur DCA · Scénarios</div>
           </div>
+        </div>
+      </div>
+
+      <!-- BADGES CONFIANCE -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 12px">
+          <span style="color:#4ade80;font-size:14px">🔒</span>
+          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.5)">Données chiffrées</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 12px">
+          <span style="color:#a5b4fc;font-size:14px">⚡</span>
+          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.5)">Prix temps réel</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 12px">
+          <span style="color:#fcd34d;font-size:14px">🤖</span>
+          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.5)">IA Claude</span>
         </div>
       </div>
     </div>
 
-    <!-- COLONNE DROITE : formulaire -->
-    <div class="auth-card">
-      <div class="auth-tabs">
-        <button class="auth-tab active" id="tab-login" onclick="switchAuth('login')">Connexion</button>
-        <button class="auth-tab" id="tab-signup" onclick="switchAuth('signup')">Inscription</button>
-      </div>
+    <!-- COLONNE DROITE : FORMULAIRE -->
+    <div style="flex:0 0 380px;min-width:300px">
+      <div style="background:rgba(255,255,255,0.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,0.4)">
 
-      <div id="auth-login">
-        <div class="auth-field">
-          <label class="auth-label">Email</label>
-          <input type="email" id="login-email" class="auth-input" placeholder="ton@email.com" onkeydown="if(event.key==='Enter')login()">
+        <!-- ONGLETS -->
+        <div style="display:flex;background:rgba(255,255,255,0.06);border-radius:12px;padding:4px;margin-bottom:24px">
+          <button class="auth-tab active" id="tab-login" onclick="switchAuth('login')" style="flex:1;padding:10px;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.12);color:#fff">Connexion</button>
+          <button class="auth-tab" id="tab-signup" onclick="switchAuth('signup')" style="flex:1;padding:10px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;background:transparent;color:rgba(255,255,255,0.4)">Inscription</button>
         </div>
-        <div class="auth-field">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <label class="auth-label" style="margin-bottom:0">Mot de passe</label>
-            <a href="#" onclick="resetPassword()" style="font-size:11px;color:#8e8e93;font-weight:600;text-decoration:none;cursor:pointer" onmouseover="this.style.color='#1c1c1e'" onmouseout="this.style.color='#8e8e93'">Mot de passe oublié ?</a>
+
+        <!-- FORMULAIRE CONNEXION -->
+        <div id="auth-login">
+          <div style="margin-bottom:14px">
+            <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px">Email</label>
+            <input type="email" id="login-email" placeholder="ton@email.com" onkeydown="if(event.key==='Enter')login()"
+              style="width:100%;padding:13px 16px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;font-size:15px;color:#fff;outline:none;box-sizing:border-box;transition:border 0.2s"
+              onfocus="this.style.borderColor='rgba(26,127,90,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
           </div>
-          <input type="password" id="login-pass" class="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+          <div style="margin-bottom:6px">
+            <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px">Mot de passe</label>
+            <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"
+              style="width:100%;padding:13px 16px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;font-size:15px;color:#fff;outline:none;box-sizing:border-box;transition:border 0.2s"
+              onfocus="this.style.borderColor='rgba(26,127,90,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+          </div>
+          <div style="text-align:right;margin-bottom:20px">
+            <button onclick="resetPassword()" style="background:none;border:none;font-size:12px;color:rgba(255,255,255,0.35);cursor:pointer;font-weight:600">Mot de passe oublié ?</button>
+          </div>
+          <button onclick="login()" style="width:100%;padding:15px;background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:-0.3px;transition:all 0.2s;box-shadow:0 4px 20px rgba(26,127,90,0.4)"
+            onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 8px 30px rgba(26,127,90,0.5)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(26,127,90,0.4)'">
+            Se connecter →
+          </button>
         </div>
-        <button class="btn-auth" onclick="login()">
-          <span>Se connecter</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-        <div class="auth-divider"><span>ou</span></div>
-        <button class="btn-demo" onclick="enterDemo()" style="display:flex;align-items:center;justify-content:center;gap:8px">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/></svg>
-          Essayer sans compte
-        </button>
-      </div>
 
-      <div id="auth-signup" style="display:none">
-        <div class="auth-field">
-          <label class="auth-label">Email</label>
-          <input type="email" id="signup-email" class="auth-input" placeholder="ton@email.com">
+        <!-- FORMULAIRE INSCRIPTION -->
+        <div id="auth-signup" style="display:none">
+          <div style="margin-bottom:14px">
+            <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px">Email</label>
+            <input type="email" id="signup-email" placeholder="ton@email.com"
+              style="width:100%;padding:13px 16px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;font-size:15px;color:#fff;outline:none;box-sizing:border-box"
+              onfocus="this.style.borderColor='rgba(26,127,90,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+          </div>
+          <div style="margin-bottom:14px">
+            <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px">Mot de passe</label>
+            <input type="password" id="signup-pass" placeholder="••••••••"
+              style="width:100%;padding:13px 16px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;font-size:15px;color:#fff;outline:none;box-sizing:border-box"
+              onfocus="this.style.borderColor='rgba(26,127,90,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+          </div>
+          <div style="margin-bottom:20px">
+            <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px">Confirmer</label>
+            <input type="password" id="signup-pass2" placeholder="••••••••"
+              style="width:100%;padding:13px 16px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;font-size:15px;color:#fff;outline:none;box-sizing:border-box"
+              onfocus="this.style.borderColor='rgba(26,127,90,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+          </div>
+          <button onclick="signup()" style="width:100%;padding:15px;background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(26,127,90,0.4)">
+            Créer mon compte →
+          </button>
         </div>
-        <div class="auth-field">
-          <label class="auth-label">Mot de passe</label>
-          <input type="password" id="signup-pass" class="auth-input" placeholder="Min. 6 caractères">
-        </div>
-        <div class="auth-field">
-          <label class="auth-label">Confirmer le mot de passe</label>
-          <input type="password" id="signup-pass2" class="auth-input" placeholder="••••••••">
-        </div>
-        <button class="btn-auth" onclick="signup()">
-          <span>Créer mon compte gratuit</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-        <p class="auth-terms">En créant un compte, tu acceptes nos conditions d'utilisation.</p>
-      </div>
 
-      <div id="auth-msg" class="auth-msg"></div>
+        <div id="auth-msg" class="auth-msg"></div>
+
+        <!-- SÉPARATEUR -->
+        <div style="display:flex;align-items:center;gap:12px;margin:20px 0">
+          <div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div>
+          <span style="font-size:12px;color:rgba(255,255,255,0.25);font-weight:600">ou</span>
+          <div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div>
+        </div>
+
+        <!-- BOUTON DÉMO -->
+        <button onclick="enterDemo()" style="width:100%;padding:13px;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);border-radius:14px;font-size:14px;font-weight:700;color:rgba(255,255,255,0.6);cursor:pointer;transition:all 0.2s"
+          onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='#fff'"
+          onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.6)'">
+          👁 Essayer sans compte
+        </button>
+
+        <!-- DISCLAIMER -->
+        <div style="margin-top:20px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.5;text-align:center">
+            🔒 Données sécurisées · Aucune carte bancaire requise<br>
+            InvestIQ est un outil éducatif — pas un conseiller financier agréé
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- APP -->
+<script>
+// Animation canvas hero
+(function() {
+  const canvas = document.getElementById('hero-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [], animFrame;
+
+  function resize() {
+    W = canvas.width = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+
+  function initParticles() {
+    particles = [];
+    const count = Math.floor(W / 80);
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+        r: Math.random() * 1.5 + 0.5,
+        color: Math.random() > 0.5 ? '26,127,90' : '99,102,241'
+      });
+    }
+  }
+
+  function drawCurve() {
+    // Courbe montante stylisée
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(26,127,90,0.15)';
+    ctx.lineWidth = 1.5;
+    const pts = [];
+    for (let i = 0; i <= 20; i++) {
+      pts.push({ x: (W / 20) * i, y: H * 0.7 - Math.pow(i / 20, 1.5) * H * 0.4 + Math.sin(i * 0.8 + Date.now()/3000) * 15 });
+    }
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const cp = { x: (pts[i-1].x + pts[i].x) / 2, y: (pts[i-1].y + pts[i].y) / 2 };
+      ctx.quadraticCurveTo(pts[i-1].x, pts[i-1].y, cp.x, cp.y);
+    }
+    ctx.stroke();
+    // Fill sous la courbe
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    ctx.fillStyle = 'rgba(26,127,90,0.04)';
+    ctx.fill();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawCurve();
+    // Particules
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.color},0.5)`;
+      ctx.fill();
+    });
+    // Connexions
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 120) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(26,127,90,${0.08 * (1 - d/120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    animFrame = requestAnimationFrame(draw);
+  }
+
+  function start() {
+    resize(); initParticles(); draw();
+    // Compteurs animés
+    animateCount('hero-count-users', 12847, '+');
+    animateCount('hero-count-portf', 8200, '');
+  }
+
+  function animateCount(id, target, prefix) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    let current = 0;
+    const step = target / 60;
+    const timer = setInterval(() => {
+      current = Math.min(current + step, target);
+      el.textContent = prefix + Math.floor(current).toLocaleString('fr-FR');
+      if (current >= target) clearInterval(timer);
+    }, 16);
+  }
+
+  window.addEventListener('resize', () => { cancelAnimationFrame(animFrame); resize(); initParticles(); draw(); });
+
+  // Start quand auth-screen est visible
+  const obs = new MutationObserver(() => {
+    const el = document.getElementById('auth-screen');
+    if (el && el.style.display !== 'none') { cancelAnimationFrame(animFrame); start(); }
+  });
+  obs.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
+  // Démarre immédiatement
+  if (document.readyState === 'complete') { start(); }
+  else { window.addEventListener('load', start); }
+})();
+
+// Switcher onglets
+function _switchAuthStyle(tab) {
+  const isLogin = tab === 'login';
+  const loginBtn = document.getElementById('tab-login');
+  const signupBtn = document.getElementById('tab-signup');
+  if (loginBtn) {
+    loginBtn.style.background = isLogin ? 'rgba(255,255,255,0.12)' : 'transparent';
+    loginBtn.style.color = isLogin ? '#fff' : 'rgba(255,255,255,0.4)';
+    loginBtn.style.fontWeight = isLogin ? '700' : '600';
+  }
+  if (signupBtn) {
+    signupBtn.style.background = !isLogin ? 'rgba(255,255,255,0.12)' : 'transparent';
+    signupBtn.style.color = !isLogin ? '#fff' : 'rgba(255,255,255,0.4)';
+    signupBtn.style.fontWeight = !isLogin ? '700' : '600';
+  }
+}
+// Override switchAuth pour aussi mettre à jour le style
+const _origSwitchAuth = window.switchAuth;
+window.addEventListener('load', function() {
+  const orig = window.switchAuth;
+  if (orig) {
+    window.switchAuth = function(tab) { orig(tab); _switchAuthStyle(tab); };
+  }
+});
+</script>
 <div id="app" style="display:none">
   
 <!-- ONBOARDING MODAL -->
