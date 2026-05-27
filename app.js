@@ -6343,6 +6343,13 @@ function executeAgentAction(action) {
 function initAgent() {
   buildAgentContext();
   buildAgentSuggestions();
+
+  // Date du briefing
+  const dateEl = document.getElementById('agent-brief-date');
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+  }
+
   // Message de bienvenue personnalisé
   const welcome = document.getElementById('ai-welcome');
   if (welcome && positions.length > 0) {
@@ -6351,4 +6358,86 @@ function initAgent() {
     const color = pnl >= 0 ? '#1a7f5a' : '#cc2f26';
     welcome.innerHTML = `Bonjour ! Ton portefeuille est à <strong style="color:${color}">${fmtK(tv)}</strong> (${pnl>=0?'+':''}${fmtK(pnl)}). Je connais toutes tes positions, tes objectifs et ton profil. Que veux-tu faire ?`;
   }
+
+  // Génère le briefing (avec cache 6h)
+  const BRIEF_KEY = 'iq_daily_brief';
+  const cached = (() => { try { const c = JSON.parse(localStorage.getItem(BRIEF_KEY)||'null'); return c && Date.now()-c.ts < 6*3600000 ? c : null; } catch { return null; } })();
+  if (cached) {
+    renderDailyBrief(cached.items);
+  } else {
+    generateDailyBrief();
+  }
+}
+
+async function generateDailyBrief() {
+  const el = document.getElementById('agent-brief-content');
+  const btn = document.getElementById('brief-refresh-btn');
+  if (!el) return;
+  if (btn) btn.disabled = true;
+
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);font-size:13px">
+    <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+    Analyse de ton portefeuille...
+  </div>`;
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const pnl = tv - ti;
+  const avgChg = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const pctObj = objChartTarget > 0 ? (tv/objChartTarget*100).toFixed(1) : null;
+  const sorted = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
+  const best = sorted[0], worst = sorted[sorted.length-1];
+
+  if (!positions.length) {
+    renderDailyBrief([
+      { icon:'👋', text:'Bienvenue ! Ajoute tes premières positions pour recevoir un briefing personnalisé.', color:'#a5b4fc', type:'info' }
+    ]);
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  const prompt = `Tu es un conseiller financier IA. Génère un briefing ULTRA court pour ce portefeuille.
+Valeur: ${fmtK(tv)} · P&L: ${pnl>=0?'+':''}${fmtK(pnl)} · Variation auj: ${avgChg>=0?'+':''}${avgChg.toFixed(1)}%
+Positions: ${positions.slice(0,6).map(p=>`${p.name}(${(p.change_pct||0).toFixed(1)}%)`).join(', ')}
+${pctObj ? `Objectif: ${pctObj}% atteint` : ''}
+
+Génère exactement 3 points courts. Format JSON UNIQUEMENT:
+[
+  {"icon":"📈","text":"Une observation courte (max 12 mots)","color":"#4ade80","type":"perf"},
+  {"icon":"⚡","text":"Une alerte ou opportunité courte","color":"#fbbf24","type":"alert"},
+  {"icon":"💡","text":"Un conseil actionnable court","color":"#a5b4fc","type":"tip"}
+]
+Sois TRÈS concis. Max 12 mots par point. Utilise les vraies données.`;
+
+  try {
+    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.');
+    const clean = raw.replace(/\`\`\`json|\`\`\`/g,'').trim();
+    const items = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']')+1));
+    try { localStorage.setItem('iq_daily_brief', JSON.stringify({items, ts:Date.now()})); } catch {}
+    renderDailyBrief(items);
+  } catch(e) {
+    // Fallback calculé localement
+    const items = [
+      { icon: avgChg>=0?'📈':'📉', text: `Portef. ${avgChg>=0?'en hausse':'en baisse'} de ${Math.abs(avgChg).toFixed(1)}% aujourd'hui`, color: avgChg>=0?'#4ade80':'#f87171', type:'perf' },
+      { icon: best?'🏆':'—', text: best ? `${best.name} meilleure perf. (+${(best.change_pct||0).toFixed(1)}%)` : 'Pas de données', color:'#fbbf24', type:'alert' },
+      { icon: '💡', text: pctObj ? `${pctObj}% de l'objectif atteint · Continue le DCA` : 'Définis un objectif pour suivre ta progression', color:'#a5b4fc', type:'tip' }
+    ];
+    try { localStorage.setItem('iq_daily_brief', JSON.stringify({items, ts:Date.now()})); } catch {}
+    renderDailyBrief(items);
+  }
+  if (btn) btn.disabled = false;
+}
+
+function renderDailyBrief(items) {
+  const el = document.getElementById('agent-brief-content');
+  if (!el || !items?.length) return;
+  el.innerHTML = items.map(item => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;border-left:3px solid ${item.color}">
+      <span style="font-size:18px;flex-shrink:0">${item.icon}</span>
+      <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);line-height:1.4">${item.text}</span>
+      <button onclick="sq('${item.text.replace(/'/g,"\'")} — explique-moi en détail')"
+        style="margin-left:auto;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0;white-space:nowrap">
+        → Détails
+      </button>
+    </div>`).join('');
 }
