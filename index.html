@@ -1283,5 +1283,31 @@ window.addEventListener('load', function() {
 <script src="app.js"></script>
 
 
+  <!-- BOTTOM NAV MOBILE -->
+  <nav id="bottom-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(255,255,255,0.97);backdrop-filter:blur(20px);border-top:1px solid #e8e8e8;z-index:150;padding:0 4px;padding-bottom:env(safe-area-inset-bottom)">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);height:100%">
+      <button onclick="nav('home')" id="bnav-home" class="bnav-btn active">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Accueil</span>
+      </button>
+      <button onclick="nav('portfolio')" id="bnav-portfolio" class="bnav-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+        <span>Portef.</span>
+      </button>
+      <button onclick="nav('objectif')" id="bnav-objectif" class="bnav-btn bnav-center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        <span>Objectif</span>
+      </button>
+      <button onclick="nav('news')" id="bnav-news" class="bnav-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/></svg>
+        <span>Actus</span>
+      </button>
+      <button onclick="nav('ai')" id="bnav-ai" class="bnav-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/></svg>
+        <span>Agent IA</span>
+      </button>
+    </div>
+  </nav>
+
 </body>
 </html>
