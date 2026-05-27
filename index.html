@@ -214,8 +214,90 @@
       </div>
     </div>
 
-    <!-- COLONNE DROITE : FORMULAIRE -->
-    <div style="flex:0 0 380px;min-width:300px">
+    <!-- COLONNE DROITE : DASHBOARD FLOTTANT + FORMULAIRE -->
+    <div style="flex:0 0 380px;min-width:300px;display:flex;flex-direction:column;gap:12px">
+
+      <!-- DASHBOARD FLOTTANT ANIMÉ -->
+      <div id="hero-dashboard" style="background:rgba(255,255,255,0.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;overflow:hidden;position:relative">
+        <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,rgba(22,163,74,0.15),transparent);pointer-events:none"></div>
+
+        <!-- Header dashboard -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Portefeuille exemple</div>
+            <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.05em;line-height:1" id="hero-portf-val">47.3 k€</div>
+          </div>
+          <div style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.2);border-radius:8px;padding:6px 10px;text-align:right">
+            <div style="font-size:13px;font-weight:700;color:#4ade80" id="hero-pnl-val">+3.2 k€</div>
+            <div style="font-size:10px;color:rgba(74,222,128,0.6)">+7.2% total</div>
+          </div>
+        </div>
+
+        <!-- Mini graphique SVG animé -->
+        <div style="margin-bottom:14px;position:relative">
+          <svg width="100%" height="56" viewBox="0 0 340 56" preserveAspectRatio="none" id="hero-mini-chart">
+            <defs>
+              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#4ade80" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#4ade80" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path id="hero-chart-fill" fill="url(#chartGrad)" d=""/>
+            <path id="hero-chart-line" fill="none" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round" d=""/>
+          </svg>
+        </div>
+
+        <!-- Positions mini -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:26px;height:26px;background:rgba(22,163,74,0.2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#4ade80">IW</div>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:#fff">IWDA.L</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.3)">ETF Monde</div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;font-weight:700;color:#4ade80" id="hero-pos1-chg">+0.8%</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.3)">18.4 k€</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:26px;height:26px;background:rgba(99,102,241,0.2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#a5b4fc">MC</div>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:#fff">LVMH</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.3)">Luxe</div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;font-weight:700;color:#4ade80" id="hero-pos2-chg">+2.1%</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.3)">12.1 k€</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:26px;height:26px;background:rgba(245,158,11,0.2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fbbf24">NV</div>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:#fff">NVDA</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.3)">Tech IA</div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;font-weight:700;color:#f87171" id="hero-pos3-chg">-0.4%</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.3)">8.7 k€</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Badge IA -->
+        <div style="margin-top:12px;padding:8px 12px;background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.15);border-radius:8px;display:flex;align-items:center;gap:8px">
+          <div style="width:6px;height:6px;background:#4ade80;border-radius:50%;flex-shrink:0;animation:pulse-dot 2s infinite"></div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);font-weight:500" id="hero-ai-msg">Agent IA · Analyse en cours...</div>
+        </div>
+      </div>
+
+      <!-- FORMULAIRE -->
       <div style="background:rgba(255,255,255,0.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,0.4)">
 
         <!-- ONGLETS -->
@@ -495,6 +577,7 @@
     draw();
     animateCount('hero-count-users', 12847, '+');
     animateCount('hero-count-portf', 8241, '');
+    initHeroDashboard();
   }
 
   function animateCount(id, target, prefix) {
@@ -513,6 +596,76 @@
     cancelAnimationFrame(animFrame);
     resize(); initParticles(); draw();
   });
+
+  // ── Animation du dashboard flottant ──
+  function initHeroDashboard() {
+    const W = 340;
+    const pts = [];
+    let v = 32;
+    for (let i = 0; i < W; i += 5) {
+      v += (Math.random() - 0.44) * 6;
+      v = Math.max(8, Math.min(48, v));
+      pts.push({ x: i, y: 56 - v });
+    }
+    // Courbe lissée
+    let d = `M${pts[0].x},${pts[0].y}`;
+    for (let i = 1; i < pts.length; i++) {
+      const cp = { x: (pts[i-1].x + pts[i].x) / 2, y: (pts[i-1].y + pts[i].y) / 2 };
+      d += ` Q${pts[i-1].x},${pts[i-1].y} ${cp.x},${cp.y}`;
+    }
+    const line = document.getElementById('hero-chart-line');
+    const fill = document.getElementById('hero-chart-fill');
+    if (line) line.setAttribute('d', d);
+    if (fill) fill.setAttribute('d', d + ` L${pts[pts.length-1].x},56 L0,56 Z`);
+
+    // Messages IA rotatifs
+    const msgs = [
+      'Agent IA · Portef. en hausse de +1.2% auj.',
+      '💡 IWDA.L recommandé — signal fort',
+      '⚠️ Tech surpondérée à 42% — rééquilibrer',
+      '📈 Objectif 50k€ atteignable en 8 mois',
+      'Agent IA · Analyse en cours...',
+    ];
+    let msgIdx = 0;
+    const msgEl = document.getElementById('hero-ai-msg');
+    setInterval(() => {
+      if (!msgEl) return;
+      msgEl.style.opacity = '0';
+      setTimeout(() => {
+        msgIdx = (msgIdx + 1) % msgs.length;
+        msgEl.textContent = msgs[msgIdx];
+        msgEl.style.transition = 'opacity 0.5s ease';
+        msgEl.style.opacity = '1';
+      }, 400);
+    }, 3000);
+
+    // Chiffres qui varient légèrement
+    const vals = [
+      { el: 'hero-portf-val', base: 47300, range: 400, fmt: v => (v/1000).toFixed(1) + ' k€' },
+      { el: 'hero-pnl-val',   base: 3200,  range: 150, fmt: v => '+' + (v/1000).toFixed(1) + ' k€' },
+      { el: 'hero-pos1-chg', base: 0.8,   range: 0.3, fmt: v => (v>=0?'+':'') + v.toFixed(2) + '%' },
+      { el: 'hero-pos2-chg', base: 2.1,   range: 0.4, fmt: v => (v>=0?'+':'') + v.toFixed(2) + '%' },
+      { el: 'hero-pos3-chg', base: -0.4,  range: 0.2, fmt: v => (v>=0?'+':'') + v.toFixed(2) + '%' },
+    ];
+    setInterval(() => {
+      vals.forEach(({ el, base, range, fmt }) => {
+        const elNode = document.getElementById(el);
+        if (!elNode) return;
+        const v = base + (Math.random() - 0.5) * range;
+        elNode.style.transition = 'all 0.6s ease';
+        elNode.textContent = fmt(v);
+        elNode.style.color = (el.includes('pos3') && v < 0) ? '#f87171' : '#4ade80';
+      });
+    }, 2500);
+  }
+
+  // CSS pulse dot
+  if (!document.getElementById('hero-dash-style')) {
+    const s = document.createElement('style');
+    s.id = 'hero-dash-style';
+    s.textContent = '@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.8)}}';
+    document.head.appendChild(s);
+  }
 
   // Démarre quand l'auth-screen est visible
   const authEl = document.getElementById('auth-screen');
