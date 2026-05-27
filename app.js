@@ -4316,128 +4316,166 @@ async function renderHome() {
   const scoreColor = score>=7?'#1a7f5a':score>=5?'#f59e0b':'#cc2f26';
   const targetVal = objChartTarget > 1000 ? objChartTarget : (objective.target || objChartTarget || 0);
   const pctObj = targetVal > 0 ? Math.min(tv/targetVal*100,100) : 0;
-
-  // Prochain événement agenda important
   const today = new Date().toISOString().split('T')[0];
-  const nextEvent = agendaEvents.filter(e => e.date >= today && e.impact === 'high')
-    .sort((a,b) => a.date.localeCompare(b.date))[0];
-
-  // Meilleure/pire position du jour
+  const nextEvent = agendaEvents.filter(e => e.date >= today && e.impact === 'high').sort((a,b)=>a.date.localeCompare(b.date))[0];
   const sorted = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
   const best = sorted[0], worst = sorted[sorted.length-1];
 
-  document.getElementById('home-greeting').textContent = greet+' '+name+' !';
+  document.getElementById('home-greeting').textContent = greet + ' ' + name + ' !';
 
-  // MÉTRIQUES PRINCIPALES
-  document.getElementById('home-metrics').innerHTML=`
-    <div class="metric-card" onclick="nav('portfolio')" style="cursor:pointer">
-      <div class="metric-label">Valeur totale</div>
-      <div class="metric-val">${fmtK(tv)}</div>
-      <div class="metric-trend" style="color:${avgChange>=0?'#1a7f5a':'#cc2f26'}">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1)}% auj.</div>
-    </div>
-    <div class="metric-card" onclick="nav('portfolio')" style="cursor:pointer">
-      <div class="metric-label">Plus-value</div>
-      <div class="metric-val ${tpnl>=0?'green':'red'}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div>
-      <div class="metric-trend" style="color:${tpnl>=0?'#1a7f5a':'#cc2f26'}">${tpnl>=0?'+':''}${tpct.toFixed(1)}% total</div>
-    </div>
-    <div class="metric-card" onclick="nav('sante')" style="cursor:pointer">
-      <div class="metric-label">Santé</div>
-      <div class="metric-val" style="color:${scoreColor}">${score.toFixed(1)}/10</div>
-      <div class="metric-trend">Score portefeuille</div>
-    </div>
-    <div class="metric-card" onclick="nav('objectif')" style="cursor:pointer">
-      <div class="metric-label">Objectif</div>
-      <div class="metric-val">${pctObj.toFixed(1)}%</div>
-      <div class="metric-trend">${fmtK(tv)} / ${fmtK(targetVal)}</div>
-    </div>`;
-
-  // RÉSUMÉ DU JOUR
-  let dayHtml = '';
-
-  // Performance du jour
-  if (positions.length) {
-    dayHtml += `
-    <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0">
-      <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:10px">📊 Performance du jour</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        ${best ? `<div style="background:#e8f8f0;border-radius:10px;padding:10px 12px">
-          <div style="font-size:10px;color:#1a7f5a;font-weight:700;margin-bottom:2px">🏆 MEILLEURE</div>
-          <div style="font-size:14px;font-weight:800;color:#1c1c1e">${best.name}</div>
-          <div style="font-size:13px;color:#1a7f5a;font-weight:700">+${(best.change_pct||0).toFixed(2)}%</div>
-        </div>` : ''}
-        ${worst && worst !== best ? `<div style="background:#fff0f0;border-radius:10px;padding:10px 12px">
-          <div style="font-size:10px;color:#cc2f26;font-weight:700;margin-bottom:2px">📉 PLUS FAIBLE</div>
-          <div style="font-size:14px;font-weight:800;color:#1c1c1e">${worst.name}</div>
-          <div style="font-size:13px;color:#cc2f26;font-weight:700">${(worst.change_pct||0).toFixed(2)}%</div>
-        </div>` : ''}
-      </div>
-    </div>`;
+  if (!positions.length) {
+    document.getElementById('home-metrics').innerHTML = '';
+    document.getElementById('home-score').innerHTML = `
+      <div style="background:linear-gradient(135deg,#0f0f14,#1a1a24);border-radius:20px;padding:32px;text-align:center;margin-bottom:12px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(26,127,90,0.15),transparent);pointer-events:none"></div>
+        <div style="font-size:48px;margin-bottom:12px">📈</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:8px">Commence ton investissement</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.45);margin-bottom:24px;max-width:320px;margin-left:auto;margin-right:auto">Suis ton portefeuille, reçois des signaux IA et atteins tes objectifs</div>
+        <div style="display:flex;flex-direction:column;gap:10px;max-width:280px;margin:0 auto">
+          <button onclick="nav('ajouter')" style="padding:14px;background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(26,127,90,0.4)">➕ Ajouter ma première position</button>
+          <button onclick="nav('objectif')" style="padding:13px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);border-radius:14px;font-size:14px;font-weight:700;cursor:pointer">🎯 Définir mon objectif</button>
+          <button onclick="nav('news')" style="padding:13px;background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);border-radius:14px;font-size:13px;font-weight:600;cursor:pointer">📰 Explorer les marchés</button>
+        </div>
+      </div>`;
+    document.getElementById('home-alerts').innerHTML = '';
+    document.getElementById('home-obj').innerHTML = '';
+    renderPlatforms();
+    return;
   }
 
-  // Prochain événement agenda
+  // ── HERO CARD — valeur dominante ──
+  const pnlColor = tpnl >= 0 ? '#4ade80' : '#f87171';
+  const pnlBg    = tpnl >= 0 ? 'rgba(26,127,90,0.15)' : 'rgba(204,47,38,0.15)';
+  const chgColor = avgChange >= 0 ? '#4ade80' : '#f87171';
+
+  document.getElementById('home-metrics').innerHTML = `
+    <div onclick="nav('portfolio')" style="cursor:pointer;background:linear-gradient(135deg,#0f0f14,#1a1a24);border-radius:20px;padding:24px;margin-bottom:4px;position:relative;overflow:hidden;grid-column:1/-1">
+
+      <!-- Glow background -->
+      <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;background:radial-gradient(circle,${tpnl>=0?'rgba(26,127,90,0.12)':'rgba(204,47,38,0.1)'},transparent);pointer-events:none"></div>
+
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Valeur du portefeuille</div>
+          <div style="font-size:clamp(36px,6vw,52px);font-weight:900;color:#fff;letter-spacing:-2px;line-height:1" id="home-tv-counter">${fmtK(tv)}</div>
+        </div>
+        <div style="background:${pnlBg};border-radius:12px;padding:10px 14px;text-align:right">
+          <div style="font-size:20px;font-weight:900;color:${pnlColor}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div>
+          <div style="font-size:12px;color:${pnlColor};font-weight:700;opacity:0.8">${tpnl>=0?'+':''}${tpct.toFixed(1)}% total</div>
+        </div>
+      </div>
+
+      <!-- Mini stats row -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;color:${chgColor};font-weight:800">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1)}%</span>
+          <span style="font-size:12px;color:rgba(255,255,255,0.35);font-weight:600">aujourd'hui</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;color:#fff;font-weight:800">${positions.length}</span>
+          <span style="font-size:12px;color:rgba(255,255,255,0.35);font-weight:600">position${positions.length>1?'s':''}</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;font-weight:800;color:${scoreColor}">${score.toFixed(1)}/10</span>
+          <span style="font-size:12px;color:rgba(255,255,255,0.35);font-weight:600">santé</span>
+        </div>
+        ${targetVal > 0 ? `<div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;color:#a5b4fc;font-weight:800">${pctObj.toFixed(0)}%</span>
+          <span style="font-size:12px;color:rgba(255,255,255,0.35);font-weight:600">objectif</span>
+        </div>` : ''}
+      </div>
+
+      ${targetVal > 0 ? `
+      <!-- Barre objectif -->
+      <div style="margin-top:16px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;margin-bottom:6px">
+          <span>Progression objectif</span>
+          <span>${fmtK(tv)} / ${fmtK(targetVal)}</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:6px;height:6px;overflow:hidden">
+          <div style="height:100%;background:linear-gradient(90deg,#1a7f5a,#4ade80);width:${pctObj}%;border-radius:6px;transition:width 0.8s ease"></div>
+        </div>
+      </div>` : ''}
+    </div>`;
+
+  // ── WIDGETS SECONDAIRES ──
+  let dayHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">';
+
+  // Meilleure / pire position
+  if (best) {
+    dayHtml += `
+    <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border-radius:14px;padding:14px;border:1.5px solid #f0f0f0;transition:all 0.2s" onmouseover="this.style.borderColor='#1a7f5a'" onmouseout="this.style.borderColor='#f0f0f0'">
+      <div style="font-size:10px;font-weight:700;color:#1a7f5a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🏆 Meilleure</div>
+      <div style="font-size:15px;font-weight:800;color:#1c1c1e">${best.name}</div>
+      <div style="font-size:16px;font-weight:900;color:#1a7f5a;margin-top:2px">+${(best.change_pct||0).toFixed(2)}%</div>
+    </div>`;
+  }
+  if (worst && worst !== best) {
+    dayHtml += `
+    <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border-radius:14px;padding:14px;border:1.5px solid #f0f0f0;transition:all 0.2s" onmouseover="this.style.borderColor='#cc2f26'" onmouseout="this.style.borderColor='#f0f0f0'">
+      <div style="font-size:10px;font-weight:700;color:#cc2f26;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📉 Plus faible</div>
+      <div style="font-size:15px;font-weight:800;color:#1c1c1e">${worst.name}</div>
+      <div style="font-size:16px;font-weight:900;color:#cc2f26;margin-top:2px">${(worst.change_pct||0).toFixed(2)}%</div>
+    </div>`;
+  }
+  dayHtml += '</div>';
+
+  // Score santé
+  dayHtml += `
+  <div onclick="nav('sante')" style="cursor:pointer;background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;transition:all 0.2s" onmouseover="this.style.borderColor='#1c1c1e'" onmouseout="this.style.borderColor='#f0f0f0'">
+    <div>
+      <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Santé du portefeuille</div>
+      <div style="font-size:24px;font-weight:900;color:${scoreColor}">${score.toFixed(1)}<span style="font-size:14px;color:#8e8e93">/10</span></div>
+      <div style="font-size:12px;color:${scoreColor};font-weight:600;margin-top:2px">${score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️'}</div>
+    </div>
+    <div style="width:56px;height:56px;border-radius:50%;background:${score>=7?'#e8f8f0':score>=5?'#fff9e6':'#fff0f0'};border:3px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:24px">
+      ${score>=7?'💚':score>=5?'🟡':'🔴'}
+    </div>
+  </div>`;
+
+  // Prochain événement
   if (nextEvent) {
-    const evtDate = new Date(nextEvent.date);
     const isToday = nextEvent.date === today;
     const isTomorrow = nextEvent.date === new Date(Date.now()+86400000).toISOString().split('T')[0];
-    const quand = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : evtDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    const quand = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : new Date(nextEvent.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
     dayHtml += `
-    <div style="background:#fff0f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #cc2f26;cursor:pointer" onclick="setNewsFilter('agenda',document.getElementById('news-fil-agenda'));nav('news')">
-      <div style="font-size:12px;font-weight:700;color:#cc2f26;text-transform:uppercase;margin-bottom:6px">⚡ PROCHAIN ÉVÉNEMENT FORT</div>
-      <div style="font-size:15px;font-weight:800;color:#1c1c1e">${nextEvent.titre}</div>
-      <div style="font-size:13px;color:#555;margin-top:4px">📅 ${quand} à ${nextEvent.heure} · ${nextEvent.pays}</div>
-      <div style="font-size:12px;color:#cc2f26;font-weight:600;margin-top:6px">Voir dans l'agenda →</div>
+    <div onclick="setNewsFilter('agenda',document.getElementById('news-fil-agenda'));nav('news')" style="cursor:pointer;background:#fff0f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #cc2f26;transition:all 0.2s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+      <div style="font-size:10px;font-weight:700;color:#cc2f26;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">⚡ Prochain événement fort</div>
+      <div style="font-size:14px;font-weight:800;color:#1c1c1e">${nextEvent.titre}</div>
+      <div style="font-size:12px;color:#7f1d1d;margin-top:4px;font-weight:600">${quand} à ${nextEvent.heure} → Voir l'agenda</div>
     </div>`;
   }
 
-  // Progression objectif
-  if (targetVal > 0) {
-    const yearsLeft = objChartYears - (tv > 0 ? Math.log(tv/objChartCapital||1)/Math.log(1.07) : 0);
+  // Plateformes
+  const platforms = {};
+  positions.forEach(p=>{ const v=p.qty*p.price; platforms[p.platform||'Autre']=(platforms[p.platform||'Autre']||0)+v; });
+  if (Object.keys(platforms).length > 1) {
     dayHtml += `
-    <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;cursor:pointer" onclick="nav('objectif')">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase">🎯 Mon objectif</div>
-        <div style="font-size:13px;font-weight:800;color:#1c1c1e">${fmtK(tv)} / ${fmtK(objChartTarget)}</div>
-      </div>
-      <div style="background:#f0f0f0;border-radius:6px;height:8px;overflow:hidden;margin-bottom:6px">
-        <div style="height:100%;background:linear-gradient(90deg,#1a7f5a,#4ade80);width:${pctObj}%;border-radius:6px;transition:width 0.5s"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:#8e8e93">
-        <span>${pctObj.toFixed(1)}% atteint</span>
-        <span>Reste : ${fmtK(Math.max(targetVal-tv,0))}</span>
-      </div>
+    <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #f0f0f0">
+      <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Par plateforme</div>
+      ${Object.entries(platforms).map(([name,val])=>`
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px"><span>${name}</span><span>${fmtK(val)}</span></div>
+        <div style="background:#f0f0f0;border-radius:4px;height:5px;overflow:hidden"><div style="height:100%;background:#1c1c1e;width:${(val/tv*100)}%;border-radius:4px"></div></div>
+      </div>`).join('')}
     </div>`;
   }
 
-  // Alertes rapides
-  const alerts = buildAlertsData();
-  if (alerts.filter(a=>a.type==='err').length > 0) {
-    dayHtml += `
-    <div style="background:#fff0f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #cc2f26">
-      <div style="font-size:12px;font-weight:700;color:#cc2f26;text-transform:uppercase;margin-bottom:8px">⚠️ Alertes</div>
-      ${alerts.filter(a=>a.type==='err').map(a=>`<div style="font-size:13px;color:#1c1c1e;margin-bottom:4px">${a.msg}</div>`).join('')}
-    </div>`;
-  }
-
-  // Actions rapides si portefeuille vide
-  if (!positions.length) {
-    dayHtml = `
-    <div style="background:#f9f9f9;border-radius:14px;padding:24px;text-align:center;margin-bottom:10px">
-      <div style="font-size:32px;margin-bottom:12px">📈</div>
-      <div style="font-size:16px;font-weight:800;color:#1c1c1e;margin-bottom:6px">Commence ton investissement</div>
-      <div style="font-size:13px;color:#8e8e93;margin-bottom:16px">Suis ton portefeuille et reçois des conseils personnalisés</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <button onclick="nav('ajouter')" style="background:#1c1c1e;color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer">➕ Ajouter ma première position</button>
-        <button onclick="nav('objectif')" style="background:#f0f0f0;color:#1c1c1e;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer">🎯 Définir mon objectif</button>
-        <button onclick="nav('news')" style="background:#f0f0f0;color:#1c1c1e;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer">📰 Explorer les marchés</button>
-      </div>
-    </div>`;
-  }
+  // Actions rapides
+  dayHtml += `
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+    <button onclick="nav('ajouter')" style="padding:12px 8px;background:#f9f9f9;border:1.5px solid #f0f0f0;border-radius:12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#1c1c1e';this.style.color='#fff'" onmouseout="this.style.background='#f9f9f9';this.style.color='#1c1c1e'">➕ Ajouter</button>
+    <button onclick="nav('decision')" style="padding:12px 8px;background:#f9f9f9;border:1.5px solid #f0f0f0;border-radius:12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#1c1c1e';this.style.color='#fff'" onmouseout="this.style.background='#f9f9f9';this.style.color='#1c1c1e'">🤔 Décision</button>
+    <button onclick="nav('ai')" style="padding:12px 8px;background:#f9f9f9;border:1.5px solid #f0f0f0;border-radius:12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#1c1c1e';this.style.color='#fff'" onmouseout="this.style.background='#f9f9f9';this.style.color='#1c1c1e'">🤖 Agent IA</button>
+  </div>`;
 
   document.getElementById('home-score').innerHTML = dayHtml;
   document.getElementById('home-alerts').innerHTML = '';
   document.getElementById('home-obj').innerHTML = '';
   renderPlatforms();
 }
+
 
 function buildAlertsData() {
   const tv = positions.reduce((a,p) => a + p.qty*p.price, 0);
