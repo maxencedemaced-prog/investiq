@@ -4756,6 +4756,35 @@ function renderPortfolio() {
   positions.forEach(p=>{if(!posSignals[p.id])generatePosSignal(p);});
   // Load transactions if visible
   if (document.getElementById('tx-list')) { loadTransactions().then(renderTransactions); }
+
+  // ── Animations portefeuille ──
+  // Fade-in des cartes positions
+  const posCards = document.querySelectorAll('#pos-grid .pos-card');
+  posCards.forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(14px)';
+    card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    setTimeout(() => {
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, i * 70 + 50);
+  });
+  // Compteurs métriques animés
+  setTimeout(() => {
+    const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+    const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+    const tpnl = tv - ti;
+    // Animer les valeurs dans les metric-cards
+    document.querySelectorAll('#port-metrics .metric-val').forEach((el, i) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(8px)';
+      el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      setTimeout(() => {
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      }, i * 80 + 100);
+    });
+  }, 50);
 }
 
 async function generatePosSignal(p) {
