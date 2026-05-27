@@ -885,7 +885,8 @@ async function deleteObjective(id) {
   }
   if (activeObjId) applyObjData(allObjectives.find(o => o.id === activeObjId) || allObjectives[0]);
   renderMultiObjChart();
-  showToast('Objectif supprimé');
+  showValidatedChart();
+  showToast('✓ Objectif supprimé');
 }
 
 // Sauvegarder la simulation DCA comme nouvel objectif — avec plan IA
@@ -5013,10 +5014,24 @@ function resetObj() {
 async function generateObjPlan() {
   // Limite max objectifs
   if (allObjectives.length >= 3) {
-    showToast('⚠ Maximum 3 objectifs — supprime-en un pour en créer un nouveau.');
+    // Affiche le message dans le wizard lui-même
     document.getElementById('obj-wizard').style.display = 'none';
     document.getElementById('obj-results').style.display = 'block';
     renderMultiObjChart();
+    // Bandeau rouge persistant en haut de la section objectif
+    const existing = document.getElementById('obj-max-banner');
+    if (!existing) {
+      const banner = document.createElement('div');
+      banner.id = 'obj-max-banner';
+      banner.style.cssText = 'background:#fff0f0;border:2px solid #cc2f26;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px';
+      banner.innerHTML = `<div>
+        <div style="font-size:14px;font-weight:800;color:#cc2f26">⚠ Maximum 3 objectifs atteint</div>
+        <div style="font-size:13px;color:#7f1d1d;margin-top:3px">Supprime un objectif existant (bouton ×) pour en créer un nouveau.</div>
+      </div>
+      <button onclick="document.getElementById('obj-max-banner').remove()" style="background:#cc2f26;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">OK</button>`;
+      const resultsEl = document.getElementById('obj-results');
+      if (resultsEl) resultsEl.insertBefore(banner, resultsEl.firstChild);
+    }
     return;
   }
 
