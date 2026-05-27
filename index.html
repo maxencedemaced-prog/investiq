@@ -273,55 +273,163 @@
 </div>
 
 <script>
-// Animation canvas hero
+// ===== HERO ANIMATION PREMIUM =====
 (function() {
   const canvas = document.getElementById('hero-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  let W, H, particles = [], animFrame;
+  let W, H, particles = [], lines = [], animFrame, t = 0;
 
   function resize() {
     W = canvas.width = canvas.offsetWidth;
     H = canvas.height = canvas.offsetHeight;
   }
 
+  // Particules flottantes
   function initParticles() {
     particles = [];
-    const count = Math.floor(W / 80);
+    const count = Math.min(Math.floor(W / 60), 20);
     for (let i = 0; i < count; i++) {
       particles.push({
         x: Math.random() * W, y: Math.random() * H,
-        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-        r: Math.random() * 1.5 + 0.5,
-        color: Math.random() > 0.5 ? '26,127,90' : '99,102,241'
+        vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+        r: Math.random() * 1.8 + 0.5,
+        color: Math.random() > 0.6 ? '26,127,90' : Math.random() > 0.5 ? '99,102,241' : '255,255,255',
+        opacity: Math.random() * 0.4 + 0.1
       });
     }
   }
 
-  function drawCurve() {
-    // Courbe montante stylisée
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(26,127,90,0.15)';
-    ctx.lineWidth = 1.5;
-    const pts = [];
-    for (let i = 0; i <= 20; i++) {
-      pts.push({ x: (W / 20) * i, y: H * 0.7 - Math.pow(i / 20, 1.5) * H * 0.4 + Math.sin(i * 0.8 + Date.now()/3000) * 15 });
+  // Données de graphique simulées
+  function generateChartData(seed, points) {
+    const data = [];
+    let val = 40 + seed * 10;
+    for (let i = 0; i < points; i++) {
+      val += (Math.random() - 0.45) * 8;
+      val = Math.max(10, Math.min(90, val));
+      data.push(val);
     }
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) {
-      const cp = { x: (pts[i-1].x + pts[i].x) / 2, y: (pts[i-1].y + pts[i].y) / 2 };
-      ctx.quadraticCurveTo(pts[i-1].x, pts[i-1].y, cp.x, cp.y);
+    return data;
+  }
+
+  const chart1 = generateChartData(0, 60);
+  const chart2 = generateChartData(1, 60);
+  const chart3 = generateChartData(2, 60);
+
+  function drawChart(data, yOffset, color, alpha, width = 1.5) {
+    if (!data.length) return;
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(${color},${alpha})`;
+    ctx.lineWidth = width;
+    ctx.lineJoin = 'round';
+    const xStep = W / (data.length - 1);
+    for (let i = 0; i < data.length; i++) {
+      const x = i * xStep;
+      const y = yOffset + (data[i] / 100) * (H * 0.35);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     }
     ctx.stroke();
+
     // Fill sous la courbe
-    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
-    ctx.fillStyle = 'rgba(26,127,90,0.04)';
+    ctx.lineTo(W, H);
+    ctx.lineTo(0, H);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(${color},${alpha * 0.08})`;
     ctx.fill();
   }
 
+  // Sphère IA centrale (cercles concentriques pulsants)
+  function drawAISphere() {
+    const cx = W * 0.72, cy = H * 0.45;
+    const maxR = Math.min(W, H) * 0.22;
+    const pulse = Math.sin(t * 0.02) * 0.15 + 0.85;
+
+    // Anneaux concentriques
+    for (let i = 4; i >= 0; i--) {
+      const r = maxR * (0.2 + i * 0.2) * pulse;
+      const alpha = (0.06 - i * 0.01) * pulse;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(26,127,90,${alpha})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Nœud central lumineux
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 0.15);
+    grad.addColorStop(0, `rgba(74,222,128,${0.4 * pulse})`);
+    grad.addColorStop(0.5, `rgba(26,127,90,${0.15 * pulse})`);
+    grad.addColorStop(1, 'rgba(26,127,90,0)');
+    ctx.beginPath();
+    ctx.arc(cx, cy, maxR * 0.15, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Points orbitaux
+    for (let i = 0; i < 6; i++) {
+      const angle = (t * 0.015 + i * Math.PI / 3);
+      const orbitR = maxR * 0.5;
+      const px = cx + Math.cos(angle) * orbitR;
+      const py = cy + Math.sin(angle) * orbitR * 0.4;
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(74,222,128,${0.5 + Math.sin(angle * 2) * 0.3})`;
+      ctx.fill();
+      // Ligne vers le centre
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(px, py);
+      ctx.strokeStyle = `rgba(26,127,90,0.08)`;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+  }
+
+  // Grille de fond subtile
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+    ctx.lineWidth = 0.5;
+    const step = 48;
+    for (let x = 0; x < W; x += step) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += step) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+  }
+
+  // Ticker chiffres flottants
+  const floatingNums = ['+2.4%', '€53.6k', '+0.8%', 'ETF', 'IWDA', '+12%', 'DCA', '7%/an'];
+  const floatPositions = floatingNums.map((_, i) => ({
+    x: 0.05 + (i % 4) * 0.22, y: 0.1 + Math.floor(i / 4) * 0.7,
+    vy: -(0.0002 + i * 0.00005), opacity: 0.06 + Math.random() * 0.06
+  }));
+
+  function drawFloatingText() {
+    floatPositions.forEach((pos, i) => {
+      pos.y += pos.vy;
+      if (pos.y < -0.05) pos.y = 1.05;
+      ctx.font = '600 11px -apple-system, sans-serif';
+      ctx.fillStyle = `rgba(255,255,255,${pos.opacity})`;
+      ctx.fillText(floatingNums[i], pos.x * W, pos.y * H);
+    });
+  }
+
   function draw() {
+    t++;
     ctx.clearRect(0, 0, W, H);
-    drawCurve();
+    drawGrid();
+    // Courbes financières animées
+    const offset = (t * 0.3) % 60;
+    const d1 = [...chart1.slice(offset|0), ...chart1.slice(0, offset|0)];
+    const d2 = [...chart2.slice((offset*0.7)|0), ...chart2.slice(0, (offset*0.7)|0)];
+    const d3 = [...chart3.slice((offset*0.4)|0), ...chart3.slice(0, (offset*0.4)|0)];
+    drawChart(d1, H * 0.15, '26,127,90', 0.2, 1.5);
+    drawChart(d2, H * 0.25, '99,102,241', 0.12, 1);
+    drawChart(d3, H * 0.35, '255,255,255', 0.06, 0.8);
+    // Sphère IA
+    drawAISphere();
     // Particules
     particles.forEach(p => {
       p.x += p.vx; p.y += p.vy;
@@ -329,18 +437,18 @@
       if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${p.color},0.5)`;
+      ctx.fillStyle = `rgba(${p.color},${p.opacity})`;
       ctx.fill();
     });
-    // Connexions
+    // Connexions particules proches
     for (let i = 0; i < particles.length; i++) {
       for (let j = i + 1; j < particles.length; j++) {
         const dx = particles[i].x - particles[j].x;
         const dy = particles[i].y - particles[j].y;
         const d = Math.sqrt(dx*dx + dy*dy);
-        if (d < 120) {
+        if (d < 100) {
           ctx.beginPath();
-          ctx.strokeStyle = `rgba(26,127,90,${0.08 * (1 - d/120)})`;
+          ctx.strokeStyle = `rgba(26,127,90,${0.06 * (1 - d/100)})`;
           ctx.lineWidth = 0.5;
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(particles[j].x, particles[j].y);
@@ -348,14 +456,16 @@
         }
       }
     }
+    drawFloatingText();
     animFrame = requestAnimationFrame(draw);
   }
 
   function start() {
-    resize(); initParticles(); draw();
-    // Compteurs animés
+    resize();
+    initParticles();
+    draw();
     animateCount('hero-count-users', 12847, '+');
-    animateCount('hero-count-portf', 8200, '');
+    animateCount('hero-count-portf', 8241, '');
   }
 
   function animateCount(id, target, prefix) {
@@ -370,20 +480,30 @@
     }, 16);
   }
 
-  window.addEventListener('resize', () => { cancelAnimationFrame(animFrame); resize(); initParticles(); draw(); });
-
-  // Start quand auth-screen est visible
-  const obs = new MutationObserver(() => {
-    const el = document.getElementById('auth-screen');
-    if (el && el.style.display !== 'none') { cancelAnimationFrame(animFrame); start(); }
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(animFrame);
+    resize(); initParticles(); draw();
   });
-  obs.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
-  // Démarre immédiatement
-  if (document.readyState === 'complete') { start(); }
-  else { window.addEventListener('load', start); }
+
+  // Démarre quand l'auth-screen est visible
+  const authEl = document.getElementById('auth-screen');
+  if (authEl && authEl.style.display !== 'none') {
+    if (document.readyState === 'complete') start();
+    else window.addEventListener('load', start);
+  } else {
+    window.addEventListener('load', () => {
+      const el = document.getElementById('auth-screen');
+      if (el && el.style.display !== 'none') start();
+    });
+    const obs = new MutationObserver(() => {
+      const el = document.getElementById('auth-screen');
+      if (el && el.style.display !== 'none') { cancelAnimationFrame(animFrame); start(); obs.disconnect(); }
+    });
+    obs.observe(document.body, { subtree:true, attributes:true, attributeFilter:['style'] });
+  }
 })();
 
-// Switcher onglets
+// Switcher onglets auth
 function _switchAuthStyle(tab) {
   const isLogin = tab === 'login';
   const loginBtn = document.getElementById('tab-login');
@@ -399,13 +519,9 @@ function _switchAuthStyle(tab) {
     signupBtn.style.fontWeight = !isLogin ? '700' : '600';
   }
 }
-// Override switchAuth pour aussi mettre à jour le style
-const _origSwitchAuth = window.switchAuth;
 window.addEventListener('load', function() {
   const orig = window.switchAuth;
-  if (orig) {
-    window.switchAuth = function(tab) { orig(tab); _switchAuthStyle(tab); };
-  }
+  if (orig) window.switchAuth = function(tab) { orig(tab); _switchAuthStyle(tab); };
 });
 </script>
 <div id="app" style="display:none">
