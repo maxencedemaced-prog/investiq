@@ -4177,6 +4177,10 @@ function nav(page) {
   const btn = document.getElementById('nav-'+page);
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
+  // Sync bottom nav mobile
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  const bnavBtn = document.getElementById('bnav-'+page);
+  if (bnavBtn) bnavBtn.classList.add('active');
   closeSidebar();
   const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async () => {
   // Essaie d'abord de recharger depuis Supabase
