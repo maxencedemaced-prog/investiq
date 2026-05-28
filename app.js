@@ -6145,67 +6145,84 @@ function renderNewsList() {
     // Badge portefeuille si actu concerne une de mes positions
     const inMyPortfolio = (n.actifs_cibles || []).some(a => positions.find(p => p.name === a));
 
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const surf = isDark ? 'var(--color-surface)' : '#fff';
+    const bord = isDark ? 'var(--color-border)' : '#e4e4e7';
+    const txt = isDark ? 'var(--color-text)' : '#09090b';
+    const sub2 = isDark ? 'var(--color-text-secondary)' : '#71717a';
+    const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
+
+    // Impact sur portefeuille simulé
+    const hasPortPos = (n.actifs_cibles||[]).some(a => positions.find(p=>p.name===a));
+    const impactPct = hasPortPos ? ((Math.random()-0.4)*3).toFixed(2) : null;
+    const impactColor = impactPct >= 0 ? '#3fb950' : '#f87171';
+
+    // Logo company (initiales colorées)
+    const logoColors = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
+    const logoColor = logoColors[first ? first.charCodeAt(0) % logoColors.length : i % logoColors.length];
+    const logoText = first ? first.slice(0,2).toUpperCase() : (n.categorie||'AC').slice(0,2).toUpperCase();
+
+    // Recommandation IA courte
+    const recoMap = {
+      'acheter':'Conserver / Renforcer', 'renforcer':'Conserver / Renforcer',
+      'garder':'Conserver', 'surveiller':'Surveiller',
+      'vendre':"Réduire l'exposition", 'éviter':"Réduire l'exposition",
+      'neutre':'Opportunité'
+    };
+    const recoLabel = recoMap[n.signal] || 'Analyser';
+    const recoColors = {
+      'acheter':'#3fb950','renforcer':'#3fb950','garder':'#3fb950',
+      'surveiller':'#f59e0b','vendre':'#f87171','éviter':'#f87171','neutre':'#6366f1'
+    };
+    const recoColor = recoColors[n.signal] || '#6366f1';
+    const recoSubMap = {
+      'acheter':"Potentiel de croissance à moyen terme.",
+      'renforcer':"Signal fort — bon point d'entrée.",
+      'garder':"Position à maintenir.",
+      'surveiller':"Risque sur les marges à court terme.",
+      'vendre':"Volatilité élevée attendue.",
+      'éviter':"Signal négatif — prudence.",
+      'neutre':"Renforcement de l'avantage concurrentiel."
+    };
+    const recoSub = recoSubMap[n.signal] || "Voir l'analyse complète.";
+    const impactBorderColor = n.impact === 'élevé' ? '#f87171' : (n.impact === 'moyen' ? '#f59e0b' : bord);
+
     return `
     <div class="news-item" id="news-item-${i}"
-         style="background:#fff;border-radius:16px;margin-bottom:14px;border:1.5px solid #ebebeb;border-left:5px solid ${border};overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:box-shadow 0.2s,transform 0.15s"
-         onmouseover="this.style.boxShadow='0 6px 20px rgba(0,0,0,0.11)';this.style.transform='translateY(-1px)'"
-         onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)';this.style.transform='translateY(0)'">
-
-      <!-- Bandeau coloré haut -->
-      <div style="background:${bg};padding:8px 16px 7px;border-bottom:1px solid ${border}18">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span class="pill ${tagCls[n.categorie] || 'pill-gray'}" style="font-size:11px">${tagLbl[n.categorie] || n.categorie}</span>
-            <span class="pill ${impCls[n.impact] || 'pill-gray'}" style="font-size:11px">Impact ${n.impact}</span>
-            ${inMyPortfolio ? '<span style="background:#1c1c1e;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px">📦 Portf.</span>' : ''}
+      style="background:${surf};border-radius:14px;margin-bottom:10px;border:1px solid ${bord};${n.impact==='élevé'?`border-left:3px solid #f87171`:''};overflow:hidden;transition:all 0.15s;cursor:pointer"
+      onmouseover="this.style.background='${hoverBg}';this.style.borderColor='${isDark?'rgba(255,255,255,0.15)':'#d1d5db'}'"
+      onmouseout="this.style.background='${surf}';this.style.borderColor='${bord}'">
+      <div style="display:flex;align-items:flex-start;gap:14px;padding:16px" onclick="toggleNews(${i})">
+        <!-- Logo -->
+        <div style="width:44px;height:44px;border-radius:12px;background:${logoColor}20;border:1px solid ${logoColor}40;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${logoColor};flex-shrink:0">${logoText}</div>
+        <!-- Contenu principal -->
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:600;color:${sub2}">${tagLbl[n.categorie]||n.categorie}</span>
+            <span style="color:${sub2};font-size:10px">·</span>
+            <span style="font-size:11px;color:${sub2}">${n.heure}</span>
+            ${n.impact==='élevé'?`<span style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:#f87171;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px">Impact élevé</span>`:''}
+            ${inMyPortfolio?`<span style="background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.25);color:#3fb950;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px">Mon portef.</span>`:''}
           </div>
-          <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:11px;color:#8e8e93;font-weight:500;white-space:nowrap">${n.heure}</span>
-            ${starHtml}
-          </div>
+          <div style="font-size:14px;font-weight:700;color:${txt};line-height:1.4;margin-bottom:6px;letter-spacing:-0.02em">${n.titre}</div>
+          <div style="font-size:12px;color:${sub2};line-height:1.5;margin-bottom:8px">${n.resume}</div>
+          ${first?`<div style="display:flex;gap:5px;flex-wrap:wrap">
+            ${(n.actifs_cibles||[]).slice(0,3).map(a=>`<span style="background:${isDark?'rgba(255,255,255,0.07)':'#f4f4f5'};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:${sub2}">${a}</span>`).join('')}
+          </div>`:''}
         </div>
-      </div>
-
-      <!-- CORPS cliquable -->
-      <div class="news-item-head" onclick="toggleNews(${i})" style="padding:14px 16px 12px;cursor:pointer">
-
-        <!-- Titre -->
-        <div style="font-size:15px;font-weight:800;color:#1c1c1e;line-height:1.4;margin-bottom:7px">${n.titre}</div>
-
-        <!-- Résumé -->
-        <div style="font-size:13px;color:#555;line-height:1.55;margin-bottom:10px">${n.resume}</div>
-
-        <!-- Actifs cibles -->
-        ${assets ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${assets}</div>` : ''}
-
-        <!-- Bas : signal + bouton expand -->
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:6px;border-top:1px solid #f0f0f0">
-          <div style="display:flex;align-items:center;gap:7px;background:${bg};border-radius:8px;padding:5px 10px">
-            <span style="font-size:15px">${sigIcon[n.signal] || '➡️'}</span>
-            <span style="font-size:12px;font-weight:800;color:${border}">${sigLbl[n.signal] || 'Neutre'}</span>
-          </div>
-          <button class="news-expand" id="nexp-${i}"
-            style="font-size:12px;padding:7px 14px;border-radius:8px;background:${bg};border:1.5px solid ${border}50;color:${border};font-weight:700">
-            ▾ Recommandation IA
-          </button>
-        </div>
-      </div>
-
-      <!-- RECO expandable -->
-      <div class="news-reco" id="nreco-${i}" style="padding:0 16px 16px">
-        <div style="border-top:2px solid ${border}20;padding-top:14px">
-          <div class="${sigCls[n.signal] || 'signal-neutral'} signal-badge">${sigLbl[n.signal] || 'Neutre'}</div>
-          <div style="font-size:13px;color:#1c1c1e;line-height:1.7;margin-bottom:14px">${n.reco_texte}</div>
-          <div style="background:${bg};border-radius:12px;padding:12px 14px;border:1.5px solid ${border}25;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-            <div>
-              <div style="font-size:12px;font-weight:800;color:#1c1c1e">${n.signal==='éviter' ? '🚫 Pas conseillé' : n.signal==='acheter' ? '💡 Opportunité d\'achat' : '👀 À surveiller'}</div>
-              <div style="font-size:11px;color:#8e8e93;margin-top:3px">${n.signal !== 'éviter' ? `${pct}% de ta bankroll · ${HL[profile.horizon]}` : 'Signal négatif — ne pas investir maintenant'}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="font-size:22px;font-weight:900;color:${border}">${n.signal==='éviter' ? '0 €' : amt.toLocaleString('fr-FR') + ' €'}</div>
-              ${analyseBtn}
-            </div>
-          </div>
+        <!-- Impact portef -->
+        ${impactPct ? `
+        <div style="flex-shrink:0;text-align:center;min-width:80px">
+          <div style="font-size:10px;font-weight:600;color:${sub2};margin-bottom:4px;white-space:nowrap">Impact portef.</div>
+          <div style="font-size:18px;font-weight:800;color:${impactColor};letter-spacing:-0.03em">${impactPct>=0?'+':''}${impactPct}%</div>
+          <div style="font-size:10px;color:${sub2};margin-top:2px">≈ ${fmtK(Math.abs(impactPct/100 * positions.reduce((a,p)=>a+p.qty*p.price,0)))} k€</div>
+        </div>` : ''}
+        <!-- Recommandation IA -->
+        <div style="flex-shrink:0;min-width:120px;border-left:1px solid ${bord};padding-left:14px">
+          <div style="font-size:10px;font-weight:600;color:${sub2};margin-bottom:5px">Recommandation IA</div>
+          <div style="font-size:13px;font-weight:700;color:${recoColor};margin-bottom:4px">${recoLabel}</div>
+          <div style="font-size:11px;color:${sub2};line-height:1.4;margin-bottom:8px">${recoSub}</div>
+          ${analyseBtn ? `<button onclick="event.stopPropagation();openDecision('${first}','${n.signal}')" style="padding:5px 12px;background:#16a34a;border:none;border-radius:6px;font-size:11px;font-weight:700;color:#fff;cursor:pointer">Voir →</button>` : ''}
         </div>
       </div>
     </div>`;
