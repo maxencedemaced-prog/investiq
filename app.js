@@ -3780,6 +3780,7 @@ async function initApp(user) {
   setTimeout(() => { refreshPrices(); }, 2000);
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
   if ('Notification' in window) Notification.requestPermission();
+  initTheme();
   } catch(e) { console.error('initApp error:', e); alert('Erreur de chargement: ' + e.message); }
 }
 
@@ -4233,6 +4234,39 @@ function animateCounter(el, to, duration=1000) {
     else el.textContent = to.toLocaleString('fr-FR');
   }
   requestAnimationFrame(step);
+}
+
+
+// ===== DARK MODE =====
+function initTheme() {
+  const saved = localStorage.getItem('iq_theme') || 'light';
+  applyTheme(saved);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('iq_theme', theme);
+  const icon = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  if (theme === 'dark') {
+    if (icon) icon.textContent = '☀️';
+    if (label) label.textContent = 'Clair';
+  } else {
+    if (icon) icon.textContent = '🌙';
+    if (label) label.textContent = 'Sombre';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  // Petite animation du bouton
+  const btn = document.getElementById('theme-toggle');
+  if (btn) {
+    btn.style.transform = 'scale(0.92)';
+    setTimeout(() => btn.style.transform = '', 150);
+  }
 }
 
 // ===== NAV =====
