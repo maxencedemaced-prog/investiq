@@ -4427,6 +4427,54 @@ function _logoFallback(img, text, color) {
   if (p) { p.style.background = color + '20'; p.style.border = '1px solid ' + color + '40'; p.innerHTML = '<span style="font-size:' + Math.round(p.offsetWidth * 0.35 || 13) + 'px;font-weight:800;color:' + color + '">' + text + '</span>'; }
 }
 
+
+function selectIntent(btn, intent) {
+  document.querySelectorAll('#d-intents .d-intent-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  btn.setAttribute('data-intent', intent);
+}
+
+function setDecisionAmount(val) {
+  const num = parseInt(val.replace(/[^0-9]/g,''));
+  const el = document.getElementById('d-amount-display');
+  if (el) el.textContent = num.toLocaleString('fr-FR') + ' €';
+  const slider = document.getElementById('d-amount-slider');
+  if (slider) slider.value = Math.min(num/100, 100);
+}
+
+function updateDecisionAmount(val) {
+  const amount = Math.round(val * 50);
+  const el = document.getElementById('d-amount-display');
+  if (el) el.textContent = amount.toLocaleString('fr-FR') + ' €';
+}
+
+function initDecisionPage() {
+  // Afficher les positions rapides
+  const el = document.getElementById('d-quick-pos');
+  if (!el) return;
+  const dedupMap = {};
+  positions.forEach(p => { const k = p.name; if (!dedupMap[k]) dedupMap[k] = p; });
+  const dedup = Object.values(dedupMap).slice(0, 8);
+  el.innerHTML = dedup.map(p => {
+    const pnl = ((p.price - p.pru)/p.pru*100).toFixed(1);
+    const color = parseFloat(pnl) >= 0 ? '#3fb950' : '#f87171';
+    return `<button onclick="prefillDecision('${p.name}','${p.type||'Action'}')"
+      style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;cursor:pointer;transition:all 0.15s;font-family:inherit"
+      onmouseover="this.style.borderColor='${color}'" onmouseout="this.style.borderColor='var(--color-border)'">
+      ${getCompanyLogo(p.name, p.name, 24, 7)}
+      <div style="text-align:left">
+        <div style="font-size:12px;font-weight:700;color:var(--color-text)">${p.name}</div>
+        <div style="font-size:10px;color:${color}">${parseFloat(pnl)>=0?'+':''}${pnl}%</div>
+      </div>
+    </button>`;
+  }).join('');
+}
+
+function prefillDecision(ticker, type) {
+  const input = document.getElementById('d-name');
+  if (input) { input.value = ticker; input.dispatchEvent(new Event('input')); }
+}
+
 // ===== NAV =====
 function nav(page) {
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
