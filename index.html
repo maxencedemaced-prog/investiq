@@ -1423,7 +1423,9 @@ window.addEventListener('load', function() {
   <style>
     .d-intent-btn.active .d-intent-check { opacity: 1 !important; }
     .d-intent-btn.active { border-color: #3fb950 !important; background: rgba(63,185,80,0.08) !important; }
-    [data-theme="dark"] .d-intent-btn.active { background: rgba(63,185,80,0.12) !important; }
+    [data-theme="dark"] .d-intent-btn { background: var(--color-surface-raised) !important; border-color: var(--color-border) !important; color: var(--color-text) !important; }
+    [data-theme="dark"] .d-intent-btn.active { background: rgba(63,185,80,0.12) !important; border-color: #3fb950 !important; }
+    [data-theme="dark"] .d-intent-btn:hover:not(.active) { background: rgba(255,255,255,0.06) !important; border-color: var(--color-border-strong) !important; }
   </style>
 </section>
 
