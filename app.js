@@ -310,83 +310,9 @@ function renderETFCards(etfs, containerEl) {
   </div>
   `;
 
-  // Ajouter section Plans marchés
-  renderMarketPlans(containerEl, etfs);
 }
 
-async function renderMarketPlans(containerEl, etfs) {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const surface = isDark ? 'var(--color-surface-raised)' : '#fff';
-  const border = isDark ? 'var(--color-border)' : '#e4e4e7';
-  const text = isDark ? 'var(--color-text)' : '#09090b';
-  const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
 
-  const scenarios = [
-    {ticker:'IWDA.L', name:'iShares MSCI World ETF', badge:'Actuel', badgeColor:'#3fb950', rendement:8.2, volatilite:14, risque:'Modéré', color:'#3fb950'},
-    {ticker:'VYM', name:'Vanguard High Dividend Yield ETF', badge:'Actuel', badgeColor:'#3fb950', rendement:6.5, volatilite:12, risque:'Modéré', color:'#6366f1'},
-    {ticker:'TTE.PA', name:'TotalEnergies SE', badge:'', badgeColor:'', rendement:10.7, volatilite:18, risque:'Élevé', color:'#f59e0b'},
-    {ticker:'SAN.PA', name:'Sanofi SA', badge:'', badgeColor:'', rendement:4.2, volatilite:10, risque:'Modéré', color:'#ec4899'},
-    {ticker:'AIR.PA', name:'Airbus SE', badge:'', badgeColor:'', rendement:11.7, volatilite:20, risque:'Élevé', color:'#06b6d4'},
-    {ticker:'IBGL', name:'iShares Euro Govt Bond ETF', badge:'', badgeColor:'', rendement:3.1, volatilite:7, risque:'Faible', color:'#8b5cf6'},
-  ];
-
-  const monthly = objChartMonthly || 200;
-  const years = objChartYears || 10;
-  const capital = objChartCapital || 0;
-  const now = new Date().toLocaleDateString('fr-FR');
-
-  const section = document.createElement('div');
-  section.innerHTML = `
-  <div style="margin-top:20px;border-top:1px solid ${border};padding-top:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:14px;font-weight:700;color:${text};letter-spacing:-0.03em">🟠 Plans marchés</span>
-        <span style="font-size:12px;color:${sub}">— Comparaison de valeurs</span>
-      </div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:${sub};margin-bottom:14px">
-      <span>Basé sur objectif : ${fmtK(capital + monthly * years * 12 * 0.07)}</span>
-      <span>Mis à jour il y a moins d'1h · ${now}</span>
-    </div>
-    ${scenarios.map(s => {
-      const projVal = Math.round((capital + monthly*years*12) * (1 + s.rendement/100));
-      const diff = ((projVal / (capital + monthly*years*12) - 1)*100).toFixed(1);
-      const diffColor = parseFloat(diff) >= 0 ? '#3fb950' : '#f87171';
-      return `
-      <div onclick="openDecision('${s.ticker}','analyser')" style="background:${surface};border:1px solid ${border};border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden"
-        onmouseover="this.style.borderColor='${s.color}'" onmouseout="this.style.borderColor='${border}'">
-        <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${s.color}"></div>
-        <div style="display:flex;align-items:center;gap:12px;padding-left:8px">
-          <div style="width:36px;height:36px;border-radius:10px;background:${s.color}20;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${s.color};flex-shrink:0">${s.ticker.slice(0,2).toUpperCase()}</div>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
-              <span style="font-size:13px;font-weight:700;color:${text}">${s.name}</span>
-              <span style="font-size:10px;color:${sub}">(${s.ticker})</span>
-              <span style="font-size:11px;font-weight:600;color:${sub}">· +${monthly.toLocaleString('fr-FR')}€/mois</span>
-              ${s.badge ? `<span style="background:${s.badgeColor}20;border:1px solid ${s.badgeColor}40;color:${s.badgeColor};font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px">${s.badge}</span>` : ''}
-            </div>
-            <div style="font-size:11px;color:${sub}">Rendement annuel : <strong style="color:${text}">${s.rendement}%</strong> · Volatilité : <strong style="color:${text}">${s.volatilite}%</strong> · Niveau de risque : <strong style="color:${text}">${s.risque}</strong></div>
-            <div style="font-size:11px;color:${sub};margin-top:2px">Valeur projetée : <strong style="color:${text}">${fmtK(projVal)} k€</strong></div>
-            <div style="margin-top:6px;background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:3px;overflow:hidden">
-              <div style="height:100%;background:${s.color};width:${Math.min(Math.abs(parseFloat(diff)),100)}%;border-radius:99px"></div>
-            </div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:14px;font-weight:800;color:${diffColor}">${parseFloat(diff)>=0?'+':''}${diff}%</div>
-            <div style="font-size:10px;color:${sub};margin-bottom:4px">vs plan actuel</div>
-            <button style="padding:3px 8px;background:none;border:1px solid ${s.color}40;border-radius:6px;font-size:10px;font-weight:600;color:${s.color};cursor:pointer">Analyser le scénario</button>
-          </div>
-        </div>
-      </div>`;
-    }).join('')}
-    <div style="text-align:center;padding:12px;font-size:11px;color:${sub}">
-      ⚠ Les performances passées ne préjugent pas des performances futures.
-      <button onclick="nav('ai')" style="margin-left:8px;background:none;border:none;font-size:11px;font-weight:700;color:#3fb950;cursor:pointer">Voir l'analyse complète →</button>
-    </div>
-  </div>`;
-
-  containerEl.appendChild(section);
-}
 
 
 
@@ -5865,16 +5791,135 @@ async function saveObjectif() { /* legacy */ }
 
 // ===== CRISE =====
 function renderCrise() {
-  const tv=positions.reduce((a,p)=>a+p.qty*p.price,0);
-  if(!tv){document.getElementById('crise-content').innerHTML=emptyMsg();return;}
-  const scenarios=[
-    {label:'-10%',pct:10,color:'#cc7a00',bg:'#fff5e0',event:'Correction modérée'},
-    {label:'-20%',pct:20,color:'#c2410c',bg:'#ffedd5',event:'Bear market (2022)'},
-    {label:'-30%',pct:30,color:'#b91c1c',bg:'#fee2e2',event:'Crise (Covid 2020)'},
-    {label:'-40%',pct:40,color:'#991b1b',bg:'#fecaca',event:'Crash (2008)'},
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
+  const monthly = objChartMonthly || 200;
+  const years = objChartYears || 10;
+  const capital = objChartCapital || tv;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surface = isDark ? 'var(--color-surface)' : '#fff';
+  const raised = isDark ? 'var(--color-surface-raised)' : '#f9fafb';
+  const border = isDark ? 'var(--color-border)' : '#e4e4e7';
+  const text = isDark ? 'var(--color-text)' : '#09090b';
+  const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+
+  if (!tv) { document.getElementById('crise-content').innerHTML = `<div style="text-align:center;padding:40px;color:${sub}">Ajoute des positions pour simuler des scénarios.</div>`; return; }
+
+  // ── CHOCS DE MARCHÉ ──
+  const shocks = [
+    {label:'-10%', pct:-10, color:'#f59e0b', desc:'Correction normale'},
+    {label:'-20%', pct:-20, color:'#f97316', desc:'Marché baissier'},
+    {label:'-30%', pct:-30, color:'#f87171', desc:'Crise modérée'},
+    {label:'-40%', pct:-40, color:'#dc2626', desc:'Crise sévère'},
+    {label:'-50%', pct:-50, color:'#991b1b', desc:'Krach 2008'},
+    {label:'-60%', pct:-60, color:'#7f1d1d', desc:'Crise extrême'},
   ];
-  document.getElementById('crise-content').innerHTML='<div class="crisis-grid">'+scenarios.map(s=>{const after=tv*(1-s.pct/100);return`<div class="crisis-card" style="background:${s.bg}"><div class="crisis-pct" style="color:${s.color}">${s.label}</div><div class="crisis-val" style="color:${s.color}">${fmtK(Math.round(after))}</div><div class="crisis-sub" style="color:${s.color}">${s.event}</div></div>`;}).join('')+'</div>';
+
+  // ── SCÉNARIOS DE PROJECTION ──
+  const scenarios = [
+    { label:'Pessimiste', icon:'🔴', rate:3, color:'#f87171', desc:'Marchés atones, inflation persistante', tagBg: isDark?'rgba(248,113,113,0.1)':'#fef2f2', tagBorder: isDark?'rgba(248,113,113,0.2)':'#fecaca' },
+    { label:'Réaliste', icon:'🟡', rate:7, color:'#f59e0b', desc:'Rendement historique moyen (ETF Monde)', tagBg: isDark?'rgba(245,158,11,0.1)':'#fffbeb', tagBorder: isDark?'rgba(245,158,11,0.2)':'#fde68a', active: true },
+    { label:'Optimiste', icon:'🟢', rate:12, color:'#3fb950', desc:'Fort cycle haussier, tech en tête', tagBg: isDark?'rgba(63,185,80,0.1)':'#f0fdf4', tagBorder: isDark?'rgba(63,185,80,0.2)':'#bbf7d0' },
+  ];
+
+  function calcProjection(rate, y, c, m) {
+    const r = rate/100/12;
+    const fv = c * Math.pow(1+r, y*12) + m * (Math.pow(1+r, y*12)-1)/r;
+    return Math.round(fv);
+  }
+
+  const html = `
+  <!-- SIMULATEUR DE SCÉNARIOS -->
+  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:22px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:18px">📊</span>
+      <span style="font-size:15px;font-weight:700;color:${text};letter-spacing:-0.03em">Simulateur de scénarios</span>
+    </div>
+    <div style="font-size:13px;color:${sub};margin-bottom:18px">Basé sur ${fmtK(capital)} k€ de capital · ${monthly}€/mois · ${years} ans</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      ${scenarios.map(s => {
+        const proj = calcProjection(s.rate, years, capital, monthly);
+        const gain = proj - (capital + monthly*12*years);
+        const gainPct = ((proj/(capital+monthly*12*years)-1)*100).toFixed(0);
+        return `
+        <div style="background:${s.tagBg};border:1.5px solid ${s.active?s.color:s.tagBorder};border-radius:16px;padding:16px;position:relative;${s.active?`box-shadow:0 0 20px ${s.color}20`:''}" >
+          ${s.active?`<div style="position:absolute;top:10px;right:10px;background:${s.color};color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:0.05em">ACTUEL</div>`:''}
+          <div style="font-size:20px;margin-bottom:8px">${s.icon}</div>
+          <div style="font-size:13px;font-weight:700;color:${text};margin-bottom:4px">${s.label}</div>
+          <div style="font-size:11px;color:${sub};margin-bottom:12px;line-height:1.4">${s.desc}</div>
+          <div style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Rendement annuel</div>
+          <div style="font-size:22px;font-weight:900;color:${s.color};letter-spacing:-0.04em;margin-bottom:4px">${s.rate}%</div>
+          <div style="height:1px;background:${isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)'};margin:10px 0"></div>
+          <div style="font-size:11px;color:${sub};margin-bottom:3px">Valeur dans ${years} ans</div>
+          <div style="font-size:18px;font-weight:800;color:${text};letter-spacing:-0.04em">${fmtK(proj)} k€</div>
+          <div style="font-size:12px;color:${s.color};font-weight:600;margin-top:3px">+${gainPct}% · +${fmtK(gain)} k€</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="padding:12px 14px;background:${raised};border:1px solid ${border};border-radius:10px;font-size:12px;color:${sub}">
+      💡 Le scénario <strong style="color:${text}">Réaliste à 7%/an</strong> correspond au rendement historique moyen du MSCI World sur 20 ans (dividendes réinvestis).
+    </div>
+  </div>
+
+  <!-- CHOCS DE MARCHÉ -->
+  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:22px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:18px">⚡</span>
+      <span style="font-size:15px;font-weight:700;color:${text};letter-spacing:-0.03em">Chocs de marché</span>
+    </div>
+    <div style="font-size:13px;color:${sub};margin-bottom:18px">Impact d'une baisse brutale sur ton portefeuille actuel (${fmtK(tv)} k€)</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px">
+      ${shocks.map(s => {
+        const newVal = tv * (1 + s.pct/100);
+        const loss = newVal - tv;
+        return `
+        <div style="background:${raised};border:1px solid ${border};border-radius:14px;padding:14px;transition:all 0.15s;cursor:default"
+          onmouseover="this.style.borderColor='${s.color}'" onmouseout="this.style.borderColor='${border}'">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:16px;font-weight:900;color:${s.color}">${s.label}</div>
+            <div style="font-size:11px;font-weight:600;color:${sub};background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};padding:2px 8px;border-radius:6px">${s.desc}</div>
+          </div>
+          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em;margin-bottom:4px">${fmtK(newVal)} k€</div>
+          <div style="font-size:13px;font-weight:700;color:${s.color};margin-bottom:8px">${fmtK(loss)} k€ de perte</div>
+          <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:5px;overflow:hidden">
+            <div style="height:100%;background:${s.color};width:${100+s.pct}%;border-radius:99px;transition:width 0.8s ease"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="padding:12px 14px;background:${isDark?'rgba(248,113,113,0.08)':'#fef2f2'};border:1px solid ${isDark?'rgba(248,113,113,0.2)':'#fecaca'};border-radius:10px;font-size:12px;color:${isDark?'#f87171':'#991b1b'}">
+      ⚠️ Ces simulations sont basées sur des baisses uniformes. En réalité, les actifs réagissent différemment selon leur type et secteur.
+    </div>
+  </div>
+
+  <!-- STRATÉGIES DE RÉSISTANCE -->
+  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:22px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <span style="font-size:18px">🛡️</span>
+      <span style="font-size:15px;font-weight:700;color:${text};letter-spacing:-0.03em">Stratégies de résistance</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${[
+        {icon:'🏦', title:'Diversification géographique', sub:'ETF Monde > actions d\'un seul pays. Réduit le risque de concentration régionale.', color:'#3fb950'},
+        {icon:'⚖️', title:'Rééquilibrage périodique', sub:'Rééquilibrer ton portef. une fois par an pour maintenir ton allocation cible.', color:'#6366f1'},
+        {icon:'💰', title:'DCA — investissement régulier', sub:'Investir la même somme chaque mois lisse les points d\'entrée et réduit la volatilité.', color:'#f59e0b'},
+        {icon:'🔒', title:'Fonds de précaution', sub:'Garde 3-6 mois de dépenses en liquidités avant d\'investir en bourse.', color:'#06b6d4'},
+      ].map(s=>`
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:${raised};border:1px solid ${border};border-radius:12px">
+        <div style="width:38px;height:38px;border-radius:10px;background:${s.color}20;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${s.icon}</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:${text};margin-bottom:3px">${s.title}</div>
+          <div style="font-size:12px;color:${sub};line-height:1.5">${s.sub}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  document.getElementById('crise-content').innerHTML = html;
 }
+
+
+
 
 // ===== SETTINGS =====
 async function saveSettings() {
