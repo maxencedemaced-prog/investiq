@@ -2347,7 +2347,7 @@ function formatMD(text) {
   }
 
   // Remplacer les blocs table
-  text = text.replace(/((?:\|.+\n?){2,})/g, block => {
+  text = text.replace(/((\|[^\n]+\n?){2,})/g, block => {
     if (!block.includes('|')) return block;
     const t = parseTable(block);
     return t || block;
@@ -4508,7 +4508,7 @@ function nav(page) {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
 }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);},
-    ai:()=>{ loadChatHistory(); initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+    ai:()=>{ loadChatHistory(); initAgent(); setTimeout(()=>{ if(typeof updateAISidebar==='function') updateAISidebar(); if(typeof generateDailyBrief==='function') generateDailyBrief(); }, 200); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
@@ -6970,7 +6970,7 @@ async function sendAI() {
   if (sendBtn) sendBtn.disabled = true;
 
   chatHistory.push({ role: 'user', content: q });
-  chat.innerHTML += `<div class="bubble user">${q}</div><div class="bubble bot" id="ai-loading" style="display:flex;align-items:center;gap:8px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="color:#8e8e93">Réflexion...</span></div>`;
+  chat.innerHTML += `<div class="bubble user" style="background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border-radius:16px 16px 4px 16px;padding:12px 18px;margin-left:auto;max-width:80%;font-size:14px;font-weight:500;width:fit-content">${q}</div><div class="bubble bot" id="ai-loading" style="display:flex;align-items:center;gap:8px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="color:#8e8e93">Réflexion...</span></div>`;
   chat.scrollTop = chat.scrollHeight;
 
   const intent = detectIntent(q);
@@ -6997,7 +6997,7 @@ Tu ne fournis pas de conseils financiers réglementés.`;
     let displayR = r.replace(/\[ACTION:.*?\]/s, '').trim();
 
     const loadingEl = document.getElementById('ai-loading');
-    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot">${formatMD(displayR)}</div>`;
+    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot" style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:16px;padding:18px 20px;max-width:100%;line-height:1.6">${formatMD(displayR)}</div>`;
 
     // Affiche le bouton d'action si détecté
     if (actionMatch) {
