@@ -1530,14 +1530,14 @@ window.addEventListener('load', function() {
     <!-- MÉTRIQUES -->
     <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:16px;margin-top:24px;padding-top:20px;border-top:1px solid var(--color-border);align-items:center">
       <div>
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Capital final estimé</div>
-        <div id="dca-hero-total" style="font-size:28px;font-weight:900;color:#3fb950;letter-spacing:-0.04em">—</div>
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px">vs sans DCA <span id="dca-hero-gain" style="color:#3fb950;font-weight:700">—</span></div>
-      </div>
-      <div>
         <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Total investi</div>
         <div id="dca-hero-inv" style="font-size:28px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em">—</div>
         <div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px">Multiplicateur <span id="dca-hero-mult" style="color:var(--color-text);font-weight:700">—</span></div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Capital final estimé</div>
+        <div id="dca-hero-total" style="font-size:28px;font-weight:900;color:#3fb950;letter-spacing:-0.04em">—</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px">vs sans DCA <span id="dca-hero-gain" style="color:#3fb950;font-weight:700">—</span></div>
       </div>
       <!-- Donut rendement -->
       <div style="position:relative;width:90px;height:90px;flex-shrink:0">
@@ -1581,6 +1581,15 @@ window.addEventListener('load', function() {
       <span style="font-size:14px;font-weight:700;color:var(--color-text)">Projection annuelle</span>
     </div>
     <div id="dca-table" style="overflow-x:auto"></div>
+    <style>
+      #dca-table table { width:100%; border-collapse:collapse; }
+      #dca-table thead tr { border-bottom:2px solid var(--color-border); }
+      #dca-table thead th { padding:8px 12px; font-size:10px; font-weight:700; color:var(--color-text-tertiary); text-transform:uppercase; letter-spacing:0.08em; text-align:left; }
+      #dca-table tbody tr { border-bottom:1px solid var(--color-border); transition:background 0.1s; }
+      #dca-table tbody tr:hover { background:rgba(255,255,255,0.03); }
+      #dca-table tbody td { padding:12px 12px; font-size:13px; }
+      #dca-table tbody td:first-child { font-weight:700; color:var(--color-text); }
+    </style>
   </div>
 
   <!-- CTA STICKY BAS -->
