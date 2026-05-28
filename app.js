@@ -4587,24 +4587,9 @@ async function renderHome() {
 
   // ── Motion design home ──
   setTimeout(() => {
-    // Compteur valeur totale — spring avec overshoot visible
+    // Compteur valeur totale
     const tvEl = document.getElementById('home-tv-counter');
-    if (tvEl) {
-      tvEl.textContent = '0 k€';
-      const _start = performance.now();
-      const _dur = 1400;
-      (function springTick(now) {
-        const p = Math.min((now - _start) / _dur, 1);
-        // Overshoot : dépasse légèrement puis revient
-        const s = 1.25;
-        const e = p < 0.5
-          ? 4 * p * p * p
-          : 1 + (s + 1) * Math.pow(p - 1, 3) + s * Math.pow(p - 1, 2);
-        tvEl.textContent = fmtK(Math.max(0, Math.round(tv * e)));
-        if (p < 1) requestAnimationFrame(springTick);
-        else tvEl.textContent = fmtK(tv);
-      })(performance.now());
-    }
+    if (tvEl) animateNumber(tvEl, 0, tv, 1000);
     // Barre objectif
     const progBar = document.getElementById('home-prog-bar');
     if (progBar) animateBar(progBar, pctObj, 1200, 300);
