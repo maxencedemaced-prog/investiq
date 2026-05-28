@@ -1303,34 +1303,34 @@ window.addEventListener('load', function() {
         </div>
       </div>
 
-      <!-- Colonne droite : visuel IA -->
-      <div style="width:140px;flex-shrink:0;background:linear-gradient(145deg,rgba(99,102,241,0.08),rgba(139,92,246,0.05));border:1px solid rgba(99,102,241,0.15);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px">
-        <div style="position:relative;width:64px;height:64px">
-          <!-- Cercles pulsants -->
-          <div style="position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(99,102,241,0.3);animation:pulse-ring 2.5s ease infinite"></div>
-          <div style="position:absolute;inset:8px;border-radius:50%;border:1.5px solid rgba(99,102,241,0.2);animation:pulse-ring 2.5s ease infinite 0.5s"></div>
-          <!-- Icône centrale -->
-          <div style="position:absolute;inset:16px;background:rgba(99,102,241,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          </div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:11px;font-weight:700;color:#6366f1;letter-spacing:0.04em">ANALYSE IA</div>
-          <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:2px">Temps réel</div>
-        </div>
-        <!-- Mini graphique déco -->
-        <svg width="90" height="30" viewBox="0 0 90 30" fill="none">
-          <path d="M0 22 Q15 8 25 15 Q35 22 45 10 Q55 0 65 12 Q75 22 90 8" stroke="#6366f1" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.6"/>
-          <path d="M0 22 Q15 8 25 15 Q35 22 45 10 Q55 0 65 12 Q75 22 90 8 L90 30 L0 30 Z" fill="url(#dg)" opacity="0.15"/>
-          <defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#6366f1" stop-opacity="0"/></linearGradient></defs>
-          <circle cx="45" cy="10" r="2.5" fill="#6366f1" opacity="0.8"/>
-          <circle cx="65" cy="12" r="2" fill="#8b5cf6" opacity="0.6"/>
+      <!-- Colonne droite : visuel IA premium -->
+      <div style="width:150px;flex-shrink:0;background:linear-gradient(145deg,#0d0d18,#13132a);border:1px solid rgba(99,102,241,0.25);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;position:relative;overflow:hidden">
+        <!-- Glow fond -->
+        <div style="position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:100px;height:100px;background:radial-gradient(circle,rgba(99,102,241,0.25),transparent);pointer-events:none"></div>
+        <!-- Graphique animé -->
+        <svg width="110" height="50" viewBox="0 0 110 50" fill="none" style="position:relative;z-index:1">
+          <defs>
+            <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#6366f1" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M0 38 Q12 20 22 28 Q32 36 44 18 Q56 2 68 14 Q80 26 92 10 Q100 2 110 8" stroke="#6366f1" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path d="M0 38 Q12 20 22 28 Q32 36 44 18 Q56 2 68 14 Q80 26 92 10 Q100 2 110 8 L110 50 L0 50 Z" fill="url(#wg)"/>
+          <circle cx="44" cy="18" r="3" fill="#6366f1"/>
+          <circle cx="92" cy="10" r="3" fill="#8b5cf6"/>
+          <circle cx="110" cy="8" r="4" fill="#a5b4fc" opacity="0.9"/>
+          <!-- Ligne verticale pointillée sur dernier point -->
+          <line x1="110" y1="8" x2="110" y2="50" stroke="#6366f1" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>
         </svg>
+        <!-- Label live -->
+        <div style="display:flex;align-items:center;gap:6px;position:relative;z-index:1">
+          <div style="width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite;flex-shrink:0"></div>
+          <span style="font-size:11px;font-weight:700;color:#a5b4fc;letter-spacing:0.05em">ANALYSE IA</span>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);text-align:center;position:relative;z-index:1">Temps réel</div>
       </div>
     </div>
-    <style>
-      @keyframes pulse-ring { 0%,100%{opacity:0.6;transform:scale(1)} 50%{opacity:0.2;transform:scale(1.08)} }
-    </style>
 
     <!-- BLOC 2 : Intention — 3 cards redesignées -->
     <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px">
@@ -1346,10 +1346,10 @@ window.addEventListener('load', function() {
         <!-- Je sais pas -->
         <button class="d-intent-btn active" onclick="selectIntent(this,'neutre')" data-intent="neutre"
           style="padding:28px 14px;border-radius:18px;display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;transition:all 0.2s;border:2px solid var(--color-border);background:var(--color-surface-raised);cursor:pointer;font-family:inherit">
-          <div style="width:56px;height:56px;background:rgba(255,255,255,0.07);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px">🤔</div>
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,rgba(251,191,36,0.15),rgba(245,158,11,0.08));border:1px solid rgba(251,191,36,0.2);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px">🤔</div>
           <div style="text-align:center">
             <div style="font-weight:700;font-size:14px;color:var(--color-text)">Je ne sais pas</div>
-            <div style="font-size:12px;color:var(--color-text-secondary);margin-top:4px">Que faire ?</div>
+            <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:4px">Que faire ?</div>
           </div>
           <div class="d-intent-check" style="position:absolute;top:12px;right:12px;width:22px;height:22px;background:#3fb950;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1359,12 +1359,12 @@ window.addEventListener('load', function() {
         <!-- Acheter -->
         <button class="d-intent-btn" onclick="selectIntent(this,'acheter')" data-intent="acheter"
           style="padding:28px 14px;border-radius:18px;display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;transition:all 0.2s;border:2px solid var(--color-border);background:var(--color-surface-raised);cursor:pointer;font-family:inherit">
-          <div style="width:56px;height:56px;background:rgba(99,102,241,0.15);border-radius:16px;display:flex;align-items:center;justify-content:center">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.08));border:1px solid rgba(99,102,241,0.2);border-radius:16px;display:flex;align-items:center;justify-content:center">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
           </div>
           <div style="text-align:center">
             <div style="font-weight:700;font-size:14px;color:var(--color-text)">Acheter / Renforcer</div>
-            <div style="font-size:12px;color:var(--color-text-secondary);margin-top:4px">Augmenter mon exposition</div>
+            <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:4px">Augmenter mon exposition</div>
           </div>
           <div class="d-intent-check" style="position:absolute;top:12px;right:12px;width:22px;height:22px;background:#3fb950;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1374,12 +1374,12 @@ window.addEventListener('load', function() {
         <!-- Vendre -->
         <button class="d-intent-btn" onclick="selectIntent(this,'vendre')" data-intent="vendre"
           style="padding:28px 14px;border-radius:18px;display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;transition:all 0.2s;border:2px solid var(--color-border);background:var(--color-surface-raised);cursor:pointer;font-family:inherit">
-          <div style="width:56px;height:56px;background:rgba(248,113,113,0.15);border-radius:16px;display:flex;align-items:center;justify-content:center">
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,rgba(248,113,113,0.15),rgba(239,68,68,0.08));border:1px solid rgba(248,113,113,0.2);border-radius:16px;display:flex;align-items:center;justify-content:center">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
           </div>
           <div style="text-align:center">
             <div style="font-weight:700;font-size:14px;color:var(--color-text)">Vendre / Réduire</div>
-            <div style="font-size:12px;color:var(--color-text-secondary);margin-top:4px">Alléger ma position</div>
+            <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:4px">Alléger ma position</div>
           </div>
           <div class="d-intent-check" style="position:absolute;top:12px;right:12px;width:22px;height:22px;background:#3fb950;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1405,10 +1405,9 @@ window.addEventListener('load', function() {
       </div>
 
       <div style="display:flex;align-items:center;gap:12px">
-        <input type="range" min="0" max="5000" step="50" value="500" id="d-amount-slider" class="slider" oninput="updateDecisionAmountRaw(this.value)" style="flex:1">
-        <div style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:12px;padding:10px 16px;min-width:100px;text-align:center;display:flex;align-items:center;gap:6px">
+        <input type="range" min="0" max="5000" step="50" value="500" id="d-amount-slider" class="slider" oninput="updateDecisionAmountRaw(this.value)" style="flex:1;accent-color:#3fb950">
+        <div style="background:var(--color-bg-subtle);border:1.5px solid #3fb950;border-radius:12px;padding:10px 16px;min-width:90px;text-align:center">
           <div id="d-amount-display" style="font-size:16px;font-weight:800;color:var(--color-text)">500 €</div>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-tertiary);margin-top:6px">
