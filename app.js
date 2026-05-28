@@ -6840,13 +6840,14 @@ function updateDCA() {
       const inv = s + m * mo;
       const g   = fv - inv;
       const pct = inv > 0 ? ((g / inv) * 100).toFixed(1) : '0.0';
-      rows += `<tr style="border-bottom:1px solid #f5f5f5">
+      rows += `<tr style="border-bottom:1px solid rgba(255,255,255,0.06);transition:background 0.1s" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
         <td style="padding:8px 6px;font-weight:700;color:#1c1c1e;font-size:13px">Année ${yr}</td>
         <td style="padding:8px 6px;font-weight:800;color:#1a7f5a;font-size:13px">${fmtK(Math.round(fv))}</td>
         <td style="padding:8px 6px;color:#8e8e93;font-size:12px">${fmtK(Math.round(inv))}</td>
         <td style="padding:8px 6px;color:#1a7f5a;font-weight:700;font-size:12px">+${fmtK(Math.round(g))}</td>
-        <td style="padding:8px 6px;font-size:12px">
-          <span style="background:${parseFloat(pct)>10?'#e8f8f0':parseFloat(pct)>5?'#fff9e6':'#f5f5f5'};color:${parseFloat(pct)>10?'#1a7f5a':parseFloat(pct)>5?'#92400e':'#8e8e93'};font-weight:700;padding:2px 7px;border-radius:6px;font-size:11px">+${pct}%</span>
+        <td stytd style="padding:13px 12px">
+          <span style="background:rgba(74,222,128,0.12);color:#4ade80;font-weight:700;padding:4px 12px;border-radius:99px;font-size:12px;border:1px solid rgba(74,222,128,0.2)">+${pct}%</span>
+        </tdr-radius:6px;font-size:11px">+${pct}%</span>
         </td>
       </tr>`;
     }
