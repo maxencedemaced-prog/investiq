@@ -4827,165 +4827,220 @@ function buildAlerts() {
 
 // ===== PORTFOLIO =====
 function renderPortfolio() {
-  const tv=positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti=positions.reduce((a,p)=>a+p.qty*p.pru,0);
-  const tpnl=tv-ti, tpct=ti?tpnl/ti*100:0;
-  document.getElementById('port-metrics').innerHTML=`
-    <div class="metric-card"><div class="metric-label">Valeur totale</div><div class="metric-val">${fmtK(tv)}</div></div>
-    <div class="metric-card"><div class="metric-label">Investi</div><div class="metric-val">${fmtK(ti)}</div></div>
-    <div class="metric-card"><div class="metric-label">Plus-value</div><div class="metric-val ${tpnl>=0?'green':'red'}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div></div>
-    <div class="metric-card"><div class="metric-label">Performance</div><div class="metric-val ${tpnl>=0?'green':'red'}">${tpnl>=0?'+':''}${tpct.toFixed(2)}%</div></div>`;
-  const grid=document.getElementById('pos-grid');
-  document.getElementById('pos-empty').style.display=positions.length?'none':'block';
-  document.getElementById('alloc-card').style.display=positions.length?'block':'none';
-  if(!positions.length){grid.innerHTML='';return;}
-  loadSignalsCache();
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
+  const tpnl = tv - ti;
+  const tpct = ti ? tpnl/ti*100 : 0;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surfaceBg = isDark ? 'var(--color-surface)' : '#fff';
+  const borderCol = isDark ? 'var(--color-border)' : '#e4e4e7';
+  const textCol = isDark ? 'var(--color-text)' : '#09090b';
+  const subCol = isDark ? 'var(--color-text-secondary)' : '#71717a';
 
-  // Groupe les positions par ticker
-  const grouped = {};
-  positions.forEach(p => {
-    if (!grouped[p.name]) {
-      grouped[p.name] = { ...p, _ids: [p.id], _lines: [p] };
-    } else {
-      const g = grouped[p.name];
-      const totalQty = g.qty + p.qty;
-      // PRU moyen pondéré
-      g.pru = (g.qty * g.pru + p.qty * p.pru) / totalQty;
-      g.qty = totalQty;
-      g.price = p.price; // même prix live
-      g.change_pct = p.change_pct;
-      g.alert_price = g.alert_price || p.alert_price;
-      g._ids.push(p.id);
-      g._lines.push(p);
-    }
-  });
-  const grouped_arr = Object.values(grouped);
-
-  grid.innerHTML=grouped_arr.map((p,idx)=>{
-    const val=p.qty*p.price,inv=p.qty*p.pru,pnl=val-inv,pct=inv?pnl/inv*100:0;
-    const sig=posSignals[p.id] || posSignals[p._ids[0]];
-    const sigHtml=sig?`<span class="signal-badge-large ${sig.action==='acheter'?'sig-buy':sig.action==='vendre'?'sig-sell':'sig-hold'}">${sig.action==='acheter'?'↑ Renforcer':sig.action==='vendre'?'↓ Alléger':'→ Garder'}</span>`:`<span class="signal-badge-large sig-loading">Analyse...</span>`;
-    // Mini badge visible sur la carte sans cliquer
-    const miniSigColor = sig ? (sig.action==='acheter'?'#1a7f5a':sig.action==='vendre'?'#cc2f26':'#f59e0b') : '#8e8e93';
-    const miniSigLabel = sig ? (sig.action==='acheter'?'↑ Renforcer':sig.action==='vendre'?'↓ Vendre':'→ Garder') : '···';
-    const miniSigBadge = `<span style="background:${miniSigColor}15;color:${miniSigColor};font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:6px">${miniSigLabel}</span>`;
-    const chgHtml=p.change_pct!==undefined?`<span style="font-size:12px;color:${p.change_pct>=0?'#1a7f5a':'#ff3b30'};font-weight:700">${p.change_pct>=0?'+':''}${p.change_pct?.toFixed(1)}% auj.</span>`:'';
-    const alertHtml=p.alert_price?`<span style="font-size:11px;color:#8e8e93;font-weight:600">🔔 Alerte: ${fmt(p.alert_price)}€</span>`:'';
-    const multiHtml=p._ids.length>1?`<span style="font-size:11px;color:#8e8e93;font-weight:600">📦 ${p._ids.length} lignes · PRU moy. ${fmt(p.pru)}€</span>`:'';
-    const idsJson=JSON.stringify(p._ids).replace(/"/g,"'");
-    return`<div class="pos-card">
-      <div class="pos-card-head" onclick="togglePosSignal('${p._ids[0]}')">
-        <div class="pos-card-left">
-          <div class="pos-avatar" style="background:${COLORS[idx%COLORS.length]}">${p.name.slice(0,2).toUpperCase()}</div>
-          <div>
-            <div class="pos-name">${p.name}${(() => { const k = AC_DB.find(c => c.ticker.toUpperCase() === p.name.toUpperCase()); return k ? ` <span style="font-size:12px;color:#8e8e93;font-weight:500">(${k.name})</span>` : ''; })()} ${chgHtml}${miniSigBadge}</div>
-            <div class="pos-meta">${p.type} · ${p.qty} parts · ${p.platform||''} ${alertHtml}</div>
-            ${multiHtml}
-          </div>
-        </div>
-        <div class="pos-card-right">
-          <div class="pos-val">${fmt(val)} €</div>
-          <div class="pos-pnl ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${pct.toFixed(1)}% (${pnl>=0?'+':''}${fmt(pnl)}€)</div>
-        </div>
-      </div>
-      <div class="pos-signal-row" id="sig-${p._ids[0]}">
-        <div class="pos-signal-content">
-          <div class="signal-header"><div style="font-size:12px;color:#8e8e93;font-weight:700">Signal IA</div>${sigHtml}</div>
-          <div class="perf-bar-wrap">
-            <div class="perf-bar-label"><span>PRU moy. : ${fmt(p.pru)}€</span><span>Actuel : ${fmt(p.price)}€</span></div>
-            <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${Math.min(Math.abs(pct)/30*100,100)}%;background:${pnl>=0?'#1a7f5a':'#ff3b30'}"></div></div>
-          </div>
-          ${sig ? `
-          <div style="margin-top:10px;background:#f9f9f9;border-radius:12px;padding:12px 14px">
-            <div style="font-size:13px;color:#1c1c1e;font-weight:600;margin-bottom:8px">${sig.texte}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr${sig.prix_cible > 0 ? ' 1fr 1fr' : ''};gap:8px;margin-bottom:8px">
-              <div style="background:#fff;border-radius:8px;padding:8px 10px;text-align:center">
-                <div style="font-size:10px;color:#8e8e93;font-weight:700;text-transform:uppercase">Timing</div>
-                <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-top:2px">${sig.timing || '—'}</div>
-              </div>
-              <div style="background:#fff;border-radius:8px;padding:8px 10px;text-align:center">
-                <div style="font-size:10px;color:#8e8e93;font-weight:700;text-transform:uppercase">Horizon</div>
-                <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-top:2px">${sig.horizon_signal || '—'}</div>
-              </div>
-              ${sig.prix_cible > 0 ? `
-              <div style="background:#e8f8f0;border-radius:8px;padding:8px 10px;text-align:center">
-                <div style="font-size:10px;color:#1a7f5a;font-weight:700;text-transform:uppercase">Objectif
-                  <span title="Prix cible estimé — bon moment de vendre une partie si atteint" style="display:inline-block;width:12px;height:12px;background:#1a7f5a20;color:#1a7f5a;border-radius:50%;font-size:8px;font-weight:800;line-height:12px;text-align:center;cursor:help;margin-left:2px">?</span>
-                </div>
-                <div style="font-size:12px;font-weight:800;color:#1a7f5a;margin-top:2px">${fmt(sig.prix_cible)}€</div>
-              </div>
-              <div style="background:#fff0f0;border-radius:8px;padding:8px 10px;text-align:center">
-                <div style="font-size:10px;color:#cc2f26;font-weight:700;text-transform:uppercase">Stop loss
-                  <span title="Si l'action descend à ce prix, vends pour limiter tes pertes" style="display:inline-block;width:12px;height:12px;background:#cc2f2620;color:#cc2f26;border-radius:50%;font-size:8px;font-weight:800;line-height:12px;text-align:center;cursor:help;margin-left:2px">?</span>
-                </div>
-                <div style="font-size:12px;font-weight:800;color:#cc2f26;margin-top:2px">${fmt(sig.stop_loss)}€</div>
-              </div>` : ''}
-            </div>
-            ${sig.catalyseurs?.length ? `<div style="margin-bottom:6px">
-              <div style="font-size:10px;color:#8e8e93;font-weight:700;text-transform:uppercase;margin-bottom:3px">✅ Catalyseurs</div>
-              ${sig.catalyseurs.map(c=>`<div style="font-size:11px;color:#1a7f5a;margin-bottom:2px">• ${c}</div>`).join('')}
-            </div>` : ''}
-            ${sig.risques?.length ? `<div>
-              <div style="font-size:10px;color:#8e8e93;font-weight:700;text-transform:uppercase;margin-bottom:3px">⚠ Risques</div>
-              ${sig.risques.map(r=>`<div style="font-size:11px;color:#cc2f26;margin-bottom:2px">• ${r}</div>`).join('')}
-            </div>` : ''}
-          </div>` : ''}
-          <div class="pos-actions">
-            <button class="btn-sm buy" onclick="openDecisionFromPos('${p.name}','acheter')">💰 Acheter plus</button>
-            <button class="btn-sm" onclick="openDecisionFromPos('${p.name}','garder')">🤔 Que faire ?</button>
-            <button class="btn-sm sell" onclick="openDecisionFromPos('${p.name}','vendre')">📤 Vendre</button>
-            ${!isDemo?`<button class="btn-sm" onclick="openEditPos('${p._ids[0]}')">✏ Modifier</button>`:''}
-            ${!isDemo?`<button class="btn-del" onclick="delPosGroup(${idsJson})">🗑 Supprimer</button>`:''}
-          </div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-  if(tv>0) {
-    document.getElementById('alloc-bars').innerHTML=grouped_arr.map((p,i)=>{
-      const pc=p.qty*p.price/tv*100;
-      return`<div class="bar-row"><div class="bar-label"><span>${p.name}</span><span>${pc.toFixed(1)}%</span></div><div class="bar-bg"><div class="bar-fill" id="abar-${i}" style="width:0%;background:${COLORS[i%COLORS.length]};transition:width 0.7s cubic-bezier(0.16,1,0.3,1)"></div></div></div>`;
-    }).join('');
-    // Anime les barres après rendu
-    setTimeout(() => {
-      grouped_arr.forEach((p,i) => {
-        const pc = p.qty*p.price/tv*100;
-        const bar = document.getElementById('abar-'+i);
-        if (bar) bar.style.width = pc + '%';
-      });
-    }, 100);
+  // Sparkline mini
+  function miniSparkline(trend, color, w=80, h=28) {
+    const pts = [50];
+    for (let i=1;i<16;i++) { pts.push(Math.max(10,Math.min(90, pts[i-1]+(Math.random()-0.5)*4+trend*0.4))); }
+    const min=Math.min(...pts), max=Math.max(...pts), range=max-min||1;
+    const d = pts.map((v,i)=>`${i/(pts.length-1)*w},${h-((v-min)/range)*(h-4)-2}`);
+    const path = 'M'+d.join(' L');
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block">
+      <defs><linearGradient id="mg${color.replace(/[^a-z0-9]/gi,'')}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.2"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path d="${path} L${w},${h} L0,${h} Z" fill="url(#mg${color.replace(/[^a-z0-9]/gi,'')})"/>
+      <path d="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>`;
   }
-  positions.forEach(p=>{if(!posSignals[p.id])generatePosSignal(p);});
-  // Load transactions if visible
-  if (document.getElementById('tx-list')) { loadTransactions().then(renderTransactions); }
 
-  // ── Motion design portefeuille ──
-  // Fade-in staggeré des cards positions
-  setTimeout(() => {
-    const posCards = document.querySelectorAll('#pos-grid .pos-card');
-    posCards.forEach((card, i) => {
-      card.style.opacity = '0';
-      card.style.transform = 'translateY(12px)';
-      card.style.transition = `opacity 0.28s ease ${i*65+40}ms, transform 0.28s ease ${i*65+40}ms`;
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        card.style.opacity = '1';
-        card.style.transform = 'translateY(0)';
-      }));
+  // Donut
+  function donutChart(data, total, size=130) {
+    const colors = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444'];
+    const c = size/2, r = 46, circum = 2*Math.PI*r;
+    let offset = 0;
+    const segs = data.map(([name,val],i) => {
+      const pct = val/total;
+      const dash = pct*circum;
+      const s = `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${colors[i%colors.length]}" stroke-width="10" stroke-dasharray="${dash} ${circum-dash}" stroke-dashoffset="${-offset*circum}" transform="rotate(-90 ${c} ${c})" stroke-linecap="round" style="transition:stroke-dashoffset 0.8s ease"/>`;
+      offset += pct;
+      return {seg:s, name, val, color:colors[i%colors.length], pct:(pct*100).toFixed(1)};
     });
-  }, 30);
-  // Métriques — pop in avec spring
+    const trackColor = isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f2';
+    const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${trackColor}" stroke-width="10"/>
+      ${segs.map(s=>s.seg).join('')}
+      <text x="${c}" y="${c-5}" text-anchor="middle" font-size="13" font-weight="800" fill="${textCol}" font-family="-apple-system,sans-serif">${fmtK(total)}</text>
+      <text x="${c}" y="${c+10}" text-anchor="middle" font-size="9" fill="${subCol}" font-family="-apple-system,sans-serif">Total</text>
+    </svg>`;
+    return {svg, segs};
+  }
+
+  // Allocation par position
+  const byPos = positions.map(p=>([p.name, p.qty*p.price])).sort((a,b)=>b[1]-a[1]);
+  const top5 = byPos.slice(0,5);
+  const rest = byPos.slice(5).reduce((a,b)=>a+b[1],0);
+  const donutData = rest > 0 ? [...top5, [`Autres (${byPos.length-5})`, rest]] : top5;
+  const {svg: donutSvg, segs} = donutChart(donutData, tv);
+
+  // Métriques topbar
+  const metricsHtml = `
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+    ${[
+      {label:'Valeur totale', val: fmtK(tv), sub: '', spark: true, trend: 0.3},
+      {label:'Investi', val: fmtK(ti), sub: '', spark: false},
+      {label:'Plus-value', val: (tpnl>=0?'+':'')+tpnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', sub: '', color: tpnl>=0?'#3fb950':'#f87171', spark: false},
+      {label:'Performance', val: (tpct>=0?'+':'')+tpct.toFixed(2)+'%', sub: '', color: tpct>=0?'#3fb950':'#f87171', spark: false},
+    ].map(m=>`
+    <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:14px;padding:14px 16px">
+      <div style="font-size:9px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">${m.label}</div>
+      ${m.spark ? `<div style="float:right;margin-top:-4px">${miniSparkline(0.3,'#3fb950',70,24)}</div>` : ''}
+      <div style="font-size:20px;font-weight:800;color:${m.color||textCol};letter-spacing:-0.04em">${m.val}</div>
+    </div>`).join('')}
+  </div>`;
+
+  // Tableau des positions
+  const sorted = [...positions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
+  const tableHtml = `
+  <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
+    <!-- Header tableau -->
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
+      ${['ACTIF','INVESTI','PRIX MOY.','VALEUR','PERF.','',''].map(h=>`<div style="font-size:10px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.06em">${h}</div>`).join('')}
+    </div>
+    <!-- Lignes positions -->
+    ${sorted.map(p => {
+      const val = p.qty*p.price;
+      const inv = p.qty*p.pru;
+      const pnl = val-inv;
+      const pct = inv ? pnl/inv*100 : 0;
+      const chg = p.change_pct||0;
+      const pnlColor = pnl>=0?'#3fb950':'#f87171';
+      const chgColor = chg>=0?'#3fb950':'#f87171';
+      const initials = p.name.replace(/[^A-Z0-9]/g,'').slice(0,2)||p.name.slice(0,2).toUpperCase();
+      const sig = posSignals[p.id];
+      const sigColor = sig?.signal==='BUY'?'#3fb950':sig?.signal==='SELL'?'#f87171':'#f59e0b';
+      const sigLabel = sig?.signal==='BUY'?'Renforcer':sig?.signal==='SELL'?'Vendre':'Garder';
+      const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
+      return `
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
+        onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'"
+        onclick="togglePos('${p.id}')">
+        <!-- Actif -->
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:${p.color||'#334155'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0">${initials}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${p.name}</div>
+            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.fullName||p.type||'Action'} · ${p.qty} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
+          </div>
+        </div>
+        <!-- Investi -->
+        <div style="display:flex;align-items:center;font-size:13px;color:${textCol}">${inv.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
+        <!-- Prix moy -->
+        <div style="display:flex;align-items:center;font-size:13px;color:${textCol}">${p.pru.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
+        <!-- Valeur -->
+        <div style="display:flex;flex-direction:column;justify-content:center">
+          <div style="font-size:13px;font-weight:600;color:${textCol}">${val.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
+          <div style="font-size:11px;color:${pnlColor}">${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
+        </div>
+        <!-- Perf -->
+        <div style="display:flex;flex-direction:column;justify-content:center">
+          <div style="font-size:13px;font-weight:700;color:${pnlColor}">${pnl>=0?'+':''}${pct.toFixed(2)}%</div>
+          <div style="font-size:10px;color:${chgColor}">${chg>=0?'+':''}${chg.toFixed(2)}% auj.</div>
+        </div>
+        <!-- Sparkline -->
+        <div style="display:flex;align-items:center">${miniSparkline(chg>0?1:-1, pnl>=0?'#3fb950':'#f87171')}</div>
+        <!-- Menu -->
+        <div style="display:flex;align-items:center;justify-content:center">
+          <button onclick="event.stopPropagation();showPosMenu('${p.id}')" style="background:none;border:none;cursor:pointer;color:${subCol};font-size:16px;padding:4px;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='rgba(128,128,128,0.1)'" onmouseout="this.style.background='none'">⋯</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  // Section bas — Répartition + Insights IA
+  const bottomHtml = `
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+    <!-- Donut répartition -->
+    <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;padding:20px">
+      <div style="font-size:14px;font-weight:700;color:${textCol};letter-spacing:-0.03em;margin-bottom:16px">Répartition</div>
+      <div style="display:flex;align-items:center;gap:20px">
+        ${donutSvg}
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+          ${segs.map(s=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div style="display:flex;align-items:center;gap:7px">
+              <div style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
+              <span style="font-size:12px;font-weight:600;color:${textCol}">${s.name}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="background:${isDark?'rgba(255,255,255,0.08)':'#f4f4f5'};border-radius:4px;height:3px;width:60px;overflow:hidden">
+                <div style="height:100%;background:${s.color};width:${s.pct}%;border-radius:4px"></div>
+              </div>
+              <span style="font-size:11px;color:${subCol};min-width:36px;text-align:right">${s.pct}%</span>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <button onclick="nav('sante')" style="width:100%;margin-top:14px;padding:8px;background:none;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor=textCol" onmouseout="this.style.borderColor=borderCol">Voir la répartition détaillée →</button>
+    </div>
+    <!-- Insight IA -->
+    <div style="background:${isDark?'linear-gradient(135deg,#080c10,#0d1520)':'linear-gradient(135deg,#f0fdf4,#ecfdf5)'};border:1px solid ${isDark?'rgba(63,185,80,0.15)':'rgba(22,163,74,0.2)'};border-radius:16px;padding:20px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;background:radial-gradient(circle,rgba(63,185,80,0.15),transparent);pointer-events:none"></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+        <div style="width:6px;height:6px;background:#3fb950;border-radius:50%;animation:pulse-dot 2s infinite"></div>
+        <span style="font-size:10px;font-weight:700;color:#3fb950;text-transform:uppercase;letter-spacing:0.08em">✦ Insights IA</span>
+      </div>
+      <div id="port-ai-insight" style="font-size:13px;color:${isDark?'rgba(230,237,243,0.8)':'#374151'};line-height:1.6;margin-bottom:14px">
+        Analyse de ton portefeuille en cours...
+      </div>
+      <button onclick="nav('ai')" style="padding:8px 16px;background:#16a34a;border:none;border-radius:8px;font-size:12px;font-weight:600;color:#fff;cursor:pointer">Voir l'analyse complète →</button>
+    </div>
+  </div>
+  <!-- Disclaimer -->
+  <div style="text-align:center;padding:12px;font-size:11px;color:${subCol}">
+    ⓘ Les données sont fournies à titre indicatif et ne constituent pas un conseil en investissement.
+  </div>`;
+
+  // Injecter dans le DOM
+  const metricsEl = document.getElementById('port-metrics');
+  const gridEl = document.getElementById('pos-grid');
+  const allocEl = document.getElementById('alloc-bars');
+
+  if (metricsEl) metricsEl.innerHTML = metricsHtml;
+  if (gridEl) gridEl.innerHTML = tableHtml + bottomHtml;
+  if (allocEl) allocEl.innerHTML = '';
+
+  // Insight IA
   setTimeout(() => {
-    document.querySelectorAll('#port-metrics .metric-val').forEach((el, i) => {
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(6px)';
-      el.style.transition = `opacity 0.25s ease ${i*60}ms, transform 0.25s ease ${i*60}ms`;
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        el.style.opacity = '1';
-        el.style.transform = 'translateY(0)';
-      }));
+    const el = document.getElementById('port-ai-insight');
+    if (!el || !positions.length) return;
+    const topSectors = {};
+    positions.forEach(p => { if(p.sector) topSectors[p.sector]=(topSectors[p.sector]||0)+p.qty*p.price; });
+    const top = Object.entries(topSectors).sort((a,b)=>b[1]-a[1])[0];
+    const topPct = top ? (top[1]/tv*100).toFixed(0) : null;
+    const pnlPositions = positions.filter(p=>p.qty*p.price > p.qty*p.pru).length;
+    if (top && topPct > 30) {
+      el.innerHTML = `Votre exposition au secteur <strong>${top[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisagez une diversification pour réduire le risque.`;
+    } else {
+      el.innerHTML = `<strong>${pnlPositions}</strong> position${pnlPositions>1?'s':''} en plus-value sur ${positions.length}. Portef. ${tpct>=0?'en hausse':'en baisse'} de <strong style="color:${tpct>=0?'#3fb950':'#f87171'}">${Math.abs(tpct).toFixed(1)}%</strong> au total.`;
+    }
+  }, 600);
+
+  // Animations
+  setTimeout(() => {
+    const rows = document.querySelectorAll('#pos-grid [style*="grid-template-columns:2fr"]');
+    rows.forEach((row, i) => {
+      row.style.opacity = '0';
+      row.style.transition = `opacity 0.2s ease ${i*40}ms`;
+      requestAnimationFrame(() => requestAnimationFrame(() => { row.style.opacity = '1'; }));
     });
-  }, 20);
+  }, 50);
+
+  positions.forEach(p => { if(!posSignals[p.id]) generatePosSignal(p); });
 }
+
+
+
 
 async function generatePosSignal(p) {
   const pnl = (p.price - p.pru) / p.pru * 100;
