@@ -1069,19 +1069,21 @@ window.addEventListener('load', function() {
     <!-- PORTFOLIO -->
     <section id="sec-portfolio" class="sec">
       <div class="page-header">
-        <h1>Mon portefeuille</h1>
+        <div>
+          <h1>Mon portefeuille</h1>
+          <p class="page-sub">Suivez la performance de vos investissements en temps réel.</p>
+        </div>
         <div style="display:flex;gap:8px">
-          <button class="btn-refresh" onclick="refreshPrices()" id="refresh-prices-btn"><svg id="refresh-prices-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg> Prix live</button>
+          <button class="btn-secondary" onclick="refreshPrices()" style="display:flex;align-items:center;gap:6px;font-size:13px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
+            Prix live
+          </button>
           <button class="btn-add" onclick="nav('ajouter')">+ Ajouter</button>
         </div>
       </div>
-      <div class="metrics-grid" id="port-metrics"></div>
-      <div class="pos-grid" id="pos-grid"></div>
-      <div id="pos-empty" class="empty-state" style="display:none"><div class="empty-icon">📊</div><div>Aucune position</div><button class="btn-link" onclick="nav('ajouter')">Ajouter ma première position →</button></div>
-      <div class="card" id="alloc-card" style="display:none">
-        <div class="card-head"><div class="card-title"><span class="card-icon dark">◉</span>Répartition</div></div>
-        <div id="alloc-bars"></div>
-      </div>
+      <div id="port-metrics"></div>
+      <div id="pos-grid"></div>
+      <div id="alloc-bars" style="display:none"></div>
     </section>
 
     <!-- SANTE -->
