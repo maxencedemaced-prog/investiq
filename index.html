@@ -1494,7 +1494,7 @@ window.addEventListener('load', function() {
         <span style="font-size:13px;color:var(--color-text-secondary)">Versement mensuel</span>
         <span id="dca-m-o" style="font-size:14px;font-weight:700;color:var(--color-text)">200 €</span>
       </div>
-      <input type="range" min="10" max="5000" step="10" value="200" id="dca-m" oninput="updateDCA()" class="dca-range" style="width:100%">
+      <input type="range" min="10" max="5000" step="10" value="200" id="dca-m" oninput="updateDCA();if(typeof updateDCADonut==='function')updateDCADonut()" class="dca-range" style="width:100%">
     </div>
 
     <!-- Durée -->
@@ -1506,7 +1506,7 @@ window.addEventListener('load', function() {
           <span style="font-size:12px;color:var(--color-text-secondary)">ans</span>
         </div>
       </div>
-      <input type="range" min="1" max="40" step="1" value="10" id="dca-y" oninput="updateDCA()" class="dca-range" style="width:100%">
+      <input type="range" min="1" max="40" step="1" value="10" id="dca-y" oninput="updateDCA();if(typeof updateDCADonut==='function')updateDCADonut()" class="dca-range" style="width:100%">
     </div>
 
     <!-- Rendement -->
@@ -1515,7 +1515,7 @@ window.addEventListener('load', function() {
         <span style="font-size:13px;color:var(--color-text-secondary)">Rendement attendu</span>
         <span id="dca-r-o" style="font-size:14px;font-weight:700;color:var(--color-text)">7.0 %</span>
       </div>
-      <input type="range" min="1" max="20" step="0.5" value="7" id="dca-r" oninput="updateDCA()" class="dca-range" style="width:100%">
+      <input type="range" min="1" max="20" step="0.5" value="7" id="dca-r" oninput="updateDCA();if(typeof updateDCADonut==='function')updateDCADonut()" class="dca-range" style="width:100%">
     </div>
 
     <!-- Capital départ -->
@@ -1524,7 +1524,7 @@ window.addEventListener('load', function() {
         <span style="font-size:13px;color:var(--color-text-secondary)">Capital de départ</span>
         <span id="dca-s-o" style="font-size:14px;font-weight:700;color:var(--color-text)">0 €</span>
       </div>
-      <input type="range" min="0" max="100000" step="500" value="0" id="dca-s" oninput="updateDCA()" class="dca-range" style="width:100%">
+      <input type="range" min="0" max="100000" step="500" value="0" id="dca-s" oninput="updateDCA();if(typeof updateDCADonut==='function')updateDCADonut()" class="dca-range" style="width:100%">
     </div>
 
     <!-- MÉTRIQUES -->
