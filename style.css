@@ -756,21 +756,24 @@ a, button, [onclick] { transition: opacity 0.15s ease, transform 0.15s ease, bac
 .sec.active { animation: page-enter 0.25s ease; }
 @keyframes page-enter { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
-/* ===== DARK MODE ===== */
+/* ===== DARK MODE — Fintech Premium ===== */
 [data-theme="dark"] {
-  --color-bg: #0a0a0f;
-  --color-bg-subtle: #111118;
-  --color-surface: #16161e;
-  --color-surface-raised: #1c1c28;
-  --color-border: #2a2a3a;
-  --color-border-subtle: #1e1e2a;
-  --color-border-strong: #3a3a4a;
-  --color-text: #f0f0f8;
-  --color-text-secondary: #8888aa;
-  --color-text-tertiary: #55556a;
-  --color-text-disabled: #33334a;
-  --color-primary: #f0f0f8;
+  --color-bg: #070d0a;
+  --color-bg-subtle: #0a1208;
+  --color-surface: #0f1a12;
+  --color-surface-raised: #162012;
+  --color-border: #1e2e1e;
+  --color-border-subtle: #152015;
+  --color-border-strong: #2a3e2a;
+  --color-text: #e8f5e8;
+  --color-text-secondary: #7a9e7a;
+  --color-text-tertiary: #4a6a4a;
+  --color-text-disabled: #2a3a2a;
+  --color-primary: #e8f5e8;
   --color-primary-hover: #ffffff;
+  --color-green: #22c55e;
+  --color-green-light: rgba(34,197,94,0.12);
+  --color-green-border: rgba(34,197,94,0.25);
 }
 
 [data-theme="dark"] body {
@@ -781,6 +784,7 @@ a, button, [onclick] { transition: opacity 0.15s ease, transform 0.15s ease, bac
 [data-theme="dark"] .card {
   background: var(--color-surface);
   border-color: var(--color-border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 
 [data-theme="dark"] .metric-card {
@@ -799,12 +803,12 @@ a, button, [onclick] { transition: opacity 0.15s ease, transform 0.15s ease, bac
 }
 
 [data-theme="dark"] .topbar {
-  background: rgba(10,10,15,0.92);
+  background: rgba(7,13,10,0.95);
   border-bottom-color: var(--color-border);
 }
 
 [data-theme="dark"] .sidebar {
-  background: #0d0d12;
+  background: #060d08;
   border-right-color: var(--color-border);
 }
 
@@ -1059,4 +1063,114 @@ a, button, [onclick] { transition: opacity 0.15s ease, transform 0.15s ease, bac
 body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
 .modal-card, .notif-panel, input, select, .btn-secondary, .filter-pill {
   transition: background 0.2s ease, border-color 0.2s ease, color 0.15s ease !important;
+}
+
+[data-theme="dark"] .main {
+  background: var(--color-bg);
+}
+
+/* Hero card en dark — fond très sombre avec glow vert */
+[data-theme="dark"] #home-metrics > div:first-child {
+  background: linear-gradient(135deg, #060e08, #0a1a0c) !important;
+  border-color: rgba(34,197,94,0.15) !important;
+  box-shadow: 0 0 40px rgba(34,197,94,0.06) !important;
+}
+
+/* Cards métriques dark */
+[data-theme="dark"] #home-score > div {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* Sidebar active nav — teinte verte */
+[data-theme="dark"] .nav-btn.active {
+  background: rgba(34,197,94,0.12) !important;
+  color: #4ade80 !important;
+}
+[data-theme="dark"] .nav-btn.active svg {
+  stroke: #4ade80;
+}
+
+/* Topbar logo dark */
+[data-theme="dark"] .topbar-logo span { color: var(--color-text) !important; }
+
+/* Hexagone logo — vert plus vif en dark */
+[data-theme="dark"] .logo-name { color: var(--color-text) !important; }
+
+/* Inputs dark */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+/* Pos card hover dark */
+[data-theme="dark"] .pos-card:hover {
+  border-color: rgba(34,197,94,0.3) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+}
+
+/* Filter pills dark */
+[data-theme="dark"] .filter-pill {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-secondary) !important;
+}
+[data-theme="dark"] .filter-pill.active {
+  background: rgba(34,197,94,0.15) !important;
+  border-color: rgba(34,197,94,0.4) !important;
+  color: #4ade80 !important;
+}
+
+/* Btn primary dark */
+[data-theme="dark"] .btn-primary {
+  background: #16a34a !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .btn-add {
+  background: #16a34a !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+/* Score card dark */
+[data-theme="dark"] .score-ring {
+  border-color: rgba(74,222,128,0.4) !important;
+}
+
+/* Chat dark */
+[data-theme="dark"] #ai-chat {
+  background: var(--color-bg) !important;
+}
+[data-theme="dark"] .chat-input-row input {
+  background: var(--color-surface-raised) !important;
+}
+
+/* News item hover dark */
+[data-theme="dark"] .news-item-head:hover {
+  background: rgba(34,197,94,0.04) !important;
+}
+
+/* Metric val green en dark */
+[data-theme="dark"] .metric-val.green { color: #4ade80 !important; }
+[data-theme="dark"] .metric-val.red { color: #f87171 !important; }
+
+/* Port tabs dark */
+[data-theme="dark"] .port-tabs { background: var(--color-surface) !important; }
+[data-theme="dark"] .port-tab.active { background: rgba(34,197,94,0.12) !important; color: #4ade80 !important; }
+
+/* Scrollbar dark */
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: var(--color-border-strong); }
+
+/* Modal dark */
+[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.7); }
+[data-theme="dark"] .modal-card { background: #0a1208 !important; }
+
+/* Toggle button dark */
+[data-theme="dark"] #theme-toggle {
+  background: rgba(34,197,94,0.08) !important;
+  border-color: rgba(34,197,94,0.2) !important;
+  color: #4ade80 !important;
 }
