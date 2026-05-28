@@ -1425,3 +1425,51 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
 [data-theme="dark"] .home-hover-card[style*="background:linear-gradient"] {
   background: linear-gradient(135deg, #080c10, #0d1520) !important;
 }
+
+/* ===== DARK MODE — PAGE SANTÉ ===== */
+[data-theme="dark"] .score-wrap,
+[data-theme="dark"] .score-items,
+[data-theme="dark"] .score-row {
+  background: transparent !important;
+}
+
+/* Barres de score */
+[data-theme="dark"] .score-bar-bg {
+  background: rgba(255,255,255,0.08) !important;
+}
+
+/* Composition du portefeuille — metric cards */
+[data-theme="dark"] [style*="background:#fff"][style*="border-radius:12px"],
+[data-theme="dark"] [style*="background: #fff"][style*="border-radius:12px"],
+[data-theme="dark"] [style*="background:#fff"][style*="border-radius:14px"],
+[data-theme="dark"] [style*="background:#fff"][style*="border-radius:16px"],
+[data-theme="dark"] [style*="background:#fafafa"],
+[data-theme="dark"] [style*="background: #fafafa"] {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+/* Barres d'allocation */
+[data-theme="dark"] [style*="background:#f0f0f0"],
+[data-theme="dark"] [style*="background:#f0f0f2"],
+[data-theme="dark"] [style*="background:#e5e5ea"],
+[data-theme="dark"] [style*="background: #f0f0f0"],
+[data-theme="dark"] [style*="background: #e5e5ea"] {
+  background: rgba(255,255,255,0.06) !important;
+}
+
+/* Textes noirs dans la santé */
+[data-theme="dark"] .score-num { color: var(--color-text) !important; }
+[data-theme="dark"] .score-max { color: var(--color-text-tertiary) !important; }
+[data-theme="dark"] .score-val { color: var(--color-text) !important; }
+[data-theme="dark"] .score-row-label { color: var(--color-text-secondary) !important; }
+
+/* Section composition */
+[data-theme="dark"] #sante-alloc {
+  background: transparent !important;
+}
+[data-theme="dark"] #sante-alloc > div {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
