@@ -4435,32 +4435,11 @@ function selectIntent(btn, intent) {
 }
 
 function setDecisionAmount(val) {
-  const num = parseInt(String(val).replace(/[^0-9]/g,''));
+  const num = parseInt(val.replace(/[^0-9]/g,''));
   const el = document.getElementById('d-amount-display');
   if (el) el.textContent = num.toLocaleString('fr-FR') + ' €';
   const slider = document.getElementById('d-amount-slider');
   if (slider) slider.value = Math.min(num/100, 100);
-  const amountEl = document.getElementById('d-amount');
-  if (amountEl) amountEl.value = num;
-  // Highlight active pill
-  document.querySelectorAll('.d-amount-pill').forEach(b => {
-    const isActive = parseInt(b.textContent.replace(/[^0-9]/g,'')) === num;
-    b.style.background = isActive ? 'rgba(63,185,80,0.1)' : 'var(--color-bg-subtle)';
-    b.style.borderColor = isActive ? '#3fb950' : 'var(--color-border)';
-    b.style.color = isActive ? '#3fb950' : 'var(--color-text-secondary)';
-    b.style.fontWeight = isActive ? '700' : '600';
-  });
-}
-
-function runDecision() {
-  const intentBtn = document.querySelector('#d-intents .d-intent-btn.active');
-  decisionIntention = intentBtn ? intentBtn.getAttribute('data-intent') : 'neutre';
-  const amount = parseInt((document.getElementById('d-amount-display')?.textContent || '500').replace(/[^0-9]/g,'')) || 500;
-  if (document.getElementById('d-pct')) document.getElementById('d-pct').value = Math.round(amount / (profile.bankroll || 5000) * 100);
-  if (document.getElementById('d-amount')) document.getElementById('d-amount').value = amount;
-  const resultEl = document.getElementById('d-result');
-  if (resultEl) resultEl.style.display = 'block';
-  analyseDecision();
 }
 
 function updateDecisionAmount(val) {
