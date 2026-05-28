@@ -5048,7 +5048,9 @@ function renderPortfolio() {
     });
   }, 50);
 
-  positions.forEach(p => { if(!posSignals[p.id]) generatePosSignal(p); });
+  // Générer signaux en lot — max 6, espacés de 800ms pour éviter les 500
+  const needSignal = positions.filter(p => !posSignals[p.id]).slice(0, 6);
+  needSignal.forEach((p, i) => setTimeout(() => generatePosSignal(p), i * 800));
 }
 
 
