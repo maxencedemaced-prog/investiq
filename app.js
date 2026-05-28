@@ -4379,7 +4379,7 @@ function getCompanyLogo(ticker, name, size, radius) {
   const base = t.replace(/\.PA$|\.DE$|\.L$|\.AS$|\.MI$|\.SW$/,'');
   const domain = domainMap[ticker] || domainMap[t] || domainMap[base];
   if (!domain) return fallback;
-  const logoUrl = 'https://logo.clearbit.com/' + domain;
+  const logoUrl = 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=' + (s*2);
   return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${c}20;display:flex;align-items:center;justify-content:center">
     <img src="${logoUrl}" alt="${init}" style="width:${s}px;height:${s}px;object-fit:cover;border-radius:${r}px" onerror="_logoFallback(this,'${init}','${c}')">
   </div>`;
