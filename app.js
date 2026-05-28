@@ -5215,9 +5215,18 @@ function exportPDF() {
 
 // ===== SANTE =====
 async function renderSante() {
+  // Dédupliquer les positions
+  const dedupMap = {};
+  positions.forEach(p => {
+    const key = p.name + '|' + (p.platform||'');
+    if (!dedupMap[key]) dedupMap[key] = {...p};
+    else dedupMap[key].qty += p.qty;
+  });
+  const dedupPos = Object.values(dedupMap);
+
   const {score, details} = calcScore();
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const tv = dedupPos.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = dedupPos.reduce((a,p)=>a+p.qty*p.pru,0);
   const tpnl = tv-ti, tpct = ti?tpnl/ti*100:0;
   const isDark = document.documentElement.getAttribute('data-theme')==='dark';
   const surface = isDark?'var(--color-surface)':'#fff';
@@ -5237,12 +5246,12 @@ async function renderSante() {
   ];
 
   // Calcul composition
-  const etfCount = positions.filter(p=>p.type==='ETF').length;
-  const etfVal = positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0);
+  const etfCount = dedupPos.filter(p=>p.type==='ETF').length;
+  const etfVal = dedupPos.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0);
   const etfPct = tv>0?(etfVal/tv*100).toFixed(0):0;
-  const maxPos = positions.length>0?positions.reduce((a,p)=>p.qty*p.price>a.qty*a.price?p:a,positions[0]):null;
+  const maxPos = dedupPos.length>0?dedupPos.reduce((a,p)=>p.qty*p.price>a.qty*a.price?p:a,dedupPos[0]):null;
   const maxPct = maxPos&&tv>0?(maxPos.qty*maxPos.price/tv*100).toFixed(0):0;
-  const nbPos = positions.length;
+  const nbPos = dedupPos.length;
 
   // Anneau SVG animé
   const ring = (size, s, color) => {
@@ -5258,11 +5267,11 @@ async function renderSante() {
 
   // Points d'attention
   const alerts = [];
-  positions.forEach(p=>{
+  dedupPos.forEach(p=>{
     if(p.alert_price && p.price < p.alert_price) alerts.push({icon:'🔴',name:p.name,msg:`sous ton alerte ${p.alert_price.toLocaleString('fr-FR')}€`,tag:'Alerte prix',tagColor:'#f87171',tagBg:isDark?'rgba(248,113,113,0.15)':'#fef2f2'});
   });
   if(maxPos && parseFloat(maxPct)>25) alerts.push({icon:'🟡',name:maxPos.name,msg:`représente ${maxPct}% du portefeuille`,tag:'Concentration élevée',tagColor:'#f59e0b',tagBg:isDark?'rgba(245,158,11,0.15)':'#fffbeb'});
-  positions.filter(p=>p.qty*p.price<p.qty*p.pru&&(p.price-p.pru)/p.pru*100<-20).forEach(p=>{
+  dedupPos.filter(p=>p.qty*p.price<p.qty*p.pru&&(p.price-p.pru)/p.pru*100<-20).forEach(p=>{
     alerts.push({icon:'🟠',name:p.name,msg:`en forte perte (${((p.price-p.pru)/p.pru*100).toFixed(1)}%)`,tag:'Performance faible',tagColor:'#fb923c',tagBg:isDark?'rgba(251,146,60,0.15)':'#fff7ed'});
   });
 
@@ -5336,7 +5345,7 @@ async function renderSante() {
 
     <!-- Barres allocation -->
     <div style="display:flex;flex-direction:column;gap:8px">
-      ${[...positions].sort((a,b)=>b.qty*b.price-a.qty*a.price).map((p,i)=>{
+      ${[...dedupPos].sort((a,b)=>b.qty*b.price-a.qty*a.price).map((p,i)=>{
         const pct = tv>0?(p.qty*p.price/tv*100):0;
         const pnl = p.qty*p.price-p.qty*p.pru;
         const initials = p.name.replace(/[^A-Z0-9]/g,'').slice(0,2)||p.name.slice(0,2).toUpperCase();
