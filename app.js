@@ -4537,7 +4537,7 @@ async function renderHome() {
 
   // ── HERO CARD ──
   document.getElementById('home-metrics').innerHTML = `
-    <div onclick="nav('portfolio')" style="cursor:pointer;background:linear-gradient(135deg,#0d0d12,#141420);border-radius:20px;padding:24px 28px;margin-bottom:4px;grid-column:1/-1;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.06)">
+    <div onclick="nav('portfolio')" class="home-hover-card" style="cursor:pointer;background:linear-gradient(135deg,#0d0d12,#141420);border-radius:20px;padding:24px 28px;margin-bottom:4px;grid-column:1/-1;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.06)">
       <div style="position:absolute;top:0;right:0;bottom:0;width:45%;opacity:0.8;pointer-events:none">
         ${sparkline(mainSparkData, tpnl>=0?'#4ade80':'#f87171', 400, 160, true)}
       </div>
@@ -4574,13 +4574,13 @@ async function renderHome() {
     const worstData = genSparkData(-2, 20);
     html += `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" onmouseover="this.style.borderColor='#16a34a';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.transform='translateY(0)'">
+      <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">🏆 Meilleure performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${best.name}</div>
         <div style="font-size:20px;font-weight:900;color:#16a34a;letter-spacing:-0.04em;margin-bottom:8px">+${(best.change_pct||0).toFixed(2)}%</div>
         <div style="opacity:0.7">${sparkline(bestData,'#4ade80',120,32,true)}</div>
       </div>
-      <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" onmouseover="this.style.borderColor='#dc2626';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.transform='translateY(0)'">
+      <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">📉 Plus faible performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${worst.name}</div>
         <div style="font-size:20px;font-weight:900;color:#dc2626;letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0).toFixed(2)}%</div>
@@ -4608,7 +4608,7 @@ async function renderHome() {
       </div>
     </div>
     <!-- Insight IA -->
-    <div onclick="nav('ai')" style="cursor:pointer;background:linear-gradient(135deg,#0d0d12,#141420);border:1px solid rgba(22,163,74,0.2);border-radius:16px;padding:16px;position:relative;overflow:hidden;transition:all 0.2s" onmouseover="this.style.borderColor='rgba(22,163,74,0.5)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(22,163,74,0.2)';this.style.transform='translateY(0)'">
+    <div onclick="nav('ai')" style="cursor:pointer;background:linear-gradient(135deg,#0d0d12,#141420);border:1px solid rgba(22,163,74,0.2);border-radius:16px;padding:16px;position:relative;overflow:hidden;transition:all 0.2s" class="home-hover-card">
       <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(22,163,74,0.2),transparent);pointer-events:none"></div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
         <div style="width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
@@ -4681,7 +4681,7 @@ async function renderHome() {
   html += `
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px">
     ${actions.map(a => `
-    <div onclick="nav('${a.page}')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:14px;padding:14px;transition:all 0.2s" onmouseover="this.style.background='#fafafa';this.style.borderColor='${a.color}';this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#fff';this.style.borderColor='var(--color-border)';this.style.transform='translateY(0)'">
+    <div onclick="nav('${a.page}')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:14px;padding:14px;transition:all 0.2s" class="home-hover-card">
       <div style="font-size:22px;margin-bottom:8px">${a.icon}</div>
       <div style="font-size:13px;font-weight:700;color:#09090b;margin-bottom:3px;letter-spacing:-0.02em">${a.label}</div>
       <div style="font-size:11px;color:var(--color-text-tertiary)">${a.sub}</div>
