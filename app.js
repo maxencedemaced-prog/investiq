@@ -3304,51 +3304,83 @@ async function renderSignaux() {
   function signalCard(s, isMine) {
     const myPos = positions.find(p => p.name === s.ticker);
     const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
-    return `
-    <div id="sig-card-${s.ticker}" style="background:${sigBg[s.signal]||'#f9f9f9'};border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${sigColor[s.signal]||'#e5e5ea'};cursor:pointer"
-         onclick="openDecisionFromPos('${s.ticker}','${s.signal==='acheter'?'acheter':s.signal==='vendre'?'vendre':'garder'}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:40px;height:40px;border-radius:12px;background:${sigColor[s.signal]}20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${sigColor[s.signal]}">${sigIcon[s.signal]}</div>
-          <div>
-            <div style="font-size:14px;font-weight:800;color:#1c1c1e;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              ${s.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${s.ticker}</span>
-              ${isMine ? '<span style="background:#1c1c1e;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px">📦 Portef.</span>' : ''}
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const surf = isDark ? 'var(--color-surface)' : '#fff';
+    const raised = isDark ? 'var(--color-surface-raised)' : '#f9fafb';
+    const bord = isDark ? 'var(--color-border)' : '#e4e4e7';
+    const txt = isDark ? 'var(--color-text)' : '#09090b';
+    const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+    const metricBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
 
+    // Logo couleur par ticker
+    const LCOLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6','#f97316'];
+    const logoColor = LCOLORS[(s.ticker||'').charCodeAt(0) % LCOLORS.length];
+    const logoText = (s.ticker||'XX').slice(0,2).toUpperCase();
+
+    // Couleurs signal
+    const sigColors = { acheter:'#3fb950', attendre:'#f59e0b', vendre:'#f87171', eviter:'#8e8e93' };
+    const sigBgNew = { acheter:isDark?'rgba(63,185,80,0.08)':'#f0fdf4', attendre:isDark?'rgba(245,158,11,0.08)':'#fffbeb', vendre:isDark?'rgba(248,113,113,0.08)':'#fef2f2', eviter:isDark?'rgba(255,255,255,0.04)':'#f9fafb' };
+    const sigBorderNew = { acheter:isDark?'rgba(63,185,80,0.2)':'rgba(34,197,94,0.2)', attendre:isDark?'rgba(245,158,11,0.2)':'rgba(245,158,11,0.2)', vendre:isDark?'rgba(248,113,113,0.2)':'rgba(248,113,113,0.2)', eviter:bord };
+    const sigLabelNew = { acheter:'ACHETER', attendre:'ATTENDRE', vendre:'VENDRE', eviter:'ÉVITER' };
+    const sc = sigColors[s.signal] || '#8e8e93';
+    const sb = sigBgNew[s.signal] || raised;
+    const sbd = sigBorderNew[s.signal] || bord;
+
+    return `
+    <div id="sig-card-${s.ticker}" style="background:${sb};border:1px solid ${sbd};border-left:3px solid ${sc};border-radius:14px;padding:16px;margin-bottom:10px;cursor:pointer;transition:all 0.15s"
+      onmouseover="this.style.borderColor='${sc}'" onmouseout="this.style.borderLeftColor='${sc}';this.style.borderColor='${sbd}'"
+      onclick="openDecisionFromPos('${s.ticker}','${s.signal==='acheter'?'acheter':s.signal==='vendre'?'vendre':'garder'}')">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <!-- Logo -->
+          <div style="width:42px;height:42px;border-radius:12px;background:${logoColor}20;border:1px solid ${logoColor}40;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${logoColor};flex-shrink:0">${logoText}</div>
+          <div>
+            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px">
+              <span style="font-size:14px;font-weight:700;color:${txt}">${s.name}</span>
+              <span style="font-size:11px;color:${sub};background:${isDark?'rgba(255,255,255,0.08)':'#f4f4f5'};padding:1px 7px;border-radius:4px">${s.ticker}</span>
+              ${isMine ? `<span style="background:${isDark?'rgba(63,185,80,0.15)':'#f0fdf4'};border:1px solid ${isDark?'rgba(63,185,80,0.3)':'rgba(34,197,94,0.3)'};color:#3fb950;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px">📦 Portef.</span>` : ''}
             </div>
-            <div style="font-size:11px;color:#8e8e93;margin-top:2px">${s.type||''} · ${s.secteur||''}</div>
-            <div style="margin-top:4px;display:flex;align-items:center;gap:4px">
-              <span style="font-size:10px;color:#8e8e93;font-weight:700">RISQUE</span>
+            <div style="font-size:11px;color:${sub};margin-bottom:4px">${s.type||'Action'} · ${s.secteur||''}</div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <span style="font-size:10px;font-weight:700;color:${sub}">RISQUE</span>
               ${riskBar(s.risque||3)}
             </div>
           </div>
         </div>
-        <div style="background:${sigColor[s.signal]};color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800;white-space:nowrap">
-          ${sigLabel[s.signal]||s.signal.toUpperCase()}
+        <!-- Badge signal -->
+        <div style="background:${sc};color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;letter-spacing:0.03em;white-space:nowrap">
+          ${sigLabelNew[s.signal]||s.signal.toUpperCase()}
         </div>
       </div>
-      <div style="font-size:13px;color:#1c1c1e;font-weight:500;margin-bottom:8px">${s.raison}</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px">
-        <div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
-          <div style="font-size:10px;color:#8e8e93;font-weight:700">HORIZON</div>
-          <div style="font-size:11px;font-weight:800;color:#1c1c1e;margin-top:1px">${s.horizon}</div>
-        </div>
-        ${s.objectif > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
-          <div style="font-size:10px;color:#1a7f5a;font-weight:700">OBJECTIF <span title="Prix cible estimé — bon moment de vendre si atteint" style="display:inline-block;width:12px;height:12px;background:#1a7f5a20;color:#1a7f5a;border-radius:50%;font-size:8px;font-weight:800;line-height:12px;text-align:center;cursor:help">?</span></div>
-          <div style="font-size:11px;font-weight:800;color:#1a7f5a;margin-top:1px">${s.objectif}€</div>
-        </div>` : ''}
-        ${s.stop_loss > 0 ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
-          <div style="font-size:10px;color:#cc2f26;font-weight:700">STOP <span title="Vends si l'action descend à ce prix pour limiter les pertes" style="display:inline-block;width:12px;height:12px;background:#cc2f2620;color:#cc2f26;border-radius:50%;font-size:8px;font-weight:800;line-height:12px;text-align:center;cursor:help">?</span></div>
-          <div style="font-size:11px;font-weight:800;color:#cc2f26;margin-top:1px">${s.stop_loss}€</div>
-        </div>` : ''}
-        ${isMine && myPnl !== null ? `<div style="background:rgba(255,255,255,0.8);border-radius:8px;padding:6px 8px;text-align:center">
-          <div style="font-size:10px;color:#8e8e93;font-weight:700">MA PERF.</div>
-          <div style="font-size:11px;font-weight:800;color:${parseFloat(myPnl)>=0?'#1a7f5a':'#cc2f26'};margin-top:1px">${parseFloat(myPnl)>=0?'+':''}${myPnl}%</div>
-        </div>` : ''}
-      </div>
-      <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:11px;color:${sigColor[s.signal]};font-weight:600">Analyser & investir →</div>
 
+      <!-- Raison -->
+      <div style="font-size:13px;color:${txt};font-weight:400;line-height:1.5;margin-bottom:12px;opacity:0.85">${s.raison}</div>
+
+      <!-- Métriques -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
+        <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:9px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">HORIZON</div>
+          <div style="font-size:12px;font-weight:800;color:${txt}">${s.horizon}</div>
+        </div>
+        <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:9px;font-weight:700;color:#3fb950;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">OBJECTIF ⓘ</div>
+          <div style="font-size:12px;font-weight:800;color:${s.objectif>0?'#3fb950':sub}">${s.objectif>0?s.objectif+'€':'—'}</div>
+        </div>
+        <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:9px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">STOP ⓘ</div>
+          <div style="font-size:12px;font-weight:800;color:${s.stop_loss>0?'#f87171':sub}">${s.stop_loss>0?s.stop_loss+'€':'—'}</div>
+        </div>
+        <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:9px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">MA PERF.</div>
+          <div style="font-size:12px;font-weight:800;color:${isMine&&myPnl?parseFloat(myPnl)>=0?'#3fb950':'#f87171':sub}">${isMine&&myPnl?`${parseFloat(myPnl)>=0?'+':''}${myPnl}%`:'—'}</div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:12px;font-weight:600;color:${sc}">Analyser & Investir →</div>
       </div>
     </div>`;
   }
