@@ -3180,50 +3180,67 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
     const impactBg    = { positif:'#e8f8f0', negatif:'#fff0f0', neutre:'#f5f5f5' };
     const impactIcon  = { positif:'📈', negatif:'📉', neutre:'📊' };
 
+    const isDark2 = document.documentElement.getAttribute('data-theme') === 'dark';
+    const surf2 = isDark2 ? 'var(--color-surface)' : '#fff';
+    const bord2 = isDark2 ? 'var(--color-border)' : '#e4e4e7';
+    const txt2 = isDark2 ? 'var(--color-text)' : '#09090b';
+    const sub2 = isDark2 ? 'var(--color-text-secondary)' : '#71717a';
+    const LCOLORS2 = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444'];
+
+    const impactColorDark = { positif:'#3fb950', negatif:'#f87171', neutre: sub2 };
+    const impactBgDark = { positif:isDark2?'rgba(63,185,80,0.12)':'#f0fdf4', negatif:isDark2?'rgba(248,113,113,0.12)':'#fef2f2', neutre:isDark2?'rgba(255,255,255,0.06)':'#f4f4f5' };
+
     newsEl.innerHTML = articles.map(a => {
       const myPos = positions.find(p => p.name === a.ticker);
       const searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(a.entreprise + ' actualité bourse 2026');
+      const logoColor = LCOLORS2[(a.ticker||'').charCodeAt(0) % LCOLORS2.length];
+      const logoText = (a.ticker||'XX').slice(0,2).toUpperCase();
+      const ic = impactColorDark[a.impact] || sub2;
+      const ib = impactBgDark[a.impact] || (isDark2?'rgba(255,255,255,0.06)':'#f4f4f5');
+      const hoverBg2 = isDark2 ? 'rgba(255,255,255,0.03)' : '#fafafa';
+      const isFav = isFavorite(a.ticker);
       return `
-      <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;transition:all 0.2s"
-           onmouseover="this.style.borderColor='#1c1c1e'" onmouseout="this.style.borderColor='#f0f0f0'">
+      <div style="background:${surf2};border:1px solid ${bord2};border-radius:14px;padding:16px;margin-bottom:10px;transition:all 0.15s"
+        onmouseover="this.style.background='${hoverBg2}';this.style.borderColor='${logoColor}40'"
+        onmouseout="this.style.background='${surf2}';this.style.borderColor='${bord2}'">
         <!-- Header -->
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="width:36px;height:36px;border-radius:10px;background:${impactBg[a.impact]};display:flex;align-items:center;justify-content:center;font-size:16px">${impactIcon[a.impact]}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <!-- Logo coloré -->
+            <div style="width:40px;height:40px;border-radius:11px;background:${logoColor}20;border:1px solid ${logoColor}40;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${logoColor};flex-shrink:0">${logoText}</div>
             <div>
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                <span style="font-size:13px;font-weight:800;color:#1c1c1e">${a.entreprise}</span>
-                <span style="font-size:11px;color:#8e8e93">${a.ticker}</span>
-                ${myPos ? '<span style="background:#1c1c1e;color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:5px">📦</span>' : ''}
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px">
+                <span style="font-size:13px;font-weight:700;color:${txt2}">${a.entreprise}</span>
+                <span style="font-size:11px;color:${sub2};background:${isDark2?'rgba(255,255,255,0.08)':'#f4f4f5'};padding:1px 7px;border-radius:4px">${a.ticker}</span>
+                ${myPos ? `<span style="background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.25);color:#3fb950;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px">📦 Portef.</span>` : ''}
               </div>
-              <div style="display:flex;gap:6px;align-items:center;margin-top:2px">
-                <span style="background:${impactBg[a.impact]};color:${impactColor[a.impact]};font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px">${a.categorie}</span>
-                <span style="font-size:11px;color:#8e8e93">${a.date}</span>
+              <div style="display:flex;gap:6px;align-items:center">
+                <span style="background:${ib};color:${ic};font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px">${a.categorie}</span>
+                <span style="font-size:11px;color:${sub2}">${a.date}</span>
               </div>
             </div>
           </div>
-          <!-- Nom + Étoile Suivre en haut à droite -->
+          <!-- Étoile -->
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;cursor:pointer"
-            onclick="event.stopPropagation();toggleStar(this.querySelector('button'),'${a.ticker}','${a.entreprise}');document.querySelectorAll('.ent-star-${a.ticker}').forEach(b=>{b.textContent=isFavorite('${a.ticker}')?'★':'☆';b.style.color=isFavorite('${a.ticker}')?'#f59e0b':'rgba(0,0,0,0.2)'});this.querySelector('span').style.color=isFavorite('${a.ticker}')?'#f59e0b':'#8e8e93'">
-            <span style="font-size:11px;font-weight:700;color:${isFavorite(a.ticker)?'#f59e0b':'#8e8e93'};transition:color 0.2s">${a.entreprise}</span>
-            <button class="ent-star-${a.ticker}"
-              style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFavorite(a.ticker)?'#f59e0b':'rgba(0,0,0,0.2)'};transition:color 0.2s">
-              ${isFavorite(a.ticker)?'★':'☆'}
+            onclick="event.stopPropagation();toggleStar(this.querySelector('button'),'${a.ticker}','${a.entreprise}')">
+            <span style="font-size:11px;font-weight:700;color:${isFav?'#f59e0b':logoColor}">${a.entreprise}</span>
+            <button class="ent-star-${a.ticker}" style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFav?'#f59e0b':sub2}">
+              ${isFav?'★':'☆'}
             </button>
           </div>
         </div>
         <!-- Titre -->
-        <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px;line-height:1.3">${a.titre}</div>
+        <div style="font-size:14px;font-weight:700;color:${ic};line-height:1.4;margin-bottom:6px">${a.titre}</div>
         <!-- Résumé -->
-        <div style="font-size:13px;color:#3c3c43;line-height:1.6;margin-bottom:10px">${a.resume}</div>
+        <div style="font-size:13px;color:${txt2};line-height:1.6;margin-bottom:12px;opacity:0.8">${a.resume}</div>
         <!-- Actions -->
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px">
           <a href="${searchUrl}" target="_blank" rel="noopener"
-             style="flex:1;background:#f5f5f5;color:#1c1c1e;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;display:block">
+            style="flex:1;background:${isDark2?'rgba(255,255,255,0.06)':'#f4f4f5'};color:${sub2};border:1px solid ${bord2};border-radius:10px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;text-align:center;display:block">
             🔗 Voir les articles
           </a>
           <button onclick="showEntrepriseDetail('${a.ticker}','${a.entreprise}')"
-             style="flex:1;background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer">
+            style="flex:1;background:${isDark2?'var(--color-text)':'#09090b'};color:${isDark2?'var(--color-bg)':'#fff'};border:none;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer">
             📊 Voir la fiche
           </button>
         </div>
