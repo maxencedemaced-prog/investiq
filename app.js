@@ -3206,8 +3206,8 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
         <!-- Header -->
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div style="display:flex;align-items:center;gap:10px">
-            <!-- Logo coloré -->
-            <div style="width:40px;height:40px;border-radius:11px;background:${logoColor}20;border:1px solid ${logoColor}40;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${logoColor};flex-shrink:0">${logoText}</div>
+            <!-- Logo réel -->
+            ${getCompanyLogo(a.ticker, a.entreprise, 40, 11)}
             <div>
               <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px">
                 <span style="font-size:13px;font-weight:700;color:${txt2}">${a.entreprise}</span>
@@ -3352,7 +3352,7 @@ async function renderSignaux() {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:12px">
           <!-- Logo -->
-          <div style="width:42px;height:42px;border-radius:12px;background:${logoColor}20;border:1px solid ${logoColor}40;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${logoColor};flex-shrink:0">${logoText}</div>
+          ${getCompanyLogo(s.ticker, s.name, 42, 12)}
           <div>
             <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px">
               <span style="font-size:14px;font-weight:700;color:${txt}">${s.name}</span>
@@ -4346,6 +4346,52 @@ function toggleTheme() {
   }
 }
 
+
+// ===== LOGOS ENTREPRISES =====
+function getCompanyLogo(ticker, name, size=36, radius=10) {
+  // Mapping ticker → domaine
+  const domainMap = {
+    'AAPL':'apple.com', 'MSFT':'microsoft.com', 'GOOGL':'google.com', 'GOOG':'google.com',
+    'AMZN':'amazon.com', 'TSLA':'tesla.com', 'NVDA':'nvidia.com', 'META':'meta.com',
+    'NFLX':'netflix.com', 'UBER':'uber.com', 'SPOT':'spotify.com', 'PYPL':'paypal.com',
+    'INTC':'intel.com', 'AMD':'amd.com', 'ORCL':'oracle.com', 'CRM':'salesforce.com',
+    'ADBE':'adobe.com', 'QCOM':'qualcomm.com', 'TXN':'ti.com', 'ASML':'asml.com',
+    'MC.PA':'lvmh.com', 'OR.PA':'loreal.com', 'TTE.PA':'totalenergies.com',
+    'AI.PA':'airliquide.com', 'BNP.PA':'bnpparibas.com', 'SAN.PA':'sanofi.com',
+    'AIR.PA':'airbus.com', 'ACA.PA':'credit-agricole.com', 'DG.PA':'saint-gobain.com',
+    'ORA.PA':'orange.com', 'KER.PA':'kering.com', 'EL.PA':'loreal.com',
+    'STLAM.MI':'stellantis.com', 'SAP.DE':'sap.com', 'SIE.DE':'siemens.com',
+    'ALV.DE':'allianz.com', 'BMW.DE':'bmw.com', 'MBG.DE':'mercedes-benz.com',
+    'BAYN.DE':'bayer.com', 'PAH3.DE':'porsche.com', 'VOW3.DE':'volkswagen.com',
+    'NESN.SW':'nestle.com', 'NOVO-B.CO':'novonordisk.com', 'SHEL.L':'shell.com',
+    'HSBA.L':'hsbc.com', 'BP.L':'bp.com', 'GSK.L':'gsk.com', 'AZN.L':'astrazeneca.com',
+    'VIE.PA':'veolia.com', 'RMS.PA':'hermes.com', 'CS.PA':'axa.com',
+    'IWDA.L':'ishares.com', 'VWCE.DE':'vanguard.com', 'CSPX.L':'ishares.com',
+    'SWDA.L':'ishares.com', 'VUSA.L':'vanguard.com', 'IWDA.AS':'ishares.com',
+    'MC.PA':'lvmh.com', 'LVMH':'lvmh.com', 'FDJ.PA':'groupefdj.com',
+    'SOI.PA':'soitec.com', 'MCPA':'lvmh.com', 'AIR.PA':'airbus.com',
+    'VIE.PA':'veolia.com', 'VWCE.DE':'vanguard.com',
+  };
+
+  const LCOLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6','#f97316'];
+  const fallbackColor = LCOLORS[(ticker||'').charCodeAt(0) % LCOLORS.length];
+  const initials = (ticker||name||'??').replace(/[^A-Z0-9]/gi,'').slice(0,2).toUpperCase() || '??';
+
+  const domain = domainMap[ticker] || domainMap[ticker?.replace('.PA','')?.replace('.DE','')?.replace('.L','')?.replace('.AS','')];
+
+  if (domain) {
+    // Logo réel via Clearbit
+    const logoUrl = `https://logo.clearbit.com/${domain}`;
+    return `<div style="width:${size}px;height:${size}px;border-radius:${radius}px;overflow:hidden;flex-shrink:0;background:#f4f4f5;display:flex;align-items:center;justify-content:center">
+      <img src="${logoUrl}" alt="${name}" width="${size}" height="${size}" style="border-radius:${radius}px;object-fit:cover"
+        onerror="this.parentElement.innerHTML='<div style=\'width:${size}px;height:${size}px;border-radius:${radius}px;background:${fallbackColor}20;border:1px solid ${fallbackColor}40;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.35)}px;font-weight:800;color:${fallbackColor}\'>${initials}</div>'">
+    </div>`;
+  }
+
+  // Fallback initiales
+  return `<div style="width:${size}px;height:${size}px;border-radius:${radius}px;background:${fallbackColor}20;border:1px solid ${fallbackColor}40;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.35)}px;font-weight:800;color:${fallbackColor};flex-shrink:0">${initials}</div>`;
+}
+
 // ===== NAV =====
 function nav(page) {
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
@@ -5017,7 +5063,7 @@ function renderPortfolio() {
         onclick="togglePos('${p.id}')">
         <!-- Actif -->
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:10px;background:${p.color||'#334155'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0">${initials}</div>
+          ${getCompanyLogo(p.name, p.fullName||p.name, 36, 10)}
           <div>
             <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${p.name}</div>
             <div style="font-size:11px;color:${subCol};margin-top:1px">${p.fullName||p.type||'Action'} · ${p.qty} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
@@ -5428,7 +5474,7 @@ async function renderSante() {
         const initials = p.name.replace(/[^A-Z0-9]/g,'').slice(0,2)||p.name.slice(0,2).toUpperCase();
         return `
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:28px;height:28px;border-radius:8px;background:${p.color||COLORS[i%COLORS.length]};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0">${initials}</div>
+          ${getCompanyLogo(p.name, p.name, 28, 8)}
           <div style="font-size:12px;font-weight:600;color:${textPrimary};min-width:80px">${p.name}</div>
           <div style="flex:1;background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:5px;overflow:hidden">
             <div style="height:100%;background:${COLORS[i%COLORS.length]};width:${pct}%;border-radius:99px;transition:width 1s ease"></div>
