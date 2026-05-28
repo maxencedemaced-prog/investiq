@@ -4430,34 +4430,36 @@ function renderNotifications() {
 async function renderHome() {
   const h = new Date().getHours();
   const greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
-  const name = isDemo?'Toi':(currentUser?.email||'').split('@')[0];
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
-  const tpnl = tv-ti, tpct = ti?tpnl/ti*100:0;
+  const emojis = ['👋','✨','🚀','💡','📈'];
+  const emoji = emojis[new Date().getDay() % emojis.length];
+  const name = isDemo ? 'Toi' : (currentUser?.email||'').split('@')[0];
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
+  const tpnl = tv - ti;
+  const tpct = ti ? tpnl/ti*100 : 0;
   const avgChange = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
   const {score} = calcScore();
   const scoreColor = score>=7?'#1a7f5a':score>=5?'#f59e0b':'#cc2f26';
-  const targetVal = objChartTarget > 1000 ? objChartTarget : (objective.target || objChartTarget || 0);
-  const pctObj = targetVal > 0 ? Math.min(tv/targetVal*100,100) : 0;
-  const today = new Date().toISOString().split('T')[0];
-  const nextEvent = agendaEvents.filter(e => e.date >= today && e.impact === 'high').sort((a,b)=>a.date.localeCompare(b.date))[0];
+  const targetVal = objChartTarget > 1000 ? objChartTarget : (objective.target || 0);
+  const pctObj = targetVal > 0 ? Math.min(tv/targetVal*100, 100) : 0;
   const sorted = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
   const best = sorted[0], worst = sorted[sorted.length-1];
+  const today = new Date().toISOString().split('T')[0];
 
-  document.getElementById('home-greeting').textContent = greet + ' ' + name + ' !';
+  document.getElementById('home-greeting').textContent = `${greet} ${name} ! ${emoji}`;
+  const subEl = document.getElementById('home-date');
+  if (subEl) subEl.textContent = 'Voici la santé de votre portefeuille aujourd\'hui.';
 
   if (!positions.length) {
     document.getElementById('home-metrics').innerHTML = '';
     document.getElementById('home-score').innerHTML = `
-      <div style="background:linear-gradient(135deg,#0f0f14,#1a1a24);border-radius:20px;padding:32px;text-align:center;margin-bottom:12px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(26,127,90,0.15),transparent);pointer-events:none"></div>
-        <div style="font-size:48px;margin-bottom:12px">📈</div>
-        <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:8px">Commence ton investissement</div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.45);margin-bottom:24px;max-width:320px;margin-left:auto;margin-right:auto">Suis ton portefeuille, reçois des signaux IA et atteins tes objectifs</div>
+      <div style="background:#0f0f14;border-radius:20px;padding:40px;text-align:center;margin-bottom:12px">
+        <div style="font-size:48px;margin-bottom:16px">📈</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:-0.04em">Commence ton investissement</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:28px;max-width:320px;margin-left:auto;margin-right:auto">Suis ton portefeuille, reçois des signaux IA et atteins tes objectifs</div>
         <div style="display:flex;flex-direction:column;gap:10px;max-width:280px;margin:0 auto">
-          <button onclick="nav('ajouter')" style="padding:14px;background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(26,127,90,0.4)">➕ Ajouter ma première position</button>
-          <button onclick="nav('objectif')" style="padding:13px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);border-radius:14px;font-size:14px;font-weight:700;cursor:pointer">🎯 Définir mon objectif</button>
-          <button onclick="nav('news')" style="padding:13px;background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);border-radius:14px;font-size:13px;font-weight:600;cursor:pointer">📰 Explorer les marchés</button>
+          <button onclick="nav('ajouter')" style="padding:14px;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(22,163,74,0.35)">➕ Ajouter ma première position</button>
+          <button onclick="nav('objectif')" style="padding:13px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);border-radius:14px;font-size:14px;font-weight:600;cursor:pointer">🎯 Définir mon objectif</button>
         </div>
       </div>`;
     document.getElementById('home-alerts').innerHTML = '';
@@ -4466,151 +4468,228 @@ async function renderHome() {
     return;
   }
 
-  // ── HERO CARD — valeur dominante ──
+  // Générer sparkline SVG
+  function sparkline(data, color, width=120, height=40, fill=true) {
+    if (!data || data.length < 2) return '';
+    const min = Math.min(...data), max = Math.max(...data);
+    const range = max - min || 1;
+    const pts = data.map((v,i) => `${(i/(data.length-1))*width},${height - ((v-min)/range)*(height-6) - 3}`);
+    const pathD = 'M' + pts.join(' L');
+    const fillD = fill ? `${pathD} L${width},${height} L0,${height} Z` : '';
+    return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+      <defs><linearGradient id="sg${color.replace('#','')}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient></defs>
+      ${fill ? `<path d="${fillD}" fill="url(#sg${color.replace('#','')})"/>` : ''}
+      <path d="${pathD}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
+  // Données sparkline simulées basées sur la perf
+  function genSparkData(trend, points=20) {
+    const data = [50];
+    for (let i = 1; i < points; i++) {
+      const v = data[i-1] + (Math.random()-0.5)*8 + trend*0.5;
+      data.push(Math.max(5, Math.min(95, v)));
+    }
+    return data;
+  }
+
   const pnlColor = tpnl >= 0 ? '#4ade80' : '#f87171';
-  const pnlBg    = tpnl >= 0 ? 'rgba(26,127,90,0.15)' : 'rgba(204,47,38,0.15)';
+  const pnlBg = tpnl >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)';
   const chgColor = avgChange >= 0 ? '#4ade80' : '#f87171';
+  const mainSparkData = genSparkData(avgChange > 0 ? 1 : -1, 30);
 
+  // ── HERO CARD ──
   document.getElementById('home-metrics').innerHTML = `
-    <div onclick="nav('portfolio')" style="cursor:pointer;background:linear-gradient(135deg,#0f0f14,#1a1a24);border-radius:20px;padding:24px;margin-bottom:4px;position:relative;overflow:hidden;grid-column:1/-1">
-
-      <!-- Glow background -->
-      <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;background:radial-gradient(circle,${tpnl>=0?'rgba(26,127,90,0.12)':'rgba(204,47,38,0.1)'},transparent);pointer-events:none"></div>
-
-      <!-- Header -->
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
-        <div>
-          <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Valeur du portefeuille</div>
-          <div style="font-size:clamp(36px,6vw,52px);font-weight:900;color:#fff;letter-spacing:-2px;line-height:1" id="home-tv-counter">—</div>
-        </div>
-        <div style="background:${pnlBg};border-radius:12px;padding:10px 14px;text-align:right">
-          <div style="font-size:20px;font-weight:900;color:${pnlColor}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div>
-          <div style="font-size:12px;color:${pnlColor};font-weight:700;opacity:0.8">${tpnl>=0?'+':''}${tpct.toFixed(1)}% total</div>
-        </div>
+    <div onclick="nav('portfolio')" style="cursor:pointer;background:linear-gradient(135deg,#0d0d12,#141420);border-radius:20px;padding:24px 28px;margin-bottom:4px;grid-column:1/-1;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.06)">
+      <div style="position:absolute;top:0;right:0;bottom:0;width:45%;opacity:0.8;pointer-events:none">
+        ${sparkline(mainSparkData, tpnl>=0?'#4ade80':'#f87171', 400, 160, true)}
       </div>
-
-      <!-- Mini stats row -->
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px;color:${chgColor};font-weight:800">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1)}%</span>
-          <span style="font-size:12px;color:rgba(255,255,255,0.35);font-weight:600">aujourd'hui</span>
+      <div style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Performance totale</div>
+        <div style="font-size:20px;font-weight:800;color:${pnlColor};letter-spacing:-0.04em">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
+        <div style="font-size:12px;color:${pnlColor};opacity:0.7;margin-top:2px">${tpnl>=0?'↑':'↓'} ${Math.abs(tpct).toFixed(1)}%</div>
+      </div>
+      <div style="position:relative;z-index:2">
+        <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Valeur totale du portefeuille</div>
+        <div style="font-size:clamp(32px,5vw,48px);font-weight:900;color:#fff;letter-spacing:-0.05em;line-height:1;margin-bottom:16px" id="home-tv-counter">—</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${chgColor}">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1)}% aujourd'hui</div>
+          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.6)">${positions.length} positions</div>
+          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${scoreColor}">${score.toFixed(1)}/10 santé</div>
+          ${targetVal > 0 ? `<div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#a5b4fc">${pctObj.toFixed(0)}% objectif</div>` : ''}
         </div>
-        <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px;color:#fff;font-weight:800">${positions.length}</span>
-          <span style="font-size:12px;color:rgba(255,255,255,0.35);font-weight:600">position${positions.length>1?'s':''}</span>
-        </div>
-        <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px;font-weight:800;color:${scoreColor}">${score.toFixed(1)}/10</span>
-          <span style="font-size:12px;color:rgba(255,255,255,0.35);font-weight:600">santé</span>
-        </div>
-        ${targetVal > 0 ? `<div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px;color:#a5b4fc;font-weight:800">${pctObj.toFixed(0)}%</span>
-          <span style="font-size:12px;color:rgba(255,255,255,0.35);font-weight:600">objectif</span>
+        ${targetVal > 0 ? `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:5px"><span>Progression objectif</span><span>${fmtK(tv)} / ${fmtK(targetVal)}</span></div>
+          <div style="background:rgba(255,255,255,0.08);border-radius:99px;height:5px;overflow:hidden">
+            <div id="home-prog-bar" style="height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;width:0%;transition:width 1.2s cubic-bezier(0.16,1,0.3,1)"></div>
+          </div>
         </div>` : ''}
       </div>
-
-      ${targetVal > 0 ? `
-      <!-- Barre objectif -->
-      <div style="margin-top:16px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;margin-bottom:6px">
-          <span>Progression objectif</span>
-          <span>${fmtK(tv)} / ${fmtK(targetVal)}</span>
-        </div>
-        <div style="background:rgba(255,255,255,0.08);border-radius:6px;height:6px;overflow:hidden">
-          <div id="home-prog-bar" style="height:100%;background:linear-gradient(90deg,#1a7f5a,#4ade80);width:0%;border-radius:6px"></div>
-        </div>
-      </div>` : ''}
     </div>`;
 
-  // ── WIDGETS SECONDAIRES ──
-  let dayHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">';
+  // ── MÉTRIQUES SECONDAIRES ──
+  let html = '';
 
-  // Meilleure / pire position
-  if (best) {
-    dayHtml += `
-    <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border-radius:14px;padding:14px;border:1.5px solid #f0f0f0;transition:all 0.2s" onmouseover="this.style.borderColor='#1a7f5a'" onmouseout="this.style.borderColor='#f0f0f0'">
-      <div style="font-size:10px;font-weight:700;color:#1a7f5a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🏆 Meilleure</div>
-      <div style="font-size:15px;font-weight:800;color:#1c1c1e">${best.name}</div>
-      <div style="font-size:16px;font-weight:900;color:#1a7f5a;margin-top:2px">+${(best.change_pct||0).toFixed(2)}%</div>
-    </div>`;
-  }
-  if (worst && worst !== best) {
-    dayHtml += `
-    <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border-radius:14px;padding:14px;border:1.5px solid #f0f0f0;transition:all 0.2s" onmouseover="this.style.borderColor='#cc2f26'" onmouseout="this.style.borderColor='#f0f0f0'">
-      <div style="font-size:10px;font-weight:700;color:#cc2f26;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📉 Plus faible</div>
-      <div style="font-size:15px;font-weight:800;color:#1c1c1e">${worst.name}</div>
-      <div style="font-size:16px;font-weight:900;color:#cc2f26;margin-top:2px">${(worst.change_pct||0).toFixed(2)}%</div>
+  // Meilleure + pire performance avec sparkline
+  if (best && worst && best !== worst) {
+    const bestData = genSparkData(2, 20);
+    const worstData = genSparkData(-2, 20);
+    html += `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" onmouseover="this.style.borderColor='#16a34a';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.transform='translateY(0)'">
+        <div style="font-size:9px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">🏆 Meilleure performance</div>
+        <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${best.name}</div>
+        <div style="font-size:20px;font-weight:900;color:#16a34a;letter-spacing:-0.04em;margin-bottom:8px">+${(best.change_pct||0).toFixed(2)}%</div>
+        <div style="opacity:0.7">${sparkline(bestData,'#4ade80',120,32,true)}</div>
+      </div>
+      <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" onmouseover="this.style.borderColor='#dc2626';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.transform='translateY(0)'">
+        <div style="font-size:9px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">📉 Plus faible performance</div>
+        <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${worst.name}</div>
+        <div style="font-size:20px;font-weight:900;color:#dc2626;letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0).toFixed(2)}%</div>
+        <div style="opacity:0.7">${sparkline(worstData,'#f87171',120,32,true)}</div>
+      </div>
     </div>`;
   }
-  dayHtml += '</div>';
 
-  // Score santé
-  dayHtml += `
-  <div onclick="nav('sante')" style="cursor:pointer;background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;transition:all 0.2s" onmouseover="this.style.borderColor='#1c1c1e'" onmouseout="this.style.borderColor='#f0f0f0'">
-    <div>
-      <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Santé du portefeuille</div>
-      <div style="font-size:24px;font-weight:900;color:${scoreColor}">${score.toFixed(1)}<span style="font-size:14px;color:#8e8e93">/10</span></div>
-      <div style="font-size:12px;color:${scoreColor};font-weight:600;margin-top:2px">${score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️'}</div>
+  // Santé + Insight IA côte à côte
+  const platforms = {};
+  positions.forEach(p=>{ const v=p.qty*p.price; platforms[p.platform||'Autre']=(platforms[p.platform||'Autre']||0)+v; });
+  const platformEntries = Object.entries(platforms);
+
+  html += `
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <!-- Santé -->
+    <div onclick="nav('sante')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;transition:all 0.2s" onmouseover="this.style.borderColor='${scoreColor}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.transform='translateY(0)'">
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Santé du portefeuille</div>
+        <div style="font-size:32px;font-weight:900;color:${scoreColor};letter-spacing:-0.05em;line-height:1">${score.toFixed(1)}<span style="font-size:16px;color:var(--color-text-tertiary)">/10</span></div>
+        <div style="font-size:13px;font-weight:600;color:${scoreColor};margin-top:4px">${score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️'}</div>
+      </div>
+      <div style="width:56px;height:56px;border-radius:50%;background:${score>=7?'#f0fdf4':score>=5?'#fffbeb':'#fef2f2'};border:3px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">
+        ${score>=7?'💚':score>=5?'🟡':'🔴'}
+      </div>
     </div>
-    <div style="width:56px;height:56px;border-radius:50%;background:${score>=7?'#e8f8f0':score>=5?'#fff9e6':'#fff0f0'};border:3px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:24px">
-      ${score>=7?'💚':score>=5?'🟡':'🔴'}
+    <!-- Insight IA -->
+    <div onclick="nav('ai')" style="cursor:pointer;background:linear-gradient(135deg,#0d0d12,#141420);border:1px solid rgba(22,163,74,0.2);border-radius:16px;padding:16px;position:relative;overflow:hidden;transition:all 0.2s" onmouseover="this.style.borderColor='rgba(22,163,74,0.5)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(22,163,74,0.2)';this.style.transform='translateY(0)'">
+      <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(22,163,74,0.2),transparent);pointer-events:none"></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <div style="width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
+        <div style="font-size:9px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:0.08em">✦ Insight IA</div>
+      </div>
+      <div id="home-ai-insight" style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.55;font-weight:400">
+        ${positions.length > 0 ? `Ton portef. ${avgChange>=0?'progresse de':'recule de'} <strong style="color:${chgColor}">${avgChange>=0?'+':''}${avgChange.toFixed(1)}%</strong> aujourd'hui. ${score>=7?'Score santé excellent.':'Analyse disponible.'}` : 'Ajoute des positions pour recevoir des insights personnalisés.'}
+      </div>
+      <div style="margin-top:10px;font-size:12px;font-weight:600;color:#4ade80">Voir l'analyse complète →</div>
     </div>
   </div>`;
 
-  // Prochain événement
-  if (nextEvent) {
-    const isToday = nextEvent.date === today;
-    const isTomorrow = nextEvent.date === new Date(Date.now()+86400000).toISOString().split('T')[0];
-    const quand = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : new Date(nextEvent.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
-    dayHtml += `
-    <div onclick="setNewsFilter('agenda',document.getElementById('news-fil-agenda'));nav('news')" style="cursor:pointer;background:#fff0f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #cc2f26;transition:all 0.2s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-      <div style="font-size:10px;font-weight:700;color:#cc2f26;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">⚡ Prochain événement fort</div>
-      <div style="font-size:14px;font-weight:800;color:#1c1c1e">${nextEvent.titre}</div>
-      <div style="font-size:12px;color:#7f1d1d;margin-top:4px;font-weight:600">${quand} à ${nextEvent.heure} → Voir l'agenda</div>
+  // Répartition par plateforme
+  if (platformEntries.length > 0) {
+    const colors = ['#16a34a','#6366f1','#f59e0b','#ec4899','#06b6d4'];
+    // Donut SVG
+    function donutSVG(entries, total, size=80) {
+      let offset = 0;
+      const r = 28, c = size/2, circum = 2*Math.PI*r;
+      const segments = entries.map(([name,val],i) => {
+        const pct = val/total;
+        const dash = pct * circum;
+        const seg = `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${colors[i%colors.length]}" stroke-width="8" stroke-dasharray="${dash} ${circum-dash}" stroke-dashoffset="${-offset*circum}" transform="rotate(-90 ${c} ${c})" stroke-linecap="round"/>`;
+        offset += pct;
+        return seg;
+      });
+      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#f0f0f2" stroke-width="8"/>
+        ${segments.join('')}
+        <text x="${c}" y="${c-4}" text-anchor="middle" font-size="9" font-weight="700" fill="#09090b">${fmtK(total)}</text>
+        <text x="${c}" y="${c+8}" text-anchor="middle" font-size="7" fill="#8e8e93">Total</text>
+      </svg>`;
+    }
+
+    html += `
+    <div style="background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em">Répartition par plateforme</div>
+        <button onclick="nav('portfolio')" style="font-size:11px;font-weight:600;color:var(--color-text-secondary);background:none;border:none;cursor:pointer">Détails →</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:20px">
+        ${donutSVG(platformEntries, tv)}
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+          ${platformEntries.map(([name,val],i) => `
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px">
+              <span style="color:#09090b">${name}</span>
+              <span style="color:#09090b">${fmtK(val)} <span style="color:var(--color-text-tertiary)">${(val/tv*100).toFixed(1)}%</span></span>
+            </div>
+            <div style="background:#f0f0f2;border-radius:99px;height:4px;overflow:hidden">
+              <div style="height:100%;background:${colors[i%colors.length]};width:${(val/tv*100)}%;border-radius:99px;transition:width 1s cubic-bezier(0.16,1,0.3,1)"></div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--color-text-tertiary)">${platformEntries.length} plateforme${platformEntries.length>1?'s':''} connectée${platformEntries.length>1?'s':''}</div>
     </div>`;
   }
-
-
 
   // Actions rapides
-  dayHtml += `
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
-    <button onclick="nav('ajouter')" style="padding:12px 8px;background:#f9f9f9;border:1.5px solid #f0f0f0;border-radius:12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#1c1c1e';this.style.color='#fff'" onmouseout="this.style.background='#f9f9f9';this.style.color='#1c1c1e'">➕ Ajouter</button>
-    <button onclick="nav('decision')" style="padding:12px 8px;background:#f9f9f9;border:1.5px solid #f0f0f0;border-radius:12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#1c1c1e';this.style.color='#fff'" onmouseout="this.style.background='#f9f9f9';this.style.color='#1c1c1e'">🤔 Décision</button>
-    <button onclick="nav('ai')" style="padding:12px 8px;background:#f9f9f9;border:1.5px solid #f0f0f0;border-radius:12px;font-size:12px;font-weight:700;color:#1c1c1e;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#1c1c1e';this.style.color='#fff'" onmouseout="this.style.background='#f9f9f9';this.style.color='#1c1c1e'">🤖 Agent IA</button>
+  const actions = [
+    { icon:'＋', label:'Ajouter une position', sub:'Ajoutez une action, ETF...', page:'ajouter', color:'#6366f1' },
+    { icon:'🤔', label:'Aide à la décision', sub:'Analyse et recommandations', page:'decision', color:'#f59e0b' },
+    { icon:'🤖', label:'Agent IA', sub:'Discutez avec votre assistant', page:'ai', color:'#16a34a' },
+  ];
+  html += `
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px">
+    ${actions.map(a => `
+    <div onclick="nav('${a.page}')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:14px;padding:14px;transition:all 0.2s" onmouseover="this.style.background='#fafafa';this.style.borderColor='${a.color}';this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#fff';this.style.borderColor='var(--color-border)';this.style.transform='translateY(0)'">
+      <div style="font-size:22px;margin-bottom:8px">${a.icon}</div>
+      <div style="font-size:13px;font-weight:700;color:#09090b;margin-bottom:3px;letter-spacing:-0.02em">${a.label}</div>
+      <div style="font-size:11px;color:var(--color-text-tertiary)">${a.sub}</div>
+    </div>`).join('')}
   </div>`;
 
-  document.getElementById('home-score').innerHTML = dayHtml;
+  document.getElementById('home-score').innerHTML = html;
   document.getElementById('home-alerts').innerHTML = '';
   document.getElementById('home-obj').innerHTML = '';
   renderPlatforms();
 
-  // ── Motion design home ──
+  // Animations
   setTimeout(() => {
-    // Compteur valeur totale
     const tvEl = document.getElementById('home-tv-counter');
     if (tvEl) animateNumber(tvEl, 0, tv, 1000);
-    // Barre objectif
     const progBar = document.getElementById('home-prog-bar');
-    if (progBar) animateBar(progBar, pctObj, 1200, 300);
-    // Tous les éléments du hero card en cascade
-    const heroCard = document.querySelector('#home-metrics > div');
-    if (heroCard) {
-      const animEls = heroCard.querySelectorAll('[style*="border-radius:10px"]');
-      animEls.forEach((el, i) => {
-        el.style.opacity = '0';
-        el.style.transform = 'scale(0.92) translateY(4px)';
-        el.style.transition = `opacity 0.22s ease ${i*70+250}ms, transform 0.22s ease ${i*70+250}ms`;
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          el.style.opacity = '1';
-          el.style.transform = 'scale(1) translateY(0)';
-        }));
-      });
-    }
+    if (progBar) animateBar(progBar, pctObj, 1100, 300);
+    const chips = document.querySelectorAll('#home-metrics .a-chip');
+    chips.forEach((chip, i) => {
+      chip.style.opacity = '0';
+      chip.style.transform = 'scale(0.9)';
+      chip.style.transition = `opacity 0.25s ease ${i*80+200}ms, transform 0.25s ease ${i*80+200}ms`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        chip.style.opacity = '1';
+        chip.style.transform = 'scale(1)';
+      }));
+    });
   }, 80);
-  // Fade-in staggered des widgets
   setTimeout(() => fadeInCards('#home-score > div', 90), 150);
+
+  // Insight IA asynchrone
+  setTimeout(async () => {
+    if (!positions.length) return;
+    const insightEl = document.getElementById('home-ai-insight');
+    if (!insightEl) return;
+    const tv2 = positions.reduce((a,p)=>a+p.qty*p.price,0);
+    const topSectors = {};
+    positions.forEach(p => { if(p.sector) topSectors[p.sector]=(topSectors[p.sector]||0)+p.qty*p.price; });
+    const topSector = Object.entries(topSectors).sort((a,b)=>b[1]-a[1])[0];
+    const topPct = topSector ? (topSector[1]/tv2*100).toFixed(0) : 0;
+    if (topSector && topPct > 35) {
+      insightEl.innerHTML = `Votre exposition au secteur <strong style="color:#fff">${topSector[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisagez une diversification pour réduire le risque.`;
+    }
+  }, 800);
 }
+
 
 
 function buildAlertsData() {
