@@ -6627,11 +6627,12 @@ function dcaPreset(m, y, r, s, btn) {
 // Pré-calcule et affiche le résultat final sur chaque carte preset au chargement
 function initDCAPresets() {
   const presets = [
-    { m:200, y:20, r:7,  s:1000  },
-    { m:100, y:15, r:5,  s:0     },
-    { m:500, y:15, r:9,  s:5000  },
-    { m:1000,y:30, r:9,  s:10000 },
-    { m:50,  y:10, r:7,  s:0     },
+    { m:200,  y:10, r:7,  s:0 },
+    { m:200,  y:10, r:4,  s:0 },
+    { m:300,  y:10, r:9,  s:0 },
+    { m:1000, y:10, r:7,  s:0 },
+    { m:2000, y:10, r:9,  s:0 },
+    { m:5000, y:10, r:11, s:0 },
   ];
   presets.forEach((p, i) => {
     const rate = p.r / 100 / 12;
@@ -7220,3 +7221,71 @@ function runDecision() {
   if (resultEl) resultEl.style.display = 'block';
   analyseDecision();
 }
+
+// ===== DCA REDESIGN — fonctions additionnelles =====
+
+function updateDCADonut() {
+  const m = parseFloat(document.getElementById('dca-m')?.value) || 200;
+  const y = parseInt(document.getElementById('dca-y')?.value) || 10;
+  const r = parseFloat(document.getElementById('dca-r')?.value) || 7;
+  const s = parseFloat(document.getElementById('dca-s')?.value) || 0;
+  const rate = r/100/12, n = y*12;
+  const total = s*Math.pow(1+rate,n)+(rate>0?m*((Math.pow(1+rate,n)-1)/rate):m*n);
+  const invested = s + m*n;
+  const gain = total - invested;
+  const gainPct = invested > 0 ? Math.round(gain/invested*100) : 0;
+
+  // Hero metrics
+  const el = (id) => document.getElementById(id);
+  if (el('dca-hero-total')) el('dca-hero-total').textContent = fmtK(Math.round(total));
+  if (el('dca-hero-gain'))  el('dca-hero-gain').textContent  = '+' + fmtK(Math.round(gain));
+  if (el('dca-hero-inv'))   el('dca-hero-inv').textContent   = fmtK(Math.round(invested));
+  if (el('dca-hero-mult'))  el('dca-hero-mult').textContent  = '×' + (invested>0?(total/invested).toFixed(2):'1.00');
+
+  // Donut
+  const circle = el('dca-donut-circle');
+  const pctEl  = el('dca-donut-pct');
+  if (circle) {
+    const circ = 2*Math.PI*36;
+    const dash = Math.min(gainPct/100, 1.5) * circ * 0.67;
+    circle.setAttribute('stroke-dasharray', dash + ' ' + circ);
+  }
+  if (pctEl) pctEl.textContent = gainPct + '%';
+
+  // Labels sliders
+  if (el('dca-m-o')) el('dca-m-o').textContent = m.toLocaleString('fr-FR') + ' €';
+  if (el('dca-y-o')) el('dca-y-o').textContent = y;
+  if (el('dca-r-o')) el('dca-r-o').textContent = r.toFixed(1) + ' %';
+  if (el('dca-s-o')) el('dca-s-o').textContent = s.toLocaleString('fr-FR') + ' €';
+}
+
+// Override dcaPreset pour les tabs
+function dcaPreset(m, y, r, s, btn) {
+  const ids = ['dca-m','dca-y','dca-r','dca-s'];
+  const vals = [m, y, r, s];
+  ids.forEach((id, i) => { const el = document.getElementById(id); if(el) el.value = vals[i]; });
+  document.querySelectorAll('.dca-preset-tab').forEach(b => {
+    b.style.background = 'transparent';
+    b.classList.remove('active');
+    const lbl = b.querySelector('div:first-child');
+    if (lbl) lbl.style.color = 'var(--color-text-secondary)';
+  });
+  document.querySelectorAll('.dca-preset-pill').forEach(b => {
+    b.style.background = 'var(--color-surface)';
+    b.classList.remove('active');
+  });
+  if (btn) {
+    btn.style.background = 'rgba(63,185,80,0.08)';
+    btn.classList.add('active');
+    const lbl = btn.querySelector('div:first-child');
+    if (lbl) lbl.style.color = '#3fb950';
+  }
+  updateDCA();
+}
+
+// Hook updateDCA pour appeler aussi updateDCADonut
+const _origUpdateDCA = updateDCA;
+updateDCA = function() {
+  _origUpdateDCA();
+  updateDCADonut();
+};
