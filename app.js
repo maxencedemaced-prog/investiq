@@ -4794,7 +4794,8 @@ function calcScore() {
     {label:'Part ETF',score:etfPct>=60?10:etfPct>=40?8:etfPct>=20?5:3,tip:etfPct<40?`ETF = ${etfPct.toFixed(0)}% — vise 60%+`:''},
     {label:'Performance',score:pnl>=0?8:pnl>-tv*0.1?6:4,tip:''},
   ];
-  return {score:Math.round(items.reduce((a,i)=>a+i.score,0)/items.length*10)/10,items};
+  const finalScore = Math.round(items.reduce((a,i)=>a+i.score,0)/items.length*10)/10;
+  return { score:finalScore, items, details:{ diversity:items[0].score, concentration:items[1].score, etfRatio:items[2].score, performance:items[3].score } };
 }
 function buildScore() {
   const {score,items}=calcScore();
