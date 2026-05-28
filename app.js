@@ -2403,7 +2403,6 @@ function formatMD(text) {
 }
 
 // ===== WATCHLIST & SEARCH MODULE =====
-let watchlist = []; // {ticker, name, type}
 let searchResults = [];
 let activeCompany = null;
 const CACHE_WATCHLIST = 'iq_watchlist';
