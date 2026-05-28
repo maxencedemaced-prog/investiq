@@ -1402,3 +1402,26 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
 [data-theme="dark"] #ai-chat .bubble.user * {
   color: #e6edf3 !important;
 }
+
+/* ===== HOME HOVER CARDS ===== */
+.home-hover-card {
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+  cursor: pointer;
+}
+.home-hover-card:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+  border-color: var(--color-border-strong) !important;
+}
+[data-theme="dark"] .home-hover-card:hover {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border-strong) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+}
+/* S'assurer que le background ne devient jamais blanc en dark */
+[data-theme="dark"] .home-hover-card {
+  background: var(--color-surface) !important;
+}
+[data-theme="dark"] .home-hover-card[style*="background:linear-gradient"] {
+  background: linear-gradient(135deg, #080c10, #0d1520) !important;
+}
