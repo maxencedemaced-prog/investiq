@@ -4876,8 +4876,20 @@ function renderPortfolio() {
     return {svg, segs};
   }
 
+  // Dédupliquer les positions (même ticker + même plateforme = regrouper)
+  const dedupMap = {};
+  positions.forEach(p => {
+    const key = p.name + '|' + (p.platform||'');
+    if (!dedupMap[key]) {
+      dedupMap[key] = {...p};
+    } else {
+      dedupMap[key].qty += p.qty;
+    }
+  });
+  const dedupPositions = Object.values(dedupMap);
+
   // Allocation par position
-  const byPos = positions.map(p=>([p.name, p.qty*p.price])).sort((a,b)=>b[1]-a[1]);
+  const byPos = dedupPositions.map(p=>([p.name, p.qty*p.price])).sort((a,b)=>b[1]-a[1]);
   const top5 = byPos.slice(0,5);
   const rest = byPos.slice(5).reduce((a,b)=>a+b[1],0);
   const donutData = rest > 0 ? [...top5, [`Autres (${byPos.length-5})`, rest]] : top5;
@@ -4900,7 +4912,7 @@ function renderPortfolio() {
   </div>`;
 
   // Tableau des positions
-  const sorted = [...positions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
+  const sorted = [...dedupPositions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
   const tableHtml = `
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
     <!-- Header tableau -->
