@@ -1725,67 +1725,143 @@ window.addEventListener('load', function() {
     </section>
 
     <!-- AI -->
-    <section id="sec-ai" class="sec">
+    <section id="sec-ai" class="sec" style="padding:0">
 
-  <!-- HEADER -->
-  <div class="page-header">
-    <div>
-      <h1 style="display:flex;align-items:center;gap:10px">
-        Agent IA
-        <span style="background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;letter-spacing:0.3px">LIVE</span>
-      </h1>
-      <p class="page-sub">Ton copilote financier personnel</p>
-    </div>
-    <button class="btn-secondary" onclick="clearChat()" style="font-size:13px;padding:8px 14px">Effacer</button>
-  </div>
+  <div style="display:flex;gap:0;min-height:calc(100vh - 60px)">
 
-  <!-- RÉSUMÉ QUOTIDIEN -->
-  <div id="agent-daily-brief" style="background:linear-gradient(135deg,#0f0f14,#1a1a24);border-radius:18px;padding:18px;margin-bottom:14px;position:relative;overflow:hidden">
-    <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(26,127,90,0.15),transparent);pointer-events:none"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:32px;height:32px;background:rgba(26,127,90,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px">🧠</div>
+    <!-- COLONNE PRINCIPALE : CHAT -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:24px 20px 0 24px">
+
+      <!-- HEADER -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div>
-          <div style="font-size:13px;font-weight:800;color:#fff">Briefing du jour</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.35);font-weight:500" id="agent-brief-date">—</div>
+          <h1 style="display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;color:var(--color-text);margin:0">
+            Agent IA
+            <span style="background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px">LIVE</span>
+          </h1>
+          <p style="font-size:13px;color:var(--color-text-secondary);margin:4px 0 0">Ton copilote financier personnel</p>
+        </div>
+        <button onclick="clearChat()" style="display:flex;align-items:center;gap:6px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6m4-6v6"/></svg>
+          Effacer
+        </button>
+      </div>
+
+      <!-- BRIEFING DU JOUR -->
+      <div id="agent-daily-brief" style="background:linear-gradient(135deg,#0d0d18,#111120);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:18px;margin-bottom:14px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,rgba(99,102,241,0.12),transparent);pointer-events:none"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;background:rgba(99,102,241,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🧠</div>
+            <div>
+              <div style="font-size:13px;font-weight:800;color:#fff">Briefing du jour</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.35)" id="agent-brief-date">—</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);border-radius:99px;padding:3px 10px;margin-left:4px">
+              <div style="width:5px;height:5px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
+              <span style="font-size:10px;font-weight:700;color:#4ade80">À jour</span>
+            </div>
+          </div>
+          <button onclick="generateDailyBrief()" id="brief-refresh-btn"
+            style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;cursor:pointer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
+            Actualiser
+          </button>
+        </div>
+        <div id="agent-brief-content" style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);font-size:13px">
+            <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            Analyse en cours...
+          </div>
         </div>
       </div>
-      <button onclick="generateDailyBrief()" id="brief-refresh-btn"
-        style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;cursor:pointer">
-        ↻ Actualiser
-      </button>
-    </div>
-    <div id="agent-brief-content" style="display:flex;flex-direction:column;gap:8px">
-      <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);font-size:13px">
-        <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-        Analyse en cours...
+
+      <!-- CONTEXTE + SUGGESTIONS -->
+      <div id="agent-context-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+      <div id="agent-suggestions" style="margin-bottom:10px"></div>
+
+      <!-- CHAT -->
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;flex:1;min-height:0;margin-bottom:16px">
+        <div class="chat-messages" id="ai-chat" style="flex:1;overflow-y:auto;padding:20px;min-height:200px;max-height:40vh">
+          <div class="bubble bot" id="ai-welcome">Bonjour ! Je suis ton copilote IA. Je connais ton portefeuille, tes objectifs et ton profil. Pose-moi n'importe quelle question ou donne-moi un ordre.</div>
+        </div>
+
+        <!-- ACTIONS RAPIDES -->
+        <div style="border-top:1px solid var(--color-border);padding:10px 14px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none" id="agent-quick-actions">
+          <button onclick="sq('Analyse mon portefeuille en détail')" style="flex-shrink:0;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">📊 Analyse portefeuille</button>
+          <button onclick="sq('Quelles sont les meilleures opportunités en ce moment ?')" style="flex-shrink:0;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">⚡ Opportunités</button>
+          <button onclick="sq('Dois-je rééquilibrer mon portefeuille ?')" style="flex-shrink:0;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">⚖️ Rééquilibrage</button>
+          <button onclick="sq('Quels actifs renforcer ?')" style="flex-shrink:0;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">Quels actifs renforcer ?</button>
+          <button onclick="sq('Faut-il vendre une position ?')" style="flex-shrink:0;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">Faut-il vendre ?</button>
+          <button onclick="sq('Simuler un scénario crise')" style="flex-shrink:0;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">Simuler crise</button>
+        </div>
+
+        <!-- INPUT -->
+        <div style="border-top:1px solid var(--color-border);padding:12px 14px;display:flex;gap:10px;align-items:center">
+          <input type="text" id="ai-in" placeholder="Pose ta question ou donne un ordre..."
+            onkeydown="if(event.key==='Enter')sendAI()"
+            style="flex:1;font-size:14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:12px;padding:12px 16px;color:var(--color-text);outline:none">
+          <button onclick="sendAI()" id="ai-send-btn"
+            style="width:44px;height:44px;background:#16a34a;color:#fff;border:none;border-radius:12px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s;box-shadow:0 2px 12px rgba(22,163,74,0.3)"
+            onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- DISCLAIMER -->
+      <div style="text-align:center;font-size:11px;color:var(--color-text-tertiary);padding-bottom:16px;display:flex;align-items:center;justify-content:center;gap:5px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Les réponses de l'IA ne constituent pas un conseil en investissement.
       </div>
     </div>
-  </div>
 
-  <!-- BARRE DE CONTEXTE -->
-  <div id="agent-context-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+    <!-- COLONNE DROITE : MÉTRIQUES -->
+    <div id="ai-sidebar" style="width:260px;flex-shrink:0;border-left:1px solid var(--color-border);padding:24px 20px;display:flex;flex-direction:column;gap:16px;overflow-y:auto">
 
-  <!-- SUGGESTIONS -->
-  <div id="agent-suggestions" style="margin-bottom:12px"></div>
+      <!-- Perte/gain latent -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Perte latente actuelle</div>
+        <div id="ai-side-pnl" style="font-size:28px;font-weight:900;color:#f87171;letter-spacing:-0.04em">—</div>
+        <div id="ai-side-pnl-pct" style="font-size:13px;color:var(--color-text-secondary);margin-top:3px">—</div>
+        <!-- Mini sparkline -->
+        <svg id="ai-side-sparkline" width="100%" height="40" viewBox="0 0 200 40" style="margin-top:8px;opacity:0.8">
+          <path d="M0 30 Q30 10 60 20 Q90 30 120 15 Q150 5 180 20 Q190 25 200 18" stroke="#f87171" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
 
-  <!-- CHAT -->
-  <div class="card chat-card" style="padding:0;overflow:hidden">
-    <div class="chat-messages" id="ai-chat" style="min-height:260px;max-height:45vh;padding:16px">
-      <div class="bubble bot" id="ai-welcome">Bonjour ! Je suis ton copilote IA. Je connais ton portefeuille, tes objectifs et ton profil. Pose-moi n'importe quelle question ou donne-moi un ordre.</div>
-    </div>
-    <div style="border-top:1px solid #f0f0f0;padding:10px 12px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none" id="agent-quick-actions">
-      <button onclick="sq('Analyse mon portefeuille en détail')" style="background:#f5f5f5;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;white-space:nowrap;flex-shrink:0">📊 Analyse portef.</button>
-      <button onclick="sq('Quelles sont les meilleures opportunités en ce moment ?')" style="background:#f5f5f5;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;white-space:nowrap;flex-shrink:0">⚡ Opportunités</button>
-      <button onclick="sq('Dois-je rééquilibrer mon portefeuille ?')" style="background:#f5f5f5;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;white-space:nowrap;flex-shrink:0">⚖️ Rééquilibrage</button>
-      <button onclick="sq('Comment optimiser mes versements mensuels ?')" style="background:#f5f5f5;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;white-space:nowrap;flex-shrink:0">💰 Optimiser DCA</button>
-    </div>
-    <div class="chat-input-row" style="border-top:1px solid #f0f0f0;margin:0;padding:10px 12px">
-      <input type="text" id="ai-in" placeholder="Pose ta question ou donne un ordre..." onkeydown="if(event.key==='Enter')sendAI()" style="font-size:14px;background:#f5f5f5;border-radius:12px;padding:11px 14px">
-      <button onclick="sendAI()" id="ai-send-btn" style="background:#1c1c1e;color:#fff;border:none;border-radius:12px;padding:11px 14px;cursor:pointer;flex-shrink:0;transition:all 0.15s"
-        onmouseover="this.style.background='#1a7f5a'" onmouseout="this.style.background='#1c1c1e'">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      <div style="height:1px;background:var(--color-border)"></div>
+
+      <!-- Impact -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Impact sur ton portefeuille</div>
+        <div id="ai-side-impact" style="font-size:15px;font-weight:800;color:#f87171;margin-bottom:8px">Élevé</div>
+        <div style="height:6px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden">
+          <div id="ai-side-impact-bar" style="height:100%;width:75%;background:linear-gradient(90deg,#f87171,#ef4444);border-radius:99px;transition:width 0.5s"></div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--color-border)"></div>
+
+      <!-- Risque -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Risque détecté</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="ai-side-risk-dot" style="width:8px;height:8px;background:#f87171;border-radius:50%;flex-shrink:0;animation:pulse-dot 2s infinite"></div>
+          <div id="ai-side-risk" style="font-size:15px;font-weight:800;color:#f87171">Élevé</div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--color-border)"></div>
+
+      <!-- CTA -->
+      <button onclick="sq('Donne-moi les détails complets de mon portefeuille')"
+        style="width:100%;padding:12px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:12px;font-size:13px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all 0.15s"
+        onmouseover="this.style.borderColor='#3fb950'" onmouseout="this.style.borderColor='var(--color-border)'">
+        <span>Voir détails portefeuille</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </button>
+
     </div>
   </div>
 
