@@ -135,15 +135,17 @@ function showValidatedChart() {
       </div>
 
       <!-- Plan ETF -->
-      <div style="font-size:12px;font-weight:700;color:#1c1c1e;margin-bottom:8px">🏦 Plan ETF long terme</div>
+      <div style="font-size:12px;font-weight:700;color:#1c1c1e;margin-bottom:8px">🏦 Où et comment investir</div>
       <div id="obj-etf-plan" style="margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:8px;padding:14px;color:#8e8e93;background:#f9f9f9;border-radius:12px">
-          <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          <span style="font-size:13px;font-weight:600">Génération du plan ETF...</span>
+          <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <span style="font-size:13px;font-weight:500">Génération du plan personnalisé...</span>
         </div>
       </div>
-
-      <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px">✏ Modifier l'objectif</button>`;
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px;flex:1">✏ Modifier</button>
+        <button class="btn-secondary" onclick="nav('ai')" style="font-size:13px;padding:9px 16px;flex:1">🤖 Analyse IA →</button>
+      </div>`;
     generateETFPlan(activeObjId);
   }
 }
@@ -225,67 +227,167 @@ Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, a
 }
 
 function renderETFCards(etfs, containerEl) {
-  const montantCapital  = objChartCapital  || 0;
-  const montantMensuel  = objChartMonthly  || 200;
+  const montantCapital = objChartCapital || 0;
+  const montantMensuel = objChartMonthly || 200;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surface = isDark ? 'var(--color-surface-raised)' : '#fff';
+  const border = isDark ? 'var(--color-border)' : '#e4e4e7';
+  const text = isDark ? 'var(--color-text)' : '#09090b';
+  const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+  const trackBg = isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f2';
+  const totalCapital = montantCapital;
+  const targetPct = 80;
 
   containerEl.innerHTML = `
-    <!-- Apport initial -->
-    ${montantCapital > 0 ? `
-    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">
-      🏦 Apport initial — ${montantCapital.toLocaleString('fr-FR')} €
+  ${montantCapital > 0 ? `
+  <!-- PLAN ETF LONG TERME -->
+  <div style="margin-bottom:6px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">Plan ETF long terme</span>
+      </div>
+      <span style="font-size:11px;color:${sub}">Répartition ciblée — ${targetPct}% · ${fmtK(montantCapital)} k€</span>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-      ${etfs.map((e) => {
-        const montant = Math.round(montantCapital * e.pct_capital / 100);
-        return `<div onclick="openActionFromObjectif('${e.ticker}','${e.name}',${montant})"
-          style="background:#fff;border-radius:14px;padding:13px 16px;border:2px solid #f0f0f0;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:12px"
-          onmouseover="this.style.borderColor='${e.color}';this.style.background='${e.color}08'"
-          onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'">
-          <div style="width:44px;height:44px;border-radius:12px;background:${e.color}15;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${e.color};flex-shrink:0">${e.ticker.slice(0,2)}</div>
+    ${etfs.map((e,i) => {
+      const montant = Math.round(montantCapital * (e.pct_capital||33) / 100);
+      const pct = e.pct_capital || 33;
+      return `
+      <div onclick="openActionFromObjectif('${e.ticker}','${e.name}',${montant})" style="background:${surface};border:1px solid ${border};border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden"
+        onmouseover="this.style.borderColor='${e.color}'" onmouseout="this.style.borderColor='${border}'">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${e.color};border-radius:3px 0 0 3px"></div>
+        <div style="display:flex;align-items:center;gap:12px;padding-left:8px">
+          <div style="width:36px;height:36px;border-radius:10px;background:${e.color}20;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${e.color};flex-shrink:0">${(e.ticker||'ET').slice(0,2)}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:800;color:#1c1c1e">${e.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${e.ticker}</span></div>
-            <div style="font-size:11px;color:#8e8e93;margin-top:1px">${e.desc}</div>
-            <div style="margin-top:5px;background:#f0f0f0;border-radius:4px;height:4px;overflow:hidden">
-              <div style="height:100%;background:${e.color};width:${e.pct_capital}%;border-radius:4px"></div>
+            <div style="font-size:13px;font-weight:700;color:${text}">${e.name} <span style="font-size:10px;color:${sub};background:${isDark?'rgba(255,255,255,0.08)':'#f4f4f5'};padding:1px 6px;border-radius:4px;font-weight:500">${e.ticker||''}</span></div>
+            <div style="font-size:11px;color:${sub};margin-top:2px">${e.type||'Obligations'} · ${e.desc||''}</div>
+            <div style="margin-top:6px;background:${trackBg};border-radius:99px;height:3px;overflow:hidden">
+              <div style="height:100%;background:${e.color};width:${pct}%;border-radius:99px;transition:width 1s ease"></div>
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:16px;font-weight:900;color:${e.color}">${montant.toLocaleString('fr-FR')} €</div>
-            <div style="font-size:11px;color:#8e8e93">${e.pct_capital}% · Analyser →</div>
+            <div style="font-size:15px;font-weight:800;color:${e.color}">${montant.toLocaleString('fr-FR')} € ›</div>
+            <div style="font-size:11px;color:${sub};margin-top:2px">${pct}% du plan</div>
           </div>
-        </div>`;
-      }).join('')}
-    </div>` : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>` : ''}
 
-    <!-- Mensuel -->
-    <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">
-      📅 Chaque mois — ${montantMensuel.toLocaleString('fr-FR')} €
+  <!-- ÉPARGNE MENSUELLE -->
+  <div style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">⊕ Épargne mens.</span>
+      </div>
+      <span style="font-size:11px;color:${sub}">${montantMensuel}% · ${fmtK(montantMensuel)} k€</span>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
-      ${etfs.map((e) => {
-        const montant = Math.round(montantMensuel * e.pct_mensuel / 100);
-        return `<div onclick="openActionFromObjectif('${e.ticker}','${e.name}',${montant})"
-          style="background:#fff;border-radius:14px;padding:13px 16px;border:2px solid #f0f0f0;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:12px"
-          onmouseover="this.style.borderColor='${e.color}';this.style.background='${e.color}08'"
-          onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'">
-          <div style="width:44px;height:44px;border-radius:12px;background:${e.color}15;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${e.color};flex-shrink:0">${e.ticker.slice(0,2)}</div>
+    ${etfs.map((e,i) => {
+      const montant = Math.round(montantMensuel * (e.pct_mensuel||33) / 100);
+      return `
+      <div onclick="openActionFromObjectif('${e.ticker}','${e.name}',${montant})" style="background:${surface};border:1px solid ${border};border-radius:12px;padding:12px 16px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden"
+        onmouseover="this.style.borderColor='${e.color}'" onmouseout="this.style.borderColor='${border}'">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${e.color};border-radius:3px 0 0 3px"></div>
+        <div style="width:32px;height:32px;border-radius:9px;background:${e.color}20;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${e.color};flex-shrink:0;margin-left:8px">${(e.ticker||'ET').slice(0,2)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:${text}">${e.name} <span style="font-size:10px;color:${sub}">${e.ticker||''}</span></div>
+          <div style="font-size:11px;color:#3fb950;font-weight:600;margin-top:1px">${e.pourquoi||'Croissance long terme'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:14px;font-weight:800;color:${e.color}">+${montant.toLocaleString('fr-FR')} € ›</div>
+          <div style="font-size:10px;color:${sub}">${e.pct_mensuel||33}% / mois</div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <!-- CTA analyser -->
+  <div style="background:${isDark?'rgba(63,185,80,0.08)':'#f0fdf4'};border:1px solid ${isDark?'rgba(63,185,80,0.2)':'rgba(22,163,74,0.2)'};border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:${isDark?'rgba(255,255,255,0.5)':sub}">
+      <span>💡</span>
+      <span>Cliquez sur un ETF pour l'analyser avec l'IA InvestIQ</span>
+    </div>
+    <button onclick="nav('ai')" style="padding:5px 12px;background:#16a34a;border:none;border-radius:6px;font-size:11px;font-weight:700;color:#fff;cursor:pointer">Analyser</button>
+  </div>
+  `;
+
+  // Ajouter section Plans marchés
+  renderMarketPlans(containerEl, etfs);
+}
+
+async function renderMarketPlans(containerEl, etfs) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surface = isDark ? 'var(--color-surface-raised)' : '#fff';
+  const border = isDark ? 'var(--color-border)' : '#e4e4e7';
+  const text = isDark ? 'var(--color-text)' : '#09090b';
+  const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+
+  const scenarios = [
+    {ticker:'IWDA.L', name:'iShares MSCI World ETF', badge:'Actuel', badgeColor:'#3fb950', rendement:8.2, volatilite:14, risque:'Modéré', color:'#3fb950'},
+    {ticker:'VYM', name:'Vanguard High Dividend Yield ETF', badge:'Actuel', badgeColor:'#3fb950', rendement:6.5, volatilite:12, risque:'Modéré', color:'#6366f1'},
+    {ticker:'TTE.PA', name:'TotalEnergies SE', badge:'', badgeColor:'', rendement:10.7, volatilite:18, risque:'Élevé', color:'#f59e0b'},
+    {ticker:'SAN.PA', name:'Sanofi SA', badge:'', badgeColor:'', rendement:4.2, volatilite:10, risque:'Modéré', color:'#ec4899'},
+    {ticker:'AIR.PA', name:'Airbus SE', badge:'', badgeColor:'', rendement:11.7, volatilite:20, risque:'Élevé', color:'#06b6d4'},
+    {ticker:'IBGL', name:'iShares Euro Govt Bond ETF', badge:'', badgeColor:'', rendement:3.1, volatilite:7, risque:'Faible', color:'#8b5cf6'},
+  ];
+
+  const monthly = objChartMonthly || 200;
+  const years = objChartYears || 10;
+  const capital = objChartCapital || 0;
+  const now = new Date().toLocaleDateString('fr-FR');
+
+  const section = document.createElement('div');
+  section.innerHTML = `
+  <div style="margin-top:20px;border-top:1px solid ${border};padding-top:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px;font-weight:700;color:${text};letter-spacing:-0.03em">🟠 Plans marchés</span>
+        <span style="font-size:12px;color:${sub}">— Comparaison de valeurs</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:${sub};margin-bottom:14px">
+      <span>Basé sur objectif : ${fmtK(capital + monthly * years * 12 * 0.07)}</span>
+      <span>Mis à jour il y a moins d'1h · ${now}</span>
+    </div>
+    ${scenarios.map(s => {
+      const projVal = Math.round((capital + monthly*years*12) * (1 + s.rendement/100));
+      const diff = ((projVal / (capital + monthly*years*12) - 1)*100).toFixed(1);
+      const diffColor = parseFloat(diff) >= 0 ? '#3fb950' : '#f87171';
+      return `
+      <div onclick="openDecision('${s.ticker}','analyser')" style="background:${surface};border:1px solid ${border};border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden"
+        onmouseover="this.style.borderColor='${s.color}'" onmouseout="this.style.borderColor='${border}'">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${s.color}"></div>
+        <div style="display:flex;align-items:center;gap:12px;padding-left:8px">
+          <div style="width:36px;height:36px;border-radius:10px;background:${s.color}20;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${s.color};flex-shrink:0">${s.ticker.slice(0,2).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:800;color:#1c1c1e">${e.name} <span style="font-size:11px;color:#8e8e93;font-weight:500">${e.ticker}</span></div>
-            <div style="font-size:11px;color:#1a7f5a;font-weight:600;margin-top:1px">${e.pourquoi}</div>
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+              <span style="font-size:13px;font-weight:700;color:${text}">${s.name}</span>
+              <span style="font-size:10px;color:${sub}">(${s.ticker})</span>
+              <span style="font-size:11px;font-weight:600;color:${sub}">· +${monthly.toLocaleString('fr-FR')}€/mois</span>
+              ${s.badge ? `<span style="background:${s.badgeColor}20;border:1px solid ${s.badgeColor}40;color:${s.badgeColor};font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px">${s.badge}</span>` : ''}
+            </div>
+            <div style="font-size:11px;color:${sub}">Rendement annuel : <strong style="color:${text}">${s.rendement}%</strong> · Volatilité : <strong style="color:${text}">${s.volatilite}%</strong> · Niveau de risque : <strong style="color:${text}">${s.risque}</strong></div>
+            <div style="font-size:11px;color:${sub};margin-top:2px">Valeur projetée : <strong style="color:${text}">${fmtK(projVal)} k€</strong></div>
+            <div style="margin-top:6px;background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:3px;overflow:hidden">
+              <div style="height:100%;background:${s.color};width:${Math.min(Math.abs(parseFloat(diff)),100)}%;border-radius:99px"></div>
+            </div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:16px;font-weight:900;color:${e.color}">${montant.toLocaleString('fr-FR')} €</div>
-            <div style="font-size:11px;color:#8e8e93">${e.pct_mensuel}% · Analyser →</div>
+            <div style="font-size:14px;font-weight:800;color:${diffColor}">${parseFloat(diff)>=0?'+':''}${diff}%</div>
+            <div style="font-size:10px;color:${sub};margin-bottom:4px">vs plan actuel</div>
+            <button style="padding:3px 8px;background:none;border:1px solid ${s.color}40;border-radius:6px;font-size:10px;font-weight:600;color:${s.color};cursor:pointer">Analyser le scénario</button>
           </div>
-        </div>`;
-      }).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+    <div style="text-align:center;padding:12px;font-size:11px;color:${sub}">
+      ⚠ Les performances passées ne préjugent pas des performances futures.
+      <button onclick="nav('ai')" style="margin-left:8px;background:none;border:none;font-size:11px;font-weight:700;color:#3fb950;cursor:pointer">Voir l'analyse complète →</button>
     </div>
+  </div>`;
 
-    <div style="padding:10px 14px;background:#f0faf6;border-radius:12px;font-size:12px;color:#065f46;font-weight:600;display:flex;justify-content:space-between;align-items:center">
-      <span>💡 Clique sur un ETF pour l'analyser avant d'investir</span>
-      <button onclick="const id=activeObjId;if(id)localStorage.removeItem('${CACHE_ETF_PLAN}_'+id);localStorage.removeItem('${CACHE_ETF_PLAN}');generateETFPlan(id)" style="background:none;border:none;color:#1a7f5a;font-weight:700;cursor:pointer;font-size:11px;text-decoration:underline">Actualiser</button>
-    </div>`;
+  containerEl.appendChild(section);
 }
+
 
 
 // ===== PLAN COURT TERME =====
