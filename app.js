@@ -6652,10 +6652,10 @@ function updateDCA() {
   const n    = y * 12;
 
   // Labels
-  document.getElementById('dca-m-o').textContent = m.toLocaleString('fr-FR') + ' €';
-  document.getElementById('dca-y-o').textContent = y + ' an' + (y > 1 ? 's' : '');
-  document.getElementById('dca-r-o').textContent = rAnn.toFixed(1) + ' %';
-  document.getElementById('dca-s-o').textContent = s.toLocaleString('fr-FR') + ' €';
+  (document.getElementById('dca-m-o')||{}).textContent = m.toLocaleString('fr-FR') + ' €';
+  (document.getElementById('dca-y-o')||{}).textContent = y + ' an' + (y > 1 ? 's' : '');
+  (document.getElementById('dca-r-o')||{}).textContent = rAnn.toFixed(1) + ' %';
+  (document.getElementById('dca-s-o')||{}).textContent = s.toLocaleString('fr-FR') + ' €';
 
   // Calcul final
   const total    = s * Math.pow(1 + rate, n) + (rate > 0 ? m * ((Math.pow(1 + rate, n) - 1) / rate) : m * n);
@@ -6664,7 +6664,7 @@ function updateDCA() {
   const mult     = invested > 0 ? total / invested : 1;
 
   // Métriques
-  document.getElementById('dca-metrics').innerHTML = `
+  const _metricsEl = document.getElementById('dca-metrics'); if(_metricsEl) _metricsEl.innerHTML = `
     <div class="metric-card">
       <div class="metric-label">Capital final estimé</div>
       <div class="metric-val green">${fmtK(Math.round(total))}</div>
