@@ -4506,7 +4506,7 @@ function nav(page) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);},
+}, crise:renderCrise, dca:()=>{setTimeout(()=>{updateDCA();if(typeof updateDCADonut==='function')updateDCADonut();initDCAPresets();},80);},
     ai:()=>{ loadChatHistory(); initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
@@ -7283,9 +7283,4 @@ function dcaPreset(m, y, r, s, btn) {
   updateDCA();
 }
 
-// Hook updateDCA pour appeler aussi updateDCADonut
-const _origUpdateDCA = updateDCA;
-updateDCA = function() {
-  _origUpdateDCA();
-  updateDCADonut();
-};
+// updateDCADonut est appelé directement depuis nav dca
