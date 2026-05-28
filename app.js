@@ -4517,7 +4517,7 @@ async function renderHome() {
           <span>${fmtK(tv)} / ${fmtK(targetVal)}</span>
         </div>
         <div style="background:rgba(255,255,255,0.08);border-radius:6px;height:6px;overflow:hidden">
-          <div style="height:100%;background:linear-gradient(90deg,#1a7f5a,#4ade80);width:${pctObj}%;border-radius:6px;transition:width 0.8s ease"></div>
+          <div id="home-prog-bar" style="height:100%;background:linear-gradient(90deg,#1a7f5a,#4ade80);width:0%;border-radius:6px"></div>
         </div>
       </div>` : ''}
     </div>`;
@@ -4587,23 +4587,41 @@ async function renderHome() {
 
   // ── Motion design home ──
   setTimeout(() => {
-    // Compteur valeur totale — spring animation
+    // Compteur valeur totale — spring avec overshoot visible
     const tvEl = document.getElementById('home-tv-counter');
-    if (tvEl) animateNumber(tvEl, tv * 0.85, tv, 1000);
+    if (tvEl) {
+      tvEl.textContent = '0 k€';
+      const _start = performance.now();
+      const _dur = 1400;
+      (function springTick(now) {
+        const p = Math.min((now - _start) / _dur, 1);
+        // Overshoot : dépasse légèrement puis revient
+        const s = 1.25;
+        const e = p < 0.5
+          ? 4 * p * p * p
+          : 1 + (s + 1) * Math.pow(p - 1, 3) + s * Math.pow(p - 1, 2);
+        tvEl.textContent = fmtK(Math.max(0, Math.round(tv * e)));
+        if (p < 1) requestAnimationFrame(springTick);
+        else tvEl.textContent = fmtK(tv);
+      })(performance.now());
+    }
     // Barre objectif
-    const progBar = document.querySelector('#home-metrics .a-prog-fill');
-    if (progBar) animateBar(progBar, pctObj, 1100, 300);
-    // Métriques en cascade
-    const chips = document.querySelectorAll('#home-metrics .a-chip');
-    chips.forEach((chip, i) => {
-      chip.style.opacity = '0';
-      chip.style.transform = 'scale(0.9)';
-      chip.style.transition = `opacity 0.25s ease ${i*80+200}ms, transform 0.25s ease ${i*80+200}ms`;
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        chip.style.opacity = '1';
-        chip.style.transform = 'scale(1)';
-      }));
-    });
+    const progBar = document.getElementById('home-prog-bar');
+    if (progBar) animateBar(progBar, pctObj, 1200, 300);
+    // Tous les éléments du hero card en cascade
+    const heroCard = document.querySelector('#home-metrics > div');
+    if (heroCard) {
+      const animEls = heroCard.querySelectorAll('[style*="border-radius:10px"]');
+      animEls.forEach((el, i) => {
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.92) translateY(4px)';
+        el.style.transition = `opacity 0.22s ease ${i*70+250}ms, transform 0.22s ease ${i*70+250}ms`;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          el.style.opacity = '1';
+          el.style.transform = 'scale(1) translateY(0)';
+        }));
+      });
+    }
   }, 80);
   // Fade-in staggered des widgets
   setTimeout(() => fadeInCards('#home-score > div', 90), 150);
