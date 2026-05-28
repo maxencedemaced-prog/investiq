@@ -4464,7 +4464,7 @@ function renderNotifications() {
 async function renderHome() {
   const h = new Date().getHours();
   const greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
-  const emojis = ['👋','✨','🚀','💡','📈'];
+  const emojis = ['👋','👋','👋','👋','👋'];
   const emoji = emojis[new Date().getDay() % emojis.length];
   const name = isDemo ? 'Toi' : (currentUser?.email||'').split('@')[0];
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
@@ -4524,8 +4524,8 @@ async function renderHome() {
   function genSparkData(trend, points=20) {
     const data = [50];
     for (let i = 1; i < points; i++) {
-      const v = data[i-1] + (Math.random()-0.5)*8 + trend*0.5;
-      data.push(Math.max(5, Math.min(95, v)));
+      const v = data[i-1] + (Math.random()-0.5)*3 + trend*0.3;
+      data.push(Math.max(20, Math.min(80, v)));
     }
     return data;
   }
@@ -4635,11 +4635,15 @@ async function renderHome() {
         offset += pct;
         return seg;
       });
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const textColor = isDark ? '#e8f5e8' : '#09090b';
+      const subColor = isDark ? '#4a6a4a' : '#8e8e93';
+      const trackColor = isDark ? '#1e2e1e' : '#f0f0f2';
       return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-        <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#f0f0f2" stroke-width="8"/>
+        <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${trackColor}" stroke-width="8"/>
         ${segments.join('')}
-        <text x="${c}" y="${c-4}" text-anchor="middle" font-size="9" font-weight="700" fill="#09090b">${fmtK(total)}</text>
-        <text x="${c}" y="${c+8}" text-anchor="middle" font-size="7" fill="#8e8e93">Total</text>
+        <text x="${c}" y="${c-3}" text-anchor="middle" font-size="9" font-weight="700" fill="${textColor}">${fmtK(total)}</text>
+        <text x="${c}" y="${c+8}" text-anchor="middle" font-size="7" fill="${subColor}">Total</text>
       </svg>`;
     }
 
