@@ -4653,7 +4653,7 @@ async function renderHome() {
   document.getElementById('home-score').innerHTML = html;
   document.getElementById('home-alerts').innerHTML = '';
   document.getElementById('home-obj').innerHTML = '';
-  renderPlatforms();
+  // renderPlatforms() supprimé — déjà dans le donut chart
 
   // Animations
   setTimeout(() => {
