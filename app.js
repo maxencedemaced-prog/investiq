@@ -4142,15 +4142,24 @@ function checkPriceAlerts() {
 
 // ===== CHAT MEMORY =====
 function loadChatHistory() {
+  // Vider l'ancien cache si format v1 (markdown brut)
+  const ver = localStorage.getItem('iq_chat_ver');
+  if (ver !== '2') { localStorage.removeItem(CACHE_CHAT); localStorage.setItem('iq_chat_ver','2'); }
   try { chatHistory = JSON.parse(localStorage.getItem(CACHE_CHAT)||'[]'); } catch { chatHistory = []; }
   const chat = document.getElementById('ai-chat');
+  if (!chat) return;
   if (chatHistory.length > 0) {
-    chat.innerHTML = chatHistory.map(m => `<div class="bubble ${m.role==='user'?'user':'bot'}">${m.content}</div>`).join('');
-    document.getElementById('qbtns').style.display = 'none';
+    chat.innerHTML = chatHistory.map(m =>
+      m.role === 'user'
+        ? `<div class="bubble user">${m.content}</div>`
+        : `<div class="bubble bot">${formatMD(m.content)}</div>`
+    ).join('');
+    const qbtns = document.getElementById('qbtns');
+    if (qbtns) qbtns.style.display = 'none';
   }
 }
 function saveChatHistory() {
-  try { localStorage.setItem(CACHE_CHAT, JSON.stringify(chatHistory.slice(-20))); } catch {}
+  try { try { localStorage.setItem(CACHE_CHAT, JSON.stringify(chatHistory.slice(-20))); } catch(e) {} } catch {}
 }
 function clearChat() {
   chatHistory = [];
