@@ -5214,154 +5214,207 @@ function exportPDF() {
 
 // ===== SANTE =====
 async function renderSante() {
-  const el = document.getElementById('sante-content');
-  if (!el) return;
-
-  if (!positions.length) {
-    el.innerHTML = `<div style="text-align:center;padding:40px;color:#8e8e93">
-      <div style="font-size:40px;margin-bottom:12px">📊</div>
-      <div style="font-size:16px;font-weight:700;color:#1c1c1e;margin-bottom:8px">Ajoute des positions</div>
-      <div style="font-size:13px">La santé de ton portefeuille s'affichera ici</div>
-      <button onclick="nav('ajouter')" style="margin-top:16px;background:#1c1c1e;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer">➕ Ajouter une position</button>
-    </div>`;
-    return;
-  }
-
+  const {score, details} = calcScore();
   const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
   const tpnl = tv-ti, tpct = ti?tpnl/ti*100:0;
-  const {score, items} = calcScore();
-  const scoreColor = score>=7?'#1a7f5a':score>=5?'#f59e0b':'#cc2f26';
-  const scoreBg    = score>=7?'#e8f8f0':score>=5?'#fff9e6':'#fff0f0';
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  const surface = isDark?'var(--color-surface)':'#fff';
+  const border = isDark?'var(--color-border)':'#e4e4e7';
+  const textPrimary = isDark?'var(--color-text)':'#09090b';
+  const textSec = isDark?'var(--color-text-secondary)':'#71717a';
+
+  const scoreColor = score>=7?'#3fb950':score>=5?'#f59e0b':'#f87171';
   const scoreLabel = score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️';
 
-  // Calculs diversification
-  const etfs = positions.filter(p=>p.type==='ETF'||p.type==='etf');
-  const actions = positions.filter(p=>p.type==='Action'||p.type==='action');
-  const etfPct = tv > 0 ? etfs.reduce((a,p)=>a+p.qty*p.price,0)/tv*100 : 0;
-  const grouped = {};
-  positions.forEach(p => { grouped[p.name] = (grouped[p.name]||0) + p.qty*p.price; });
-  const maxPos = Object.entries(grouped).sort((a,b)=>b[1]-a[1])[0];
-  const maxPct = maxPos ? maxPos[1]/tv*100 : 0;
-  const platforms = {};
-  positions.forEach(p => { platforms[p.platform||'Autre'] = (platforms[p.platform||'Autre']||0) + p.qty*p.price; });
+  // Données score
+  const scoreItems = [
+    {label:'Diversification', val:details.diversity, color:'#3fb950'},
+    {label:'Concentration max', val:details.concentration, color:'#3fb950'},
+    {label:'Part ETF', val:details.etfRatio, color:'#3fb950'},
+    {label:'Performance', val:details.performance, color: details.performance>=5?'#3fb950':'#f59e0b'},
+  ];
 
-  // Comparaison profil idéal
-  const idealEtf = profile.risk==='eleve' ? 50 : profile.risk==='modere' ? 70 : 80;
-  const idealMaxPos = profile.risk==='eleve' ? 40 : profile.risk==='modere' ? 30 : 25;
-  const idealNbPos = profile.risk==='eleve' ? 5 : profile.risk==='modere' ? 4 : 3;
+  // Calcul composition
+  const etfCount = positions.filter(p=>p.type==='ETF').length;
+  const etfVal = positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0);
+  const etfPct = tv>0?(etfVal/tv*100).toFixed(0):0;
+  const maxPos = positions.length>0?positions.reduce((a,p)=>p.qty*p.price>a.qty*a.price?p:a,positions[0]):null;
+  const maxPct = maxPos&&tv>0?(maxPos.qty*maxPos.price/tv*100).toFixed(0):0;
+  const nbPos = positions.length;
 
-  el.innerHTML = `
-    <!-- SCORE GLOBAL -->
-    <div style="background:${scoreBg};border-radius:16px;padding:20px;margin-bottom:12px;border:2px solid ${scoreColor}20">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div>
-          <div style="font-size:13px;font-weight:700;color:${scoreColor};text-transform:uppercase;letter-spacing:0.5px">Score de santé</div>
-          <div style="font-size:42px;font-weight:900;color:${scoreColor};line-height:1">${score.toFixed(1)}<span style="font-size:20px">/10</span></div>
-          <div style="font-size:14px;font-weight:700;color:${scoreColor};margin-top:4px">${scoreLabel}</div>
-        </div>
-        <div style="width:80px;height:80px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;border:4px solid ${scoreColor}">
-          <div style="font-size:28px">${score>=7?'💚':score>=5?'🟡':'🔴'}</div>
+  // Anneau SVG animé
+  const ring = (size, s, color) => {
+    const c=size/2, r=(size-12)/2, circ=2*Math.PI*r;
+    const pct = s/10;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'}" stroke-width="6"/>
+      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${color}" stroke-width="6"
+        stroke-dasharray="${pct*circ} ${circ}" stroke-dashoffset="${circ/4}"
+        stroke-linecap="round" style="transition:stroke-dasharray 1s cubic-bezier(0.16,1,0.3,1)"/>
+    </svg>`;
+  };
+
+  // Points d'attention
+  const alerts = [];
+  positions.forEach(p=>{
+    if(p.alert_price && p.price < p.alert_price) alerts.push({icon:'🔴',name:p.name,msg:`sous ton alerte ${p.alert_price.toLocaleString('fr-FR')}€`,tag:'Alerte prix',tagColor:'#f87171',tagBg:isDark?'rgba(248,113,113,0.15)':'#fef2f2'});
+  });
+  if(maxPos && parseFloat(maxPct)>25) alerts.push({icon:'🟡',name:maxPos.name,msg:`représente ${maxPct}% du portefeuille`,tag:'Concentration élevée',tagColor:'#f59e0b',tagBg:isDark?'rgba(245,158,11,0.15)':'#fffbeb'});
+  positions.filter(p=>p.qty*p.price<p.qty*p.pru&&(p.price-p.pru)/p.pru*100<-20).forEach(p=>{
+    alerts.push({icon:'🟠',name:p.name,msg:`en forte perte (${((p.price-p.pru)/p.pru*100).toFixed(1)}%)`,tag:'Performance faible',tagColor:'#fb923c',tagBg:isDark?'rgba(251,146,60,0.15)':'#fff7ed'});
+  });
+
+  const COLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
+
+  const html = `
+  <!-- SCORE DE SANTÉ -->
+  <div style="background:linear-gradient(135deg,${isDark?'#080c10,#0d1520':'#f0fdf4,#ecfdf5'});border:1px solid ${isDark?'rgba(63,185,80,0.2)':' rgba(22,163,74,0.2)'};border-radius:20px;padding:24px;margin-bottom:14px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(63,185,80,0.12),transparent);pointer-events:none"></div>
+    <div style="font-size:10px;font-weight:700;color:${isDark?'rgba(255,255,255,0.4)':textSec};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px">Score de santé</div>
+    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center">
+      <!-- Score gauche -->
+      <div>
+        <div style="font-size:56px;font-weight:900;color:${scoreColor};letter-spacing:-0.05em;line-height:1">${score.toFixed(1)}</div>
+        <div style="font-size:16px;color:${isDark?'rgba(255,255,255,0.4)':textSec};font-weight:400;margin-bottom:8px">/10</div>
+        <div style="font-size:14px;font-weight:700;color:${scoreColor}">${scoreLabel}</div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:7px;background:${isDark?'rgba(63,185,80,0.1)':'rgba(22,163,74,0.08)'};border-radius:10px;padding:8px 12px;border:1px solid ${isDark?'rgba(63,185,80,0.2)':'rgba(22,163,74,0.2)'}">
+          <span style="font-size:13px">✓</span>
+          <span style="font-size:11px;color:${isDark?'rgba(255,255,255,0.6)':textSec};font-weight:500">${score>=7?'Votre portefeuille est en excellente santé générale.':score>=5?'Quelques améliorations possibles.':'Des actions correctives recommandées.'}</span>
         </div>
       </div>
-      <!-- Barres des critères -->
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${items.map(it => {
-          const c = it.score>=7?'#1a7f5a':it.score>=5?'#f59e0b':'#cc2f26';
-          return `<div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px">
-              <span style="color:#1c1c1e">${it.label}</span>
-              <span style="color:${c}">${it.score}/10</span>
-            </div>
-            <div style="background:rgba(0,0,0,0.08);border-radius:4px;height:6px;overflow:hidden">
-              <div style="height:100%;background:${c};width:${it.score/10*100}%;border-radius:4px;transition:width 0.6s"></div>
-            </div>
-            ${it.tip?`<div style="font-size:11px;color:${c};margin-top:2px">→ ${it.tip}</div>`:''}
-          </div>`;
-        }).join('')}
+      <!-- Barres score -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${scoreItems.map(item=>`
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:5px">
+            <span style="color:${isDark?'rgba(255,255,255,0.8)':textPrimary}">${item.label}</span>
+            <span style="color:${item.color}">${item.val}/10</span>
+          </div>
+          <div style="background:${isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)'};border-radius:99px;height:6px;overflow:hidden">
+            <div style="height:100%;background:${item.color};width:${item.val*10}%;border-radius:99px;transition:width 1s cubic-bezier(0.16,1,0.3,1)"></div>
+          </div>
+        </div>`).join('')}
+      </div>
+      <!-- Anneau -->
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;width:100px;height:100px">
+        ${ring(100, score, scoreColor)}
+        <div style="position:absolute;font-size:28px">💚</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPOSITION -->
+  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:20px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <span style="font-size:16px">🥧</span>
+      <span style="font-size:15px;font-weight:700;color:${textPrimary};letter-spacing:-0.03em">Composition du portefeuille</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">ETF</div>
+        <div style="font-size:28px;font-weight:900;color:${parseFloat(etfPct)>=60?'#3fb950':'#f59e0b'};letter-spacing:-0.04em">${etfPct}%</div>
+        <div style="font-size:11px;color:${textSec};margin-top:4px">Idéal : 60%+</div>
+      </div>
+      <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Concentration max</div>
+        <div style="font-size:28px;font-weight:900;color:${parseFloat(maxPct)>25?'#f87171':'#3fb950'};letter-spacing:-0.04em">${maxPct}%</div>
+        <div style="font-size:11px;color:${textSec};margin-top:4px">${maxPos?maxPos.name:''} · Max : 25%</div>
+      </div>
+      <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Nb. positions</div>
+        <div style="font-size:28px;font-weight:900;color:${textPrimary};letter-spacing:-0.04em">${nbPos}</div>
+        <div style="font-size:11px;color:${textSec};margin-top:4px">Min conseillé : 8</div>
+      </div>
+      <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Performance</div>
+        <div style="font-size:28px;font-weight:900;color:${tpct>=0?'#3fb950':'#f87171'};letter-spacing:-0.04em">${tpct>=0?'+':''}${tpct.toFixed(1)}%</div>
+        <div style="font-size:11px;color:${textSec};margin-top:4px">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{maximumFractionDigits:0})} €</div>
       </div>
     </div>
 
-    <!-- COMPOSITION -->
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border:2px solid #f0f0f0">
-      <div style="font-size:13px;font-weight:800;color:#1c1c1e;margin-bottom:12px">📊 Composition du portefeuille</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-        <div style="background:#f9f9f9;border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:11px;color:#8e8e93;font-weight:700;margin-bottom:4px">ETF</div>
-          <div style="font-size:20px;font-weight:900;color:${etfPct>=idealEtf?'#1a7f5a':'#f59e0b'}">${etfPct.toFixed(0)}%</div>
-          <div style="font-size:11px;color:#8e8e93">Idéal : ${idealEtf}%+</div>
-        </div>
-        <div style="background:#f9f9f9;border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:11px;color:#8e8e93;font-weight:700;margin-bottom:4px">Concentration max</div>
-          <div style="font-size:20px;font-weight:900;color:${maxPct<=idealMaxPos?'#1a7f5a':'#cc2f26'}">${maxPct.toFixed(0)}%</div>
-          <div style="font-size:11px;color:#8e8e93">${maxPos?maxPos[0]:''} · Max : ${idealMaxPos}%</div>
-        </div>
-        <div style="background:#f9f9f9;border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:11px;color:#8e8e93;font-weight:700;margin-bottom:4px">Nb. positions</div>
-          <div style="font-size:20px;font-weight:900;color:${Object.keys(grouped).length>=idealNbPos?'#1a7f5a':'#f59e0b'}">${Object.keys(grouped).length}</div>
-          <div style="font-size:11px;color:#8e8e93">Min conseillé : ${idealNbPos}</div>
-        </div>
-        <div style="background:#f9f9f9;border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:11px;color:#8e8e93;font-weight:700;margin-bottom:4px">Performance</div>
-          <div style="font-size:20px;font-weight:900;color:${tpnl>=0?'#1a7f5a':'#cc2f26'}">${tpnl>=0?'+':''}${tpct.toFixed(1)}%</div>
-          <div style="font-size:11px;color:#8e8e93">${tpnl>=0?'+':''}${fmtK(tpnl)}</div>
-        </div>
+    <!-- Barres allocation -->
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${[...positions].sort((a,b)=>b.qty*b.price-a.qty*a.price).map((p,i)=>{
+        const pct = tv>0?(p.qty*p.price/tv*100):0;
+        const pnl = p.qty*p.price-p.qty*p.pru;
+        const initials = p.name.replace(/[^A-Z0-9]/g,'').slice(0,2)||p.name.slice(0,2).toUpperCase();
+        return `
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:28px;height:28px;border-radius:8px;background:${p.color||COLORS[i%COLORS.length]};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0">${initials}</div>
+          <div style="font-size:12px;font-weight:600;color:${textPrimary};min-width:80px">${p.name}</div>
+          <div style="flex:1;background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:5px;overflow:hidden">
+            <div style="height:100%;background:${COLORS[i%COLORS.length]};width:${pct}%;border-radius:99px;transition:width 1s ease"></div>
+          </div>
+          <div style="font-size:11px;font-weight:600;color:${textSec};min-width:42px;text-align:right">${pct.toFixed(1)}%</div>
+          <div style="font-size:11px;color:${pnl>=0?'#3fb950':'#f87171'};min-width:70px;text-align:right">${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{maximumFractionDigits:0})} €</div>
+        </div>`}).join('')}
+    </div>
+  </div>
+
+  <!-- CONSEILS IA -->
+  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:20px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <span style="font-size:16px">🔮</span>
+      <span style="font-size:15px;font-weight:700;color:${textPrimary};letter-spacing:-0.03em">Conseils personnalisés</span>
+      <span style="background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.25);border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700;color:#3fb950">✦ IA</span>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="flex-shrink:0;width:80px;height:80px;position:relative">
+        <div style="width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,0.3),rgba(6,182,212,0.2));display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid rgba(99,102,241,0.2)">🌐</div>
+        <div style="position:absolute;inset:0;border-radius:50%;animation:pulse-green 3s infinite;border:1px solid rgba(63,185,80,0.3)"></div>
       </div>
-      <!-- Répartition par type -->
-      ${Object.entries(grouped).map(([name,val]) => `
-      <div style="margin-bottom:6px">
-        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:2px">
-          <span>${name}</span><span>${(val/tv*100).toFixed(1)}% · ${fmtK(val)}</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+        ${[
+          {icon:'🛡️', title:'Bonne diversification globale', sub:'Votre portefeuille est bien diversifié sur plusieurs classes d\'actifs.', ok:true},
+          {icon:'⭐', title:'Réduire la concentration', sub:`Envisagez de réduire l'exposition à ${maxPos?maxPos.name:'votre position principale'} (${maxPct}%) pour limiter le risque.`, ok:parseFloat(maxPct)<=25},
+          {icon:'📈', title:'Améliorer la performance', sub:'Certaines positions sous-performent le marché. L\'IA peut vous aider.', ok:tpct>=0},
+        ].map(c=>`
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border-radius:12px;border:1px solid ${border}">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <span style="font-size:18px;flex-shrink:0;margin-top:1px">${c.icon}</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:${textPrimary};margin-bottom:3px">${c.title}</div>
+              <div style="font-size:12px;color:${textSec};line-height:1.5">${c.sub}</div>
+            </div>
+          </div>
+          <div style="font-size:16px;flex-shrink:0;color:${c.ok?'#3fb950':textSec}">${c.ok?'✓':'›'}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  ${alerts.length > 0 ? `
+  <!-- POINTS D'ATTENTION -->
+  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">🔔</span>
+        <span style="font-size:15px;font-weight:700;color:${textPrimary};letter-spacing:-0.03em">Points d'attention</span>
+      </div>
+      <button style="font-size:12px;font-weight:600;color:${textSec};background:none;border:none;cursor:pointer">Tout voir</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${alerts.map(a=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border-radius:12px;border:1px solid ${border}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:50%;background:${a.tagBg};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${a.icon}</div>
+          <div>
+            <span style="font-size:13px;font-weight:700;color:${textPrimary}">${a.name}</span>
+            <span style="font-size:12px;color:${textSec}"> ${a.msg}</span>
+          </div>
         </div>
-        <div style="background:#f0f0f0;border-radius:4px;height:6px;overflow:hidden">
-          <div style="height:100%;background:#1c1c1e;width:${val/tv*100}%;border-radius:4px"></div>
-        </div>
+        <span style="background:${a.tagBg};color:${a.tagColor};font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;white-space:nowrap">${a.tag}</span>
       </div>`).join('')}
     </div>
+  </div>` : ''}`;
 
-    <!-- CONSEILS IA -->
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border:2px solid #f0f0f0">
-      <div style="font-size:13px;font-weight:800;color:#1c1c1e;margin-bottom:8px">🧠 Conseils personnalisés</div>
-      <div id="sante-ia-conseils" style="text-align:center;padding:16px;color:#8e8e93">
-        <div style="font-size:18px;margin-bottom:6px">💬</div>
-        <div style="font-size:13px">Génération des conseils...</div>
-      </div>
-    </div>
-
-    <!-- ALERTES -->
-    <div id="sante-alertes-wrap"></div>
-  `;
-
-  // Alertes
-  const alerts = buildAlertsData();
-  const alertsHtml = alerts.filter(a=>a.type!=='ok').map(a => `
-    <div style="background:${a.type==='err'?'#fff0f0':'#fff9e6'};border-radius:12px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${a.type==='err'?'#cc2f26':'#f59e0b'}">
-      <div style="font-size:13px;color:#1c1c1e;font-weight:600">${a.msg}</div>
-    </div>`).join('');
-  const alertsWrap = document.getElementById('sante-alertes-wrap');
-  if (alertsWrap && alertsHtml) {
-    alertsWrap.innerHTML = `<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border:2px solid #f0f0f0">
-      <div style="font-size:13px;font-weight:800;color:#1c1c1e;margin-bottom:8px">⚠️ Points d'attention</div>
-      ${alertsHtml}
-    </div>`;
-  }
-
-  // Conseils IA
-  try {
-    const prompt = `Analyse ce portefeuille et donne 3 conseils courts et actionnables pour un débutant.
-Positions : ${Object.entries(grouped).map(([n,v])=>`${n} (${(v/tv*100).toFixed(0)}%)`).join(', ')}.
-ETF : ${etfPct.toFixed(0)}%, Actions : ${(100-etfPct).toFixed(0)}%, Performance : ${tpct.toFixed(1)}%.
-Profil : ${RL[profile.risk]}, horizon ${HL[profile.horizon]}.
-3 conseils max, 1 phrase chacun. PAS de markdown ni de ##. Commence chaque ligne par un emoji.`;
-    const conseils = await callClaude(prompt, 'Tu es conseiller financier pédagogue. Sois bref et concret.');
-    const conseilEl = document.getElementById('sante-ia-conseils');
-    if (conseilEl) {
-      const parts = conseils.replace(/#{1,3}\s/g,'').split('\n').filter(l=>l.trim());
-      conseilEl.innerHTML = parts.map(l => `<div style="font-size:13px;color:#1c1c1e;padding:8px 10px;background:#f9f9f9;border-radius:10px;margin-bottom:6px;line-height:1.5">${l.replace(/\*\*/g,'').replace(/\*/g,'')}</div>`).join('');
-        `<div style="font-size:13px;color:#1c1c1e;padding:8px 10px;background:#f9f9f9;border-radius:10px;margin-bottom:6px;line-height:1.5">${l}</div>`
-    }
-  } catch(e) {}
+  const el = document.getElementById('sante-content');
+  if (el) el.innerHTML = html;
 }
+
+
+
 
 // ===== OBJECTIF WIZARD =====
 let objPlan = null;
