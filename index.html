@@ -1338,7 +1338,7 @@ window.addEventListener('load', function() {
         <button onclick="setDecisionAmount('5000')" class="d-amount-pill" style="padding:8px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='#3fb950';this.style.color='#3fb950'" onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-secondary)'">5 000 €</button>
       </div>
       <div style="display:flex;align-items:center;gap:12px">
-        <input type="range" min="0" max="100" step="5" value="10" id="d-amount-slider" class="slider" oninput="updateDecisionAmount(this.value)" style="flex:1">
+        <input type="range" min="0" max="5000" step="50" value="500" id="d-amount-slider" class="slider" oninput="updateDecisionAmountRaw(this.value)" style="flex:1">
         <div style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;min-width:90px;text-align:center">
           <div id="d-amount-display" style="font-size:16px;font-weight:800;color:var(--color-text)">500 €</div>
           <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:2px">% · montant</div>
