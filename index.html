@@ -1277,29 +1277,60 @@ window.addEventListener('load', function() {
   <div id="d-step1">
 
     <!-- BLOC 1 : Recherche actif -->
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <div style="width:38px;height:38px;background:rgba(99,102,241,0.12);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px;display:flex;gap:20px;align-items:stretch">
+      <!-- Colonne gauche -->
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div style="width:38px;height:38px;background:rgba(99,102,241,0.12);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--color-text);letter-spacing:-0.03em">Quel actif veux-tu analyser ?</div>
+            <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Action, ETF, crypto ou indice</div>
+          </div>
         </div>
-        <div>
-          <div style="font-size:15px;font-weight:700;color:var(--color-text);letter-spacing:-0.03em">Quel actif veux-tu analyser ?</div>
-          <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Action, ETF, crypto ou indice</div>
+        <div class="ac-wrap">
+          <div class="ac-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="d-name" placeholder="Ex: IWDA, LVMH, Apple, Bitcoin..." autocomplete="off" oninput="acSearch(this.value,'d-ac-drop','d-ac-sel')">
+          </div>
+          <div id="d-ac-drop" class="ac-drop" style="display:none"></div>
+        </div>
+        <div id="d-ac-sel"></div>
+        <div style="margin-top:14px">
+          <div style="font-size:11px;font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Mes positions</div>
+          <div id="d-quick-pos" style="display:flex;gap:8px;flex-wrap:wrap"></div>
         </div>
       </div>
-      <div class="ac-wrap">
-        <div class="ac-box">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="d-name" placeholder="Ex: IWDA, LVMH, Apple, Bitcoin..." autocomplete="off" oninput="acSearch(this.value,'d-ac-drop','d-ac-sel')">
+
+      <!-- Colonne droite : visuel IA -->
+      <div style="width:140px;flex-shrink:0;background:linear-gradient(145deg,rgba(99,102,241,0.08),rgba(139,92,246,0.05));border:1px solid rgba(99,102,241,0.15);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px">
+        <div style="position:relative;width:64px;height:64px">
+          <!-- Cercles pulsants -->
+          <div style="position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(99,102,241,0.3);animation:pulse-ring 2.5s ease infinite"></div>
+          <div style="position:absolute;inset:8px;border-radius:50%;border:1.5px solid rgba(99,102,241,0.2);animation:pulse-ring 2.5s ease infinite 0.5s"></div>
+          <!-- Icône centrale -->
+          <div style="position:absolute;inset:16px;background:rgba(99,102,241,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
         </div>
-        <div id="d-ac-drop" class="ac-drop" style="display:none"></div>
-      </div>
-      <div id="d-ac-sel"></div>
-      <div style="margin-top:14px">
-        <div style="font-size:11px;font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Mes positions</div>
-        <div id="d-quick-pos" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        <div style="text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#6366f1;letter-spacing:0.04em">ANALYSE IA</div>
+          <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:2px">Temps réel</div>
+        </div>
+        <!-- Mini graphique déco -->
+        <svg width="90" height="30" viewBox="0 0 90 30" fill="none">
+          <path d="M0 22 Q15 8 25 15 Q35 22 45 10 Q55 0 65 12 Q75 22 90 8" stroke="#6366f1" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+          <path d="M0 22 Q15 8 25 15 Q35 22 45 10 Q55 0 65 12 Q75 22 90 8 L90 30 L0 30 Z" fill="url(#dg)" opacity="0.15"/>
+          <defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#6366f1" stop-opacity="0"/></linearGradient></defs>
+          <circle cx="45" cy="10" r="2.5" fill="#6366f1" opacity="0.8"/>
+          <circle cx="65" cy="12" r="2" fill="#8b5cf6" opacity="0.6"/>
+        </svg>
       </div>
     </div>
+    <style>
+      @keyframes pulse-ring { 0%,100%{opacity:0.6;transform:scale(1)} 50%{opacity:0.2;transform:scale(1.08)} }
+    </style>
 
     <!-- BLOC 2 : Intention — 3 cards redesignées -->
     <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px">
