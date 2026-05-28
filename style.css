@@ -755,3 +755,308 @@ a, button, [onclick] { transition: opacity 0.15s ease, transform 0.15s ease, bac
 /* Page active — transition */
 .sec.active { animation: page-enter 0.25s ease; }
 @keyframes page-enter { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+/* ===== DARK MODE ===== */
+[data-theme="dark"] {
+  --color-bg: #0a0a0f;
+  --color-bg-subtle: #111118;
+  --color-surface: #16161e;
+  --color-surface-raised: #1c1c28;
+  --color-border: #2a2a3a;
+  --color-border-subtle: #1e1e2a;
+  --color-border-strong: #3a3a4a;
+  --color-text: #f0f0f8;
+  --color-text-secondary: #8888aa;
+  --color-text-tertiary: #55556a;
+  --color-text-disabled: #33334a;
+  --color-primary: #f0f0f8;
+  --color-primary-hover: #ffffff;
+}
+
+[data-theme="dark"] body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .metric-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .pos-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .news-item {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .topbar {
+  background: rgba(10,10,15,0.92);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .sidebar {
+  background: #0d0d12;
+  border-right-color: var(--color-border);
+}
+
+[data-theme="dark"] .nav-btn {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .nav-btn:hover,
+[data-theme="dark"] .nav-btn.active {
+  background: rgba(255,255,255,0.06);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .nav-group-label {
+  color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .profile-pill {
+  background: rgba(255,255,255,0.06);
+}
+
+[data-theme="dark"] .profile-pill:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+[data-theme="dark"] #topbar-email {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .page-header h1 {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .page-sub {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .card-title {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .metric-val {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .metric-label {
+  color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .pos-name {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .pos-val {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .pos-meta {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .btn-secondary {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+[data-theme="dark"] .btn-add {
+  background: var(--color-text);
+  color: #0a0a0f;
+}
+
+[data-theme="dark"] .filter-pill {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .filter-pill.active {
+  background: var(--color-text);
+  color: #0a0a0f;
+  border-color: var(--color-text);
+}
+
+[data-theme="dark"] .field input,
+[data-theme="dark"] .field select,
+[data-theme="dark"] input,
+[data-theme="dark"] select {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+[data-theme="dark"] .bubble.bot {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .notif-panel {
+  background: #0d0d12;
+  border-left-color: var(--color-border);
+}
+
+[data-theme="dark"] .port-tab {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .port-tab.active {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .port-tabs {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .slider-row {
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .slider-row label {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .slider-row span {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .news-title {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .news-summary {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .search-box {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .search-box input {
+  color: var(--color-text);
+  background: transparent;
+}
+
+[data-theme="dark"] .ac-box {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .ac-box input {
+  background: transparent;
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .ac-drop {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .ac-item:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+[data-theme="dark"] .ac-item-name {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .watchlist-chip {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .wchip-name {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .popular-chip {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .popular-name {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .tx-item {
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .tx-name {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .score-row {
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .bar-bg {
+  background: var(--color-border);
+}
+
+[data-theme="dark"] .obj-bar-bg {
+  background: var(--color-border);
+}
+
+[data-theme="dark"] .modal-card {
+  background: #0d0d12;
+}
+
+[data-theme="dark"] .ob-profile-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .ob-profile-card:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+[data-theme="dark"] .ob-goal-card,
+[data-theme="dark"] .ob-risk-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .btn-sm {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .dca-preset-card {
+  background: var(--color-surface) !important;
+}
+
+[data-theme="dark"] .risk-card {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .risk-card.active {
+  background: var(--color-surface-raised);
+  border-color: var(--color-text);
+}
+
+/* Transition douce */
+body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
+.modal-card, .notif-panel, input, select, .btn-secondary, .filter-pill {
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.15s ease !important;
+}
