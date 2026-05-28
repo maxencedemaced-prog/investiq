@@ -6847,7 +6847,6 @@ function updateDCA() {
         <td style="padding:8px 6px;color:#1a7f5a;font-weight:700;font-size:12px">+${fmtK(Math.round(g))}</td>
         <td stytd style="padding:13px 12px">
           <span style="background:rgba(74,222,128,0.12);color:#4ade80;font-weight:700;padding:4px 12px;border-radius:99px;font-size:12px;border:1px solid rgba(74,222,128,0.2)">+${pct}%</span>
-        </tdr-radius:6px;font-size:11px">+${pct}%</span>
         </td>
       </tr>`;
     }
