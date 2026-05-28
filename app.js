@@ -7245,3 +7245,37 @@ function updateDCADonut() {
   if(g('dca-r-o')) g('dca-r-o').textContent=r.toFixed(1)+' %';
   if(g('dca-s-o')) g('dca-s-o').textContent=s.toLocaleString('fr-FR')+' €';
 }
+
+
+// ===== AGENT IA SIDEBAR =====
+function updateAISidebar() {
+  if (!positions || positions.length === 0) return;
+  let totalPnl = 0, totalVal = 0;
+  positions.forEach(p => {
+    const val = (p.price || p.pru) * p.qty;
+    const cost = p.pru * p.qty;
+    totalPnl += val - cost;
+    totalVal += val;
+  });
+  const pct = totalVal > 0 ? (totalPnl / (totalVal - totalPnl) * 100).toFixed(1) : 0;
+  const pnlEl = document.getElementById('ai-side-pnl');
+  const pctEl = document.getElementById('ai-side-pnl-pct');
+  const impactEl = document.getElementById('ai-side-impact');
+  const impactBar = document.getElementById('ai-side-impact-bar');
+  const riskEl = document.getElementById('ai-side-risk');
+  const riskDot = document.getElementById('ai-side-risk-dot');
+  if (pnlEl) {
+    const sign = totalPnl >= 0 ? '+' : '';
+    pnlEl.textContent = sign + Math.round(totalPnl).toLocaleString('fr-FR') + ' €';
+    pnlEl.style.color = totalPnl >= 0 ? '#4ade80' : '#f87171';
+  }
+  if (pctEl) pctEl.textContent = '(' + (totalPnl >= 0 ? '+' : '') + pct + '%)';
+  const absPct = Math.abs(parseFloat(pct));
+  const risk = absPct > 15 ? 'Élevé' : absPct > 5 ? 'Modéré' : 'Faible';
+  const riskColor = absPct > 15 ? '#f87171' : absPct > 5 ? '#fbbf24' : '#4ade80';
+  const barW = Math.min(absPct * 3, 100);
+  if (impactEl) { impactEl.textContent = risk; impactEl.style.color = riskColor; }
+  if (impactBar) { impactBar.style.width = barW + '%'; impactBar.style.background = `linear-gradient(90deg,${riskColor},${riskColor}cc)`; }
+  if (riskEl) { riskEl.textContent = risk; riskEl.style.color = riskColor; }
+  if (riskDot) riskDot.style.background = riskColor;
+}
