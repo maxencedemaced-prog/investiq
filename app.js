@@ -2322,82 +2322,53 @@ async function obFinish(action) {
 function formatMD(text) {
   if (!text) return '';
 
-  // ── Parse les tableaux markdown en HTML ──
+  // Tables markdown
   function parseTable(block) {
     const lines = block.trim().split('\n').filter(l => l.trim());
     if (lines.length < 2) return null;
     const isSep = l => /^[\|\s\-:]+$/.test(l);
-    // Cherche la ligne séparateur
     const sepIdx = lines.findIndex(isSep);
     if (sepIdx < 1) return null;
     const parseRow = l => l.split('|').map(c => c.trim()).filter((c,i,a) => i > 0 && i < a.length-1);
     const headers = parseRow(lines[sepIdx - 1]);
-    const rows    = lines.slice(sepIdx + 1).filter(l => l.includes('|')).map(parseRow);
+    const rows = lines.slice(sepIdx + 1).filter(l => l.includes('|'));
     if (!headers.length) return null;
-
-    const thHtml = headers.map(h =>
-      `<th style="padding:8px 10px;font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;text-align:left;border-bottom:2px solid #f0f0f0;white-space:nowrap">${h}</th>`
-    ).join('');
-
-    const trHtml = rows.map((row, ri) =>
-      `<tr style="background:${ri%2===0?'#fff':'#fafafa'}">` +
-      row.map((cell, ci) => {
-        // Mise en valeur : ticker (tout caps court), montant (€), pourcentage
-        const isTicker  = /^[A-Z]{2,6}(\.[A-Z]{1,3})?$/.test(cell.replace(/\*\*/g,''));
-        const isAmount  = /\d+[€%]|\d+ €/.test(cell);
-        const bold      = cell.includes('**');
-        const clean     = cell.replace(/\*\*/g,'').replace(/\*/g,'');
-        let style = `padding:8px 10px;font-size:13px;border-bottom:1px solid #f5f5f5;`;
-        if (ci === 0 && isTicker) style += 'font-weight:800;color:#1c1c1e;font-family:monospace;font-size:12px;';
-        else if (bold || isAmount) style += 'font-weight:800;color:#1a7f5a;';
-        else style += 'color:#3c3c43;font-weight:500;';
-        return `<td style="${style}">${clean}</td>`;
-      }).join('') +
-      `</tr>`
-    ).join('');
-
-    return `<div style="overflow-x:auto;margin:10px 0 14px;border-radius:12px;border:1.5px solid #f0f0f0;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:#f9f9f9">${thHtml}</tr></thead>
-        <tbody>${trHtml}</tbody>
-      </table>
-    </div>`;
+    const thead = `<tr>${headers.map(h => `<th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;border-bottom:1px solid rgba(255,255,255,0.08)">${h}</th>`).join('')}</tr>`;
+    const tbody = rows.map(r => {
+      const cells = parseRow(r);
+      return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">${cells.map(c => {
+        const isNeg = /^-/.test(c) && c.includes('%') || c.includes('€') && c.startsWith('-');
+        const isPos = c.startsWith('+') || (c.includes('%') && !c.startsWith('-'));
+        const color = isNeg ? '#f87171' : isPos ? '#4ade80' : 'var(--color-text,#e6edf3)';
+        return `<td style="padding:10px 14px;font-size:13px;color:${color};font-weight:${isNeg||isPos?'700':'500'}">${c}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+    return `<div style="overflow-x:auto;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
   }
 
-  // Découpe le texte en blocs, repère les blocs tableau
-  const lines = text.split('\n');
-  const result = [];
-  let tableBuffer = [];
-  let inTable = false;
+  // Remplacer les blocs table
+  text = text.replace(/((?:\|.+\n?){2,})/g, block => {
+    if (!block.includes('|')) return block;
+    const t = parseTable(block);
+    return t || block;
+  });
 
-  for (const line of lines) {
-    const isTableLine = /^\s*\|/.test(line) || /^[\|\s\-:]+$/.test(line);
-    if (isTableLine) {
-      inTable = true;
-      tableBuffer.push(line);
-    } else {
-      if (inTable && tableBuffer.length) {
-        const tableHtml = parseTable(tableBuffer.join('\n'));
-        result.push(tableHtml || tableBuffer.join('<br>'));
-        tableBuffer = [];
-        inTable = false;
-      }
-      result.push(line);
-    }
-  }
-  if (tableBuffer.length) {
-    const tableHtml = parseTable(tableBuffer.join('\n'));
-    result.push(tableHtml || tableBuffer.join('<br>'));
-  }
-
-  return result.join('\n')
-    .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #f0f0f0;margin:12px 0">')
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#1c1c1e;font-weight:800">$1</strong>')
+  return text
+    // Titres
+    .replace(/^### (.+)$/gm, '<div style="font-size:14px;font-weight:800;color:var(--color-text,#fff);margin:14px 0 6px;letter-spacing:-0.02em">$1</div>')
+    .replace(/^## (.+)$/gm, '<div style="font-size:16px;font-weight:800;color:var(--color-text,#fff);margin:16px 0 8px;letter-spacing:-0.03em">$1</div>')
+    .replace(/^# (.+)$/gm, '<div style="font-size:18px;font-weight:900;color:var(--color-text,#fff);margin:16px 0 10px">$1</div>')
+    // Bold + italic
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--color-text,#fff);font-weight:700">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^>{1,2}\s*(.+)$/gm, '<div style="background:#f0faf6;border-left:3px solid #1a7f5a;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:13px;color:#065f46;font-weight:600">$1</div>')
-    .replace(/^#{1,3}\s+(.+)$/gm, '<div style="font-size:15px;font-weight:800;color:#1c1c1e;margin:18px 0 8px;letter-spacing:-0.2px;display:flex;align-items:center;gap:8px">$1</div>')
-    .replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;font-size:13px"><span style="color:#1a7f5a;font-weight:800;flex-shrink:0;margin-top:1px">→</span><span style="color:#3c3c43">$1</span></div>')
-    .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:10px;margin:6px 0;align-items:flex-start"><span style="background:#1c1c1e;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px">$1</span><span style="font-size:13px;color:#3c3c43">$2</span></div>')
+    // Séparateur
+    .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:12px 0">')
+    // Alertes ⚠️
+    .replace(/^⚠️(.+)$/gm, '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:10px 14px;margin:8px 0;font-size:13px;color:#fbbf24;display:flex;gap:8px;align-items:flex-start">⚠️<span>$1</span></div>')
+    // Listes à puce
+    .replace(/^[-•] (.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;align-items:flex-start"><span style="color:#3fb950;font-weight:800;flex-shrink:0;margin-top:1px">→</span><span style="font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.7))">$1</span></div>')
+    // Listes numérotées
+    .replace(/^(\d+)\. (.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;align-items:flex-start"><span style="background:rgba(63,185,80,0.15);color:#3fb950;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">$1</span><span style="font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.7))">$2</span></div>')
     .replace(/\n\n/g, '<div style="height:8px"></div>')
     .replace(/\n/g, '<br>');
 }
