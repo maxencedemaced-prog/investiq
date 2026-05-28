@@ -4348,48 +4348,47 @@ function toggleTheme() {
 
 
 // ===== LOGOS ENTREPRISES =====
-function getCompanyLogo(ticker, name, size=36, radius=10) {
-  // Mapping ticker → domaine
+function getCompanyLogo(ticker, name, size, radius) {
+  size = size || 36; radius = radius || 10;
   const domainMap = {
-    'AAPL':'apple.com', 'MSFT':'microsoft.com', 'GOOGL':'google.com', 'GOOG':'google.com',
-    'AMZN':'amazon.com', 'TSLA':'tesla.com', 'NVDA':'nvidia.com', 'META':'meta.com',
-    'NFLX':'netflix.com', 'UBER':'uber.com', 'SPOT':'spotify.com', 'PYPL':'paypal.com',
-    'INTC':'intel.com', 'AMD':'amd.com', 'ORCL':'oracle.com', 'CRM':'salesforce.com',
-    'ADBE':'adobe.com', 'QCOM':'qualcomm.com', 'TXN':'ti.com', 'ASML':'asml.com',
-    'MC.PA':'lvmh.com', 'OR.PA':'loreal.com', 'TTE.PA':'totalenergies.com',
-    'AI.PA':'airliquide.com', 'BNP.PA':'bnpparibas.com', 'SAN.PA':'sanofi.com',
-    'AIR.PA':'airbus.com', 'ACA.PA':'credit-agricole.com', 'DG.PA':'saint-gobain.com',
-    'ORA.PA':'orange.com', 'KER.PA':'kering.com', 'EL.PA':'loreal.com',
-    'STLAM.MI':'stellantis.com', 'SAP.DE':'sap.com', 'SIE.DE':'siemens.com',
-    'ALV.DE':'allianz.com', 'BMW.DE':'bmw.com', 'MBG.DE':'mercedes-benz.com',
-    'BAYN.DE':'bayer.com', 'PAH3.DE':'porsche.com', 'VOW3.DE':'volkswagen.com',
-    'NESN.SW':'nestle.com', 'NOVO-B.CO':'novonordisk.com', 'SHEL.L':'shell.com',
-    'HSBA.L':'hsbc.com', 'BP.L':'bp.com', 'GSK.L':'gsk.com', 'AZN.L':'astrazeneca.com',
-    'VIE.PA':'veolia.com', 'RMS.PA':'hermes.com', 'CS.PA':'axa.com',
-    'IWDA.L':'ishares.com', 'VWCE.DE':'vanguard.com', 'CSPX.L':'ishares.com',
-    'SWDA.L':'ishares.com', 'VUSA.L':'vanguard.com', 'IWDA.AS':'ishares.com',
-    'MC.PA':'lvmh.com', 'LVMH':'lvmh.com', 'FDJ.PA':'groupefdj.com',
-    'SOI.PA':'soitec.com', 'MCPA':'lvmh.com', 'AIR.PA':'airbus.com',
-    'VIE.PA':'veolia.com', 'VWCE.DE':'vanguard.com',
+    'AAPL':'apple.com','MSFT':'microsoft.com','GOOGL':'google.com','GOOG':'google.com',
+    'AMZN':'amazon.com','TSLA':'tesla.com','NVDA':'nvidia.com','META':'meta.com',
+    'NFLX':'netflix.com','UBER':'uber.com','SPOT':'spotify.com','PYPL':'paypal.com',
+    'INTC':'intel.com','AMD':'amd.com','ORCL':'oracle.com','CRM':'salesforce.com',
+    'ADBE':'adobe.com','QCOM':'qualcomm.com','ASML':'asml.com',
+    'MC.PA':'lvmh.com','OR.PA':'loreal.com','TTE.PA':'totalenergies.com',
+    'AI.PA':'airliquide.com','BNP.PA':'bnpparibas.com','SAN.PA':'sanofi.com',
+    'AIR.PA':'airbus.com','ACA.PA':'credit-agricole.com','ORA.PA':'orange.com',
+    'KER.PA':'kering.com','VIE.PA':'veolia.com','RMS.PA':'hermes.com',
+    'IWDA.L':'ishares.com','VWCE.DE':'vanguard.com','CSPX.L':'ishares.com',
+    'SWDA.L':'ishares.com','VUSA.L':'vanguard.com','IWDA.AS':'ishares.com',
+    'LVMH':'lvmh.com','FDJ.PA':'groupefdj.com','SOI.PA':'soitec.com',
+    'PAH3.DE':'porsche.com','VOW3.DE':'volkswagen.com','BMW.DE':'bmw.com',
+    'SAP.DE':'sap.com','SIE.DE':'siemens.com','ALV.DE':'allianz.com',
+    'BAYN.DE':'bayer.com','MBG.DE':'mercedes-benz.com','NESN.SW':'nestle.com',
+    'NOVO-B.CO':'novonordisk.com','SHEL.L':'shell.com','HSBA.L':'hsbc.com',
+    'BP.L':'bp.com','GSK.L':'gsk.com','AZN.L':'astrazeneca.com',
+    'MCPA':'lvmh.com','MC.PA':'lvmh.com',
   };
-
   const LCOLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6','#f97316'];
-  const fallbackColor = LCOLORS[(ticker||'').charCodeAt(0) % LCOLORS.length];
-  const initials = (ticker||name||'??').replace(/[^A-Z0-9]/gi,'').slice(0,2).toUpperCase() || '??';
+  const c = LCOLORS[(ticker||'').charCodeAt(0) % LCOLORS.length];
+  const init = (ticker||name||'?').replace(/[.\-]/g,'').slice(0,2).toUpperCase();
+  const s = size, r = radius;
+  const fallback = '<div style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px;background:'+c+'20;border:1px solid '+c+'40;display:flex;align-items:center;justify-content:center;font-size:'+Math.round(s*0.35)+'px;font-weight:800;color:'+c+';flex-shrink:0">'+init+'</div>';
+  const t = (ticker||'').toUpperCase();
+  const base = t.replace(/\.PA$|\.DE$|\.L$|\.AS$|\.MI$|\.SW$/,'');
+  const domain = domainMap[ticker] || domainMap[t] || domainMap[base];
+  if (!domain) return fallback;
+  const logoUrl = 'https://logo.clearbit.com/' + domain;
+  return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${c}20;display:flex;align-items:center;justify-content:center">
+    <img src="${logoUrl}" alt="${init}" style="width:${s}px;height:${s}px;object-fit:cover;border-radius:${r}px" onerror="_logoFallback(this,'${init}','${c}')">
+  </div>`;
+}
 
-  const domain = domainMap[ticker] || domainMap[ticker?.replace('.PA','')?.replace('.DE','')?.replace('.L','')?.replace('.AS','')];
-
-  if (domain) {
-    // Logo réel via Clearbit
-    const logoUrl = `https://logo.clearbit.com/${domain}`;
-    return `<div style="width:${size}px;height:${size}px;border-radius:${radius}px;overflow:hidden;flex-shrink:0;background:#f4f4f5;display:flex;align-items:center;justify-content:center">
-      <img src="${logoUrl}" alt="${name}" width="${size}" height="${size}" style="border-radius:${radius}px;object-fit:cover"
-        onerror="this.parentElement.innerHTML='<div style=\'width:${size}px;height:${size}px;border-radius:${radius}px;background:${fallbackColor}20;border:1px solid ${fallbackColor}40;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.35)}px;font-weight:800;color:${fallbackColor}\'>${initials}</div>'">
-    </div>`;
-  }
-
-  // Fallback initiales
-  return `<div style="width:${size}px;height:${size}px;border-radius:${radius}px;background:${fallbackColor}20;border:1px solid ${fallbackColor}40;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.35)}px;font-weight:800;color:${fallbackColor};flex-shrink:0">${initials}</div>`;
+function _logoFallback(img, text, color) {
+  img.style.display = 'none';
+  var p = img.parentElement;
+  if (p) { p.style.background = color + '20'; p.style.border = '1px solid ' + color + '40'; p.innerHTML = '<span style="font-size:' + Math.round(p.offsetWidth * 0.35 || 13) + 'px;font-weight:800;color:' + color + '">' + text + '</span>'; }
 }
 
 // ===== NAV =====
