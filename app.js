@@ -4360,8 +4360,8 @@ function getCompanyLogo(ticker, name, size, radius) {
     'AI.PA':'airliquide.com','BNP.PA':'bnpparibas.com','SAN.PA':'sanofi.com',
     'AIR.PA':'airbus.com','ACA.PA':'credit-agricole.com','ORA.PA':'orange.com',
     'KER.PA':'kering.com','VIE.PA':'veolia.com','RMS.PA':'hermes.com',
-    'IWDA.L':'blackrock.com','VWCE.DE':'vanguard.com','CSPX.L':'blackrock.com',
-    'SWDA.L':'blackrock.com','VUSA.L':'vanguard.com','IWDA.AS':'blackrock.com',
+    'IWDA.L':'ishares.com','VWCE.DE':'vanguard.com','CSPX.L':'ishares.com',
+    'SWDA.L':'ishares.com','VUSA.L':'vanguard.com','IWDA.AS':'ishares.com',
     'LVMH':'lvmh.com','FDJ.PA':'groupefdj.com','SOI.PA':'soitec.com',
     'PAH3.DE':'porsche.com','VOW3.DE':'volkswagen.com','BMW.DE':'bmw.com',
     'SAP.DE':'sap.com','SIE.DE':'siemens.com','ALV.DE':'allianz.com',
@@ -4369,9 +4369,9 @@ function getCompanyLogo(ticker, name, size, radius) {
     'NOVO-B.CO':'novonordisk.com','SHEL.L':'shell.com','HSBA.L':'hsbc.com',
     'BP.L':'bp.com','GSK.L':'gsk.com','AZN.L':'astrazeneca.com',
     'MCPA':'lvmh.com','MC.PA':'lvmh.com',
-    'IWDA.L':'blackrock.com','IWDA.AS':'blackrock.com','IWDA':'blackrock.com',
+    'IWDA.L':'ishares.com','IWDA.AS':'ishares.com','IWDA':'ishares.com',
     'VWCE.DE':'vanguard.com','VWCE':'vanguard.com',
-    'CSPX.L':'blackrock.com','EUNL.DE':'blackrock.com',
+    'CSPX.L':'ishares.com','EUNL.DE':'ishares.com',
     'SOI.PA':'soitec.com','SOITEC':'soitec.com',
     'FDJ.PA':'groupefdj.com','FDJ':'groupefdj.com',
     'AIR.PA':'airbus.com','AIRBUS':'airbus.com',
@@ -4398,7 +4398,8 @@ function getCompanyLogo(ticker, name, size, radius) {
   const base = t.replace(/\.PA$|\.DE$|\.L$|\.AS$|\.MI$|\.SW$/,'');
   const domain = domainMap[ticker] || domainMap[t] || domainMap[base];
   if (!domain) return fallback;
-  const logoUrl = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
+  // Essayer plusieurs sources de logos
+  const logoUrl = 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://' + domain + '&size=64';
   const isDarkLogo = document.documentElement.getAttribute('data-theme') === 'dark';
   const logoBg = isDarkLogo ? '#1a2230' : '#f4f4f5';
   return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:3px;box-sizing:border-box">
