@@ -3829,7 +3829,7 @@ async function initApp(user) {
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
   if ('Notification' in window) Notification.requestPermission();
   initTheme();
-  setTimeout(initDevPremiumBtn, 300);
+  setTimeout(initDevPremiumBtn, 800); // après chargement currentUser
   } catch(e) { console.error('initApp error:', e); alert('Erreur de chargement: ' + e.message); }
 }
 
@@ -5281,9 +5281,31 @@ function renderPortfolio() {
     });
   }, 50);
 
-  // Générer signaux en lot — max 6, espacés de 800ms pour éviter les 500
+  // Générer signaux en lot — uniquement si API disponible (évite les 500 en cascade)
+  // On tente un seul signal d'abord, si ça échoue on utilise le fallback statique pour tous
   const needSignal = positions.filter(p => !posSignals[p.id]).slice(0, 6);
-  needSignal.forEach((p, i) => setTimeout(() => generatePosSignal(p), i * 800));
+  if (needSignal.length > 0) {
+    generatePosSignal(needSignal[0]).then(() => {
+      // Si le 1er réussit (pas de fallback "Analyse en cours"), lancer les suivants
+      const sig = posSignals[needSignal[0].id];
+      const apiOk = sig && sig.texte !== 'Analyse temporairement indisponible';
+      if (apiOk) {
+        needSignal.slice(1).forEach((p, i) => setTimeout(() => generatePosSignal(p), (i+1) * 800));
+      } else {
+        // API KO — applique le fallback statique à tous sans appels supplémentaires
+        needSignal.slice(1).forEach(p => {
+          const pnl = (p.price - p.pru) / p.pru * 100;
+          posSignals[p.id] = {
+            action: pnl > 5 ? 'garder' : pnl < -15 ? 'vendre' : 'garder',
+            conviction: 'modérée', texte: pnl < -15 ? 'Perte importante — envisage de couper.' : pnl > 15 ? 'Belle performance — sécurise une partie.' : 'Continue à surveiller cette position.',
+            horizon_signal: p.type === 'ETF' ? 'Long terme' : '1-3 mois', timing: 'Attendre',
+            catalyseurs: ['Analyse indisponible'], risques: ['Volatilité du marché'], prix_cible: 0, stop_loss: 0
+          };
+        });
+        saveSignalsCache();
+      }
+    });
+  }
 }
 
 
