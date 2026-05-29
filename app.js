@@ -7529,7 +7529,7 @@ function showPremiumModal(source) {
     decision: { title: '3 analyses utilisées', desc: 'Tu as utilisé tes 3 analyses gratuites.', detail: 'Passe à Premium pour des analyses illimitées sur chaque actif de ton portefeuille.' },
     positions: { title: 'Limite de 5 positions', desc: 'La version gratuite est limitée à 5 positions.', detail: 'Passe à Premium pour un portefeuille illimité et des analyses IA sur chaque position.' },
   };
-  const m = messages[source] || { title: 'Fonctionnalité Premium', desc: 'Cette fonctionnalité est réservée aux membres Premium.', detail: 'Passe à Premium pour débloquer toutes les fonctionnalités IA d'InvestIQ.' };
+  const m = messages[source] || { title: 'Fonctionnalité Premium', desc: 'Cette fonctionnalité est réservée aux membres Premium.', detail: "Passe à Premium pour débloquer toutes les fonctionnalités IA d'InvestIQ." };
 
   // Créer ou réutiliser le modal
   let modal = document.getElementById('premium-modal');
