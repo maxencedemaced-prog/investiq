@@ -7562,7 +7562,6 @@ function isPremiumUser() {
 
 // Bouton dev uniquement — toggle rapide free/premium sans toucher Supabase
 function toggleDevPremium() {
-  if (!currentUser || currentUser.email !== DEV_EMAIL) return;
   const current = isPremiumUser();
   const next = !current;
   localStorage.setItem('iq_dev_premium', String(next));
@@ -7585,15 +7584,16 @@ function toggleDevPremium() {
   }
 }
 
-// Initialise le bouton dev au chargement — visible uniquement pour le compte dev
+// Initialise le bouton dev — texte adapté selon compte
 function initDevPremiumBtn() {
   const btn = document.getElementById('dev-premium-btn');
   const title = document.getElementById('sidebar-plan-title');
   const badge = document.getElementById('sidebar-plan-badge');
+  const isDevAccount = currentUser && currentUser.email === DEV_EMAIL;
 
-  // Masque le bouton pour tout le monde sauf le compte dev
-  if (!currentUser || currentUser.email !== DEV_EMAIL) {
-    if (btn) { btn.textContent = 'Découvrir'; btn.style.background = '#16a34a'; btn.onclick = null; btn.style.cursor = 'default'; }
+  if (!isDevAccount) {
+    // Autres comptes : bouton "Découvrir" classique sans toggle
+    if (btn) { btn.textContent = 'Découvrir'; btn.style.background = '#16a34a'; }
     return;
   }
 
@@ -7606,6 +7606,9 @@ function initDevPremiumBtn() {
   if (isPrem) {
     if (title) { title.textContent = '✦ Mode Premium'; title.style.color = '#4ade80'; }
     if (badge) { badge.textContent = '✦ Premium activé (dev)'; badge.style.color = '#4ade80'; }
+  } else {
+    if (title) { title.textContent = 'Passez à Premium'; title.style.color = '#fff'; }
+    if (badge) { badge.textContent = 'Compte gratuit (dev)'; badge.style.color = 'rgba(255,255,255,0.4)'; }
   }
 }
 
