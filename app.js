@@ -3931,14 +3931,21 @@ async function changePassword() {
 async function loadProfile() {
   const { data } = await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   if (data) {
-    profile = { bankroll: data.bankroll||5000, horizon: data.horizon||'moyen', risk: data.risk||'faible', notif: data.notif||'daily' };
-    // Les champs sont dans le drawer settings — on les met à jour seulement s'ils existent
+    profile = {
+      bankroll: data.bankroll||5000,
+      horizon: data.horizon||'moyen',
+      risk: data.risk||'faible',
+      notif: data.notif||'daily',
+      isPremium: data.is_premium||false,
+      premiumSince: data.premium_since||null
+    };
     const sb_el = id => document.getElementById(id);
     if (sb_el('s-bankroll')) sb_el('s-bankroll').value = profile.bankroll;
     if (sb_el('s-horizon')) sb_el('s-horizon').value = profile.horizon;
     if (sb_el('s-risk')) sb_el('s-risk').value = profile.risk;
     if (sb_el('s-notif')) sb_el('s-notif').value = profile.notif;
     if (typeof updateSettingsDisplays === 'function') updateSettingsDisplays();
+    if (typeof updatePremiumUI === 'function') updatePremiumUI();
   }
 }
 async function saveProfile() {
@@ -4520,7 +4527,7 @@ function nav(page) {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
 }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);},
-    ai:()=>{ loadChatHistory(); initAgent(); setTimeout(()=>{ if(typeof updateAISidebar==='function') updateAISidebar(); if(typeof generateDailyBrief==='function') generateDailyBrief(); }, 200); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+    ai:()=>{ loadChatHistory(); initAgent(); setTimeout(()=>{ if(typeof updateAISidebar==='function') updateAISidebar(); if(typeof generateDailyBrief==='function')generateDailyBrief(); if(typeof updatePremiumUI==='function')updatePremiumUI(); }, 200); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
   if (page === 'settings') setTimeout(()=>{ if(typeof updateSettingsDisplays==='function') updateSettingsDisplays(); }, 100);
 }
@@ -5354,6 +5361,11 @@ function openDecisionFromPos(name, action) {
 }
 
 async function addPos() {
+  // Limite 5 positions en gratuit
+  if (!isPremiumUser() && positions.length >= 5) {
+    showPremiumModal('positions');
+    return;
+  }
   const name = document.getElementById('f-name').value.trim();
   const qty = parseFloat(document.getElementById('f-qty').value);
   const pru = parseFloat(document.getElementById('f-pru').value);
@@ -6471,6 +6483,15 @@ function setDecisionIntent(intent) {
 }
 
 async function analyseDecision() {
+  // Vérif limite gratuit
+  if (!isPremiumUser()) {
+    const used = getTotalCount('decision');
+    if (used >= 3) {
+      showPremiumModal('decision');
+      return;
+    }
+    incrementTotalCount('decision');
+  }
   const name = document.getElementById('d-name').value.trim();
   const pct  = parseInt(document.getElementById('d-pct').value) || 10;
   const amt  = Math.round((profile.bankroll || 5000) * pct / 100);
@@ -6973,6 +6994,14 @@ function detectIntent(q) {
 }
 
 async function sendAI() {
+  // Vérif limite gratuit
+  if (!isPremiumUser()) {
+    const count = getDailyCount('ai');
+    if (count >= 1) {
+      showPremiumModal('agent_ia');
+      return;
+    }
+  }
   const inp = document.getElementById('ai-in');
   const q = inp.value.trim();
   if (!q) return;
@@ -7003,6 +7032,7 @@ Tu ne fournis pas de conseils financiers réglementés.`;
   try {
     const r = await callClaude(fullPrompt, systemPrompt);
     chatHistory.push({ role: 'assistant', content: r });
+    if (!isPremiumUser()) incrementDailyCount('ai');
     saveChatHistory();
 
     // Détecte et parse les actions
@@ -7131,6 +7161,21 @@ function initAgent() {
 }
 
 async function generateDailyBrief() {
+  // Cache 24h — premium uniquement
+  if (!isPremiumUser()) {
+    const briefEl = document.getElementById('agent-brief-content');
+    if (briefEl) briefEl.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.15);border-radius:10px;font-size:13px;color:#fbbf24;display:flex;align-items:center;gap:8px"><span>✦</span><span>Briefing quotidien disponible en <strong>Premium</strong></span></div>';
+    return;
+  }
+  const cached = getCachedResponse('briefing', CACHE_TTL.briefing);
+  if (cached) {
+    const briefEl = document.getElementById('agent-brief-content');
+    if (briefEl) briefEl.innerHTML = cached;
+    const dateEl = document.getElementById('agent-brief-date');
+    if (dateEl) dateEl.textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+    return;
+  }
+
   const el = document.getElementById('agent-brief-content');
   const btn = document.getElementById('brief-refresh-btn');
   if (!el) return;
@@ -7443,3 +7488,160 @@ function updateSettingsDisplays() {
   const theme = localStorage.getItem('iq_theme') || 'dark';
   if (themeEl) themeEl.textContent = theme === 'dark' ? 'Thème sombre' : 'Thème clair';
 }
+
+
+// ===================================================
+// SYSTÈME FREEMIUM
+// ===================================================
+
+function isPremiumUser() {
+  return profile?.isPremium === true || isDemo;
+}
+
+// --- Compteurs journaliers (reset chaque jour) ---
+function getDailyCount(key) {
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    const data = JSON.parse(localStorage.getItem('iq_limit_' + key) || '{}');
+    return data.date === today ? (data.count || 0) : 0;
+  } catch { return 0; }
+}
+
+function incrementDailyCount(key) {
+  const today = new Date().toISOString().slice(0,10);
+  const count = getDailyCount(key) + 1;
+  localStorage.setItem('iq_limit_' + key, JSON.stringify({ date: today, count }));
+}
+
+// --- Compteurs totaux (pas de reset) ---
+function getTotalCount(key) {
+  try { return parseInt(localStorage.getItem('iq_total_' + key) || '0'); } catch { return 0; }
+}
+
+function incrementTotalCount(key) {
+  localStorage.setItem('iq_total_' + key, String(getTotalCount(key) + 1));
+}
+
+// --- Modal Premium ---
+function showPremiumModal(source) {
+  const messages = {
+    agent_ia: { title: 'Limite atteinte', desc: 'Tu as utilisé ton message IA gratuit du jour.', detail: 'Passe à Premium pour des conversations IA illimitées avec ton copilote financier personnel.' },
+    decision: { title: '3 analyses utilisées', desc: 'Tu as utilisé tes 3 analyses gratuites.', detail: 'Passe à Premium pour des analyses illimitées sur chaque actif de ton portefeuille.' },
+    positions: { title: 'Limite de 5 positions', desc: 'La version gratuite est limitée à 5 positions.', detail: 'Passe à Premium pour un portefeuille illimité et des analyses IA sur chaque position.' },
+  };
+  const m = messages[source] || { title: 'Fonctionnalité Premium', desc: 'Cette fonctionnalité est réservée aux membres Premium.', detail: 'Passe à Premium pour débloquer toutes les fonctionnalités IA d'InvestIQ.' };
+
+  // Créer ou réutiliser le modal
+  let modal = document.getElementById('premium-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'premium-modal';
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closePremiumModal()">
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:24px;padding:0;max-width:420px;width:100%;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.4)">
+
+        <!-- Header premium -->
+        <div style="background:linear-gradient(135deg,#0d0d18,#111120);padding:32px 28px 24px;text-align:center;position:relative">
+          <div style="position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:200px;height:120px;background:radial-gradient(circle,rgba(63,185,80,0.15),transparent);pointer-events:none"></div>
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,rgba(63,185,80,0.2),rgba(22,163,74,0.1));border:1px solid rgba(63,185,80,0.3);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px">✦</div>
+          <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:8px">${m.title}</div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.5)">${m.desc}</div>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:24px 28px">
+          <div style="background:rgba(63,185,80,0.06);border:1px solid rgba(63,185,80,0.12);border-radius:12px;padding:14px 16px;margin-bottom:20px">
+            <div style="font-size:13px;color:var(--color-text-secondary);line-height:1.6">${m.detail}</div>
+          </div>
+
+          <!-- Features premium -->
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+            ${[
+              ['🤖', 'Agent IA illimité', 'Conversations sans limite avec ton copilote'],
+              ['🎯', 'Analyses illimitées', 'Analyse chaque actif sans restriction'],
+              ['📊', 'Briefing quotidien', 'Résumé IA de ton portefeuille chaque matin'],
+              ['⚡', 'Signaux IA avancés', 'Alertes intelligentes et recommandations'],
+              ['💼', 'Positions illimitées', 'Portefeuille sans limite de taille'],
+            ].map(([icon, title, desc]) => `
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:32px;height:32px;background:rgba(63,185,80,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:var(--color-text)">${title}</div>
+                  <div style="font-size:11px;color:var(--color-text-tertiary)">${desc}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- CTA -->
+          <button onclick="closePremiumModal();nav('settings')" style="width:100%;padding:15px;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(22,163,74,0.3)">
+            ✦ Passer à Premium
+          </button>
+          <button onclick="closePremiumModal()" style="width:100%;padding:12px;background:transparent;color:var(--color-text-secondary);border:none;font-size:13px;font-weight:600;cursor:pointer">
+            Continuer en gratuit
+          </button>
+        </div>
+      </div>
+    </div>`;
+  modal.style.display = 'block';
+}
+
+function closePremiumModal() {
+  const modal = document.getElementById('premium-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+// --- Mise à jour UI selon plan ---
+function updatePremiumUI() {
+  const premium = isPremiumUser();
+
+  // Badge dans la sidebar
+  const badge = document.getElementById('sidebar-plan-badge');
+  if (badge) {
+    badge.textContent = premium ? '✦ Premium' : 'Compte gratuit';
+    badge.style.color = premium ? '#4ade80' : 'rgba(255,255,255,0.4)';
+  }
+
+  // Compteur messages IA restants (gratuit)
+  if (!premium) {
+    const aiLeft = Math.max(0, 1 - getDailyCount('ai'));
+    const decLeft = Math.max(0, 3 - getTotalCount('decision'));
+    const posLeft = Math.max(0, 5 - (positions?.length || 0));
+
+    // Badge dans Agent IA
+    const aiBadge = document.getElementById('ai-free-counter');
+    if (aiBadge) {
+      aiBadge.style.display = 'flex';
+      aiBadge.textContent = aiLeft + ' message gratuit restant aujourd\'hui';
+      aiBadge.style.color = aiLeft === 0 ? '#f87171' : '#fbbf24';
+    }
+  } else {
+    const aiBadge = document.getElementById('ai-free-counter');
+    if (aiBadge) aiBadge.style.display = 'none';
+  }
+}
+
+// --- Cache API ---
+function getCachedResponse(key, maxAgeMs) {
+  try {
+    const cached = JSON.parse(localStorage.getItem('iq_cache_' + key) || 'null');
+    if (!cached) return null;
+    if (Date.now() - cached.ts > maxAgeMs) return null;
+    return cached.data;
+  } catch { return null; }
+}
+
+function setCachedResponse(key, data) {
+  try {
+    localStorage.setItem('iq_cache_' + key, JSON.stringify({ ts: Date.now(), data }));
+  } catch {}
+}
+
+const CACHE_TTL = {
+  briefing: 24 * 60 * 60 * 1000,   // 24h
+  signaux:   6 * 60 * 60 * 1000,    // 6h
+  sante:     2 * 60 * 60 * 1000,    // 2h
+};
