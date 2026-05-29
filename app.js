@@ -4519,6 +4519,7 @@ function nav(page) {
 }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);},
     ai:()=>{ loadChatHistory(); initAgent(); setTimeout(()=>{ if(typeof updateAISidebar==='function') updateAISidebar(); if(typeof generateDailyBrief==='function') generateDailyBrief(); }, 200); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
+  if (page === 'settings') setTimeout(()=>{ if(typeof updateSettingsDisplays==='function') updateSettingsDisplays(); }, 100);
 }
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -7258,4 +7259,184 @@ function updateAISidebar() {
   if (impactBar) { impactBar.style.width = barW + '%'; impactBar.style.background = `linear-gradient(90deg,${riskColor},${riskColor}cc)`; }
   if (riskEl) { riskEl.textContent = risk; riskEl.style.color = riskColor; }
   if (riskDot) riskDot.style.background = riskColor;
+}
+
+
+// ===== SETTINGS REDESIGN =====
+
+function openSettingsPanel(type) {
+  const panel = document.getElementById('settings-panel');
+  const overlay = document.getElementById('settings-overlay');
+  const title = document.getElementById('panel-title');
+  const body = document.getElementById('panel-content');
+  if (!panel) return;
+
+  const panels = {
+    compte: {
+      label: 'Compte & Sécurité',
+      html: `
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Email</div>
+            <div style="font-size:14px;color:var(--color-text);padding:12px 16px;background:var(--color-bg-subtle);border-radius:10px;border:1px solid var(--color-border)">${currentUser?.email || '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Nouveau mot de passe</div>
+            <input type="password" id="new-pass" placeholder="Min. 6 caractères" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Confirmer</div>
+            <input type="password" id="new-pass2" placeholder="••••••••" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
+          </div>
+          <button onclick="changePassword()" style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Changer le mot de passe</button>
+          <div id="pass-msg" style="display:none;font-size:13px;font-weight:600;text-align:center"></div>
+          <hr style="border:none;border-top:1px solid var(--color-border)">
+          <button onclick="logout()" style="width:100%;padding:13px;background:rgba(248,113,113,0.1);color:#f87171;border:1px solid rgba(248,113,113,0.2);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Se déconnecter</button>
+        </div>`
+    },
+    ia: {
+      label: 'Préférences d\'analyse IA',
+      html: `
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Bankroll (€)</div>
+            <input type="number" id="s-bankroll" value="${profile.bankroll||5000}" step="100" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Horizon d\'investissement</div>
+            <select id="s-horizon" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
+              <option value="court" ${profile.horizon==='court'?'selected':''}>Court terme (&lt;3 ans)</option>
+              <option value="moyen" ${profile.horizon==='moyen'||!profile.horizon?'selected':''}>Moyen terme (3–7 ans)</option>
+              <option value="long" ${profile.horizon==='long'?'selected':''}>Long terme (&gt;7 ans)</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Tolérance au risque</div>
+            <select id="s-risk" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
+              <option value="faible" ${profile.risk==='faible'?'selected':''}>Faible</option>
+              <option value="modere" ${profile.risk==='modere'||!profile.risk?'selected':''}>Modérée</option>
+              <option value="eleve" ${profile.risk==='eleve'?'selected':''}>Élevée</option>
+            </select>
+          </div>
+          <button onclick="saveSettings();updateSettingsDisplays();showToast('Préférences sauvegardées ✓')" style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Sauvegarder</button>
+          <div id="settings-msg" style="display:none;font-size:13px;color:#4ade80;font-weight:700;text-align:center">✓ Sauvegardé</div>
+        </div>`
+    },
+    notifs: {
+      label: 'Notifications & Alertes',
+      html: `
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;background:var(--color-bg-subtle);border-radius:12px;border:1px solid var(--color-border)">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--color-text)">Alertes de prix</div>
+              <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Notifie quand un actif dépasse ton seuil</div>
+            </div>
+            <div style="width:44px;height:24px;background:#16a34a;border-radius:99px;position:relative;cursor:pointer">
+              <div style="position:absolute;right:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;background:var(--color-bg-subtle);border-radius:12px;border:1px solid var(--color-border)">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--color-text)">Signaux IA</div>
+              <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Recommandations quotidiennes de l'IA</div>
+            </div>
+            <div style="width:44px;height:24px;background:#16a34a;border-radius:99px;position:relative;cursor:pointer">
+              <div style="position:absolute;right:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%"></div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Fréquence des résumés</div>
+            <select id="s-notif" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
+              <option value="daily">Quotidiens</option>
+              <option value="weekly">Hebdomadaires</option>
+              <option value="off">Désactivés</option>
+            </select>
+          </div>
+          <button onclick="saveSettings();showToast('Notifications sauvegardées ✓')" style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Sauvegarder</button>
+        </div>`
+    },
+    interface: {
+      label: 'Interface & Affichage',
+      html: `
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Thème</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <button onclick="applyTheme('dark')" style="padding:14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:12px;cursor:pointer;text-align:center">
+                <div style="font-size:20px;margin-bottom:6px">🌙</div>
+                <div style="font-size:13px;font-weight:700;color:var(--color-text)">Sombre</div>
+              </button>
+              <button onclick="applyTheme('light')" style="padding:14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:12px;cursor:pointer;text-align:center">
+                <div style="font-size:20px;margin-bottom:6px">☀️</div>
+                <div style="font-size:13px;font-weight:700;color:var(--color-text)">Clair</div>
+              </button>
+            </div>
+          </div>
+        </div>`
+    },
+    data: {
+      label: 'Données & Confidentialité',
+      html: `
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="padding:16px;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:12px;display:flex;align-items:center;gap:10px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div style="font-size:13px;color:#4ade80;font-weight:600">Tes données sont chiffrées et sécurisées</div>
+          </div>
+          <button onclick="exportPDF()" style="width:100%;padding:13px;background:var(--color-bg-subtle);color:var(--color-text);border:1px solid var(--color-border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;padding-left:16px">📄 Exporter mon portefeuille en PDF</button>
+          <button onclick="loadDemo();nav('portfolio')" style="width:100%;padding:13px;background:var(--color-bg-subtle);color:var(--color-text);border:1px solid var(--color-border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;padding-left:16px">👀 Mode démo — données fictives</button>
+          <hr style="border:none;border-top:1px solid var(--color-border)">
+          <button style="width:100%;padding:13px;background:rgba(248,113,113,0.06);color:#f87171;border:1px solid rgba(248,113,113,0.15);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">🗑 Supprimer mon compte</button>
+        </div>`
+    },
+    aide: {
+      label: 'Aide & Support',
+      html: `
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <button onclick="showOnboarding(true);closeSettingsPanel()" style="width:100%;padding:16px;background:var(--color-bg-subtle);color:var(--color-text);border:1px solid var(--color-border);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">
+            <span style="font-size:20px">📋</span><div><div style="font-weight:700">Revoir le tutoriel</div><div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Guide de démarrage InvestIQ</div></div>
+          </button>
+          <button onclick="nav('ai');closeSettingsPanel()" style="width:100%;padding:16px;background:var(--color-bg-subtle);color:var(--color-text);border:1px solid var(--color-border);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">
+            <span style="font-size:20px">🤖</span><div><div style="font-weight:700">Parler à l'Agent IA</div><div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Pose tes questions directement</div></div>
+          </button>
+          <hr style="border:none;border-top:1px solid var(--color-border);margin:4px 0">
+          <button onclick="logout()" style="width:100%;padding:13px;background:rgba(248,113,113,0.06);color:#f87171;border:1px solid rgba(248,113,113,0.15);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Se déconnecter</button>
+        </div>`
+    }
+  };
+
+  const p = panels[type];
+  if (!p) return;
+  title.textContent = p.label;
+  body.innerHTML = p.html;
+  panel.style.display = 'block';
+  overlay.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSettingsPanel() {
+  const panel = document.getElementById('settings-panel');
+  const overlay = document.getElementById('settings-overlay');
+  if (panel) panel.style.display = 'none';
+  if (overlay) overlay.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('iq_theme', t);
+  updateSettingsDisplays();
+}
+
+function updateSettingsDisplays() {
+  const emailEl = document.getElementById('set-email-display');
+  const riskEl = document.getElementById('set-risk-display');
+  const horizonEl = document.getElementById('set-horizon-display');
+  const notifEl = document.getElementById('set-notif-display');
+  const themeEl = document.getElementById('set-theme-display');
+  if (emailEl && currentUser) emailEl.textContent = currentUser.email;
+  if (riskEl) riskEl.textContent = 'Profil : ' + (profile.risk === 'eleve' ? 'Agressif' : profile.risk === 'faible' ? 'Prudent' : 'Équilibré');
+  if (horizonEl) horizonEl.textContent = 'Horizon : ' + (profile.horizon === 'long' ? '10+ ans' : profile.horizon === 'court' ? '<3 ans' : '3-7 ans');
+  if (notifEl) notifEl.textContent = profile.notif === 'off' ? 'Désactivées' : profile.notif === 'weekly' ? 'Hebdomadaires' : 'Quotidiennes';
+  const theme = localStorage.getItem('iq_theme') || 'dark';
+  if (themeEl) themeEl.textContent = theme === 'dark' ? 'Thème sombre' : 'Thème clair';
 }
