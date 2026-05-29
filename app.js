@@ -5281,18 +5281,18 @@ function renderPortfolio() {
     });
   }, 50);
 
-  // Générer signaux en lot — uniquement si API disponible (évite les 500 en cascade)
-  // On tente un seul signal d'abord, si ça échoue on utilise le fallback statique pour tous
+  // Générer signaux — seulement au 1er rendu, pas à chaque refreshPrices
+  // On évite les appels en cascade : 1 seul test, fallback statique si API KO
   const needSignal = positions.filter(p => !posSignals[p.id]).slice(0, 6);
-  if (needSignal.length > 0) {
+  if (needSignal.length > 0 && !window._signalLoadStarted) {
+    window._signalLoadStarted = true;
     generatePosSignal(needSignal[0]).then(() => {
-      // Si le 1er réussit (pas de fallback "Analyse en cours"), lancer les suivants
       const sig = posSignals[needSignal[0].id];
       const apiOk = sig && sig.texte !== 'Analyse temporairement indisponible';
       if (apiOk) {
         needSignal.slice(1).forEach((p, i) => setTimeout(() => generatePosSignal(p), (i+1) * 800));
       } else {
-        // API KO — applique le fallback statique à tous sans appels supplémentaires
+        // API KO — fallback statique immédiat sans appels supplémentaires
         needSignal.slice(1).forEach(p => {
           const pnl = (p.price - p.pru) / p.pru * 100;
           posSignals[p.id] = {
@@ -7552,6 +7552,7 @@ function updateSettingsDisplays() {
 // SYSTÈME FREEMIUM
 // ===================================================
 
+const DEV_EMAIL = 'maxencedemacedo@gmail.com'; // compte admin uniquement
 function isPremiumUser() {
   // Override dev : localStorage key 'iq_dev_premium' prend le dessus
   const devOverride = localStorage.getItem('iq_dev_premium');
@@ -7585,8 +7586,6 @@ function toggleDevPremium() {
 }
 
 // Initialise le bouton dev au chargement — visible uniquement pour le compte dev
-const DEV_EMAIL = 'maxencedemacedo@gmail.com';
-
 function initDevPremiumBtn() {
   const btn = document.getElementById('dev-premium-btn');
   const title = document.getElementById('sidebar-plan-title');
