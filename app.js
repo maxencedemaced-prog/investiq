@@ -3829,6 +3829,7 @@ async function initApp(user) {
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
   if ('Notification' in window) Notification.requestPermission();
   initTheme();
+  setTimeout(initDevPremiumBtn, 300);
   } catch(e) { console.error('initApp error:', e); alert('Erreur de chargement: ' + e.message); }
 }
 
@@ -7530,7 +7531,61 @@ function updateSettingsDisplays() {
 // ===================================================
 
 function isPremiumUser() {
+  // Override dev : localStorage key 'iq_dev_premium' prend le dessus
+  const devOverride = localStorage.getItem('iq_dev_premium');
+  if (devOverride !== null) return devOverride === 'true';
   return profile?.isPremium === true || isDemo;
+}
+
+// Bouton dev uniquement — toggle rapide free/premium sans toucher Supabase
+function toggleDevPremium() {
+  if (!currentUser || currentUser.email !== DEV_EMAIL) return;
+  const current = isPremiumUser();
+  const next = !current;
+  localStorage.setItem('iq_dev_premium', String(next));
+  profile.isPremium = next;
+  updatePremiumUI();
+  // Mettre à jour le bouton et le badge
+  const btn = document.getElementById('dev-premium-btn');
+  const title = document.getElementById('sidebar-plan-title');
+  const badge = document.getElementById('sidebar-plan-badge');
+  if (next) {
+    if (btn) { btn.textContent = '🔓 Passer en Gratuit'; btn.style.background = '#f59e0b'; }
+    if (title) { title.textContent = '✦ Mode Premium'; title.style.color = '#4ade80'; }
+    if (badge) { badge.textContent = '✦ Premium activé (dev)'; badge.style.color = '#4ade80'; }
+    showToast('✦ Premium activé — mode dev');
+  } else {
+    if (btn) { btn.textContent = '🔒 Passer en Premium'; btn.style.background = '#16a34a'; }
+    if (title) { title.textContent = 'Passez à Premium'; title.style.color = '#fff'; }
+    if (badge) { badge.textContent = 'Compte gratuit (dev)'; badge.style.color = 'rgba(255,255,255,0.4)'; }
+    showToast('Mode gratuit activé — mode dev');
+  }
+}
+
+// Initialise le bouton dev au chargement — visible uniquement pour le compte dev
+const DEV_EMAIL = 'maxencedemacedo@gmail.com';
+
+function initDevPremiumBtn() {
+  const btn = document.getElementById('dev-premium-btn');
+  const title = document.getElementById('sidebar-plan-title');
+  const badge = document.getElementById('sidebar-plan-badge');
+
+  // Masque le bouton pour tout le monde sauf le compte dev
+  if (!currentUser || currentUser.email !== DEV_EMAIL) {
+    if (btn) { btn.textContent = 'Découvrir'; btn.style.background = '#16a34a'; btn.onclick = null; btn.style.cursor = 'default'; }
+    return;
+  }
+
+  // Compte dev — affiche le toggle
+  const isPrem = isPremiumUser();
+  if (btn) {
+    btn.textContent = isPrem ? '🔓 Passer en Gratuit' : '🔒 Passer en Premium';
+    btn.style.background = isPrem ? '#f59e0b' : '#16a34a';
+  }
+  if (isPrem) {
+    if (title) { title.textContent = '✦ Mode Premium'; title.style.color = '#4ade80'; }
+    if (badge) { badge.textContent = '✦ Premium activé (dev)'; badge.style.color = '#4ade80'; }
+  }
 }
 
 // --- Compteurs journaliers (reset chaque jour) ---
