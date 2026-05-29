@@ -3949,10 +3949,14 @@ async function loadProfile() {
   }
 }
 async function saveProfile() {
-  profile.bankroll = parseFloat(document.getElementById('s-bankroll').value)||5000;
-  profile.horizon = document.getElementById('s-horizon').value;
-  profile.risk = document.getElementById('s-risk').value;
-  profile.notif = document.getElementById('s-notif')?.value||'daily';
+  const bEl = document.getElementById('s-bankroll');
+  const hEl = document.getElementById('s-horizon');
+  const rEl = document.getElementById('s-risk');
+  const nEl = document.getElementById('s-notif');
+  if (bEl) profile.bankroll = parseFloat(bEl.value)||5000;
+  if (hEl) profile.horizon = hEl.value;
+  if (rEl) profile.risk = rEl.value;
+  if (nEl) profile.notif = nEl.value||'daily';
   if (!isDemo) await sb.from('profiles').upsert({ id:currentUser.id, ...profile });
 }
 async function loadPositions() {
@@ -5341,6 +5345,37 @@ function togglePosSignal(id) {
   const el=document.getElementById('sig-'+id);
   if(el) el.style.display=el.style.display==='block'?'none':'block';
 }
+
+function showPosMenu(id) {
+  // Ferme tous les menus ouverts
+  document.querySelectorAll('.pos-menu-popup').forEach(m => m.remove());
+  const btn = event?.target?.closest('button');
+  const pos = positions.find(p => String(p.id) === String(id));
+  if (!pos) return;
+  const menu = document.createElement('div');
+  menu.className = 'pos-menu-popup';
+  menu.style.cssText = 'position:fixed;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.15);z-index:500;min-width:180px;overflow:hidden';
+  menu.innerHTML = [
+    `<button onclick="openEditPos('${id}');document.querySelector('.pos-menu-popup')?.remove()" style="width:100%;padding:12px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:600;color:var(--color-text);cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--color-bg-subtle)'" onmouseout="this.style.background='none'">✏️ Modifier</button>`,
+    `<button onclick="openDecisionFromPos('${pos.name}','garder');document.querySelector('.pos-menu-popup')?.remove()" style="width:100%;padding:12px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:600;color:var(--color-text);cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--color-bg-subtle)'" onmouseout="this.style.background='none'">🤖 Analyser avec l'IA</button>`,
+    `<hr style="margin:4px 0;border:none;border-top:1px solid var(--color-border)">`,
+    `<button onclick="delPos('${id}');document.querySelector('.pos-menu-popup')?.remove()" style="width:100%;padding:12px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:600;color:#f87171;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(248,113,113,0.08)'" onmouseout="this.style.background='none'">🗑 Supprimer</button>`,
+  ].join('');
+  // Positionner près du bouton
+  if (btn) {
+    const rect = btn.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 4) + 'px';
+    menu.style.right = (window.innerWidth - rect.right) + 'px';
+  } else {
+    menu.style.top = '50%'; menu.style.left = '50%';
+  }
+  document.body.appendChild(menu);
+  // Ferme sur clic extérieur
+  setTimeout(() => document.addEventListener('click', function h(e) {
+    if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', h); }
+  }), 10);
+}
+
 let decisionIntention = null;
 function openDecisionFromPos(name, action) {
   decisionIntention = action;
