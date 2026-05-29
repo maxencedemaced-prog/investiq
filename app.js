@@ -3932,10 +3932,13 @@ async function loadProfile() {
   const { data } = await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   if (data) {
     profile = { bankroll: data.bankroll||5000, horizon: data.horizon||'moyen', risk: data.risk||'faible', notif: data.notif||'daily' };
-    document.getElementById('s-bankroll').value = profile.bankroll;
-    document.getElementById('s-horizon').value = profile.horizon;
-    document.getElementById('s-risk').value = profile.risk;
-    if (document.getElementById('s-notif')) document.getElementById('s-notif').value = profile.notif;
+    // Les champs sont dans le drawer settings — on les met à jour seulement s'ils existent
+    const sb_el = id => document.getElementById(id);
+    if (sb_el('s-bankroll')) sb_el('s-bankroll').value = profile.bankroll;
+    if (sb_el('s-horizon')) sb_el('s-horizon').value = profile.horizon;
+    if (sb_el('s-risk')) sb_el('s-risk').value = profile.risk;
+    if (sb_el('s-notif')) sb_el('s-notif').value = profile.notif;
+    if (typeof updateSettingsDisplays === 'function') updateSettingsDisplays();
   }
 }
 async function saveProfile() {
