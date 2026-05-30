@@ -369,6 +369,23 @@
     grid-template-columns: 1fr !important;
   }
 
+
+  /* ══ HOME — badge performance totale ══ */
+  /* Sur mobile : le badge absolu déborde sur le titre → on le cache */
+  /* et on affiche un chip inline à la place */
+  .home-perf-badge {
+    display: none !important;
+  }
+  /* Réduire le padding de la hero card pour plus d'espace */
+  #home-metrics > div:first-child {
+    padding: 18px 16px !important;
+  }
+  /* Le grand compteur un peu plus petit */
+  #home-tv-counter {
+    font-size: 36px !important;
+    margin-bottom: 10px !important;
+  }
+
   /* ══ GLOBAL ══ */
   .sec.active { overflow-x: hidden !important; }
   [style*="white-space:nowrap"]:not(.filter-pill):not(.pill):not(.btn-add):not(.btn-refresh) {
