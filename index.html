@@ -81,6 +81,222 @@
     .ob-profile-card:hover { border-color:#1c1c1e;background:#f9f9f9; }
     .ob-profile-check { font-size:16px;font-weight:700;color:#8e8e93;flex-shrink:0; }
   </style>
+
+<style id="mobile-fixes">
+/* ============================================
+   MOBILE FIXES SPÉCIFIQUES — Tableau portefeuille
+   ============================================ */
+
+@media (max-width: 767px) {
+
+  /* ── TABLEAU PORTEFEUILLE → CARDS MOBILES ── */
+  .port-table-header { display: none !important; }
+  
+  .port-table-row {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 14px 16px !important;
+    gap: 0 !important;
+  }
+  
+  /* Col 1 : logo + nom — ligne 1 */
+  .port-table-row > div:nth-child(1) {
+    margin-bottom: 8px !important;
+  }
+  
+  /* Col 2 (investi), 3 (prix moy), 4 (valeur), 5 (perf) → ligne 2 en grid 2x2 */
+  .port-table-row > div:nth-child(2),
+  .port-table-row > div:nth-child(3),
+  .port-table-row > div:nth-child(4),
+  .port-table-row > div:nth-child(5) {
+    display: inline-flex !important;
+    flex-direction: column !important;
+    width: 50% !important;
+    float: left !important;
+    margin-bottom: 6px !important;
+    font-size: 12px !important;
+  }
+  
+  /* Ajouter les labels */
+  .port-table-row > div:nth-child(2)::before { content: "Investi"; font-size: 9px; color: #8e8e93; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 2px; }
+  .port-table-row > div:nth-child(3)::before { content: "Prix moy."; font-size: 9px; color: #8e8e93; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 2px; }
+  .port-table-row > div:nth-child(4)::before { content: "Valeur"; font-size: 9px; color: #8e8e93; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 2px; }
+  .port-table-row > div:nth-child(5)::before { content: "Perf."; font-size: 9px; color: #8e8e93; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 2px; }
+  
+  /* Col 6 (sparkline) → caché */
+  .port-table-row > div:nth-child(6) { display: none !important; }
+  
+  /* Col 7 (menu ⋯) → positionné en haut à droite */
+  .port-table-row > div:nth-child(7) {
+    position: absolute !important;
+    top: 12px !important;
+    right: 12px !important;
+  }
+  
+  /* Container row → position relative pour le bouton menu */
+  .port-table-row { position: relative !important; }
+
+  /* Clearfix */
+  .port-table-row::after {
+    content: "";
+    display: table;
+    clear: both;
+  }
+
+  /* ── ACTUALITÉS — fix colonnes ── */
+  /* Card news : layout flex horizontal → vertical sur mobile */
+  #news-list .news-item > div[style*="display:flex;align-items:flex-start;gap:14px"],
+  #news-list > div[style*="display:flex;align-items:flex-start;gap:14px"] {
+    flex-direction: column !important;
+  }
+  
+  /* Recommandation IA (colonne droite) */
+  #news-list [style*="min-width:120px;border-left"] {
+    min-width: unset !important;
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid var(--color-border) !important;
+    padding-left: 0 !important;
+    padding-top: 10px !important;
+    margin-top: 8px !important;
+  }
+
+  /* Cache l'impact portefeuille sur mobile */
+  #news-list [style*="min-width:80px"][style*="text-align:center"] {
+    display: none !important;
+  }
+
+  /* ── AGENT IA — sidebar → bas ── */
+  #sec-ai > div { flex-direction: column !important; }
+  
+  #ai-sidebar {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid var(--color-border) !important;
+    padding: 16px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    overflow-y: visible !important;
+    max-height: unset !important;
+  }
+  
+  #ai-sidebar > div { min-width: 0 !important; }
+  #ai-sidebar > div[style*="height:1px"] { display: none !important; }
+  #ai-sidebar > button { grid-column: 1 / -1 !important; }
+  
+  /* Chat pleine largeur */
+  #sec-ai > div > div:first-child {
+    padding: 14px 14px 0 !important;
+  }
+
+  /* ── SCÉNARIO CRISE ── */
+  /* 3 scénarios → 1 colonne */
+  #crise-content > div:nth-child(1) [style*="grid-template-columns:repeat(3,1fr)"],
+  #crise-content [style*="display:grid"][style*="repeat(3,1fr)"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Chocs 6 cases → 2 colonnes */
+  #crise-content > div:nth-child(2) [style*="grid-template-columns:repeat(3,1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Fix doublon "k€ k€" — les montants dans les cards scénario */
+  #crise-content [style*="font-size:20px;font-weight:800;color"] {
+    word-break: break-all !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* ── PARAMÈTRES ── */
+  .settings-row {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+  }
+  
+  /* Partie gauche (icone + texte) prend toute la largeur */
+  .settings-row > div:nth-child(2) {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+  
+  /* Valeur à droite → nouvelle ligne */
+  .settings-row > div[style*="text-align:right"] {
+    width: 100% !important;
+    text-align: left !important;
+    padding-left: 62px !important;
+    margin-right: 0 !important;
+    flex-shrink: unset !important;
+  }
+  
+  /* Flèche → reste à droite */
+  .settings-row > svg:last-child {
+    position: absolute !important;
+    right: 20px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+  .settings-row { position: relative !important; }
+
+  /* ── AIDE À LA DÉCISION ── */
+  /* Bloc recherche 2 colonnes → 1 colonne */
+  #sec-decision [style*="display:flex;gap:20px;align-items:stretch"] {
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+  /* Widget IA → réduit */
+  #sec-decision [style*="width:140px;flex-shrink:0"] {
+    width: 100% !important;
+    height: 70px !important;
+  }
+  /* Cartes intention → 3 colonnes OK, texte peut déborder */
+  #sec-decision #d-intents { gap: 6px !important; }
+  #sec-decision .d-intent-btn > div[style*="padding:16px"] { padding: 10px 10px 10px 14px !important; }
+  #sec-decision .d-intent-btn div[style*="font-size:14px"] { font-size: 12px !important; }
+  #sec-decision .d-intent-btn div[style*="font-size:11px"] { font-size: 10px !important; }
+
+  /* ── MÉTRIQUES PORTEFEUILLE TOP ── */
+  #port-metrics [style*="grid-template-columns:repeat(4,1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ── RÉPARTITION PORTEFEUILLE ── */
+  #pos-grid [style*="grid-template-columns:1fr 1fr;gap:12px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── SANTÉ — score header 3 zones → colonne ── */
+  #sante-content [style*="grid-template-columns:auto 1fr auto"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Métriques composition 2x2 → OK sur mobile */
+  
+  /* ── CONNEXION/AUTH ── */
+  /* Le formulaire de connexion déborde sur mobile */
+  #auth-login input, #auth-signup input {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* ── DCA presets → 2 colonnes ── */  
+  #sec-dca > div:first-child {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  #sec-dca > div:first-child > button {
+    border-right: 1px solid var(--color-border) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    padding: 10px 6px !important;
+  }
+
+  /* ── GLOBAL overflow ── */
+  .sec.active { overflow-x: hidden !important; max-width: 100vw !important; }
+  
+  /* Fix général textes qui débordent */
+  [style*="white-space:nowrap"] { white-space: normal !important; }
+  /* Exception pour les pills/badges */
+  .filter-pill, .pill, .signal-badge, .btn-add { white-space: nowrap !important; }
+}
+</style>
 </head>
 <body>
 <script>
@@ -1023,10 +1239,9 @@ window.addEventListener('load', function() {
     <!-- Badge Premium -->
     <div style="margin:8px 4px 6px;background:linear-gradient(135deg,#0d0d12,#141420);border:1px solid rgba(22,163,74,0.25);border-radius:14px;padding:12px;text-align:center">
       <div style="font-size:16px;margin-bottom:5px">✦</div>
-      <div style="font-size:11px;font-weight:700;color:#fff;margin-bottom:3px;letter-spacing:-0.02em" id="sidebar-plan-title">Passez à Premium</div>
+      <div style="font-size:11px;font-weight:700;color:#fff;margin-bottom:3px;letter-spacing:-0.02em">Passez à Premium</div>
       <div id="sidebar-plan-badge" style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:8px;line-height:1.4">Compte gratuit</div>
-      <!-- Bouton normal pour tous -->
-      <button id="dev-premium-btn" onclick="toggleDevPremium()" style="width:100%;padding:6px;background:#16a34a;border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Découvrir</button>
+      <button style="width:100%;padding:6px;background:#16a34a;border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Découvrir</button>
     </div>
     <button class="logout-btn" onclick="logout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Déconnexion</span></button>
   </aside>
@@ -1705,14 +1920,6 @@ window.addEventListener('load', function() {
           <div class="field">
             <label>Alerte prix (€) <span class="tooltip-icon" data-tip="Notification si le prix descend sous ce seuil">?</span></label>
             <input type="number" id="f-alert" step="0.01" placeholder="Ex: 85 — alerte si prix < 85€">
-          </div>
-          <!-- PREVIEW TOTAL -->
-          <div id="pos-total-preview" style="display:none;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:12px;padding:12px 16px;margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span id="pos-total-detail" style="font-size:13px;color:var(--color-text-secondary)"></span>
-              <span id="pos-total-val" style="font-size:15px;font-weight:800;color:var(--color-text)"></span>
-            </div>
-            <div id="pos-total-pnl" style="font-size:12px;margin-top:4px"></div>
           </div>
           <div class="btn-row">
             <button class="btn-primary" onclick="addPos()">Ajouter au portefeuille</button>
