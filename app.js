@@ -3856,6 +3856,7 @@ async function initApp(user) {
   }
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   setTimeout(() => showOnboarding(), 500);
+  checkStripeReturn();
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
@@ -7595,6 +7596,11 @@ function isPremiumUser() {
 
 // Bouton dev uniquement — toggle rapide free/premium sans toucher Supabase
 function toggleDevPremium() {
+  // Non-dev → ouvre la page premium
+  if (!currentUser || currentUser.email !== DEV_EMAIL) {
+    openPremiumPage();
+    return;
+  }
   const next = localStorage.getItem('iq_dev_premium') !== 'true';
   localStorage.setItem('iq_dev_premium', String(next));
   if (profile) profile.isPremium = next;
@@ -7709,7 +7715,7 @@ function showPremiumModal(source) {
           </div>
 
           <!-- CTA -->
-          <button onclick="closePremiumModal();nav('settings')" style="width:100%;padding:15px;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(22,163,74,0.3)">
+          <button onclick="closePremiumModal();openPremiumPage()" style="width:100%;padding:15px;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(22,163,74,0.3)">
             ✦ Passer à Premium
           </button>
           <button onclick="closePremiumModal()" style="width:100%;padding:12px;background:transparent;color:var(--color-text-secondary);border:none;font-size:13px;font-weight:600;cursor:pointer">
@@ -7724,6 +7730,187 @@ function showPremiumModal(source) {
 function closePremiumModal() {
   const modal = document.getElementById('premium-modal');
   if (modal) modal.style.display = 'none';
+}
+
+// ===== STRIPE CHECKOUT =====
+const STRIPE_PK = 'pk_test_51TclShV053dHqCoKCHB1ftjq79LknCyQchBugRPVz4Au3YOZd0iPvIYsNeeh9Gvz5M0KRAYCsd7uG2BBCLSNlLQ7002FeOsV9I';
+const PRICE_MENSUEL = 'price_1TclYXV053dHqCoKUxm1Si3p';
+const PRICE_ANNUEL  = 'price_1TclZPV053dHqCoKYhUbE24X';
+
+async function startCheckout(plan) {
+  const btn = document.getElementById('checkout-btn-' + plan);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Chargement...'; }
+  
+  try {
+    const priceId = plan === 'annuel' ? PRICE_ANNUEL : PRICE_MENSUEL;
+    const res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        priceId,
+        userId: currentUser?.id || '',
+        userEmail: currentUser?.email || ''
+      })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Erreur checkout');
+    }
+  } catch(e) {
+    showToast('Erreur : ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = plan === 'annuel' ? 'Choisir Annuel' : 'Choisir Mensuel'; }
+  }
+}
+
+// Vérifier si retour de Stripe (success/cancel)
+function openPremiumPage() {
+  // Affiche la page de paiement inline
+  let modal = document.getElementById('premium-page-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'premium-page-modal';
+    document.body.appendChild(modal);
+  }
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;background:${isDark?'#080c10':'#f8fafc'};z-index:998;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid ${isDark?'rgba(255,255,255,0.06)':'#e4e4e7'};position:sticky;top:0;background:${isDark?'rgba(8,12,16,0.95)':'rgba(248,250,252,0.95)'};backdrop-filter:blur(20px);z-index:10">
+        <button onclick="document.getElementById('premium-page-modal').remove()" style="background:${isDark?'rgba(255,255,255,0.08)':'#f4f4f5'};border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;color:${isDark?'#e6edf3':'#09090b'};cursor:pointer">← Retour</button>
+        <div style="font-size:14px;font-weight:700;color:${isDark?'#4ade80':'#16a34a'}">✦ InvestIQ Premium</div>
+        <div style="width:80px"></div>
+      </div>
+
+      <!-- Hero -->
+      <div style="text-align:center;padding:40px 24px 32px;background:linear-gradient(135deg,#060e08,#0a1a0c,#0d1f0d)">
+        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(63,185,80,0.15);border:1px solid rgba(63,185,80,0.3);border-radius:99px;padding:6px 16px;font-size:12px;font-weight:700;color:#4ade80;margin-bottom:20px">
+          <div style="width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
+          Mode test — aucun vrai paiement
+        </div>
+        <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.05em;margin-bottom:10px;line-height:1.1">Investis sans<br><span style="color:#4ade80">limites</span></div>
+        <div style="font-size:15px;color:rgba(255,255,255,0.5);max-width:320px;margin:0 auto;line-height:1.6">Débloquer toutes les fonctionnalités IA d'InvestIQ</div>
+      </div>
+
+      <div style="padding:24px 20px;max-width:480px;margin:0 auto">
+
+        <!-- Plans -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
+          
+          <!-- Mensuel -->
+          <div style="background:${isDark?'var(--color-surface)':'#fff'};border:1.5px solid ${isDark?'var(--color-border)':'#e4e4e7'};border-radius:16px;padding:20px;cursor:pointer;transition:all 0.2s" 
+            onclick="document.querySelectorAll('.plan-card').forEach(c=>c.style.borderColor='${isDark?'var(--color-border)':'#e4e4e7'}');this.style.borderColor='#16a34a'" class="plan-card">
+            <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">MENSUEL</div>
+            <div style="font-size:30px;font-weight:900;color:${isDark?'#fff':'#09090b'};letter-spacing:-0.05em">9.99<span style="font-size:16px;color:#8e8e93">€</span></div>
+            <div style="font-size:12px;color:#8e8e93;margin-bottom:14px">par mois</div>
+            <button id="checkout-btn-mensuel" onclick="event.stopPropagation();startCheckout('mensuel')" style="width:100%;padding:10px;background:${isDark?'rgba(255,255,255,0.08)':'#f4f4f5'};border:1px solid ${isDark?'rgba(255,255,255,0.12)':'#e4e4e7'};border-radius:8px;font-size:13px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'};cursor:pointer">
+              Choisir Mensuel
+            </button>
+          </div>
+
+          <!-- Annuel — recommandé -->
+          <div style="background:linear-gradient(135deg,rgba(22,163,74,0.08),rgba(5,150,105,0.05));border:2px solid #16a34a;border-radius:16px;padding:20px;cursor:pointer;position:relative;overflow:hidden" class="plan-card">
+            <div style="position:absolute;top:10px;right:10px;background:#16a34a;color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px">-33%</div>
+            <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">ANNUEL ⭐</div>
+            <div style="font-size:30px;font-weight:900;color:${isDark?'#fff':'#09090b'};letter-spacing:-0.05em">79.90<span style="font-size:16px;color:#8e8e93">€</span></div>
+            <div style="font-size:12px;color:#8e8e93;margin-bottom:4px">par an</div>
+            <div style="font-size:11px;color:#16a34a;font-weight:600;margin-bottom:14px">= 6.66€/mois</div>
+            <button id="checkout-btn-annuel" onclick="event.stopPropagation();startCheckout('annuel')" style="width:100%;padding:10px;background:#16a34a;border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(22,163,74,0.3)">
+              Choisir Annuel
+            </button>
+          </div>
+        </div>
+
+        <!-- Features incluses -->
+        <div style="background:${isDark?'var(--color-surface)':'#fff'};border:1px solid ${isDark?'var(--color-border)':'#e4e4e7'};border-radius:16px;padding:20px;margin-bottom:16px">
+          <div style="font-size:13px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'};margin-bottom:14px">✦ Tout inclus dans Premium</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${[
+              ['🤖','Agent IA illimité','Conversations sans limite avec ton copilote'],
+              ['⚡','Signaux IA illimités','Toutes les opportunités du marché'],
+              ['📊','Briefing quotidien','Résumé IA personnalisé chaque matin'],
+              ['🎯','Analyses décision illimitées','Analyse chaque actif sans restriction'],
+              ['💼','Positions illimitées','Portefeuille sans limite de taille'],
+              ['🏥','Santé portefeuille IA','Analyse approfondie et recommandations'],
+            ].map(([icon,title,desc])=>`
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:34px;height:34px;background:rgba(22,163,74,0.1);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${icon}</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'}">${title}</div>
+                <div style="font-size:11px;color:#8e8e93">${desc}</div>
+              </div>
+            </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Paiements acceptés -->
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:11px;color:#8e8e93;margin-bottom:8px;font-weight:600">PAIEMENTS ACCEPTÉS</div>
+          <div style="display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'}">💳 Carte bancaire</div>
+            <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#003087">PayPal</div>
+            <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'}">🍎 Apple Pay</div>
+            <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#4285f4">Google Pay</div>
+          </div>
+        </div>
+
+        <!-- Garantie -->
+        <div style="text-align:center;padding:14px;background:rgba(22,163,74,0.06);border:1px solid rgba(22,163,74,0.15);border-radius:12px;margin-bottom:24px">
+          <div style="font-size:13px;font-weight:600;color:${isDark?'#4ade80':'#16a34a'}">🔒 Paiement sécurisé par Stripe · Résiliable à tout moment</div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div style="text-align:center;font-size:11px;color:#8e8e93;line-height:1.6">
+          ⚠️ InvestIQ est un outil éducatif — pas un conseiller financier agréé
+        </div>
+      </div>
+    </div>`;
+  modal.style.display = 'block';
+}
+
+function checkStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('premium') === 'success') {
+    // Recharger le profil pour avoir is_premium = true
+    if (currentUser) loadProfile();
+    showToast('✦ Premium activé ! Bienvenue dans InvestIQ Premium 🎉');
+    // Nettoyer l'URL
+    window.history.replaceState({}, '', window.location.pathname);
+    // Afficher modal de bienvenue
+    setTimeout(() => showWelcomePremium(), 500);
+  } else if (params.get('premium') === 'cancel') {
+    showToast('Paiement annulé');
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
+
+function showWelcomePremium() {
+  let modal = document.getElementById('welcome-premium-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'welcome-premium-modal';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.style.display='none'">
+      <div style="background:linear-gradient(135deg,#0d0d18,#111120);border:1px solid rgba(22,163,74,0.3);border-radius:24px;padding:40px 32px;max-width:400px;width:100%;text-align:center">
+        <div style="font-size:56px;margin-bottom:16px">🎉</div>
+        <div style="font-size:24px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-0.05em">Bienvenue dans Premium !</div>
+        <div style="font-size:15px;color:rgba(255,255,255,0.5);margin-bottom:24px;line-height:1.6">Toutes les fonctionnalités IA sont maintenant débloquées pour toi.</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:28px;text-align:left">
+          ${['🤖 Agent IA illimité','⚡ Tous les signaux IA','📊 Briefing quotidien','🎯 Analyses illimitées','💼 Positions illimitées'].map(f=>`
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.8)">
+            <span style="color:#4ade80">✓</span>${f}
+          </div>`).join('')}
+        </div>
+        <button onclick="document.getElementById('welcome-premium-modal').style.display='none';nav('home')" style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer">
+          Commencer →
+        </button>
+      </div>
+    </div>`;
+  modal.style.display = 'block';
 }
 
 // --- Mise à jour UI selon plan ---
