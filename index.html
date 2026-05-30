@@ -506,6 +506,22 @@
     position: relative !important;
     z-index: 1 !important;
   }
+<style id="mobile-fixes-patch">
+@media (max-width: 767px) {
+  /* Badge performance totale — sous la valeur au lieu de superposé */
+  .home-perf-badge {
+    position: static !important;
+    display: block !important;
+    margin-top: 12px !important;
+    text-align: left !important;
+    width: fit-content !important;
+  }
+
+  /* Toast — au-dessus de la bottom nav */
+  .toast {
+    bottom: 80px !important;
+  }
+}
 </style>
 </head>
 <body>
