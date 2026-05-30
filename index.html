@@ -391,6 +391,20 @@
   [style*="white-space:nowrap"]:not(.filter-pill):not(.pill):not(.btn-add):not(.btn-refresh) {
     white-space: normal !important;
   }
+
+  /* ══ HOME — badge performance ══ */
+  /* Sur mobile : pas absolu, passe sous la valeur principale */
+  .home-perf-badge {
+    position: static !important;
+    display: inline-block !important;
+    margin-top: 12px !important;
+    margin-bottom: 8px !important;
+    text-align: left !important;
+  }
+  /* Sparkline de fond — réduite sur mobile */
+  #home-metrics > div:first-child > div:first-child {
+    width: 60% !important;
+  }
 }
 
   /* ══ AUTH MOBILE — scroll + layout ══ */
