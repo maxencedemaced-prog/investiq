@@ -5148,8 +5148,8 @@ function renderPortfolio() {
   const sorted = [...dedupPositions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
   const tableHtml = `
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
-    <!-- Header tableau -->
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
+    <!-- Header tableau — caché sur mobile -->
+    <div class="port-table-header" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
       ${['ACTIF','INVESTI','PRIX MOY.','VALEUR','PERF.','',''].map(h=>`<div style="font-size:10px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.06em">${h}</div>`).join('')}
     </div>
     <!-- Lignes positions -->
@@ -5167,7 +5167,7 @@ function renderPortfolio() {
       const sigLabel = sig?.signal==='BUY'?'Renforcer':sig?.signal==='SELL'?'Vendre':'Garder';
       const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
       return `
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
+      <div class="port-table-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
         onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'"
         onclick="togglePos('${p.id}')">
         <!-- Actif -->
@@ -6154,8 +6154,8 @@ function renderCrise() {
           <div style="font-size:32px;font-weight:900;color:${s.color};letter-spacing:-0.05em;line-height:1;margin-bottom:12px">${s.rate>0?'+':''}${s.rate}%</div>
           <div style="margin-bottom:10px">${spark(s.trend, s.color)}</div>
           <div style="font-size:11px;color:${sub};margin-bottom:4px">Valeur projetée dans ${years} ans</div>
-          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em">${fmtK(proj)} k€</div>
-          <div style="font-size:12px;font-weight:700;color:${s.color};margin-top:3px">${gain>=0?'+':''}${fmtK(gain)} k€ (${gain>=0?'+':''}${gainPct}%)</div>
+          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em">${fmtK(proj)}</div>
+          <div style="font-size:12px;font-weight:700;color:${s.color};margin-top:3px">${gain>=0?'+':''}${fmtK(gain)} (${gain>=0?'+':''}${gainPct}%)</div>
         </div>`;
       }).join('')}
     </div>
