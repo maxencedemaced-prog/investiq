@@ -317,33 +317,7 @@
 }
 </style>
 
-<style id="auth-force">
-/* Layout 2 colonnes page connexion */
-#auth-screen {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-.auth-pitch {
-  display: block !important;
-  flex: 1 1 280px !important;
-  min-width: 250px !important;
-  color: #fff !important;
-}
-#auth-right {
-  flex: 0 0 380px !important;
-  min-width: 340px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 12px !important;
-  position: relative !important;
-  z-index: 2 !important;
-}
-@media (max-width: 700px) {
-  .auth-pitch { display: none !important; }
-  #auth-right { flex: 1 1 auto !important; width: 100% !important; min-width: unset !important; }
-}
-</style>
+<style id="auth-force">/* auth-wrap gère le layout via style.css */</style>
 </head>
 <body>
 <script>
@@ -364,7 +338,7 @@
   <div style="position:absolute;top:-200px;left:-100px;width:600px;height:600px;background:radial-gradient(circle,rgba(26,127,90,0.15) 0%,transparent 70%);pointer-events:none"></div>
   <div style="position:absolute;bottom:-200px;right:-100px;width:500px;height:500px;background:radial-gradient(circle,rgba(99,102,241,0.12) 0%,transparent 70%);pointer-events:none"></div>
 
-  <div style="display:flex;width:100%;max-width:1100px;margin:0 auto;padding:40px 24px;gap:60px;align-items:center;position:relative;z-index:2">
+  <div class="auth-wrap" style="max-width:1100px;gap:60px;padding:40px 24px;z-index:2">
 
     <!-- COLONNE GAUCHE -->
     <div class="auth-pitch" style="flex:1;min-width:300px;max-width:540px">
