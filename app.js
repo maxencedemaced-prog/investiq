@@ -4773,7 +4773,8 @@ async function renderHome() {
       <div style="position:absolute;top:0;right:0;bottom:0;width:45%;opacity:0.8;pointer-events:none">
         ${sparkline(mainSparkData, tpnl>=0?'#4ade80':'#f87171', 400, 160, true)}
       </div>
-      <div style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
+      <!-- Badge performance — absolu sur desktop, inline sur mobile -->
+      <div class="home-perf-badge" style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
         <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Performance totale</div>
         <div style="font-size:20px;font-weight:800;color:${pnlColor};letter-spacing:-0.04em">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
         <div style="font-size:12px;color:${pnlColor};opacity:0.7;margin-top:2px">${tpnl>=0?'↑':'↓'} ${Math.abs(tpct).toFixed(1)}%</div>
