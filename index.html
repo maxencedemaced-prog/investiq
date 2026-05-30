@@ -378,13 +378,15 @@
 
   /* ══ AUTH MOBILE — scroll + layout ══ */
   #auth-screen {
-    min-height: 100vh !important;
+    min-height: 100dvh !important;
     height: auto !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+    overflow: visible !important;
     align-items: flex-start !important;
     padding: 0 !important;
+  }
+  body:has(#auth-screen[style*="display:flex"]) {
+    overflow-y: auto !important;
+    height: auto !important;
   }
 
   /* Container principal : colonne, padding confortable */
@@ -464,7 +466,7 @@
     inset: 0 !important;
     width: 100% !important;
     height: 100% !important;
-    opacity: 0.5 !important;
+    opacity: 0.85 !important;
     pointer-events: none !important;
     z-index: 0 !important;
   }
@@ -485,7 +487,7 @@
 </script>
 
 <!-- AUTH -->
-<div id="auth-screen" class="auth-screen" style="display:flex;min-height:100vh;background:#0a0a0f;position:relative;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch">
+<div id="auth-screen" class="auth-screen" style="display:flex;min-height:100dvh;background:#0a0a0f;position:relative;overflow-x:hidden;">
 
   <!-- FOND ANIMÉ PREMIUM -->
   <canvas id="hero-canvas" style="position:absolute;inset:0;width:100%;height:100%;opacity:0.6;pointer-events:none"></canvas>
@@ -796,7 +798,7 @@
         vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
         r: Math.random() * 1.8 + 0.5,
         color: Math.random() > 0.6 ? '26,127,90' : Math.random() > 0.5 ? '99,102,241' : '255,255,255',
-        opacity: Math.random() * 0.4 + 0.1
+        opacity: Math.random() * 0.7 + 0.3
       });
     }
   }
@@ -849,7 +851,7 @@
     // Anneaux concentriques
     for (let i = 4; i >= 0; i--) {
       const r = maxR * (0.2 + i * 0.2) * pulse;
-      const alpha = (0.06 - i * 0.01) * pulse;
+      const alpha = (0.2 - i * 0.02) * pulse;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(26,127,90,${alpha})`;
@@ -926,9 +928,9 @@
     const d1 = [...chart1.slice(offset|0), ...chart1.slice(0, offset|0)];
     const d2 = [...chart2.slice((offset*0.7)|0), ...chart2.slice(0, (offset*0.7)|0)];
     const d3 = [...chart3.slice((offset*0.4)|0), ...chart3.slice(0, (offset*0.4)|0)];
-    drawChart(d1, H * 0.15, '26,127,90', 0.2, 1.5);
-    drawChart(d2, H * 0.25, '99,102,241', 0.12, 1);
-    drawChart(d3, H * 0.35, '255,255,255', 0.06, 0.8);
+    drawChart(d1, H * 0.15, '26,200,120', 0.55, 2);
+    drawChart(d2, H * 0.25, '130,120,255', 0.35, 1.5);
+    drawChart(d3, H * 0.35, '255,255,255', 0.2, 1);
     // Sphère IA
     drawAISphere();
     // Particules
