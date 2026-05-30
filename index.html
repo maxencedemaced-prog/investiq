@@ -316,6 +316,48 @@
   }
 }
 </style>
+
+<style id="auth-force">
+/* FORCE layout 2 colonnes sur desktop */
+@media (min-width: 768px) {
+  #auth-screen {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 100vh !important;
+    overflow: hidden !important;
+  }
+  #auth-screen > canvas {
+    position: absolute !important;
+    inset: 0 !important;
+  }
+  #auth-screen > div[style*="max-width:1100px"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 60px !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 1100px !important;
+    position: relative !important;
+    z-index: 2 !important;
+  }
+  /* Colonne gauche */
+  #auth-screen > div > div:first-child {
+    flex: 1 1 300px !important;
+    min-width: 280px !important;
+    max-width: 540px !important;
+    display: block !important;
+  }
+  /* Colonne droite */
+  #auth-screen > div > div:last-child {
+    flex: 0 0 400px !important;
+    min-width: 360px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+</style>
 </head>
 <body>
 <script>
