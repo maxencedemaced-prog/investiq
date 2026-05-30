@@ -317,8 +317,10 @@
 }
 </style>
 
-<style id="auth-force">/* auth-wrap gère le layout via style.css */</style>
-<style id="auth-override">
+
+
+<style id="auth-layout">
+/* Force layout 2 colonnes — overrides tout */
 .auth-wrap {
   display: flex !important;
   flex-direction: row !important;
@@ -327,25 +329,16 @@
   align-items: center !important;
   max-width: 1100px !important;
   width: 100% !important;
-  position: relative !important;
-  z-index: 1 !important;
 }
 .auth-pitch {
-  flex: 1 1 0 !important;
+  flex: 1 1 0% !important;
   min-width: 260px !important;
-  color: #fff !important;
-}
-.auth-screen {
-  overflow: hidden !important;
+  max-width: none !important;
+  display: block !important;
 }
 @media (max-width: 700px) {
-  .auth-wrap {
-    flex-direction: column !important;
-    gap: 24px !important;
-  }
-  .auth-pitch {
-    display: none !important;
-  }
+  .auth-wrap { flex-direction: column !important; }
+  .auth-pitch { display: none !important; }
 }
 </style>
 </head>
