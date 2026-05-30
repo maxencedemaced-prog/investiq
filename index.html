@@ -375,6 +375,104 @@
     white-space: normal !important;
   }
 }
+
+  /* ══ AUTH MOBILE — scroll + layout ══ */
+  #auth-screen {
+    min-height: 100vh !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    align-items: flex-start !important;
+    padding: 0 !important;
+  }
+
+  /* Container principal : colonne, padding confortable */
+  #auth-screen > div[style*="max-width:1100px"] {
+    flex-direction: column !important;
+    padding: 32px 20px 40px !important;
+    gap: 32px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    align-items: stretch !important;
+  }
+
+  /* Colonne gauche : version compacte (pas cachée) */
+  #auth-screen > div > div:first-child {
+    display: block !important;
+    min-width: unset !important;
+    max-width: 100% !important;
+    flex: unset !important;
+  }
+  /* Titre principal */
+  #auth-screen > div > div:first-child h1,
+  #auth-screen h1[style*="font-size:clamp"] {
+    font-size: 32px !important;
+    letter-spacing: -1px !important;
+    margin-bottom: 12px !important;
+  }
+  /* Sous-titre */
+  #auth-screen > div > div:first-child p {
+    font-size: 15px !important;
+    margin-bottom: 20px !important;
+  }
+  /* Stats — ligne compacte */
+  #auth-screen > div > div:first-child > div[style*="display:flex;gap:24px"] {
+    gap: 16px !important;
+    margin-bottom: 24px !important;
+  }
+  /* Features liste — cachée sur mobile pour gagner de la place */
+  #auth-screen > div > div:first-child > div[style*="flex-direction:column;gap:14px"] {
+    display: none !important;
+  }
+  /* Badges de confiance — cachés */
+  #auth-screen > div > div:first-child > div[style*="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"] {
+    display: none !important;
+  }
+  /* Disclaimer — caché */
+  #auth-screen > div > div:first-child > div:last-child {
+    display: none !important;
+  }
+
+  /* Dashboard flottant — caché */
+  #hero-dashboard { display: none !important; }
+
+  /* Colonne droite formulaire */
+  #auth-screen > div > div:last-child {
+    flex: unset !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: unset !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  /* Auth card */
+  .auth-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px !important;
+    padding: 28px 24px !important;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4) !important;
+  }
+
+  /* ══ FOND ANIMÉ — canvas visible sur mobile ══ */
+  #hero-canvas {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+  }
+  /* Contenu au-dessus du canvas */
+  #auth-screen > div[style*="max-width:1100px"] {
+    position: relative !important;
+    z-index: 1 !important;
+  }
 </style>
 </head>
 <body>
@@ -387,7 +485,7 @@
 </script>
 
 <!-- AUTH -->
-<div id="auth-screen" class="auth-screen" style="display:flex;min-height:100vh;background:#0a0a0f;position:relative;overflow:hidden">
+<div id="auth-screen" class="auth-screen" style="display:flex;min-height:100vh;background:#0a0a0f;position:relative;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch">
 
   <!-- FOND ANIMÉ PREMIUM -->
   <canvas id="hero-canvas" style="position:absolute;inset:0;width:100%;height:100%;opacity:0.6;pointer-events:none"></canvas>
