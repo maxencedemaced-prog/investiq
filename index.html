@@ -318,45 +318,30 @@
 </style>
 
 <style id="auth-force">
-@media (min-width: 500px) {
-  #auth-screen {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    min-height: 100vh !important;
-    overflow: hidden !important;
-  }
-  /* Container principal — ligne horizontale */
-  #auth-screen > div {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    gap: 40px !important;
-    align-items: center !important;
-    width: 100% !important;
-    max-width: 1100px !important;
-    position: relative !important;
-    z-index: 2 !important;
-    padding: 40px 24px !important;
-  }
-  /* Ignorer les divs de glow (position:absolute) */
-  #auth-screen > div[style*="position:absolute"] {
-    display: block !important;
-    flex: none !important;
-  }
-  /* Colonne gauche */
-  #auth-screen > div > .auth-pitch {
-    flex: 1 1 250px !important;
-    min-width: 220px !important;
-    display: block !important;
-  }
-  /* Colonne droite */
-  #auth-screen > div > div:not(.auth-pitch) {
-    flex: 0 0 360px !important;
-    min-width: 320px !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
+/* Layout 2 colonnes page connexion */
+#auth-screen {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.auth-pitch {
+  display: block !important;
+  flex: 1 1 280px !important;
+  min-width: 250px !important;
+  color: #fff !important;
+}
+#auth-right {
+  flex: 0 0 380px !important;
+  min-width: 340px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+@media (max-width: 700px) {
+  .auth-pitch { display: none !important; }
+  #auth-right { flex: 1 1 auto !important; width: 100% !important; min-width: unset !important; }
 }
 </style>
 </head>
@@ -484,7 +469,7 @@
     </div>
 
     <!-- COLONNE DROITE : DASHBOARD FLOTTANT + FORMULAIRE -->
-    <div style="flex:0 0 380px;min-width:300px;display:flex;flex-direction:column;gap:12px">
+    <div id="auth-right" style="flex:0 0 380px;min-width:300px;display:flex;flex-direction:column;gap:12px">
 
       <!-- DASHBOARD FLOTTANT ANIMÉ -->
       <div id="hero-dashboard" style="background:rgba(255,255,255,0.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;overflow:hidden;position:relative">
