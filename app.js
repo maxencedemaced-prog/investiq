@@ -3461,10 +3461,42 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
     const oppoSignaux = await fetchSignaux(oppoTickers);
     const oppoLoader = document.getElementById('oppo-loading');
     if (oppoLoader) {
-      oppoLoader.outerHTML = oppoSignaux.map(s => signalCard(s, false)).join('') +
-        `<div style="padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
-          ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
+      const isPrem = isPremiumUser();
+      const visibleSignaux = isPrem ? oppoSignaux : oppoSignaux.slice(0, 2);
+      const hiddenCount = oppoSignaux.length - visibleSignaux.length;
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+      let html = visibleSignaux.map(s => signalCard(s, false)).join('');
+
+      // Bloc freemium si pas premium
+      if (!isPrem && hiddenCount > 0) {
+        html += `
+        <div style="background:${isDark?'linear-gradient(135deg,#0d0d18,#111120)':'linear-gradient(135deg,#f8f9ff,#f0f4ff)'};border:1px solid ${isDark?'rgba(99,102,241,0.25)':'rgba(99,102,241,0.2)'};border-radius:16px;padding:20px;margin-top:8px;text-align:center">
+          <div style="font-size:28px;margin-bottom:10px">🔒</div>
+          <div style="font-size:15px;font-weight:800;color:${isDark?'#fff':'#1c1c1e'};margin-bottom:6px">
+            +${hiddenCount} signaux supplémentaires
+          </div>
+          <div style="font-size:13px;color:${isDark?'rgba(255,255,255,0.5)':'#8e8e93'};margin-bottom:16px;line-height:1.5">
+            Accède à tous les signaux IA avec leurs objectifs de prix,<br>stop-loss et analyses complètes.
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;text-align:left">
+            ${['⚡ Signaux illimités sur toutes les opportunités','🎯 Objectifs de prix et stop-loss précis','📊 Briefing quotidien personnalisé','🤖 Agent IA sans limite de messages'].map(f=>`
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:${isDark?'rgba(255,255,255,0.7)':'#3c3c43'}">
+              <span style="color:#6366f1">${f.split(' ')[0]}</span>
+              <span>${f.split(' ').slice(1).join(' ')}</span>
+            </div>`).join('')}
+          </div>
+          <button onclick="showPremiumModal('signaux')" style="width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(99,102,241,0.3)">
+            ✦ Voir tous les signaux — Passer à Premium
+          </button>
         </div>`;
+      }
+
+      html += `<div style="padding:10px 14px;background:${isDark?'rgba(255,255,255,0.04)':'#f5f5f5'};border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
+        ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
+      </div>`;
+
+      oppoLoader.outerHTML = html;
     }
   } catch(e) {
     list.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
