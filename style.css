@@ -1499,3 +1499,25 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
   border-color: rgba(255,255,255,0.15) !important;
   color: #fff !important;
 }
+
+/* Onboarding goal/risk card text always visible */
+#onboarding-modal .ob-goal-card div div,
+#onboarding-modal .ob-risk-card div div,
+#onboarding-modal .ob-goal-card,
+#onboarding-modal .ob-risk-card {
+  color: var(--color-text, #1c1c1e) !important;
+}
+[data-theme="dark"] #onboarding-modal .ob-goal-card div div,
+[data-theme="dark"] #onboarding-modal .ob-risk-card div div {
+  color: #fff !important;
+}
+/* Fix onboarding step 3 bottom section */
+#ob-step-3 > div:last-child,
+#ob-step-2 > div:last-child {
+  background: #16162a !important;
+}
+/* Fix section labels */
+#ob-step-3 [style*="color:#8e8e93"],
+#ob-step-3 [style*="color:rgba(255,255,255,0.4)"] {
+  color: rgba(255,255,255,0.5) !important;
+}
