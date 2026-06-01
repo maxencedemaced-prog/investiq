@@ -299,107 +299,7 @@
   }
 }
 
-  /* ══ AUTH MOBILE — scroll + layout ══ */
-  #auth-screen {
-    min-height: 100dvh !important;
-    height: auto !important;
-    overflow: visible !important;
-    align-items: flex-start !important;
-    padding: 0 !important;
-  }
-  body:has(#auth-screen[style*="display:flex"]) {
-    overflow-y: auto !important;
-    height: auto !important;
-  }
-
-  /* Container principal : colonne, padding confortable */
-  #auth-screen > div[style*="max-width:1100px"] {
-    flex-direction: column !important;
-    padding: 32px 20px 40px !important;
-    gap: 32px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    align-items: stretch !important;
-  }
-
-  /* Colonne gauche : version compacte (pas cachée) */
-  #auth-screen > div > div:first-child {
-    display: block !important;
-    min-width: unset !important;
-    max-width: 100% !important;
-    flex: unset !important;
-  }
-  /* Titre principal */
-  #auth-screen > div > div:first-child h1,
-  #auth-screen h1[style*="font-size:clamp"] {
-    font-size: 32px !important;
-    letter-spacing: -1px !important;
-    margin-bottom: 12px !important;
-  }
-  /* Sous-titre */
-  #auth-screen > div > div:first-child p {
-    font-size: 15px !important;
-    margin-bottom: 20px !important;
-  }
-  /* Stats — ligne compacte */
-  #auth-screen > div > div:first-child > div[style*="display:flex;gap:24px"] {
-    gap: 16px !important;
-    margin-bottom: 24px !important;
-  }
-  /* Features liste — cachée sur mobile pour gagner de la place */
-  #auth-screen > div > div:first-child > div[style*="flex-direction:column;gap:14px"] {
-    display: none !important;
-  }
-  /* Badges de confiance — cachés */
-  #auth-screen > div > div:first-child > div[style*="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"] {
-    display: none !important;
-  }
-  /* Disclaimer — caché */
-  #auth-screen > div > div:first-child > div:last-child {
-    display: none !important;
-  }
-
-  /* Dashboard flottant — caché */
-  #hero-dashboard { display: none !important; }
-
-  /* Colonne droite formulaire */
-  #auth-screen > div > div:last-child {
-    flex: unset !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: unset !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0 !important;
-  }
-
-  /* Auth card */
-  .auth-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    border-radius: 20px !important;
-    padding: 28px 24px !important;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.4) !important;
-  }
-
-  /* ══ FOND ANIMÉ — canvas visible sur mobile ══ */
-  #hero-canvas {
-    display: block !important;
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    opacity: 0.85 !important;
-    pointer-events: none !important;
-    z-index: 0 !important;
-  }
-  /* Contenu au-dessus du canvas */
-  #auth-screen > div[style*="max-width:1100px"] {
-    position: relative !important;
-    z-index: 1 !important;
-  }
-<style id="mobile-fixes-patch">
-@media (max-width: 767px) {
+  @media (max-width: 767px) {
   /* Badge performance totale — sous la valeur au lieu de superposé */
   .home-perf-badge {
     position: static !important;
@@ -435,7 +335,7 @@
   <div style="position:absolute;top:-200px;left:-100px;width:600px;height:600px;background:radial-gradient(circle,rgba(26,127,90,0.15) 0%,transparent 70%);pointer-events:none"></div>
   <div style="position:absolute;bottom:-200px;right:-100px;width:500px;height:500px;background:radial-gradient(circle,rgba(99,102,241,0.12) 0%,transparent 70%);pointer-events:none"></div>
 
-  <div style="display:flex;width:100%;max-width:1100px;margin:0 auto;padding:40px 24px;gap:60px;align-items:center;position:relative;z-index:2;flex-wrap:wrap">
+  <div style="display:flex;width:100%;max-width:1100px;margin:0 auto;padding:40px 24px;gap:60px;align-items:center;position:relative;z-index:2;flex-wrap:nowrap">
 
     <!-- COLONNE GAUCHE -->
     <div style="flex:1;min-width:300px;max-width:540px">
