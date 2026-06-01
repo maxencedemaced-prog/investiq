@@ -1542,3 +1542,16 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
   background: rgba(255,255,255,0.1) !important;
   border-color: rgba(255,255,255,0.25) !important;
 }
+
+/* Checkmark visibility in onboarding */
+#onboarding-modal .ob-profile-check,
+#onboarding-modal .ob-check,
+#onboarding-modal .ob-rcheck-faible,
+#onboarding-modal .ob-rcheck-modere,
+#onboarding-modal .ob-rcheck-eleve {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  color: rgba(255,255,255,0.25) !important;
+  min-width: 22px;
+  text-align: center;
+}
