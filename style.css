@@ -1521,3 +1521,24 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
 #ob-step-3 [style*="color:rgba(255,255,255,0.4)"] {
   color: rgba(255,255,255,0.5) !important;
 }
+
+/* Force dark bg on all onboarding cards always */
+#onboarding-modal .ob-profile-card,
+#onboarding-modal .ob-goal-card,
+#onboarding-modal .ob-risk-card {
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: #fff !important;
+}
+#onboarding-modal .ob-profile-card.selected,
+#onboarding-modal .ob-goal-card.selected,
+#onboarding-modal .ob-risk-card.selected {
+  background: rgba(74,222,128,0.12) !important;
+  border-color: #4ade80 !important;
+}
+#onboarding-modal .ob-profile-card:hover,
+#onboarding-modal .ob-goal-card:hover,
+#onboarding-modal .ob-risk-card:hover {
+  background: rgba(255,255,255,0.1) !important;
+  border-color: rgba(255,255,255,0.25) !important;
+}
