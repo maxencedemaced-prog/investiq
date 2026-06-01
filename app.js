@@ -1927,14 +1927,8 @@ function obSelectProfile(level) {
   Object.keys(OB_PROFILES).forEach(l => {
     const card = document.getElementById('obp-' + l);
     const check = document.getElementById('obpc-' + l);
-    if (card) {
-      card.classList.toggle('selected', l === level);
-      card.style.transform = '';
-    }
-    if (check) {
-      check.textContent = l === level ? '✓' : '○';
-      check.style.color = l === level ? '#4ade80' : 'rgba(255,255,255,0.3)';
-    }
+    if (card) card.classList.toggle('selected', l === level);
+    if (check) check.textContent = l === level ? '✓' : '○';
   });
 
   // Preview adaptatif
@@ -2072,11 +2066,11 @@ function obToggleGoal(goal) {
   const card  = document.getElementById('ob-goal-' + goal);
   const check = document.getElementById('ob-check-' + goal);
   if (obGoals[goal]) {
-    if (card)  { card.classList.add('selected'); card.style.border = ''; card.style.background = ''; }
-    if (check) { check.textContent = '●'; check.style.color = '#4ade80'; check.style.fontWeight = '800'; }
+    if (card)  card.classList.add('selected');
+    if (check) { check.textContent = '✓'; check.style.fontWeight = '800'; }
   } else {
-    if (card)  { card.classList.remove('selected'); card.style.border = ''; card.style.background = ''; }
-    if (check) { check.textContent = '○'; check.style.color = ''; check.style.fontWeight = '400'; }
+    if (card)  card.classList.remove('selected');
+    if (check) { check.textContent = '○'; check.style.fontWeight = '400'; }
   }
   const hEl = document.getElementById('ob-horizon');
   if (hEl) {
@@ -2092,8 +2086,8 @@ function obSelectRisk(risk) {
   ['faible','modere','eleve'].forEach(r => {
     const card  = document.getElementById('ob-risk-' + r);
     const check = document.getElementById('ob-rcheck-' + r);
-    if (card)  { card.classList.toggle('selected', r===risk); card.style.border = ''; card.style.background = ''; }
-    if (check) { check.textContent = r===risk ? '✓' : '○'; check.style.color = r===risk ? '#4ade80' : ''; check.style.fontWeight = r===risk ? '800' : '400'; }
+    if (card)  card.classList.toggle('selected', r===risk);
+    if (check) { check.textContent = r===risk ? '✓' : '○'; check.style.fontWeight = r===risk ? '800' : '400'; }
   });
   const rEl = document.getElementById('ob-risk');
   if (rEl) rEl.value = risk;
