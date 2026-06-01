@@ -6591,10 +6591,14 @@ async function analyseDecision() {
     }
     incrementTotalCount('decision');
   }
-  const name = document.getElementById('d-name').value.trim();
-  const pct  = parseInt(document.getElementById('d-pct').value) || 10;
+  const nameEl = document.getElementById('d-name');
+  const pctEl = document.getElementById('d-pct');
+  if (!nameEl || !pctEl) return;
+  const name = nameEl.value.trim();
+  const pct  = parseInt(pctEl.value) || 10;
   const amt  = Math.round((profile.bankroll || 5000) * pct / 100);
-  document.getElementById('d-amount').value = amt;
+  const amtEl = document.getElementById('d-amount');
+  if (amtEl) amtEl.value = amt;
 
   if (!name) { showToast('⚠ Indique un actif'); return; }
 
