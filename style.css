@@ -1474,84 +1474,71 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
   border-color: var(--color-border) !important;
 }
 
-/* Onboarding modal — always dark */
-#onboarding-modal .onboard-step > div:last-child {
-  background: #16162a !important;
-  color: #fff !important;
+/* ── Onboarding cards — propre clair/sombre ── */
+.ob-profile-card,
+.ob-goal-card,
+.ob-risk-card {
+  background: #fff;
+  border: 1.5px solid #e5e5ea;
+  color: #1c1c1e;
 }
-#onboarding-modal .field label,
-#onboarding-modal label {
-  color: rgba(255,255,255,0.5) !important;
+.ob-profile-card.selected,
+.ob-goal-card.selected,
+.ob-risk-card.selected {
+  border-color: #1c1c1e !important;
+  background: #f5f5f5 !important;
 }
-#onboarding-modal input[type="number"],
-#onboarding-modal input[type="text"] {
-  background: rgba(255,255,255,0.07) !important;
-  border: 1.5px solid rgba(255,255,255,0.15) !important;
-  color: #fff !important;
-  border-radius: 10px !important;
+.ob-profile-check, .ob-check {
+  color: #c7c7cc;
+  font-size: 18px;
+  font-weight: 700;
 }
-#onboarding-modal input::placeholder {
-  color: rgba(255,255,255,0.25) !important;
-}
-#onboarding-modal .ob-budget-presets button,
-#ob-budget-presets button {
-  background: rgba(255,255,255,0.07) !important;
-  border-color: rgba(255,255,255,0.15) !important;
-  color: #fff !important;
-}
-
-/* Onboarding goal/risk card text always visible */
-#onboarding-modal .ob-goal-card div div,
-#onboarding-modal .ob-risk-card div div,
-#onboarding-modal .ob-goal-card,
-#onboarding-modal .ob-risk-card {
-  color: var(--color-text, #1c1c1e) !important;
-}
-[data-theme="dark"] #onboarding-modal .ob-goal-card div div,
-[data-theme="dark"] #onboarding-modal .ob-risk-card div div {
-  color: #fff !important;
-}
-/* Fix onboarding step 3 bottom section */
-#ob-step-3 > div:last-child,
-#ob-step-2 > div:last-child {
-  background: #16162a !important;
-}
-/* Fix section labels */
-#ob-step-3 [style*="color:#8e8e93"],
-#ob-step-3 [style*="color:rgba(255,255,255,0.4)"] {
-  color: rgba(255,255,255,0.5) !important;
+.ob-profile-card.selected .ob-profile-check,
+.ob-goal-card.selected .ob-check,
+.ob-risk-card.selected .ob-check {
+  color: #1c1c1e;
 }
 
-/* Force dark bg on all onboarding cards always */
-#onboarding-modal .ob-profile-card,
-#onboarding-modal .ob-goal-card,
-#onboarding-modal .ob-risk-card {
-  background: rgba(255,255,255,0.06) !important;
-  border-color: rgba(255,255,255,0.12) !important;
-  color: #fff !important;
+/* Dark mode */
+[data-theme="dark"] .ob-profile-card,
+[data-theme="dark"] .ob-goal-card,
+[data-theme="dark"] .ob-risk-card {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
 }
-#onboarding-modal .ob-profile-card.selected,
-#onboarding-modal .ob-goal-card.selected,
-#onboarding-modal .ob-risk-card.selected {
-  background: rgba(74,222,128,0.12) !important;
+[data-theme="dark"] .ob-profile-card.selected,
+[data-theme="dark"] .ob-goal-card.selected,
+[data-theme="dark"] .ob-risk-card.selected {
   border-color: #4ade80 !important;
+  background: rgba(74,222,128,0.1) !important;
 }
-#onboarding-modal .ob-profile-card:hover,
-#onboarding-modal .ob-goal-card:hover,
-#onboarding-modal .ob-risk-card:hover {
-  background: rgba(255,255,255,0.1) !important;
-  border-color: rgba(255,255,255,0.25) !important;
+[data-theme="dark"] .ob-profile-check,
+[data-theme="dark"] .ob-check {
+  color: rgba(255,255,255,0.25);
+}
+[data-theme="dark"] .ob-profile-card.selected .ob-profile-check,
+[data-theme="dark"] .ob-goal-card.selected .ob-check,
+[data-theme="dark"] .ob-risk-card.selected .ob-check {
+  color: #4ade80;
 }
 
-/* Checkmark visibility in onboarding */
-#onboarding-modal .ob-profile-check,
-#onboarding-modal .ob-check,
-#onboarding-modal .ob-rcheck-faible,
-#onboarding-modal .ob-rcheck-modere,
-#onboarding-modal .ob-rcheck-eleve {
-  font-size: 18px !important;
-  font-weight: 800 !important;
-  color: rgba(255,255,255,0.25) !important;
-  min-width: 22px;
-  text-align: center;
+/* Onboarding modal bottom section */
+#onboarding-modal .onboard-step > div:last-child {
+  background: #fff;
+  color: #1c1c1e;
+}
+[data-theme="dark"] #onboarding-modal .onboard-step > div:last-child {
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+}
+[data-theme="dark"] #onboarding-modal label,
+[data-theme="dark"] #onboarding-modal .field label {
+  color: var(--color-text-secondary) !important;
+}
+[data-theme="dark"] #onboarding-modal input[type="number"],
+[data-theme="dark"] #onboarding-modal input[type="text"] {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
 }
