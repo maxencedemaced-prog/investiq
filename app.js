@@ -1926,10 +1926,16 @@ function obSelectProfile(level) {
   // Visuels cartes
   Object.keys(OB_PROFILES).forEach(l => {
     const card = document.getElementById('obp-' + l);
+    const check = document.getElementById('obpc-' + l);
     if (card) {
-      card.style.borderColor = l === level ? '#1c1c1e' : '#e5e5ea';
-      card.style.background  = l === level ? '#f5f5f5' : '#fff';
-      card.style.transform   = l === level ? 'scale(1.02)' : 'scale(1)';
+      card.classList.toggle('selected', l === level);
+      card.style.borderColor = '';
+      card.style.background = '';
+      card.style.transform = '';
+    }
+    if (check) {
+      check.textContent = l === level ? '●' : '○';
+      check.style.color = l === level ? '#4ade80' : '';
     }
   });
 
@@ -2068,11 +2074,11 @@ function obToggleGoal(goal) {
   const card  = document.getElementById('ob-goal-' + goal);
   const check = document.getElementById('ob-check-' + goal);
   if (obGoals[goal]) {
-    if (card)  { card.style.border = '2px solid #1c1c1e'; card.style.background = '#f5f5f5'; }
-    if (check) { check.textContent = '✓'; check.style.color = '#1c1c1e'; check.style.fontWeight = '800'; }
+    if (card)  { card.classList.add('selected'); card.style.border = ''; card.style.background = ''; }
+    if (check) { check.textContent = '●'; check.style.color = '#4ade80'; check.style.fontWeight = '800'; }
   } else {
-    if (card)  { card.style.border = '2px solid #e5e5ea'; card.style.background = '#fff'; }
-    if (check) { check.textContent = '○'; check.style.fontWeight = '400'; }
+    if (card)  { card.classList.remove('selected'); card.style.border = ''; card.style.background = ''; }
+    if (check) { check.textContent = '○'; check.style.color = ''; check.style.fontWeight = '400'; }
   }
   const hEl = document.getElementById('ob-horizon');
   if (hEl) {
@@ -2088,8 +2094,8 @@ function obSelectRisk(risk) {
   ['faible','modere','eleve'].forEach(r => {
     const card  = document.getElementById('ob-risk-' + r);
     const check = document.getElementById('ob-rcheck-' + r);
-    if (card)  { card.style.border = r===risk ? '2px solid #1c1c1e' : '2px solid #e5e5ea'; card.style.background = r===risk ? '#f5f5f5' : '#fff'; }
-    if (check) { check.textContent = r===risk ? '✓' : '○'; check.style.fontWeight = r===risk ? '800' : '400'; }
+    if (card)  { card.classList.toggle('selected', r===risk); card.style.border = ''; card.style.background = ''; }
+    if (check) { check.textContent = r===risk ? '●' : '○'; check.style.color = r===risk ? '#4ade80' : ''; check.style.fontWeight = r===risk ? '800' : '400'; }
   });
   const rEl = document.getElementById('ob-risk');
   if (rEl) rEl.value = risk;
