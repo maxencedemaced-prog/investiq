@@ -1932,7 +1932,7 @@ function obSelectProfile(level) {
       card.style.transform = '';
     }
     if (check) {
-      check.textContent = l === level ? '●' : '○';
+      check.textContent = l === level ? '✓' : '○';
       check.style.color = l === level ? '#4ade80' : 'rgba(255,255,255,0.3)';
     }
   });
@@ -2093,7 +2093,7 @@ function obSelectRisk(risk) {
     const card  = document.getElementById('ob-risk-' + r);
     const check = document.getElementById('ob-rcheck-' + r);
     if (card)  { card.classList.toggle('selected', r===risk); card.style.border = ''; card.style.background = ''; }
-    if (check) { check.textContent = r===risk ? '●' : '○'; check.style.color = r===risk ? '#4ade80' : ''; check.style.fontWeight = r===risk ? '800' : '400'; }
+    if (check) { check.textContent = r===risk ? '✓' : '○'; check.style.color = r===risk ? '#4ade80' : ''; check.style.fontWeight = r===risk ? '800' : '400'; }
   });
   const rEl = document.getElementById('ob-risk');
   if (rEl) rEl.value = risk;
