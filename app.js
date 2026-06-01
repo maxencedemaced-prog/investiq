@@ -1929,13 +1929,11 @@ function obSelectProfile(level) {
     const check = document.getElementById('obpc-' + l);
     if (card) {
       card.classList.toggle('selected', l === level);
-      card.style.borderColor = '';
-      card.style.background = '';
       card.style.transform = '';
     }
     if (check) {
       check.textContent = l === level ? '●' : '○';
-      check.style.color = l === level ? '#4ade80' : '';
+      check.style.color = l === level ? '#4ade80' : 'rgba(255,255,255,0.3)';
     }
   });
 
