@@ -75,11 +75,12 @@
 
     .ob-profile-card {
       display:flex;align-items:center;gap:12px;padding:12px 16px;
-      background:#fff;border:2px solid #e5e5ea;border-radius:14px;
+      background:rgba(255,255,255,0.07);border:2px solid rgba(255,255,255,0.12);border-radius:14px;
       cursor:pointer;transition:all 0.15s;
     }
-    .ob-profile-card:hover { border-color:#1c1c1e;background:#f9f9f9; }
-    .ob-profile-check { font-size:16px;font-weight:700;color:#8e8e93;flex-shrink:0; }
+    .ob-profile-card:hover { border-color:rgba(255,255,255,0.35);background:rgba(255,255,255,0.12); }
+    .ob-profile-card.selected { border-color:#4ade80;background:rgba(74,222,128,0.1); }
+    .ob-profile-check { font-size:16px;font-weight:700;color:rgba(255,255,255,0.3);flex-shrink:0; }
   </style>
 
 <style id="mobile-fixes">
@@ -981,8 +982,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">🌱</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Débutant</div>
-                <div style="font-size:12px;color:#8e8e93">Jamais investi</div>
+                <div style="font-weight:800;font-size:14px;color:#fff">Débutant</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.5)">Jamais investi</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#e8f8f0;color:#065f46;flex-shrink:0">Guidé</div>
               <div class="ob-profile-check" id="obpc-debutant">○</div>
@@ -993,8 +994,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">📚</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Curieux</div>
-                <div style="font-size:12px;color:#8e8e93">Bases théoriques, pas encore investi</div>
+                <div style="font-weight:800;font-size:14px;color:#fff">Curieux</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.5)">Bases théoriques, pas encore investi</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#eeedfe;color:#3c3489;flex-shrink:0">Pédago</div>
               <div class="ob-profile-check" id="obpc-curieux">○</div>
@@ -1005,8 +1006,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">📈</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Initié</div>
-                <div style="font-size:12px;color:#8e8e93">Connais les ETF, déjà investi</div>
+                <div style="font-weight:800;font-size:14px;color:#fff">Initié</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.5)">Connais les ETF, déjà investi</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#faeeda;color:#633806;flex-shrink:0">Équilibré</div>
               <div class="ob-profile-check" id="obpc-initie">○</div>
@@ -1017,8 +1018,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">💼</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Confirmé</div>
-                <div style="font-size:12px;color:#8e8e93">Gestion active, autonome</div>
+                <div style="font-weight:800;font-size:14px;color:#fff">Confirmé</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.5)">Gestion active, autonome</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#fff0f0;color:#791f1f;flex-shrink:0">Avancé</div>
               <div class="ob-profile-check" id="obpc-confirme">○</div>
@@ -1029,8 +1030,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">🐳</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Gros investisseur</div>
-                <div style="font-size:12px;color:#8e8e93">50k€+ · Patrimoine structuré</div>
+                <div style="font-weight:800;font-size:14px;color:#fff">Gros investisseur</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.5)">50k€+ · Patrimoine structuré</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#e1f5ee;color:#04342c;flex-shrink:0">Premium</div>
               <div class="ob-profile-check" id="obpc-gros">○</div>
@@ -1041,8 +1042,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">🏆</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Expert / Trader</div>
-                <div style="font-size:12px;color:#8e8e93">Analyse tech · Stratégies actives</div>
+                <div style="font-weight:800;font-size:14px;color:#fff">Expert / Trader</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.5)">Analyse tech · Stratégies actives</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#1c1c1e;color:#fff;flex-shrink:0">Pro</div>
               <div class="ob-profile-check" id="obpc-expert">○</div>
@@ -1051,7 +1052,7 @@ window.addEventListener('load', function() {
 
         </div>
 
-        <div id="ob-profile-preview" style="display:none;background:#f5f5f5;border-radius:12px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #1c1c1e">
+        <div id="ob-profile-preview" style="display:none;background:rgba(255,255,255,0.07);border-radius:12px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #4ade80">
           <div style="font-size:11px;font-weight:700;color:#1c1c1e;margin-bottom:3px" id="ob-preview-label">—</div>
           <div style="font-size:12px;color:#3c3c43;line-height:1.55" id="ob-preview-text">—</div>
         </div>
