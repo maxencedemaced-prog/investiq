@@ -114,7 +114,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 .auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:#f0f0f0}
 .auth-terms{font-size:11px;color:#8e8e93;text-align:center;margin-top:12px;line-height:1.5}
 .btn-auth{width:100%;padding:14px 20px;background:#1c1c1e;border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;margin-top:4px;transition:all 0.2s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
-.btn-auth:hover{background:#000;transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.2)}
+.btn-auth:hover{background:#000;box-shadow:0 8px 24px rgba(0,0,0,0.2)}
 .btn-demo{width:100%;padding:12px;background:var(--color-bg);border:none;border-radius:12px;color:#1c1c1e;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.2s}
 .btn-demo:hover{background:#e8e8e8}
 .auth-msg{margin-top:12px;font-size:13px;text-align:center;min-height:20px;font-weight:600}
@@ -187,7 +187,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 .metric-trend{font-size:11px;color:#8e8e93;margin-top:5px;font-weight:500}
 .pos-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .pos-card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04),0 1px 2px rgba(0,0,0,0.04);transition:box-shadow 0.2s}
-.pos-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);border-color:var(--color-border-strong)}
+.pos-card:hover{box-shadow:var(--shadow-md);border-color:var(--color-border-strong)}
 .pos-card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer}
 .pos-card-left{display:flex;align-items:center;gap:12px}
 .pos-avatar{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
@@ -481,7 +481,7 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 .obj-real-left,.obj-real-right{flex-shrink:0;min-width:60px}
 .obj-real-right{text-align:right}
 .btn-obj-validate{padding:14px 32px;background:#1c1c1e;border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:all 0.2s;letter-spacing:-0.2px}
-.btn-obj-validate:hover{background:#1a7f5a;transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,127,90,0.3)}
+.btn-obj-validate:hover{background:#1a7f5a;box-shadow:0 6px 20px rgba(26,127,90,0.3)}
 .btn-obj-validate:disabled{opacity:0.8;cursor:default;transform:none}
 .d-intent-btn{padding:10px 16px;border-radius:12px;border:2px solid #e5e5ea;background:#fff;font-size:13px;font-weight:600;color:#3c3c43;cursor:pointer;transition:all 0.2s}
 .d-intent-btn:hover{border-color:#1c1c1e}
@@ -502,12 +502,12 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
 .card{transition:box-shadow 0.2s ease,transform 0.15s ease}
 .metric-card{transition:transform 0.15s ease,box-shadow 0.15s ease}
-.metric-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.08)}
+.metric-card:hover{box-shadow:0 6px 20px rgba(0,0,0,0.08)}
 .pos-card{transition:box-shadow 0.2s ease}
 .nav-btn{transition:background 0.15s ease,color 0.15s ease}
 .btn-primary{transition:transform 0.15s ease,box-shadow 0.15s ease}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,0.15)}
-.btn-primary:active{transform:translateY(0) scale(0.98)}
+.btn-primary:hover{box-shadow:0 4px 16px rgba(0,0,0,0.15)}
+.btn-primary:active{opacity:0.9}
 .toast{animation:toastIn 0.3s cubic-bezier(0.16,1,0.3,1)}
 @keyframes toastIn{from{opacity:0;transform:translateY(20px) translateX(-50%) scale(0.95)}to{opacity:1;transform:translateY(0) translateX(-50%) scale(1)}}
 #home-tv-counter{min-width:120px;display:inline-block}
@@ -613,7 +613,6 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 
 /* Metric card hover */
 .metric-card:hover { 
-  transform: translateY(-1px); 
   box-shadow: var(--shadow-md);
   border-color: var(--color-border-strong);
 }
@@ -717,7 +716,7 @@ input:focus, select:focus {
 }
 .onboard-step { animation: obFadeIn 0.25s ease; }
 .ob-profile-card { transition: all 0.18s cubic-bezier(0.16,1,0.3,1); }
-.ob-profile-card:hover { transform: scale(1.005); }
+
 .ob-goal-card { transition: all 0.15s ease; }
 .ob-risk-card { transition: all 0.15s ease; }
 
@@ -726,7 +725,7 @@ input:focus, select:focus {
 a, button, [onclick] { transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
 
 /* Hover lift sur les cards cliquables */
-[onclick].card:hover, .metric-card[onclick]:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+[onclick].card:hover, .metric-card[onclick]:hover { box-shadow: var(--shadow-md); }
 
 /* Loading skeleton premium */
 .skeleton-pulse { animation: skeleton-wave 1.4s ease infinite; background: linear-gradient(90deg, var(--color-bg-subtle) 0%, var(--color-border-subtle) 50%, var(--color-bg-subtle) 100%); background-size: 200% 100%; }
@@ -1027,6 +1026,7 @@ a, button, [onclick] { transition: opacity 0.15s ease, transform 0.15s ease, bac
 [data-theme="dark"] .ob-profile-card {
   background: var(--color-surface);
   border-color: var(--color-border);
+  color: var(--color-text);
 }
 
 [data-theme="dark"] .ob-profile-card:hover {
