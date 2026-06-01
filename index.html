@@ -40,13 +40,13 @@
     .ob-profile-card:hover { border-color:#8e8e93;background:#fafafa; }
     .ob-profile-card.selected { border:2px solid #1c1c1e;background:#f5f5f5; }
     .ob-goal-card {
-      border:1.5px solid #e5e5ea;border-radius:12px;cursor:pointer;
-      background:#fff;transition:all 0.15s;
+      border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;cursor:pointer;
+      background:rgba(255,255,255,0.07);transition:all 0.15s;
     }
-    .ob-goal-card:hover { border-color:#8e8e93;background:#fafafa; }
-    .ob-goal-card.selected { border:2px solid #1c1c1e;background:#f5f5f5; }
-    .ob-risk-card:hover { border-color:#8e8e93 !important;background:#fafafa !important; }
-    .ob-risk-card.selected { border:2px solid #1c1c1e !important;background:#f5f5f5 !important; }
+    .ob-goal-card:hover { border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.12); }
+    .ob-goal-card.selected { border:2px solid #4ade80;background:rgba(74,222,128,0.1); }
+    .ob-risk-card:hover { border-color:rgba(255,255,255,0.3) !important;background:rgba(255,255,255,0.1) !important; }
+    .ob-risk-card.selected { border:2px solid #4ade80 !important;background:rgba(74,222,128,0.1) !important; }
     /* ── Onglets objectifs ── */
     #obj-tabs { display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 12px; }
     .obj-tab-btn {
@@ -975,7 +975,7 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
         </div>
       </div>
-      <div style="padding:20px 28px;background:#fff;border-radius:0 0 20px 20px">
+      <div style="padding:20px 28px;background:#1a1a2e;border-radius:0 0 20px 20px">
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
 
           <div class="ob-profile-card" id="obp-debutant" onclick="obSelectProfile('debutant')">
@@ -1078,7 +1078,7 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
         </div>
       </div>
-      <div style="padding:20px 28px;background:#fff;border-radius:0 0 20px 20px">
+      <div style="padding:20px 28px;background:#1a1a2e;border-radius:0 0 20px 20px">
         <div id="ob-budget-presets" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
           <div class="field">
@@ -1118,48 +1118,48 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
         </div>
       </div>
-      <div style="padding:20px 28px;background:#fff;border-radius:0 0 20px 20px">
-        <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">Objectif principal</div>
+      <div style="padding:20px 28px;background:#1a1a2e;border-radius:0 0 20px 20px">
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">Objectif principal</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px">
           <div class="ob-goal-card" id="ob-goal-long" onclick="obToggleGoal('long')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🏦</span>
-            <div><div style="font-weight:700;font-size:13px">Patrimoine</div><div style="font-size:11px;color:#8e8e93">10-20 ans</div></div>
+            <div><div style="font-weight:700;font-size:13px;color:#fff">Patrimoine</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">10-20 ans</div></div>
             <div class="ob-check" id="ob-check-long" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
           <div class="ob-goal-card" id="ob-goal-court" onclick="obToggleGoal('court')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">💸</span>
-            <div><div style="font-weight:700;font-size:13px">Revenus passifs</div><div style="font-size:11px;color:#8e8e93">1-3 ans</div></div>
+            <div><div style="font-weight:700;font-size:13px;color:#fff">Revenus passifs</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">1-3 ans</div></div>
             <div class="ob-check" id="ob-check-court" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
           <div class="ob-goal-card" id="ob-goal-retraite" onclick="obToggleGoal('retraite')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🌴</span>
-            <div><div style="font-weight:700;font-size:13px">Retraite FIRE</div><div style="font-size:11px;color:#8e8e93">15-25 ans</div></div>
+            <div><div style="font-weight:700;font-size:13px;color:#fff">Retraite FIRE</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">15-25 ans</div></div>
             <div class="ob-check" id="ob-check-retraite" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
           <div class="ob-goal-card" id="ob-goal-projet" onclick="obToggleGoal('projet')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🏠</span>
-            <div><div style="font-weight:700;font-size:13px">Projet précis</div><div style="font-size:11px;color:#8e8e93">3-10 ans</div></div>
+            <div><div style="font-weight:700;font-size:13px;color:#fff">Projet précis</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">3-10 ans</div></div>
             <div class="ob-check" id="ob-check-projet" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
         </div>
 
-        <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Profil de risque</div>
-        <div id="ob-risk-reco" style="display:none;background:#f5f5f5;border-radius:10px;padding:9px 13px;font-size:12px;color:#3c3c43;margin-bottom:10px;border-left:3px solid #1c1c1e"></div>
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Profil de risque</div>
+        <div id="ob-risk-reco" style="display:none;background:rgba(255,255,255,0.07);border-radius:10px;padding:9px 13px;font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:10px;border-left:3px solid #4ade80"></div>
 
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
-          <div class="ob-risk-card" id="ob-risk-faible" onclick="obSelectRisk('faible')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;cursor:pointer">
+          <div class="ob-risk-card" id="ob-risk-faible" onclick="obSelectRisk('faible')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.12);cursor:pointer;background:rgba(255,255,255,0.05)">
             <div style="width:36px;height:36px;border-radius:10px;background:#e8f8f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🛡️</div>
-            <div style="flex:1"><div style="font-weight:700;font-size:13px">Prudent</div><div style="font-size:11px;color:#8e8e93">~5%/an · Perte max 10%</div></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px;color:#fff">Prudent</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">~5%/an · Perte max 10%</div></div>
             <div class="ob-check" id="ob-rcheck-faible" style="font-size:16px;color:#c7c7cc">○</div>
           </div>
-          <div class="ob-risk-card" id="ob-risk-modere" onclick="obSelectRisk('modere')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;cursor:pointer">
+          <div class="ob-risk-card" id="ob-risk-modere" onclick="obSelectRisk('modere')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.12);cursor:pointer;background:rgba(255,255,255,0.05)">
             <div style="width:36px;height:36px;border-radius:10px;background:#fff9e6;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚖️</div>
-            <div style="flex:1"><div style="font-weight:700;font-size:13px">Équilibré</div><div style="font-size:11px;color:#8e8e93">~7%/an · Perte max 25%</div></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px;color:#fff">Équilibré</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">~7%/an · Perte max 25%</div></div>
             <div class="ob-check" id="ob-rcheck-modere" style="font-size:16px;color:#c7c7cc">○</div>
           </div>
-          <div class="ob-risk-card" id="ob-risk-eleve" onclick="obSelectRisk('eleve')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;cursor:pointer">
+          <div class="ob-risk-card" id="ob-risk-eleve" onclick="obSelectRisk('eleve')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.12);cursor:pointer;background:rgba(255,255,255,0.05)">
             <div style="width:36px;height:36px;border-radius:10px;background:#fff0f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚀</div>
-            <div style="flex:1"><div style="font-weight:700;font-size:13px">Agressif</div><div style="font-size:11px;color:#8e8e93">~10%/an · Perte max 40%</div></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px;color:#fff">Agressif</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">~10%/an · Perte max 40%</div></div>
             <div class="ob-check" id="ob-rcheck-eleve" style="font-size:16px;color:#c7c7cc">○</div>
           </div>
         </div>
@@ -1186,11 +1186,11 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.85)"></div>
         </div>
       </div>
-      <div style="padding:16px 28px;background:#fff;border-radius:0 0 20px 20px">
+      <div style="padding:16px 28px;background:#1a1a2e;border-radius:0 0 20px 20px">
         <div id="ob-plan-content">
           <div style="text-align:center;padding:24px;color:#8e8e93">
             <svg class="spinning" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            <div style="margin-top:10px;font-size:14px;font-weight:600;color:#1c1c1e">Génération de ton plan...</div>
+            <div style="margin-top:10px;font-size:14px;font-weight:600;color:#fff">Génération de ton plan...</div>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
