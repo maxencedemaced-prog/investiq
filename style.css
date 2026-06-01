@@ -1473,3 +1473,29 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
   background: var(--color-surface) !important;
   border-color: var(--color-border) !important;
 }
+
+/* Onboarding modal — always dark */
+#onboarding-modal .onboard-step > div:last-child {
+  background: #16162a !important;
+  color: #fff !important;
+}
+#onboarding-modal .field label,
+#onboarding-modal label {
+  color: rgba(255,255,255,0.5) !important;
+}
+#onboarding-modal input[type="number"],
+#onboarding-modal input[type="text"] {
+  background: rgba(255,255,255,0.07) !important;
+  border: 1.5px solid rgba(255,255,255,0.15) !important;
+  color: #fff !important;
+  border-radius: 10px !important;
+}
+#onboarding-modal input::placeholder {
+  color: rgba(255,255,255,0.25) !important;
+}
+#onboarding-modal .ob-budget-presets button,
+#ob-budget-presets button {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.15) !important;
+  color: #fff !important;
+}
