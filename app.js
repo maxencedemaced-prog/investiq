@@ -2320,6 +2320,10 @@ async function obFinish(action) {
     validatedAt: new Date().toISOString()
   })); } catch {}
 
+  // Recharge les objectifs avant de naviguer
+  if (action === 'objectif' && !isDemo && currentUser) {
+    await loadObjective();
+  }
   nav(action);
 }
 
