@@ -7673,14 +7673,21 @@ function incrementTotalCount(key) {
 
 // --- Modal Premium ---
 function showPremiumModal(source) {
-  const messages = {
-    agent_ia: { title: 'Limite atteinte', desc: 'Tu as utilisé ton message IA gratuit du jour.', detail: 'Passe à Premium pour des conversations IA illimitées avec ton copilote financier personnel.' },
-    decision: { title: '3 analyses utilisées', desc: 'Tu as utilisé tes 3 analyses gratuites.', detail: 'Passe à Premium pour des analyses illimitées sur chaque actif de ton portefeuille.' },
-    positions: { title: 'Limite de 5 positions', desc: 'La version gratuite est limitée à 5 positions.', detail: 'Passe à Premium pour un portefeuille illimité et des analyses IA sur chaque position.' },
+  const triggers = {
+    agent_ia:  { badge: '🤖 Agent IA', title: 'Limite quotidienne atteinte', sub: 'Tu as utilisé ton message IA gratuit du jour.' },
+    decision:  { badge: '🎯 Analyses', title: '3 analyses utilisées', sub: 'Tu as épuisé tes analyses gratuites du mois.' },
+    positions: { badge: '💼 Portefeuille', title: 'Limite de 5 positions', sub: 'La version gratuite est limitée à 5 positions.' },
+    signaux:   { badge: '⚡ Signaux IA', title: 'Signaux Premium', sub: 'Les signaux avancés sont réservés aux membres Premium.' },
   };
-  const m = messages[source] || { title: 'Fonctionnalité Premium', desc: 'Cette fonctionnalité est réservée aux membres Premium.', detail: "Passe à Premium pour débloquer toutes les fonctionnalités IA d'InvestIQ." };
+  const t = triggers[source] || { badge: '✦ Premium', title: 'Fonctionnalité Premium', sub: "Cette fonctionnalité est réservée aux membres Premium." };
 
-  // Créer ou réutiliser le modal
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#0f1117' : '#ffffff';
+  const surfAlt = isDark ? '#1a1d27' : '#f8fafc';
+  const border = isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+  const txt = isDark ? '#f0f4ff' : '#0f172a';
+  const txtSub = isDark ? 'rgba(255,255,255,0.45)' : '#64748b';
+
   let modal = document.getElementById('premium-modal');
   if (!modal) {
     modal = document.createElement('div');
@@ -7688,54 +7695,111 @@ function showPremiumModal(source) {
     document.body.appendChild(modal);
   }
 
+  window._selectedPlan = window._selectedPlan || 'annuel';
+
   modal.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closePremiumModal()">
-      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:24px;padding:0;max-width:420px;width:100%;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.4)">
+  <style>
+    #pm-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;animation:pmFadeIn 0.2s ease }
+    @keyframes pmFadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes pmSlideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+    #pm-card { background:${surf};border-radius:24px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,0.5);animation:pmSlideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);scrollbar-width:none }
+    #pm-card::-webkit-scrollbar { display:none }
+    .pm-plan { flex:1;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.18s;border:2px solid ${border};background:${surfAlt};position:relative;overflow:hidden }
+    .pm-plan.selected { border-color:#16a34a;background:${isDark ? "rgba(22,163,74,0.08)" : "rgba(22,163,74,0.05)"} }
+    .pm-plan:hover { transform:translateY(-2px) }
+    .pm-cta { width:100%;padding:15px;border:none;border-radius:13px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:-0.01em;transition:all 0.15s }
+    .pm-cta:hover { transform:translateY(-1px);filter:brightness(1.08) }
+  </style>
+  <div id="pm-overlay" onclick="if(event.target.id==='pm-overlay')closePremiumModal()">
+    <div id="pm-card">
 
-        <!-- Header premium -->
-        <div style="background:linear-gradient(135deg,#0d0d18,#111120);padding:32px 28px 24px;text-align:center;position:relative">
-          <div style="position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:200px;height:120px;background:radial-gradient(circle,rgba(63,185,80,0.15),transparent);pointer-events:none"></div>
-          <div style="width:56px;height:56px;background:linear-gradient(135deg,rgba(63,185,80,0.2),rgba(22,163,74,0.1));border:1px solid rgba(63,185,80,0.3);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px">✦</div>
-          <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:8px">${m.title}</div>
-          <div style="font-size:14px;color:rgba(255,255,255,0.5)">${m.desc}</div>
-        </div>
-
-        <!-- Body -->
-        <div style="padding:24px 28px">
-          <div style="background:rgba(63,185,80,0.06);border:1px solid rgba(63,185,80,0.12);border-radius:12px;padding:14px 16px;margin-bottom:20px">
-            <div style="font-size:13px;color:var(--color-text-secondary);line-height:1.6">${m.detail}</div>
-          </div>
-
-          <!-- Features premium -->
-          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
-            ${[
-              ['🤖', 'Agent IA illimité', 'Conversations sans limite avec ton copilote'],
-              ['🎯', 'Analyses illimitées', 'Analyse chaque actif sans restriction'],
-              ['📊', 'Briefing quotidien', 'Résumé IA de ton portefeuille chaque matin'],
-              ['⚡', 'Signaux IA avancés', 'Alertes intelligentes et recommandations'],
-              ['💼', 'Positions illimitées', 'Portefeuille sans limite de taille'],
-            ].map(([icon, title, desc]) => `
-              <div style="display:flex;align-items:center;gap:12px">
-                <div style="width:32px;height:32px;background:rgba(63,185,80,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
-                <div>
-                  <div style="font-size:13px;font-weight:700;color:var(--color-text)">${title}</div>
-                  <div style="font-size:11px;color:var(--color-text-tertiary)">${desc}</div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-
-          <!-- CTA -->
-          <button onclick="closePremiumModal();openPremiumPage()" style="width:100%;padding:15px;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 20px rgba(22,163,74,0.3)">
-            ✦ Passer à Premium
-          </button>
-          <button onclick="closePremiumModal()" style="width:100%;padding:12px;background:transparent;color:var(--color-text-secondary);border:none;font-size:13px;font-weight:600;cursor:pointer">
-            Continuer en gratuit
-          </button>
+      <div style="background:linear-gradient(150deg,#050e08 0%,#0b1f10 50%,#07120e 100%);padding:28px 24px 22px;position:relative;overflow:hidden;border-radius:24px 24px 0 0">
+        <div style="position:absolute;top:-30px;right:-30px;width:160px;height:160px;background:radial-gradient(circle,rgba(22,163,74,0.18),transparent 70%);pointer-events:none"></div>
+        <button onclick="closePremiumModal()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.08);border:none;border-radius:8px;width:30px;height:30px;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;line-height:1">×</button>
+        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(22,163,74,0.15);border:1px solid rgba(22,163,74,0.3);border-radius:99px;padding:4px 12px;font-size:11px;font-weight:700;color:#4ade80;margin-bottom:14px">${t.badge}</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.04em;margin-bottom:6px;line-height:1.2">${t.title}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.45);line-height:1.5">${t.sub}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:18px">
+          <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(22,163,74,0.4))"></div>
+          <div style="font-size:12px;font-weight:800;color:#4ade80;letter-spacing:0.05em">✦ INVESTIQ PREMIUM</div>
+          <div style="flex:1;height:1px;background:linear-gradient(90deg,rgba(22,163,74,0.4),transparent)"></div>
         </div>
       </div>
-    </div>`;
+
+      <div style="padding:20px 20px 0">
+        <div style="font-size:12px;font-weight:700;color:${txtSub};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Choisir un plan</div>
+        <div style="display:flex;gap:10px">
+
+          <div class="pm-plan ${window._selectedPlan === 'mensuel' ? 'selected' : ''}" id="pm-card-mensuel" onclick="selectPlan('mensuel')">
+            <div style="font-size:10px;font-weight:800;color:${txtSub};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">MENSUEL</div>
+            <div style="font-size:26px;font-weight:900;color:${txt};letter-spacing:-0.05em;line-height:1">9<span style="font-size:14px">.99</span><span style="font-size:13px;color:${txtSub};font-weight:600">€</span></div>
+            <div style="font-size:11px;color:${txtSub};margin-top:3px">par mois</div>
+          </div>
+
+          <div class="pm-plan ${window._selectedPlan === 'annuel' ? 'selected' : ''}" id="pm-card-annuel" onclick="selectPlan('annuel')">
+            <div style="position:absolute;top:0;right:0;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;font-size:9px;font-weight:800;padding:4px 10px;border-radius:0 12px 0 10px;letter-spacing:0.05em">MEILLEUR PRIX</div>
+            <div style="font-size:10px;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">ANNUEL ⭐</div>
+            <div style="font-size:26px;font-weight:900;color:${txt};letter-spacing:-0.05em;line-height:1">79<span style="font-size:14px">.90</span><span style="font-size:13px;color:${txtSub};font-weight:600">€</span></div>
+            <div style="font-size:11px;color:${txtSub};margin-top:3px">par an · <span style="color:#16a34a;font-weight:700">= 6.66€/mois</span></div>
+            <div style="margin-top:6px;display:inline-block;background:rgba(22,163,74,0.12);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;color:#16a34a">-33% économie</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:16px 20px 0">
+        <div style="font-size:12px;font-weight:700;color:${txtSub};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Ce que tu débloque</div>
+        <div style="background:${surfAlt};border:1px solid ${border};border-radius:16px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:1fr 56px 68px;padding:9px 14px;border-bottom:1px solid ${border};background:${isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"}">
+            <div style="font-size:10px;font-weight:700;color:${txtSub}">FONCTIONNALITÉ</div>
+            <div style="font-size:10px;font-weight:700;color:${txtSub};text-align:center">GRATUIT</div>
+            <div style="font-size:10px;font-weight:800;color:#16a34a;text-align:center">PREMIUM</div>
+          </div>
+          ${[
+            ['🤖', 'Agent IA', '1/jour', 'Illimité'],
+            ['🎯', 'Analyses', '3/mois', 'Illimité'],
+            ['💼', 'Positions', '5 max', 'Illimité'],
+            ['⚡', 'Signaux IA', '2 signaux', 'Tous'],
+            ['📊', 'Briefing quotidien', '—', 'Chaque matin'],
+            ['🏥', 'Santé IA', 'Basique', 'Avancée'],
+          ].map(([icon, label, free, prem], i) => `
+            <div style="display:grid;grid-template-columns:1fr 56px 68px;align-items:center;padding:9px 14px;border-bottom:1px solid ${border}">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="font-size:13px">${icon}</span>
+                <span style="font-size:12px;font-weight:600;color:${txt}">${label}</span>
+              </div>
+              <div style="text-align:center;font-size:11px;color:${txtSub}">${free}</div>
+              <div style="text-align:center"><span style="font-size:10px;font-weight:700;color:#16a34a;background:rgba(22,163,74,0.1);border-radius:5px;padding:2px 6px">${prem}</span></div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div style="padding:16px 20px 22px">
+        <button id="pm-cta-btn" class="pm-cta" style="background:linear-gradient(135deg,#16a34a,#059669);color:#fff;box-shadow:0 6px 24px rgba(22,163,74,0.35);margin-bottom:10px">
+          ✦ Commencer — ${window._selectedPlan === 'annuel' ? '79.90€/an' : '9.99€/mois'}
+        </button>
+        <div style="text-align:center;font-size:11px;color:${txtSub};margin-bottom:10px">🔒 Paiement Stripe sécurisé · Résiliable à tout moment</div>
+        <button onclick="closePremiumModal()" style="width:100%;padding:11px;background:transparent;border:1px solid ${border};border-radius:11px;font-size:13px;font-weight:600;color:${txtSub};cursor:pointer">Continuer en gratuit</button>
+      </div>
+
+    </div>
+  </div>`;
+
   modal.style.display = 'block';
+
+  // Plan selector helper (needs to be global)
+  window.selectPlan = function(plan) {
+    window._selectedPlan = plan;
+    document.querySelectorAll('.pm-plan').forEach(p => p.classList.remove('selected'));
+    const card = document.getElementById('pm-card-' + plan);
+    if (card) card.classList.add('selected');
+    const btn = document.getElementById('pm-cta-btn');
+    if (btn) btn.textContent = '✦ Commencer — ' + (plan === 'annuel' ? '79.90€/an' : '9.99€/mois');
+  };
+
+  // CTA button action
+  const ctaBtn = document.getElementById('pm-cta-btn');
+  if (ctaBtn) ctaBtn.onclick = () => { closePremiumModal(); startCheckout(window._selectedPlan); };
 }
 
 function closePremiumModal() {
