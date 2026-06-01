@@ -299,6 +299,7 @@
   }
 }
 
+
 <style id="mobile-fixes-patch">
 @media (max-width: 767px) {
   /* Badge performance totale — sous la valeur au lieu de superposé */
@@ -316,48 +317,6 @@
   }
 }
 </style>
-
-<style id="auth-force">
-/* FORCE layout 2 colonnes sur desktop */
-@media (min-width: 768px) {
-  #auth-screen {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    min-height: 100vh !important;
-    overflow: hidden !important;
-  }
-  #auth-screen > canvas {
-    position: absolute !important;
-    inset: 0 !important;
-  }
-  #auth-screen > div[style*="max-width:1100px"] {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    gap: 60px !important;
-    align-items: center !important;
-    width: 100% !important;
-    max-width: 1100px !important;
-    position: relative !important;
-    z-index: 2 !important;
-  }
-  /* Colonne gauche */
-  #auth-screen > div > div:first-child {
-    flex: 1 1 300px !important;
-    min-width: 280px !important;
-    max-width: 540px !important;
-    display: block !important;
-  }
-  /* Colonne droite */
-  #auth-screen > div > div:last-child {
-    flex: 0 0 400px !important;
-    min-width: 360px !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
-}
-</style>
 </head>
 <body>
 <script>
@@ -369,7 +328,7 @@
 </script>
 
 <!-- AUTH -->
-<div id="auth-screen" class="auth-screen" style="display:flex;min-height:100vh;background:#0a0a0f;position:relative;overflow:visible;justify-content:center;align-items:center">
+<div id="auth-screen" class="auth-screen" style="display:flex;min-height:100vh;background:#0a0a0f;position:relative;overflow:hidden">
 
   <!-- FOND ANIMÉ PREMIUM -->
   <canvas id="hero-canvas" style="position:absolute;inset:0;width:100%;height:100%;opacity:0.6;pointer-events:none"></canvas>
