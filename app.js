@@ -3855,7 +3855,12 @@ async function initApp(user) {
     })); } catch {}
   }
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
-  setTimeout(() => showOnboarding(), 500);
+  // Vérifie si nouvel utilisateur (Google OAuth ou email)
+  setTimeout(async () => {
+    const { data: profile } = await sb.from('profiles').select('id').eq('user_id', currentUser.id).maybeSingle();
+    if (!profile) localStorage.removeItem(OB_KEY);
+    showOnboarding();
+  }, 500);
   checkStripeReturn();
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
