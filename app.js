@@ -7607,9 +7607,13 @@ function isPremiumUser() {
 
 // Bouton dev uniquement — toggle rapide free/premium sans toucher Supabase
 function toggleDevPremium() {
-  // Non-dev → ouvre la page premium
+  // Non-dev premium → déjà abonné
   if (!currentUser || currentUser.email !== DEV_EMAIL) {
-    openPremiumPage();
+    if (isPremiumUser()) {
+      showToast('✦ Tu es déjà membre Premium !');
+    } else {
+      openPremiumPage();
+    }
     return;
   }
   const next = localStorage.getItem('iq_dev_premium') !== 'true';
@@ -7632,19 +7636,30 @@ function toggleDevPremium() {
   if (typeof updatePremiumUI === 'function') updatePremiumUI();
 }
 
-// Initialise le bouton dev — texte adapté selon compte
+// Initialise le bouton sidebar — texte adapté selon état premium
 function initDevPremiumBtn() {
-  const isDevAccount = currentUser && currentUser.email === DEV_EMAIL;
-  if (!isDevAccount) return; // autres comptes : bouton reste "Découvrir" par défaut
-
-  // Compte dev — met à jour le texte selon l'état actuel
   const isPrem = isPremiumUser();
+  const isDevAccount = currentUser && currentUser.email === DEV_EMAIL;
   const btn = document.getElementById('dev-premium-btn');
   const title = document.getElementById('sidebar-plan-title');
   const badge = document.getElementById('sidebar-plan-badge');
-  if (btn) { btn.textContent = isPrem ? '🔓 Repasser en Gratuit' : '🔒 Passer en Premium'; btn.style.background = isPrem ? '#f59e0b' : '#16a34a'; }
-  if (title) { title.textContent = isPrem ? '✦ Mode Premium' : 'Passez à Premium'; title.style.color = isPrem ? '#4ade80' : '#fff'; }
-  if (badge) { badge.textContent = isPrem ? '✦ Premium (dev)' : 'Compte gratuit (dev)'; badge.style.color = isPrem ? '#4ade80' : 'rgba(255,255,255,0.4)'; }
+
+  if (isPrem) {
+    // User premium (dev ou vrai) → afficher état premium
+    if (btn) {
+      btn.textContent = isDevAccount ? '🔓 Repasser en Gratuit' : '✦ Membre Premium';
+      btn.style.background = isDevAccount ? '#f59e0b' : '#16a34a';
+      btn.style.opacity = '1';
+      btn.style.cursor = isDevAccount ? 'pointer' : 'default';
+    }
+    if (title) { title.textContent = '✦ Premium actif'; title.style.color = '#4ade80'; }
+    if (badge) { badge.textContent = isDevAccount ? '✦ Premium (dev)' : '✦ Premium'; badge.style.color = '#4ade80'; }
+  } else {
+    // User gratuit
+    if (btn) { btn.textContent = isDevAccount ? '🔒 Passer en Premium' : '✦ Découvrir Premium'; btn.style.background = '#16a34a'; }
+    if (title) { title.textContent = 'Passez à Premium'; title.style.color = '#fff'; }
+    if (badge) { badge.textContent = isDevAccount ? 'Compte gratuit (dev)' : 'Compte gratuit'; badge.style.color = 'rgba(255,255,255,0.4)'; }
+  }
 }
 
 // --- Compteurs journaliers (reset chaque jour) ---
@@ -7673,6 +7688,10 @@ function incrementTotalCount(key) {
 
 // --- Modal Premium ---
 function showPremiumModal(source) {
+  if (isPremiumUser()) {
+    showToast('✦ Tu as déjà accès à toutes les fonctionnalités Premium !');
+    return;
+  }
   const triggers = {
     agent_ia:  { badge: '🤖 Agent IA', title: 'Limite quotidienne atteinte', sub: 'Tu as utilisé ton message IA gratuit du jour.' },
     decision:  { badge: '🎯 Analyses', title: '3 analyses utilisées', sub: 'Tu as épuisé tes analyses gratuites du mois.' },
@@ -7841,6 +7860,10 @@ async function startCheckout(plan) {
 
 // Vérifier si retour de Stripe (success/cancel)
 function openPremiumPage() {
+  if (isPremiumUser()) {
+    showToast('✦ Tu es déjà membre Premium !');
+    return;
+  }
   // Affiche la page de paiement inline
   let modal = document.getElementById('premium-page-modal');
   if (!modal) {
