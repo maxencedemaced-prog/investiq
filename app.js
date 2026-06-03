@@ -2100,6 +2100,7 @@ async function obOpenAction(ticker, name, amount) {
   // Ferme l'onboarding et sauvegarde
   document.getElementById('onboarding-modal').style.display = 'none';
   localStorage.setItem(OB_KEY, '1');
+  if (currentUser) localStorage.setItem('iq_onboarded_' + currentUser.id, '1');
   await obFinishSilent();
 
   // Ouvre aide décision avec tout pré-rempli
@@ -2242,6 +2243,7 @@ En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de j
 
 async function obFinish(action) {
   localStorage.setItem(OB_KEY, '1');
+  if (currentUser) localStorage.setItem('iq_onboarded_' + currentUser.id, '1');
   try { localStorage.removeItem('iq_ob_goals'); } catch {}
   document.getElementById('onboarding-modal').style.display = 'none';
 
@@ -3599,6 +3601,18 @@ function unfollowCompany(ticker, name) {
 
 
 // ===== COMPANY DETAIL PAGE =====
+
+// Alias appelé depuis les cards actualités → ouvre la fiche entreprise
+function showEntrepriseDetail(ticker, name) {
+  // Navigue vers la page actualités si besoin, puis ouvre la fiche
+  if (document.getElementById('news-page-content')) {
+    openCompany(ticker, name, '');
+  } else {
+    nav('news');
+    setTimeout(() => openCompany(ticker, name, ''), 300);
+  }
+}
+
 async function openCompany(ticker, name, sector) {
   activeCompany = { ticker, name, sector };
   const main = document.getElementById('news-page-content');
@@ -3860,8 +3874,11 @@ async function initApp(user) {
   // Vérifie si nouvel utilisateur (Google OAuth ou email)
   setTimeout(async () => {
     const { data: profile } = await sb.from('profiles').select('id').eq('user_id', currentUser.id).maybeSingle();
-    if (!profile) localStorage.removeItem(OB_KEY);
-    showOnboarding();
+    // Afficher le tuto uniquement si compte nouveau ET jamais vu
+    const obKey = 'iq_onboarded_' + currentUser.id; // clé liée à l'user, pas global
+    if (!profile && !localStorage.getItem(obKey)) {
+      showOnboarding();
+    }
   }, 500);
   checkStripeReturn();
   startSmartRefresh();
