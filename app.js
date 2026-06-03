@@ -2469,32 +2469,17 @@ async function obFinish(action) {
 function formatAgentMD(text) {
   if (!text) return '';
 
-  // Nettoie les titres ## inutiles → simple texte bold
   text = text
     .replace(/^#{1,3} (.+)$/gm, '<div style="font-size:13px;font-weight:700;color:var(--color-text,#fff);margin:10px 0 4px">$1</div>')
-    // Bold
     .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--color-text,#fff)">$1</strong>')
-    // Italic
     .replace(/\*(.+?)\*/g, '<em style="opacity:0.8">$1</em>')
-    // Séparateurs → espace
-    .replace(/^---$/gm, '<div style="height:6px"></div>')
-    // Listes — transformées en pills/tags inline
-    .replace(/^[-•→] (.+)$/gm, (_, item) => {
-      // Détecte si c'est une ligne avec un chiffre important (%, €)
-      const hasFigure = /[\+\-]?\d+[.,]?\d*\s*[%€k]/.test(item);
-      return `<div style="display:flex;gap:6px;align-items:baseline;margin:4px 0;font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.75))">`
-        + `<span style="color:#3fb950;font-size:10px;flex-shrink:0">●</span>`
-        + `<span>${item}</span></div>`;
-    })
-    // Listes numérotées — simples
-    .replace(/^(\d+)\. (.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0;font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.75))"><span style="color:#3fb950;font-weight:700;flex-shrink:0">$1.</span><span>$2</span></div>')
-    // Alerte ⚠️
-    .replace(/^⚠[️]?(.+)$/gm, '<div style="background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:13px;color:#fbbf24">⚠ $1</div>')
-    // Double saut de ligne → petit espace
+    .replace(/^---$/gm, '<div style="height:4px"></div>')
+    .replace(/^[-\u2022\u2192] (.+)$/gm, '<div style="display:flex;gap:6px;align-items:baseline;margin:3px 0;font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.75))"><span style="color:#3fb950;font-size:9px;flex-shrink:0;margin-top:4px">&#9679;</span><span>$1</span></div>')
+    .replace(/^(\d+)\. (.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0;font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.75))"><span style="color:#3fb950;font-weight:700;flex-shrink:0">$1.</span><span>$2</span></div>')
     .replace(/\n\n/g, '<div style="height:6px"></div>')
     .replace(/\n/g, '<br>');
 
-  return `<div style="font-size:14px;line-height:1.65;color:var(--color-text-secondary,rgba(255,255,255,0.85))">${text}</div>`;
+  return '<div style="font-size:14px;line-height:1.65;color:var(--color-text-secondary,rgba(255,255,255,0.85))">' + text + '</div>';
 }
 
 // ===== MARKDOWN FORMATTER =====
