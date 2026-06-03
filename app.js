@@ -2465,6 +2465,38 @@ async function obFinish(action) {
 }
 
 
+// ===== MARKDOWN FORMATTER AGENT (style conversationnel épuré) =====
+function formatAgentMD(text) {
+  if (!text) return '';
+
+  // Nettoie les titres ## inutiles → simple texte bold
+  text = text
+    .replace(/^#{1,3} (.+)$/gm, '<div style="font-size:13px;font-weight:700;color:var(--color-text,#fff);margin:10px 0 4px">$1</div>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--color-text,#fff)">$1</strong>')
+    // Italic
+    .replace(/\*(.+?)\*/g, '<em style="opacity:0.8">$1</em>')
+    // Séparateurs → espace
+    .replace(/^---$/gm, '<div style="height:6px"></div>')
+    // Listes — transformées en pills/tags inline
+    .replace(/^[-•→] (.+)$/gm, (_, item) => {
+      // Détecte si c'est une ligne avec un chiffre important (%, €)
+      const hasFigure = /[\+\-]?\d+[.,]?\d*\s*[%€k]/.test(item);
+      return `<div style="display:flex;gap:6px;align-items:baseline;margin:4px 0;font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.75))">`
+        + `<span style="color:#3fb950;font-size:10px;flex-shrink:0">●</span>`
+        + `<span>${item}</span></div>`;
+    })
+    // Listes numérotées — simples
+    .replace(/^(\d+)\. (.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0;font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.75))"><span style="color:#3fb950;font-weight:700;flex-shrink:0">$1.</span><span>$2</span></div>')
+    // Alerte ⚠️
+    .replace(/^⚠[️]?(.+)$/gm, '<div style="background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:13px;color:#fbbf24">⚠ $1</div>')
+    // Double saut de ligne → petit espace
+    .replace(/\n\n/g, '<div style=\"height:6px\"></div>')
+    .replace(/\n/g, '<br>');
+
+  return `<div style="font-size:14px;line-height:1.65;color:var(--color-text-secondary,rgba(255,255,255,0.85))">${text}</div>`;
+}
+
 // ===== MARKDOWN FORMATTER =====
 function formatMD(text) {
   if (!text) return '';
@@ -4503,7 +4535,7 @@ function loadChatHistory() {
     chat.innerHTML = chatHistory.map(m =>
       m.role === 'user'
         ? `<div class="bubble user">${m.content}</div>`
-        : `<div class="bubble bot">${formatMD(m.content)}</div>`
+        : `<div class="bubble bot" style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:16px;padding:16px 18px">${formatAgentMD(m.content)}</div>`
     ).join('');
     const qbtns = document.getElementById('qbtns');
     if (qbtns) qbtns.style.display = 'none';
@@ -7607,12 +7639,18 @@ async function sendAI() {
   const ctx = getFullContext();
   const histCtx = chatHistory.slice(-8).map(m => `${m.role==='user'?'Utilisateur':'Assistant'}: ${m.content}`).join('\n');
 
-  let systemPrompt = `Tu es un agent IA financier personnel expert et pédagogue, intégré dans l'app InvestIQ.
-Tu as accès au contexte complet de l'utilisateur ci-dessous.
-Réponds TOUJOURS en français. Sois concis, direct et actionnable.
-Si l'utilisateur demande une ACTION (ajouter position, créer alerte, modifier objectif), réponds avec le plan d'action ET ajoute à la fin une ligne JSON spéciale :
-[ACTION:{"type":"ajouter_position","ticker":"AAPL","qty":5,"prix":180}] ou [ACTION:{"type":"alerte","ticker":"LVMH","prix":650}] ou [ACTION:{"type":"simuler","monthly_add":200}]
-Pour les SIMULATIONS, calcule toi-même et montre le résultat chiffré.
+  let systemPrompt = `Tu es un conseiller financier personnel dans une app mobile. Réponds comme un ami expert : court, direct, chaleureux.
+
+RÈGLES DE STYLE STRICTES :
+- Max 3-4 phrases par réponse (sauf si l'utilisateur demande explicitement un détail)
+- INTERDIT : titres avec ##, listes à rallonge, bullets à répétition
+- Pour les chiffres/comparaisons : mets-les en inline ex: "SOI.PA est à +64%, VIE.PA à -71%"
+- Si tu dois lister : max 3 items, séparés par des virgules ou des retours simples
+- 1-2 emojis max par réponse pour aérer, pas plus
+- Termine par UNE action concrète ou UNE question courte
+- Ton naturel, français courant — pas de jargon, pas de titres en gras
+
+Si ACTION demandée → [ACTION:{"type":"ajouter_position","ticker":"AAPL","qty":5,"prix":180}]
 Tu ne fournis pas de conseils financiers réglementés.`;
 
   const fullPrompt = `${ctx}\n=== HISTORIQUE ===\n${histCtx}\n\n=== QUESTION ===\n${q}`;
@@ -7628,7 +7666,7 @@ Tu ne fournis pas de conseils financiers réglementés.`;
     let displayR = r.replace(/\[ACTION:.*?\]/s, '').trim();
 
     const loadingEl = document.getElementById('ai-loading');
-    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot" style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:16px;padding:18px 20px;max-width:100%;line-height:1.6">${formatMD(displayR)}</div>`;
+    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot" style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:16px;padding:16px 18px;max-width:100%">${formatAgentMD(displayR)}</div>`;
 
     // Affiche le bouton d'action si détecté
     if (actionMatch) {
