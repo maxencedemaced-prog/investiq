@@ -5732,6 +5732,43 @@ async function addPos() {
   if (isNaN(pru) || pru <= 0) { showToast('⚠ Indique ton prix de revient (PRU)'); return; }
   if (isNaN(price) || price <= 0) { showToast('⚠ Indique le prix actuel'); return; }
 
+  // Cherche si la position existe déjà (même ticker)
+  const existing = positions.find(p => p.name.toLowerCase() === name.toLowerCase());
+
+  if (existing) {
+    // Calcul du nouveau PRU moyen pondéré
+    const totalQty = existing.qty + qty;
+    const newPru = ((existing.qty * existing.pru) + (qty * pru)) / totalQty;
+
+    if (isDemo) {
+      existing.qty = totalQty;
+      existing.pru = parseFloat(newPru.toFixed(4));
+      acClear();
+      nav('portfolio');
+      renderPortfolio(); renderHome();
+      showToast(`✓ ${name} renforcé — nouveau PRU : ${newPru.toFixed(2)}€`);
+      return;
+    }
+
+    const { error } = await sb.from('positions').update({
+      qty: totalQty,
+      pru: parseFloat(newPru.toFixed(4)),
+      price: price,
+    }).eq('id', existing.id);
+
+    if (error) { showToast('Erreur: ' + error.message); return; }
+    existing.qty = totalQty;
+    existing.pru = parseFloat(newPru.toFixed(4));
+    existing.price = price;
+    await addTransaction(name, 'achat', qty, pru, 'Renforcement de position');
+    acClear();
+    nav('portfolio');
+    renderPortfolio(); renderHome();
+    showToast(`✓ ${name} renforcé — nouveau PRU : ${newPru.toFixed(2)}€`);
+    return;
+  }
+
+  // Nouvelle position
   const pos = { name, qty, pru, price, type, sector, platform, alert_price: alertPrice };
 
   if (isDemo) {
