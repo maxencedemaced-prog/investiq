@@ -1580,6 +1580,19 @@ function acSearch(query) {
 }
 
 async function acSelect(company) {
+  // Si le ticker ressemble à un nom (>8 chars sans point, ou contient des espaces) → essayer de le corriger
+  if (company.ticker && company.ticker.length > 8 && !company.ticker.includes('.') && !company.ticker.includes('-')) {
+    // Chercher dans AC_DB par nom
+    const match = AC_DB.find(c => 
+      c.name.toLowerCase().replace(/\s/g,'').includes(company.ticker.toLowerCase().slice(0,6)) ||
+      company.name && c.name.toLowerCase().includes(company.name.toLowerCase().slice(0,5))
+    );
+    if (match) {
+      company.ticker = match.ticker;
+      company.name = match.name;
+      company.exchange = match.exchange;
+    }
+  }
   // Normaliser le ticker selon la bourse
   company.ticker = normalizeTicker(company.ticker, company.exchange);
   acSelected = company;
