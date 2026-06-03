@@ -1677,7 +1677,11 @@ async function acSelect(company) {
           const dbEntry = AC_DB.find(c => c.ticker.toLowerCase() === tickerLow || c.name.toLowerCase() === nameLow2);
           return dbEntry && p.name.toLowerCase() === dbEntry.ticker.toLowerCase();
         });
-        pruInput.value = existingPos ? existingPos.pru.toFixed(2) : q.price.toFixed(2);
+        // Si position existante : PRU = prix d'achat aujourd'hui (pas l'ancien PRU)
+        // L'ancien PRU est affiché dans le bloc renforcement
+        pruInput.value = q.price.toFixed(2);
+        // Stocker l'ancien PRU dans un data attribute pour le calcul
+        if (existingPos) pruInput.dataset.existingPru = existingPos.pru;
       }
       // Met à jour le total
       updatePosTotal();
