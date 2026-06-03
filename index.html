@@ -1679,8 +1679,9 @@ window.addEventListener('load', function() {
     .d-intent-btn.active { border-color: #3fb950 !important; box-shadow: 0 0 0 1px #3fb950 !important; }
     .d-amount-pill:hover { border-color: #3fb950 !important; color: #3fb950 !important; }
     /* Bloc hero décision — toujours dark, texte toujours blanc */
-    #d-name { color: #fff !important; -webkit-text-fill-color: #fff !important; caret-color: #fff !important; background: transparent !important; }
+    #d-name { color: #fff !important; -webkit-text-fill-color: #fff !important; caret-color: #fff !important; background: #1a1a2e !important; border-radius: 8px; }
     #d-name::placeholder { color: rgba(255,255,255,0.35) !important; -webkit-text-fill-color: rgba(255,255,255,0.35) !important; }
+    #d-name:-webkit-autofill, #d-name:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 100px #1a1a2e inset !important; -webkit-text-fill-color: #fff !important; }
     .ac-box { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.1) !important; }
     #d-amount-slider { height:3px !important; }
     #d-amount-slider::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#3fb950; cursor:pointer; border:2px solid var(--color-surface); box-shadow:0 0 0 2px rgba(63,185,80,0.3); }
