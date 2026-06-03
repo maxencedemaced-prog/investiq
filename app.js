@@ -6750,13 +6750,12 @@ async function analyseDecision() {
     incrementTotalCount('decision');
   }
   const nameEl = document.getElementById('d-name');
-  const pctEl = document.getElementById('d-pct');
-  if (!nameEl || !pctEl) return;
+  if (!nameEl) return;
   const name = nameEl.value.trim();
-  const pct  = parseInt(pctEl.value) || 10;
-  const amt  = Math.round((profile.bankroll || 5000) * pct / 100);
-  const amtEl = document.getElementById('d-amount');
-  if (amtEl) amtEl.value = amt;
+  // Lire le montant depuis d-amount-display (ex: "500 €") ou fallback 500
+  const amtDisplay = document.getElementById('d-amount-display');
+  const amt = amtDisplay ? parseInt(amtDisplay.textContent.replace(/[^0-9]/g,'')) || 500 : 500;
+  const pct = Math.round(amt / (profile.bankroll || 5000) * 100);
 
   if (!name) { showToast('⚠ Indique un actif'); return; }
 
