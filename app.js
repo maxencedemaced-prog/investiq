@@ -1661,10 +1661,9 @@ async function acSelect(company) {
       updatePosTotal();
     } else {
       if (priceInput) { priceInput.placeholder = 'Saisir manuellement'; priceInput.style.color = '#1c1c1e'; }
-      // Try with .DE suffix for European stocks
-      if (!company.ticker.includes('.') && !company.ticker.includes('-')) {
-        tryAlternativeTicker(company.ticker, priceInput, liveLabel);
-      }
+      // Si le ticker a un suffixe mais pas de prix → essayer sans suffixe et avec d'autres
+      const baseTicker = company.ticker.split('.')[0];
+      tryAlternativeTicker(baseTicker, priceInput, liveLabel);
     }
   } catch {
     if (priceInput) { priceInput.placeholder = 'Saisir manuellement'; priceInput.style.color = '#1c1c1e'; }
