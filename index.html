@@ -1940,16 +1940,25 @@ window.addEventListener('load', function() {
           <div class="form-grid three">
             <div class="field">
               <label>Quantité *</label>
-              <input type="number" id="f-qty" step="0.01" placeholder="10">
+              <input type="number" id="f-qty" step="0.01" placeholder="10" oninput="updatePosTotal()">
             </div>
             <div class="field">
               <label>PRU (€) * <span class="tooltip-icon" data-tip="Prix moyen auquel tu as acheté">?</span></label>
-              <input type="number" id="f-pru" step="0.01" placeholder="150.00">
+              <input type="number" id="f-pru" step="0.01" placeholder="150.00" oninput="updatePosTotal()">
             </div>
             <div class="field">
               <label>Prix actuel (€) <span class="ac-live-badge" id="ac-live-label" style="display:none">⚡ live</span></label>
-              <input type="number" id="f-price" step="0.01" placeholder="165.00">
+              <input type="number" id="f-price" step="0.01" placeholder="165.00" oninput="updatePosTotal()">
             </div>
+          </div>
+
+          <!-- TOTAL PREVIEW -->
+          <div id="pos-total-preview" style="display:none;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:12px;padding:12px 16px;margin-bottom:4px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+              <div style="font-size:12px;color:var(--color-text-secondary);font-weight:600" id="pos-total-detail"></div>
+              <div style="font-size:16px;font-weight:800;color:var(--color-text)" id="pos-total-val"></div>
+            </div>
+            <div style="font-size:11px;margin-top:4px" id="pos-total-pnl"></div>
           </div>
           <div class="form-grid">
             <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Tech, Monde..."></div>
