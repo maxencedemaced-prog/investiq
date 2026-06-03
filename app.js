@@ -5836,10 +5836,14 @@ async function addPos() {
     return;
   }
 
-  const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
+  const { data, error } = await sb.from('positions')
+    .upsert({ ...pos, user_id: currentUser.id }, { onConflict: 'user_id,name', ignoreDuplicates: false })
+    .select().single();
   if (error) { showToast('Erreur: ' + error.message); return; }
   if (data) {
-    positions.push(data);
+    // Mettre à jour positions[] si déjà présent, sinon ajouter
+    const idx = positions.findIndex(p => p.name === data.name);
+    if (idx >= 0) positions[idx] = data; else positions.push(data);
     await addTransaction(name, 'achat', qty, pru, 'Ouverture de position');
     acClear();
     nav('portfolio');
