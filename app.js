@@ -6695,16 +6695,22 @@ function toggleNews(i) {
 
 // ===== DECISION =====
 function openDecision(ticker,signal){
-  // Naviguer d'abord, puis remplir les champs une fois la page rendue
+  // Stocker le ticker à pré-remplir, naviguer, puis remplir après rendu
+  window._pendingDecisionTicker = ticker;
+  window._pendingDecisionSignal = signal;
   nav('decision');
   if(document.getElementById('nav-decision')) document.getElementById('nav-decision').classList.add('active');
   setTimeout(() => {
-    const pct=signal==='éviter'?0:suggestedPct(signal,profile.risk,profile.horizon);
-    const amt=Math.round((profile.bankroll||1000)*pct/100);
+    const t = window._pendingDecisionTicker;
+    const s = window._pendingDecisionSignal;
+    if (!t) return;
+    window._pendingDecisionTicker = null;
+    const pct = s==='éviter' ? 0 : suggestedPct(s, profile.risk, profile.horizon);
+    const amt = Math.round((profile.bankroll||1000)*pct/100);
     const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val; };
     const setTxt = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
     const result = document.getElementById('d-result'); if(result) result.innerHTML='';
-    set('d-name', ticker);
+    set('d-name', t);
     set('d-horizon', profile.horizon);
     set('d-risk', profile.risk);
     set('d-pct', pct);
@@ -6712,8 +6718,8 @@ function openDecision(ticker,signal){
     setTxt('d-pct-num', pct);
     setTxt('d-pct-lbl', `= ${amt.toLocaleString('fr-FR')} €`);
     const notice=document.getElementById('prefill-notice');
-    if(notice){ notice.style.display='block'; notice.textContent=`✓ Pré-rempli — ${ticker} · ${pct}% bankroll (${amt.toLocaleString('fr-FR')} €)`; }
-  }, 100);
+    if(notice){ notice.style.display='block'; notice.textContent=`✓ Pré-rempli — ${t} · ${pct}% bankroll (${amt.toLocaleString('fr-FR')} €)`; }
+  }, 200);
 }
 function updatePct(){
   const pct=parseInt(document.getElementById('d-pct').value);
