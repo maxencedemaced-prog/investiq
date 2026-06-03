@@ -3819,7 +3819,13 @@ function showFullAnalysis(ticker, name) {
   if (!modal) { modal = document.createElement('div'); modal.id = 'full-analysis-modal'; document.body.appendChild(modal); }
 
   const coAnalysis = document.getElementById('co-analysis');
-  const content = coAnalysis ? coAnalysis.innerHTML : '';
+  // Copie le contenu sans les boutons CTA (pour éviter les appels en double)
+  const tmpDiv = document.createElement('div');
+  tmpDiv.innerHTML = coAnalysis ? coAnalysis.innerHTML : '';
+  // Retirer le div des boutons (dernier enfant avec les boutons)
+  const btnDiv = tmpDiv.querySelector('div:last-child');
+  if (btnDiv && btnDiv.querySelector('button')) btnDiv.remove();
+  const analysisContent = tmpDiv.innerHTML;
 
   modal.innerHTML = `
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.style.display='none'">
@@ -3828,7 +3834,13 @@ function showFullAnalysis(ticker, name) {
           <div style="font-size:15px;font-weight:800;color:${txt}">Analyse complète — ${name}</div>
           <button onclick="document.getElementById('full-analysis-modal').style.display='none'" style="background:rgba(128,128,128,0.15);border:none;border-radius:8px;width:28px;height:28px;font-size:16px;cursor:pointer;color:${txt}">×</button>
         </div>
-        <div style="padding:20px">${content}</div>
+        <div style="padding:20px">${analysisContent}</div>
+        <div style="padding:0 20px 20px">
+          <button onclick="document.getElementById('full-analysis-modal').style.display='none';openDecision('${ticker}','acheter')"
+            style="width:100%;padding:13px;background:${isDark?'var(--color-text)':'#0f172a'};color:${isDark?'var(--color-bg)':'#fff'};border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">
+            Analyser pour investir →
+          </button>
+        </div>
       </div>
     </div>`;
   modal.style.display = 'block';
@@ -6683,21 +6695,25 @@ function toggleNews(i) {
 
 // ===== DECISION =====
 function openDecision(ticker,signal){
-  const pct=signal==='éviter'?0:suggestedPct(signal,profile.risk,profile.horizon);
-  const amt=Math.round(profile.bankroll*pct/100);
-  // Vider l'ancienne analyse à chaque nouveau ticker
-  document.getElementById('d-result').innerHTML = '';
-  document.getElementById('d-name').value=ticker;
-  document.getElementById('d-horizon').value=profile.horizon;
-  document.getElementById('d-risk').value=profile.risk;
-  document.getElementById('d-pct').value=pct;
-  document.getElementById('d-pct-num').textContent=pct;
-  document.getElementById('d-amount').value=amt;
-  document.getElementById('d-pct-lbl').textContent=`= ${amt.toLocaleString('fr-FR')} €`;
-  const notice=document.getElementById('prefill-notice');
-  notice.style.display='block';
-  notice.textContent=`✓ Pré-rempli — ${ticker} · ${pct}% bankroll (${amt.toLocaleString('fr-FR')} €)`;
-  nav('decision');document.getElementById('nav-decision').classList.add('active');
+  // Naviguer d'abord, puis remplir les champs une fois la page rendue
+  nav('decision');
+  if(document.getElementById('nav-decision')) document.getElementById('nav-decision').classList.add('active');
+  setTimeout(() => {
+    const pct=signal==='éviter'?0:suggestedPct(signal,profile.risk,profile.horizon);
+    const amt=Math.round((profile.bankroll||1000)*pct/100);
+    const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val; };
+    const setTxt = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+    const result = document.getElementById('d-result'); if(result) result.innerHTML='';
+    set('d-name', ticker);
+    set('d-horizon', profile.horizon);
+    set('d-risk', profile.risk);
+    set('d-pct', pct);
+    set('d-amount', amt);
+    setTxt('d-pct-num', pct);
+    setTxt('d-pct-lbl', `= ${amt.toLocaleString('fr-FR')} €`);
+    const notice=document.getElementById('prefill-notice');
+    if(notice){ notice.style.display='block'; notice.textContent=`✓ Pré-rempli — ${ticker} · ${pct}% bankroll (${amt.toLocaleString('fr-FR')} €)`; }
+  }, 100);
 }
 function updatePct(){
   const pct=parseInt(document.getElementById('d-pct').value);
