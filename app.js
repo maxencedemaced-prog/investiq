@@ -7361,13 +7361,113 @@ function updateDCA() {
 }
 
 // ===== AI WITH MEMORY =====
-async function callClaude(prompt,sys){
-  const system=sys||'Tu es un assistant financier pédagogue francophone pour investisseurs débutants. Réponds en français, clairement. Tu ne fournis pas de conseil financier réglementé.';
-  try{
-    const res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,system})});
-    const d=await res.json();
-    return d.text||d.error||'Aucune réponse.';
-  }catch{return'Erreur de connexion.';}
+// ===== CACHE ANTHROPIC — réduit les coûts API de ~80% =====
+// TTL par type d'appel détecté dans le prompt
+const AI_CACHE_TTL = {
+  etf:        24 * 3600 * 1000,  // Plans ETF          → 24h
+  analyse:    24 * 3600 * 1000,  // Analyse entreprise → 24h
+  briefing:   24 * 3600 * 1000,  // Briefing quotidien → 24h
+  signal:      6 * 3600 * 1000,  // Signaux position   → 6h
+  actions:     6 * 3600 * 1000,  // Recommandations    → 6h
+  agenda:      6 * 3600 * 1000,  // Impact événements  → 6h
+  objectif:    2 * 3600 * 1000,  // Plan objectif      → 2h (dépend du profil)
+  agent:       0,                 // Agent IA conversationnel → jamais caché
+  decision:    0,                 // Analyse décision  → jamais caché (prix temps réel)
+};
+
+function _detectCacheType(prompt, system) {
+  const p = prompt.toLowerCase();
+  const s = (system || '').toLowerCase();
+  // Agent conversationnel — jamais caché (contexte live + historique)
+  if (s.includes('agent ia') || s.includes('historique') || p.includes('=== question ===')) return 'agent';
+  // Décision achat/vente — jamais cachée (prix temps réel)
+  if (p.includes('stop loss') || p.includes('prix cible') || (p.includes('acheter ou') && p.includes('vendre'))) return 'decision';
+  if (s.includes('analyste') && p.includes('prix actuel') && (p.includes('acheter') || p.includes('vendre'))) return 'decision';
+  // Types cachés
+  if (p.includes('etf') && (p.includes('répartition') || p.includes('tickers réels'))) return 'etf';
+  if (p.includes('briefing')) return 'briefing';
+  if (p.includes('signal') && p.includes('pru')) return 'signal';
+  if ((p.includes('recommandations') || p.includes('opportunités')) && p.includes('budget')) return 'actions';
+  if (p.includes('événement') && p.includes('impact')) return 'agenda';
+  if (p.includes('plan') && (p.includes('objectif') || p.includes('versement mensuel'))) return 'objectif';
+  if (p.includes('profil') && (p.includes('ticker') || p.includes('risque')) && p.includes('json')) return 'analyse';
+  return 'analyse'; // défaut → 24h
+}
+
+async function _sha256(str) {
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0, 32);
+  } catch {
+    // Fallback si crypto.subtle indispo (HTTP) — hash simple
+    let h = 0;
+    for (let i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; }
+    return 'fb_' + Math.abs(h).toString(16);
+  }
+}
+
+async function callClaude(prompt, sys) {
+  const system = sys || 'Tu es un assistant financier pédagogue francophone pour investisseurs débutants. Réponds en français, clairement. Tu ne fournis pas de conseil financier réglementé.';
+
+  // Détermine le type et le TTL
+  const cacheType = _detectCacheType(prompt, system);
+  const ttl = AI_CACHE_TTL[cacheType];
+
+  // TTL = 0 → jamais mis en cache (agent conversationnel, décision temps réel)
+  if (ttl > 0) {
+    try {
+      const hash = await _sha256(prompt + '||' + system);
+      const cacheKey = 'iq_ai_' + hash;
+      const stored = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (stored && stored.r && (Date.now() - stored.ts) < ttl) {
+        console.debug('[AI Cache HIT]', cacheType, hash.slice(0,8));
+        return stored.r;
+      }
+      // Cache miss → appel API réel
+      const res = await fetch('/api/claude', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, system }) });
+      const d = await res.json();
+      const text = d.text || d.error || 'Aucune réponse.';
+      // Sauvegarde en cache
+      try { localStorage.setItem(cacheKey, JSON.stringify({ r: text, ts: Date.now(), type: cacheType })); } catch {}
+      console.debug('[AI Cache MISS → saved]', cacheType, hash.slice(0,8));
+      return text;
+    } catch (e) {
+      console.warn('[AI Cache error]', e);
+      // Fallback sans cache
+    }
+  }
+
+  // Appel direct (TTL=0 ou erreur cache)
+  try {
+    const res = await fetch('/api/claude', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, system }) });
+    const d = await res.json();
+    return d.text || d.error || 'Aucune réponse.';
+  } catch { return 'Erreur de connexion.'; }
+}
+
+// Utilitaire pour vider le cache IA (debug / admin)
+function clearAICache() {
+  let count = 0;
+  Object.keys(localStorage).filter(k => k.startsWith('iq_ai_')).forEach(k => { localStorage.removeItem(k); count++; });
+  console.log('[AI Cache] Cleared', count, 'entries');
+  showToast('🗑 Cache IA vidé (' + count + ' entrées)');
+}
+
+// Stats cache pour debug
+function aiCacheStats() {
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('iq_ai_'));
+  const stats = {};
+  let totalSize = 0;
+  keys.forEach(k => {
+    try {
+      const v = JSON.parse(localStorage.getItem(k));
+      stats[v.type] = (stats[v.type] || 0) + 1;
+      totalSize += (localStorage.getItem(k) || '').length;
+    } catch {}
+  });
+  console.table(stats);
+  console.log('[AI Cache] Total:', keys.length, 'entries,', (totalSize/1024).toFixed(1), 'KB');
+  return stats;
 }
 
 // ===== AGENT IA =====
