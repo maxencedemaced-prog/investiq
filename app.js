@@ -1667,10 +1667,17 @@ async function acSelect(company) {
         priceInput.style.color = '#1c1c1e';
       }
       if (liveLabel) liveLabel.style.display = 'inline';
-      // Pré-remplit le PRU avec le prix actuel (modifiable par l'utilisateur)
+      // Pré-remplit le PRU : avec le PRU existant si position en portefeuille, sinon prix actuel
       const pruInput = document.getElementById('f-pru');
       if (pruInput && !pruInput.value) {
-        pruInput.value = q.price.toFixed(2);
+        const tickerLow = company.ticker.toLowerCase();
+        const nameLow2 = company.name?.toLowerCase() || '';
+        const existingPos = positions.find(p => {
+          if (p.name.toLowerCase() === tickerLow || p.name.toLowerCase() === nameLow2) return true;
+          const dbEntry = AC_DB.find(c => c.ticker.toLowerCase() === tickerLow || c.name.toLowerCase() === nameLow2);
+          return dbEntry && p.name.toLowerCase() === dbEntry.ticker.toLowerCase();
+        });
+        pruInput.value = existingPos ? existingPos.pru.toFixed(2) : q.price.toFixed(2);
       }
       // Met à jour le total
       updatePosTotal();
