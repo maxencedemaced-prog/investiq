@@ -1427,6 +1427,7 @@ const AC_DB = [
   {ticker:'UBI.PA',name:'Ubisoft Entertainment',type:'Action',sector:'Gaming',exchange:'Euronext'},
   // Mid-cap françaises populaires
   {ticker:'SOI.PA',name:'Soitec',type:'Action',sector:'Semi-conducteurs',exchange:'Euronext'},
+  {ticker:'STM.PA',name:'STMicroelectronics',type:'Action',sector:'Semi-conducteurs',exchange:'Euronext'},
   {ticker:'POMA.PA',name:'Compagnie du Mont-Blanc (Poma)',type:'Action',sector:'Industrie',exchange:'Euronext'},
   {ticker:'FDJ.PA',name:'Française des Jeux',type:'Action',sector:'Loisirs',exchange:'Euronext'},
   {ticker:'STPA.PA',name:'STMicroelectronics',type:'Action',sector:'Semi-conducteurs',exchange:'Euronext'},
@@ -1541,10 +1542,20 @@ function acSearch(query) {
     return;
   }
   if (clearBtn) clearBtn.style.display = 'block';
-  const q = query.toLowerCase();
+  const q = query.toLowerCase()
+    .replace(/electronique/g,'electronics')
+    .replace(/aeronautique|aéronautique/g,'aeronautics')
+    .replace(/automobil/g,'automotive')
+    .replace(/banque/g,'bank')
+    .replace(/assurance/g,'insurance')
+    .replace(/energie|énergie/g,'energy')
+    .replace(/sante|santé/g,'health')
+    .replace(/chimie/g,'chemical')
+    .replace(/telecommunication|télécommunication/g,'telecom');
   const results = AC_DB.filter(c =>
     c.ticker.toLowerCase().includes(q) ||
     c.name.toLowerCase().includes(q) ||
+    c.name.toLowerCase().replace(/[^a-z0-9]/g,'').includes(q.replace(/[^a-z0-9]/g,'')) ||
     c.sector.toLowerCase().includes(q)
   ).slice(0, 7);
 
@@ -6826,7 +6837,8 @@ async function analyseDecision() {
   const intent = decisionIntention || 'garder';
   const intentTxt = { acheter: 'acheter ou renforcer', vendre: 'vendre ou réduire', garder: 'savoir quoi faire' }[intent];
 
-  const prompt = `Tu es un conseiller financier pédagogue. Un débutant veut ${intentTxt} ${name}.
+  const prompt = `Tu es un conseiller financier pédagogue. Un débutant veut ${intentTxt} "${name}".
+IMPORTANT : L'utilisateur a peut-être mal orthographié le nom. Identifie l'entreprise ou l'actif le plus probable, corrige si besoin, et utilise le bon ticker boursier officiel dans ta réponse (champ "ticker_corrige").
 ${posCtx}
 Montant envisagé : ${amt}€ (${pct}% de sa bankroll de ${profile.bankroll}€).
 Profil : horizon ${HL[profile.horizon]}, risque ${RL[profile.risk]}.
@@ -6846,7 +6858,9 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
   "pour": ["point positif 1", "point positif 2"],
   "contre": ["point négatif 1", "point négatif 2"],
   "conseil_final": "Conseil concret en 2-3 phrases simples pour un débutant",
-  "non_cote": false
+  "non_cote": false,
+  "ticker_corrige": "Le vrai ticker boursier (ex: STM.PA, AAPL, MC.PA) ou null si non coté",
+  "nom_corrige": "Le vrai nom de l'entreprise"
 }`;
 
   const result = document.getElementById('d-result');
@@ -6861,6 +6875,13 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
     const clean = raw.replace(/```json|```/g,'').trim();
     const d = JSON.parse(clean);
 
+    // Corriger le ticker dans le champ si l'IA a identifié le bon
+    if (d.ticker_corrige && d.ticker_corrige !== name) {
+      const nameEl2 = document.getElementById('d-name');
+      if (nameEl2) nameEl2.value = d.ticker_corrige;
+      showToast(`✓ Corrigé : ${d.nom_corrige || d.ticker_corrige}`);
+    }
+    const displayName = d.nom_corrige || name;
     const riskColor = d.risque_niveau === 'Faible' ? '#1a7f5a' : d.risque_niveau === 'Moyen' ? '#f59e0b' : '#cc2f26';
     const recoBg = d.recommandation === 'ACHETER' ? '#e8f8f0' : d.recommandation === 'VENDRE' ? '#fff0f0' : d.recommandation === 'EVITER' ? '#fff0f0' : '#fff9e6';
     const recoColor = d.recommandation === 'ACHETER' ? '#1a7f5a' : d.recommandation === 'VENDRE' || d.recommandation === 'EVITER' ? '#cc2f26' : '#92400e';
@@ -6871,7 +6892,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
         <div style="display:flex;align-items:center;gap:16px">
           <div style="font-size:48px">${d.emoji}</div>
           <div>
-            <div style="font-size:11px;font-weight:700;color:${recoColor};text-transform:uppercase;letter-spacing:1px">${name} · ${['garder','acheter','vendre'].includes(intent) ? {garder:'Analyse générale',acheter:'Acheter ?',vendre:'Vendre ?'}[intent] : 'Analyse'}</div>
+            <div style="font-size:11px;font-weight:700;color:${recoColor};text-transform:uppercase;letter-spacing:1px">${displayName} · ${['garder','acheter','vendre'].includes(intent) ? {garder:'Analyse générale',acheter:'Acheter ?',vendre:'Vendre ?'}[intent] : 'Analyse'}</div>
             <div style="font-size:24px;font-weight:900;color:${recoColor}">${d.recommandation}</div>
             <div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-top:2px">${d.phrase_cle}</div>
           </div>
