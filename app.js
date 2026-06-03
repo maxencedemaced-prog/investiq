@@ -4836,6 +4836,8 @@ function nav(page) {
   const btn = document.getElementById('nav-'+page);
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
+  // Sauvegarder la page courante
+  try { localStorage.setItem('iq_last_page', page); } catch {}
   // Sync bottom nav mobile
   document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
   const bnavBtn = document.getElementById('bnav-'+page);
