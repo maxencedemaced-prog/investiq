@@ -1266,6 +1266,21 @@ function normalizeTicker(ticker, exchange) {
   const ex = (exchange || '').toLowerCase();
   // Déjà un suffixe → on garde
   if (ticker.includes('.')) return ticker;
+  // Tickers connus avec leur bonne bourse (Yahoo retourne parfois NYQ/NMS pour des actions européennes)
+  const knownTickers = {
+    'STM':'STM.PA','MC':'MC.PA','RMS':'RMS.PA','OR':'OR.PA','TTE':'TTE.PA',
+    'SAN':'SAN.PA','AI':'AI.PA','AIR':'AIR.PA','BNP':'BNP.PA','KER':'KER.PA',
+    'DSY':'DSY.PA','SAF':'SAF.PA','SU':'SU.PA','CAP':'CAP.PA','DG':'DG.PA',
+    'LR':'LR.PA','HO':'HO.PA','SGO':'SGO.PA','RI':'RI.PA','EN':'EN.PA',
+    'VIE':'VIE.PA','ORA':'ORA.PA','RNO':'RNO.PA','ML':'ML.PA','SW':'SW.PA',
+    'PUB':'PUB.PA','ACA':'ACA.PA','GLE':'GLE.PA','BN':'BN.PA','VIV':'VIV.PA',
+    'SOI':'SOI.PA','FDJ':'FDJ.PA','ATO':'ATO.PA','UBI':'UBI.PA',
+    'STMPA':'STM.PA','VOW':'VOW3.DE','BMW':'BMW.DE','DAI':'DAI.DE',
+    'SAP':'SAP.DE','ALV':'ALV.DE','SIE':'SIE.DE','DTE':'DTE.DE',
+    'SHEL':'SHEL.L','BP':'BP.L','AZN':'AZN.L','HSBA':'HSBA.L',
+    'NESN':'NESN.SW','NOVN':'NOVN.SW','ROG':'ROG.SW',
+  };
+  if (knownTickers[ticker.toUpperCase()]) return knownTickers[ticker.toUpperCase()];
   // Euronext Paris
   if (ex.includes('paris') || ex.includes('euronext') || ex.includes('nms') || ex === 'par') return ticker + '.PA';
   // XETRA / Frankfurt
