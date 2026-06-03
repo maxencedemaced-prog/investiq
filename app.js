@@ -3701,35 +3701,137 @@ async function fetchCompanyPrice(ticker) {
 async function generateCompanyAnalysis(ticker, name, sector) {
   const inPortfolio = positions.find(p => p.name === ticker);
   const portfolioCtx = inPortfolio ? `Je détiens ${inPortfolio.qty} parts à PRU ${inPortfolio.pru}€, prix actuel ${inPortfolio.price}€.` : '';
-  const prompt = `Génère une analyse complète et détaillée de ${name} (${ticker}) pour un investisseur débutant prudent.
+  const prompt = `Analyse ${name} (${ticker}) pour un investisseur débutant.
 Profil : ${HL[profile.horizon]}, risque ${RL[profile.risk]}. ${portfolioCtx}
-Structure ton analyse en sections claires :
-1. **Présentation** — ce que fait l'entreprise en 2-3 phrases simples
-2. **Points forts** — 3 raisons d'investir
-3. **Points de risque** — 3 risques principaux
-4. **Signal** — Acheter / Garder / Éviter avec explication
-5. **Verdict** — recommandation finale adaptée au profil débutant prudent
-Sois pédagogue, concis et direct. Utilise des termes simples.`;
+Réponds UNIQUEMENT en JSON valide (sans markdown) :
+{
+  "resume": "1 phrase résumant ce que fait l'entreprise",
+  "signal": "acheter|garder|eviter",
+  "signal_raison": "1 phrase expliquant le signal",
+  "forts": ["point fort 1 (max 8 mots)", "point fort 2", "point fort 3"],
+  "risques": ["risque 1 (max 8 mots)", "risque 2", "risque 3"],
+  "verdict": "2 phrases max de verdict pour ce profil",
+  "score": 7
+}
+score = note /10 pour ce profil. signal = acheter/garder/eviter selon profil.`;
 
-  const r = await callClaude(prompt);
+  const raw = await callClaude(prompt, 'Tu es analyste financier. Réponds UNIQUEMENT en JSON valide, sans markdown ni backticks.');
   const el = document.getElementById('co-analysis');
-  if (el) {
-    // Format the response nicely
-    const formatted = formatMD(r);
-    el.innerHTML = `<div style="font-size:13px;color:#3c3c43;line-height:1.7;font-weight:500"><p>${formatted}</p></div>
-      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-primary" style="font-size:13px;padding:10px 16px" onclick="openDecision('${ticker}','acheter')">Analyser pour investir →</button>
-        <button class="btn-secondary" style="font-size:13px;padding:10px 16px" onclick="toggleFavorite('${ticker}','${activeCompany?.name||ticker}','${activeCompany?.sector||''}');updateFavBtn('${ticker}')">${isFavorite(ticker)?'★ Suivi':'☆ Suivre'}</button>
-      </div>`;
-    // Update signal
+  if (!el) return;
+
+  try {
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    const d = JSON.parse(clean.slice(s, e+1));
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const surf = isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc';
+    const bord = isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+    const txt = isDark ? 'var(--color-text)' : '#0f172a';
+    const sub = isDark ? 'var(--color-text-secondary)' : '#64748b';
+
+    const sigCfg = {
+      acheter: { color:'#16a34a', bg: isDark?'rgba(22,163,74,0.12)':'#f0fdf4', icon:'↑', label:'ACHETER' },
+      garder:  { color:'#f59e0b', bg: isDark?'rgba(245,158,11,0.12)':'#fffbeb', icon:'→', label:'GARDER' },
+      eviter:  { color:'#ef4444', bg: isDark?'rgba(239,68,68,0.12)':'#fef2f2', icon:'↓', label:'ÉVITER' },
+    };
+    const sig = sigCfg[d.signal] || sigCfg.garder;
+
+    // Score bar
+    const score = Math.max(1, Math.min(10, d.score || 5));
+    const scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#f59e0b' : '#ef4444';
+    const scoreBar = Array.from({length:10}, (_,i) =>
+      `<div style="flex:1;height:6px;border-radius:2px;background:${i < score ? scoreColor : (isDark?'rgba(255,255,255,0.1)':'#e5e7eb')}"></div>`
+    ).join('');
+
+    // Update signal metric card
     const signalEl = document.getElementById('co-signal');
-    if (signalEl) {
-      const txt = r.toLowerCase();
-      if (txt.includes('acheter') || txt.includes('opportunité')) { signalEl.textContent = '↑ Acheter'; signalEl.className = 'metric-val green'; }
-      else if (txt.includes('éviter') || txt.includes('vendre')) { signalEl.textContent = '↓ Éviter'; signalEl.className = 'metric-val red'; }
-      else { signalEl.textContent = '→ Garder'; signalEl.className = 'metric-val'; }
-    }
+    if (signalEl) { signalEl.textContent = sig.icon + ' ' + sig.label; signalEl.className = 'metric-val ' + (d.signal==='acheter'?'green':d.signal==='eviter'?'red':''); }
+
+    el.innerHTML = `
+      <!-- Signal banner -->
+      <div style="background:${sig.bg};border:1px solid ${sig.color}30;border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+        <div style="width:36px;height:36px;background:${sig.color}20;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${sig.icon}</div>
+        <div>
+          <div style="font-size:11px;font-weight:800;color:${sig.color};letter-spacing:0.08em">${sig.label}</div>
+          <div style="font-size:13px;color:${txt};font-weight:500;margin-top:2px">${d.signal_raison}</div>
+        </div>
+      </div>
+
+      <!-- Résumé -->
+      <div style="font-size:13px;color:${sub};line-height:1.6;margin-bottom:14px">${d.resume}</div>
+
+      <!-- Score -->
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.06em">Score pour ton profil</span>
+          <span style="font-size:13px;font-weight:800;color:${scoreColor}">${score}/10</span>
+        </div>
+        <div style="display:flex;gap:3px">${scoreBar}</div>
+      </div>
+
+      <!-- Points forts + risques -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="background:${isDark?'rgba(22,163,74,0.06)':'#f0fdf4'};border:1px solid ${isDark?'rgba(22,163,74,0.15)':'#bbf7d0'};border-radius:10px;padding:12px">
+          <div style="font-size:10px;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">✦ Points forts</div>
+          ${(d.forts||[]).map(f=>`<div style="font-size:12px;color:${txt};margin-bottom:5px;display:flex;gap:6px;align-items:flex-start"><span style="color:#16a34a;flex-shrink:0">✓</span>${f}</div>`).join('')}
+        </div>
+        <div style="background:${isDark?'rgba(239,68,68,0.06)':'#fef2f2'};border:1px solid ${isDark?'rgba(239,68,68,0.15)':'#fecaca'};border-radius:10px;padding:12px">
+          <div style="font-size:10px;font-weight:800;color:#ef4444;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">⚠ Risques</div>
+          ${(d.risques||[]).map(r=>`<div style="font-size:12px;color:${txt};margin-bottom:5px;display:flex;gap:6px;align-items:flex-start"><span style="color:#ef4444;flex-shrink:0">✗</span>${r}</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Verdict -->
+      <div style="background:${surf};border:1px solid ${bord};border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:10px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Verdict</div>
+        <div style="font-size:13px;color:${txt};line-height:1.6">${d.verdict}</div>
+      </div>
+
+      <!-- CTA -->
+      <div style="display:flex;gap:8px">
+        <button style="flex:1;padding:11px;background:${isDark?'var(--color-text)':'#0f172a'};color:${isDark?'var(--color-bg)':'#fff'};border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer" onclick="openDecision('${ticker}','acheter')">
+          Analyser pour investir →
+        </button>
+        <button style="padding:11px 14px;background:${surf};color:${sub};border:1px solid ${bord};border-radius:10px;font-size:13px;font-weight:600;cursor:pointer" onclick="showFullAnalysis('${ticker}','${name}')">
+          Voir tout
+        </button>
+      </div>`;
+
+  } catch(e) {
+    // Fallback texte brut si JSON échoue
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    el.innerHTML = `<div style="font-size:13px;color:var(--color-text-secondary);line-height:1.7">${formatMD(raw)}</div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button style="padding:11px 16px;background:${isDark?'var(--color-text)':'#0f172a'};color:${isDark?'var(--color-bg)':'#fff'};border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer" onclick="openDecision('${ticker}','acheter')">Analyser pour investir →</button>
+      </div>`;
   }
+}
+
+// Affiche l'analyse complète dans un modal
+function showFullAnalysis(ticker, name) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#0f1117' : '#fff';
+  const txt = isDark ? 'var(--color-text)' : '#0f172a';
+  const bord = isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+
+  let modal = document.getElementById('full-analysis-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'full-analysis-modal'; document.body.appendChild(modal); }
+
+  const coAnalysis = document.getElementById('co-analysis');
+  const content = coAnalysis ? coAnalysis.innerHTML : '';
+
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.style.display='none'">
+      <div style="background:${surf};border-radius:20px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.4);scrollbar-width:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid ${bord};position:sticky;top:0;background:${surf};z-index:1">
+          <div style="font-size:15px;font-weight:800;color:${txt}">Analyse complète — ${name}</div>
+          <button onclick="document.getElementById('full-analysis-modal').style.display='none'" style="background:rgba(128,128,128,0.15);border:none;border-radius:8px;width:28px;height:28px;font-size:16px;cursor:pointer;color:${txt}">×</button>
+        </div>
+        <div style="padding:20px">${content}</div>
+      </div>
+    </div>`;
+  modal.style.display = 'block';
 }
 
 async function fetchCompanyNews(ticker, name) {
