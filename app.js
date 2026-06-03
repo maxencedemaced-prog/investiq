@@ -6711,6 +6711,9 @@ function openDecision(ticker,signal){
     const setTxt = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
     const result = document.getElementById('d-result'); if(result) result.innerHTML='';
     set('d-name', t);
+    // Déclencher l'event input pour mettre à jour l'autocomplete
+    const nameEl = document.getElementById('d-name');
+    if (nameEl) nameEl.dispatchEvent(new Event('input'));
     set('d-horizon', profile.horizon);
     set('d-risk', profile.risk);
     set('d-pct', pct);
