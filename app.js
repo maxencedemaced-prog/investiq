@@ -1260,6 +1260,50 @@ async function tryAlternativeTicker(ticker, priceInput, liveLabel) {
 }
 
 
+// Normalise un ticker selon sa bourse pour que /api/prices fonctionne
+function normalizeTicker(ticker, exchange) {
+  if (!ticker) return ticker;
+  const ex = (exchange || '').toLowerCase();
+  // Déjà un suffixe → on garde
+  if (ticker.includes('.')) return ticker;
+  // Euronext Paris
+  if (ex.includes('paris') || ex.includes('euronext') || ex.includes('nms') || ex === 'par') return ticker + '.PA';
+  // XETRA / Frankfurt
+  if (ex.includes('xetra') || ex.includes('frankfurt') || ex.includes('ger') || ex === 'gst') return ticker + '.DE';
+  // London Stock Exchange
+  if (ex.includes('london') || ex.includes('lse') || ex === 'lse') return ticker + '.L';
+  // Milan / Borsa Italiana
+  if (ex.includes('milan') || ex.includes('borsa') || ex.includes('italy')) return ticker + '.MI';
+  // Amsterdam
+  if (ex.includes('amsterdam') || ex === 'ams') return ticker + '.AS';
+  // Madrid
+  if (ex.includes('madrid') || ex.includes('spain')) return ticker + '.MC';
+  // Zurich / Swiss
+  if (ex.includes('swiss') || ex.includes('zurich') || ex === 'swx') return ticker + '.SW';
+  // Stockholm
+  if (ex.includes('stockholm') || ex === 'sto') return ticker + '.ST';
+  // Oslo
+  if (ex.includes('oslo')) return ticker + '.OL';
+  // Copenhagen
+  if (ex.includes('copenhagen') || ex === 'cph') return ticker + '.CO';
+  // Helsinki
+  if (ex.includes('helsinki')) return ticker + '.HE';
+  // Brussels
+  if (ex.includes('brussels') || ex.includes('bruxelles')) return ticker + '.BR';
+  // Lisbonne
+  if (ex.includes('lisbon') || ex.includes('lisbonne')) return ticker + '.LS';
+  // Tokyo
+  if (ex.includes('tokyo')) return ticker + '.T';
+  // Hong Kong
+  if (ex.includes('hong kong') || ex === 'hkg') return ticker + '.HK';
+  // Australie
+  if (ex.includes('australia') || ex === 'asx') return ticker + '.AX';
+  // Canada TSX
+  if (ex.includes('toronto') || ex === 'tsx') return ticker + '.TO';
+  // Nasdaq / NYSE / NYSE ARCA → pas de suffixe
+  return ticker;
+}
+
 async function acSearchYahoo(query) {
   const drop = document.getElementById('ac-drop');
   if (!drop) return;
@@ -1274,14 +1318,19 @@ async function acSearchYahoo(query) {
       </div>`;
       return;
     }
-    drop.innerHTML = results.map(r => `
+    // Normaliser les tickers avant affichage
+    const normalized = results.map(r => ({
+      ...r,
+      ticker: normalizeTicker(r.ticker, r.exchange),
+    }));
+    drop.innerHTML = normalized.map(r => `
       <div class="ac-item" onclick="acSelect(${JSON.stringify(r).replace(/"/g,'&quot;')})">
         <div class="ac-item-avatar">${r.ticker.slice(0,2)}</div>
         <div class="ac-item-info">
           <div class="ac-item-name">${r.name}</div>
-          <div class="ac-item-meta">${r.ticker} · ${r.type} · ${r.sector} · ${r.exchange}</div>
+          <div class="ac-item-meta">${r.ticker} · ${r.type||'Action'} · ${r.exchange||''}</div>
         </div>
-        <div class="ac-item-type">${r.type}</div>
+        <div class="ac-item-type">${r.type||'Action'}</div>
       </div>`).join('');
   } catch {
     const drop2 = document.getElementById('ac-drop');
@@ -1378,6 +1427,11 @@ const AC_DB = [
   {ticker:'UBI.PA',name:'Ubisoft Entertainment',type:'Action',sector:'Gaming',exchange:'Euronext'},
   // Mid-cap françaises populaires
   {ticker:'SOI.PA',name:'Soitec',type:'Action',sector:'Semi-conducteurs',exchange:'Euronext'},
+  {ticker:'POMA.PA',name:'Compagnie du Mont-Blanc (Poma)',type:'Action',sector:'Industrie',exchange:'Euronext'},
+  {ticker:'FDJ.PA',name:'Française des Jeux',type:'Action',sector:'Loisirs',exchange:'Euronext'},
+  {ticker:'STPA.PA',name:'STMicroelectronics',type:'Action',sector:'Semi-conducteurs',exchange:'Euronext'},
+  {ticker:'HCO.PA',name:'Hermès & Co',type:'Action',sector:'Luxe',exchange:'Euronext'},
+  {ticker:'ABCA.PA',name:'ABC Arbitrage',type:'Action',sector:'Finance',exchange:'Euronext'},
   {ticker:'ALTEN.PA',name:'Alten',type:'Action',sector:'Tech',exchange:'Euronext'},
   {ticker:'DDOG',name:'Datadog',type:'Action',sector:'Tech',exchange:'NASDAQ'},
   {ticker:'CRWD',name:'CrowdStrike',type:'Action',sector:'Cybersécurité',exchange:'NASDAQ'},
@@ -1515,6 +1569,8 @@ function acSearch(query) {
 }
 
 async function acSelect(company) {
+  // Normaliser le ticker selon la bourse
+  company.ticker = normalizeTicker(company.ticker, company.exchange);
   acSelected = company;
   document.getElementById('ac-drop').style.display = 'none';
   document.getElementById('f-search').value = company.name + ' (' + company.ticker + ')';
