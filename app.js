@@ -4116,7 +4116,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (session) await initApp(session.user);
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session) await initApp(session.user);
+    if (event === 'SIGNED_IN' && session) {
+      // Ne pas relancer initApp si déjà initialisé (retour sur l'onglet)
+      if (!currentUser) {
+        await initApp(session.user);
+      } else {
+        // Juste rafraîchir le profil silencieusement
+        loadProfile();
+      }
+    }
     if (event === 'SIGNED_OUT') showAuthScreen();
   });
 });
