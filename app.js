@@ -1707,17 +1707,42 @@ function updatePosTotal() {
     const pnl = pru > 0 ? valActuelle - totalInvesti : 0;
     const pnlPct = totalInvesti > 0 ? (pnl / totalInvesti * 100).toFixed(1) : null;
 
+    // Chercher si position existante pour calculer le nouveau PRU moyen
+    const currentName = document.getElementById('f-name')?.value || '';
+    const nameLow = currentName.toLowerCase();
+    const existing = positions.find(p => {
+      if (p.name.toLowerCase() === nameLow) return true;
+      const dbEntry = AC_DB.find(c => c.ticker.toLowerCase() === nameLow || c.name.toLowerCase() === nameLow);
+      return dbEntry && p.name.toLowerCase() === dbEntry.ticker.toLowerCase();
+    });
+
     if (detailEl) detailEl.textContent = `${qty} × ${price.toLocaleString('fr-FR', {minimumFractionDigits:2})}€`;
-    if (valEl)    valEl.textContent    = `= ${(valActuelle).toLocaleString('fr-FR', {minimumFractionDigits:2})}€`;
+    if (valEl) valEl.textContent = `= ${valActuelle.toLocaleString('fr-FR', {minimumFractionDigits:2})}€`;
 
     if (pnlEl) {
-      if (pru > 0 && pru !== price) {
+      if (existing && pru > 0) {
+        // Afficher le nouveau PRU moyen pondéré
+        const newQty = existing.qty + qty;
+        const newPru = ((existing.qty * existing.pru) + (qty * pru)) / newQty;
+        const newInvesti = newQty * newPru;
+        const newVal = newQty * price;
+        const newPnl = newVal - newInvesti;
+        const newPnlPct = (newPnl / newInvesti * 100).toFixed(1);
+        const sign = newPnl >= 0 ? '+' : '';
+        pnlEl.innerHTML = `
+          <div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:4px">📊 Renforcement détecté</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px">
+            <span style="color:var(--color-text-secondary)">Actuel : ${existing.qty} parts @ ${existing.pru.toLocaleString('fr-FR',{minimumFractionDigits:2})}€</span>
+            <span>→</span>
+            <span style="color:var(--color-text-secondary)">Après : ${newQty} parts</span>
+            <span style="font-weight:800;color:#6366f1">Nouveau PRU : ${newPru.toLocaleString('fr-FR',{minimumFractionDigits:2})}€</span>
+            <span style="color:${newPnl>=0?'#16a34a':'#ef4444'};font-weight:700">${sign}${newPnl.toLocaleString('fr-FR',{minimumFractionDigits:2})}€ (${sign}${newPnlPct}%)</span>
+          </div>`;
+      } else if (pru > 0 && pru !== price) {
         const sign = pnl >= 0 ? '+' : '';
-        pnlEl.innerHTML = `<span style="color:${pnl>=0?'#1a7f5a':'#cc2f26'}">
-          PRU ${pru.toLocaleString('fr-FR', {minimumFractionDigits:2})}€ · Investi ${totalInvesti.toLocaleString('fr-FR', {minimumFractionDigits:2})}€ · P&L ${sign}${pnl.toLocaleString('fr-FR', {minimumFractionDigits:2})}€ (${sign}${pnlPct}%)
-        </span>`;
+        pnlEl.innerHTML = `<span style="color:${pnl>=0?'#1a7f5a':'#cc2f26'}">PRU ${pru.toLocaleString('fr-FR',{minimumFractionDigits:2})}€ · Investi ${totalInvesti.toLocaleString('fr-FR',{minimumFractionDigits:2})}€ · P&L ${sign}${pnl.toLocaleString('fr-FR',{minimumFractionDigits:2})}€ (${sign}${pnlPct}%)</span>`;
       } else {
-        pnlEl.innerHTML = `<span style="color:#8e8e93">PRU = prix actuel · Investissement : ${totalInvesti.toLocaleString('fr-FR', {minimumFractionDigits:2})}€</span>`;
+        pnlEl.innerHTML = `<span style="color:#8e8e93">Investissement : ${totalInvesti.toLocaleString('fr-FR',{minimumFractionDigits:2})}€</span>`;
       }
     }
   } else {
