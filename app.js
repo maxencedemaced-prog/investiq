@@ -2491,7 +2491,7 @@ function formatAgentMD(text) {
     // Alerte ⚠️
     .replace(/^⚠[️]?(.+)$/gm, '<div style="background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:13px;color:#fbbf24">⚠ $1</div>')
     // Double saut de ligne → petit espace
-    .replace(/\n\n/g, '<div style=\"height:6px\"></div>')
+    .replace(/\n\n/g, '<div style="height:6px"></div>')
     .replace(/\n/g, '<br>');
 
   return `<div style="font-size:14px;line-height:1.65;color:var(--color-text-secondary,rgba(255,255,255,0.85))">${text}</div>`;
