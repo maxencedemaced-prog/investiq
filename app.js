@@ -1580,17 +1580,30 @@ function acSearch(query) {
 }
 
 async function acSelect(company) {
-  // Si le ticker ressemble à un nom (>8 chars sans point, ou contient des espaces) → essayer de le corriger
+  // Si le ticker ressemble à un nom (>8 chars sans point) → chercher le vrai ticker
   if (company.ticker && company.ticker.length > 8 && !company.ticker.includes('.') && !company.ticker.includes('-')) {
-    // Chercher dans AC_DB par nom
-    const match = AC_DB.find(c => 
-      c.name.toLowerCase().replace(/\s/g,'').includes(company.ticker.toLowerCase().slice(0,6)) ||
-      company.name && c.name.toLowerCase().includes(company.name.toLowerCase().slice(0,5))
+    // 1. Chercher dans AC_DB par nom d'abord
+    const match = AC_DB.find(c =>
+      c.name.toLowerCase().replace(/[^a-z0-9]/g,'').includes(company.ticker.toLowerCase().slice(0,6)) ||
+      (company.name && c.name.toLowerCase().includes(company.name.toLowerCase().slice(0,5)))
     );
     if (match) {
       company.ticker = match.ticker;
       company.name = match.name;
       company.exchange = match.exchange;
+    } else {
+      // 2. Appeler l'API search avec le nom pour trouver le vrai ticker
+      try {
+        const searchQuery = company.name || company.ticker;
+        const res = await fetch('/api/search?q=' + encodeURIComponent(searchQuery));
+        const data = await res.json();
+        const first = (data.results || [])[0];
+        if (first && first.ticker && first.ticker.length <= 12) {
+          company.ticker = first.ticker;
+          company.name = first.name || company.name;
+          company.exchange = first.exchange || company.exchange;
+        }
+      } catch {}
     }
   }
   // Normaliser le ticker selon la bourse
