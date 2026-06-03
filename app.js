@@ -4001,7 +4001,7 @@ async function initApp(user) {
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   // Vérifie si nouvel utilisateur (Google OAuth ou email)
   setTimeout(async () => {
-    const { data: profile } = await sb.from('profiles').select('id').eq('user_id', currentUser.id).maybeSingle();
+    const { data: profile } = await sb.from('profiles').select('id').eq('id', currentUser.id).maybeSingle();
     // Afficher le tuto uniquement si compte nouveau ET jamais vu
     const obKey = 'iq_onboarded_' + currentUser.id; // clé liée à l'user, pas global
     if (!profile && !localStorage.getItem(obKey)) {
