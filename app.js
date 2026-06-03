@@ -7845,6 +7845,11 @@ Sois TRÈS concis. Max 12 mots par point. Utilise les vraies données.`;
   if (btn) btn.disabled = false;
 }
 
+function showBriefDetail(btn) {
+  const text = btn.getAttribute('data-text') || '';
+  sq(text + ' — explique-moi en détail');
+}
+
 function renderDailyBrief(items) {
   const el = document.getElementById('agent-brief-content');
   if (!el || !items?.length) return;
@@ -7852,7 +7857,8 @@ function renderDailyBrief(items) {
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;border-left:3px solid ${item.color}">
       <span style="font-size:18px;flex-shrink:0">${item.icon}</span>
       <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);line-height:1.4">${item.text}</span>
-      <button onclick="sq('${item.text.replace(/'/g,"\'")} — explique-moi en détail')"
+      <button onclick="showBriefDetail(this)"
+        data-text="${item.text.replace(/"/g,'&quot;')}"
         style="margin-left:auto;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0;white-space:nowrap">
         → Détails
       </button>
