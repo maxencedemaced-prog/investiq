@@ -3102,15 +3102,29 @@ async function renderEntreprises() {
   const myCompanies = [...new Set(positions.map(p => ({ ticker: p.name, name: p.name })))];
   const allCompanies = [...myCompanies, ...featured.filter(f => !myCompanies.find(m => m.ticker === f.ticker))].slice(0, 12);
 
+  const isDarkEnt = document.documentElement.getAttribute('data-theme') === 'dark';
+  const inputBg = isDarkEnt ? 'var(--color-surface)' : '#fafafa';
+  const inputBorder = isDarkEnt ? 'var(--color-border)' : '#e5e5ea';
+  const inputTxt = isDarkEnt ? 'var(--color-text)' : '#1c1c1e';
+  const dropBg = isDarkEnt ? 'var(--color-surface)' : '#fff';
+  const dropBorder = isDarkEnt ? 'var(--color-border)' : '#e5e5ea';
+
   list.innerHTML = `
     <!-- Barre de recherche -->
-    <div style="position:relative;margin-bottom:16px">
-      <input type="text" id="ent-search" placeholder="🔍 Rechercher une entreprise (ex: Apple, LVMH, Tesla...)"
-        style="width:100%;padding:13px 16px;border-radius:14px;border:2px solid #e5e5ea;font-size:14px;outline:none;box-sizing:border-box;background:#fafafa"
-        oninput="searchEntreprise(this.value)"
-        onfocus="this.style.borderColor='#1c1c1e';this.style.background='#fff'"
-        onblur="this.style.borderColor='#e5e5ea';this.style.background='#fafafa'">
-      <div id="ent-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border-radius:12px;border:2px solid #e5e5ea;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.1)"></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <div style="position:relative;flex:1">
+        <input type="text" id="ent-search" placeholder="🔍 Rechercher une entreprise (ex: Apple, LVMH, Soitec...)"
+          style="width:100%;padding:13px 16px;border-radius:14px;border:2px solid ${inputBorder};font-size:14px;outline:none;box-sizing:border-box;background:${inputBg};color:${inputTxt}"
+          oninput="searchEntreprise(this.value)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();const first=document.querySelector('#ent-search-results [data-ticker]');if(first)first.click();else searchEntrepriseNews(this.value,this.value)}"
+          onfocus="this.style.borderColor='${inputTxt}'"
+          onblur="this.style.borderColor='${inputBorder}'">
+        <div id="ent-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:${dropBg};border-radius:12px;border:2px solid ${dropBorder};z-index:1000;max-height:260px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)"></div>
+      </div>
+      <button onclick="const v=document.getElementById('ent-search').value;if(v.length>1)searchEntrepriseNews(v,v)"
+        style="padding:12px 18px;background:var(--color-text,#1c1c1e);color:var(--color-bg,#fff);border:none;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">
+        Rechercher
+      </button>
     </div>
 
     <!-- Actualités par entreprise -->
