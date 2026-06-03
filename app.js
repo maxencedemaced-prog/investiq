@@ -5733,7 +5733,18 @@ async function addPos() {
   if (isNaN(price) || price <= 0) { showToast('⚠ Indique le prix actuel'); return; }
 
   // Cherche si la position existe déjà (même ticker)
-  const existing = positions.find(p => p.name.toLowerCase() === name.toLowerCase());
+  // Cherche position existante par ticker exact OU par nom (MC.PA == LVMH)
+  const nameLow = name.toLowerCase();
+  const existing = positions.find(p => {
+    if (p.name.toLowerCase() === nameLow) return true;
+    // Cherche dans AC_DB si les deux tickers correspondent à la même entreprise
+    const dbEntry = AC_DB.find(c => c.ticker.toLowerCase() === nameLow || c.name.toLowerCase() === nameLow);
+    if (dbEntry && p.name.toLowerCase() === dbEntry.ticker.toLowerCase()) return true;
+    if (dbEntry && dbEntry.ticker.toLowerCase() === p.name.toLowerCase()) return true;
+    return false;
+  });
+  // Si trouvé via alias, utiliser le vrai ticker de la position existante
+  const effectiveName = existing ? existing.name : name;
 
   if (existing) {
     // Calcul du nouveau PRU moyen pondéré
@@ -5760,7 +5771,7 @@ async function addPos() {
     existing.qty = totalQty;
     existing.pru = parseFloat(newPru.toFixed(4));
     existing.price = price;
-    await addTransaction(name, 'achat', qty, pru, 'Renforcement de position');
+    await addTransaction(effectiveName, 'achat', qty, pru, 'Renforcement de position');
     acClear();
     nav('portfolio');
     renderPortfolio(); renderHome();
