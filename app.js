@@ -3242,7 +3242,7 @@ function searchEntreprise(query) {
     try {
       const res = await fetch('/api/search?q=' + encodeURIComponent(query));
       const data = await res.json();
-      const results = (data.quotes || []).slice(0, 6);
+      const results = (data.results || data.quotes || []).slice(0, 6);
       if (!results.length) { drop.style.display = 'none'; return; }
       drop.style.display = 'block';
       drop.innerHTML = results.map(r => `
