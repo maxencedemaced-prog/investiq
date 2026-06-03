@@ -7746,29 +7746,446 @@ function initAgent() {
   buildAgentContext();
   buildAgentSuggestions();
 
-  // Date du briefing
+  // Date
   const dateEl = document.getElementById('agent-brief-date');
-  if (dateEl) {
-    dateEl.textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
-  }
+  if (dateEl) dateEl.textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
 
-  // Message de bienvenue personnalisé
-  const welcome = document.getElementById('ai-welcome');
-  if (welcome && positions.length > 0) {
-    const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
-    const pnl = tv - positions.reduce((a,p) => a+p.qty*p.pru, 0);
-    const color = pnl >= 0 ? '#1a7f5a' : '#cc2f26';
-    welcome.innerHTML = `Bonjour ! Ton portefeuille est à <strong style="color:${color}">${fmtK(tv)}</strong> (${pnl>=0?'+':''}${fmtK(pnl)}). Je connais toutes tes positions, tes objectifs et ton profil. Que veux-tu faire ?`;
-  }
-
-  // Génère le briefing (avec cache 6h)
+  // Briefing (cache 6h)
   const BRIEF_KEY = 'iq_daily_brief';
   const cached = (() => { try { const c = JSON.parse(localStorage.getItem(BRIEF_KEY)||'null'); return c && Date.now()-c.ts < 6*3600000 ? c : null; } catch { return null; } })();
-  if (cached) {
-    renderDailyBrief(cached.items);
-  } else {
-    generateDailyBrief();
+  if (cached) renderDailyBrief(cached.items);
+  else generateDailyBrief();
+
+  // Blocs proactifs
+  renderAgentChanges();
+  renderAgentAlerts();
+  renderAgentOpportunities();
+  renderAgentRecommendations();
+  renderIQScore();
+  renderRadarRisque();
+  updateAISidebar();
+}
+
+function refreshAllAgentBlocks() {
+  // Vide les caches blocs agent
+  ['iq_agent_changes','iq_agent_alerts','iq_agent_opps','iq_agent_reco','iq_agent_wwiq'].forEach(k => {
+    try { localStorage.removeItem(k); } catch {}
+  });
+  generateDailyBrief();
+  renderAgentChanges();
+  renderAgentAlerts();
+  renderAgentOpportunities();
+  renderAgentRecommendations();
+  renderIQScore();
+  showToast('🔄 Analyse en cours...');
+}
+
+function toggleAgentChat() {
+  const body = document.getElementById('agent-chat-body');
+  const quick = document.getElementById('agent-chat-quick');
+  const chevron = document.getElementById('agent-chat-chevron');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (quick) quick.style.display = open ? 'flex' : 'none';
+  if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function openAgentChat() {
+  const body = document.getElementById('agent-chat-body');
+  const quick = document.getElementById('agent-chat-quick');
+  const chevron = document.getElementById('agent-chat-chevron');
+  if (body) body.style.display = 'block';
+  if (quick) quick.style.display = 'none';
+  if (chevron) chevron.style.transform = 'rotate(180deg)';
+  // Sync quick input to main input
+  const qi = document.getElementById('ai-in-quick');
+  const mi = document.getElementById('ai-in');
+  if (qi && mi && qi.value) { mi.value = qi.value; qi.value = ''; }
+}
+
+// ── ② CE QUI A CHANGÉ DEPUIS HIER ──
+function renderAgentChanges() {
+  const el = document.getElementById('agent-changes-content');
+  if (!el) return;
+
+  if (!positions.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Ajoute des positions pour voir les évolutions.</div>';
+    return;
   }
+
+  const items = [];
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const pnl = tv - ti;
+  const avgChg = positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length;
+
+  // Variation globale du jour
+  const globColor = avgChg >= 0 ? '#4ade80' : '#f87171';
+  const globIcon = avgChg >= 0 ? '📈' : '📉';
+  items.push({ icon: globIcon, text: `Portefeuille ${avgChg>=0?'+':''}${avgChg.toFixed(1)}% aujourd'hui`, color: globColor });
+
+  // Meilleures et pires variations
+  const sorted = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
+  if (sorted[0] && (sorted[0].change_pct||0) !== 0)
+    items.push({ icon: '🏆', text: `${sorted[0].name} meilleure perf. ${(sorted[0].change_pct||0)>=0?'+':''}${(sorted[0].change_pct||0).toFixed(1)}%`, color: '#4ade80' });
+  if (sorted[sorted.length-1] && (sorted[sorted.length-1].change_pct||0) !== 0)
+    items.push({ icon: '⚠️', text: `${sorted[sorted.length-1].name} en difficulté ${(sorted[sorted.length-1].change_pct||0).toFixed(1)}%`, color: '#f87171' });
+
+  // Score InvestIQ delta (fictif basé sur variation)
+  const scoreDelta = Math.round(avgChg * 0.8);
+  if (scoreDelta !== 0)
+    items.push({ icon: scoreDelta > 0 ? '⬆️' : '⬇️', text: `Score InvestIQ ${scoreDelta>0?'+':''}${scoreDelta} pts`, color: scoreDelta > 0 ? '#a5b4fc' : '#f87171' });
+
+  el.innerHTML = items.map(it => `
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:14px;flex-shrink:0">${it.icon}</span>
+      <span style="font-size:12px;font-weight:600;color:${it.color}">${it.text}</span>
+    </div>`).join('');
+}
+
+// ── ③ ALERTES AUTOMATIQUES ──
+function renderAgentAlerts() {
+  const el = document.getElementById('agent-alerts-content');
+  if (!el) return;
+
+  if (!positions.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Aucune position à surveiller.</div>';
+    return;
+  }
+
+  const alerts = [];
+
+  positions.forEach(p => {
+    const pnlPct = p.pru > 0 ? ((p.price - p.pru) / p.pru * 100) : 0;
+    // Perte > 10%
+    if (pnlPct < -10) alerts.push({ icon: '🔥', text: `${p.name} en perte de ${pnlPct.toFixed(1)}%`, color: '#ef4444', severity: 3 });
+    // Perte > 5%
+    else if (pnlPct < -5) alerts.push({ icon: '⚠️', text: `${p.name} −${Math.abs(pnlPct).toFixed(1)}% — surveiller`, color: '#f87171', severity: 2 });
+    // Baisse journalière > 2%
+    if ((p.change_pct||0) < -2) alerts.push({ icon: '📉', text: `${p.name} −${Math.abs(p.change_pct||0).toFixed(1)}% auj.`, color: '#fb923c', severity: 2 });
+    // Belle perf
+    if (pnlPct > 30) alerts.push({ icon: '💰', text: `${p.name} +${pnlPct.toFixed(0)}% — sécuriser ?`, color: '#4ade80', severity: 1 });
+  });
+
+  // Concentration
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  positions.forEach(p => {
+    const w = tv > 0 ? p.qty*p.price/tv*100 : 0;
+    if (w > 40) alerts.push({ icon: '⚡', text: `${p.name} = ${w.toFixed(0)}% du portef. — concentration élevée`, color: '#fbbf24', severity: 2 });
+  });
+
+  if (!alerts.length) {
+    el.innerHTML = '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#4ade80"><span>✅</span><span>Aucune alerte — portefeuille sain</span></div>';
+    return;
+  }
+
+  alerts.sort((a,b) => b.severity - a.severity);
+  el.innerHTML = alerts.slice(0,4).map(a => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:${a.color}12;border-radius:8px;border-left:3px solid ${a.color}">
+      <span style="font-size:13px;flex-shrink:0;margin-top:1px">${a.icon}</span>
+      <span style="font-size:12px;font-weight:600;color:${a.color};line-height:1.4">${a.text}</span>
+    </div>`).join('');
+}
+
+// ── ③ OPPORTUNITÉS ──
+async function renderAgentOpportunities() {
+  const el = document.getElementById('agent-opps-content');
+  if (!el) return;
+
+  if (!isPremiumUser()) {
+    el.innerHTML = '<div style="font-size:12px;color:#fbbf24">✦ Fonctionnalité Premium</div>';
+    return;
+  }
+
+  // Cache 6h
+  try {
+    const cached = JSON.parse(localStorage.getItem('iq_agent_opps')||'null');
+    if (cached && Date.now()-cached.ts < 6*3600000) { renderOppCards(cached.items, el); return; }
+  } catch {}
+
+  el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5;display:flex;align-items:center;gap:6px"><svg class="spinning" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Détection...</div>';
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const topPositions = [...positions].sort((a,b)=>b.qty*b.price-a.qty*a.price).slice(0,5);
+  const wlNames = watchlist.slice(0,5).map(w=>w.name||w.ticker).join(', ');
+
+  const prompt = `Investisseur avec profil ${profile.risk||'équilibré'}, horizon ${profile.horizon||'moyen terme'}.
+Portefeuille : ${topPositions.map(p=>`${p.name}(${((p.price-p.pru)/p.pru*100).toFixed(1)}%,${(p.qty*p.price/tv*100).toFixed(0)}%du portef)`).join(', ')}.
+Watchlist : ${wlNames||'aucune'}.
+Génère EXACTEMENT 3 opportunités d'investissement actuelles. Format JSON UNIQUEMENT :
+[{"ticker":"IWDA.L","label":"Renforcer IWDA","score":8,"raison":"Correction de 4% — valorisation attractive","type":"renforcer"},
+{"ticker":"ALO.PA","label":"Air Liquide sous-évalué","score":7,"raison":"P/E historiquement bas","type":"acheter"},
+{"ticker":"MC.PA","label":"LVMH en zone de soutien","score":6,"raison":"Support technique à 650€","type":"surveiller"}]
+Types : acheter/renforcer/surveiller. score entre 5 et 10. Tickers réels.`;
+
+  try {
+    const raw = await callClaude(prompt, 'Tu es analyste financier. Réponds UNIQUEMENT en JSON valide.');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const items = JSON.parse(clean.slice(clean.indexOf('['),clean.lastIndexOf(']')+1));
+    try { localStorage.setItem('iq_agent_opps', JSON.stringify({items,ts:Date.now()})); } catch {}
+    renderOppCards(items, el);
+  } catch {
+    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary)">Données indisponibles.</div>';
+  }
+}
+
+function renderOppCards(items, el) {
+  const typeCfg = {
+    acheter:   { color:'#4ade80', bg:'rgba(74,222,128,0.08)',   label:'ACHETER'   },
+    renforcer: { color:'#a5b4fc', bg:'rgba(165,180,252,0.08)', label:'RENFORCER' },
+    surveiller:{ color:'#fbbf24', bg:'rgba(251,191,36,0.08)',  label:'SURVEILLER'},
+  };
+  el.innerHTML = items.slice(0,3).map(it => {
+    const cfg = typeCfg[it.type]||typeCfg.surveiller;
+    const stars = Math.round(it.score/2);
+    return `<div style="padding:8px 10px;background:${cfg.bg};border-radius:10px;border-left:3px solid ${cfg.color};cursor:pointer"
+      onclick="sq('Analyse l\\'opportunité ${it.ticker} : ${it.raison}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+        <span style="font-size:12px;font-weight:700;color:${cfg.color}">${it.label}</span>
+        <span style="font-size:10px;font-weight:700;color:${cfg.color};background:${cfg.bg};padding:1px 6px;border-radius:4px">${cfg.label}</span>
+      </div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">${it.raison}</div>
+      <div style="display:flex;align-items:center;gap:4px">
+        ${'⭐'.repeat(stars)}${'☆'.repeat(5-stars)}
+        <span style="font-size:10px;color:var(--color-text-tertiary);margin-left:2px">${it.score}/10</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── ④ RECOMMANDATIONS + CONFIANCE ──
+async function renderAgentRecommendations() {
+  const el = document.getElementById('agent-reco-content');
+  if (!el) return;
+
+  if (!isPremiumUser()) {
+    el.innerHTML = '<div style="font-size:12px;color:#fbbf24">✦ Fonctionnalité Premium</div>';
+    return;
+  }
+  if (!positions.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary)">Ajoute des positions pour recevoir des recommandations.</div>';
+    return;
+  }
+
+  // Cache 6h
+  try {
+    const cached = JSON.parse(localStorage.getItem('iq_agent_reco')||'null');
+    if (cached && Date.now()-cached.ts < 6*3600000) { renderRecoCards(cached.items, el); return; }
+  } catch {}
+
+  el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5;display:flex;align-items:center;gap:6px"><svg class="spinning" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Génération...</div>';
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const posCtx = positions.map(p=>{
+    const w = tv>0?p.qty*p.price/tv*100:0;
+    const pnl = p.pru>0?(p.price-p.pru)/p.pru*100:0;
+    return `${p.name}:${w.toFixed(0)}%portef,${pnl>=0?'+':''}${pnl.toFixed(1)}%PnL`;
+  }).join(' | ');
+
+  const prompt = `Portefeuille : ${posCtx}. Profil : ${profile.risk||'équilibré'}, horizon ${profile.horizon||'moyen terme'}.
+Génère EXACTEMENT 3 recommandations prioritaires. Format JSON UNIQUEMENT :
+[{
+  "action":"Renforcer IWDA",
+  "ticker":"IWDA.L",
+  "priorite":1,
+  "confiance":87,
+  "raison":"ETF monde en légère correction — DCA opportuniste",
+  "impact_rendement":"+2.1%",
+  "impact_risque":"-0.8%",
+  "impact_score":"+4 pts"
+}]
+confiance entre 40 et 95. impacts réalistes.`;
+
+  try {
+    const raw = await callClaude(prompt, 'Tu es analyste. Réponds UNIQUEMENT en JSON valide.');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const items = JSON.parse(clean.slice(clean.indexOf('['),clean.lastIndexOf(']')+1));
+    try { localStorage.setItem('iq_agent_reco', JSON.stringify({items,ts:Date.now()})); } catch {}
+    renderRecoCards(items, el);
+  } catch {
+    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary)">Données indisponibles.</div>';
+  }
+}
+
+function renderRecoCards(items, el) {
+  const confCfg = c => c >= 75
+    ? { color:'#4ade80', bar:'linear-gradient(90deg,#4ade80,#22c55e)', label:'Élevée' }
+    : c >= 55
+    ? { color:'#fbbf24', bar:'linear-gradient(90deg,#fbbf24,#f59e0b)', label:'Modérée' }
+    : { color:'#f87171', bar:'linear-gradient(90deg,#f87171,#ef4444)', label:'Faible' };
+
+  el.innerHTML = items.slice(0,3).map((it,i) => {
+    const cc = confCfg(it.confiance||70);
+    return `<div style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:12px;padding:12px 14px;cursor:pointer;transition:border-color 0.15s"
+      onmouseover="this.style.borderColor='${cc.color}'" onmouseout="this.style.borderColor='var(--color-border)'"
+      onclick="sq('Explique la recommandation : ${it.action} — ${it.raison}')">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:22px;height:22px;background:${cc.color}20;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${cc.color};flex-shrink:0">${i+1}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--color-text)">${it.action}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;font-weight:700;color:${cc.color}">${it.confiance||70}%</div>
+          <div style="font-size:10px;color:var(--color-text-tertiary)">${cc.label}</div>
+        </div>
+      </div>
+      <!-- Barre confiance -->
+      <div style="height:3px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;width:${it.confiance||70}%;background:${cc.bar};border-radius:99px;transition:width 1s"></div>
+      </div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">${it.raison}</div>
+      <!-- Impact estimé -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${it.impact_rendement ? `<span style="font-size:10px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.1);padding:2px 7px;border-radius:4px">📈 Rendement ${it.impact_rendement}</span>` : ''}
+        ${it.impact_risque ? `<span style="font-size:10px;font-weight:700;color:#a5b4fc;background:rgba(165,180,252,0.1);padding:2px 7px;border-radius:4px">🛡 Risque ${it.impact_risque}</span>` : ''}
+        ${it.impact_score ? `<span style="font-size:10px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 7px;border-radius:4px">⭐ Score ${it.impact_score}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── ⑤ QUE FERAIT INVESTIQ ? ──
+async function generateWhatWouldIQ() {
+  const el = document.getElementById('agent-wwiq-content');
+  const btn = document.getElementById('wwiq-btn');
+  if (!el || !isPremiumUser()) { showPremiumModal(); return; }
+  if (!positions.length) { el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.5)">Ajoute des positions pour activer cette analyse.</div>'; return; }
+
+  // Cache 6h
+  try {
+    const cached = JSON.parse(localStorage.getItem('iq_agent_wwiq')||'null');
+    if (cached && Date.now()-cached.ts < 6*3600000) { el.innerHTML = cached.html; return; }
+  } catch {}
+
+  if (btn) btn.disabled = true;
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,0.4)"><svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Analyse en cours...</div>';
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const pnlGlobal = ((tv-ti)/ti*100).toFixed(1);
+  const posCtx = positions.map(p=>{
+    const w=tv>0?p.qty*p.price/tv*100:0;
+    const pnl=p.pru>0?(p.price-p.pru)/p.pru*100:0;
+    return `${p.name}(${w.toFixed(0)}%,${pnl>=0?'+':''}${pnl.toFixed(1)}%)`;
+  }).join(', ');
+
+  const prompt = `Si ce portefeuille était le mien, voici ce que je ferais.
+Portefeuille : ${posCtx}. P&L global : ${pnlGlobal>=0?'+':''}${pnlGlobal}%. Profil : ${profile.risk||'équilibré'}.
+Réponds en 3-5 décisions concrètes, style conseiller personnel. Format :
+1. Je **conserverais** IWDA — c'est le cœur long terme
+2. Je **vendrais** 30% de VIE.PA — la perte dépasse mon seuil de tolérance
+Sois direct, opiniâtre, comme si c'était vraiment ton argent. 3-5 points max.`;
+
+  try {
+    const r = await callClaude(prompt, 'Tu es un gestionnaire de portefeuille qui parle à la première personne. Sois direct et concret.');
+    const htmlR = formatAgentMD(r);
+    try { localStorage.setItem('iq_agent_wwiq', JSON.stringify({html:htmlR,ts:Date.now()})); } catch {}
+    el.innerHTML = htmlR;
+  } catch {
+    el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.5)">Erreur — réessaie.</div>';
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Relancer →'; }
+}
+
+// ── SCORE INVESTIQ ──
+function renderIQScore() {
+  if (!positions.length) return;
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const pnl = tv - ti;
+
+  // Calculs des sous-scores
+  // Diversification : nombre de positions distinctes
+  const uniquePos = new Set(positions.map(p=>p.name)).size;
+  const diversScore = Math.min(100, uniquePos * 12 + 10);
+
+  // Concentration : poids max d'une position
+  const maxW = Math.max(...positions.map(p=>tv>0?p.qty*p.price/tv*100:0));
+  const concenScore = Math.max(10, 100 - maxW * 1.5);
+
+  // Performance : P&L global
+  const pnlPct = ti > 0 ? (pnl/ti*100) : 0;
+  const perfScore = Math.min(100, Math.max(10, 50 + pnlPct * 2));
+
+  // Liquidité : % ETF vs actions
+  const etfWeight = positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/Math.max(tv,1)*100;
+  const liquiScore = Math.min(100, 40 + etfWeight * 0.6);
+
+  const globalScore = Math.round((diversScore*0.25 + concenScore*0.3 + perfScore*0.25 + liquiScore*0.2));
+
+  // Affiche
+  const valEl = document.getElementById('iq-score-val');
+  const labelEl = document.getElementById('iq-score-label');
+  const ringEl = document.getElementById('iq-score-ring');
+  const breakEl = document.getElementById('iq-score-breakdown');
+
+  if (valEl) valEl.textContent = globalScore;
+  if (labelEl) {
+    const lbl = globalScore >= 80 ? 'Excellent 🏆' : globalScore >= 65 ? 'Bon 👍' : globalScore >= 50 ? 'Correct ⚡' : 'À améliorer 🔧';
+    const col = globalScore >= 80 ? '#4ade80' : globalScore >= 65 ? '#a5b4fc' : globalScore >= 50 ? '#fbbf24' : '#f87171';
+    labelEl.textContent = lbl;
+    labelEl.style.color = col;
+  }
+  if (ringEl) {
+    const circ = 2 * Math.PI * 34;
+    setTimeout(() => { ringEl.setAttribute('stroke-dasharray', `${circ * globalScore/100} ${circ}`); }, 100);
+  }
+
+  // Sous-scores
+  const subs = [
+    { label:'Diversification', val: Math.round(diversScore) },
+    { label:'Concentration',   val: Math.round(concenScore)  },
+    { label:'Performance',     val: Math.round(perfScore)    },
+    { label:'Liquidité',       val: Math.round(liquiScore)   },
+  ];
+  if (breakEl) {
+    breakEl.innerHTML = subs.map(s => {
+      const c = s.val >= 70 ? '#4ade80' : s.val >= 50 ? '#fbbf24' : '#f87171';
+      return `<div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+          <span style="font-size:10px;color:rgba(255,255,255,0.45)">${s.label}</span>
+          <span style="font-size:10px;font-weight:700;color:${c}">${s.val}</span>
+        </div>
+        <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden">
+          <div style="height:100%;width:${s.val}%;background:${c};border-radius:99px;transition:width 1.2s"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ── RADAR RISQUE ──
+function renderRadarRisque() {
+  const el = document.getElementById('ai-side-radar');
+  if (!el || !positions.length) return;
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const maxW = Math.max(...positions.map(p=>tv>0?p.qty*p.price/tv*100:0));
+  const uniquePos = new Set(positions.map(p=>p.name)).size;
+  const avgChg = positions.reduce((a,p)=>a+Math.abs(p.change_pct||0),0)/positions.length;
+  const etfPct = positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/Math.max(tv,1)*100;
+
+  const metrics = [
+    { label:'Diversif.',  val: Math.min(10, Math.round(uniquePos * 1.2)), max:10 },
+    { label:'Concentr.',  val: Math.max(1, Math.round(10 - maxW/12)),     max:10 },
+    { label:'Volatilité', val: Math.max(1, Math.round(10 - avgChg)),      max:10 },
+    { label:'ETF/Actions',val: Math.round(etfPct/10),                     max:10 },
+  ];
+
+  el.innerHTML = metrics.map(m => {
+    const c = m.val >= 7 ? '#4ade80' : m.val >= 5 ? '#fbbf24' : '#f87171';
+    return `<div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+        <span style="font-size:10px;color:var(--color-text-tertiary)">${m.label}</span>
+        <span style="font-size:10px;font-weight:700;color:${c}">${m.val}/${m.max}</span>
+      </div>
+      <div style="height:4px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden">
+        <div style="height:100%;width:${m.val/m.max*100}%;background:${c};border-radius:99px;transition:width 1s"></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function generateDailyBrief() {
