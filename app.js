@@ -6807,7 +6807,9 @@ async function analyseDecision() {
   }
   const nameEl = document.getElementById('d-name');
   if (!nameEl) return;
-  const name = nameEl.value.trim();
+  const name = nameEl.value.trim().toUpperCase();
+  // Mettre à jour le champ avec la valeur normalisée
+  if (name) nameEl.value = name;
   // Lire le montant depuis d-amount-display (ex: "500 €") ou fallback 500
   const amtDisplay = document.getElementById('d-amount-display');
   const amt = amtDisplay ? parseInt(amtDisplay.textContent.replace(/[^0-9]/g,'')) || 500 : 500;
@@ -6829,6 +6831,9 @@ ${posCtx}
 Montant envisagé : ${amt}€ (${pct}% de sa bankroll de ${profile.bankroll}€).
 Profil : horizon ${HL[profile.horizon]}, risque ${RL[profile.risk]}.
 
+IMPORTANT : Si "${name}" est une entreprise non cotée en bourse (pas de ticker boursier public), analyse quand même l'entreprise et son secteur, mais mets "non_cote": true dans ta réponse.
+Si tu ne reconnais pas du tout l'entreprise, fais de ton mieux avec les informations disponibles.
+
 Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
 {
   "recommandation": "ACHETER" ou "ATTENDRE" ou "VENDRE" ou "EVITER",
@@ -6840,7 +6845,8 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
   "montant_conseille": "Ex: 300€ maximum (6% de ta bankroll)",
   "pour": ["point positif 1", "point positif 2"],
   "contre": ["point négatif 1", "point négatif 2"],
-  "conseil_final": "Conseil concret en 2-3 phrases simples pour un débutant"
+  "conseil_final": "Conseil concret en 2-3 phrases simples pour un débutant",
+  "non_cote": false
 }`;
 
   const result = document.getElementById('d-result');
@@ -6908,7 +6914,14 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
       </div>
 
       <!-- AJOUTER AU PORTEFEUILLE -->
-      ${d.recommandation !== 'EVITER' ? `
+      ${d.non_cote ? `
+      <div style="margin-top:10px;padding:14px 16px;background:#fff9e6;border:1px solid #f59e0b40;border-radius:12px;display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:18px;flex-shrink:0">⚠️</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:3px">Entreprise non cotée en bourse</div>
+          <div style="font-size:12px;color:#78350f;line-height:1.5">Cette entreprise n'est pas cotée en bourse — il n'est pas possible de l'acheter via un courtier classique (Boursorama, XTB, Trade Republic…). Tu ne peux pas l'ajouter à ton portefeuille InvestIQ.</div>
+        </div>
+      </div>` : d.recommandation !== 'EVITER' ? `
       <button class="btn-primary" onclick="addToPortfolioFromDecision('${name}', ${amt})" style="width:100%;margin-top:10px;background:#1a7f5a">
         ➕ Ajouter au portefeuille
       </button>` : ''}
