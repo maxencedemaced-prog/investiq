@@ -7687,27 +7687,33 @@ function parseXTBWorkbook(wb) {
     // Ignore les ventes, totaux, lignes vides
     if (!symbol || symbol === 'Total' || type === 'SELL' || isNaN(qty) || isNaN(price) || qty <= 0 || price <= 0) continue;
 
-    // Détecte les splits dans le commentaire (ex: "ALHPI.FR split 1 for 80")
+    // Détecte les regroupements/splits dans le commentaire (ex: "ALHPI.FR split 1 for 80")
+    // "split 1 for 80" = regroupement : 80 anciennes → 1 nouvelle
+    // XTB garde l'ancienne quantité mais le prix d'ouverture est AVANT regroupement
     const comment = String(row[commentIdx] || '').toLowerCase();
-    let splitFactor = 1;
+    let adjustedQty  = qty;
+    let adjustedPru  = price;
     const splitMatch = comment.match(/split\s+(\d+)\s+for\s+(\d+)/i);
     if (splitMatch) {
-      // "split 1 for 80" → prix original était 80x plus élevé → PRU / 80
-      splitFactor = parseInt(splitMatch[2]) / parseInt(splitMatch[1]);
+      const newShares = parseInt(splitMatch[1]); // 1
+      const oldShares = parseInt(splitMatch[2]); // 80
+      // Regroupement : qty réelle = qty XTB × (new/old) = 661 × 1/80 = 8.26
+      // PRU réel = PRU XTB × (old/new) = 0.3824€ (déjà correct dans XTB)
+      adjustedQty = qty * (newShares / oldShares);
+      adjustedPru = price; // PRU XTB est déjà post-regroupement
     }
 
     // Normalise le ticker XTB → ticker standard
     const ticker = normalizeXTBTicker(symbol);
-    const adjustedPru = price / splitFactor;
 
     // Agrège par ticker (PRU pondéré)
     if (positions[ticker]) {
       const p = positions[ticker];
-      const totalQty = p.qty + qty;
-      p.pru = (p.pru * p.qty + adjustedPru * qty) / totalQty;
+      const totalQty = p.qty + adjustedQty;
+      p.pru = (p.pru * p.qty + adjustedPru * adjustedQty) / totalQty;
       p.qty = totalQty;
     } else {
-      positions[ticker] = { name: ticker, ticker, qty, pru: adjustedPru };
+      positions[ticker] = { name: ticker, ticker, qty: adjustedQty, pru: adjustedPru };
     }
   }
 
