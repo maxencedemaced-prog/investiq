@@ -8597,7 +8597,30 @@ function aiCacheStats() {
 }
 
 // ===== AGENT IA =====
-function sq(q) { document.getElementById('ai-in').value = q; sendAI(); }
+function sq(q) {
+  // Ouvre le chat si fermé
+  const chatBody = document.getElementById('agent-chat-body');
+  const chatQuick = document.getElementById('agent-chat-quick');
+  const chevron = document.getElementById('agent-chat-chevron');
+  if (chatBody && chatBody.style.display === 'none') {
+    chatBody.style.display = 'block';
+    if (chatQuick) chatQuick.style.display = 'none';
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+  }
+
+  // Remplit l'input et envoie
+  const inp = document.getElementById('ai-in');
+  if (inp) inp.value = q;
+  sendAI();
+
+  // Scroll vers le chat avec un petit délai (laisse le temps à sendAI de créer la bulle)
+  setTimeout(() => {
+    const chat = document.getElementById('ai-chat');
+    if (chat) {
+      chat.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 150);
+}
 function sqIdx(i) { const s = window._agentSuggestions?.[i]; if (s) sq(s.q); }
 
 function buildAgentContext() {
