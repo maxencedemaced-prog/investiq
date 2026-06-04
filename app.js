@@ -7643,10 +7643,13 @@ async function handleImportFile(file) {
   try {
     let parsed = [];
     const ext = file.name.split('.').pop().toLowerCase();
+    console.log('[Import] Broker:', _importBroker, '| File:', file.name, '| Ext:', ext);
 
     if (ext === 'csv') {
       const text = await file.text();
+      console.log('[Import] CSV lines:', text.split('\n').length, '| First 100:', text.slice(0,100));
       parsed = parseImportCSV(text, _importBroker);
+      console.log('[Import] Parsed positions:', parsed.length, parsed);
     } else if (ext === 'xlsx' || ext === 'xls') {
       parsed = await parseImportXLSX(file, _importBroker);
     } else {
