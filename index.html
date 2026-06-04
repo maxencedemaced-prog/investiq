@@ -2455,6 +2455,24 @@ window.addEventListener('load', function() {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
 
+    <!-- 🔔 Notifications Push -->
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:18px">
+      <div style="width:44px;height:44px;background:rgba(251,191,36,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:15px;font-weight:700;color:var(--color-text);margin-bottom:3px">Notifications push</div>
+        <div style="font-size:13px;color:var(--color-text-secondary)">Briefing matinal · Alertes portefeuille · Opportunités</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <span id="push-status-label" style="font-size:12px;color:var(--color-text-tertiary)">Désactivées</span>
+        <button id="push-toggle-btn" onclick="togglePushNotifications()"
+          style="padding:8px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;transition:all 0.15s">
+          Activer
+        </button>
+      </div>
+    </div>
+
     <!-- Préférences IA -->
     <div class="settings-row" onclick="openSettingsPanel('ia')" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:18px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--color-border-strong)';this.style.background='var(--color-surface-raised)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-surface)'">
       <div style="width:44px;height:44px;background:rgba(139,92,246,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
