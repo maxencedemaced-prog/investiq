@@ -6104,9 +6104,11 @@ async function addPosAndOpenBroker() {
   // Ajoute la position
   await addPos();
 
-  // Ouvre la modale XTB avec instructions
+  // Modale pour XTB et Trade Republic
   if (platform === 'XTB' && brokerTicker) {
     showXTBModal(brokerTicker, brokerUrl);
+  } else if (platform === 'Trade Republic') {
+    showTRModal(ticker);
   } else if (brokerUrl) {
     window.open(brokerUrl, '_blank');
   }
@@ -8373,6 +8375,62 @@ function isPushSubscribed() {
 }
 
 // ═══════════════════════════════════════════════
+
+function showTRModal(ticker) {
+  document.getElementById('xtb-open-modal')?.remove();
+
+  // Cherche l'ISIN dans la map (inverse de ISIN_TO_TICKER)
+  const isin = Object.entries(typeof ISIN_TO_TICKER !== 'undefined' ? ISIN_TO_TICKER : {})
+    .find(([k, v]) => v === ticker)?.[0] || '';
+  const name = getTickerName(ticker) || ticker;
+
+  const modal = document.createElement('div');
+  modal.id = 'xtb-open-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)';
+  modal.innerHTML = `
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:28px;width:400px;max-width:95vw;text-align:center">
+      <div style="font-size:28px;margin-bottom:12px">📱</div>
+      <h3 style="font-size:16px;font-weight:800;color:var(--color-text);margin:0 0 8px">Ouvrir dans Trade Republic</h3>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 16px;line-height:1.6">
+        Position ajoutée à InvestIQ ✅<br>
+        Recherche <strong style="color:var(--color-text)">${name}</strong> dans l'app TR.
+      </p>
+      <!-- Nom à copier -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;margin-bottom:${isin ? '8px' : '16px'}">
+        <span style="font-size:15px;font-weight:800;color:var(--color-text)">${name}</span>
+        <button onclick="navigator.clipboard.writeText('${name}');this.textContent='✅ Copié!';setTimeout(()=>this.textContent='📋 Copier',1500)"
+          style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
+          📋 Copier
+        </button>
+      </div>
+      ${isin ? `
+      <!-- ISIN à copier -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;margin-bottom:16px">
+        <div>
+          <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:2px">ISIN</div>
+          <span style="font-size:14px;font-weight:700;color:var(--color-text)">${isin}</span>
+        </div>
+        <button onclick="navigator.clipboard.writeText('${isin}');this.textContent='✅ Copié!';setTimeout(()=>this.textContent='📋 Copier',1500)"
+          style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
+          📋 Copier
+        </button>
+      </div>` : ''}
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('xtb-open-modal').remove()"
+          style="flex:1;padding:11px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
+          Fermer
+        </button>
+        <button onclick="navigator.clipboard.writeText('${name}');window.open('https://app.traderepublic.com/','_blank');document.getElementById('xtb-open-modal').remove()"
+          style="flex:2;padding:11px;background:#60a5fa;border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Copier + Ouvrir TR
+        </button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
 
 // ===== CACHE ANTHROPIC — réduit les coûts API de ~80% =====
 // TTL par type d'appel détecté dans le prompt
