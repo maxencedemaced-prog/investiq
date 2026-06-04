@@ -7643,11 +7643,26 @@ async function handleImportFile(file) {
   try {
     let parsed = [];
     const ext = file.name.split('.').pop().toLowerCase();
-    console.log('[Import] Broker:', _importBroker, '| File:', file.name, '| Ext:', ext);
+    // Auto-détection broker depuis le nom de fichier
+    const fname = file.name.toLowerCase();
+    if (fname.includes('exportation') || fname.includes('transaction') || fname.includes('trade_republic') || fname.includes('traderepublic')) {
+      _importBroker = 'tr';
+      selectBroker('tr');
+    } else if (fname.includes('xtb') || fname.includes('account_') || fname.includes('xstation')) {
+      _importBroker = 'xtb';
+      selectBroker('xtb');
+    }
+    console.log('[Import] Broker (final):', _importBroker, '| File:', file.name, '| Ext:', ext);
 
     if (ext === 'csv') {
       const text = await file.text();
-      console.log('[Import] CSV lines:', text.split('\n').length, '| First 100:', text.slice(0,100));
+      // Détection supplémentaire via contenu (Trade Republic a "datetime","category","type")
+      if (_importBroker === 'xtb' && text.includes('"datetime"') && text.includes('"category"')) {
+        _importBroker = 'tr';
+        selectBroker('tr');
+        console.log('[Import] Auto-switched to TR based on content');
+      }
+      console.log('[Import] Broker (content check):', _importBroker);
       parsed = parseImportCSV(text, _importBroker);
       console.log('[Import] Parsed positions:', parsed.length, parsed);
     } else if (ext === 'xlsx' || ext === 'xls') {
