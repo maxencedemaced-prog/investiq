@@ -12,6 +12,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="style.css">
   <style>
     /* ── Animations globales ── */
@@ -1297,6 +1298,10 @@ window.addEventListener('load', function() {
       <div class="page-header">
         <div><h1 id="home-greeting" style="font-size:24px">Bonjour !</h1><p class="page-sub" id="home-date"></p></div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="openImportModal()" style="display:flex;align-items:center;gap:6px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importer
+          </button>
           <button class="btn-add" onclick="nav('ajouter')" style="display:flex;align-items:center;gap:6px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Ajouter
@@ -1327,6 +1332,10 @@ window.addEventListener('load', function() {
           <button class="btn-secondary" onclick="refreshPrices()" style="display:flex;align-items:center;gap:6px;font-size:13px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
             Prix live
+          </button>
+          <button onclick="openImportModal()" style="display:flex;align-items:center;gap:5px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:9px;padding:7px 12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importer
           </button>
           <button class="btn-add" onclick="nav('ajouter')">+ Ajouter</button>
         </div>
@@ -2188,7 +2197,7 @@ window.addEventListener('load', function() {
         <!-- Priorités du jour -->
         <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:18px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <h3 style="font-size:13px;font-weight:800;color:var(--color-text);margin:0">Priorités du jour</h3>
+            <h3 style="font-size:13px;font-weight:800;color:var(--color-text);margin:0" data-section="priorities-title">Décisions récentes</h3>
             <button onclick="sq('Quelles sont toutes mes priorités aujourd'hui ?')" style="font-size:11px;color:var(--color-text-secondary);background:none;border:none;cursor:pointer;font-weight:600">Voir toutes →</button>
           </div>
           <div id="agent-priorities-content" style="display:flex;flex-direction:column;gap:8px">
