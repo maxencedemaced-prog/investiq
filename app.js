@@ -8487,7 +8487,10 @@ function detectIntent(q) {
   return 'question';
 }
 
+let _aiCallInProgress = false; // Verrou global anti-double appel
+
 async function sendAI() {
+  if (_aiCallInProgress) return; // Bloque si déjà en cours
   // Vérif limite gratuit
   if (!isPremiumUser()) {
     const count = getDailyCount('ai');
@@ -8500,10 +8503,12 @@ async function sendAI() {
   const q = inp.value.trim();
   if (!q) return;
   inp.value = '';
+  if (document.getElementById('ai-in-quick')) document.getElementById('ai-in-quick').value = '';
 
+  _aiCallInProgress = true;
   const chat = document.getElementById('ai-chat');
   const sendBtn = document.getElementById('ai-send-btn');
-  if (sendBtn) sendBtn.disabled = true;
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.5'; }
 
   chatHistory.push({ role: 'user', content: q });
   chat.innerHTML += `<div class="bubble user" style="background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border-radius:16px 16px 4px 16px;padding:12px 18px;margin-left:auto;max-width:80%;font-size:14px;font-weight:500;width:fit-content">${q}</div><div class="bubble bot" id="ai-loading" style="display:flex;align-items:center;gap:8px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="color:#8e8e93">Réflexion...</span></div>`;
@@ -8557,7 +8562,8 @@ Tu ne fournis pas de conseils financiers réglementés.`;
     if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot" style="color:#cc2f26">Erreur — réessaie.</div>`;
   }
 
-  if (sendBtn) sendBtn.disabled = false;
+  _aiCallInProgress = false;
+  if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; }
   chat.scrollTop = chat.scrollHeight;
 }
 
@@ -8812,6 +8818,7 @@ function renderAgentAlerts() {
 
 // ── ③ OPPORTUNITÉS ──
 async function renderAgentOpportunities() {
+  if (window._oppsInProgress) return;
   const el = document.getElementById('agent-opps-content');
   if (!el) return;
 
@@ -8819,6 +8826,7 @@ async function renderAgentOpportunities() {
     el.innerHTML = '<div style="font-size:12px;color:#fbbf24">✦ Fonctionnalité Premium</div>';
     return;
   }
+  window._oppsInProgress = true;
 
   // Cache 6h
   try {
@@ -8881,6 +8889,8 @@ Types : acheter/renforcer/vendre/surveiller.`;
     renderOppCards(items, el);
   } catch {
     el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary)">Données indisponibles.</div>';
+  } finally {
+    window._oppsInProgress = false;
   }
 }
 
@@ -8911,6 +8921,7 @@ function renderOppCards(items, el) {
 
 // ── ④ RECOMMANDATIONS + CONFIANCE ──
 async function renderAgentRecommendations() {
+  if (window._recoInProgress) return;
   const el = document.getElementById('agent-reco-content');
   if (!el) return;
 
@@ -8922,6 +8933,7 @@ async function renderAgentRecommendations() {
     el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary)">Ajoute des positions pour recevoir des recommandations.</div>';
     return;
   }
+  window._recoInProgress = true;
 
   // Cache 6h
   try {
@@ -8983,6 +8995,8 @@ Format JSON UNIQUEMENT — 3 items :
     renderRecoCards(items, el);
   } catch {
     el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary)">Données indisponibles.</div>';
+  } finally {
+    window._recoInProgress = false;
   }
 }
 
