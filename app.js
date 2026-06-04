@@ -5141,7 +5141,7 @@ async function renderHome() {
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${chgColor}">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1)}% aujourd'hui</div>
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.6)">${positions.length} positions</div>
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${scoreColor}">${score.toFixed(1)}/10 santé</div>
-          ${targetVal > 0 ? `<div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#a5b4fc">${pctObj.toFixed(0)}% objectif</div>` : ''}
+          ${targetVal > 0 ? `<div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#60a5fa">${pctObj.toFixed(0)}% objectif</div>` : ''}
         </div>
         ${targetVal > 0 ? `
         <div>
@@ -7811,37 +7811,52 @@ function renderAgentChanges() {
   if (!el) return;
 
   if (!positions.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Ajoute des positions pour voir les évolutions.</div>';
+    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5;grid-column:1/-1">Ajoute des positions pour voir les évolutions.</div>';
     return;
   }
 
-  const items = [];
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
-  const pnl = tv - ti;
-  const avgChg = positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length;
-
-  // Variation globale du jour
-  const globColor = avgChg >= 0 ? '#4ade80' : '#f87171';
-  const globIcon = avgChg >= 0 ? '📈' : '📉';
-  items.push({ icon: globIcon, text: `Portefeuille ${avgChg>=0?'+':''}${avgChg.toFixed(1)}% aujourd'hui`, color: globColor });
-
-  // Meilleures et pires variations
+  const tv  = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
+  const ti  = positions.reduce((a,p)=>a+p.pru*p.qty,0);
+  const avgChg = positions.length > 0 ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
   const sorted = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
-  if (sorted[0] && (sorted[0].change_pct||0) !== 0)
-    items.push({ icon: '🏆', text: `${sorted[0].name} meilleure perf. ${(sorted[0].change_pct||0)>=0?'+':''}${(sorted[0].change_pct||0).toFixed(1)}%`, color: '#4ade80' });
-  if (sorted[sorted.length-1] && (sorted[sorted.length-1].change_pct||0) !== 0)
-    items.push({ icon: '⚠️', text: `${sorted[sorted.length-1].name} en difficulté ${(sorted[sorted.length-1].change_pct||0).toFixed(1)}%`, color: '#f87171' });
-
-  // Score InvestIQ delta (fictif basé sur variation)
+  const best   = sorted[0];
+  const worst  = sorted[sorted.length-1];
   const scoreDelta = Math.round(avgChg * 0.8);
-  if (scoreDelta !== 0)
-    items.push({ icon: scoreDelta > 0 ? '⬆️' : '⬇️', text: `Score InvestIQ ${scoreDelta>0?'+':''}${scoreDelta} pts`, color: scoreDelta > 0 ? '#a5b4fc' : '#f87171' });
+
+  const items = [
+    {
+      icon: avgChg >= 0 ? '📈' : '📉',
+      label: 'Portefeuille',
+      val: `${avgChg>=0?'+':''}${avgChg.toFixed(1)}%`,
+      color: avgChg >= 0 ? '#22c55e' : '#ef4444'
+    },
+    {
+      icon: '🏆',
+      label: best ? best.name : '—',
+      val: best ? `${(best.change_pct||0)>=0?'+':''}${(best.change_pct||0).toFixed(1)}%` : '—',
+      color: '#22c55e'
+    },
+    {
+      icon: '⚠️',
+      label: worst && worst !== best ? worst.name : '—',
+      val: worst && worst !== best ? `${(worst.change_pct||0).toFixed(1)}%` : '—',
+      color: '#ef4444'
+    },
+    {
+      icon: scoreDelta >= 0 ? '⭐' : '↘',
+      label: 'Score InvestIQ',
+      val: `${scoreDelta>=0?'+':''}${scoreDelta} pts`,
+      color: scoreDelta >= 0 ? '#60a5fa' : '#ef4444'
+    }
+  ];
 
   el.innerHTML = items.map(it => `
-    <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:14px;flex-shrink:0">${it.icon}</span>
-      <span style="font-size:12px;font-weight:600;color:${it.color}">${it.text}</span>
+    <div style="background:var(--color-bg-subtle);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:15px;flex-shrink:0">${it.icon}</span>
+      <div style="min-width:0;flex:1">
+        <div style="font-size:11px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.label}</div>
+        <div style="font-size:13px;font-weight:800;color:${it.color}">${it.val}</div>
+      </div>
     </div>`).join('');
 }
 
@@ -7934,7 +7949,7 @@ Types : acheter/renforcer/surveiller. score entre 5 et 10. Tickers réels.`;
 function renderOppCards(items, el) {
   const typeCfg = {
     acheter:   { color:'#4ade80', bg:'rgba(74,222,128,0.08)',   label:'ACHETER'   },
-    renforcer: { color:'#a5b4fc', bg:'rgba(165,180,252,0.08)', label:'RENFORCER' },
+    renforcer: { color:'#60a5fa', bg:'rgba(165,180,252,0.08)', label:'RENFORCER' },
     surveiller:{ color:'#fbbf24', bg:'rgba(251,191,36,0.08)',  label:'SURVEILLER'},
   };
   el.innerHTML = items.slice(0,3).map(it => {
@@ -8039,7 +8054,7 @@ function renderRecoCards(items, el) {
       <!-- Impact estimé -->
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         ${it.impact_rendement ? `<span style="font-size:10px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.1);padding:2px 7px;border-radius:4px">📈 Rendement ${it.impact_rendement}</span>` : ''}
-        ${it.impact_risque ? `<span style="font-size:10px;font-weight:700;color:#a5b4fc;background:rgba(165,180,252,0.1);padding:2px 7px;border-radius:4px">🛡 Risque ${it.impact_risque}</span>` : ''}
+        ${it.impact_risque ? `<span style="font-size:10px;font-weight:700;color:#60a5fa;background:rgba(165,180,252,0.1);padding:2px 7px;border-radius:4px">🛡 Risque ${it.impact_risque}</span>` : ''}
         ${it.impact_score ? `<span style="font-size:10px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 7px;border-radius:4px">⭐ Score ${it.impact_score}</span>` : ''}
       </div>
     </div>`;
@@ -8226,7 +8241,7 @@ async function generateDailyBrief() {
 
   if (!positions.length) {
     renderDailyBrief([
-      { icon:'👋', text:'Bienvenue ! Ajoute tes premières positions pour recevoir un briefing personnalisé.', color:'#a5b4fc', type:'info' }
+      { icon:'👋', text:'Bienvenue ! Ajoute tes premières positions pour recevoir un briefing personnalisé.', color:'#60a5fa', type:'info' }
     ]);
     if (btn) btn.disabled = false;
     return;
@@ -8256,7 +8271,7 @@ Sois TRÈS concis. Max 12 mots par point. Utilise les vraies données.`;
     const items = [
       { icon: avgChg>=0?'📈':'📉', text: `Portef. ${avgChg>=0?'en hausse':'en baisse'} de ${Math.abs(avgChg).toFixed(1)}% aujourd'hui`, color: avgChg>=0?'#4ade80':'#f87171', type:'perf' },
       { icon: best?'🏆':'—', text: best ? `${best.name} meilleure perf. (+${(best.change_pct||0).toFixed(1)}%)` : 'Pas de données', color:'#fbbf24', type:'alert' },
-      { icon: '💡', text: pctObj ? `${pctObj}% de l'objectif atteint · Continue le DCA` : 'Définis un objectif pour suivre ta progression', color:'#a5b4fc', type:'tip' }
+      { icon: '💡', text: pctObj ? `${pctObj}% de l'objectif atteint · Continue le DCA` : 'Définis un objectif pour suivre ta progression', color:'#60a5fa', type:'tip' }
     ];
     try { localStorage.setItem('iq_daily_brief', JSON.stringify({items, ts:Date.now()})); } catch {}
     renderDailyBrief(items);
@@ -8457,7 +8472,7 @@ function renderAgentPriorities() {
     if (pnlPct < -15) priorities.push({ icon:'🔴', label:`Agir sur ${p.name}`, sub:'Perte dépasse 15%', color:'#f87171', q:`Que faire pour ${p.name} avec une perte de ${pnlPct.toFixed(1)}% ?` });
     else if (w > 40)  priorities.push({ icon:'⚡', label:`Réduire ${p.name}`, sub:'Concentration trop élevée', color:'#fbbf24', q:`Comment réduire mon exposition à ${p.name} (${w.toFixed(0)}% du portefeuille) ?` });
     else if (pnlPct > 25 && chg > 1) priorities.push({ icon:'🚀', label:`Renforcer ${p.name}`, sub:'Zone attractive', color:'#4ade80', q:`Est-ce le bon moment pour renforcer ${p.name} (+${pnlPct.toFixed(0)}%) ?` });
-    else if (Math.abs(chg) > 2) priorities.push({ icon:'👀', label:`Surveiller ${p.name}`, sub:`${chg >= 0 ? '+':''}${chg.toFixed(1)}% aujourd'hui`, color:'#a5b4fc', q:`Analyse le mouvement de ${p.name} aujourd'hui (${chg >= 0?'+':''}${chg.toFixed(1)}%).` });
+    else if (Math.abs(chg) > 2) priorities.push({ icon:'👀', label:`Surveiller ${p.name}`, sub:`${chg >= 0 ? '+':''}${chg.toFixed(1)}% aujourd'hui`, color:'#60a5fa', q:`Analyse le mouvement de ${p.name} aujourd'hui (${chg >= 0?'+':''}${chg.toFixed(1)}%).` });
   });
 
   // Défaut si rien
@@ -8505,7 +8520,7 @@ function renderAgentAlertsCards() {
       type:'opp', badge:'Opportunité', icon:'📊', title:`${p.name} sous-évalué`,
       body:`Correction de ${Math.abs(pnlPct).toFixed(0)}% — valorisation à surveiller.`,
       conf: 76, cta:'Voir l\'analyse →', q:`Est-ce que la baisse de ${p.name} (${pnlPct.toFixed(1)}%) est une opportunité d'achat ?`,
-      badgeColor:'#a5b4fc', badgeBg:'rgba(165,180,252,0.08)', borderColor:'rgba(165,180,252,0.2)'
+      badgeColor:'#60a5fa', badgeBg:'rgba(96,165,250,0.08)', borderColor:'rgba(96,165,250,0.2)'
     });
   });
 
@@ -8524,7 +8539,7 @@ function renderAgentAlertsCards() {
   }
 
   el.innerHTML = cards.slice(0,4).map(c => `
-    <div style="background:${c.badgeBg};border:1px solid ${c.borderColor};border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;cursor:pointer"
+    <div style="background:${c.badgeBg};border:1px solid ${c.borderColor};border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;cursor:pointer;min-height:140px"
       onclick="sq('${c.q.replace(/'/g,"&#39;")}')"
       onmouseover="this.style.transform='translateY(-1px)';this.style.transition='transform 0.15s'"
       onmouseout="this.style.transform=''">
@@ -8535,8 +8550,8 @@ function renderAgentAlertsCards() {
         </div>
         <span style="font-size:16px">${c.icon}</span>
       </div>
-      <div style="font-size:13px;font-weight:700;color:var(--color-text)">${c.title}</div>
-      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;flex:1">${c.body}</div>
+      <div style="font-size:14px;font-weight:800;color:var(--color-text);margin-top:2px">${c.title}</div>
+      <div style="font-size:13px;color:var(--color-text-secondary);line-height:1.55;flex:1">${c.body}</div>
       ${c.conf !== null ? `<div style="font-size:11px;font-weight:600;color:${c.badgeColor}">Confiance ${c.conf}%</div>` : ''}
       <div style="font-size:11px;font-weight:700;color:${c.badgeColor}">${c.cta}</div>
     </div>`).join('');
