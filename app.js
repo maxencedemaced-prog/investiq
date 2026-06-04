@@ -4772,6 +4772,10 @@ function getCompanyLogo(ticker, name, size, radius) {
     'VIE.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#009B77"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">VEO</text></svg>',
     'PAH3.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#000"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#c8aa6e" font-family="Arial">PAG</text></svg>',
     'TTE.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#E4262C"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">TTE</text></svg>',
+    'RACE':    '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#CC0000"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#f5c518" font-family="Arial">FER</text></svg>',
+    'CSPX.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
+    'VUAA.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#CC0000"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">VG</text></svg>',
+    'EIMI.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
   };;
   if (svgLogos[ticker]) {
     return '<div style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">'+svgLogos[ticker].replace('36 36', s+' '+s).replace('rx="8"','rx="'+r+'"')+'</div>';
@@ -5510,6 +5514,7 @@ const TICKER_NAMES = {
   'VWCE.DE':'Vanguard FTSE','CSPX.L':'iShares S&P500',
   'ALHPI.PA':'Hopium','ALHPI.FR':'Hopium',
   'VIE.PA':'Veolia','PAH3.DE':'Porsche AG',
+  'RACE':'Ferrari','CSPX.L':'iShares S&P500','VUAA.L':'Vanguard S&P500','EIMI.L':'iShares EM',
   'LVMH':'LVMH','AAPL':'Apple','MSFT':'Microsoft',
   'GOOGL':'Alphabet','AMZN':'Amazon','TSLA':'Tesla',
   'NVDA':'Nvidia','META':'Meta',
@@ -5686,7 +5691,7 @@ function renderPortfolio() {
           ${getCompanyLogo(p.name, p.fullName||p.name, 36, 10)}
           <div>
             <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${getTickerName(p.name)}</div>
-            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.type||'Action'} · ${p.qty} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
+            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.type||'Action'} · ${p.qty % 1 === 0 ? p.qty : parseFloat(p.qty.toFixed(4))} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
           </div>
         </div>
         <!-- Investi -->
@@ -7979,7 +7984,7 @@ function showImportPreview(parsed) {
             <span style="font-size:13px;font-weight:700;color:var(--color-text)">${p.name}</span>
             ${isDup ? '<span style="font-size:9px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 6px;border-radius:4px">DÉJÀ PRÉSENT</span>' : ''}
           </div>
-          <div style="font-size:11px;color:var(--color-text-secondary)">${p.qty.toFixed(p.qty % 1 === 0 ? 0 : 4)} parts · PRU ${p.pru.toFixed(4)} €</div>
+          <div style="font-size:11px;color:var(--color-text-secondary)">${p.qty % 1 === 0 ? p.qty : parseFloat(p.qty.toFixed(6))} parts · PRU ${p.pru.toFixed(4)} €</div>
         </div>
       </div>
       <div style="font-size:12px;font-weight:700;color:var(--color-text)">${Math.round(p.qty * p.pru).toLocaleString('fr-FR')} €</div>
