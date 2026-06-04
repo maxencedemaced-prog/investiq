@@ -1648,6 +1648,7 @@ async function acSelect(company) {
 
   // Show form fields
   document.getElementById('f-fields').style.display = 'block';
+  updateBrokerBtn();
   document.getElementById('f-empty-state').style.display = 'none';
 
   // Fetch live price
@@ -5971,6 +5972,65 @@ function openDecisionFromPos(name, action) {
     setDecisionIntent(action);
     document.getElementById('sec-decision')?.scrollTo(0,0);
   }, 50);
+}
+
+function updateBrokerBtn() {
+  const platform = document.getElementById('f-platform')?.value || 'XTB';
+  const btn = document.getElementById('btn-add-open-xtb');
+  if (!btn) return;
+  if (platform === 'XTB') {
+    btn.style.display = 'flex';
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Ajouter + Ouvrir dans XTB`;
+    btn.style.color = '#16a34a';
+    btn.style.borderColor = 'rgba(22,163,74,0.3)';
+    btn.style.background = 'rgba(22,163,74,0.08)';
+  } else if (platform === 'Trade Republic') {
+    btn.style.display = 'flex';
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Ajouter + Voir sur Trade Republic`;
+    btn.style.color = '#60a5fa';
+    btn.style.borderColor = 'rgba(96,165,250,0.3)';
+    btn.style.background = 'rgba(96,165,250,0.08)';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function getXTBInstrumentUrl(ticker) {
+  // xStation 5 — lien direct vers l'instrument
+  // Format: https://xstation5.xtb.com/ puis #instrument=TICKER
+  // XTB utilise ses propres noms : AAPL.US, CDG.FR → on reconvertit
+  const xtbTicker = (ticker||'')
+    .replace(/\.PA$/, '.FR')
+    .replace(/\.L$/, '.UK')
+    .replace(/\.AS$/, '.NL')
+    .replace(/\.MI$/, '.IT')
+    .replace(/\.MC$/, '.ES');
+  // Si pas de suffix → action US
+  const finalTicker = xtbTicker.includes('.') ? xtbTicker : xtbTicker + '.US';
+  return `https://xstation5.xtb.com/#instrument=${finalTicker}`;
+}
+
+function getTRInstrumentUrl(ticker) {
+  // Trade Republic — recherche par nom sur leur site web
+  const name = getTickerName(ticker) || ticker;
+  return `https://app.traderepublic.com/`;
+}
+
+async function addPosAndOpenBroker() {
+  const platform = document.getElementById('f-platform')?.value || 'XTB';
+  const ticker   = document.getElementById('f-name')?.value || '';
+
+  // Ajoute d'abord la position
+  await addPos();
+
+  // Puis ouvre le broker dans un nouvel onglet
+  let url = '';
+  if (platform === 'XTB') {
+    url = getXTBInstrumentUrl(ticker);
+  } else if (platform === 'Trade Republic') {
+    url = getTRInstrumentUrl(ticker);
+  }
+  if (url) window.open(url, '_blank');
 }
 
 async function addPos() {
