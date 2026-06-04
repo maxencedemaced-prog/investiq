@@ -6007,7 +6007,7 @@ function getXTBInstrumentUrl(ticker) {
     .replace(/\.MC$/, '.ES');
   // Si pas de suffix → action US
   const finalTicker = xtbTicker.includes('.') ? xtbTicker : xtbTicker + '.US';
-  return `https://xstation5.xtb.com/#instrument=${finalTicker}`;
+  return `https://xstation5.xtb.com/#instrument=${finalTicker}&action=buy`;
 }
 
 function getTRInstrumentUrl(ticker) {
