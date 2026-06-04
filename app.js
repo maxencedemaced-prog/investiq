@@ -4157,6 +4157,7 @@ async function initApp(user) {
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
   await loadProfile(); await loadPositions(); await loadObjective();
+  if (isPremiumUser()) setTimeout(initPushNotifications, 2000);
   try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory:', e); }
   nav('home');
   // Si objectif chargé depuis Supabase, prêt à afficher au clic sur Objectif
@@ -5562,6 +5563,28 @@ const TICKER_NAMES = {
 
 function getTickerName(ticker) {
   return TICKER_NAMES[ticker] || TICKER_NAMES[(ticker||'').toUpperCase()] || ticker;
+}
+
+
+function togglePushNotifications() {
+  if (isPushSubscribed()) {
+    unsubscribePush();
+    updatePushUI(false);
+  } else {
+    requestPushPermission().then(() => updatePushUI(isPushSubscribed()));
+  }
+}
+
+function updatePushUI(subscribed) {
+  const btn   = document.getElementById('push-toggle-btn');
+  const label = document.getElementById('push-status-label');
+  if (btn) {
+    btn.textContent = subscribed ? 'Désactiver' : 'Activer';
+    btn.style.background     = subscribed ? 'rgba(239,68,68,0.1)'   : 'rgba(251,191,36,0.12)';
+    btn.style.borderColor    = subscribed ? 'rgba(239,68,68,0.3)'   : 'rgba(251,191,36,0.3)';
+    btn.style.color          = subscribed ? '#ef4444'               : '#fbbf24';
+  }
+  if (label) label.textContent = subscribed ? '✅ Activées' : 'Désactivées';
 }
 
 function toggleSortMenu() {
@@ -8267,6 +8290,90 @@ async function addOrUpdatePosition(p) {
 
 // ═══════════════════════════════════════════════
 
+
+// ===== PUSH NOTIFICATIONS =====
+const VAPID_PUBLIC_KEY = 'BHW4rDjSj2cKpOw-A8xMuay3720lWKypGEqadAdlDnQemnH3hGVZBVAwKQd-UihKy-Y8SAkEn_uovaDdBc6IcEg';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function initPushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    console.log('[Push] Service worker registered');
+    // Auto-abonne si déjà autorisé
+    if (Notification.permission === 'granted') {
+      await subscribePush(reg);
+    }
+  } catch(e) { console.warn('[Push] SW registration failed:', e); }
+}
+
+async function requestPushPermission() {
+  if (!('Notification' in window)) {
+    showToast('⚠️ Notifications non supportées sur ce navigateur');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    showToast('⚠️ Notifications bloquées — autorise-les dans les paramètres du navigateur');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    const reg = await navigator.serviceWorker.ready;
+    await subscribePush(reg);
+    showToast('🔔 Notifications activées !');
+  } else {
+    showToast('Notifications refusées');
+  }
+}
+
+async function subscribePush(reg) {
+  if (!currentUser) return;
+  try {
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    await fetch('/api/push-subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub.toJSON(), user_id: currentUser.id })
+    });
+    localStorage.setItem('iq_push_subscribed', '1');
+    console.log('[Push] Subscribed OK');
+  } catch(e) { console.warn('[Push] Subscribe failed:', e); }
+}
+
+async function unsubscribePush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+    if (currentUser) {
+      await fetch('/api/push-subscribe', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id })
+      });
+    }
+    localStorage.removeItem('iq_push_subscribed');
+    showToast('🔕 Notifications désactivées');
+  } catch(e) { console.warn('[Push] Unsubscribe failed:', e); }
+}
+
+function isPushSubscribed() {
+  return localStorage.getItem('iq_push_subscribed') === '1' && Notification.permission === 'granted';
+}
+
+// ═══════════════════════════════════════════════
+
 // ===== CACHE ANTHROPIC — réduit les coûts API de ~80% =====
 // TTL par type d'appel détecté dans le prompt
 const AI_CACHE_TTL = {
@@ -9907,6 +10014,7 @@ function applyTheme(t) {
 }
 
 function updateSettingsDisplays() {
+  updatePushUI(isPushSubscribed());
   const emailEl = document.getElementById('set-email-display');
   const riskEl = document.getElementById('set-risk-display');
   const horizonEl = document.getElementById('set-horizon-display');
