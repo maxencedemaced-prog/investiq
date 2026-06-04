@@ -4751,31 +4751,20 @@ function getCompanyLogo(ticker, name, size, radius) {
   const fallback = '<div style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px;background:'+c+'20;border:1px solid '+c+'40;display:flex;align-items:center;justify-content:center;font-size:'+Math.round(s*0.35)+'px;font-weight:800;color:'+c+';flex-shrink:0">'+init+'</div>';
   // Logos SVG custom pour ETF et tickers sans favicon
   const svgLogos = {
-    'IWDA.L': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
+    // ETF — TradingView ne les gère pas bien, on garde les SVG custom
+    'IWDA.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
     'IWDA.AS': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
+    'CSPX.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
+    'EIMI.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
     'VWCE.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#CC0000"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">VG</text></svg>',
-    'MC.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a1a"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#c9a96e" font-family="Arial">LV</text></svg>',
-    'LVMH': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a1a"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#c9a96e" font-family="Arial">LV</text></svg>',
-    'MCPA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a1a"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#c9a96e" font-family="Arial">LV</text></svg>',
-    'SOI.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#0055A4"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" font-family="Arial">SOI</text></svg>',
-    'FDJ.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00843D"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">FDJ</text></svg>',
-    'AI.PA':   '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00A0E3"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">AIR</text></svg>',
-    'ALO.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#003189"/><text x="18" y="24" text-anchor="middle" font-size="8" font-weight="800" fill="#fff" font-family="Arial">ALST</text></svg>',
+    'VUAA.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#CC0000"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">VG</text></svg>',
     'SPPW.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
     'SWRD.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
     'SWRD.UK': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
     'AMEM.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#FF6600"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">AMU</text></svg>',
-    'STM.DE':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#003882"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" font-family="Arial">ST</text></svg>',
-    'STM.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#003882"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" font-family="Arial">ST</text></svg>',
     'ALHPI.PA':'<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a2e"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#4ade80" font-family="Arial">HOP</text></svg>',
     'ALHPI.FR':'<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a2e"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#4ade80" font-family="Arial">HOP</text></svg>',
-    'VIE.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#009B77"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">VEO</text></svg>',
-    'PAH3.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#000"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#c8aa6e" font-family="Arial">PAG</text></svg>',
-    'TTE.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#E4262C"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">TTE</text></svg>',
-    'RACE':    '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#CC0000"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#f5c518" font-family="Arial">FER</text></svg>',
-    'CSPX.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
-    'VUAA.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#CC0000"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">VG</text></svg>',
-    'EIMI.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
+    // Actions avec logo TradingView → pas de SVG custom, TradingView prend le relais
   };;
   if (svgLogos[ticker]) {
     return '<div style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">'+svgLogos[ticker].replace('36 36', s+' '+s).replace('rx="8"','rx="'+r+'"')+'</div>';
