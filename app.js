@@ -7663,18 +7663,40 @@ async function handleImportFile(file) {
   }
 }
 
+function parseCSVLine(line, sep) {
+  // Parser CSV qui gère les guillemets (champs avec virgules internes)
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === sep && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
 function parseImportCSV(text, broker) {
   const lines = text.split('\n').filter(l => l.trim());
   if (!lines.length) return [];
 
-  // Détecte le séparateur (virgule ou point-virgule)
-  const sep = lines[0].includes(';') ? ';' : ',';
-  const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,'').toLowerCase());
+  // Détecte le séparateur
+  const firstLine = lines[0];
+  const sep = (firstLine.match(/;/g)||[]).length > (firstLine.match(/,/g)||[]).length ? ';' : ',';
+  const headers = parseCSVLine(firstLine, sep).map(h => h.toLowerCase());
 
   const positions = {};
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(sep).map(c => c.trim().replace(/^"|"$/g,''));
+    const cols = parseCSVLine(lines[i], sep);
     if (!cols[0]) continue;
     const row = {};
     headers.forEach((h, idx) => { row[h] = cols[idx] || ''; });
