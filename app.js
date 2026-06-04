@@ -7408,12 +7408,12 @@ function openImportModal() {
       </div>
 
       <!-- Instructions broker -->
-      <div id="import-instructions" style="background:var(--color-bg-subtle);border-radius:10px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--color-text-secondary);line-height:1.6">
-        <strong style="color:var(--color-text)">XTB :</strong><br>
-        1. Connecte-toi sur xStation 5<br>
-        2. Historique du compte → Exporter<br>
-        3. Sélectionne "Rapport complet" + format Excel<br>
-        4. Télécharge et importe le fichier ici
+      <div id="import-instructions" style="background:var(--color-bg-subtle);border-radius:10px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--color-text-secondary);line-height:1.7">
+        <strong style="color:var(--color-text)">XTB — Comment exporter :</strong><br>
+        1. <a href="https://xstation5.xtb.com/" target="_blank" style="color:#22c55e;font-weight:700;text-decoration:none">Ouvrir xStation 5 ↗</a><br>
+        2. Onglet <strong style="color:var(--color-text)">Historique du compte</strong><br>
+        3. Clique <strong style="color:var(--color-text)">Exporter</strong> → <strong style="color:var(--color-text)">Rapport complet</strong> + Excel<br>
+        4. Glisse le fichier .xlsx dans la zone ci-dessous
       </div>
 
       <!-- Zone de dépôt fichier -->
@@ -7456,11 +7456,21 @@ function selectBroker(b) {
   if (b === 'xtb') {
     if (btnXTB) { btnXTB.style.background='rgba(34,197,94,0.1)'; btnXTB.style.borderColor='#22c55e'; btnXTB.style.color='#22c55e'; }
     if (btnTR)  { btnTR.style.background='var(--color-bg-subtle)'; btnTR.style.borderColor='var(--color-border)'; btnTR.style.color='var(--color-text-secondary)'; }
-    if (instr) instr.innerHTML = '<strong style="color:var(--color-text)">XTB :</strong><br>1. Connecte-toi sur xStation 5<br>2. Historique → Exporter<br>3. "Rapport complet" format Excel<br>4. Importe le fichier ici';
+    if (instr) instr.innerHTML = `<strong style="color:var(--color-text)">XTB — Comment exporter :</strong><br>
+1. <a href="https://xstation5.xtb.com/" target="_blank" style="color:#22c55e;font-weight:700">Ouvrir xStation 5 →</a><br>
+2. Onglet <strong>Historique du compte</strong><br>
+3. Clique sur <strong>Exporter</strong> (icône en haut à droite)<br>
+4. Sélectionne <strong>"Rapport complet"</strong> + format <strong>Excel (.xlsx)</strong><br>
+5. Télécharge et glisse le fichier ici`;
   } else {
     if (btnTR)  { btnTR.style.background='rgba(96,165,250,0.1)'; btnTR.style.borderColor='#60a5fa'; btnTR.style.color='#60a5fa'; }
     if (btnXTB) { btnXTB.style.background='var(--color-bg-subtle)'; btnXTB.style.borderColor='var(--color-border)'; btnXTB.style.color='var(--color-text-secondary)'; }
-    if (instr) instr.innerHTML = '<strong style="color:var(--color-text)">Trade Republic :</strong><br>1. App TR → Profil → Documents<br>2. Relevé de compte → Exporter CSV<br>3. Importe le fichier ici';
+    if (instr) instr.innerHTML = `<strong style="color:var(--color-text)">Trade Republic — Comment exporter :</strong><br>
+1. Ouvre l'<strong>app Trade Republic</strong> sur ton téléphone<br>
+2. Profil → <strong>Documents</strong> → Relevé de compte<br>
+3. Télécharge en <strong>CSV</strong> et transfère sur ton PC<br>
+4. Glisse le fichier ici<br>
+<span style="opacity:0.6;font-size:10px">ℹ️ Trade Republic n'a pas d'export web direct</span>`;
   }
 }
 
