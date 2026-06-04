@@ -5415,6 +5415,17 @@ function buildAlerts() {
 }
 
 // ===== PORTFOLIO =====
+function toggleSortMenu() {
+  const m = document.getElementById('sort-menu');
+  if (!m) return;
+  const open = m.style.display === 'block';
+  m.style.display = open ? 'none' : 'block';
+  if (!open) {
+    const close = e => { if (!m.contains(e.target) && e.target.id !== 'sort-trigger') { m.style.display='none'; document.removeEventListener('click', close); } };
+    setTimeout(() => document.addEventListener('click', close), 0);
+  }
+}
+
 function renderPortfolio() {
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
@@ -5514,30 +5525,32 @@ function renderPortfolio() {
   });
 
   const sortOptions = [
-    { key:'valeur',    label:'Valeur',          icon:'💰' },
-    { key:'perf',      label:'Meilleure perf.', icon:'📈' },
-    { key:'perf_asc',  label:'Pire perf.',      icon:'📉' },
-    { key:'variation', label:'Variation du jour',icon:'⚡' },
-    { key:'pnl',       label:'Plus-value €',    icon:'💹' },
-    { key:'quantite',  label:'Volume',          icon:'📦' },
-    { key:'nom',       label:'Nom A→Z',         icon:'🔤' },
+    { key:'valeur',    label:'Valeur'            },
+    { key:'perf',      label:'Meilleure perf.'   },
+    { key:'perf_asc',  label:'Pire perf.'        },
+    { key:'variation', label:'Variation du jour' },
+    { key:'pnl',       label:'Plus-value €'      },
+    { key:'quantite',  label:'Volume'            },
+    { key:'nom',       label:'Nom A\u2192Z'       },
   ];
 
+  const _activeLabel = sortOptions.find(o => o.key === _sortKey)?.label || 'Valeur';
   const sortBarHtml = `
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-    <span style="font-size:11px;font-weight:600;color:${subCol};flex-shrink:0">Trier par :</span>
-    ${sortOptions.map(o => {
-      const active = _sortKey === o.key;
-      return `<button onclick="window._portfolioSort='${o.key}';renderPortfolio()"
-        style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:${active?'700':'600'};cursor:pointer;transition:all 0.15s;
-        background:${active ? (isDark?'rgba(63,185,80,0.15)':'rgba(63,185,80,0.1)') : (isDark?'rgba(255,255,255,0.04)':'#f4f4f5')};
-        border:1px solid ${active ? '#3fb950' : borderCol};
-        color:${active ? '#3fb950' : subCol}">
-        <span style="font-size:12px">${o.icon}</span>${o.label}
-      </button>`;
-    }).join('')}
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;position:relative">
+    <span style="font-size:12px;font-weight:600;color:${subCol}">Trier par :</span>
+    <div style="position:relative;display:inline-block">
+      <button id="sort-trigger" onclick="toggleSortMenu()" style="display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border:1px solid ${borderCol};color:${textCol}">
+        ${_activeLabel}
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="sort-menu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:${isDark?'#1a1a2e':'#fff'};border:1px solid ${borderCol};border-radius:10px;padding:4px;z-index:200;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.18)">
+        ${sortOptions.map(o => `<button onclick="window._portfolioSort='${o.key}';document.getElementById('sort-menu').style.display='none';renderPortfolio()"
+          style="display:block;width:100%;text-align:left;padding:7px 12px;border-radius:7px;font-size:12px;font-weight:${_sortKey===o.key?700:500};cursor:pointer;background:${_sortKey===o.key?(isDark?'rgba(63,185,80,0.12)':'rgba(63,185,80,0.08)'):'transparent'};border:none;color:${_sortKey===o.key?'#3fb950':textCol}">
+          ${o.label}${_sortKey===o.key?' \u2713':''}
+        </button>`).join('')}
+      </div>
+    </div>
   </div>`;
-
   const tableHtml = `
   ${sortBarHtml}
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
