@@ -5519,6 +5519,7 @@ function renderPortfolio() {
     if (_sortKey === 'perf_asc')   return ((a.price-a.pru)/a.pru) - ((b.price-b.pru)/b.pru);
     if (_sortKey === 'variation')   return (b.change_pct||0) - (a.change_pct||0);
     if (_sortKey === 'quantite')    return b.qty - a.qty;
+    if (_sortKey === 'recent')      return (b.created_at||b.id||0) > (a.created_at||a.id||0) ? 1 : -1;
     if (_sortKey === 'nom')         return a.name.localeCompare(b.name);
     if (_sortKey === 'pnl')         return (b.qty*b.price-b.qty*b.pru) - (a.qty*a.price-a.qty*a.pru);
     return b.qty*b.price - a.qty*a.price;
@@ -5530,7 +5531,7 @@ function renderPortfolio() {
     { key:'perf_asc',  label:'Pire perf.'        },
     { key:'variation', label:'Variation du jour' },
     { key:'pnl',       label:'Plus-value €'      },
-    { key:'quantite',  label:'Volume'            },
+    { key:'recent',    label:'Dernier ajouté'    },
     { key:'nom',       label:'Nom A\u2192Z'       },
   ];
 
