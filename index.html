@@ -1972,14 +1972,22 @@ window.addEventListener('load', function() {
           </div>
           <div class="form-grid">
             <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Tech, Monde..."></div>
-            <div class="field"><label>Plateforme</label><select id="f-platform"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
+            <div class="field"><label>Plateforme</label><select id="f-platform" onchange="updateBrokerBtn()"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
           </div>
           <div class="field">
             <label>Alerte prix (€) <span class="tooltip-icon" data-tip="Notification si le prix descend sous ce seuil">?</span></label>
             <input type="number" id="f-alert" step="0.01" placeholder="Ex: 85 — alerte si prix < 85€">
           </div>
-          <div class="btn-row">
-            <button class="btn-primary" onclick="addPos()">Ajouter au portefeuille</button>
+          <div class="btn-row" style="flex-direction:column;gap:10px">
+            <!-- Bouton principal -->
+            <button class="btn-primary" onclick="addPos()" style="width:100%">
+              ✅ Ajouter au portefeuille
+            </button>
+            <!-- Bouton Ajouter + Ouvrir dans XTB (affiché si plateforme = XTB) -->
+            <button id="btn-add-open-xtb" onclick="addPosAndOpenBroker()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:rgba(22,163,74,0.08);border:1.5px solid rgba(22,163,74,0.3);border-radius:12px;font-size:14px;font-weight:700;color:#16a34a;cursor:pointer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Ajouter + Ouvrir dans XTB
+            </button>
             <button class="btn-secondary" onclick="loadDemo()">Charger un exemple</button>
           </div>
         </div>
