@@ -4404,6 +4404,9 @@ async function refreshPrices() {
     showToast('✓ ' + updated + ' prix mis à jour');
     // Recalcule les alertes prix avec les nouveaux cours (remplace les anciennes)
     checkPriceAlerts();
+    // Refresh agent changes avec les nouveaux prix
+    if (typeof renderAgentChanges === 'function') renderAgentChanges();
+    if (typeof renderHeroMetrics === 'function') renderHeroMetrics();
     // Refresh bloomberg ticker with latest prices
     const strip = document.getElementById('bloomberg-strip');
     if (strip) {
