@@ -6018,18 +6018,20 @@ function getTRInstrumentUrl(ticker) {
 
 async function addPosAndOpenBroker() {
   const platform = document.getElementById('f-platform')?.value || 'XTB';
-  const ticker   = document.getElementById('f-name')?.value || '';
+  // Récupère le ticker AVANT addPos (qui reset le formulaire)
+  const ticker = document.getElementById('f-name')?.value || '';
+  console.log('[Broker] ticker:', ticker, '| platform:', platform);
 
-  // Ajoute d'abord la position
+  // Calcule l'URL avant de resetter le form
+  let url = '';
+  if (platform === 'XTB') url = getXTBInstrumentUrl(ticker);
+  else if (platform === 'Trade Republic') url = getTRInstrumentUrl(ticker);
+
+  // Ajoute la position
   await addPos();
 
-  // Puis ouvre le broker dans un nouvel onglet
-  let url = '';
-  if (platform === 'XTB') {
-    url = getXTBInstrumentUrl(ticker);
-  } else if (platform === 'Trade Republic') {
-    url = getTRInstrumentUrl(ticker);
-  }
+  // Ouvre dans un nouvel onglet
+  console.log('[Broker] Opening:', url);
   if (url) window.open(url, '_blank');
 }
 
