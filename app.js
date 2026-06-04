@@ -9164,6 +9164,7 @@ async function renderAgentRecommendations() {
   el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5;display:flex;align-items:center;gap:6px"><svg class="spinning" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Génération...</div>';
 
   const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
   // Contexte enrichi — toutes les positions avec PRU, perte/gain, poids, variation jour
   const posCtx = positions.map(p => {
     const w    = tv > 0 ? p.qty * p.price / tv * 100 : 0;
