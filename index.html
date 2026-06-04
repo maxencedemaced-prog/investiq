@@ -1989,242 +1989,358 @@ window.addEventListener('load', function() {
 
     <!-- AI -->
     <section id="sec-ai" class="sec" style="padding:0;background:var(--color-bg)">
+  <div style="display:flex;min-height:calc(100vh - 60px)">
 
-  <!-- LAYOUT : gauche proactif + droite métriques -->
-  <div style="display:flex;gap:0;min-height:calc(100vh - 60px)">
-
-    <!-- ══════ COLONNE PRINCIPALE ══════ -->
-    <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:20px 20px 0 24px;gap:14px;overflow-y:auto;max-height:calc(100vh - 60px)">
+    <!-- ══ COLONNE PRINCIPALE ══ -->
+    <div style="flex:1;min-width:0;overflow-y:auto;max-height:calc(100vh - 60px);padding:24px 24px 32px">
 
       <!-- HEADER -->
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
         <div>
-          <h1 style="display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800;color:var(--color-text);margin:0;letter-spacing:-0.03em">
-            Copilote IA
-            <span style="background:linear-gradient(135deg,#16a34a,#059669);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:0.03em">PREMIUM</span>
+          <h1 style="display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;color:var(--color-text);margin:0 0 4px;letter-spacing:-0.03em">
+            Agent IA
+            <span style="background:linear-gradient(135deg,#16a34a,#059669);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;letter-spacing:0.05em">PREMIUM</span>
           </h1>
-          <p id="agent-brief-date" style="font-size:12px;color:var(--color-text-secondary);margin:2px 0 0"></p>
+          <p style="font-size:13px;color:var(--color-text-secondary);margin:0">Ton copilote financier personnel qui travaille 24h/24 pour optimiser tes investissements.</p>
         </div>
-        <button onclick="refreshAllAgentBlocks()" id="agent-refresh-all"
-          style="display:flex;align-items:center;gap:6px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:7px 13px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
-          Actualiser
-        </button>
-      </div>
-
-      <!-- ① BRIEFING DU JOUR -->
-      <div id="agent-daily-brief" style="background:linear-gradient(135deg,#0a0f1e,#0d1225);border:1px solid rgba(99,102,241,0.25);border-radius:18px;padding:18px 20px;position:relative;overflow:hidden;flex-shrink:0">
-        <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(99,102,241,0.1),transparent 70%);pointer-events:none"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:32px;height:32px;background:rgba(99,102,241,0.2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px">🧠</div>
-            <div style="font-size:13px;font-weight:800;color:#fff">Briefing du jour</div>
-            <div style="display:flex;align-items:center;gap:4px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);border-radius:99px;padding:2px 8px">
-              <div style="width:4px;height:4px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
-              <span style="font-size:10px;font-weight:700;color:#4ade80">À jour</span>
-            </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--color-text-tertiary)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="agent-last-update">Analyse réalisée il y a 1h</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer" onclick="void 0"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
           </div>
-          <button onclick="generateDailyBrief()" id="brief-refresh-btn"
-            style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:5px 10px;color:rgba(255,255,255,0.4);font-size:11px;font-weight:600;cursor:pointer">
+          <button onclick="refreshAllAgentBlocks()" id="agent-refresh-all"
+            style="display:flex;align-items:center;gap:6px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
             Actualiser
           </button>
         </div>
-        <div id="agent-brief-content" style="display:flex;flex-direction:column;gap:5px">
-          <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);font-size:13px">
-            <svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            Analyse de ton portefeuille...
+      </div>
+
+      <!-- ① HERO : RÉSUMÉ IA DU JOUR + SCORE -->
+      <div style="background:linear-gradient(135deg,#0a0f1e 0%,#0d1628 60%,#0a1a12 100%);border:1px solid rgba(99,102,241,0.2);border-radius:20px;padding:28px;margin-bottom:20px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-60px;right:-60px;width:240px;height:240px;background:radial-gradient(circle,rgba(99,102,241,0.08),transparent 70%);pointer-events:none"></div>
+        <div style="position:absolute;bottom:-40px;left:40%;width:180px;height:180px;background:radial-gradient(circle,rgba(22,163,74,0.06),transparent 70%);pointer-events:none"></div>
+
+        <div style="display:flex;gap:28px">
+          <!-- Texte résumé -->
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div style="width:30px;height:30px;background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(22,163,74,0.2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px">✨</div>
+              <div style="font-size:14px;font-weight:800;color:#fff">Résumé IA du jour</div>
+              <div style="display:flex;align-items:center;gap:4px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);border-radius:99px;padding:2px 8px">
+                <div style="width:4px;height:4px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
+                <span style="font-size:10px;font-weight:700;color:#4ade80">À jour</span>
+              </div>
+              <button onclick="generateDailyBrief()" id="brief-refresh-btn"
+                style="margin-left:auto;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:4px 10px;color:rgba(255,255,255,0.35);font-size:11px;font-weight:600;cursor:pointer">
+                Actualiser
+              </button>
+            </div>
+            <div id="agent-brief-content" style="font-size:14px;color:rgba(255,255,255,0.8);line-height:1.7;min-height:60px">
+              <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);font-size:13px">
+                <svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Analyse de ton portefeuille...
+              </div>
+            </div>
+            <!-- 3 métriques -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px" id="agent-hero-metrics">
+              <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                  <span id="hero-risk-count" style="font-size:20px;font-weight:900;color:#fff">—</span>
+                </div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.5)">Risque détecté</div>
+                <div id="hero-risk-label" style="font-size:10px;font-weight:700;color:#f87171;margin-top:2px">Priorité élevée</div>
+              </div>
+              <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.15);border-radius:12px;padding:12px">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                  <span id="hero-opp-count" style="font-size:20px;font-weight:900;color:#fff">—</span>
+                </div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.5)">Opportunités</div>
+                <div style="font-size:10px;font-weight:700;color:#4ade80;margin-top:2px">Potentiel identifié</div>
+              </div>
+              <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.15);border-radius:12px;padding:12px">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span id="hero-obj-days" style="font-size:20px;font-weight:900;color:#fff">—</span>
+                </div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.5)">Objectif en avance</div>
+                <div id="hero-obj-pct" style="font-size:10px;font-weight:700;color:#a5b4fc;margin-top:2px">—% atteint</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Score InvestIQ -->
+          <div style="width:200px;flex-shrink:0;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:18px;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px">Score InvestIQ</div>
+            <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px">
+              <svg width="90" height="90" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="38" stroke="rgba(255,255,255,0.06)" stroke-width="7" fill="none"/>
+                <circle id="iq-score-ring" cx="45" cy="45" r="38" stroke="url(#sgGrad)" stroke-width="7" fill="none"
+                  stroke-linecap="round" stroke-dasharray="0 239" stroke-dashoffset="60"
+                  style="transition:stroke-dasharray 1.2s ease"/>
+                <defs>
+                  <linearGradient id="sgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#6366f1"/>
+                    <stop offset="100%" stop-color="#4ade80"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div style="position:absolute;text-align:center">
+                <div id="iq-score-val" style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.04em">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);font-weight:600">/100</div>
+              </div>
+            </div>
+            <div id="iq-score-label" style="font-size:13px;font-weight:700;color:#a5b4fc;margin-bottom:10px">Calcul...</div>
+            <div id="iq-score-delta" style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px"></div>
+            <!-- Graphique score (sparkline fictif) -->
+            <svg width="100%" height="36" viewBox="0 0 160 36" style="margin-bottom:8px">
+              <path d="M0 28 L20 24 L40 26 L60 20 L80 22 L100 16 L120 14 L140 10 L160 8" stroke="#4ade80" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+              <circle cx="160" cy="8" r="3" fill="#4ade80"/>
+            </svg>
+            <button onclick="sq('Pourquoi mon score InvestIQ est-il de ' + (document.getElementById('iq-score-val').textContent||'ce niveau') + ' ? Explique chaque sous-score.')"
+              style="width:100%;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.25);border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:#a5b4fc;cursor:pointer">
+              Pourquoi ce score ?
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- ② CE QUI A CHANGÉ DEPUIS HIER -->
-      <div id="agent-changes-block" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;padding:16px 18px;flex-shrink:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em">📅 Depuis hier</div>
-        </div>
-        <div id="agent-changes-content" style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Chargement...</div>
-        </div>
-      </div>
-
-      <!-- ③ ALERTES + OPPORTUNITÉS (2 colonnes) -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;flex-shrink:0" id="agent-alerts-opps-grid">
-
-        <!-- Alertes -->
-        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;padding:16px 18px">
-          <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">⚠️ Alertes détectées</div>
-          <div id="agent-alerts-content" style="display:flex;flex-direction:column;gap:7px">
-            <div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Analyse en cours...</div>
-          </div>
-        </div>
-
-        <!-- Opportunités -->
-        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;padding:16px 18px">
-          <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">🚀 Opportunités</div>
-          <div id="agent-opps-content" style="display:flex;flex-direction:column;gap:7px">
-            <div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Détection en cours...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ④ RECOMMANDATIONS IA avec score confiance -->
-      <div id="agent-reco-block" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;padding:16px 18px;flex-shrink:0">
+      <!-- ② ALERTES & OPPORTUNITÉS -->
+      <div style="margin-bottom:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em">🎯 Recommandations du jour</div>
-          <span style="font-size:10px;color:var(--color-text-tertiary)">par InvestIQ IA</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <h2 style="font-size:16px;font-weight:800;color:var(--color-text);margin:0">Alertes &amp; opportunités</h2>
+            <span id="agent-alerts-badge" style="background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;display:none"></span>
+          </div>
+          <button onclick="sq('Donne-moi le détail de toutes mes alertes et opportunités.')" style="font-size:12px;font-weight:600;color:var(--color-text-secondary);background:none;border:none;cursor:pointer">Tout voir →</button>
         </div>
-        <div id="agent-reco-content" style="display:flex;flex-direction:column;gap:8px">
-          <div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Génération en cours...</div>
+        <!-- Cards horizontales scrollables -->
+        <div id="agent-alerts-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <!-- Rempli par renderAgentAlertsCards() -->
+          <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:16px;height:120px;display:flex;align-items:center;justify-content:center">
+            <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          </div>
         </div>
       </div>
 
-      <!-- ⑤ QUE FERAIT INVESTIQ ? -->
-      <div style="background:linear-gradient(135deg,#0a1a0f,#0d2015);border:1px solid rgba(22,163,74,0.3);border-radius:18px;padding:16px 18px;flex-shrink:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="width:28px;height:28px;background:rgba(22,163,74,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">🤔</div>
-            <div style="font-size:13px;font-weight:800;color:#4ade80">Que ferait InvestIQ ?</div>
+      <!-- ③ RECOMMANDATIONS IA -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <h2 style="font-size:16px;font-weight:800;color:var(--color-text);margin:0 0 2px">Recommandations IA</h2>
+            <p style="font-size:12px;color:var(--color-text-secondary);margin:0">Basées sur ton profil, ton portefeuille et les conditions de marché</p>
           </div>
           <button onclick="generateWhatWouldIQ()" id="wwiq-btn"
-            style="background:rgba(22,163,74,0.15);border:1px solid rgba(22,163,74,0.3);border-radius:8px;padding:6px 12px;color:#4ade80;font-size:11px;font-weight:700;cursor:pointer">
-            Analyser →
+            style="display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,rgba(22,163,74,0.15),rgba(5,150,105,0.1));border:1px solid rgba(22,163,74,0.3);border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;color:#4ade80;cursor:pointer">
+            <span style="font-size:14px">🤔</span>
+            Que ferait InvestIQ ?
           </button>
         </div>
-        <div id="agent-wwiq-content" style="font-size:13px;color:rgba(255,255,255,0.5);font-style:italic">
-          Clique sur "Analyser" pour que l'IA prenne une décision sur ton portefeuille comme si c'était le sien.
+        <div id="agent-reco-content" style="display:flex;flex-direction:column;gap:8px">
+          <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:20px;display:flex;align-items:center;gap:10px">
+            <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <span style="font-size:13px;color:var(--color-text-secondary)">Génération des recommandations...</span>
+          </div>
+        </div>
+        <!-- Résultat "Que ferait InvestIQ ?" -->
+        <div id="agent-wwiq-block" style="display:none;margin-top:12px;background:linear-gradient(135deg,#0a1a0f,#0d2015);border:1px solid rgba(22,163,74,0.3);border-radius:14px;padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="width:24px;height:24px;background:rgba(22,163,74,0.2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px">🤔</div>
+            <div style="font-size:13px;font-weight:800;color:#4ade80">Si ce portefeuille était le mien...</div>
+          </div>
+          <div id="agent-wwiq-content" style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7"></div>
         </div>
       </div>
 
-      <!-- ⑥ CONTEXTE + CHAT (compact, 15% de la page) -->
-      <div id="agent-context-bar" style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0"></div>
+      <!-- ④ PRIORITÉS DU JOUR + CHAT (2 colonnes) -->
+      <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:16px;margin-bottom:20px">
 
-      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;overflow:hidden;flex-shrink:0;margin-bottom:16px">
-        <!-- Titre chat collapsible -->
-        <div onclick="toggleAgentChat()" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--color-border)" id="agent-chat-header">
-          <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;display:flex;align-items:center;gap:8px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Chat IA
+        <!-- Priorités du jour -->
+        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <h3 style="font-size:13px;font-weight:800;color:var(--color-text);margin:0">Priorités du jour</h3>
+            <button onclick="sq('Quelles sont toutes mes priorités aujourd'hui ?')" style="font-size:11px;color:var(--color-text-secondary);background:none;border:none;cursor:pointer;font-weight:600">Voir toutes →</button>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div id="agent-suggestions" style="display:flex;gap:5px;flex-wrap:nowrap;overflow:hidden;max-width:300px"></div>
-            <svg id="agent-chat-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;transition:transform 0.2s"><polyline points="6 9 12 15 18 9"/></svg>
+          <div id="agent-priorities-content" style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Chargement...</div>
           </div>
         </div>
 
-        <!-- Messages chat (collapsed par défaut si briefing ok) -->
-        <div id="agent-chat-body" style="display:none">
-          <div class="chat-messages" id="ai-chat" style="padding:16px;max-height:35vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px">
-            <div class="bubble bot" id="ai-welcome" style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:12px;padding:12px 14px;font-size:13px">Bonjour ! Je suis ton copilote IA. Pose-moi n'importe quelle question.</div>
+        <!-- Chat IA compact -->
+        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--color-border)">
+            <h3 style="font-size:13px;font-weight:800;color:var(--color-text);margin:0 0 8px">Pose une question à ton Agent IA</h3>
+            <!-- Suggestions rapides -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap" id="agent-quick-btns">
+              <button onclick="sq('Analyser une action')" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">💬 Analyser une action</button>
+              <button onclick="sq('Simuler un scénario de crise sur mon portefeuille')" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">🌪 Simuler un scénario</button>
+              <button onclick="sq('Optimise mon plan DCA pour atteindre mon objectif plus vite')" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">📅 Optimiser mon DCA</button>
+              <button onclick="sq('Génère un rapport hebdomadaire complet de mon portefeuille')" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">📋 Rapport hebdomadaire</button>
+            </div>
           </div>
+          <!-- Messages -->
+          <div id="agent-context-bar" style="display:none"></div>
+          <div id="agent-suggestions" style="display:none"></div>
+          <div class="chat-messages" id="ai-chat" style="flex:1;overflow-y:auto;padding:14px 16px;min-height:120px;max-height:220px;display:flex;flex-direction:column;gap:8px">
+            <div class="bubble bot" id="ai-welcome" style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:12px;padding:11px 13px;font-size:13px">Bonjour ! Pose-moi n'importe quelle question sur ton portefeuille.</div>
+          </div>
+          <!-- Input -->
           <div style="border-top:1px solid var(--color-border);padding:10px 12px;display:flex;gap:8px;align-items:center">
-            <div id="ai-free-counter" style="display:none;font-size:11px;font-weight:600"></div>
+            <div id="ai-free-counter" style="display:none"></div>
             <input type="text" id="ai-in" placeholder="Pose ta question ou donne un ordre..."
               onkeydown="if(event.key==='Enter')sendAI()"
-              style="flex:1;font-size:13px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;color:var(--color-text);outline:none">
+              style="flex:1;font-size:13px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:9px 14px;color:var(--color-text);outline:none">
             <button onclick="sendAI()" id="ai-send-btn"
               style="width:38px;height:38px;background:#16a34a;color:#fff;border:none;border-radius:10px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(22,163,74,0.3)">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
           </div>
         </div>
-
-        <!-- Chat fermé : input rapide toujours visible -->
-        <div id="agent-chat-quick" style="padding:10px 12px;display:flex;gap:8px;align-items:center">
-          <input type="text" id="ai-in-quick" placeholder="Pose une question rapide..."
-            onkeydown="if(event.key==='Enter'){document.getElementById('ai-in').value=this.value;openAgentChat();sendAI();}"
-            style="flex:1;font-size:13px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:9px 14px;color:var(--color-text);outline:none">
-          <button onclick="openAgentChat();sendAI()"
-            style="width:36px;height:36px;background:#16a34a;color:#fff;border:none;border-radius:10px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </button>
-        </div>
       </div>
 
-      <div style="text-align:center;font-size:11px;color:var(--color-text-tertiary);padding-bottom:16px">
-        Les réponses de l'IA ne constituent pas un conseil en investissement.
-      </div>
-    </div>
-
-    <!-- ══════ COLONNE DROITE : SCORE + MÉTRIQUES ══════ -->
-    <div id="ai-sidebar" style="width:250px;flex-shrink:0;border-left:1px solid var(--color-border);padding:20px 16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(100vh - 60px)">
-
-      <!-- Score InvestIQ -->
-      <div style="background:linear-gradient(135deg,#0a0f1e,#0d1225);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:16px;text-align:center">
-        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Score InvestIQ</div>
-        <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px">
-          <svg width="80" height="80" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none"/>
-            <circle id="iq-score-ring" cx="40" cy="40" r="34" stroke="url(#scoreGrad)" stroke-width="6" fill="none"
-              stroke-linecap="round" stroke-dasharray="0 214" stroke-dashoffset="53.5"
-              style="transition:stroke-dasharray 1s ease"/>
-            <defs>
-              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#6366f1"/>
-                <stop offset="100%" stop-color="#4ade80"/>
-              </linearGradient>
-            </defs>
-          </svg>
-          <div style="position:absolute;text-align:center">
-            <div id="iq-score-val" style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.04em">—</div>
-            <div style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:600">/100</div>
-          </div>
-        </div>
-        <div id="iq-score-label" style="font-size:12px;font-weight:700;color:#a5b4fc;margin-bottom:10px">Calcul en cours...</div>
-        <!-- Sous-scores -->
-        <div id="iq-score-breakdown" style="display:flex;flex-direction:column;gap:5px;text-align:left">
-        </div>
-        <button onclick="sq('Pourquoi mon score InvestIQ est-il de ' + (document.getElementById('iq-score-val').textContent||'ce niveau') + ' ? Explique chaque sous-score en détail.')"
-          style="margin-top:10px;width:100%;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:#a5b4fc;cursor:pointer">
-          Pourquoi ce score ?
+      <!-- ⑤ BARRE DU BAS : outils premium -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px">
+        <button onclick="sq('Génère un rapport hebdomadaire complet : performances, mouvements, opportunités manquées, recommandations pour la semaine prochaine.')"
+          style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:14px;text-align:left;cursor:pointer;transition:border-color 0.15s"
+          onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='var(--color-border)'">
+          <div style="font-size:18px;margin-bottom:6px">📋</div>
+          <div style="font-size:12px;font-weight:700;color:var(--color-text);margin-bottom:2px">Rapport hebdomadaire</div>
+          <div style="font-size:11px;color:var(--color-text-secondary)">Dimanche à 9h</div>
+        </button>
+        <button onclick="sq('Fais une analyse approfondie et complète de mon portefeuille : diversification, risques, opportunités, corrélations, scénarios.')"
+          style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:14px;text-align:left;cursor:pointer;transition:border-color 0.15s"
+          onmouseover="this.style.borderColor='#4ade80'" onmouseout="this.style.borderColor='var(--color-border)'">
+          <div style="font-size:18px;margin-bottom:6px">🔬</div>
+          <div style="font-size:12px;font-weight:700;color:var(--color-text);margin-bottom:2px">Analyse approfondie</div>
+          <div style="font-size:11px;color:var(--color-text-secondary)">De ton portefeuille</div>
+        </button>
+        <button onclick="sq('Simule l'impact d'une crise sévère sur mon portefeuille : krach 2008, COVID, hausse taux. Donne perte estimée, durée de récupération et actifs les plus touchés.')"
+          style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:14px;text-align:left;cursor:pointer;transition:border-color 0.15s"
+          onmouseover="this.style.borderColor='#f87171'" onmouseout="this.style.borderColor='var(--color-border)'">
+          <div style="font-size:18px;margin-bottom:6px">🌪</div>
+          <div style="font-size:12px;font-weight:700;color:var(--color-text);margin-bottom:2px">Scénario de crise</div>
+          <div style="font-size:11px;color:var(--color-text-secondary)">Stress test personnalisé</div>
+        </button>
+        <button onclick="sq('Résume tout ce que tu sais de mon profil investisseur, mes préférences, mon historique de décisions et propose des ajustements.')"
+          style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:14px;text-align:left;cursor:pointer;transition:border-color 0.15s"
+          onmouseover="this.style.borderColor='#fbbf24'" onmouseout="this.style.borderColor='var(--color-border)'">
+          <div style="font-size:18px;margin-bottom:6px">🧠</div>
+          <div style="font-size:12px;font-weight:700;color:var(--color-text);margin-bottom:2px">Mémoire IA</div>
+          <div style="font-size:11px;color:var(--color-text-secondary)">Profil mis à jour hier</div>
         </button>
       </div>
 
-      <div style="height:1px;background:var(--color-border)"></div>
-
-      <!-- P&L actuel -->
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Plus-value latente</div>
-        <div id="ai-side-pnl" style="font-size:24px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em">—</div>
-        <div id="ai-side-pnl-pct" style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">—</div>
-        <svg id="ai-side-sparkline" width="100%" height="32" viewBox="0 0 200 32" style="margin-top:6px;opacity:0.7">
-          <path d="M0 24 Q50 8 100 16 Q150 24 200 10" stroke="#6366f1" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-        </svg>
+      <div style="text-align:center;font-size:11px;color:var(--color-text-tertiary);padding-top:12px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+        L'IA peut se tromper. Vérifie toujours les informations importantes.
       </div>
-
-      <div style="height:1px;background:var(--color-border)"></div>
-
-      <!-- Radar risque compact -->
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Radar de risque</div>
-        <div id="ai-side-radar" style="display:flex;flex-direction:column;gap:6px">
-        </div>
-      </div>
-
-      <div style="height:1px;background:var(--color-border)"></div>
-
-      <!-- Impact + Risque -->
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Impact sur portefeuille</div>
-        <div id="ai-side-impact" style="font-size:14px;font-weight:800;margin-bottom:6px">—</div>
-        <div style="height:5px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden">
-          <div id="ai-side-impact-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#f59e0b,#ef4444);border-radius:99px;transition:width 0.8s"></div>
-        </div>
-      </div>
-
-      <div style="height:1px;background:var(--color-border)"></div>
-
-      <!-- CTA -->
-      <button onclick="sq('Donne-moi une analyse complète de mon portefeuille avec toutes les métriques.')"
-        style="width:100%;padding:11px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:12px;font-size:12px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between"
-        onmouseover="this.style.borderColor='#3fb950'" onmouseout="this.style.borderColor='var(--color-border)'">
-        <span>Voir détails portefeuille</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-      </button>
-
     </div>
 
-  </div>
+    <!-- ══ SIDEBAR DROITE ══ -->
+    <div id="ai-sidebar" style="width:270px;flex-shrink:0;border-left:1px solid var(--color-border);overflow-y:auto;max-height:calc(100vh - 60px)">
 
+      <!-- Aperçu portefeuille -->
+      <div style="padding:20px 18px;border-bottom:1px solid var(--color-border)">
+        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Aperçu portefeuille</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:2px">Valeur totale</div>
+        <div id="ai-side-tv" style="font-size:26px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em;margin-bottom:2px">—</div>
+        <div id="ai-side-pnl" style="font-size:13px;font-weight:700;margin-bottom:10px">—</div>
+        <!-- Sparkline -->
+        <svg id="ai-side-sparkline" width="100%" height="36" viewBox="0 0 220 36" style="margin-bottom:10px;opacity:0.8">
+          <path d="M0 28 Q40 20 80 24 Q120 28 160 16 Q190 10 220 12" stroke="#f87171" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        </svg>
+        <!-- Onglets 1J/7J/1M/1A/MAX -->
+        <div style="display:flex;gap:4px;margin-bottom:14px">
+          <button style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:var(--color-text);cursor:pointer">1J</button>
+          <button style="background:none;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">7J</button>
+          <button style="background:none;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">1M</button>
+          <button style="background:none;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">1A</button>
+          <button style="background:none;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">MAX</button>
+        </div>
+        <!-- Métriques -->
+        <div style="display:flex;flex-direction:column;gap:8px" id="ai-side-metrics">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Liquidités
+            </div>
+            <span id="ai-side-liquid" style="font-size:12px;font-weight:700;color:var(--color-text)">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              Investi
+            </div>
+            <span id="ai-side-invested" style="font-size:12px;font-weight:700;color:var(--color-text)">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+              Positions
+            </div>
+            <span id="ai-side-positions" style="font-size:12px;font-weight:700;color:var(--color-text)">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+              Rendement
+            </div>
+            <span id="ai-side-pnl-right" style="font-size:12px;font-weight:700">—</span>
+          </div>
+        </div>
+        <button onclick="nav('portefeuille')" style="width:100%;margin-top:14px;padding:10px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:10px;font-size:12px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+          <span>Voir mon portefeuille</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+
+      <!-- Santé du portefeuille -->
+      <div style="padding:18px;border-bottom:1px solid var(--color-border)">
+        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Santé de ton portefeuille</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div style="position:relative;width:56px;height:56px;flex-shrink:0">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <circle cx="28" cy="28" r="22" stroke="rgba(255,255,255,0.06)" stroke-width="5" fill="none"/>
+              <circle id="health-ring" cx="28" cy="28" r="22" stroke="#4ade80" stroke-width="5" fill="none"
+                stroke-linecap="round" stroke-dasharray="0 138" stroke-dashoffset="34.5"
+                style="transition:stroke-dasharray 1s ease"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+              <span id="health-score-val" style="font-size:14px;font-weight:900;color:var(--color-text)">—</span>
+            </div>
+          </div>
+          <div>
+            <div id="health-score-label" style="font-size:14px;font-weight:800;color:#4ade80">—</div>
+            <div id="health-score-sub" style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">En amélioration</div>
+          </div>
+        </div>
+        <div id="ai-side-radar" style="display:flex;flex-direction:column;gap:7px"></div>
+        <button onclick="nav('sante')" style="width:100%;margin-top:12px;padding:9px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:10px;font-size:12px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+          <span>Voir la santé complète</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+
+      <!-- Objectif principal -->
+      <div style="padding:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Objectif principal</div>
+        <div id="ai-side-obj-pct" style="font-size:28px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em;margin-bottom:2px">—%</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">atteint</div>
+        <div style="height:6px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden;margin-bottom:8px">
+          <div id="ai-side-obj-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width 1s"></div>
+        </div>
+        <div id="ai-side-obj-detail" style="font-size:11px;color:var(--color-text-secondary);margin-bottom:12px">—</div>
+        <button onclick="nav('objectif')" style="width:100%;padding:9px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:10px;font-size:12px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+          <span>Voir le détail →</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+
+    </div>
+  </div>
 </section>
 
     <!-- CRISE -->
