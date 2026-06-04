@@ -9286,14 +9286,14 @@ async function generateWhatWouldIQ() {
   // Contexte ultra-détaillé pour WWIQ
   const wwiqLines = positions.map(p => {
     const pnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
-    const w   = totalVal>0 ? p.qty*(p.price||p.pru)/totalVal*100 : 0;
+    const w   = tv>0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
     const chg = p.change_pct||0;
     return `${p.name} : PRU ${p.pru.toFixed(0)}€ → ${(p.price||p.pru).toFixed(0)}€ (${pnl>=0?'+':''}${pnl.toFixed(1)}%), poids ${w.toFixed(0)}%, auj ${chg>=0?'+':''}${chg.toFixed(1)}%`;
   }).join('\n');
 
   const prompt = `Si ce portefeuille était le mien, voici exactement ce que je ferais. Je parle à la 1ère personne, sans filtre.
 
-MON PORTEFEUILLE (${Math.round(totalVal).toLocaleString('fr-FR')}€, P&L global ${pnlGlobal>=0?'+':''}${pnlGlobal}%) :
+MON PORTEFEUILLE (${Math.round(tv).toLocaleString('fr-FR')}€, P&L global ${pnlGlobal>=0?'+':''}${pnlGlobal}%) :
 ${wwiqLines}
 PROFIL : ${profile.risk||'prudent'}, horizon ${profile.horizon||'long terme'}
 
