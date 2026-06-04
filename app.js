@@ -5500,9 +5500,46 @@ function renderPortfolio() {
     </div>`).join('')}
   </div>`;
 
-  // Tableau des positions
-  const sorted = [...dedupPositions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
+  // Tri des positions selon la préférence
+  const _sortKey = window._portfolioSort || 'valeur';
+  const sorted = [...dedupPositions].sort((a,b) => {
+    if (_sortKey === 'valeur')      return b.qty*b.price - a.qty*a.price;
+    if (_sortKey === 'perf')        return ((b.price-b.pru)/b.pru) - ((a.price-a.pru)/a.pru);
+    if (_sortKey === 'perf_asc')   return ((a.price-a.pru)/a.pru) - ((b.price-b.pru)/b.pru);
+    if (_sortKey === 'variation')   return (b.change_pct||0) - (a.change_pct||0);
+    if (_sortKey === 'quantite')    return b.qty - a.qty;
+    if (_sortKey === 'nom')         return a.name.localeCompare(b.name);
+    if (_sortKey === 'pnl')         return (b.qty*b.price-b.qty*b.pru) - (a.qty*a.price-a.qty*a.pru);
+    return b.qty*b.price - a.qty*a.price;
+  });
+
+  const sortOptions = [
+    { key:'valeur',    label:'Valeur',          icon:'💰' },
+    { key:'perf',      label:'Meilleure perf.', icon:'📈' },
+    { key:'perf_asc',  label:'Pire perf.',      icon:'📉' },
+    { key:'variation', label:'Variation du jour',icon:'⚡' },
+    { key:'pnl',       label:'Plus-value €',    icon:'💹' },
+    { key:'quantite',  label:'Volume',          icon:'📦' },
+    { key:'nom',       label:'Nom A→Z',         icon:'🔤' },
+  ];
+
+  const sortBarHtml = `
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <span style="font-size:11px;font-weight:600;color:${subCol};flex-shrink:0">Trier par :</span>
+    ${sortOptions.map(o => {
+      const active = _sortKey === o.key;
+      return `<button onclick="window._portfolioSort='${o.key}';renderPortfolio()"
+        style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:${active?'700':'600'};cursor:pointer;transition:all 0.15s;
+        background:${active ? (isDark?'rgba(63,185,80,0.15)':'rgba(63,185,80,0.1)') : (isDark?'rgba(255,255,255,0.04)':'#f4f4f5')};
+        border:1px solid ${active ? '#3fb950' : borderCol};
+        color:${active ? '#3fb950' : subCol}">
+        <span style="font-size:12px">${o.icon}</span>${o.label}
+      </button>`;
+    }).join('')}
+  </div>`;
+
   const tableHtml = `
+  ${sortBarHtml}
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
     <!-- Header tableau — caché sur mobile -->
     <div class="port-table-header" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
