@@ -7775,17 +7775,84 @@ function showImportPreview(parsed) {
   if (drop) drop.style.display = 'none';
   preview.style.display = 'block';
 
-  list.innerHTML = parsed.map((p, i) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--color-bg-subtle);border-radius:10px">
+  // Détecte les doublons avec le portefeuille existant
+  const duplicates = parsed.filter(p =>
+    positions.some(existing => existing.name.toLowerCase() === p.name.toLowerCase())
+  );
+  const hasDuplicates = duplicates.length > 0;
+
+  // Affiche l'alerte doublons si nécessaire
+  const dupAlert = document.getElementById('import-dup-alert');
+  if (dupAlert) dupAlert.remove();
+
+  if (hasDuplicates) {
+    const alertEl = document.createElement('div');
+    alertEl.id = 'import-dup-alert';
+    alertEl.style.cssText = 'background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:12px;padding:14px 16px;margin-bottom:14px';
+    alertEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:16px">⚠️</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fbbf24">
+            ${duplicates.length} position${duplicates.length > 1 ? 's' : ''} déjà présente${duplicates.length > 1 ? 's' : ''} dans ton portefeuille
+          </div>
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">
+            ${duplicates.map(d => d.name).join(', ')}
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="import-mode-add" onclick="setImportMode('add')"
+          style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;
+          background:rgba(34,197,94,0.15);border:2px solid #22c55e;color:#22c55e">
+          ➕ Additionner
+          <div style="font-size:10px;font-weight:400;opacity:0.8;margin-top:2px">Ajoute aux quantités existantes (PRU pondéré)</div>
+        </button>
+        <button id="import-mode-replace" onclick="setImportMode('replace')"
+          style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;
+          background:var(--color-bg-subtle);border:2px solid var(--color-border);color:var(--color-text-secondary)">
+          🔄 Remplacer
+          <div style="font-size:10px;font-weight:400;opacity:0.8;margin-top:2px">Supprime l'ancien et importe le nouveau</div>
+        </button>
+      </div>`;
+    list.parentNode.insertBefore(alertEl, list);
+  }
+
+  list.innerHTML = parsed.map((p, i) => {
+    const isDup = positions.some(e => e.name.toLowerCase() === p.name.toLowerCase());
+    return `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:${isDup ? 'rgba(251,191,36,0.06)' : 'var(--color-bg-subtle)'};border:1px solid ${isDup ? 'rgba(251,191,36,0.2)' : 'transparent'};border-radius:10px">
       <div style="display:flex;align-items:center;gap:10px">
         <input type="checkbox" id="import-chk-${i}" checked style="width:16px;height:16px;cursor:pointer">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--color-text)">${p.name}</div>
-          <div style="font-size:11px;color:var(--color-text-secondary)">${p.qty.toFixed(p.qty % 1 === 0 ? 0 : 4)} parts · PRU ${p.pru.toFixed(2)} €</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;font-weight:700;color:var(--color-text)">${p.name}</span>
+            ${isDup ? '<span style="font-size:9px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 6px;border-radius:4px">DÉJÀ PRÉSENT</span>' : ''}
+          </div>
+          <div style="font-size:11px;color:var(--color-text-secondary)">${p.qty.toFixed(p.qty % 1 === 0 ? 0 : 4)} parts · PRU ${p.pru.toFixed(4)} €</div>
         </div>
       </div>
       <div style="font-size:12px;font-weight:700;color:var(--color-text)">${Math.round(p.qty * p.pru).toLocaleString('fr-FR')} €</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+let _importMode = 'add'; // 'add' ou 'replace'
+
+function setImportMode(mode) {
+  _importMode = mode;
+  const addBtn     = document.getElementById('import-mode-add');
+  const replaceBtn = document.getElementById('import-mode-replace');
+  if (addBtn) {
+    addBtn.style.background     = mode === 'add'     ? 'rgba(34,197,94,0.15)'       : 'var(--color-bg-subtle)';
+    addBtn.style.borderColor    = mode === 'add'     ? '#22c55e'                     : 'var(--color-border)';
+    addBtn.style.color          = mode === 'add'     ? '#22c55e'                     : 'var(--color-text-secondary)';
+  }
+  if (replaceBtn) {
+    replaceBtn.style.background  = mode === 'replace' ? 'rgba(239,68,68,0.12)'       : 'var(--color-bg-subtle)';
+    replaceBtn.style.borderColor = mode === 'replace' ? '#ef4444'                    : 'var(--color-border)';
+    replaceBtn.style.color       = mode === 'replace' ? '#ef4444'                    : 'var(--color-text-secondary)';
+  }
 }
 
 async function confirmImport() {
@@ -7798,13 +7865,24 @@ async function confirmImport() {
     if (chk && !chk.checked) continue;
     const p = _importPositions[i];
     try {
-      await addOrUpdatePosition({ name: p.name, qty: p.qty, pru: p.pru });
+      const existing = positions.find(e => e.name.toLowerCase() === p.name.toLowerCase());
+      if (existing && _importMode === 'replace') {
+        // Supprime l'ancienne position puis crée la nouvelle
+        await sb.from('positions').delete().eq('id', existing.id);
+        positions.splice(positions.indexOf(existing), 1);
+        await addOrUpdatePosition({ name: p.name, qty: p.qty, pru: p.pru });
+      } else {
+        // Mode 'add' ou pas de doublon → additionne / crée
+        await addOrUpdatePosition({ name: p.name, qty: p.qty, pru: p.pru });
+      }
       imported++;
     } catch(e) { console.warn('Import skip:', p.name, e); }
   }
 
   document.getElementById('import-modal')?.remove();
-  showToast(`✅ ${imported} position${imported>1?'s':''} importée${imported>1?'s':''} !`);
+  const modeLabel = _importMode === 'replace' ? 'remplacées' : 'importées';
+  showToast(`✅ ${imported} position${imported>1?'s':''} ${modeLabel} !`);
+  _importMode = 'add'; // reset
   renderPortfolio();
   if (typeof renderHome === 'function') renderHome();
 }
