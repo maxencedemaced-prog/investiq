@@ -8107,7 +8107,7 @@ Sois direct, opiniâtre, comme si c'était vraiment ton argent. 3-5 points max.`
     const r = await callClaude(prompt, 'Tu es un gestionnaire de portefeuille qui parle à la première personne. Sois direct et concret.');
     const htmlR = formatAgentMD(r);
     try { localStorage.setItem('iq_agent_wwiq', JSON.stringify({html:htmlR,ts:Date.now()})); } catch {}
-    const block = document.getElementById('agent-wwiq-block'); if (block) block.style.removeProperty('display');
+    const block = document.getElementById('agent-wwiq-block'); if (block) { block.style.display = 'block'; block.style.opacity = '1'; }
     el.innerHTML = htmlR;
     el.style.fontStyle = 'normal';
     el.style.color = 'rgba(255,255,255,0.82)';
@@ -8355,6 +8355,34 @@ function updateDCADonut() {
 function updateAISidebarIA() {
   // Alimente la nouvelle sidebar 100% IA
   if (!positions || !positions.length) return;
+
+  // Confiance globale (moyenne des recos en cache)
+  let globalConf = 80;
+  try {
+    const cr = JSON.parse(localStorage.getItem('iq_agent_reco')||'null');
+    if (cr && cr.items) globalConf = Math.round(cr.items.reduce((a,i)=>a+(i.confiance||80),0)/cr.items.length);
+  } catch {}
+  const confEl  = document.getElementById('ai-side-global-conf');
+  const confBar = document.getElementById('ai-side-global-conf-bar');
+  if (confEl)  { confEl.textContent = globalConf + '%'; confEl.style.color = globalConf>=75?'#22c55e':globalConf>=55?'#f59e0b':'#ef4444'; }
+  if (confBar) setTimeout(()=>{ confBar.style.width = globalConf + '%'; confBar.style.background = globalConf>=75?'linear-gradient(90deg,#16a34a,#4ade80)':'linear-gradient(90deg,#f59e0b,#fbbf24)'; }, 200);
+
+  // Timing dernière / prochaine analyse
+  const lastEl = document.getElementById('ai-side-last-update');
+  const nextEl = document.getElementById('ai-side-next-update');
+  if (lastEl || nextEl) {
+    const CACHE_TS = (() => { try { const c = JSON.parse(localStorage.getItem('iq_daily_brief')||'null'); return c ? c.ts : null; } catch { return null; } })();
+    const now = Date.now();
+    if (CACHE_TS) {
+      const elapsedMin = Math.round((now - CACHE_TS) / 60000);
+      const remainMin  = Math.max(0, 360 - elapsedMin); // TTL 6h
+      if (lastEl) lastEl.textContent = elapsedMin < 2 ? "À l'instant" : elapsedMin < 60 ? "Il y a " + elapsedMin + " min" : "Il y a " + Math.round(elapsedMin/60) + "h";
+      if (nextEl) nextEl.textContent = remainMin < 2 ? "Imminent" : remainMin < 60 ? "Dans " + remainMin + " min" : "Dans " + Math.round(remainMin/60) + "h";
+    } else {
+      if (lastEl) lastEl.textContent = 'En attente';
+      if (nextEl) nextEl.textContent = 'Au prochain chargement';
+    }
+  }
   const tv  = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
   const ti  = positions.reduce((a,p)=>a+p.pru*p.qty,0);
 
