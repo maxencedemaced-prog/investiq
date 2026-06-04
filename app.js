@@ -5995,20 +5995,72 @@ function updateBrokerBtn() {
   }
 }
 
-function getXTBInstrumentUrl(ticker) {
-  // Convertit le ticker InvestIQ → format XTB
-  const xtbTicker = (ticker||'')
-    .replace(/\.PA$/, '.FR')
-    .replace(/\.L$/, '.UK')
-    .replace(/\.AS$/, '.NL')
-    .replace(/\.MI$/, '.IT')
-    .replace(/\.MC$/, '.ES');
-  const finalTicker = xtbTicker.includes('.') ? xtbTicker : xtbTicker + '.US';
+// Map ticker InvestIQ → ticker XTB exact
+const XTB_TICKER_MAP = {
+  // Actions françaises (.PA → .FR)
+  'MC.PA':'MC.FR','LVMH':'MC.FR',
+  'TTE.PA':'TTE.FR','AI.PA':'AI.FR',
+  'AIR.PA':'AIR.FR','VIE.PA':'VIE.FR',
+  'SOI.PA':'SOI.FR','FDJ.PA':'FDJ.FR',
+  'ALO.PA':'ALO.FR','SAN.PA':'SAN.FR',
+  'OR.PA':'OR.FR','BNP.PA':'BNP.FR',
+  'GLE.PA':'GLE.FR','ACA.PA':'ACA.FR',
+  'SU.PA':'SU.FR','DSY.PA':'DSY.FR',
+  'CAP.PA':'CAP.FR','LR.PA':'LR.FR',
+  'STM.PA':'STM.FR','ENGI.PA':'ENG.FR',
+  'ORA.PA':'ORA.FR','HO.PA':'HO.FR',
+  // Actions allemandes (.DE → .DE)
+  'PAH3.DE':'PAH3.DE','VOW3.DE':'VOW3.DE',
+  'BMW.DE':'BMW.DE','SAP.DE':'SAP.DE',
+  'SIE.DE':'SIE.DE','STM.DE':'STM.DE',
+  'SPPW.DE':'SPPW.DE','AMEM.DE':'AMEM.DE',
+  'VWCE.DE':'VWCE.DE',
+  // UK (.L → .UK)
+  'IWDA.L':'IWDA.UK','SWRD.L':'SWRD.UK',
+  'CSPX.L':'CSPX.UK',
+  // Amsterdam (.AS → .NL)
+  'IWDA.AS':'IWDA.NL','VWCE.AS':'VWCE.NL',
+  // US (sans suffix)
+  'AAPL':'AAPL.US','MSFT':'MSFT.US',
+  'GOOGL':'GOOGL.US','AMZN':'AMZN.US',
+  'TSLA':'TSLA.US','NVDA':'NVDA.US',
+  'META':'META.US','RACE':'RACE.US',
+};
 
-  // xStation5 : le hash #instrument= est ignoré si la session est déjà ouverte
-  // On utilise un lien qui ouvre xStation avec le ticker dans l'URL de recherche
-  // ET on affiche une mini-modale avec le ticker et un lien direct
-  return { ticker: finalTicker, url: `https://xstation5.xtb.com/` };
+function getXTBInstrumentUrl(ticker) {
+  // Cherche d'abord dans la map exacte
+  let xtbTicker = XTB_TICKER_MAP[ticker] || XTB_TICKER_MAP[(ticker||'').toUpperCase()];
+
+  if (!xtbTicker) {
+    // Conversion automatique par suffix — couvre toutes les bourses mondiales
+    xtbTicker = (ticker||'')
+      .replace(/\.PA$/, '.FR')   // Euronext Paris
+      .replace(/\.L$/, '.UK')    // London Stock Exchange
+      .replace(/\.AS$/, '.NL')   // Euronext Amsterdam
+      .replace(/\.MI$/, '.IT')   // Borsa Italiana
+      .replace(/\.MC$/, '.ES')   // Bolsa Madrid
+      .replace(/\.BR$/, '.BE')   // Euronext Brussels
+      .replace(/\.WA$/, '.PL')   // Warsaw
+      .replace(/\.LS$/, '.PT')   // Lisbon
+      .replace(/\.HE$/, '.FI')   // Helsinki
+      .replace(/\.ST$/, '.SE')   // Stockholm
+      .replace(/\.CO$/, '.DK')   // Copenhagen
+      .replace(/\.OL$/, '.NO')   // Oslo
+      .replace(/\.SW$/, '.CH')   // Swiss Exchange
+      .replace(/\.VI$/, '.AT')   // Vienna
+      .replace(/\.PR$/, '.CZ')   // Prague
+      .replace(/\.BU$/, '.HU')   // Budapest
+      .replace(/\.T$/, '.JP')    // Tokyo
+      .replace(/\.AX$/, '.AU')   // Australia
+      .replace(/\.TO$/, '.CA')   // Toronto
+      .replace(/\.HK$/, '.HK')   // Hong Kong
+      .replace(/\.SS$/, '.CN')   // Shanghai
+      .replace(/\.SZ$/, '.CN');  // Shenzhen
+    // Si pas de suffix → action américaine
+    if (!xtbTicker.includes('.')) xtbTicker += '.US';
+  }
+
+  return { ticker: xtbTicker, url: 'https://xstation5.xtb.com/' };
 }
 
 async function addPosAndOpenBroker() {
