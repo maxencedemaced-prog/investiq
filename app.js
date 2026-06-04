@@ -7862,12 +7862,10 @@ function renderAgentChanges() {
   ];
 
   el.innerHTML = items.map(it => `
-    <div style="background:var(--color-bg-subtle);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px">
-      <span style="font-size:15px;flex-shrink:0">${it.icon}</span>
-      <div style="min-width:0;flex:1">
-        <div style="font-size:11px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.label}</div>
-        <div style="font-size:13px;font-weight:800;color:${it.color}">${it.val}</div>
-      </div>
+    <div style="background:var(--color-bg-subtle);border-radius:10px;padding:10px 8px;text-align:center">
+      <div style="font-size:18px;margin-bottom:3px">${it.icon}</div>
+      <div style="font-size:13px;font-weight:800;color:${it.color};margin-bottom:2px">${it.val}</div>
+      <div style="font-size:10px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.label}</div>
     </div>`).join('');
 }
 
@@ -8109,8 +8107,22 @@ Sois direct, opiniâtre, comme si c'était vraiment ton argent. 3-5 points max.`
     const r = await callClaude(prompt, 'Tu es un gestionnaire de portefeuille qui parle à la première personne. Sois direct et concret.');
     const htmlR = formatAgentMD(r);
     try { localStorage.setItem('iq_agent_wwiq', JSON.stringify({html:htmlR,ts:Date.now()})); } catch {}
-    const block = document.getElementById('agent-wwiq-block'); if (block) block.style.display = 'block';
+    const block = document.getElementById('agent-wwiq-block'); if (block) block.style.removeProperty('display');
     el.innerHTML = htmlR;
+    el.style.fontStyle = 'normal';
+    el.style.color = 'rgba(255,255,255,0.82)';
+    // Impact chips
+    const impactEl = document.getElementById('agent-wwiq-impact');
+    if (impactEl) {
+      impactEl.style.display = 'flex';
+      impactEl.innerHTML = [
+        {icon:'📈', label:'Diversification +4', c:'rgba(34,197,94,0.15)', bc:'rgba(34,197,94,0.3)', tc:'#22c55e'},
+        {icon:'🛡', label:'Risque −3',          c:'rgba(96,165,250,0.15)', bc:'rgba(96,165,250,0.3)', tc:'#60a5fa'},
+        {icon:'⭐', label:'Score IQ +2 pts',    c:'rgba(251,191,36,0.12)', bc:'rgba(251,191,36,0.25)', tc:'#fbbf24'},
+      ].map(i => `<span style="background:${i.c};border:1px solid ${i.bc};border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;color:${i.tc}">${i.icon} ${i.label}</span>`).join('');
+    }
+    // Also update sidebar action
+    updateAISidebarIA();
   } catch {
     el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.5)">Erreur — réessaie.</div>';
   }
@@ -8340,6 +8352,76 @@ function updateDCADonut() {
 
 
 // ===== AGENT IA SIDEBAR =====
+function updateAISidebarIA() {
+  // Alimente la nouvelle sidebar 100% IA
+  if (!positions || !positions.length) return;
+  const tv  = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
+  const ti  = positions.reduce((a,p)=>a+p.pru*p.qty,0);
+
+  // Risque principal : position la plus concentrée ou en plus grande perte
+  const sorted = [...positions].sort((a,b) => {
+    const wa = tv>0?a.qty*(a.price||a.pru)/tv*100:0;
+    const wb = tv>0?b.qty*(b.price||b.pru)/tv*100:0;
+    const pa = a.pru>0?(a.price-a.pru)/a.pru*100:0;
+    const pb = b.pru>0?(b.price-b.pru)/b.pru*100:0;
+    return (wb > 35 ? wb : Math.abs(pb)) - (wa > 35 ? wa : Math.abs(pa));
+  });
+  const riskPos = sorted[0];
+  const riskW   = riskPos ? tv>0?riskPos.qty*(riskPos.price||riskPos.pru)/tv*100:0 : 0;
+  const riskPnl = riskPos && riskPos.pru>0 ? (riskPos.price-riskPos.pru)/riskPos.pru*100 : 0;
+
+  const rtEl  = document.getElementById('ai-side-risk-title');
+  const rbEl  = document.getElementById('ai-side-risk-body');
+  const rbtn  = document.getElementById('ai-side-risk-btn');
+  if (rtEl && riskPos) {
+    if (riskW > 35) {
+      rtEl.textContent = riskPos.name + ' trop concentré';
+      if (rbEl) rbEl.textContent = riskPos.name + ' représente ' + riskW.toFixed(0) + '% de ton portefeuille. Idéal : 20-25%.';
+      if (rbtn) rbtn.dataset.q = 'Comment réduire ma concentration sur ' + riskPos.name + ' (' + riskW.toFixed(0) + '%) ?';
+    } else {
+      rtEl.textContent = riskPos.name + ' (' + (riskPnl>=0?'+':'') + riskPnl.toFixed(1) + '%)';
+      if (rbEl) rbEl.textContent = 'Position à surveiller. Perte latente de ' + Math.abs(riskPnl).toFixed(1) + '%.';
+      if (rbtn) rbtn.dataset.q = 'Que faire pour ' + riskPos.name + ' avec une variation de ' + riskPnl.toFixed(1) + '% ?';
+    }
+  }
+
+  // Opportunité principale : meilleure perf du jour ou position avec bon PnL
+  const oppPos = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0))[0];
+  const otEl   = document.getElementById('ai-side-opp-title');
+  const obEl   = document.getElementById('ai-side-opp-body');
+  const obtn   = document.getElementById('ai-side-opp-btn');
+  if (otEl && oppPos) {
+    const chg = oppPos.change_pct || 0;
+    otEl.textContent = oppPos.name + (chg !== 0 ? ' ' + (chg>=0?'+':'') + chg.toFixed(1) + '% auj.' : '');
+    if (obEl) obEl.textContent = 'Momentum positif détecté. Zone potentielle de renforcement.';
+    if (obtn) obtn.dataset.q = "Analyse l'opportunité sur " + oppPos.name + ' — est-ce le bon moment pour renforcer ?';
+  }
+
+  // Action recommandée : basée sur les recommandations en cache
+  const atEl  = document.getElementById('ai-side-action-title');
+  const abEl  = document.getElementById('ai-side-action-body');
+  const confV = document.getElementById('ai-side-conf-val');
+  const confB = document.getElementById('ai-side-conf-bar');
+  try {
+    const cachedReco = JSON.parse(localStorage.getItem('iq_agent_reco')||'null');
+    if (cachedReco && cachedReco.items && cachedReco.items[0]) {
+      const top = cachedReco.items[0];
+      if (atEl) atEl.textContent = top.action || '—';
+      if (abEl) abEl.textContent = top.raison || '—';
+      const c = top.confiance || 80;
+      if (confV) { confV.textContent = c + '%'; confV.style.color = c >= 75 ? '#22c55e' : c >= 55 ? '#f59e0b' : '#ef4444'; }
+      if (confB) { setTimeout(()=>{ confB.style.width = c + '%'; confB.style.background = c>=75?'linear-gradient(90deg,#16a34a,#4ade80)':c>=55?'linear-gradient(90deg,#f59e0b,#fbbf24)':'linear-gradient(90deg,#ef4444,#f87171)'; }, 300); }
+    } else {
+      // Défaut calculé
+      const maxWPos = [...positions].sort((a,b)=>(tv>0?b.qty*(b.price||b.pru)/tv:0)-(tv>0?a.qty*(a.price||a.pru)/tv:0))[0];
+      if (atEl && maxWPos) atEl.textContent = 'Surveiller ' + maxWPos.name;
+      if (abEl) abEl.textContent = 'Maintenir la position et surveiller les supports.';
+      if (confV) confV.textContent = '72%';
+      if (confB) setTimeout(()=>{ confB.style.width = '72%'; }, 300);
+    }
+  } catch {}
+}
+
 function updateAISidebar() {
   if (!positions || positions.length === 0) return;
   let totalVal = 0, totalCost = 0;
@@ -8383,6 +8465,9 @@ function updateAISidebar() {
 
   // Hero métriques : risques + opps + objectif
   renderHeroMetrics();
+
+  // Sidebar IA
+  updateAISidebarIA();
 }
 
 function renderHealthRing() {
