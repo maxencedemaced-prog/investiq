@@ -7566,29 +7566,107 @@ function parseImportCSV(text, broker) {
 }
 
 async function parseImportXLSX(file, broker) {
-  // Utilise SheetJS si disponible, sinon fallback CSV
-  if (typeof XLSX !== 'undefined') {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        try {
-          const wb   = XLSX.read(e.target.result, { type: 'binary' });
-          const ws   = wb.Sheets[wb.SheetNames[0]];
-          const data = XLSX.utils.sheet_to_csv(ws, { FS: ',' });
-          resolve(parseImportCSV(data, broker));
-        } catch(err) { reject(new Error('Erreur lecture XLSX : ' + err.message)); }
-      };
-      reader.readAsBinaryString(file);
-    });
+  if (typeof XLSX === 'undefined') {
+    throw new Error('Librairie XLSX non chargée. Actualise la page et réessaie.');
   }
 
-  // Fallback : essaie de lire comme texte CSV
-  try {
-    const text = await file.text();
-    if (text.includes(',') || text.includes(';')) return parseImportCSV(text, broker);
-  } catch {}
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
 
-  throw new Error('Pour les fichiers XLSX, utilise le bouton "Importer" depuis un navigateur récent.');
+        if (broker === 'xtb') {
+          resolve(parseXTBWorkbook(wb));
+        } else {
+          // Trade Republic : feuille 1 → CSV
+          const ws   = wb.Sheets[wb.SheetNames[0]];
+          const csv  = XLSX.utils.sheet_to_csv(ws, { FS: ',' });
+          resolve(parseImportCSV(csv, broker));
+        }
+      } catch(err) { reject(new Error('Erreur lecture XLSX : ' + err.message)); }
+    };
+    reader.onerror = () => reject(new Error('Impossible de lire le fichier.'));
+    reader.readAsBinaryString(file);
+  });
+}
+
+function parseXTBWorkbook(wb) {
+  // Cherche la feuille "OPEN POSITION" (positions ouvertes)
+  const openSheet = wb.SheetNames.find(n => n.toUpperCase().includes('OPEN POSITION'));
+  if (!openSheet) throw new Error('Feuille "OPEN POSITION" introuvable. Exporte avec "Rapport complet".');
+
+  const ws   = wb.Sheets[openSheet];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+  // Trouve la ligne d'en-têtes (contient 'Symbol' ou 'Position')
+  let headerRow = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (r && r.some(c => typeof c === 'string' && c.toLowerCase() === 'symbol')) {
+      headerRow = i;
+      break;
+    }
+  }
+  if (headerRow === -1) throw new Error('En-têtes non trouvés. Vérifie le format du fichier.');
+
+  const headers = rows[headerRow].map(h => (h || '').toString().toLowerCase().trim());
+  const symIdx  = headers.indexOf('symbol');
+  const typeIdx = headers.indexOf('type');
+  const volIdx  = headers.indexOf('volume');
+  const priceIdx= headers.indexOf('open price');
+
+  if (symIdx === -1 || volIdx === -1 || priceIdx === -1) {
+    throw new Error(`Colonnes manquantes. Trouvées: ${headers.filter(Boolean).join(', ')}`);
+  }
+
+  const positions = {};
+
+  for (let i = headerRow + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || !row[symIdx]) continue;
+
+    const symbol = String(row[symIdx]).trim();
+    const type   = String(row[typeIdx] || 'BUY').toUpperCase();
+    const qty    = parseFloat(row[volIdx]);
+    const price  = parseFloat(row[priceIdx]);
+
+    // Ignore les ventes, totaux, lignes vides
+    if (!symbol || symbol === 'Total' || type === 'SELL' || isNaN(qty) || isNaN(price) || qty <= 0 || price <= 0) continue;
+
+    // Normalise le ticker XTB → ticker standard
+    const ticker = normalizeXTBTicker(symbol);
+
+    // Agrège par ticker (PRU pondéré)
+    if (positions[ticker]) {
+      const p = positions[ticker];
+      const totalQty = p.qty + qty;
+      p.pru = (p.pru * p.qty + price * qty) / totalQty;
+      p.qty = totalQty;
+    } else {
+      positions[ticker] = { name: ticker, ticker, qty, pru: price };
+    }
+  }
+
+  const result = Object.values(positions);
+  if (!result.length) throw new Error('Aucune position BUY trouvée dans le fichier.');
+  return result;
+}
+
+function normalizeXTBTicker(symbol) {
+  // XTB suffixes → suffixes standards
+  return symbol
+    .replace(/\.FR$/, '.PA')   // France → Euronext Paris
+    .replace(/\.UK$/, '.L')    // UK → London
+    .replace(/\.US$/, '')      // US → pas de suffix (Yahoo Finance)
+    .replace(/\.PL$/, '.WA')   // Pologne → Warsaw
+    .replace(/\.PT$/, '.LS')   // Portugal → Lisbonne
+    .replace(/\.BE$/, '.BR')   // Belgique → Bruxelles
+    .replace(/\.NL$/, '.AS')   // Pays-Bas → Amsterdam
+    .replace(/\.IT$/, '.MI')   // Italie → Milan
+    .replace(/\.ES$/, '.MC')   // Espagne → Madrid
+    .trim();
+  // .DE, .SW, .AT, .SE etc. → gardés tels quels (Yahoo Finance compatible)
 }
 
 function normalizeTicker(ticker, broker) {
