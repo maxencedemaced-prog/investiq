@@ -5,7 +5,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://s3-symbol-logo.tradingview.com https://logo.clearbit.com https://www.google.com https://lh3.googleusercontent.com https://*.supabase.co; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://query1.finance.yahoo.com https://api.stripe.com wss://*.supabase.co; frame-src https://js.stripe.com;"
+          "value": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: *; img-src * data: blob:; connect-src *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *; font-src * data:;"
         }
       ]
     }
