@@ -5053,22 +5053,50 @@ const NOTIF_NAV = {
   'Ajouter une position': 'ajouter',
 };
 
+function dismissNotification(i) {
+  notifications.splice(i, 1);
+  try { localStorage.setItem('iq_notifications', JSON.stringify(notifications)); } catch {}
+  renderNotifications();
+  if (!notifications.length) document.getElementById('notif-dot')?.classList.remove('show');
+}
+
+function clearAllNotifications() {
+  notifications = [];
+  try { localStorage.setItem('iq_notifications', JSON.stringify([])); } catch {}
+  renderNotifications();
+  document.getElementById('notif-dot')?.classList.remove('show');
+}
+
 function renderNotifications() {
   const list = document.getElementById('notif-list');
   if (!notifications.length) {
     list.innerHTML = '<div class="notif-empty" style="padding:20px;text-align:center;color:#8e8e93;font-size:13px">✅ Tout va bien — aucune alerte</div>';
     return;
   }
-  const impactBg = { high:'#fff0f0', medium:'#fff9e6', low:'#f5f5f5' };
+  const impactBg     = { high:'#fff0f0', medium:'#fff9e6', low:'#f5f5f5' };
   const impactBorder = { high:'#cc2f26', medium:'#f59e0b', low:'#e5e5ea' };
-  list.innerHTML = notifications.map((n,i) => {
+
+  // Header avec "Tout supprimer"
+  const header = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px">
+    <span style="font-size:12px;font-weight:600;color:#8e8e93">${notifications.length} alerte${notifications.length>1?'s':''}</span>
+    <button onclick="clearAllNotifications()" style="background:none;border:none;font-size:12px;font-weight:600;color:#cc2f26;cursor:pointer;padding:4px 8px;border-radius:6px">
+      Tout supprimer
+    </button>
+  </div>`;
+
+  list.innerHTML = header + notifications.map((n,i) => {
     const page = Object.entries(NOTIF_NAV).find(([k])=>n.action.includes(k.split(' ').pop()));
     const navPage = page ? page[1] : null;
     return `
-    <div class="notif-item ${n.impact}" style="background:${impactBg[n.impact]||'#f5f5f5'};border-left:3px solid ${impactBorder[n.impact]||'#e5e5ea'};border-radius:12px;padding:12px 14px;margin-bottom:8px">
+    <div class="notif-item ${n.impact}" style="background:${impactBg[n.impact]||'#f5f5f5'};border-left:3px solid ${impactBorder[n.impact]||'#e5e5ea'};border-radius:12px;padding:12px 14px;margin-bottom:8px;position:relative">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
-        <div style="font-size:13px;font-weight:800;color:#1c1c1e;line-height:1.3">${n.titre}</div>
-        <div style="font-size:11px;color:#8e8e93;white-space:nowrap;margin-left:8px">${n.heure}</div>
+        <div style="font-size:13px;font-weight:800;color:#1c1c1e;line-height:1.3;padding-right:24px">${n.titre}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <div style="font-size:11px;color:#8e8e93;white-space:nowrap">${n.heure}</div>
+          <button onclick="dismissNotification(${i})"
+            style="background:rgba(0,0,0,0.06);border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;color:#666;flex-shrink:0"
+            title="Supprimer">✕</button>
+        </div>
       </div>
       <div style="font-size:12px;color:#3c3c43;line-height:1.5;margin-bottom:8px">${n.texte}</div>
       <button onclick="closeNotifPanel();${navPage?`nav('${navPage}')`:''}" 
