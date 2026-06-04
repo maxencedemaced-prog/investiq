@@ -7758,11 +7758,12 @@ function initAgent() {
 
   // Blocs proactifs
   renderAgentChanges();
-  renderAgentAlerts();
+  renderAgentAlertsCards();
   renderAgentOpportunities();
   renderAgentRecommendations();
   renderIQScore();
   renderRadarRisque();
+  renderAgentPriorities();
   updateAISidebar();
 }
 
@@ -8081,6 +8082,7 @@ Sois direct, opiniâtre, comme si c'était vraiment ton argent. 3-5 points max.`
     const r = await callClaude(prompt, 'Tu es un gestionnaire de portefeuille qui parle à la première personne. Sois direct et concret.');
     const htmlR = formatAgentMD(r);
     try { localStorage.setItem('iq_agent_wwiq', JSON.stringify({html:htmlR,ts:Date.now()})); } catch {}
+    const block = document.getElementById('agent-wwiq-block'); if (block) block.style.display = 'block';
     el.innerHTML = htmlR;
   } catch {
     el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.5)">Erreur — réessaie.</div>';
@@ -8313,34 +8315,231 @@ function updateDCADonut() {
 // ===== AGENT IA SIDEBAR =====
 function updateAISidebar() {
   if (!positions || positions.length === 0) return;
-  let totalPnl = 0, totalVal = 0;
+  let totalVal = 0, totalCost = 0;
   positions.forEach(p => {
-    const val = (p.price || p.pru) * p.qty;
-    const cost = p.pru * p.qty;
-    totalPnl += val - cost;
-    totalVal += val;
+    totalVal  += (p.price || p.pru) * p.qty;
+    totalCost += p.pru * p.qty;
   });
-  const pct = totalVal > 0 ? (totalPnl / (totalVal - totalPnl) * 100).toFixed(1) : 0;
-  const pnlEl = document.getElementById('ai-side-pnl');
-  const pctEl = document.getElementById('ai-side-pnl-pct');
-  const impactEl = document.getElementById('ai-side-impact');
-  const impactBar = document.getElementById('ai-side-impact-bar');
-  const riskEl = document.getElementById('ai-side-risk');
-  const riskDot = document.getElementById('ai-side-risk-dot');
-  if (pnlEl) {
-    const sign = totalPnl >= 0 ? '+' : '';
-    pnlEl.textContent = sign + Math.round(totalPnl).toLocaleString('fr-FR') + ' €';
-    pnlEl.style.color = totalPnl >= 0 ? '#4ade80' : '#f87171';
+  const totalPnl = totalVal - totalCost;
+  const pnlPct   = totalCost > 0 ? (totalPnl / totalCost * 100) : 0;
+  const pnlColor = totalPnl >= 0 ? '#4ade80' : '#f87171';
+
+  // Valeur totale
+  const tvEl = document.getElementById('ai-side-tv');
+  if (tvEl) tvEl.textContent = Math.round(totalVal).toLocaleString('fr-FR') + ' €';
+
+  // P&L (gauche hero + droite sidebar)
+  const pnlSign = totalPnl >= 0 ? '+' : '';
+  const pnlStr  = pnlSign + Math.round(totalPnl).toLocaleString('fr-FR') + ' € (' + pnlSign + pnlPct.toFixed(1) + '%)';
+  ['ai-side-pnl','ai-side-pnl-right'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = pnlStr; el.style.color = pnlColor; }
+  });
+
+  // Sparkline couleur
+  const spark = document.getElementById('ai-side-sparkline');
+  if (spark) { const p = spark.querySelector('path'); if (p) p.setAttribute('stroke', pnlColor); }
+
+  // Métriques sidebar
+  const liquidEl = document.getElementById('ai-side-liquid');
+  const investEl = document.getElementById('ai-side-invested');
+  const posEl    = document.getElementById('ai-side-positions');
+  if (liquidEl) liquidEl.textContent = (profile && profile.bankroll ? Math.max(0, profile.bankroll - totalCost).toLocaleString('fr-FR') + ' €' : '—');
+  if (investEl) investEl.textContent = Math.round(totalCost).toLocaleString('fr-FR') + ' €';
+  if (posEl)    posEl.textContent    = positions.length;
+
+  // Santé — reprend le score IQ
+  renderHealthRing();
+
+  // Objectif
+  renderSidebarObjectif();
+
+  // Hero métriques : risques + opps + objectif
+  renderHeroMetrics();
+}
+
+function renderHealthRing() {
+  const ring  = document.getElementById('health-ring');
+  const valEl = document.getElementById('health-score-val');
+  const lblEl = document.getElementById('health-score-label');
+  if (!ring || !positions.length) return;
+
+  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
+  const maxW = Math.max(...positions.map(p=>tv>0?p.qty*(p.price||p.pru)/tv*100:0));
+  const uniquePos = new Set(positions.map(p=>p.name)).size;
+  const diversScore = Math.min(100, uniquePos * 14);
+  const concenScore = Math.max(10, 100 - maxW * 1.5);
+  const pnlPct = (() => { const tc=positions.reduce((a,p)=>a+p.pru*p.qty,0); return tc>0?(tv-tc)/tc*100:0; })();
+  const perfScore = Math.min(100, Math.max(10, 50 + pnlPct * 2));
+  const health = Math.round((diversScore + concenScore + perfScore) / 3);
+
+  const circ = 2 * Math.PI * 22;
+  setTimeout(() => { ring.setAttribute('stroke-dasharray', `${circ * health/100} ${circ}`); }, 150);
+  const col = health >= 70 ? '#4ade80' : health >= 50 ? '#fbbf24' : '#f87171';
+  ring.setAttribute('stroke', col);
+  if (valEl) valEl.textContent = health;
+  if (lblEl) { lblEl.textContent = health >= 70 ? 'Bon' : health >= 50 ? 'Correct' : 'À améliorer'; lblEl.style.color = col; }
+}
+
+function renderSidebarObjectif() {
+  const pctEl    = document.getElementById('ai-side-obj-pct');
+  const barEl    = document.getElementById('ai-side-obj-bar');
+  const detailEl = document.getElementById('ai-side-obj-detail');
+  if (!pctEl) return;
+
+  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
+  const target = (typeof objChartCapital !== 'undefined' && objChartCapital > 0) ? objChartCapital
+               : (profile && profile.target ? profile.target : 100000);
+  const pct = Math.min(100, Math.round(tv / target * 100));
+
+  if (pctEl) pctEl.textContent = pct + '%';
+  if (barEl) setTimeout(() => { barEl.style.width = pct + '%'; }, 200);
+  if (detailEl) detailEl.textContent = `Objectif ${Math.round(target).toLocaleString('fr-FR')} € · ${Math.round(tv).toLocaleString('fr-FR')} / ${Math.round(target).toLocaleString('fr-FR')} €`;
+
+  // Hero: objectif en avance (jours)
+  const heroObjDays = document.getElementById('hero-obj-days');
+  const heroObjPct  = document.getElementById('hero-obj-pct');
+  if (heroObjDays) {
+    const monthly = (typeof objChartMonthly !== 'undefined' && objChartMonthly > 0) ? objChartMonthly : (profile && profile.monthly ? profile.monthly : 200);
+    const remaining = Math.max(0, target - tv);
+    const months = monthly > 0 ? remaining / monthly : 0;
+    const daysAhead = Math.max(0, Math.round((target - tv > 0 ? 0 : Math.abs(tv - target) / (monthly || 200) * 30)));
+    heroObjDays.textContent = daysAhead > 0 ? '+' + daysAhead + 'j' : Math.round(months) + 'm';
   }
-  if (pctEl) pctEl.textContent = '(' + (totalPnl >= 0 ? '+' : '') + pct + '%)';
-  const absPct = Math.abs(parseFloat(pct));
-  const risk = absPct > 15 ? 'Élevé' : absPct > 5 ? 'Modéré' : 'Faible';
-  const riskColor = absPct > 15 ? '#f87171' : absPct > 5 ? '#fbbf24' : '#4ade80';
-  const barW = Math.min(absPct * 3, 100);
-  if (impactEl) { impactEl.textContent = risk; impactEl.style.color = riskColor; }
-  if (impactBar) { impactBar.style.width = barW + '%'; impactBar.style.background = `linear-gradient(90deg,${riskColor},${riskColor}cc)`; }
-  if (riskEl) { riskEl.textContent = risk; riskEl.style.color = riskColor; }
-  if (riskDot) riskDot.style.background = riskColor;
+  if (heroObjPct) heroObjPct.textContent = pct + '% atteint';
+}
+
+function renderHeroMetrics() {
+  if (!positions.length) return;
+  // Risques détectés
+  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
+  let riskCount = 0;
+  positions.forEach(p => {
+    const pnlP = p.pru > 0 ? (p.price-p.pru)/p.pru*100 : 0;
+    const w    = tv > 0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
+    if (pnlP < -10 || w > 40) riskCount++;
+  });
+  const heroRisk  = document.getElementById('hero-risk-count');
+  const heroRiskL = document.getElementById('hero-risk-label');
+  if (heroRisk)  heroRisk.textContent  = riskCount;
+  if (heroRiskL) { heroRiskL.textContent = riskCount > 2 ? 'Priorité élevée' : riskCount > 0 ? 'À surveiller' : 'Aucun risque'; heroRiskL.style.color = riskCount > 1 ? '#f87171' : riskCount > 0 ? '#fbbf24' : '#4ade80'; }
+
+  // Opportunités (depuis cache)
+  try {
+    const cachedOpps = JSON.parse(localStorage.getItem('iq_agent_opps')||'null');
+    const oppCount = cachedOpps && cachedOpps.items ? cachedOpps.items.length : '—';
+    const heroOpp = document.getElementById('hero-opp-count');
+    if (heroOpp) heroOpp.textContent = oppCount;
+  } catch {}
+
+  // Badge alertes
+  const badge = document.getElementById('agent-alerts-badge');
+  if (badge && riskCount > 0) {
+    badge.textContent = riskCount + ' nouvelle' + (riskCount > 1 ? 's' : '');
+    badge.style.display = 'inline-block';
+  }
+}
+
+// ── PRIORITÉS DU JOUR ──
+function renderAgentPriorities() {
+  const el = document.getElementById('agent-priorities-content');
+  if (!el || !positions.length) return;
+
+  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
+  const priorities = [];
+
+  // Calcule les priorités selon le portefeuille
+  positions.forEach(p => {
+    const pnlPct = p.pru > 0 ? (p.price - p.pru)/p.pru*100 : 0;
+    const w = tv > 0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
+    const chg = p.change_pct || 0;
+
+    if (pnlPct < -15) priorities.push({ icon:'🔴', label:`Agir sur ${p.name}`, sub:'Perte dépasse 15%', color:'#f87171', q:`Que faire pour ${p.name} avec une perte de ${pnlPct.toFixed(1)}% ?` });
+    else if (w > 40)  priorities.push({ icon:'⚡', label:`Réduire ${p.name}`, sub:'Concentration trop élevée', color:'#fbbf24', q:`Comment réduire mon exposition à ${p.name} (${w.toFixed(0)}% du portefeuille) ?` });
+    else if (pnlPct > 25 && chg > 1) priorities.push({ icon:'🚀', label:`Renforcer ${p.name}`, sub:'Zone attractive', color:'#4ade80', q:`Est-ce le bon moment pour renforcer ${p.name} (+${pnlPct.toFixed(0)}%) ?` });
+    else if (Math.abs(chg) > 2) priorities.push({ icon:'👀', label:`Surveiller ${p.name}`, sub:`${chg >= 0 ? '+':''}${chg.toFixed(1)}% aujourd'hui`, color:'#a5b4fc', q:`Analyse le mouvement de ${p.name} aujourd'hui (${chg >= 0?'+':''}${chg.toFixed(1)}%).` });
+  });
+
+  // Défaut si rien
+  if (!priorities.length) priorities.push({ icon:'✅', label:'Aucune action urgente', sub:'Portefeuille stable', color:'#4ade80', q:'Analyse mon portefeuille en détail.' });
+
+  el.innerHTML = priorities.slice(0,3).map(p => `
+    <div onclick="sq('${p.q.replace(/'/g,"&#39;")}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--color-bg-subtle);border-radius:10px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--color-surface-raised)'" onmouseout="this.style.background='var(--color-bg-subtle)'">
+      <span style="font-size:16px;flex-shrink:0">${p.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.label}</div>
+        <div style="font-size:11px;color:var(--color-text-secondary)">${p.sub}</div>
+      </div>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${p.color}" stroke-width="2" flex-shrink:0><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </div>`).join('');
+}
+
+// ── ALERTES EN CARDS (nouvelle version horizontale) ──
+function renderAgentAlertsCards() {
+  const el = document.getElementById('agent-alerts-cards');
+  if (!el) return;
+  if (!positions.length) {
+    el.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;font-size:13px;color:var(--color-text-secondary)">Ajoute des positions pour recevoir des alertes.</div>';
+    return;
+  }
+
+  const cards = [];
+  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
+
+  positions.forEach(p => {
+    const pnlPct = p.pru > 0 ? (p.price-p.pru)/p.pru*100 : 0;
+    const w = tv > 0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
+    if (w > 35) cards.push({
+      type:'risk', badge:'Risque élevé', icon:'🔥', title:'Concentration élevée',
+      body:`${p.name} représente ${w.toFixed(0)}% de ton portefeuille.`,
+      conf: null, cta:'Voir l\'analyse →', q:`Comment rééquilibrer pour réduire la concentration de ${p.name} (${w.toFixed(0)}%) ?`,
+      badgeColor:'#f87171', badgeBg:'rgba(239,68,68,0.12)', borderColor:'rgba(239,68,68,0.2)'
+    });
+    if (pnlPct > 20) cards.push({
+      type:'opp', badge:'Opportunité forte', icon:'🚀', title:p.name,
+      body:`Potentiel +${pnlPct.toFixed(0)}% sur ${p.name}. Fondamentaux solides.`,
+      conf: 84, cta:'Voir l\'analyse →', q:`Analyse en détail l'opportunité sur ${p.name} (+${pnlPct.toFixed(0)}%).`,
+      badgeColor:'#4ade80', badgeBg:'rgba(74,222,128,0.08)', borderColor:'rgba(74,222,128,0.2)'
+    });
+    if (pnlPct < -8) cards.push({
+      type:'opp', badge:'Opportunité', icon:'📊', title:`${p.name} sous-évalué`,
+      body:`Correction de ${Math.abs(pnlPct).toFixed(0)}% — valorisation à surveiller.`,
+      conf: 76, cta:'Voir l\'analyse →', q:`Est-ce que la baisse de ${p.name} (${pnlPct.toFixed(1)}%) est une opportunité d'achat ?`,
+      badgeColor:'#a5b4fc', badgeBg:'rgba(165,180,252,0.08)', borderColor:'rgba(165,180,252,0.2)'
+    });
+  });
+
+  // Card dividende si action FR (heuristique .PA)
+  const frPos = positions.filter(p => (p.ticker||p.name||'').includes('.PA'));
+  if (frPos.length) cards.push({
+    type:'info', badge:'Info', icon:'💰', title:'Dividende à venir',
+    body:`${frPos[0].name} versera un dividende estimé prochainement.`,
+    conf: null, cta:'Voir calendrier →', q:`Quand ${frPos[0].name} verse-t-il son prochain dividende et quel est le montant estimé ?`,
+    badgeColor:'#60a5fa', badgeBg:'rgba(96,165,250,0.08)', borderColor:'rgba(96,165,250,0.2)'
+  });
+
+  if (!cards.length) {
+    el.innerHTML = '<div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;font-size:13px;color:#4ade80"><span>✅</span><span>Aucune alerte — portefeuille sain</span></div>';
+    return;
+  }
+
+  el.innerHTML = cards.slice(0,4).map(c => `
+    <div style="background:${c.badgeBg};border:1px solid ${c.borderColor};border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;cursor:pointer"
+      onclick="sq('${c.q.replace(/'/g,"&#39;")}')"
+      onmouseover="this.style.transform='translateY(-1px)';this.style.transition='transform 0.15s'"
+      onmouseout="this.style.transform=''">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:5px">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="${c.badgeColor}" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/></svg>
+          <span style="font-size:10px;font-weight:700;color:${c.badgeColor}">${c.badge}</span>
+        </div>
+        <span style="font-size:16px">${c.icon}</span>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--color-text)">${c.title}</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;flex:1">${c.body}</div>
+      ${c.conf !== null ? `<div style="font-size:11px;font-weight:600;color:${c.badgeColor}">Confiance ${c.conf}%</div>` : ''}
+      <div style="font-size:11px;font-weight:700;color:${c.badgeColor}">${c.cta}</div>
+    </div>`).join('');
 }
 
 
