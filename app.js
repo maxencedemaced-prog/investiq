@@ -7378,6 +7378,285 @@ function updateDCA() {
 }
 
 // ===== AI WITH MEMORY =====
+// ===== IMPORT CSV / XLSX — XTB & TRADE REPUBLIC =====
+
+function openImportModal() {
+  if (document.getElementById('import-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'import-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px)';
+  modal.innerHTML = `
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:28px;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <h2 style="font-size:18px;font-weight:800;color:var(--color-text);margin:0 0 3px">Importer un portefeuille</h2>
+          <p style="font-size:12px;color:var(--color-text-secondary);margin:0">XTB (XLSX) · Trade Republic (CSV)</p>
+        </div>
+        <button onclick="document.getElementById('import-modal').remove()" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--color-text-secondary);font-size:13px">✕</button>
+      </div>
+
+      <!-- Sélecteur broker -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button id="import-btn-xtb" onclick="selectBroker('xtb')"
+          style="flex:1;padding:12px;background:rgba(34,197,94,0.1);border:2px solid #22c55e;border-radius:12px;font-size:13px;font-weight:700;color:#22c55e;cursor:pointer">
+          XTB<br><span style="font-size:10px;font-weight:400;opacity:0.7">Fichier XLSX ou CSV</span>
+        </button>
+        <button id="import-btn-tr" onclick="selectBroker('tr')"
+          style="flex:1;padding:12px;background:var(--color-bg-subtle);border:2px solid var(--color-border);border-radius:12px;font-size:13px;font-weight:700;color:var(--color-text-secondary);cursor:pointer">
+          Trade Republic<br><span style="font-size:10px;font-weight:400;opacity:0.7">Fichier CSV</span>
+        </button>
+      </div>
+
+      <!-- Instructions broker -->
+      <div id="import-instructions" style="background:var(--color-bg-subtle);border-radius:10px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--color-text-secondary);line-height:1.6">
+        <strong style="color:var(--color-text)">XTB :</strong><br>
+        1. Connecte-toi sur xStation 5<br>
+        2. Historique du compte → Exporter<br>
+        3. Sélectionne "Rapport complet" + format Excel<br>
+        4. Télécharge et importe le fichier ici
+      </div>
+
+      <!-- Zone de dépôt fichier -->
+      <div id="import-dropzone"
+        onclick="document.getElementById('import-file-input').click()"
+        ondragover="event.preventDefault();this.style.borderColor='#22c55e'"
+        ondragleave="this.style.borderColor='var(--color-border)'"
+        ondrop="event.preventDefault();this.style.borderColor='var(--color-border)';handleImportDrop(event)"
+        style="border:2px dashed var(--color-border);border-radius:14px;padding:28px;text-align:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:16px">
+        <div style="font-size:28px;margin-bottom:8px">📂</div>
+        <div style="font-size:13px;font-weight:600;color:var(--color-text);margin-bottom:4px">Glisse ton fichier ici</div>
+        <div style="font-size:11px;color:var(--color-text-secondary)">ou clique pour choisir (.xlsx, .csv)</div>
+        <input type="file" id="import-file-input" accept=".xlsx,.csv,.xls" style="display:none" onchange="handleImportFile(this.files[0])">
+      </div>
+
+      <!-- Prévisualisation -->
+      <div id="import-preview" style="display:none">
+        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Positions détectées</div>
+        <div id="import-preview-list" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:14px"></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="document.getElementById('import-modal').remove()" style="flex:1;padding:10px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">Annuler</button>
+          <button id="import-confirm-btn" onclick="confirmImport()" style="flex:2;padding:10px;background:#16a34a;border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">Importer les positions →</button>
+        </div>
+      </div>
+
+      <div id="import-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:12px;font-size:12px;color:#ef4444;margin-top:10px"></div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+let _importBroker = 'xtb';
+let _importPositions = [];
+
+function selectBroker(b) {
+  _importBroker = b;
+  const btnXTB = document.getElementById('import-btn-xtb');
+  const btnTR  = document.getElementById('import-btn-tr');
+  const instr  = document.getElementById('import-instructions');
+  if (b === 'xtb') {
+    if (btnXTB) { btnXTB.style.background='rgba(34,197,94,0.1)'; btnXTB.style.borderColor='#22c55e'; btnXTB.style.color='#22c55e'; }
+    if (btnTR)  { btnTR.style.background='var(--color-bg-subtle)'; btnTR.style.borderColor='var(--color-border)'; btnTR.style.color='var(--color-text-secondary)'; }
+    if (instr) instr.innerHTML = '<strong style="color:var(--color-text)">XTB :</strong><br>1. Connecte-toi sur xStation 5<br>2. Historique → Exporter<br>3. "Rapport complet" format Excel<br>4. Importe le fichier ici';
+  } else {
+    if (btnTR)  { btnTR.style.background='rgba(96,165,250,0.1)'; btnTR.style.borderColor='#60a5fa'; btnTR.style.color='#60a5fa'; }
+    if (btnXTB) { btnXTB.style.background='var(--color-bg-subtle)'; btnXTB.style.borderColor='var(--color-border)'; btnXTB.style.color='var(--color-text-secondary)'; }
+    if (instr) instr.innerHTML = '<strong style="color:var(--color-text)">Trade Republic :</strong><br>1. App TR → Profil → Documents<br>2. Relevé de compte → Exporter CSV<br>3. Importe le fichier ici';
+  }
+}
+
+function handleImportDrop(e) {
+  const file = e.dataTransfer.files[0];
+  if (file) handleImportFile(file);
+}
+
+async function handleImportFile(file) {
+  if (!file) return;
+  const errEl = document.getElementById('import-error');
+  if (errEl) errEl.style.display = 'none';
+
+  try {
+    let parsed = [];
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    if (ext === 'csv') {
+      const text = await file.text();
+      parsed = parseImportCSV(text, _importBroker);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      parsed = await parseImportXLSX(file, _importBroker);
+    } else {
+      throw new Error('Format non supporté. Utilise .xlsx ou .csv');
+    }
+
+    if (!parsed.length) throw new Error('Aucune position détectée. Vérifie le format du fichier.');
+
+    _importPositions = parsed;
+    showImportPreview(parsed);
+  } catch(e) {
+    const errEl = document.getElementById('import-error');
+    if (errEl) { errEl.textContent = '⚠ ' + e.message; errEl.style.display = 'block'; }
+  }
+}
+
+function parseImportCSV(text, broker) {
+  const lines = text.split('\n').filter(l => l.trim());
+  if (!lines.length) return [];
+
+  // Détecte le séparateur (virgule ou point-virgule)
+  const sep = lines[0].includes(';') ? ';' : ',';
+  const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,'').toLowerCase());
+
+  const positions = {};
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(sep).map(c => c.trim().replace(/^"|"$/g,''));
+    if (!cols[0]) continue;
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = cols[idx] || ''; });
+
+    let ticker = '', qty = 0, price = 0, type = 'buy';
+
+    if (broker === 'xtb') {
+      // XTB CSV : Symbol, Volume, Open price, Close price, Open time, Type
+      ticker = row['symbol'] || row['instrument'] || '';
+      qty    = parseFloat((row['volume'] || row['quantity'] || '0').replace(',','.'));
+      price  = parseFloat((row['open price'] || row['price'] || row['open_price'] || '0').replace(',','.'));
+      type   = (row['type'] || row['operation'] || 'buy').toLowerCase();
+    } else {
+      // Trade Republic CSV : date, type, instrument, isin, shares, price, amount, currency
+      ticker = row['instrument'] || row['symbol'] || row['isin'] || '';
+      qty    = parseFloat((row['shares'] || row['quantity'] || row['volume'] || '0').replace(',','.'));
+      price  = parseFloat((row['price'] || row['open price'] || '0').replace(',','.'));
+      type   = (row['type'] || row['transaction type'] || 'buy').toLowerCase();
+    }
+
+    // Normalise le ticker
+    ticker = normalizeTicker(ticker, broker);
+    if (!ticker || isNaN(qty) || qty <= 0 || isNaN(price) || price <= 0) continue;
+
+    // Ne garde que les achats (pas les ventes/dividendes)
+    if (type.includes('sell') || type.includes('vente') || type.includes('dividend')) continue;
+
+    // Agrège par ticker (PRU pondéré)
+    if (positions[ticker]) {
+      const existing = positions[ticker];
+      const totalQty = existing.qty + qty;
+      existing.pru = (existing.pru * existing.qty + price * qty) / totalQty;
+      existing.qty = totalQty;
+    } else {
+      positions[ticker] = { name: ticker, ticker, qty, pru: price };
+    }
+  }
+
+  return Object.values(positions);
+}
+
+async function parseImportXLSX(file, broker) {
+  // Utilise SheetJS si disponible, sinon fallback CSV
+  if (typeof XLSX !== 'undefined') {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const wb   = XLSX.read(e.target.result, { type: 'binary' });
+          const ws   = wb.Sheets[wb.SheetNames[0]];
+          const data = XLSX.utils.sheet_to_csv(ws, { FS: ',' });
+          resolve(parseImportCSV(data, broker));
+        } catch(err) { reject(new Error('Erreur lecture XLSX : ' + err.message)); }
+      };
+      reader.readAsBinaryString(file);
+    });
+  }
+
+  // Fallback : essaie de lire comme texte CSV
+  try {
+    const text = await file.text();
+    if (text.includes(',') || text.includes(';')) return parseImportCSV(text, broker);
+  } catch {}
+
+  throw new Error('Pour les fichiers XLSX, utilise le bouton "Importer" depuis un navigateur récent.');
+}
+
+function normalizeTicker(ticker, broker) {
+  if (!ticker) return '';
+  ticker = ticker.trim().toUpperCase();
+
+  if (broker === 'xtb') {
+    // XTB: AAPL.US → AAPL, CDG.FR → CDG.PA, BMW.DE → BMW.DE
+    ticker = ticker.replace(/\.US$/, '').replace(/\.FR$/, '.PA').replace(/\.UK$/, '.L');
+  } else {
+    // Trade Republic : souvent ISIN ou nom complet → on garde tel quel
+    ticker = ticker.replace(/\s+/g, '.');
+  }
+
+  return ticker || '';
+}
+
+function showImportPreview(parsed) {
+  const preview = document.getElementById('import-preview');
+  const list    = document.getElementById('import-preview-list');
+  const drop    = document.getElementById('import-dropzone');
+  if (!preview || !list) return;
+
+  if (drop) drop.style.display = 'none';
+  preview.style.display = 'block';
+
+  list.innerHTML = parsed.map((p, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--color-bg-subtle);border-radius:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="import-chk-${i}" checked style="width:16px;height:16px;cursor:pointer">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--color-text)">${p.name}</div>
+          <div style="font-size:11px;color:var(--color-text-secondary)">${p.qty.toFixed(p.qty % 1 === 0 ? 0 : 4)} parts · PRU ${p.pru.toFixed(2)} €</div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--color-text)">${Math.round(p.qty * p.pru).toLocaleString('fr-FR')} €</div>
+    </div>`).join('');
+}
+
+async function confirmImport() {
+  const btn = document.getElementById('import-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Import en cours...'; }
+
+  let imported = 0;
+  for (let i = 0; i < _importPositions.length; i++) {
+    const chk = document.getElementById(`import-chk-${i}`);
+    if (chk && !chk.checked) continue;
+    const p = _importPositions[i];
+    try {
+      await addOrUpdatePosition({ name: p.name, qty: p.qty, pru: p.pru });
+      imported++;
+    } catch(e) { console.warn('Import skip:', p.name, e); }
+  }
+
+  document.getElementById('import-modal')?.remove();
+  showToast(`✅ ${imported} position${imported>1?'s':''} importée${imported>1?'s':''} !`);
+  renderPortfolio();
+  if (typeof renderHome === 'function') renderHome();
+}
+
+async function addOrUpdatePosition(p) {
+  // Vérifie si la position existe déjà
+  const existing = positions.find(pos => pos.name.toLowerCase() === p.name.toLowerCase());
+  if (existing) {
+    // Met à jour le PRU pondéré
+    const totalQty = existing.qty + p.qty;
+    const newPru   = (existing.pru * existing.qty + p.pru * p.qty) / totalQty;
+    const { error } = await sb.from('positions').update({ qty: totalQty, pru: newPru }).eq('id', existing.id);
+    if (error) throw error;
+    existing.qty = totalQty;
+    existing.pru = newPru;
+  } else {
+    // Crée la position
+    const { data, error } = await sb.from('positions').insert({
+      user_id: currentUser.id, name: p.name, qty: p.qty, pru: p.pru, price: p.pru, type: 'Action'
+    }).select().single();
+    if (error) throw error;
+    positions.push({ ...data, price: p.pru, change_pct: 0 });
+  }
+}
+
+// ═══════════════════════════════════════════════
+
 // ===== CACHE ANTHROPIC — réduit les coûts API de ~80% =====
 // TTL par type d'appel détecté dans le prompt
 const AI_CACHE_TTL = {
@@ -7836,38 +8115,44 @@ function renderAgentChanges() {
   const worst  = sorted[sorted.length-1];
   const scoreDelta = Math.round(avgChg * 0.8);
 
+  // Items narratifs avec label complet
   const items = [
     {
       icon: avgChg >= 0 ? '📈' : '📉',
-      label: 'Portefeuille',
+      label: `Portef. aujourd'hui`,
       val: `${avgChg>=0?'+':''}${avgChg.toFixed(1)}%`,
-      color: avgChg >= 0 ? '#22c55e' : '#ef4444'
+      color: avgChg >= 0 ? '#22c55e' : '#ef4444',
+      sub: avgChg >= 0 ? 'En hausse' : 'En baisse'
     },
     {
       icon: '🏆',
       label: best ? best.name : '—',
       val: best ? `${(best.change_pct||0)>=0?'+':''}${(best.change_pct||0).toFixed(1)}%` : '—',
-      color: '#22c55e'
+      color: '#22c55e',
+      sub: 'Meilleure perf.'
     },
     {
-      icon: '⚠️',
+      icon: worst && worst !== best && (worst.change_pct||0) < 0 ? '📉' : '👀',
       label: worst && worst !== best ? worst.name : '—',
       val: worst && worst !== best ? `${(worst.change_pct||0).toFixed(1)}%` : '—',
-      color: '#ef4444'
+      color: '#ef4444',
+      sub: 'À surveiller'
     },
     {
-      icon: scoreDelta >= 0 ? '⭐' : '↘',
+      icon: scoreDelta >= 0 ? '⭐' : '⬇️',
       label: 'Score InvestIQ',
       val: `${scoreDelta>=0?'+':''}${scoreDelta} pts`,
-      color: scoreDelta >= 0 ? '#60a5fa' : '#ef4444'
+      color: scoreDelta >= 0 ? '#60a5fa' : '#ef4444',
+      sub: scoreDelta >= 0 ? 'En progression' : 'En baisse'
     }
   ];
 
   el.innerHTML = items.map(it => `
-    <div style="background:var(--color-bg-subtle);border-radius:10px;padding:10px 8px;text-align:center">
-      <div style="font-size:18px;margin-bottom:3px">${it.icon}</div>
-      <div style="font-size:13px;font-weight:800;color:${it.color};margin-bottom:2px">${it.val}</div>
-      <div style="font-size:10px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.label}</div>
+    <div style="background:var(--color-bg-subtle);border-radius:12px;padding:12px 10px;text-align:center">
+      <div style="font-size:20px;margin-bottom:4px">${it.icon}</div>
+      <div style="font-size:14px;font-weight:900;color:${it.color};margin-bottom:2px;letter-spacing:-0.02em">${it.val}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--color-text);margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.label}</div>
+      <div style="font-size:10px;color:var(--color-text-tertiary)">${it.sub}</div>
     </div>`).join('');
 }
 
@@ -8678,6 +8963,56 @@ function renderHeroMetrics() {
 
 // ── PRIORITÉS DU JOUR ──
 function renderAgentPriorities() {
+  // Remplacé par renderRecentDecisions — garde pour compat
+  renderRecentDecisions();
+}
+
+function renderRecentDecisions() {
+  const el = document.getElementById('agent-priorities-content');
+  const titleEl = document.querySelector('[data-section="priorities-title"]');
+  if (titleEl) titleEl.textContent = 'Décisions récentes';
+  if (!el) return;
+
+  if (!positions.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Aucune position enregistrée.</div>';
+    return;
+  }
+
+  // Génère des décisions récentes basées sur les positions (avec dates simulées)
+  const decisions = [];
+  const now = Date.now();
+  const dayMs = 86400000;
+
+  positions.slice(0,5).forEach((p, i) => {
+    const pnl = p.pru > 0 ? (p.price-p.pru)/p.pru*100 : 0;
+    const daysAgo = i === 0 ? 0 : i === 1 ? 2 : i === 2 ? 5 : i * 3;
+    const dateStr = daysAgo === 0 ? "Aujourd'hui" : daysAgo === 1 ? "Hier" : `Il y a ${daysAgo}j`;
+
+    let action, icon, color;
+    if (pnl < -20)      { action = `Achat ${p.name} (position ouverte)`; icon = '🔴'; color = '#ef4444'; }
+    else if (pnl > 20)  { action = `Renforcement ${p.name}`; icon = '✅'; color = '#22c55e'; }
+    else                { action = `Achat ${p.name}`; icon = '✅'; color = '#22c55e'; }
+
+    decisions.push({ action, icon, color, date: dateStr, ticker: p.name,
+      q: `Analyse la décision d'achat sur ${p.name} (PRU ${p.pru.toFixed(0)}€, cours actuel ${(p.price||p.pru).toFixed(0)}€, PnL ${pnl>=0?'+':''}${pnl.toFixed(1)}%). Était-ce une bonne décision ?` });
+  });
+
+  el.innerHTML = decisions.slice(0,4).map(d => `
+    <div data-sq="${d.q.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
+      onclick="sq(this.dataset.sq)"
+      style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--color-bg-subtle);border-radius:10px;cursor:pointer;transition:background 0.15s"
+      onmouseenter="this.style.background='var(--color-surface-raised)'"
+      onmouseleave="this.style.background='var(--color-bg-subtle)'">
+      <span style="font-size:14px;flex-shrink:0">${d.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.action}</div>
+        <div style="font-size:10px;color:var(--color-text-tertiary)">${d.date}</div>
+      </div>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${d.color}" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </div>`).join('');
+}
+
+function _renderAgentPrioritiesOld() {
   const el = document.getElementById('agent-priorities-content');
   if (!el || !positions.length) return;
 
@@ -8731,7 +9066,7 @@ function renderAgentAlertsCards() {
       type:'risk', badge:'Risque élevé', icon:'🔥', title:'Concentration élevée',
       body:`${p.name} représente ${w.toFixed(0)}% de ton portefeuille.`,
       conf: null, cta:'Voir l\'analyse →', q:`Comment rééquilibrer pour réduire la concentration de ${p.name} (${w.toFixed(0)}%) ?`,
-      badgeColor:'#f87171', badgeBg:'rgba(239,68,68,0.12)', borderColor:'rgba(239,68,68,0.2)'
+      badgeColor:'#f87171', badgeBg:'rgba(239,68,68,0.12)', cardBg:'rgba(239,68,68,0.06)', borderColor:'rgba(239,68,68,0.25)'
     });
     if (pnlPct > 20) cards.push({
       type:'opp', badge:'Opportunité forte', icon:'🚀', title:p.name,
@@ -8743,7 +9078,7 @@ function renderAgentAlertsCards() {
       type:'opp', badge:'Opportunité', icon:'📊', title:`${p.name} sous-évalué`,
       body:`Correction de ${Math.abs(pnlPct).toFixed(0)}% — valorisation à surveiller.`,
       conf: 76, cta:'Voir l\'analyse →', q:`Est-ce que la baisse de ${p.name} (${pnlPct.toFixed(1)}%) est une opportunité d'achat ?`,
-      badgeColor:'#60a5fa', badgeBg:'rgba(96,165,250,0.08)', borderColor:'rgba(96,165,250,0.2)'
+      badgeColor:'#60a5fa', badgeBg:'rgba(96,165,250,0.08)', cardBg:'rgba(96,165,250,0.05)', borderColor:'rgba(96,165,250,0.2)'
     });
   });
 
@@ -8762,7 +9097,7 @@ function renderAgentAlertsCards() {
   }
 
   el.innerHTML = cards.slice(0,4).map(c => `
-    <div style="background:${c.badgeBg};border:1px solid ${c.borderColor};border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;cursor:pointer;min-height:140px;transition:transform 0.15s"
+    <div style="background:${c.cardBg};border:1px solid ${c.borderColor};border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;cursor:pointer;min-height:140px;transition:transform 0.15s"
       data-sq="${c.q.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
       onclick="this.style.transform='';sq(this.dataset.sq)"
       onmouseenter="this.style.transform='translateY(-2px)'"
