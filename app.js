@@ -7780,7 +7780,7 @@ function initAgent() {
 
 function refreshAllAgentBlocks() {
   // Vide les caches blocs agent
-  ['iq_agent_changes','iq_agent_alerts','iq_agent_opps','iq_agent_reco','iq_agent_wwiq'].forEach(k => {
+  ['iq_agent_changes','iq_agent_alerts','iq_agent_opps','iq_agent_reco','iq_agent_wwiq','iq_daily_brief'].forEach(k => {
     try { localStorage.removeItem(k); } catch {}
   });
   generateDailyBrief();
@@ -7788,8 +7788,10 @@ function refreshAllAgentBlocks() {
   renderAgentAlerts();
   renderAgentOpportunities();
   renderAgentRecommendations();
+  renderAgentPriorities();
   renderIQScore();
-  showToast('🔄 Analyse en cours...');
+  updateAISidebar();
+  showToast('🔄 Nouvelle analyse en cours...');
 }
 
 function toggleAgentChat() {
@@ -7935,17 +7937,49 @@ async function renderAgentOpportunities() {
   const topPositions = [...positions].sort((a,b)=>b.qty*b.price-a.qty*a.price).slice(0,5);
   const wlNames = watchlist.slice(0,5).map(w=>w.name||w.ticker).join(', ');
 
-  const prompt = `Investisseur avec profil ${profile.risk||'équilibré'}, horizon ${profile.horizon||'moyen terme'}.
-Portefeuille : ${topPositions.map(p=>`${p.name}(${((p.price-p.pru)/p.pru*100).toFixed(1)}%,${(p.qty*p.price/tv*100).toFixed(0)}%du portef)`).join(', ')}.
-Watchlist : ${wlNames||'aucune'}.
-Génère EXACTEMENT 3 opportunités d'investissement actuelles. Format JSON UNIQUEMENT :
-[{"ticker":"IWDA.L","label":"Renforcer IWDA","score":8,"raison":"Correction de 4% — valorisation attractive","type":"renforcer"},
-{"ticker":"ALO.PA","label":"Air Liquide sous-évalué","score":7,"raison":"P/E historiquement bas","type":"acheter"},
-{"ticker":"MC.PA","label":"LVMH en zone de soutien","score":6,"raison":"Support technique à 650€","type":"surveiller"}]
-Types : acheter/renforcer/surveiller. score entre 5 et 10. Tickers réels.`;
+  // Contexte détaillé pour opportunités
+  const allPos = positions.map(p => {
+    const pnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
+    const w   = tv>0 ? p.qty*p.price/tv*100 : 0;
+    return `${p.name}(PRU:${p.pru.toFixed(0)}€,cours:${(p.price||p.pru).toFixed(0)}€,PnL:${pnl>=0?'+':''}${pnl.toFixed(0)}%,poids:${w.toFixed(0)}%)`;
+  }).join(', ');
+
+  const prompt = `Tu es analyste financier senior. Identifie 3 opportunités CONCRÈTES pour ce portefeuille.
+
+PORTEFEUILLE (${Math.round(tv).toLocaleString('fr-FR')}€) : ${allPos}
+PROFIL : ${profile.risk||'prudent'}, horizon ${profile.horizon||'long terme'}
+WATCHLIST : ${wlNames||'aucune'}
+
+RÈGLES :
+- Priorité aux positions déjà détenues en forte baisse (zone de rachat ?) ou en forte hausse (renforcement momentum ?)
+- Utilise les vrais PRU et cours pour argumenter
+- Score réaliste : renforcer une position −85% = risque élevé, score max 5
+- Une opportunité peut être "couper une perte" si c'est la bonne action
+
+Format JSON UNIQUEMENT — 3 items :
+[{
+  "ticker":"IWDA.AS",
+  "label":"Renforcer IWDA (DCA)",
+  "score":8,
+  "raison":"Meilleure perf du portef. +43%. DCA mensuel recommandé pour profil prudent.",
+  "type":"renforcer"
+},{
+  "ticker":"PAH3.DE",
+  "label":"Couper PAH3 (stop loss)",
+  "score":7,
+  "raison":"−85% — capital immobilisé. Libérer vers ETF diversifié.",
+  "type":"vendre"
+},{
+  "ticker":"ALO.PA",
+  "label":"Air Liquide — dividende stable",
+  "score":6,
+  "raison":"+11% PnL, dividende croissant. Conserver et renforcer progressivement.",
+  "type":"surveiller"
+}]
+Types : acheter/renforcer/vendre/surveiller.`;
 
   try {
-    const raw = await callClaude(prompt, 'Tu es analyste financier. Réponds UNIQUEMENT en JSON valide.');
+    const raw = await callClaude(prompt, 'Tu es analyste senior. Réponds UNIQUEMENT en JSON valide, sans texte autour.');
     const clean = raw.replace(/```json|```/g,'').trim();
     const items = JSON.parse(clean.slice(clean.indexOf('['),clean.lastIndexOf(']')+1));
     try { localStorage.setItem('iq_agent_opps', JSON.stringify({items,ts:Date.now()})); } catch {}
@@ -8003,28 +8037,51 @@ async function renderAgentRecommendations() {
   el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5;display:flex;align-items:center;gap:6px"><svg class="spinning" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Génération...</div>';
 
   const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const posCtx = positions.map(p=>{
-    const w = tv>0?p.qty*p.price/tv*100:0;
-    const pnl = p.pru>0?(p.price-p.pru)/p.pru*100:0;
-    return `${p.name}:${w.toFixed(0)}%portef,${pnl>=0?'+':''}${pnl.toFixed(1)}%PnL`;
+  // Contexte enrichi — toutes les positions avec PRU, perte/gain, poids, variation jour
+  const posCtx = positions.map(p => {
+    const w    = tv > 0 ? p.qty * p.price / tv * 100 : 0;
+    const pnl  = p.pru > 0 ? (p.price - p.pru) / p.pru * 100 : 0;
+    const chg  = p.change_pct || 0;
+    const val  = p.qty * p.price;
+    return `${p.name}[PRU:${p.pru.toFixed(2)}€,cours:${(p.price||p.pru).toFixed(2)}€,PnL:${pnl>=0?'+':''}${pnl.toFixed(1)}%,poids:${w.toFixed(0)}%,auj:${chg>=0?'+':''}${chg.toFixed(1)}%,val:${Math.round(val)}€]`;
   }).join(' | ');
 
-  const prompt = `Portefeuille : ${posCtx}. Profil : ${profile.risk||'équilibré'}, horizon ${profile.horizon||'moyen terme'}.
-Génère EXACTEMENT 3 recommandations prioritaires. Format JSON UNIQUEMENT :
+  const posLosers  = positions.filter(p => p.pru>0 && (p.price-p.pru)/p.pru*100 < -15).map(p=>p.name).join(', ');
+  const posWinners = positions.filter(p => p.pru>0 && (p.price-p.pru)/p.pru*100 > 20).map(p=>p.name).join(', ');
+  const posHeavy   = positions.filter(p => tv>0 && p.qty*p.price/tv*100 > 30).map(p=>`${p.name}(${(p.qty*p.price/tv*100).toFixed(0)}%)`).join(', ');
+  const pnlGlob    = ti > 0 ? ((tv-ti)/ti*100).toFixed(1) : '0';
+
+  const prompt = `Tu es un gestionnaire de portefeuille senior. Analyse ce portefeuille réel et génère 3 recommandations ULTRA-SPÉCIFIQUES.
+
+PORTEFEUILLE RÉEL (${positions.length} positions, valeur totale ${Math.round(tv).toLocaleString('fr-FR')}€, P&L global ${pnlGlob>=0?'+':''}${pnlGlob}%) :
+${posCtx}
+
+PROFIL : ${profile.risk||'prudent'}, horizon ${profile.horizon||'long terme'}, objectif ${(typeof objChartCapital!=='undefined'&&objChartCapital>0)?objChartCapital+'€':'non défini'}
+${posLosers  ? 'PERTES MAJEURES (>−15%) : ' + posLosers  : ''}
+${posWinners ? 'GAINS IMPORTANTS (>+20%) : ' + posWinners : ''}
+${posHeavy   ? 'SURPONDÉRATIONS (>30%) : '  + posHeavy   : ''}
+
+RÈGLES ABSOLUES :
+- Cite UNIQUEMENT des positions déjà dans le portefeuille (pas de nouvelles actions)
+- Priorise les positions en perte majeure (couper ou moyenner ?)
+- Sois direct : "Vendre 50% de PAH3.DE" pas "Envisager de réduire"
+- Justifie avec les vrais chiffres (PRU, cours actuel, poids %)
+- Confiance réaliste : une perte de −85% = confiance basse pour renforcer
+
+Format JSON UNIQUEMENT — 3 items :
 [{
-  "action":"Renforcer IWDA",
-  "ticker":"IWDA.L",
+  "action":"Couper PAH3.DE",
+  "ticker":"PAH3.DE",
   "priorite":1,
-  "confiance":87,
-  "raison":"ETF monde en légère correction — DCA opportuniste",
-  "impact_rendement":"+2.1%",
-  "impact_risque":"-0.8%",
-  "impact_score":"+4 pts"
-}]
-confiance entre 40 et 95. impacts réalistes.`;
+  "confiance":88,
+  "raison":"−85% depuis PRU 210€. Capital mort. Libérer pour IWDA.",
+  "impact_rendement":"+1.2% (capital redéployé)",
+  "impact_risque":"−4.1%",
+  "impact_score":"+5 pts"
+}]`;
 
   try {
-    const raw = await callClaude(prompt, 'Tu es analyste. Réponds UNIQUEMENT en JSON valide.');
+    const raw = await callClaude(prompt, 'Tu es analyste senior. Réponds UNIQUEMENT en JSON valide, sans texte autour.');
     const clean = raw.replace(/```json|```/g,'').trim();
     const items = JSON.parse(clean.slice(clean.indexOf('['),clean.lastIndexOf(']')+1));
     try { localStorage.setItem('iq_agent_reco', JSON.stringify({items,ts:Date.now()})); } catch {}
@@ -8096,12 +8153,34 @@ async function generateWhatWouldIQ() {
     return `${p.name}(${w.toFixed(0)}%,${pnl>=0?'+':''}${pnl.toFixed(1)}%)`;
   }).join(', ');
 
-  const prompt = `Si ce portefeuille était le mien, voici ce que je ferais.
-Portefeuille : ${posCtx}. P&L global : ${pnlGlobal>=0?'+':''}${pnlGlobal}%. Profil : ${profile.risk||'équilibré'}.
-Réponds en 3-5 décisions concrètes, style conseiller personnel. Format :
-1. Je **conserverais** IWDA — c'est le cœur long terme
-2. Je **vendrais** 30% de VIE.PA — la perte dépasse mon seuil de tolérance
-Sois direct, opiniâtre, comme si c'était vraiment ton argent. 3-5 points max.`;
+  // Contexte ultra-détaillé pour WWIQ
+  const wwiqLines = positions.map(p => {
+    const pnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
+    const w   = totalVal>0 ? p.qty*(p.price||p.pru)/totalVal*100 : 0;
+    const chg = p.change_pct||0;
+    return `${p.name} : PRU ${p.pru.toFixed(0)}€ → ${(p.price||p.pru).toFixed(0)}€ (${pnl>=0?'+':''}${pnl.toFixed(1)}%), poids ${w.toFixed(0)}%, auj ${chg>=0?'+':''}${chg.toFixed(1)}%`;
+  }).join('\n');
+
+  const prompt = `Si ce portefeuille était le mien, voici exactement ce que je ferais. Je parle à la 1ère personne, sans filtre.
+
+MON PORTEFEUILLE (${Math.round(totalVal).toLocaleString('fr-FR')}€, P&L global ${pnlGlobal>=0?'+':''}${pnlGlobal}%) :
+${wwiqLines}
+PROFIL : ${profile.risk||'prudent'}, horizon ${profile.horizon||'long terme'}
+
+Réponds en 4-5 décisions fermes. Chaque point doit :
+- Citer le ticker exact
+- Indiquer l'action précise (vendre X%, renforcer, conserver, couper)
+- Justifier en 1 phrase avec les vrais chiffres
+- Utiliser **gras** pour l'action
+
+Exemple de style attendu :
+1. Je **couperais immédiatement** PAH3.DE — −85% depuis mon PRU de 210€, c'est du capital mort que je redéploierais sur IWDA.
+2. Je **conserverais** IWDA.AS — +43%, c'est le cœur de mon portefeuille, j'augmenterais mon DCA mensuel.
+
+Sois tranché, direct, comme si c'était vraiment ton argent. 4-5 points max.
+
+Termine par une ligne d'impact estimé :
+Impact estimé : diversification +X, risque −X, score IQ +X pts`;
 
   try {
     const r = await callClaude(prompt, 'Tu es un gestionnaire de portefeuille qui parle à la première personne. Sois direct et concret.');
@@ -8271,18 +8350,35 @@ async function generateDailyBrief() {
     return;
   }
 
-  const prompt = `Tu es un conseiller financier IA. Génère un briefing ULTRA court pour ce portefeuille.
-Valeur: ${fmtK(tv)} · P&L: ${pnl>=0?'+':''}${fmtK(pnl)} · Variation auj: ${avgChg>=0?'+':''}${avgChg.toFixed(1)}%
-Positions: ${positions.slice(0,6).map(p=>`${p.name}(${(p.change_pct||0).toFixed(1)}%)`).join(', ')}
-${pctObj ? `Objectif: ${pctObj}% atteint` : ''}
+  // Contexte complet pour le briefing
+  const briefPosCtx = positions.map(p => {
+    const pnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
+    const chg = p.change_pct || 0;
+    return `${p.name}:${pnl>=0?'+':''}${pnl.toFixed(1)}%(${chg>=0?'+':''}${chg.toFixed(1)}%auj)`;
+  }).join(', ');
+  const bestPos  = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0))[0];
+  const worstPos = [...positions].sort((a,b)=>(a.change_pct||0)-(b.change_pct||0))[0];
+  const bigLoss  = positions.filter(p=>p.pru>0&&(p.price-p.pru)/p.pru*100 < -20);
 
-Génère exactement 3 points courts. Format JSON UNIQUEMENT:
+  const prompt = `Tu es un conseiller financier personnel. Génère un briefing matinal PERSONNALISÉ et PERCUTANT.
+
+PORTEFEUILLE : ${Math.round(tv).toLocaleString('fr-FR')}€ · P&L ${pnl>=0?'+':''}${Math.round(pnl).toLocaleString('fr-FR')}€ · Aujourd'hui ${avgChg>=0?'+':''}${avgChg.toFixed(1)}%
+POSITIONS : ${briefPosCtx}
+${pctObj ? `OBJECTIF : ${pctObj}% atteint` : ''}
+${bigLoss.length ? 'PERTES MAJEURES : ' + bigLoss.map(p=>`${p.name} (${((p.price-p.pru)/p.pru*100).toFixed(1)}%)`).join(', ') : ''}
+
+Génère EXACTEMENT 3 points. Chaque point doit :
+- Citer un vrai ticker du portefeuille
+- Donner un chiffre précis (%, €, jours)
+- Être actionnable (pas juste descriptif)
+
+Format JSON :
 [
-  {"icon":"📈","text":"Une observation courte (max 12 mots)","color":"#4ade80","type":"perf"},
-  {"icon":"⚡","text":"Une alerte ou opportunité courte","color":"#fbbf24","type":"alert"},
-  {"icon":"💡","text":"Un conseil actionnable court","color":"#a5b4fc","type":"tip"}
+  {"icon":"📈","text":"Observation sur la perf d'une position spécifique avec chiffre","color":"#4ade80","type":"perf"},
+  {"icon":"⚠️","text":"Alerte sur une position en danger ou risque identifié","color":"#f87171","type":"alert"},
+  {"icon":"🎯","text":"Action concrète recommandée avec impact estimé","color":"#fbbf24","type":"tip"}
 ]
-Sois TRÈS concis. Max 12 mots par point. Utilise les vraies données.`;
+Max 15 mots par point. Utilise uniquement les vrais tickers du portefeuille.`;
 
   try {
     const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.');
