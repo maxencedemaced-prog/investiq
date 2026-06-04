@@ -2065,21 +2065,25 @@ window.addEventListener('load', function() {
             </div>
             <!-- 3 métriques -->
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px" id="agent-hero-metrics">
-              <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px">
+              <div onclick="document.getElementById('agent-alerts-cards')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('agent-alerts-cards')?.animate([{opacity:0.3},{opacity:1}],{duration:600,iterations:2})"
+                style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;cursor:pointer;transition:transform 0.15s"
+                onmouseenter="this.style.transform='scale(1.02)'" onmouseleave="this.style.transform=''">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
                   <span id="hero-risk-count" style="font-size:20px;font-weight:900;color:#fff">—</span>
                 </div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.5)">Risque détecté</div>
-                <div id="hero-risk-label" style="font-size:10px;font-weight:700;color:#f87171;margin-top:2px">Priorité élevée</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.5)">Risques détectés</div>
+                <div id="hero-risk-label" style="font-size:10px;font-weight:700;color:#f87171;margin-top:2px">Voir les alertes →</div>
               </div>
-              <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.15);border-radius:12px;padding:12px">
+              <div onclick="document.getElementById('agent-opps-content')?.scrollIntoView({behavior:'smooth',block:'start'})"
+                style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.15);border-radius:12px;padding:12px;cursor:pointer;transition:transform 0.15s"
+                onmouseenter="this.style.transform='scale(1.02)'" onmouseleave="this.style.transform=''">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                   <span id="hero-opp-count" style="font-size:20px;font-weight:900;color:#fff">—</span>
                 </div>
                 <div style="font-size:11px;color:rgba(255,255,255,0.5)">Opportunités</div>
-                <div style="font-size:10px;font-weight:700;color:#4ade80;margin-top:2px">Potentiel identifié</div>
+                <div style="font-size:10px;font-weight:700;color:#4ade80;margin-top:2px">Voir les opportunités →</div>
               </div>
               <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.15);border-radius:12px;padding:12px">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
