@@ -5996,18 +5996,84 @@ function updateBrokerBtn() {
 }
 
 function getXTBInstrumentUrl(ticker) {
-  // xStation 5 — lien direct vers l'instrument
-  // Format: https://xstation5.xtb.com/ puis #instrument=TICKER
-  // XTB utilise ses propres noms : AAPL.US, CDG.FR → on reconvertit
+  // Convertit le ticker InvestIQ → format XTB
   const xtbTicker = (ticker||'')
     .replace(/\.PA$/, '.FR')
     .replace(/\.L$/, '.UK')
     .replace(/\.AS$/, '.NL')
     .replace(/\.MI$/, '.IT')
     .replace(/\.MC$/, '.ES');
-  // Si pas de suffix → action US
   const finalTicker = xtbTicker.includes('.') ? xtbTicker : xtbTicker + '.US';
-  return `https://xstation5.xtb.com/#instrument=${finalTicker}&action=buy`;
+
+  // xStation5 : le hash #instrument= est ignoré si la session est déjà ouverte
+  // On utilise un lien qui ouvre xStation avec le ticker dans l'URL de recherche
+  // ET on affiche une mini-modale avec le ticker et un lien direct
+  return { ticker: finalTicker, url: `https://xstation5.xtb.com/` };
+}
+
+async function addPosAndOpenBroker() {
+  const platform = document.getElementById('f-platform')?.value || 'XTB';
+  const ticker   = document.getElementById('f-name')?.value || '';
+  console.log('[Broker] ticker:', ticker, '| platform:', platform);
+
+  // Calcule avant le reset du form
+  let brokerTicker = '', brokerUrl = '';
+  if (platform === 'XTB') {
+    const r = getXTBInstrumentUrl(ticker);
+    brokerTicker = r.ticker;
+    brokerUrl    = r.url;
+  } else if (platform === 'Trade Republic') {
+    brokerUrl = 'https://app.traderepublic.com/';
+  }
+
+  // Ajoute la position
+  await addPos();
+
+  // Ouvre la modale XTB avec instructions
+  if (platform === 'XTB' && brokerTicker) {
+    showXTBModal(brokerTicker, brokerUrl);
+  } else if (brokerUrl) {
+    window.open(brokerUrl, '_blank');
+  }
+}
+
+function showXTBModal(ticker, url) {
+  // Supprime l'ancienne modale si elle existe
+  document.getElementById('xtb-open-modal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'xtb-open-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)';
+  modal.innerHTML = `
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:28px;width:400px;max-width:95vw;text-align:center">
+      <div style="font-size:28px;margin-bottom:12px">📈</div>
+      <h3 style="font-size:16px;font-weight:800;color:var(--color-text);margin:0 0 8px">Ouvrir dans XTB</h3>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 16px;line-height:1.6">
+        Position ajoutée à InvestIQ ✅<br>
+        Recherche <strong style="color:var(--color-text)">${ticker}</strong> dans xStation pour passer l'ordre.
+      </p>
+      <!-- Ticker à copier -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;margin-bottom:16px">
+        <span style="font-size:16px;font-weight:800;color:var(--color-text);letter-spacing:0.05em">${ticker}</span>
+        <button onclick="navigator.clipboard.writeText('${ticker}');this.textContent='✅ Copié!';setTimeout(()=>this.textContent='📋 Copier',1500)"
+          style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
+          📋 Copier
+        </button>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('xtb-open-modal').remove()"
+          style="flex:1;padding:11px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
+          Fermer
+        </button>
+        <button onclick="navigator.clipboard.writeText('${ticker}');window.open('${url}','_blank');document.getElementById('xtb-open-modal').remove()"
+          style="flex:2;padding:11px;background:#16a34a;border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Copier + Ouvrir XTB
+        </button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
 }
 
 function getTRInstrumentUrl(ticker) {
@@ -6016,24 +6082,7 @@ function getTRInstrumentUrl(ticker) {
   return `https://app.traderepublic.com/`;
 }
 
-async function addPosAndOpenBroker() {
-  const platform = document.getElementById('f-platform')?.value || 'XTB';
-  // Récupère le ticker AVANT addPos (qui reset le formulaire)
-  const ticker = document.getElementById('f-name')?.value || '';
-  console.log('[Broker] ticker:', ticker, '| platform:', platform);
 
-  // Calcule l'URL avant de resetter le form
-  let url = '';
-  if (platform === 'XTB') url = getXTBInstrumentUrl(ticker);
-  else if (platform === 'Trade Republic') url = getTRInstrumentUrl(ticker);
-
-  // Ajoute la position
-  await addPos();
-
-  // Ouvre dans un nouvel onglet
-  console.log('[Broker] Opening:', url);
-  if (url) window.open(url, '_blank');
-}
 
 async function addPos() {
   // Limite 5 positions en gratuit
