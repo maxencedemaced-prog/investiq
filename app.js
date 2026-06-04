@@ -4473,16 +4473,24 @@ function showTickerFallback() {
 }
 
 function checkPriceAlerts() {
-  // Vide d'abord TOUTES les anciennes alertes prix
+  // Charge les alertes déjà vues (mémoire 24h)
+  let seen = {};
+  try { seen = JSON.parse(localStorage.getItem('iq_seen_alerts') || '{}'); } catch {}
+  const now = Date.now();
+  const TTL = 24 * 3600 * 1000; // 24h
+
+  // Nettoie les entrées expirées
+  Object.keys(seen).forEach(k => { if (now - seen[k] > TTL) delete seen[k]; });
+
+  // Vide les anciennes alertes prix
   notifications = notifications.filter(n => n.type !== 'prix');
 
-  // Grouper par ticker pour éviter les doublons (positions avec plusieurs lignes)
+  // Grouper par ticker
   const grouped = {};
   positions.forEach(p => {
     if (!grouped[p.name]) {
       grouped[p.name] = { name: p.name, price: p.price, alert_price: p.alert_price };
     }
-    // Garde l'alerte la plus haute (seuil le plus récent)
     if (p.alert_price && (!grouped[p.name].alert_price || p.alert_price > grouped[p.name].alert_price)) {
       grouped[p.name].alert_price = p.alert_price;
       grouped[p.name].price = p.price;
@@ -4490,21 +4498,32 @@ function checkPriceAlerts() {
   });
 
   Object.values(grouped).forEach(g => {
-    if (g.alert_price && g.price <= g.alert_price) {
-      const notif = {
-        titre: `⚠ Alerte prix — ${g.name}`,
-        texte: `${g.name} est à ${fmt(g.price)}€, sous ton seuil d'alerte de ${fmt(g.alert_price)}€.`,
-        action: `Consulter ${g.name} dans ton portefeuille`,
-        impact: 'high',
-        heure: 'Maintenant',
-        type: 'prix'
-      };
-      notifications.unshift(notif);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(`InvestIQ — Alerte ${g.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
-      }
+    if (!g.alert_price || g.price > g.alert_price) return;
+    const alertKey = `${g.name}_${g.alert_price}`;
+    // Si déjà vu dans les dernières 24h → skip
+    if (seen[alertKey] && now - seen[alertKey] < TTL) return;
+
+    const notif = {
+      titre: `⚠ Alerte prix — ${g.name}`,
+      texte: `${g.name} est à ${fmt(g.price)}€, sous ton seuil d'alerte de ${fmt(g.alert_price)}€.`,
+      action: `Consulter ${g.name} dans ton portefeuille`,
+      impact: 'high',
+      heure: 'Maintenant',
+      type: 'prix',
+      key: alertKey
+    };
+    notifications.unshift(notif);
+
+    // Marque comme vue
+    seen[alertKey] = now;
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(`InvestIQ — Alerte ${g.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
     }
   });
+
+  // Sauvegarde les vues
+  try { localStorage.setItem('iq_seen_alerts', JSON.stringify(seen)); } catch {}
 
   if (notifications.length) document.getElementById('notif-dot').classList.add('show');
   renderNotifications();
@@ -5054,8 +5073,16 @@ const NOTIF_NAV = {
 };
 
 function dismissNotification(i) {
+  const n = notifications[i];
+  // Si c'est une alerte prix, la marque vue pendant 24h
+  if (n && n.type === 'prix' && n.key) {
+    try {
+      const seen = JSON.parse(localStorage.getItem('iq_seen_alerts') || '{}');
+      seen[n.key] = Date.now();
+      localStorage.setItem('iq_seen_alerts', JSON.stringify(seen));
+    } catch {}
+  }
   notifications.splice(i, 1);
-  try { localStorage.setItem('iq_notifications', JSON.stringify(notifications)); } catch {}
   renderNotifications();
   if (!notifications.length) document.getElementById('notif-dot')?.classList.remove('show');
 }
