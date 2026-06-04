@@ -7526,11 +7526,16 @@ function parseImportCSV(text, broker) {
     let ticker = '', qty = 0, price = 0, type = 'buy';
 
     if (broker === 'xtb') {
-      // XTB CSV : Symbol, Volume, Open price, Close price, Open time, Type
-      ticker = row['symbol'] || row['instrument'] || '';
-      qty    = parseFloat((row['volume'] || row['quantity'] || '0').replace(',','.'));
-      price  = parseFloat((row['open price'] || row['price'] || row['open_price'] || '0').replace(',','.'));
-      type   = (row['type'] || row['operation'] || 'buy').toLowerCase();
+      // XTB "Positions ouvertes" export — colonnes en français
+      // Instrument/Position | Volume | Prix actuel | Prix d'ouverture
+      const rawName = row['instrument/position'] || row['instrument'] || row['symbol'] || row['position'] || '';
+      ticker = rawName.trim();
+      qty    = parseFloat((row['volume'] || row['quantity'] || '0').replace(',','.').replace(/\s/g,''));
+      // Prix d'ouverture = PRU
+      price  = parseFloat((row["prix d'ouverture"] || row['open price'] || row['prix ouverture'] || row['open_price'] || row['price'] || '0').replace(',','.').replace(/\s/g,''));
+      // Type : positions ouvertes = toujours achat, on ignore les CFD/short
+      const instrument = (row['instrument/position'] || '').toLowerCase();
+      type = instrument.includes('short') || (row['type']||'').toLowerCase().includes('sell') ? 'sell' : 'buy';
     } else {
       // Trade Republic CSV : date, type, instrument, isin, shares, price, amount, currency
       ticker = row['instrument'] || row['symbol'] || row['isin'] || '';
@@ -7588,17 +7593,30 @@ async function parseImportXLSX(file, broker) {
 
 function normalizeTicker(ticker, broker) {
   if (!ticker) return '';
-  ticker = ticker.trim().toUpperCase();
 
   if (broker === 'xtb') {
-    // XTB: AAPL.US → AAPL, CDG.FR → CDG.PA, BMW.DE → BMW.DE
-    ticker = ticker.replace(/\.US$/, '').replace(/\.FR$/, '.PA').replace(/\.UK$/, '.L');
-  } else {
-    // Trade Republic : souvent ISIN ou nom complet → on garde tel quel
-    ticker = ticker.replace(/\s+/g, '.');
-  }
+    // XTB peut donner le nom complet ("MSCI World ETF") ou un ticker avec suffix
+    // On nettoie les suffixes broker (Action, ETF, CFD) et on normalise
+    let t = ticker.trim()
+      .replace(/\s+(Action|ETF|CFD|Akcja|Stock)$/i, '') // retire le type
+      .trim();
 
-  return ticker || '';
+    // Si c'est déjà un ticker court (ex: AAPL.US, CDG.FR) → normalise suffix
+    if (/^[A-Z0-9.]{2,12}$/.test(t.toUpperCase())) {
+      t = t.toUpperCase()
+        .replace(/\.US$/, '')
+        .replace(/\.FR$/, '.PA')
+        .replace(/\.UK$/, '.L')
+        .replace(/\.PL$/, '.WA');
+      return t;
+    }
+
+    // Sinon c'est un nom complet → on le garde tel quel (InvestIQ gère les noms)
+    return t;
+  } else {
+    // Trade Republic : ISIN ou nom → garde tel quel
+    return ticker.trim().replace(/\s+/g, ' ');
+  }
 }
 
 function showImportPreview(parsed) {
