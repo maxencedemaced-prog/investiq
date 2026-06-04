@@ -2113,15 +2113,16 @@ window.addEventListener('load', function() {
         </div>
       </div>
 
-      <!-- ② CE QUI A CHANGÉ DEPUIS HIER -->
+      <!-- ② CE QUI A CHANGÉ DEPUIS HIER — proéminent -->
       <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:16px 18px;margin-bottom:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:13px;font-weight:800;color:var(--color-text);display:flex;align-items:center;gap:7px">
-            <span style="font-size:14px">📅</span> Ce qui a changé depuis hier
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:800;color:var(--color-text);display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px">📅</span>
+            Depuis hier
           </div>
           <span id="agent-brief-date" style="font-size:11px;color:var(--color-text-tertiary)"></span>
         </div>
-        <div id="agent-changes-content" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+        <div id="agent-changes-content" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
           <div style="font-size:12px;color:var(--color-text-secondary);opacity:0.4;grid-column:1/-1">Chargement...</div>
         </div>
       </div>
@@ -2163,13 +2164,23 @@ window.addEventListener('load', function() {
             <span style="font-size:13px;color:var(--color-text-secondary)">Génération des recommandations...</span>
           </div>
         </div>
-        <!-- Résultat "Que ferait InvestIQ ?" -->
-        <div id="agent-wwiq-block" style="display:none;margin-top:12px;background:linear-gradient(135deg,#0a1a0f,#0d2015);border:1px solid rgba(22,163,74,0.3);border-radius:14px;padding:18px 20px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <div style="width:24px;height:24px;background:rgba(22,163,74,0.2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px">🤔</div>
-            <div style="font-size:13px;font-weight:800;color:#4ade80">Si ce portefeuille était le mien...</div>
+        <!-- "Que ferait InvestIQ ?" — PERMANENT -->
+        <div id="agent-wwiq-block" style="margin-top:12px;background:linear-gradient(135deg,#0a1a0f,#0d2015);border:1px solid rgba(22,163,74,0.3);border-radius:14px;padding:18px 20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:26px;height:26px;background:rgba(22,163,74,0.2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px">🤔</div>
+              <div style="font-size:13px;font-weight:800;color:#4ade80">Si ce portefeuille était le mien...</div>
+            </div>
+            <button onclick="generateWhatWouldIQ()" id="wwiq-refresh"
+              style="background:rgba(22,163,74,0.12);border:1px solid rgba(22,163,74,0.2);border-radius:7px;padding:4px 10px;color:#4ade80;font-size:11px;font-weight:600;cursor:pointer">
+              Relancer →
+            </button>
           </div>
-          <div id="agent-wwiq-content" style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7"></div>
+          <div id="agent-wwiq-content" style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.7;font-style:italic">
+            Clique sur "Relancer" pour que l'IA décide comme si c'était son argent.
+          </div>
+          <!-- Impact estimé (rempli après génération) -->
+          <div id="agent-wwiq-impact" style="display:none;margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"></div>
         </div>
       </div>
 
@@ -2257,112 +2268,111 @@ window.addEventListener('load', function() {
       </div>
     </div>
 
-    <!-- ══ SIDEBAR DROITE ══ -->
-    <div id="ai-sidebar" style="width:230px;flex-shrink:0;border-left:1px solid var(--color-border);overflow-y:auto;max-height:calc(100vh - 60px)">
+    <!-- ══ SIDEBAR DROITE — 100% IA ══ -->
+    <div id="ai-sidebar" style="width:240px;flex-shrink:0;border-left:1px solid var(--color-border);overflow-y:auto;max-height:calc(100vh - 60px);display:flex;flex-direction:column;gap:0">
 
-      <!-- Aperçu portefeuille -->
-      <div style="padding:16px 14px;border-bottom:1px solid var(--color-border)">
-        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Aperçu portefeuille</div>
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:2px">Valeur totale</div>
-        <div id="ai-side-tv" style="font-size:20px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em;margin-bottom:2px">—</div>
-        <div id="ai-side-pnl" style="font-size:13px;font-weight:700;margin-bottom:10px">—</div>
-        <!-- Sparkline -->
-        <svg id="ai-side-sparkline" width="100%" height="36" viewBox="0 0 220 36" style="margin-bottom:10px;opacity:0.8">
-          <path d="M0 28 Q40 20 80 24 Q120 28 160 16 Q190 10 220 12" stroke="#f87171" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-        </svg>
-        <!-- Onglets 1J/7J/1M/1A/MAX -->
-        <div style="display:flex;gap:4px;margin-bottom:14px">
-          <button style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:var(--color-text);cursor:pointer">1J</button>
-          <button style="background:none;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">7J</button>
-          <button style="background:none;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">1M</button>
-          <button style="background:none;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">1A</button>
-          <button style="background:none;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">MAX</button>
-        </div>
-        <!-- Métriques -->
-        <div style="display:flex;flex-direction:column;gap:8px" id="ai-side-metrics">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              Liquidités
-            </div>
-            <span id="ai-side-liquid" style="font-size:12px;font-weight:700;color:var(--color-text)">—</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-              Investi
-            </div>
-            <span id="ai-side-invested" style="font-size:12px;font-weight:700;color:var(--color-text)">—</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
-              Positions
-            </div>
-            <span id="ai-side-positions" style="font-size:12px;font-weight:700;color:var(--color-text)">—</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
-              Rendement
-            </div>
-            <span id="ai-side-pnl-right" style="font-size:12px;font-weight:700">—</span>
+      <!-- En-tête IA -->
+      <div style="padding:18px 16px 14px;border-bottom:1px solid var(--color-border)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div style="width:28px;height:28px;background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(22,163,74,0.2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">🧠</div>
+          <div style="font-size:13px;font-weight:800;color:var(--color-text)">Analyse IA</div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:3px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);border-radius:99px;padding:2px 7px">
+            <div style="width:4px;height:4px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
+            <span style="font-size:9px;font-weight:700;color:#4ade80">LIVE</span>
           </div>
         </div>
-        <button onclick="nav('portefeuille')" style="width:100%;margin-top:14px;padding:10px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:10px;font-size:12px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between">
-          <span>Voir mon portefeuille</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        <div style="font-size:11px;color:var(--color-text-secondary)">Synthèse personnalisée de ton portefeuille</div>
+      </div>
+
+      <!-- Risque principal -->
+      <div style="padding:16px;border-bottom:1px solid var(--color-border)">
+        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">⚠️ Risque principal</div>
+        <div id="ai-side-risk-title" style="font-size:14px;font-weight:800;color:#ef4444;margin-bottom:5px">—</div>
+        <div id="ai-side-risk-body" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;margin-bottom:10px">—</div>
+        <button id="ai-side-risk-btn" style="width:100%;padding:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:9px;font-size:11px;font-weight:700;color:#ef4444;cursor:pointer;text-align:left"
+          onclick="sq(this.dataset.q||'Explique mon risque principal et comment le réduire.')">
+          Analyser ce risque →
         </button>
       </div>
 
-      <!-- Santé du portefeuille -->
-      <div style="padding:18px;border-bottom:1px solid var(--color-border)">
-        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Santé de ton portefeuille</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-          <div style="position:relative;width:56px;height:56px;flex-shrink:0">
-            <svg width="56" height="56" viewBox="0 0 56 56">
-              <circle cx="28" cy="28" r="22" stroke="rgba(255,255,255,0.06)" stroke-width="5" fill="none"/>
-              <circle id="health-ring" cx="28" cy="28" r="22" stroke="#4ade80" stroke-width="5" fill="none"
-                stroke-linecap="round" stroke-dasharray="0 138" stroke-dashoffset="34.5"
-                style="transition:stroke-dasharray 1s ease"/>
+      <!-- Opportunité principale -->
+      <div style="padding:16px;border-bottom:1px solid var(--color-border)">
+        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">💡 Opportunité principale</div>
+        <div id="ai-side-opp-title" style="font-size:14px;font-weight:800;color:#22c55e;margin-bottom:5px">—</div>
+        <div id="ai-side-opp-body" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;margin-bottom:10px">—</div>
+        <button id="ai-side-opp-btn" style="width:100%;padding:8px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:9px;font-size:11px;font-weight:700;color:#22c55e;cursor:pointer;text-align:left"
+          onclick="sq(this.dataset.q||'Analyse cette opportunité en détail.')">
+          Voir l'opportunité →
+        </button>
+      </div>
+
+      <!-- Action recommandée -->
+      <div style="padding:16px;border-bottom:1px solid var(--color-border)">
+        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">🎯 Action recommandée</div>
+        <div id="ai-side-action-title" style="font-size:14px;font-weight:800;color:var(--color-text);margin-bottom:5px">—</div>
+        <div id="ai-side-action-body" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;margin-bottom:10px">—</div>
+        <!-- Niveau de confiance -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:10px;color:var(--color-text-tertiary)">Niveau de confiance</span>
+          <span id="ai-side-conf-val" style="font-size:11px;font-weight:800;color:#22c55e">—%</span>
+        </div>
+        <div style="height:4px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden">
+          <div id="ai-side-conf-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width 1s"></div>
+        </div>
+      </div>
+
+      <!-- Score IQ compact -->
+      <div style="padding:16px;border-bottom:1px solid var(--color-border)">
+        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">⭐ Score InvestIQ</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="position:relative;width:52px;height:52px;flex-shrink:0">
+            <svg width="52" height="52" viewBox="0 0 52 52">
+              <circle cx="26" cy="26" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="5" fill="none"/>
+              <circle id="iq-score-ring" cx="26" cy="26" r="20" stroke="url(#sgGrad2)" stroke-width="5" fill="none"
+                stroke-linecap="round" stroke-dasharray="0 126" stroke-dashoffset="31.5"
+                style="transition:stroke-dasharray 1.2s ease"/>
+              <defs>
+                <linearGradient id="sgGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#3b82f6"/>
+                  <stop offset="100%" stop-color="#4ade80"/>
+                </linearGradient>
+              </defs>
             </svg>
             <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-              <span id="health-score-val" style="font-size:14px;font-weight:900;color:var(--color-text)">—</span>
+              <span id="iq-score-val" style="font-size:14px;font-weight:900;color:var(--color-text)">—</span>
             </div>
           </div>
-          <div>
-            <div id="health-score-label" style="font-size:14px;font-weight:800;color:#4ade80">—</div>
-            <div id="health-score-sub" style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">En amélioration</div>
+          <div style="flex:1">
+            <div id="iq-score-label" style="font-size:13px;font-weight:800;color:#60a5fa;margin-bottom:4px">—</div>
+            <div id="iq-score-breakdown" style="display:flex;flex-direction:column;gap:3px"></div>
           </div>
         </div>
-        <div id="ai-side-radar" style="display:flex;flex-direction:column;gap:7px"></div>
-        <button onclick="nav('sante')" style="width:100%;margin-top:12px;padding:9px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:10px;font-size:12px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between">
-          <span>Voir la santé complète</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        <button onclick="sq('Pourquoi mon score InvestIQ est-il de ' + (document.getElementById('iq-score-val').textContent||'ce niveau') + ' ? Explique chaque sous-score en détail.')"
+          style="width:100%;margin-top:10px;padding:7px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.15);border-radius:8px;font-size:11px;font-weight:700;color:#60a5fa;cursor:pointer">
+          Pourquoi ce score ?
         </button>
       </div>
 
-      <!-- Objectif principal — compact -->
-      <div style="padding:16px 18px">
-        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Objectif principal</div>
-        <!-- Badge + barre compact -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div id="ai-side-obj-badge" style="display:flex;align-items:center;gap:5px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:8px;padding:6px 10px;flex-shrink:0">
-            <span style="font-size:14px">🎯</span>
-            <span id="ai-side-obj-pct" style="font-size:16px;font-weight:900;color:#4ade80">—%</span>
-          </div>
-          <div style="flex:1;min-width:0">
-            <div id="ai-side-obj-detail" style="font-size:11px;color:var(--color-text-secondary);line-height:1.4">—</div>
-          </div>
-        </div>
-        <div style="height:5px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden;margin-bottom:10px">
-          <div id="ai-side-obj-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width 1s"></div>
-        </div>
-        <button onclick="nav('objectif')" style="width:100%;padding:8px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:9px;font-size:11px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between">
-          <span>Voir le détail</span>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
+      <!-- Radar risque compact -->
+      <div style="padding:16px">
+        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">📊 Radar de risque</div>
+        <div id="ai-side-radar" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
+
+      <!-- IDs fantômes pour compatibilité updateAISidebar -->
+      <span id="ai-side-pnl" style="display:none"></span>
+      <span id="ai-side-pnl-right" style="display:none"></span>
+      <span id="ai-side-tv" style="display:none"></span>
+      <span id="ai-side-liquid" style="display:none"></span>
+      <span id="ai-side-invested" style="display:none"></span>
+      <span id="ai-side-positions" style="display:none"></span>
+      <span id="ai-side-obj-pct" style="display:none"></span>
+      <span id="ai-side-obj-bar" style="display:none"></span>
+      <span id="ai-side-obj-detail" style="display:none"></span>
+      <span id="health-ring" style="display:none"></span>
+      <span id="health-score-val" style="display:none"></span>
+      <span id="health-score-label" style="display:none"></span>
+      <span id="ai-side-sparkline" style="display:none"></span>
 
     </div>
   </div>
