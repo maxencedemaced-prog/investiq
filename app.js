@@ -4759,6 +4759,8 @@ function getCompanyLogo(ticker, name, size, radius) {
     'MCPA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a1a"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#c9a96e" font-family="Arial">LV</text></svg>',
     'SOI.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#0055A4"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" font-family="Arial">SOI</text></svg>',
     'FDJ.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00843D"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">FDJ</text></svg>',
+    'AI.PA':   '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00A0E3"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">AIR</text></svg>',
+    'ALO.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#003189"/><text x="18" y="24" text-anchor="middle" font-size="8" font-weight="800" fill="#fff" font-family="Arial">ALST</text></svg>',
     'SPPW.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
     'SWRD.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
     'SWRD.UK': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
@@ -5433,6 +5435,35 @@ function buildAlerts() {
 }
 
 // ===== PORTFOLIO =====
+
+// ===== NOMS COMPLETS DES TICKERS =====
+const TICKER_NAMES = {
+  'TTE.PA':'TotalEnergies','AI.PA':'Air Liquide','MC.PA':'LVMH',
+  'OR.PA':'LOreal','BNP.PA':'BNP Paribas','SAN.PA':'Sanofi',
+  'AIR.PA':'Airbus','ACA.PA':'Crédit Agricole','ORA.PA':'Orange',
+  'KER.PA':'Kering','VIE.PA':'Veolia','RMS.PA':'Hermès',
+  'FDJ.PA':'FDJ','SOI.PA':'Soitec','ALO.PA':'Alstom',
+  'LR.PA':'Legrand','EDF.PA':'EDF','ENGI.PA':'Engie',
+  'SU.PA':'Schneider','CAP.PA':'Capgemini','DSY.PA':'Dassault Systèmes',
+  'HO.PA':'Thales','PUB.PA':'Publicis','SGO.PA':'Saint-Gobain',
+  'WLN.PA':'Worldline','GLE.PA':'Société Générale','AIR.PA':'Airbus',
+  'PAH3.DE':'Porsche AG','VOW3.DE':'Volkswagen','BMW.DE':'BMW',
+  'SAP.DE':'SAP','SIE.DE':'Siemens','ALV.DE':'Allianz',
+  'BAYN.DE':'Bayer','MBG.DE':'Mercedes-Benz','STM.DE':'STMicro',
+  'SPPW.DE':'SPDR World','AMEM.DE':'Amundi EM',
+  'IWDA.L':'iShares World','SWRD.L':'SPDR World','IWDA.AS':'iShares World',
+  'VWCE.DE':'Vanguard FTSE','CSPX.L':'iShares S&P500',
+  'ALHPI.PA':'Hopium','ALHPI.FR':'Hopium',
+  'VIE.PA':'Veolia','PAH3.DE':'Porsche AG',
+  'LVMH':'LVMH','AAPL':'Apple','MSFT':'Microsoft',
+  'GOOGL':'Alphabet','AMZN':'Amazon','TSLA':'Tesla',
+  'NVDA':'Nvidia','META':'Meta',
+};
+
+function getTickerName(ticker) {
+  return TICKER_NAMES[ticker] || TICKER_NAMES[(ticker||'').toUpperCase()] || ticker;
+}
+
 function toggleSortMenu() {
   const m = document.getElementById('sort-menu');
   if (!m) return;
@@ -5599,8 +5630,8 @@ function renderPortfolio() {
         <div style="display:flex;align-items:center;gap:10px">
           ${getCompanyLogo(p.name, p.fullName||p.name, 36, 10)}
           <div>
-            <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${p.name}</div>
-            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.fullName||p.type||'Action'} · ${p.qty} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
+            <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${getTickerName(p.name)}</div>
+            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.type||'Action'} · ${p.qty} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
           </div>
         </div>
         <!-- Investi -->
