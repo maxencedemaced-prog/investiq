@@ -214,8 +214,8 @@
     display: none !important;
   }
 
-  /* ══ 6. AGENT IA — layout colonne ══ */
-  #sec-ai > div[style*="display:flex;gap:0"] {
+  /* ══ 6. AGENT IA — layout colonne mobile ══ */
+  #sec-ai > div {
     flex-direction: column !important;
   }
   #ai-sidebar {
@@ -223,14 +223,15 @@
     border-left: none !important;
     border-top: 1px solid var(--color-border) !important;
     padding: 16px !important;
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 16px !important;
     overflow-y: visible !important;
     max-height: none !important;
   }
-  #ai-sidebar > div[style*="height:1px"] { display: none !important; }
-  #ai-sidebar > button { grid-column: 1 / -1 !important; }
+  #agent-alerts-cards {
+    grid-template-columns: 1fr !important;
+  }
+  #agent-hero-metrics {
+    grid-template-columns: repeat(3,1fr) !important;
+  }
   #sec-ai > div > div:first-child { padding: 14px 14px 0 !important; }
 
   /* ══ 7. SCÉNARIO CRISE ══ */
@@ -2108,7 +2109,20 @@ window.addEventListener('load', function() {
         </div>
       </div>
 
-      <!-- ② ALERTES & OPPORTUNITÉS -->
+      <!-- ② CE QUI A CHANGÉ DEPUIS HIER -->
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:16px 18px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:800;color:var(--color-text);display:flex;align-items:center;gap:7px">
+            <span style="font-size:14px">📅</span> Ce qui a changé depuis hier
+          </div>
+          <span id="agent-brief-date" style="font-size:11px;color:var(--color-text-tertiary)"></span>
+        </div>
+        <div id="agent-changes-content" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+          <div style="font-size:12px;color:var(--color-text-secondary);opacity:0.4;grid-column:1/-1">Chargement...</div>
+        </div>
+      </div>
+
+      <!-- ③ ALERTES & OPPORTUNITÉS -->
       <div style="margin-bottom:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div style="display:flex;align-items:center;gap:10px">
@@ -2324,18 +2338,25 @@ window.addEventListener('load', function() {
         </button>
       </div>
 
-      <!-- Objectif principal -->
-      <div style="padding:18px">
-        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Objectif principal</div>
-        <div id="ai-side-obj-pct" style="font-size:28px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em;margin-bottom:2px">—%</div>
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">atteint</div>
-        <div style="height:6px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden;margin-bottom:8px">
+      <!-- Objectif principal — compact -->
+      <div style="padding:16px 18px">
+        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Objectif principal</div>
+        <!-- Badge + barre compact -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div id="ai-side-obj-badge" style="display:flex;align-items:center;gap:5px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:8px;padding:6px 10px;flex-shrink:0">
+            <span style="font-size:14px">🎯</span>
+            <span id="ai-side-obj-pct" style="font-size:16px;font-weight:900;color:#4ade80">—%</span>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div id="ai-side-obj-detail" style="font-size:11px;color:var(--color-text-secondary);line-height:1.4">—</div>
+          </div>
+        </div>
+        <div style="height:5px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden;margin-bottom:10px">
           <div id="ai-side-obj-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width 1s"></div>
         </div>
-        <div id="ai-side-obj-detail" style="font-size:11px;color:var(--color-text-secondary);margin-bottom:12px">—</div>
-        <button onclick="nav('objectif')" style="width:100%;padding:9px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:10px;font-size:12px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between">
-          <span>Voir le détail →</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        <button onclick="nav('objectif')" style="width:100%;padding:8px;background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:9px;font-size:11px;font-weight:700;color:var(--color-text);cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+          <span>Voir le détail</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
       </div>
 
