@@ -9779,12 +9779,18 @@ function renderHeroMetrics() {
   if (!positions.length) return;
   // Risques détectés
   const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
+  // Compte les risques en utilisant la même logique que renderAgentAlertsCards
   let riskCount = 0;
   positions.forEach(p => {
-    const pnlP = p.pru > 0 ? (p.price-p.pru)/p.pru*100 : 0;
-    const w    = tv > 0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
-    if (pnlP < -10 || w > 40) riskCount++;
+    const w = tv > 0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
+    if (w > 35) riskCount++; // Concentration élevée
   });
+  // Ajoute les pertes majeures (>-10%) en dédupliquant par ticker
+  const bigLossTickers = new Set(
+    positions.filter(p => p.pru>0 && (p.price-p.pru)/p.pru*100 < -10)
+             .map(p => p.name)
+  );
+  riskCount += bigLossTickers.size;
   const heroRisk  = document.getElementById('hero-risk-count');
   const heroRiskL = document.getElementById('hero-risk-label');
   if (heroRisk)  heroRisk.textContent  = riskCount;
