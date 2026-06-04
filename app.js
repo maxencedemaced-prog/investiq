@@ -4782,17 +4782,32 @@ function getCompanyLogo(ticker, name, size, radius) {
   }
   const t = (ticker||'').toUpperCase();
   const base = t.replace(/\.PA$|\.DE$|\.L$|\.AS$|\.MI$|\.SW$/,'');
-  const domain = domainMap[ticker] || domainMap[t] || domainMap[base];
-  if (!domain) return fallback;
   const isDarkLogo = document.documentElement.getAttribute('data-theme') === 'dark';
   const logoBg = isDarkLogo ? '#1a2230' : '#f4f4f5';
-  // Google Favicons HD — fiable, pas de clé API, sz=128 pour haute résolution
-  const googleUrl = 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=128';
-  return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:3px;box-sizing:border-box">
-    <img src="${googleUrl}" alt="${init}"
-      style="width:100%;height:100%;object-fit:contain;border-radius:${r-2}px"
-      onerror="_logoFallback(this,'${init}','${c}')">
-  </div>`;
+
+  // 1. TradingView logos — vrais logos SVG de marque
+  const tvUrl = getTVLogoUrl(ticker) || getTVLogoUrl(t);
+  if (tvUrl) {
+    return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:4px;box-sizing:border-box">
+      <img src="${tvUrl}" alt="${init}"
+        style="width:100%;height:100%;object-fit:contain;border-radius:${r-2}px"
+        onerror="_logoFallback(this,'${init}','${c}')">
+    </div>`;
+  }
+
+  // 2. Google Favicons pour les domaines connus
+  const domain = domainMap[ticker] || domainMap[t] || domainMap[base];
+  if (domain) {
+    const googleUrl = 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=128';
+    return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:4px;box-sizing:border-box">
+      <img src="${googleUrl}" alt="${init}"
+        style="width:100%;height:100%;object-fit:contain;border-radius:${r-2}px"
+        onerror="_logoFallback(this,'${init}','${c}')">
+    </div>`;
+  }
+
+  return fallback;
+  const _unused = 0;
 }
 
 function _logoFallback(img, text, color) {
@@ -5495,6 +5510,39 @@ function isinToTicker(isin, name) {
   if (n.includes('private'))            return null; // skip
   // Dernier recours : utilise l'ISIN comme ticker
   return isin;
+}
+
+
+// ===== MAP TICKER → LOGO TRADINGVIEW =====
+const TV_LOGO_SLUGS = {
+  'MC.PA':'lvmh','LVMH':'lvmh',
+  'TTE.PA':'total-energies','TTE':'total-energies',
+  'AI.PA':'air-liquide','AIR-LIQUIDE':'air-liquide',
+  'AIR.PA':'airbus','AIRBUS':'airbus',
+  'VIE.PA':'veolia-environnement','VEOLIA':'veolia-environnement',
+  'PAH3.DE':'porsche-automobil-holding','PAH3':'porsche-automobil-holding',
+  'VOW3.DE':'volkswagen','BMW.DE':'bmw',
+  'SAP.DE':'sap','SIE.DE':'siemens',
+  'BNP.PA':'bnp-paribas','GLE.PA':'societe-generale',
+  'SAN.PA':'sanofi','OR.PA':'loreal',
+  'STM.DE':'stmicroelectronics','STM.PA':'stmicroelectronics',
+  'SOI.PA':'soitec','FDJ.PA':'francaise-des-jeux',
+  'ALO.PA':'alstom','SU.PA':'schneider-electric',
+  'DSY.PA':'dassault-systemes','CAP.PA':'capgemini',
+  'RACE':'ferrari','NL0011585146':'ferrari',
+  'AAPL':'apple','MSFT':'microsoft','GOOGL':'alphabet',
+  'AMZN':'amazon','TSLA':'tesla','NVDA':'nvidia','META':'meta-platforms',
+  'ASML':'asml','NOVO-B.CO':'novo-nordisk',
+  'IWDA.L':'ishares','IWDA.AS':'ishares','CSPX.L':'ishares',
+  'VWCE.DE':'vanguard','VUAA.L':'vanguard',
+  'SPPW.DE':'spdr-sp-500','SWRD.L':'spdr-msci-world','SWRD.UK':'spdr-msci-world',
+  'AMEM.DE':'amundi','EIMI.L':'ishares',
+};
+
+function getTVLogoUrl(ticker) {
+  const slug = TV_LOGO_SLUGS[ticker] || TV_LOGO_SLUGS[(ticker||'').toUpperCase()];
+  if (!slug) return null;
+  return 'https://s3-symbol-logo.tradingview.com/' + slug + '--big.svg';
 }
 
 // ===== NOMS COMPLETS DES TICKERS =====
