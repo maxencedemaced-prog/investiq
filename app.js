@@ -7663,10 +7663,11 @@ function parseXTBWorkbook(wb) {
   if (headerRow === -1) throw new Error('En-têtes non trouvés. Vérifie le format du fichier.');
 
   const headers = rows[headerRow].map(h => (h || '').toString().toLowerCase().trim());
-  const symIdx  = headers.indexOf('symbol');
-  const typeIdx = headers.indexOf('type');
-  const volIdx  = headers.indexOf('volume');
-  const priceIdx= headers.indexOf('open price');
+  const symIdx     = headers.indexOf('symbol');
+  const typeIdx    = headers.indexOf('type');
+  const volIdx     = headers.indexOf('volume');
+  const priceIdx   = headers.indexOf('open price');
+  const commentIdx = headers.indexOf('comment');
 
   if (symIdx === -1 || volIdx === -1 || priceIdx === -1) {
     throw new Error(`Colonnes manquantes. Trouvées: ${headers.filter(Boolean).join(', ')}`);
@@ -7686,17 +7687,27 @@ function parseXTBWorkbook(wb) {
     // Ignore les ventes, totaux, lignes vides
     if (!symbol || symbol === 'Total' || type === 'SELL' || isNaN(qty) || isNaN(price) || qty <= 0 || price <= 0) continue;
 
+    // Détecte les splits dans le commentaire (ex: "ALHPI.FR split 1 for 80")
+    const comment = String(row[commentIdx] || '').toLowerCase();
+    let splitFactor = 1;
+    const splitMatch = comment.match(/split\s+(\d+)\s+for\s+(\d+)/i);
+    if (splitMatch) {
+      // "split 1 for 80" → prix original était 80x plus élevé → PRU / 80
+      splitFactor = parseInt(splitMatch[2]) / parseInt(splitMatch[1]);
+    }
+
     // Normalise le ticker XTB → ticker standard
     const ticker = normalizeXTBTicker(symbol);
+    const adjustedPru = price / splitFactor;
 
     // Agrège par ticker (PRU pondéré)
     if (positions[ticker]) {
       const p = positions[ticker];
       const totalQty = p.qty + qty;
-      p.pru = (p.pru * p.qty + price * qty) / totalQty;
+      p.pru = (p.pru * p.qty + adjustedPru * qty) / totalQty;
       p.qty = totalQty;
     } else {
-      positions[ticker] = { name: ticker, ticker, qty, pru: price };
+      positions[ticker] = { name: ticker, ticker, qty, pru: adjustedPru };
     }
   }
 
