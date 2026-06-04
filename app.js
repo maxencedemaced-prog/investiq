@@ -7381,6 +7381,7 @@ function updateDCA() {
 // ===== IMPORT CSV / XLSX — XTB & TRADE REPUBLIC =====
 
 function openImportModal() {
+  if (!isPremiumUser()) { showPremiumModal(); return; }
   if (document.getElementById('import-modal')) return;
   const modal = document.createElement('div');
   modal.id = 'import-modal';
