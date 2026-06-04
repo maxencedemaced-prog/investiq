@@ -4736,6 +4736,13 @@ function getCompanyLogo(ticker, name, size, radius) {
     'LR.PA':'legrand.com',
     'EDF.PA':'edf.fr',
     'ENGI.PA':'engie.com',
+    'STM.DE':'st.com','STM.PA':'st.com',
+    'SPPW.DE':'ssga.com',
+    'AMEM.DE':'amundi.com',
+    'SWRD.L':'ssga.com','SWRD.UK':'ssga.com',
+    'ALHPI.PA':'hopium.fr','ALHPI.FR':'hopium.fr',
+    'TTE.PA':'totalenergies.com',
+    'VWCE':'vanguard.com',
   };
   const LCOLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6','#f97316'];
   const c = LCOLORS[(ticker||'').charCodeAt(0) % LCOLORS.length];
@@ -4752,6 +4759,17 @@ function getCompanyLogo(ticker, name, size, radius) {
     'MCPA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a1a"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#c9a96e" font-family="Arial">LV</text></svg>',
     'SOI.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#0055A4"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" font-family="Arial">SOI</text></svg>',
     'FDJ.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00843D"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">FDJ</text></svg>',
+    'SPPW.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
+    'SWRD.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
+    'SWRD.UK': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
+    'AMEM.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#FF6600"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">AMU</text></svg>',
+    'STM.DE':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#003882"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" font-family="Arial">ST</text></svg>',
+    'STM.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#003882"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" font-family="Arial">ST</text></svg>',
+    'ALHPI.PA':'<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a2e"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#4ade80" font-family="Arial">HOP</text></svg>',
+    'ALHPI.FR':'<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a2e"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#4ade80" font-family="Arial">HOP</text></svg>',
+    'VIE.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#009B77"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">VEO</text></svg>',
+    'PAH3.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#000"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#c8aa6e" font-family="Arial">PAG</text></svg>',
+    'TTE.PA':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#E4262C"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">TTE</text></svg>',
   };;
   if (svgLogos[ticker]) {
     return '<div style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">'+svgLogos[ticker].replace('36 36', s+' '+s).replace('rx="8"','rx="'+r+'"')+'</div>';
