@@ -5506,7 +5506,7 @@ function isinToTicker(isin, name) {
 const TV_LOGO_SLUGS = {
   'MC.PA':'lvmh','LVMH':'lvmh',
   'TTE.PA':'total-energies','TTE':'total-energies',
-  'AI.PA':'air-liquide','AIR-LIQUIDE':'air-liquide',
+  'AI.PA':'air-liquide','AIR-LIQUIDE':'air-liquide','AIR.LIQUIDE':'air-liquide',
   'AIR.PA':'airbus','AIRBUS':'airbus',
   'VIE.PA':'veolia-environnement','VEOLIA':'veolia-environnement',
   'PAH3.DE':'porsche-automobil-holding','PAH3':'porsche-automobil-holding',
@@ -5522,10 +5522,10 @@ const TV_LOGO_SLUGS = {
   'AAPL':'apple','MSFT':'microsoft','GOOGL':'alphabet',
   'AMZN':'amazon','TSLA':'tesla','NVDA':'nvidia','META':'meta-platforms',
   'ASML':'asml','NOVO-B.CO':'novo-nordisk',
-  'IWDA.L':'ishares','IWDA.AS':'ishares','CSPX.L':'ishares',
+  'IWDA.L':'ishares','IWDA.AS':'ishares','CSPX.L':'ishares','IWDA':'ishares',
   'VWCE.DE':'vanguard','VUAA.L':'vanguard',
   'SPPW.DE':'spdr-sp-500','SWRD.L':'spdr-msci-world','SWRD.UK':'spdr-msci-world',
-  'AMEM.DE':'amundi','EIMI.L':'ishares',
+  'AMEM.DE':'amundi-etf','AMEM':'amundi-etf','EIMI.L':'ishares','EIMI':'ishares',
 };
 
 function getTVLogoUrl(ticker) {
