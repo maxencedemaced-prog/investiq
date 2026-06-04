@@ -4784,11 +4784,11 @@ function getCompanyLogo(ticker, name, size, radius) {
   const base = t.replace(/\.PA$|\.DE$|\.L$|\.AS$|\.MI$|\.SW$/,'');
   const domain = domainMap[ticker] || domainMap[t] || domainMap[base];
   if (!domain) return fallback;
-  // Essayer plusieurs sources de logos
-  const logoUrl = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
   const isDarkLogo = document.documentElement.getAttribute('data-theme') === 'dark';
   const logoBg = isDarkLogo ? '#1a2230' : '#f4f4f5';
-  return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:3px;box-sizing:border-box">
+  // Logo.dev — vrais logos d'entreprise par domaine (haute qualité)
+  const logoUrl = 'https://img.logo.dev/' + domain + '?token=pk_TCKspP6mR4iDQILCIADIdA&size=80&format=png';
+  return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:4px;box-sizing:border-box">
     <img src="${logoUrl}" alt="${init}" style="width:100%;height:100%;object-fit:contain;border-radius:${r-2}px" onerror="_logoFallback(this,'${init}','${c}')">
   </div>`;
 }
