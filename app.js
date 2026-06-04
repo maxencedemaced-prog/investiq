@@ -7750,6 +7750,17 @@ function initAgent() {
   const dateEl = document.getElementById('agent-brief-date');
   if (dateEl) dateEl.textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
 
+  // Salutation personnalisée
+  const greetEl = document.getElementById('agent-greeting');
+  if (greetEl) {
+    const h = new Date().getHours();
+    const salut = h < 12 ? 'Bonjour' : h < 18 ? 'Bonjour' : 'Bonsoir';
+    const name = (currentUser && currentUser.email ? currentUser.email.split('@')[0] : null)
+               || (profile && profile.name ? profile.name : null);
+    const emoji = h < 12 ? '☀️' : h < 18 ? '👋' : '🌙';
+    greetEl.textContent = name ? `${salut} ${name.charAt(0).toUpperCase()+name.slice(1)} ${emoji}` : `${salut} ${emoji}`;
+  }
+
   // Briefing (cache 6h)
   const BRIEF_KEY = 'iq_daily_brief';
   const cached = (() => { try { const c = JSON.parse(localStorage.getItem(BRIEF_KEY)||'null'); return c && Date.now()-c.ts < 6*3600000 ? c : null; } catch { return null; } })();
@@ -7956,7 +7967,8 @@ function renderOppCards(items, el) {
     const cfg = typeCfg[it.type]||typeCfg.surveiller;
     const stars = Math.round(it.score/2);
     return `<div style="padding:8px 10px;background:${cfg.bg};border-radius:10px;border-left:3px solid ${cfg.color};cursor:pointer"
-      onclick="sq('Analyse l\\'opportunité ${it.ticker} : ${it.raison}')">
+      data-sq="Analyse l&#39;opportunité ${it.ticker} : ${it.raison}"
+      onclick="sq(this.dataset.sq)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
         <span style="font-size:12px;font-weight:700;color:${cfg.color}">${it.label}</span>
         <span style="font-size:10px;font-weight:700;color:${cfg.color};background:${cfg.bg};padding:1px 6px;border-radius:4px">${cfg.label}</span>
@@ -8034,8 +8046,8 @@ function renderRecoCards(items, el) {
   el.innerHTML = items.slice(0,3).map((it,i) => {
     const cc = confCfg(it.confiance||70);
     return `<div style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:12px;padding:12px 14px;cursor:pointer;transition:border-color 0.15s"
-      onmouseover="this.style.borderColor='${cc.color}'" onmouseout="this.style.borderColor='var(--color-border)'"
-      onclick="sq('Explique la recommandation : ${it.action} — ${it.raison}')">
+      data-sq="Explique la recommandation : ${it.action.replace(/'/g,'&#39;')} — ${it.raison.replace(/'/g,'&#39;')}"
+      onclick="sq(this.dataset.sq)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
         <div style="display:flex;align-items:center;gap:8px">
           <div style="width:22px;height:22px;background:${cc.color}20;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${cc.color};flex-shrink:0">${i+1}</div>
@@ -8479,13 +8491,15 @@ function renderAgentPriorities() {
   if (!priorities.length) priorities.push({ icon:'✅', label:'Aucune action urgente', sub:'Portefeuille stable', color:'#4ade80', q:'Analyse mon portefeuille en détail.' });
 
   el.innerHTML = priorities.slice(0,3).map(p => `
-    <div onclick="sq('${p.q.replace(/'/g,"&#39;")}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--color-bg-subtle);border-radius:10px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--color-surface-raised)'" onmouseout="this.style.background='var(--color-bg-subtle)'">
+    <div data-sq="${p.q.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
+      style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--color-bg-subtle);border-radius:10px;cursor:pointer;transition:background 0.15s"
+      onclick="sq(this.dataset.sq)">
       <span style="font-size:16px;flex-shrink:0">${p.icon}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.label}</div>
         <div style="font-size:11px;color:var(--color-text-secondary)">${p.sub}</div>
       </div>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${p.color}" stroke-width="2" flex-shrink:0><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${p.color}" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </div>`).join('');
 }
 
@@ -8539,10 +8553,11 @@ function renderAgentAlertsCards() {
   }
 
   el.innerHTML = cards.slice(0,4).map(c => `
-    <div style="background:${c.badgeBg};border:1px solid ${c.borderColor};border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;cursor:pointer;min-height:140px"
-      onclick="sq('${c.q.replace(/'/g,"&#39;")}')"
-      onmouseover="this.style.transform='translateY(-1px)';this.style.transition='transform 0.15s'"
-      onmouseout="this.style.transform=''">
+    <div style="background:${c.badgeBg};border:1px solid ${c.borderColor};border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;cursor:pointer;min-height:140px;transition:transform 0.15s"
+      data-sq="${c.q.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
+      onclick="this.style.transform='';sq(this.dataset.sq)"
+      onmouseenter="this.style.transform='translateY(-2px)'"
+      onmouseleave="this.style.transform=''">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:5px">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="${c.badgeColor}" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/></svg>
