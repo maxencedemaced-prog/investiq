@@ -5436,6 +5436,61 @@ function buildAlerts() {
 
 // ===== PORTFOLIO =====
 
+
+// ===== MAP ISIN → TICKER (Trade Republic) =====
+const ISIN_TO_TICKER = {
+  // ETF MSCI World
+  'IE00BFY0GT14':'SWRD.L',   // SPDR MSCI World
+  'IE00B4L5Y983':'IWDA.L',   // iShares MSCI World
+  'IE00B0M62Q58':'IWDA.L',   // iShares MSCI World (autre classe)
+  'LU1781541179':'VWCE.DE',  // Vanguard FTSE All-World
+  'IE00B3RBWM25':'VWCE.DE',  // Vanguard FTSE All-World (USD)
+  // ETF Emerging Markets
+  'LU1681045370':'AMEM.DE',  // Amundi MSCI EM
+  'IE00BKM4GZ66':'EIMI.L',   // iShares MSCI EM
+  'LU1437016972':'AMEM.DE',  // Amundi MSCI EM Swap
+  // ETF S&P 500
+  'IE00B5BMR087':'CSPX.L',   // iShares Core S&P 500
+  'IE00B3YCGJ38':'VUAA.L',   // Vanguard S&P 500
+  'LU1135865084':'SP5C.PA',  // Amundi S&P 500
+  // Actions françaises
+  'FR0000131104':'BNP.PA',
+  'FR0000125338':'LOreal.PA',
+  'FR0000124141':'VIE.PA',
+  'FR0000125485':'MC.PA',
+  'FR0000120271':'TTE.PA',
+  'FR0000120628':'AI.PA',
+  'FR0000121667':'AIR.PA',
+  'FR0000130809':'STM.PA',
+  // Actions internationales
+  'NL0011585146':'RACE',      // Ferrari
+  'US0378331005':'AAPL',
+  'US5949181045':'MSFT',
+  'US02079K3059':'GOOGL',
+  'US0231351067':'AMZN',
+  'US88160R1014':'TSLA',
+  'US67066G1040':'NVDA',
+  'US30303M1027':'META',
+  // Ignorer
+  'LU3170240538': null,  // Private Equity → skip
+};
+
+function isinToTicker(isin, name) {
+  if (ISIN_TO_TICKER.hasOwnProperty(isin)) return ISIN_TO_TICKER[isin];
+  // Fallback : utilise le nom pour deviner
+  const n = (name||'').toLowerCase();
+  if (n.includes('msci world'))         return 'SWRD.L';
+  if (n.includes('emerging'))           return 'AMEM.DE';
+  if (n.includes('s&p 500')||n.includes('sp500')) return 'CSPX.L';
+  if (n.includes('ferrari'))            return 'RACE';
+  if (n.includes('apple'))              return 'AAPL';
+  if (n.includes('microsoft'))          return 'MSFT';
+  if (n.includes('nvidia'))             return 'NVDA';
+  if (n.includes('private'))            return null; // skip
+  // Dernier recours : utilise l'ISIN comme ticker
+  return isin;
+}
+
 // ===== NOMS COMPLETS DES TICKERS =====
 const TICKER_NAMES = {
   'TTE.PA':'TotalEnergies','AI.PA':'Air Liquide','MC.PA':'LVMH',
@@ -7638,11 +7693,17 @@ function parseImportCSV(text, broker) {
       const instrument = (row['instrument/position'] || '').toLowerCase();
       type = instrument.includes('short') || (row['type']||'').toLowerCase().includes('sell') ? 'sell' : 'buy';
     } else {
-      // Trade Republic CSV : date, type, instrument, isin, shares, price, amount, currency
-      ticker = row['instrument'] || row['symbol'] || row['isin'] || '';
-      qty    = parseFloat((row['shares'] || row['quantity'] || row['volume'] || '0').replace(',','.'));
-      price  = parseFloat((row['price'] || row['open price'] || '0').replace(',','.'));
-      type   = (row['type'] || row['transaction type'] || 'buy').toLowerCase();
+      // Trade Republic CSV — colonnes réelles : datetime,date,account_type,category,type,asset_class,name,symbol,shares,price,amount,...
+      const isin  = (row['symbol'] || '').trim();
+      const name  = (row['name'] || '').trim();
+      ticker = isinToTicker(isin, name);
+      if (!ticker) continue; // skip Private Equity etc.
+      qty    = parseFloat((row['shares'] || '0').replace(',','.'));
+      price  = parseFloat((row['price'] || '0').replace(',','.'));
+      type   = (row['type'] || 'BUY').toUpperCase();
+      // TR : on ne garde que les vrais achats TRADING
+      const cat = (row['category'] || '').toUpperCase();
+      if (cat !== 'TRADING') continue;
     }
 
     // Normalise le ticker
