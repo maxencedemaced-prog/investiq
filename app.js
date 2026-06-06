@@ -5628,9 +5628,63 @@ function togglePushNotifications() {
   if (isPushSubscribed()) {
     unsubscribePush();
     updatePushUI(false);
-  } else {
-    requestPushPermission().then(() => updatePushUI(isPushSubscribed()));
+    return;
   }
+
+  // Détection iOS Safari — push non supporté hors PWA installée
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+  if (isIOS && !isStandalone) {
+    // Affiche une modale d'instruction pour installer la PWA
+    showPWAInstallModal();
+    return;
+  }
+
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    showToast('Notifications non supportees. Installe l app sur ton ecran accueil.');
+    return;
+  }
+
+  requestPushPermission().then(() => updatePushUI(isPushSubscribed()));
+}
+
+function showPWAInstallModal() {
+  document.getElementById('pwa-install-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'pwa-install-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)';
+  modal.innerHTML = `
+    <div style="background:var(--color-surface);border-radius:20px 20px 0 0;padding:28px 24px;width:100%;max-width:500px">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:36px;margin-bottom:8px">📱</div>
+        <h3 style="font-size:17px;font-weight:800;color:var(--color-text);margin:0 0 6px">Installe InvestIQ sur ton iPhone</h3>
+        <p style="font-size:14px;color:var(--color-text-secondary);margin:0;line-height:1.5">Pour recevoir des notifications, ajoute l'app à ton écran d'accueil.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--color-bg-subtle);border-radius:12px">
+          <div style="width:32px;height:32px;background:#007AFF;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </div>
+          <div style="font-size:14px;color:var(--color-text)">Appuie sur <strong>Partager</strong> <span style="font-size:16px">⬆️</span> en bas de Safari</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--color-bg-subtle);border-radius:12px">
+          <div style="width:32px;height:32px;background:#007AFF;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">➕</div>
+          <div style="font-size:14px;color:var(--color-text)">Choisis <strong>"Sur l'écran d'accueil"</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--color-bg-subtle);border-radius:12px">
+          <div style="width:32px;height:32px;background:#4ade80;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔔</div>
+          <div style="font-size:14px;color:var(--color-text)">Ouvre l'app depuis l'icône et active les notifications</div>
+        </div>
+      </div>
+      <button onclick="document.getElementById('pwa-install-modal').remove()"
+        style="width:100%;padding:14px;background:#007AFF;border:none;border-radius:12px;font-size:16px;font-weight:700;color:#fff;cursor:pointer">
+        Compris !
+      </button>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
 }
 
 function updatePushUI(subscribed) {
