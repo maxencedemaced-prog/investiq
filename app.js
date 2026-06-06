@@ -5633,58 +5633,18 @@ function togglePushNotifications() {
   }
 }
 
-async function testPushNotification() {
-  if (!currentUser) { showToast('⚠️ Connecte-toi dabord'); return; }
-  if (!isPushSubscribed()) { showToast('⚠️ Active dabord les notifications'); return; }
-
-  const btn = document.getElementById('push-test-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi...'; }
-
-  try {
-    const res = await fetch('/api/push-send?test=1', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUser.id })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showToast('✅ Notification envoyée ! Vérifie ton téléphone.');
-    } else {
-      showToast('⚠️ ' + (data.error || 'Erreur inconnue'));
-    }
-  } catch(e) {
-    showToast('⚠️ Erreur : ' + e.message);
-  }
-
-  if (btn) { btn.disabled = false; btn.textContent = '🧪 Tester'; }
-}
-
 function updatePushUI(subscribed) {
-  const btn   = document.getElementById('push-toggle-btn');
-  const label = document.getElementById('push-status-label');
-  const testBtn = document.getElementById('push-test-btn');
+  const btn     = document.getElementById('push-toggle-btn');
+  const label   = document.getElementById('push-status-label');
+  const testRow = document.getElementById('push-test-row');
   if (btn) {
-    btn.textContent = subscribed ? 'Désactiver' : 'Activer';
-    btn.style.background  = subscribed ? 'rgba(239,68,68,0.1)'   : 'rgba(251,191,36,0.12)';
-    btn.style.borderColor = subscribed ? 'rgba(239,68,68,0.3)'   : 'rgba(251,191,36,0.3)';
-    btn.style.color       = subscribed ? '#ef4444'               : '#fbbf24';
+    btn.textContent = subscribed ? '🔕 Désactiver les notifications' : 'Activer les notifications';
+    btn.style.background  = subscribed ? 'rgba(239,68,68,0.1)'  : 'rgba(251,191,36,0.12)';
+    btn.style.borderColor = subscribed ? 'rgba(239,68,68,0.4)'  : 'rgba(251,191,36,0.4)';
+    btn.style.color       = subscribed ? '#ef4444'              : '#fbbf24';
   }
-  if (label) label.textContent = subscribed ? '✅ Activées' : 'Désactivées';
-  // Affiche le bouton test seulement si abonné
-  // Crée le bouton test dynamiquement s'il n'existe pas
-  if (!testBtn) {
-    const container = btn?.parentElement;
-    if (container) {
-      const tb = document.createElement('button');
-      tb.id = 'push-test-btn';
-      tb.textContent = '🧪 Tester';
-      tb.onclick = testPushNotification;
-      tb.style.cssText = 'padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;display:none;margin-left:6px';
-      container.appendChild(tb);
-    }
-  }
-  const tb2 = document.getElementById('push-test-btn');
-  if (tb2) tb2.style.display = subscribed ? 'inline-block' : 'none';
+  if (label) { label.textContent = subscribed ? '✅ Activées' : 'Désactivées'; label.style.color = subscribed ? '#4ade80' : ''; }
+  if (testRow) testRow.style.display = subscribed ? 'block' : 'none';
 }
 
 function toggleSortMenu() {
