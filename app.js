@@ -5643,11 +5643,20 @@ function togglePushNotifications() {
   }
 
   if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-    showToast('Notifications non supportees. Installe l app sur ton ecran accueil.');
+    showToast('Notifications non supportees sur ce navigateur');
     return;
   }
 
-  requestPushPermission().then(() => updatePushUI(isPushSubscribed()));
+  // Android Chrome — demande directe
+  requestPushPermission()
+    .then(() => {
+      updatePushUI(isPushSubscribed());
+      if (isPushSubscribed()) showToast('Notifications activees !');
+    })
+    .catch(e => {
+      console.error('[Push] Error:', e);
+      showToast('Erreur: ' + e.message);
+    });
 }
 
 function showPWAInstallModal() {
@@ -8432,21 +8441,37 @@ async function initPushNotifications() {
 }
 
 async function requestPushPermission() {
+  console.log('[Push] requestPushPermission called');
+  console.log('[Push] Notification:', typeof Notification !== 'undefined' ? Notification.permission : 'undefined');
+  console.log('[Push] SW:', 'serviceWorker' in navigator);
+  console.log('[Push] PushManager:', 'PushManager' in window);
+
   if (!('Notification' in window)) {
-    showToast('⚠️ Notifications non supportées sur ce navigateur');
+    showToast('Notifications non supportees');
     return;
   }
   if (Notification.permission === 'denied') {
-    showToast('⚠️ Notifications bloquées — autorise-les dans les paramètres du navigateur');
+    showToast('Notifications bloquees - autorise dans les parametres');
     return;
   }
-  const perm = await Notification.requestPermission();
+
+  let perm = Notification.permission;
+  if (perm !== 'granted') {
+    perm = await Notification.requestPermission();
+  }
+  console.log('[Push] Permission result:', perm);
+
   if (perm === 'granted') {
-    const reg = await navigator.serviceWorker.ready;
-    await subscribePush(reg);
-    showToast('🔔 Notifications activées !');
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      console.log('[Push] SW ready, subscribing...');
+      await subscribePush(reg);
+    } catch(e) {
+      console.error('[Push] Subscribe error:', e);
+      showToast('Erreur abonnement: ' + e.message);
+    }
   } else {
-    showToast('Notifications refusées');
+    showToast('Notifications refusees');
   }
 }
 
