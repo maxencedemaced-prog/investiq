@@ -15,5 +15,8 @@
       "path": "/api/push-send",
       "schedule": "0 8 * * *"
     }
+  ],
+  "rewrites": [
+    { "source": "/sw.js", "destination": "/sw.js" }
   ]
 }
