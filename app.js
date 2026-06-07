@@ -5624,43 +5624,51 @@ function getTickerName(ticker) {
 }
 
 
-function togglePushNotifications() {
+async function togglePushNotifications() {
+  const btn = document.getElementById('push-toggle-btn');
+
   if (isPushSubscribed()) {
-    unsubscribePush();
-    updatePushUI(false);
+    await unsubscribePush();
+    if (btn) { btn.textContent = 'Activer les notifications'; btn.style.background='rgba(251,191,36,0.12)'; btn.style.borderColor='rgba(251,191,36,0.4)'; btn.style.color='#fbbf24'; }
+    const label = document.getElementById('push-status-label');
+    if (label) { label.textContent = 'Désactivées'; label.style.color = ''; }
+    const testRow = document.getElementById('push-test-row');
+    if (testRow) testRow.style.display = 'none';
     return;
   }
 
-  // Détection iOS Safari — push non supporté hors PWA installée
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isStandalone = window.navigator.standalone === true;
-  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-  if (isIOS && !isStandalone) {
-    // Affiche une modale d'instruction pour installer la PWA
-    showPWAInstallModal();
-    return;
-  }
+  if (isIOS && !window.navigator.standalone) { showPWAInstallModal(); return; }
 
   if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-    showToast('Notifications non supportees sur ce navigateur');
-    return;
+    showToast('Notifications non supportees'); return;
   }
 
-  // Android Chrome — demande directe
-  requestPushPermission()
-    .then(() => {
-      // Petit délai pour laisser localStorage se mettre à jour
-      setTimeout(() => {
-        const subscribed = isPushSubscribed();
-        updatePushUI(subscribed);
-        if (subscribed) showToast('Notifications activees !');
-      }, 500);
-    })
-    .catch(e => {
-      console.error('[Push] Error:', e);
-      showToast('Erreur: ' + e.message);
-    });
+  if (btn) { btn.textContent = 'Activation...'; btn.disabled = true; }
+
+  try {
+    let perm = Notification.permission;
+    if (perm !== 'granted') perm = await Notification.requestPermission();
+
+    if (perm === 'granted') {
+      const reg = await navigator.serviceWorker.ready;
+      await subscribePush(reg);
+      // Force UI update directly
+      if (btn) { btn.textContent = '🔕 Désactiver les notifications'; btn.style.background='rgba(239,68,68,0.1)'; btn.style.borderColor='rgba(239,68,68,0.4)'; btn.style.color='#ef4444'; btn.disabled = false; }
+      const label = document.getElementById('push-status-label');
+      if (label) { label.textContent = '✅ Activées'; label.style.color = '#4ade80'; }
+      const testRow = document.getElementById('push-test-row');
+      if (testRow) testRow.style.display = 'block';
+      showToast('Notifications activees !');
+    } else {
+      if (btn) { btn.textContent = 'Activer les notifications'; btn.disabled = false; }
+      showToast('Permission refusee');
+    }
+  } catch(e) {
+    if (btn) { btn.textContent = 'Activer les notifications'; btn.disabled = false; }
+    showToast('Erreur: ' + e.message);
+    console.error('[Push]', e);
+  }
 }
 
 function showPWAInstallModal() {
