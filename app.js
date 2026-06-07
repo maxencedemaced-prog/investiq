@@ -5650,8 +5650,12 @@ function togglePushNotifications() {
   // Android Chrome — demande directe
   requestPushPermission()
     .then(() => {
-      updatePushUI(isPushSubscribed());
-      if (isPushSubscribed()) showToast('Notifications activees !');
+      // Petit délai pour laisser localStorage se mettre à jour
+      setTimeout(() => {
+        const subscribed = isPushSubscribed();
+        updatePushUI(subscribed);
+        if (subscribed) showToast('Notifications activees !');
+      }, 500);
     })
     .catch(e => {
       console.error('[Push] Error:', e);
@@ -8489,6 +8493,7 @@ async function subscribePush(reg) {
     });
     localStorage.setItem('iq_push_subscribed', '1');
     console.log('[Push] Subscribed OK');
+    updatePushUI(true);
   } catch(e) { console.warn('[Push] Subscribe failed:', e); }
 }
 
