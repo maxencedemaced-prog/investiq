@@ -5673,9 +5673,19 @@ async function togglePushNotifications() {
 
     if (perm === 'granted') {
       // Timeout sur serviceWorker.ready (peut bloquer indéfiniment)
+      // Force re-registration if needed
+      let swReg;
+      try {
+        swReg = await navigator.serviceWorker.getRegistration('/');
+        if (!swReg) {
+          swReg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      } catch(e) { console.warn('[Push] SW reg error:', e); }
+
       const reg = await Promise.race([
         navigator.serviceWorker.ready,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout - recharge la page')), 5000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout - rafraichis la page et reessaie')), 15000))
       ]);
       await subscribePush(reg);
       // Force UI update directly
