@@ -5624,6 +5624,27 @@ function getTickerName(ticker) {
 }
 
 
+async function testPushNotification() {
+  if (!currentUser) { showToast('Connecte-toi dabord'); return; }
+  const btn = document.getElementById('push-test-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Envoi en cours...'; }
+  try {
+    const res = await fetch('/api/push-send?test=1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.id })
+    });
+    const text = await res.text();
+    console.log('[Push Test]', res.status, text);
+    try {
+      const data = JSON.parse(text);
+      if (data.ok) showToast('Notification envoyee ! Verifie ton telephone.');
+      else showToast('Erreur: ' + (data.error || text.slice(0,80)));
+    } catch { showToast('Erreur serveur: ' + text.slice(0,80)); }
+  } catch(e) { showToast('Erreur reseau: ' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = '🧪 Envoyer une notification test'; }
+}
+
 async function togglePushNotifications() {
   const btn = document.getElementById('push-toggle-btn');
 
@@ -5651,7 +5672,11 @@ async function togglePushNotifications() {
     if (perm !== 'granted') perm = await Notification.requestPermission();
 
     if (perm === 'granted') {
-      const reg = await navigator.serviceWorker.ready;
+      // Timeout sur serviceWorker.ready (peut bloquer indéfiniment)
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout - recharge la page')), 5000))
+      ]);
       await subscribePush(reg);
       // Force UI update directly
       if (btn) { btn.textContent = '🔕 Désactiver les notifications'; btn.style.background='rgba(239,68,68,0.1)'; btn.style.borderColor='rgba(239,68,68,0.4)'; btn.style.color='#ef4444'; btn.disabled = false; }
