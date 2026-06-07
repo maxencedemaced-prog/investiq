@@ -8470,9 +8470,12 @@ async function requestPushPermission() {
       const reg = await navigator.serviceWorker.ready;
       console.log('[Push] SW ready, subscribing...');
       await subscribePush(reg);
+      // Force UI update after subscription
+      updatePushUI(true);
+      showToast('Notifications activees !');
     } catch(e) {
       console.error('[Push] Subscribe error:', e);
-      showToast('Erreur abonnement: ' + e.message);
+      showToast('Erreur: ' + e.message);
     }
   } else {
     showToast('Notifications refusees');
