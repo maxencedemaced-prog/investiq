@@ -12,20 +12,19 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="style.css">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
     .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     .metric-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
-    .metric-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+    .metric-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
     .pos-card { transition: box-shadow 0.2s ease; }
     .pos-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
     .nav-btn { transition: background 0.15s ease, color 0.15s ease; }
     .btn-primary { transition: transform 0.15s ease, box-shadow 0.15s ease; }
-    .btn-primary:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
-    .btn-primary:active { opacity: 0.9; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+    .btn-primary:active { transform: translateY(0) scale(0.98); }
     .toast { animation: toastIn 0.3s cubic-bezier(0.16,1,0.3,1); }
     @keyframes toastIn { from { opacity:0; transform:translateY(20px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
     /* Skeleton loader */
@@ -41,10 +40,13 @@
     .ob-profile-card:hover { border-color:#8e8e93;background:#fafafa; }
     .ob-profile-card.selected { border:2px solid #1c1c1e;background:#f5f5f5; }
     .ob-goal-card {
-      border-radius:12px;cursor:pointer;transition:all 0.15s;
+      border:1.5px solid #e5e5ea;border-radius:12px;cursor:pointer;
+      background:#fff;transition:all 0.15s;
     }
-    .ob-goal-card.selected { border-color:#16a34a !important;background:rgba(22,163,74,0.08) !important; }
-    .ob-risk-card.selected { border-color:#16a34a !important;background:rgba(22,163,74,0.08) !important; }
+    .ob-goal-card:hover { border-color:#8e8e93;background:#fafafa; }
+    .ob-goal-card.selected { border:2px solid #1c1c1e;background:#f5f5f5; }
+    .ob-risk-card:hover { border-color:#8e8e93 !important;background:#fafafa !important; }
+    .ob-risk-card.selected { border:2px solid #1c1c1e !important;background:#f5f5f5 !important; }
     /* ── Onglets objectifs ── */
     #obj-tabs { display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 12px; }
     .obj-tab-btn {
@@ -73,257 +75,12 @@
 
     .ob-profile-card {
       display:flex;align-items:center;gap:12px;padding:12px 16px;
-      border-radius:14px;cursor:pointer;transition:all 0.15s;
+      background:#fff;border:2px solid #e5e5ea;border-radius:14px;
+      cursor:pointer;transition:all 0.15s;
     }
-    .ob-profile-card.selected { border-color:#16a34a !important;background:rgba(22,163,74,0.08) !important; }
-    .ob-profile-check { font-size:16px;font-weight:700;flex-shrink:0; }
+    .ob-profile-card:hover { border-color:#1c1c1e;background:#f9f9f9; }
+    .ob-profile-check { font-size:16px;font-weight:700;color:#8e8e93;flex-shrink:0; }
   </style>
-
-<style id="mobile-fixes">
-
-  @media (max-width: 767px) {
-
-  /* ══ 1. PARAMÈTRES — fix layout ══ */
-  /* Chaque row = flex column sur mobile */
-  .settings-row {
-    flex-wrap: wrap !important;
-    align-items: flex-start !important;
-    padding: 16px !important;
-    gap: 10px !important;
-  }
-  /* Icone : fixe */
-  .settings-row > div:first-child {
-    flex-shrink: 0 !important;
-  }
-  /* Texte titre+desc : prend toute la largeur dispo */
-  .settings-row > div[style*="flex:1"] {
-    flex: 1 1 180px !important;
-    min-width: 0 !important;
-    word-break: break-word !important;
-  }
-  /* Valeur à droite : passe sur nouvelle ligne sous le texte */
-  .settings-row > div[style*="text-align:right"] {
-    order: 10 !important;
-    flex: 0 0 100% !important;
-    text-align: left !important;
-    padding-left: 54px !important;
-    margin-right: 0 !important;
-    margin-top: -4px !important;
-  }
-  /* Flèche : reste en place */
-  .settings-row > svg:last-child {
-    align-self: center !important;
-  }
-
-  /* ══ 2. DCA PRESETS — 2 colonnes ══ */
-  .dca-presets-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    border-radius: 12px !important;
-  }
-  .dca-presets-grid button {
-    padding: 12px 6px !important;
-    border-right: 1px solid var(--color-border) !important;
-    border-bottom: 1px solid var(--color-border) !important;
-    font-size: 11px !important;
-  }
-  .dca-presets-grid button > div:first-child {
-    font-size: 9px !important;
-    letter-spacing: 0.04em !important;
-  }
-  .dca-presets-grid button > div:nth-child(2) {
-    font-size: 10px !important;
-  }
-
-  /* ══ 3. PORTEFEUILLE tableau — layout propre ══ */
-  .port-table-header { display: none !important; }
-
-  .port-table-row {
-    display: block !important;
-    padding: 14px 16px !important;
-    position: relative !important;
-  }
-
-  /* Col 1 : actif (logo + nom) — toute la largeur */
-  .port-table-row > div:nth-child(1) {
-    display: flex !important;
-    align-items: center !important;
-    margin-bottom: 12px !important;
-    padding-right: 30px !important; /* espace pour le bouton ⋯ */
-  }
-
-  /* Cols 2-5 : grille 2×2 */
-  .port-table-row > div:nth-child(2),
-  .port-table-row > div:nth-child(3),
-  .port-table-row > div:nth-child(4),
-  .port-table-row > div:nth-child(5) {
-    display: inline-block !important;
-    width: 50% !important;
-    vertical-align: top !important;
-    margin-bottom: 6px !important;
-    font-size: 13px !important;
-    float: left !important;
-  }
-
-  /* Labels avant les valeurs */
-  .port-table-row > div:nth-child(2)::before { content: "INVESTI"; display: block; font-size: 9px; color: var(--color-text-tertiary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
-  .port-table-row > div:nth-child(3)::before { content: "PRIX MOY."; display: block; font-size: 9px; color: var(--color-text-tertiary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
-  .port-table-row > div:nth-child(4)::before { content: "VALEUR"; display: block; font-size: 9px; color: var(--color-text-tertiary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
-  .port-table-row > div:nth-child(5)::before { content: "PERF."; display: block; font-size: 9px; color: var(--color-text-tertiary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
-
-  /* Cols 4 et 5 : align-items flex-start pour eviter le centrage */
-  .port-table-row > div:nth-child(4),
-  .port-table-row > div:nth-child(5) {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    justify-content: flex-start !important;
-    width: 50% !important;
-    float: left !important;
-  }
-
-  /* Col 6 (sparkline) : caché */
-  .port-table-row > div:nth-child(6) { display: none !important; }
-
-  /* Col 7 (menu ⋯) : en haut à droite */
-  .port-table-row > div:nth-child(7) {
-    position: absolute !important;
-    top: 14px !important;
-    right: 12px !important;
-    float: none !important;
-  }
-
-  /* Clearfix */
-  .port-table-row::after { content: ""; display: table; clear: both; }
-
-  /* ══ 5. ACTUALITÉS — colonne texte ══ */
-  /* La news item avec logo + contenu + recommandation */
-  #news-list > div[style*="border-radius:14px"] > div[style*="display:flex;align-items:flex-start;gap:14px"] {
-    flex-direction: column !important;
-  }
-  /* Recommandation IA (dernière colonne) → bas */
-  #news-list [style*="min-width:120px"] {
-    min-width: unset !important;
-    width: 100% !important;
-    border-left: none !important;
-    border-top: 1px solid var(--color-border) !important;
-    padding-left: 0 !important;
-    padding-top: 10px !important;
-    margin-top: 6px !important;
-  }
-  /* Cache impact portefeuille */
-  #news-list [style*="min-width:80px"][style*="flex-shrink:0;text-align:center"] {
-    display: none !important;
-  }
-
-  /* ══ 6. AGENT IA — layout colonne mobile ══ */
-  #sec-ai > div {
-    flex-direction: column !important;
-  }
-  #ai-sidebar {
-    width: 100% !important;
-    border-left: none !important;
-    border-top: 1px solid var(--color-border) !important;
-    padding: 16px !important;
-    overflow-y: visible !important;
-    max-height: none !important;
-  }
-  #agent-alerts-cards {
-    grid-template-columns: 1fr !important;
-  }
-  #agent-hero-metrics {
-    grid-template-columns: repeat(3,1fr) !important;
-  }
-  #sec-ai > div > div:first-child { padding: 14px 14px 0 !important; }
-
-  /* ══ 7. SCÉNARIO CRISE ══ */
-  #crise-content [style*="grid-template-columns:repeat(3,1fr)"] {
-    grid-template-columns: 1fr !important;
-  }
-  /* Chocs : 2 colonnes */
-  #crise-content > div:nth-child(2) [style*="grid-template-columns:repeat(6"] {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  /* ══ 8. MÉTRIQUES PORTEFEUILLE ══ */
-  #port-metrics [style*="grid-template-columns:repeat(4,1fr)"] {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  /* ══ 9. RÉPARTITION BAS PORTEFEUILLE ══ */
-  #pos-grid [style*="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px"] {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* ══ 10. SANTÉ score ══ */
-  #sante-content [style*="grid-template-columns:auto 1fr auto"] {
-    grid-template-columns: 1fr !important;
-  }
-
-
-  /* ══ HOME — badge performance totale ══ */
-  /* Sur mobile : le badge absolu déborde sur le titre → on le cache */
-  /* et on affiche un chip inline à la place */
-  .home-perf-badge {
-    display: none !important;
-  }
-  /* Réduire le padding de la hero card pour plus d'espace */
-  #home-metrics > div:first-child {
-    padding: 18px 16px !important;
-  }
-  /* Le grand compteur un peu plus petit */
-  #home-tv-counter {
-    font-size: 36px !important;
-    margin-bottom: 10px !important;
-  }
-
-  /* ══ GLOBAL ══ */
-  .sec.active { overflow-x: hidden !important; }
-  [style*="white-space:nowrap"]:not(.filter-pill):not(.pill):not(.btn-add):not(.btn-refresh) {
-    white-space: normal !important;
-  }
-
-  /* ══ HOME — badge performance ══ */
-  /* Sur mobile : pas absolu, passe sous la valeur principale */
-  .home-perf-badge {
-    position: static !important;
-    display: inline-block !important;
-    margin-top: 12px !important;
-    margin-bottom: 8px !important;
-    text-align: left !important;
-  }
-  /* Sparkline de fond — réduite sur mobile */
-  #home-metrics > div:first-child > div:first-child {
-    width: 60% !important;
-  }
-}
-
-  @media (max-width: 767px) {
-  /* Badge performance totale — sous la valeur au lieu de superposé */
-  .home-perf-badge {
-    position: static !important;
-    display: block !important;
-    margin-top: 12px !important;
-    text-align: left !important;
-    width: fit-content !important;
-  }
-
-  /* Toast — au-dessus de la bottom nav */
-  .toast {
-    bottom: 80px !important;
-  }
-}
-</style>
-
-<style id="auth-mobile">
-@media (max-width: 767px) {
-  #auth-screen > div[style*="max-width:1100px"] {
-    flex-wrap: wrap !important;
-    flex-direction: column !important;
-    padding: 20px 16px !important;
-    gap: 20px !important;
-  }
-}
-</style>
 </head>
 <body>
 <script>
@@ -344,7 +101,7 @@
   <div style="position:absolute;top:-200px;left:-100px;width:600px;height:600px;background:radial-gradient(circle,rgba(26,127,90,0.15) 0%,transparent 70%);pointer-events:none"></div>
   <div style="position:absolute;bottom:-200px;right:-100px;width:500px;height:500px;background:radial-gradient(circle,rgba(99,102,241,0.12) 0%,transparent 70%);pointer-events:none"></div>
 
-  <div style="display:flex;width:100%;max-width:1100px;margin:0 auto;padding:40px 24px;gap:60px;align-items:center;position:relative;z-index:2;flex-wrap:nowrap">
+  <div style="display:flex;width:100%;max-width:1100px;margin:0 auto;padding:40px 24px;gap:60px;align-items:center;position:relative;z-index:2;flex-wrap:wrap">
 
     <!-- COLONNE GAUCHE -->
     <div style="flex:1;min-width:300px;max-width:540px">
@@ -564,8 +321,8 @@
             <button onclick="resetPassword()" style="background:none;border:none;font-size:12px;color:rgba(255,255,255,0.35);cursor:pointer;font-weight:600">Mot de passe oublié ?</button>
           </div>
           <button onclick="login()" style="width:100%;padding:15px;background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:-0.3px;transition:all 0.2s;box-shadow:0 4px 20px rgba(26,127,90,0.4)"
-            onmouseover="this.style.boxShadow='0 8px 30px rgba(26,127,90,0.5)'"
-            onmouseout="this.style.boxShadow='0 4px 20px rgba(26,127,90,0.4)'">
+            onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 8px 30px rgba(26,127,90,0.5)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(26,127,90,0.4)'">
             Se connecter →
           </button>
         </div>
@@ -603,14 +360,6 @@
           <span style="font-size:12px;color:rgba(255,255,255,0.25);font-weight:600">ou</span>
           <div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div>
         </div>
-
-        <!-- BOUTON GOOGLE -->
-        <button onclick="loginWithGoogle()" style="width:100%;padding:13px;background:#fff;border:1.5px solid rgba(255,255,255,0.12);border-radius:14px;font-size:14px;font-weight:700;color:#1c1c1e;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px"
-          onmouseover="this.style.background='#f5f5f5'"
-          onmouseout="this.style.background='#fff'">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-          Continuer avec Google
-        </button>
 
         <!-- BOUTON DÉMO -->
         <button onclick="enterDemo()" style="width:100%;padding:13px;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);border-radius:14px;font-size:14px;font-weight:700;color:rgba(255,255,255,0.6);cursor:pointer;transition:all 0.2s"
@@ -654,7 +403,7 @@
         vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
         r: Math.random() * 1.8 + 0.5,
         color: Math.random() > 0.6 ? '26,127,90' : Math.random() > 0.5 ? '99,102,241' : '255,255,255',
-        opacity: Math.random() * 0.7 + 0.3
+        opacity: Math.random() * 0.4 + 0.1
       });
     }
   }
@@ -707,7 +456,7 @@
     // Anneaux concentriques
     for (let i = 4; i >= 0; i--) {
       const r = maxR * (0.2 + i * 0.2) * pulse;
-      const alpha = (0.2 - i * 0.02) * pulse;
+      const alpha = (0.06 - i * 0.01) * pulse;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(26,127,90,${alpha})`;
@@ -784,9 +533,9 @@
     const d1 = [...chart1.slice(offset|0), ...chart1.slice(0, offset|0)];
     const d2 = [...chart2.slice((offset*0.7)|0), ...chart2.slice(0, (offset*0.7)|0)];
     const d3 = [...chart3.slice((offset*0.4)|0), ...chart3.slice(0, (offset*0.4)|0)];
-    drawChart(d1, H * 0.15, '26,200,120', 0.55, 2);
-    drawChart(d2, H * 0.25, '130,120,255', 0.35, 1.5);
-    drawChart(d3, H * 0.35, '255,255,255', 0.2, 1);
+    drawChart(d1, H * 0.15, '26,127,90', 0.2, 1.5);
+    drawChart(d2, H * 0.25, '99,102,241', 0.12, 1);
+    drawChart(d3, H * 0.35, '255,255,255', 0.06, 0.8);
     // Sphère IA
     drawAISphere();
     // Particules
@@ -972,15 +721,15 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
         </div>
       </div>
-      <div style="padding:20px 28px;background:var(--color-surface,#1c1c2e);border-radius:0 0 20px 20px">
+      <div style="padding:20px 28px;background:#fff;border-radius:0 0 20px 20px">
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
 
           <div class="ob-profile-card" id="obp-debutant" onclick="obSelectProfile('debutant')">
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">🌱</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px">Débutant</div>
-                <div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">Jamais investi</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Débutant</div>
+                <div style="font-size:12px;color:#8e8e93">Jamais investi</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#e8f8f0;color:#065f46;flex-shrink:0">Guidé</div>
               <div class="ob-profile-check" id="obpc-debutant">○</div>
@@ -991,8 +740,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">📚</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px">Curieux</div>
-                <div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">Bases théoriques, pas encore investi</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Curieux</div>
+                <div style="font-size:12px;color:#8e8e93">Bases théoriques, pas encore investi</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#eeedfe;color:#3c3489;flex-shrink:0">Pédago</div>
               <div class="ob-profile-check" id="obpc-curieux">○</div>
@@ -1003,8 +752,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">📈</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px">Initié</div>
-                <div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">Connais les ETF, déjà investi</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Initié</div>
+                <div style="font-size:12px;color:#8e8e93">Connais les ETF, déjà investi</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#faeeda;color:#633806;flex-shrink:0">Équilibré</div>
               <div class="ob-profile-check" id="obpc-initie">○</div>
@@ -1015,8 +764,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">💼</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px">Confirmé</div>
-                <div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">Gestion active, autonome</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Confirmé</div>
+                <div style="font-size:12px;color:#8e8e93">Gestion active, autonome</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#fff0f0;color:#791f1f;flex-shrink:0">Avancé</div>
               <div class="ob-profile-check" id="obpc-confirme">○</div>
@@ -1027,8 +776,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">🐳</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px">Gros investisseur</div>
-                <div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">50k€+ · Patrimoine structuré</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Gros investisseur</div>
+                <div style="font-size:12px;color:#8e8e93">50k€+ · Patrimoine structuré</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#e1f5ee;color:#04342c;flex-shrink:0">Premium</div>
               <div class="ob-profile-check" id="obpc-gros">○</div>
@@ -1039,8 +788,8 @@ window.addEventListener('load', function() {
             <div style="display:flex;align-items:center;gap:12px">
               <div style="font-size:24px;width:36px;text-align:center;flex-shrink:0">🏆</div>
               <div style="flex:1">
-                <div style="font-weight:800;font-size:14px">Expert / Trader</div>
-                <div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">Analyse tech · Stratégies actives</div>
+                <div style="font-weight:800;font-size:14px;color:#1c1c1e">Expert / Trader</div>
+                <div style="font-size:12px;color:#8e8e93">Analyse tech · Stratégies actives</div>
               </div>
               <div style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;background:#1c1c1e;color:#fff;flex-shrink:0">Pro</div>
               <div class="ob-profile-check" id="obpc-expert">○</div>
@@ -1049,7 +798,7 @@ window.addEventListener('load', function() {
 
         </div>
 
-        <div id="ob-profile-preview" style="display:none;background:var(--color-bg-subtle,#f5f5f5);border-radius:12px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #16a34a">
+        <div id="ob-profile-preview" style="display:none;background:#f5f5f5;border-radius:12px;padding:10px 14px;margin-bottom:14px;border-left:3px solid #1c1c1e">
           <div style="font-size:11px;font-weight:700;color:#1c1c1e;margin-bottom:3px" id="ob-preview-label">—</div>
           <div style="font-size:12px;color:#3c3c43;line-height:1.55" id="ob-preview-text">—</div>
         </div>
@@ -1075,24 +824,24 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
         </div>
       </div>
-      <div style="padding:20px 28px;background:var(--color-surface,#1c1c2e);border-radius:0 0 20px 20px">
+      <div style="padding:20px 28px;background:#fff;border-radius:0 0 20px 20px">
         <div id="ob-budget-presets" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
           <div class="field">
-            <label style="color:rgba(255,255,255,0.5)">Capital disponible (€)</label>
+            <label>Capital disponible (€)</label>
             <input type="number" id="ob-bankroll" placeholder="Ex: 1 000" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
           </div>
           <div class="field">
-            <label style="color:rgba(255,255,255,0.5)">Versement mensuel (€)</label>
+            <label>Versement mensuel (€)</label>
             <input type="number" id="ob-monthly" placeholder="Ex: 200" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
           </div>
           <div class="field">
-            <label style="color:rgba(255,255,255,0.5)">Objectif à atteindre (€)</label>
+            <label>Objectif à atteindre (€)</label>
             <input type="number" id="ob-target" placeholder="Ex: 50 000" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
           </div>
-          <div id="ob-budget-preview" style="display:none;background:rgba(26,127,90,0.15);border-radius:10px;padding:10px 14px;border-left:3px solid #4ade80">
-            <div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:3px">Projection à 7%/an</div>
-            <div style="font-size:13px;color:#fff;font-weight:600" id="ob-preview-text">—</div>
+          <div id="ob-budget-preview" style="display:none;background:#e8f8f0;border-radius:10px;padding:10px 14px;border-left:3px solid #1a7f5a">
+            <div style="font-size:11px;font-weight:700;color:#1a7f5a;margin-bottom:3px">Projection à 7%/an</div>
+            <div style="font-size:13px;color:#1c1c1e;font-weight:600" id="ob-preview-text">—</div>
           </div>
           <div id="ob-budget-error" style="display:none;background:#fff0f0;border-radius:10px;padding:10px 14px;font-size:13px;color:#cc2f26;font-weight:600">⚠ Remplis les 3 champs</div>
         </div>
@@ -1115,48 +864,48 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.2)"></div>
         </div>
       </div>
-      <div style="padding:20px 28px;background:var(--color-surface,#1c1c2e);border-radius:0 0 20px 20px">
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">Objectif principal</div>
+      <div style="padding:20px 28px;background:#fff;border-radius:0 0 20px 20px">
+        <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">Objectif principal</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px">
           <div class="ob-goal-card" id="ob-goal-long" onclick="obToggleGoal('long')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🏦</span>
-            <div><div style="font-weight:700;font-size:13px">Patrimoine</div><div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">10-20 ans</div></div>
+            <div><div style="font-weight:700;font-size:13px">Patrimoine</div><div style="font-size:11px;color:#8e8e93">10-20 ans</div></div>
             <div class="ob-check" id="ob-check-long" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
           <div class="ob-goal-card" id="ob-goal-court" onclick="obToggleGoal('court')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">💸</span>
-            <div><div style="font-weight:700;font-size:13px">Revenus passifs</div><div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">1-3 ans</div></div>
+            <div><div style="font-weight:700;font-size:13px">Revenus passifs</div><div style="font-size:11px;color:#8e8e93">1-3 ans</div></div>
             <div class="ob-check" id="ob-check-court" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
           <div class="ob-goal-card" id="ob-goal-retraite" onclick="obToggleGoal('retraite')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🌴</span>
-            <div><div style="font-weight:700;font-size:13px">Retraite FIRE</div><div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">15-25 ans</div></div>
+            <div><div style="font-weight:700;font-size:13px">Retraite FIRE</div><div style="font-size:11px;color:#8e8e93">15-25 ans</div></div>
             <div class="ob-check" id="ob-check-retraite" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
           <div class="ob-goal-card" id="ob-goal-projet" onclick="obToggleGoal('projet')" style="padding:11px;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🏠</span>
-            <div><div style="font-weight:700;font-size:13px">Projet précis</div><div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">3-10 ans</div></div>
+            <div><div style="font-weight:700;font-size:13px">Projet précis</div><div style="font-size:11px;color:#8e8e93">3-10 ans</div></div>
             <div class="ob-check" id="ob-check-projet" style="margin-left:auto;font-size:16px;color:#c7c7cc">○</div>
           </div>
         </div>
 
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Profil de risque</div>
-        <div id="ob-risk-reco" style="display:none;background:var(--color-bg-subtle,#f5f5f5);border-radius:10px;padding:9px 13px;font-size:12px;color:var(--color-text-secondary);margin-bottom:10px;border-left:3px solid #16a34a"></div>
+        <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Profil de risque</div>
+        <div id="ob-risk-reco" style="display:none;background:#f5f5f5;border-radius:10px;padding:9px 13px;font-size:12px;color:#3c3c43;margin-bottom:10px;border-left:3px solid #1c1c1e"></div>
 
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
-          <div class="ob-risk-card" id="ob-risk-faible" onclick="obSelectRisk('faible')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer">
+          <div class="ob-risk-card" id="ob-risk-faible" onclick="obSelectRisk('faible')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;cursor:pointer">
             <div style="width:36px;height:36px;border-radius:10px;background:#e8f8f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🛡️</div>
-            <div style="flex:1"><div style="font-weight:700;font-size:13px">Prudent</div><div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">~5%/an · Perte max 10%</div></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px">Prudent</div><div style="font-size:11px;color:#8e8e93">~5%/an · Perte max 10%</div></div>
             <div class="ob-check" id="ob-rcheck-faible" style="font-size:16px;color:#c7c7cc">○</div>
           </div>
-          <div class="ob-risk-card" id="ob-risk-modere" onclick="obSelectRisk('modere')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer">
+          <div class="ob-risk-card" id="ob-risk-modere" onclick="obSelectRisk('modere')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;cursor:pointer">
             <div style="width:36px;height:36px;border-radius:10px;background:#fff9e6;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚖️</div>
-            <div style="flex:1"><div style="font-weight:700;font-size:13px">Équilibré</div><div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">~7%/an · Perte max 25%</div></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px">Équilibré</div><div style="font-size:11px;color:#8e8e93">~7%/an · Perte max 25%</div></div>
             <div class="ob-check" id="ob-rcheck-modere" style="font-size:16px;color:#c7c7cc">○</div>
           </div>
-          <div class="ob-risk-card" id="ob-risk-eleve" onclick="obSelectRisk('eleve')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer">
+          <div class="ob-risk-card" id="ob-risk-eleve" onclick="obSelectRisk('eleve')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1.5px solid #e5e5ea;cursor:pointer">
             <div style="width:36px;height:36px;border-radius:10px;background:#fff0f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚀</div>
-            <div style="flex:1"><div style="font-weight:700;font-size:13px">Agressif</div><div style="font-size:13px;color:var(--color-text-secondary,#8e8e93)">~10%/an · Perte max 40%</div></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px">Agressif</div><div style="font-size:11px;color:#8e8e93">~10%/an · Perte max 40%</div></div>
             <div class="ob-check" id="ob-rcheck-eleve" style="font-size:16px;color:#c7c7cc">○</div>
           </div>
         </div>
@@ -1183,11 +932,11 @@ window.addEventListener('load', function() {
           <div style="height:3px;flex:1;border-radius:2px;background:rgba(255,255,255,0.85)"></div>
         </div>
       </div>
-      <div style="padding:16px 28px;background:var(--color-surface,#1c1c2e);border-radius:0 0 20px 20px">
+      <div style="padding:16px 28px;background:#fff;border-radius:0 0 20px 20px">
         <div id="ob-plan-content">
           <div style="text-align:center;padding:24px;color:#8e8e93">
             <svg class="spinning" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1a7f5a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            <div style="margin-top:10px;font-size:14px;font-weight:600;color:#fff">Génération de ton plan...</div>
+            <div style="margin-top:10px;font-size:14px;font-weight:600;color:#1c1c1e">Génération de ton plan...</div>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
@@ -1275,8 +1024,8 @@ window.addEventListener('load', function() {
     <div style="margin:8px 4px 6px;background:linear-gradient(135deg,#0d0d12,#141420);border:1px solid rgba(22,163,74,0.25);border-radius:14px;padding:12px;text-align:center">
       <div style="font-size:16px;margin-bottom:5px">✦</div>
       <div style="font-size:11px;font-weight:700;color:#fff;margin-bottom:3px;letter-spacing:-0.02em">Passez à Premium</div>
-      <div id="sidebar-plan-badge" style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:8px;line-height:1.4">Compte gratuit</div>
-      <button id="dev-premium-btn" onclick="showPremiumModal('upgrade')" style="width:100%;padding:6px;background:#16a34a;border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Découvrir</button>
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:8px;line-height:1.4">Plus d'analyses IA et outils avancés</div>
+      <button onclick="openBilan()" style="width:100%;padding:6px;background:#16a34a;border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Lancer mon bilan</button>
     </div>
     <button class="logout-btn" onclick="logout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Déconnexion</span></button>
   </aside>
@@ -1298,10 +1047,6 @@ window.addEventListener('load', function() {
       <div class="page-header">
         <div><h1 id="home-greeting" style="font-size:24px">Bonjour !</h1><p class="page-sub" id="home-date"></p></div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="openImportModal()" style="display:flex;align-items:center;gap:6px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Importer
-          </button>
           <button class="btn-add" onclick="nav('ajouter')" style="display:flex;align-items:center;gap:6px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Ajouter
@@ -1332,10 +1077,6 @@ window.addEventListener('load', function() {
           <button class="btn-secondary" onclick="refreshPrices()" style="display:flex;align-items:center;gap:6px;font-size:13px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
             Prix live
-          </button>
-          <button onclick="openImportModal()" style="display:flex;align-items:center;gap:5px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:9px;padding:7px 12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Importer
           </button>
           <button class="btn-add" onclick="nav('ajouter')">+ Ajouter</button>
         </div>
@@ -1533,131 +1274,69 @@ window.addEventListener('load', function() {
     </div>
   </div>
 
+  <!-- FORM PRINCIPAL -->
   <div id="d-step1">
-
-    <!-- BLOC 1 : Recherche — style premium dark -->
-    <div class="d-hero-block" style="background:linear-gradient(135deg,#0d0d14,#111120);border:1px solid rgba(99,102,241,0.2);border-radius:20px;padding:24px;margin-bottom:12px;display:flex;gap:20px;align-items:stretch;position:relative;overflow:hidden">
-      <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(99,102,241,0.1),transparent);pointer-events:none"></div>
-
-      <!-- Gauche -->
-      <div style="flex:1;min-width:0;position:relative;z-index:1">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-          <div style="width:36px;height:36px;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.3);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </div>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:-0.03em">Quel actif veux-tu analyser ?</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px">Action, ETF, crypto ou indice</div>
-          </div>
-        </div>
-        <div class="ac-wrap">
-          <div class="ac-box" style="background:#16182a !important;border:1px solid rgba(255,255,255,0.15) !important;border-radius:12px">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="d-name" placeholder="Ex: IWDA, LVMH, Apple, Bitcoin..." autocomplete="off" oninput="acSearch(this.value,'d-ac-drop','d-ac-sel')" style="color:#ffffff !important;font-size:14px;background:#16182a !important;caret-color:#fff;-webkit-text-fill-color:#ffffff !important;border:none;outline:none;width:100%;padding:0">
-          </div>
-          <div id="d-ac-drop" class="ac-drop" style="display:none"></div>
-        </div>
-        <div id="d-ac-sel"></div>
-        <div style="margin-top:14px">
-          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Mes positions</div>
-          <div id="d-quick-pos" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    <!-- Recherche actif -->
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:38px;height:38px;background:rgba(245,158,11,0.12);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px">🔍</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--color-text);letter-spacing:-0.03em">Quel actif veux-tu analyser ?</div>
+          <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Action, ETF, crypto ou indice</div>
         </div>
       </div>
-
-      <!-- Droite : widget IA -->
-      <div style="width:140px;flex-shrink:0;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:18px;position:relative;z-index:1">
-        <svg width="110" height="46" viewBox="0 0 110 46" fill="none">
-          <defs><linearGradient id="wg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6366f1" stop-opacity="0.35"/><stop offset="100%" stop-color="#6366f1" stop-opacity="0"/></linearGradient></defs>
-          <path d="M0 36 Q12 18 22 26 Q32 34 44 16 Q56 0 68 12 Q80 24 92 8 Q100 0 110 6" stroke="#6366f1" stroke-width="1.8" fill="none" stroke-linecap="round"/>
-          <path d="M0 36 Q12 18 22 26 Q32 34 44 16 Q56 0 68 12 Q80 24 92 8 Q100 0 110 6 L110 46 L0 46 Z" fill="url(#wg2)"/>
-          <circle cx="44" cy="16" r="2.5" fill="#818cf8"/>
-          <circle cx="92" cy="8" r="2.5" fill="#a5b4fc"/>
-          <circle cx="110" cy="6" r="4" fill="#c7d2fe" opacity="0.9"/>
-          <line x1="110" y1="6" x2="110" y2="46" stroke="#6366f1" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>
-        </svg>
-        <div style="display:flex;align-items:center;gap=5px;gap:5px">
-          <div style="width:6px;height:6px;background:#4ade80;border-radius:50%;flex-shrink:0;animation:pulse-dot 2s infinite"></div>
-          <span style="font-size:10px;font-weight:700;color:#a5b4fc;letter-spacing:0.06em">ANALYSE IA</span>
+      <div class="ac-wrap">
+        <div class="ac-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="d-name" placeholder="Ex: IWDA, LVMH, Apple, Bitcoin..." autocomplete="off" oninput="acSearch(this.value,'d-ac-drop','d-ac-sel')">
         </div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.25)">Temps réel</div>
+        <div id="d-ac-drop" class="ac-drop" style="display:none"></div>
+      </div>
+      <div id="d-ac-sel"></div>
+
+      <!-- Positions rapides -->
+      <div style="margin-top:14px">
+        <div style="font-size:11px;font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Mes positions</div>
+        <div id="d-quick-pos" style="display:flex;gap:8px;flex-wrap:wrap"></div>
       </div>
     </div>
 
-    <!-- BLOC 2 : Intention — style cards Signaux IA -->
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:22px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-        <div style="width:6px;height:6px;background:#3fb950;border-radius:50%;animation:pulse-dot 2s infinite"></div>
-        <span style="font-size:12px;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em">Qu'est-ce que tu veux faire ?</span>
+    <!-- Intention -->
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:38px;height:38px;background:rgba(99,102,241,0.12);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px">🎯</div>
+        <div style="font-size:15px;font-weight:700;color:var(--color-text);letter-spacing:-0.03em">Qu'est-ce que tu veux faire ?</div>
       </div>
-
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="d-intents">
-
-        <!-- Je sais pas -->
-        <button class="d-intent-btn active" onclick="selectIntent(this,'neutre')" data-intent="neutre"
-          style="padding:0;border-radius:16px;display:flex;flex-direction:column;position:relative;transition:all 0.2s;border:1px solid var(--color-border);background:var(--color-surface-raised);cursor:pointer;font-family:inherit;overflow:hidden;text-align:left">
-          <div style="width:3px;position:absolute;top:0;left:0;bottom:0;background:#f59e0b;border-radius:3px 0 0 3px"></div>
-          <div style="padding:16px 16px 16px 20px">
-            <div style="width:40px;height:40px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:12px">🤔</div>
-            <div style="font-weight:700;font-size:13px;color:var(--color-text);margin-bottom:3px">Je ne sais pas</div>
-            <div style="font-size:11px;color:var(--color-text-tertiary)">Que faire ?</div>
-          </div>
-          <div class="d-intent-check" style="position:absolute;top:10px;right:10px;width:20px;height:20px;background:#3fb950;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
+        <button class="d-intent-btn active" onclick="selectIntent(this,'neutre')" data-intent="neutre" style="padding:14px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:600">
+          <span style="font-size:24px">🤔</span>
+          <span>Je sais pas / Que faire ?</span>
         </button>
-
-        <!-- Acheter -->
-        <button class="d-intent-btn" onclick="selectIntent(this,'acheter')" data-intent="acheter"
-          style="padding:0;border-radius:16px;display:flex;flex-direction:column;position:relative;transition:all 0.2s;border:1px solid var(--color-border);background:var(--color-surface-raised);cursor:pointer;font-family:inherit;overflow:hidden;text-align:left">
-          <div style="width:3px;position:absolute;top:0;left:0;bottom:0;background:#6366f1;border-radius:3px 0 0 3px"></div>
-          <div style="padding:16px 16px 16px 20px">
-            <div style="width:40px;height:40px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-            </div>
-            <div style="font-weight:700;font-size:13px;color:var(--color-text);margin-bottom:3px">Acheter / Renforcer</div>
-            <div style="font-size:11px;color:var(--color-text-tertiary)">Augmenter mon exposition</div>
-          </div>
-          <div class="d-intent-check" style="position:absolute;top:10px;right:10px;width:20px;height:20px;background:#3fb950;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
+        <button class="d-intent-btn" onclick="selectIntent(this,'acheter')" data-intent="acheter" style="padding:14px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:600">
+          <span style="font-size:24px">📈</span>
+          <span>Acheter / Renforcer</span>
         </button>
-
-        <!-- Vendre -->
-        <button class="d-intent-btn" onclick="selectIntent(this,'vendre')" data-intent="vendre"
-          style="padding:0;border-radius:16px;display:flex;flex-direction:column;position:relative;transition:all 0.2s;border:1px solid var(--color-border);background:var(--color-surface-raised);cursor:pointer;font-family:inherit;overflow:hidden;text-align:left">
-          <div style="width:3px;position:absolute;top:0;left:0;bottom:0;background:#f87171;border-radius:3px 0 0 3px"></div>
-          <div style="padding:16px 16px 16px 20px">
-            <div style="width:40px;height:40px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
-            </div>
-            <div style="font-weight:700;font-size:13px;color:var(--color-text);margin-bottom:3px">Vendre / Réduire</div>
-            <div style="font-size:11px;color:var(--color-text-tertiary)">Alléger ma position</div>
-          </div>
-          <div class="d-intent-check" style="position:absolute;top:10px;right:10px;width:20px;height:20px;background:#3fb950;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
+        <button class="d-intent-btn" onclick="selectIntent(this,'vendre')" data-intent="vendre" style="padding:14px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:600">
+          <span style="font-size:24px">📉</span>
+          <span>Vendre / Réduire</span>
         </button>
       </div>
     </div>
 
-    <!-- BLOC 3 : Montant -->
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:22px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-        <div style="width:6px;height:6px;background:#3fb950;border-radius:50%"></div>
-        <span style="font-size:12px;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em">Montant envisagé</span>
+    <!-- Montant -->
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:38px;height:38px;background:rgba(63,185,80,0.12);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px">💰</div>
+        <div style="font-size:15px;font-weight:700;color:var(--color-text);letter-spacing:-0.03em">Montant envisagé</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        <button onclick="setDecisionAmount('100')" class="d-amount-pill" style="padding:7px 14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s">100 €</button>
-        <button onclick="setDecisionAmount('250')" class="d-amount-pill" style="padding:7px 14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s">250 €</button>
-        <button onclick="setDecisionAmount('500')" class="d-amount-pill" style="padding:7px 14px;background:rgba(63,185,80,0.1);border:1px solid #3fb950;border-radius:99px;font-size:12px;font-weight:700;color:#3fb950;cursor:pointer;transition:all 0.15s">500 €</button>
-        <button onclick="setDecisionAmount('1000')" class="d-amount-pill" style="padding:7px 14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s">1 000 €</button>
-        <button onclick="setDecisionAmount('2500')" class="d-amount-pill" style="padding:7px 14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s">2 500 €</button>
-        <button onclick="setDecisionAmount('5000')" class="d-amount-pill" style="padding:7px 14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:99px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s">5 000 €</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+        ${['100€','250€','500€','1 000€','2 500€','5 000€'].map(m=>`<button onclick="setDecisionAmount('${m}')" style="padding:8px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='#3fb950';this.style.color='#3fb950'" onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-secondary)'">${m}</button>`).join('')}
       </div>
       <div style="display:flex;align-items:center;gap:12px">
-        <input type="range" min="0" max="5000" step="50" value="500" id="d-amount-slider" class="slider" oninput="updateDecisionAmountRaw(this.value)" style="flex:1;accent-color:#3fb950">
-        <div style="background:rgba(63,185,80,0.1);border:1.5px solid #3fb950;border-radius:12px;padding:10px 16px;min-width:85px;text-align:center">
-          <div id="d-amount-display" style="font-size:16px;font-weight:800;color:#3fb950">500 €</div>
+        <input type="range" min="0" max="100" step="5" value="10" id="d-amount-slider" class="slider" oninput="updateDecisionAmount(this.value)" style="flex:1">
+        <div style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;min-width:90px;text-align:center">
+          <div id="d-amount-display" style="font-size:16px;font-weight:800;color:var(--color-text)">500 €</div>
+          <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:2px">% · montant</div>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-tertiary);margin-top:6px">
@@ -1666,224 +1345,89 @@ window.addEventListener('load', function() {
     </div>
 
     <!-- CTA -->
-    <button onclick="runDecision()"
-      style="width:100%;padding:20px;background:#16a34a;color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;letter-spacing:-0.02em;transition:all 0.2s;box-shadow:0 4px 24px rgba(22,163,74,0.3)"
-      onmouseover="this.style.background='#15803d'"
-      onmouseout="this.style.background='#16a34a'">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+    <button onclick="runDecision()" style="width:100%;padding:16px;background:var(--color-primary);color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:-0.02em;transition:opacity 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.2)">
+      <span style="font-size:20px">🤖</span>
       Obtenir mon analyse personnalisée
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </button>
-    <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--color-text-tertiary);display:flex;align-items:center;justify-content:center;gap:6px">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Analyse IA complète • Résultat en 10 à 20 secondes
-    </div>
   </div>
 
-  <div id="d-result" style="display:none;margin-top:14px"></div>
-
-  <style>
-    .d-intent-btn { transition: all 0.2s !important; }
-    .d-intent-btn:hover:not(.active) { border-color: var(--color-border-strong) !important; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-    .d-intent-btn.active .d-intent-check { opacity: 1 !important; }
-    .d-intent-btn.active { border-color: #3fb950 !important; box-shadow: 0 0 0 1px #3fb950 !important; }
-    .d-amount-pill:hover { border-color: #3fb950 !important; color: #3fb950 !important; }
-    /* Bloc hero décision — toujours dark, texte toujours blanc */
-    #d-name { color: #fff !important; -webkit-text-fill-color: #fff !important; caret-color: #fff !important; background: #1a1a2e !important; border-radius: 8px; }
-    #d-name::placeholder { color: rgba(255,255,255,0.35) !important; -webkit-text-fill-color: rgba(255,255,255,0.35) !important; }
-    #d-name:-webkit-autofill, #d-name:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 100px #1a1a2e inset !important; -webkit-text-fill-color: #fff !important; }
-    .ac-box { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.1) !important; }
-    #d-amount-slider { height:3px !important; }
-    #d-amount-slider::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#3fb950; cursor:pointer; border:2px solid var(--color-surface); box-shadow:0 0 0 2px rgba(63,185,80,0.3); }
-    [data-theme="dark"] .d-intent-btn { background: var(--color-surface-raised) !important; }
-    [data-theme="dark"] .d-intent-btn.active { background: var(--color-surface-raised) !important; border-color: #3fb950 !important; }
-  </style>
+  <!-- RÉSULTAT -->
+  <div id="d-result" style="display:none"></div>
 </section>
 
     <!-- DCA -->
     <section id="sec-dca" class="sec">
-  <div class="page-header">
-    <div>
-      <h1>Simulateur DCA</h1>
-      <p class="page-sub">Projete l'évolution de ton portefeuille grâce à une stratégie DCA régulière.</p>
-    </div>
-  </div>
+      <div class="page-header"><h1>Simulateur DCA</h1></div>
 
-  <!-- PRESETS TABS -->
-  <div class="dca-presets-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:0;background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;overflow:hidden;margin-bottom:16px">
-    <button class="dca-preset-tab active" onclick="dcaPreset(200,10,7,0,this)" style="padding:14px 8px;border:none;border-right:1px solid var(--color-border);background:rgba(63,185,80,0.08);cursor:pointer;font-family:inherit;text-align:center;transition:all 0.15s">
-      <div style="font-size:10px;font-weight:800;color:#3fb950;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Classique</div>
-      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">200 € / mois • 10 ans</div>
-      <div style="font-size:13px;font-weight:800;color:#3fb950" id="pre-res-0"></div>
-    </button>
-    <button class="dca-preset-tab" onclick="dcaPreset(200,10,4,0,this)" style="padding:14px 8px;border:none;border-right:1px solid var(--color-border);background:transparent;cursor:pointer;font-family:inherit;text-align:center;transition:all 0.15s">
-      <div style="font-size:10px;font-weight:800;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Défensive</div>
-      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">200 € / mois • 10 ans</div>
-      <div style="font-size:13px;font-weight:800;color:#3fb950" id="pre-res-1"></div>
-    </button>
-    <button class="dca-preset-tab" onclick="dcaPreset(300,10,9,0,this)" style="padding:14px 8px;border:none;border-right:1px solid var(--color-border);background:transparent;cursor:pointer;font-family:inherit;text-align:center;transition:all 0.15s">
-      <div style="font-size:10px;font-weight:800;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Dynamique</div>
-      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">300 € / mois • 10 ans</div>
-      <div style="font-size:13px;font-weight:800;color:#3fb950" id="pre-res-2"></div>
-    </button>
-    <button class="dca-preset-tab" onclick="dcaPreset(1000,10,7,0,this)" style="padding:14px 8px;border:none;border-right:1px solid var(--color-border);background:transparent;cursor:pointer;font-family:inherit;text-align:center;transition:all 0.15s">
-      <div style="font-size:10px;font-weight:800;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Équilibrée</div>
-      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">1 000 € / mois • 10 ans</div>
-      <div style="font-size:13px;font-weight:800;color:#3fb950" id="pre-res-3"></div>
-    </button>
-    <button class="dca-preset-tab" onclick="dcaPreset(2000,10,9,0,this)" style="padding:14px 8px;border:none;border-right:1px solid var(--color-border);background:transparent;cursor:pointer;font-family:inherit;text-align:center;transition:all 0.15s">
-      <div style="font-size:10px;font-weight:800;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Aggressive</div>
-      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">2 000 € / mois • 10 ans</div>
-      <div style="font-size:13px;font-weight:800;color:#3fb950" id="pre-res-4"></div>
-    </button>
-    <button class="dca-preset-tab" onclick="dcaPreset(5000,10,11,0,this)" style="padding:14px 8px;border:none;background:transparent;cursor:pointer;font-family:inherit;text-align:center;transition:all 0.15s">
-      <div style="font-size:10px;font-weight:800;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Ultra</div>
-      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">5 000 € / mois • 10 ans</div>
-      <div style="font-size:13px;font-weight:800;color:#3fb950" id="pre-res-5"></div>
-    </button>
-  </div>
-
-  <!-- SLIDERS -->
-  <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:24px;margin-bottom:16px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
-      <div style="width:28px;height:28px;background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
-      </div>
-      <span style="font-size:14px;font-weight:700;color:var(--color-text)">Investissement régulier</span>
-    </div>
-
-    <!-- Versement -->
-    <div style="margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px;color:var(--color-text-secondary)">Versement mensuel</span>
-        <span id="dca-m-o" style="font-size:14px;font-weight:700;color:var(--color-text)">200 €</span>
-      </div>
-      <input type="range" min="10" max="5000" step="10" value="200" id="dca-m" oninput="updateDCA();if(typeof updateDCADonut==='function')updateDCADonut()" class="dca-range" style="width:100%">
-    </div>
-
-    <!-- Durée -->
-    <div style="margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px;color:var(--color-text-secondary)">Durée</span>
-        <div style="display:flex;align-items:baseline;gap:4px">
-          <span id="dca-y-o" style="font-size:14px;font-weight:700;color:var(--color-text)">10</span>
-          <span style="font-size:12px;color:var(--color-text-secondary)">ans</span>
+      <!-- PRESETS -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px">
+        <div class="dca-preset-card card" onclick="dcaPreset(200,20,7,1000,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Classique</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">200€/mois · 20 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-0"></div>
+        </div>
+        <div class="dca-preset-card card" onclick="dcaPreset(100,15,5,0,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Débutant</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">100€/mois · 15 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-1"></div>
+        </div>
+        <div class="dca-preset-card card" onclick="dcaPreset(500,15,9,5000,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Agressif</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">500€/mois · 15 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-2"></div>
+        </div>
+        <div class="dca-preset-card card" onclick="dcaPreset(1000,30,9,10000,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Retraite</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">1 000€/mois · 30 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-3"></div>
+        </div>
+        <div class="dca-preset-card card" onclick="dcaPreset(50,10,7,0,this)" style="padding:12px;cursor:pointer;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Mini</div>
+          <div style="font-size:13px;font-weight:800;color:#1c1c1e">50€/mois · 10 ans</div>
+          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-4"></div>
         </div>
       </div>
-      <input type="range" min="1" max="40" step="1" value="10" id="dca-y" oninput="updateDCA();if(typeof updateDCADonut==='function')updateDCADonut()" class="dca-range" style="width:100%">
-    </div>
 
-    <!-- Rendement -->
-    <div style="margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px;color:var(--color-text-secondary)">Rendement attendu</span>
-        <span id="dca-r-o" style="font-size:14px;font-weight:700;color:var(--color-text)">7.0 %</span>
+      <!-- SLIDERS -->
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="card-icon green">↻</span>Investissement régulier</div></div>
+        <div class="slider-group">
+          <div class="slider-row"><label>Versement mensuel</label><span id="dca-m-o">200 €</span></div>
+          <input type="range" min="10" max="5000" step="10" value="200" id="dca-m" oninput="updateDCA()">
+          <div class="slider-row"><label>Durée</label><span id="dca-y-o">10 ans</span></div>
+          <input type="range" min="1" max="40" step="1" value="10" id="dca-y" oninput="updateDCA()">
+          <div class="slider-row"><label>Rendement estimé</label><span id="dca-r-o">7.0 %</span></div>
+          <input type="range" min="1" max="20" step="0.5" value="7" id="dca-r" oninput="updateDCA()">
+          <div class="slider-row"><label>Capital de départ</label><span id="dca-s-o">0 €</span></div>
+          <input type="range" min="0" max="100000" step="500" value="0" id="dca-s" oninput="updateDCA()">
+        </div>
+        <div id="dca-metrics" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px"></div>
+        <div id="dca-tip" style="margin-top:12px"></div>
       </div>
-      <input type="range" min="1" max="20" step="0.5" value="7" id="dca-r" oninput="updateDCA();if(typeof updateDCADonut==='function')updateDCADonut()" class="dca-range" style="width:100%">
-    </div>
 
-    <!-- Capital départ -->
-    <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px;color:var(--color-text-secondary)">Capital de départ</span>
-        <span id="dca-s-o" style="font-size:14px;font-weight:700;color:var(--color-text)">0 €</span>
-      </div>
-      <input type="range" min="0" max="100000" step="500" value="0" id="dca-s" oninput="updateDCA();if(typeof updateDCADonut==='function')updateDCADonut()" class="dca-range" style="width:100%">
-    </div>
-
-    <!-- MÉTRIQUES -->
-    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:16px;margin-top:24px;padding-top:20px;border-top:1px solid var(--color-border);align-items:center">
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Total investi</div>
-        <div id="dca-hero-inv" style="font-size:28px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em">—</div>
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px">Multiplicateur <span id="dca-hero-mult" style="color:var(--color-text);font-weight:700">—</span></div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Capital final estimé</div>
-        <div id="dca-hero-total" style="font-size:28px;font-weight:900;color:#3fb950;letter-spacing:-0.04em">—</div>
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px">vs sans DCA <span id="dca-hero-gain" style="color:#3fb950;font-weight:700">—</span></div>
-      </div>
-      <!-- Donut rendement -->
-      <div style="position:relative;width:90px;height:90px;flex-shrink:0">
-        <svg width="90" height="90" viewBox="0 0 90 90">
-          <circle cx="45" cy="45" r="36" fill="none" stroke="rgba(63,185,80,0.1)" stroke-width="8"/>
-          <circle id="dca-donut-circle" cx="45" cy="45" r="36" fill="none" stroke="#3fb950" stroke-width="8"
-            stroke-dasharray="0 226" stroke-dashoffset="56.5" stroke-linecap="round"
-            style="transition:stroke-dasharray 0.8s cubic-bezier(0.16,1,0.3,1);transform:rotate(-90deg);transform-origin:center"/>
-        </svg>
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
-          <div style="font-size:10px;font-weight:600;color:var(--color-text-tertiary)">Rendement</div>
-          <div id="dca-donut-pct" style="font-size:16px;font-weight:800;color:#3fb950">—</div>
+      <!-- GRAPHIQUE -->
+      <div class="card" style="margin-top:12px">
+        <div class="card-head"><div class="card-title"><span class="card-icon dark">📈</span>Projection graphique</div></div>
+        <div style="height:220px;position:relative"><canvas id="dca-chart"></canvas></div>
+        <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:#8e8e93;font-weight:600">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:3px;background:#1c1c1e;display:inline-block;border-radius:2px"></span>Capital projeté</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:3px;background:#c7c7cc;display:inline-block;border-radius:2px;border-top:2px dashed #c7c7cc"></span>Capital investi</span>
         </div>
       </div>
-    </div>
 
-    <div id="dca-tip" style="margin-top:14px"></div>
-  </div>
-
-  <!-- GRAPHIQUE -->
-  <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:24px;margin-bottom:16px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-      <div style="width:28px;height:28px;background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <!-- TABLEAU ANNUEL -->
+      <div class="card" style="margin-top:12px">
+        <div class="card-head"><div class="card-title"><span class="card-icon dark">📋</span>Projection annuelle</div></div>
+        <div id="dca-table" style="overflow-x:auto"></div>
       </div>
-      <span style="font-size:14px;font-weight:700;color:var(--color-text)">Projection graphique</span>
-    </div>
-    <div style="height:240px;position:relative"><canvas id="dca-chart"></canvas></div>
-    <div style="display:flex;gap:20px;margin-top:12px;font-size:12px;color:var(--color-text-secondary)">
-      <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:2px;background:#3fb950;display:inline-block;border-radius:2px"></span>Capital projeté</span>
-      <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:2px;background:var(--color-text-tertiary);display:inline-block;border-radius:2px;border-top:2px dashed currentColor"></span>Capital investi</span>
-    </div>
-  </div>
 
-  <!-- TABLEAU -->
-  <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:24px;margin-bottom:16px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-      <div style="width:28px;height:28px;background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      <!-- BOUTON SAUVEGARDER -->
+      <div style="margin-top:12px">
+        <button class="btn-primary" onclick="saveDCAAsObjective()" style="width:100%;padding:14px;font-size:15px;font-weight:700">
+          🎯 Sauvegarder comme objectif & générer mon plan IA
+        </button>
       </div>
-      <span style="font-size:14px;font-weight:700;color:var(--color-text)">Projection annuelle</span>
-    </div>
-    <div id="dca-table" style="overflow-x:auto"></div>
-    <style>
-      #dca-table table { width:100%; border-collapse:collapse; }
-      #dca-table thead tr { border-bottom:2px solid var(--color-border); }
-      #dca-table thead th { padding:8px 12px; font-size:10px; font-weight:700; color:var(--color-text-tertiary); text-transform:uppercase; letter-spacing:0.08em; text-align:left; }
-      #dca-table tbody tr { border-bottom:1px solid var(--color-border); transition:background 0.1s; }
-      #dca-table tbody tr:hover { background:rgba(255,255,255,0.03); }
-      #dca-table tbody td { padding:12px 12px; font-size:13px; }
-      #dca-table tbody td:first-child { font-weight:700; color:var(--color-text); }
-    </style>
-  </div>
-
-  <!-- CTA STICKY BAS -->
-  <div style="background:linear-gradient(135deg,rgba(63,185,80,0.08),rgba(22,163,74,0.04));border:1px solid rgba(63,185,80,0.2);border-radius:16px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:4px">
-    <div style="display:flex;align-items:center;gap:14px">
-      <div style="width:40px;height:40px;background:rgba(63,185,80,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      </div>
-      <div>
-        <div style="font-size:14px;font-weight:700;color:var(--color-text)">Sauvegarder comme objectif & générer mon plan IA</div>
-        <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">L'IA va optimiser ton DCA selon ton profil et ton horizon.</div>
-      </div>
-    </div>
-    <button onclick="saveDCAAsObjective()" style="flex-shrink:0;width:44px;height:44px;background:#16a34a;border:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;box-shadow:0 4px 16px rgba(22,163,74,0.3)"
-      onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-    </button>
-  </div>
-
-  <style>
-    .dca-range { -webkit-appearance:none; height:3px; border-radius:99px; background:var(--color-border); outline:none; cursor:pointer; width:100%; accent-color:#3fb950; }
-    .dca-range::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#3fb950; cursor:pointer; border:2px solid var(--color-surface); box-shadow:0 0 0 2px rgba(63,185,80,0.25); }
-    .dca-preset-tab { font-family:inherit; }
-    .dca-preset-tab.active { background:rgba(63,185,80,0.08) !important; }
-    .dca-preset-tab.active div:first-child { color:#3fb950 !important; }
-    .dca-preset-tab:hover:not(.active) { background:var(--color-bg-subtle) !important; }
-    [data-theme="dark"] .dca-range { background:var(--color-border); }
-    [data-theme="dark"] .dca-range::-webkit-slider-thumb { border-color:var(--color-surface-raised); }
-  </style>
-</section>
+    </section>
 
     <!-- MODAL PLAN DCA -->
     <div id="dca-plan-modal" class="modal-overlay" style="display:none">
@@ -1950,44 +1494,27 @@ window.addEventListener('load', function() {
           <div class="form-grid three">
             <div class="field">
               <label>Quantité *</label>
-              <input type="number" id="f-qty" step="0.01" placeholder="10" oninput="updatePosTotal()">
+              <input type="number" id="f-qty" step="0.01" placeholder="10">
             </div>
             <div class="field">
               <label>PRU (€) * <span class="tooltip-icon" data-tip="Prix moyen auquel tu as acheté">?</span></label>
-              <input type="number" id="f-pru" step="0.01" placeholder="150.00" oninput="updatePosTotal()">
+              <input type="number" id="f-pru" step="0.01" placeholder="150.00">
             </div>
             <div class="field">
               <label>Prix actuel (€) <span class="ac-live-badge" id="ac-live-label" style="display:none">⚡ live</span></label>
-              <input type="number" id="f-price" step="0.01" placeholder="165.00" oninput="updatePosTotal()">
+              <input type="number" id="f-price" step="0.01" placeholder="165.00">
             </div>
-          </div>
-
-          <!-- TOTAL PREVIEW -->
-          <div id="pos-total-preview" style="display:none;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:12px;padding:12px 16px;margin-bottom:4px">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-              <div style="font-size:12px;color:var(--color-text-secondary);font-weight:600" id="pos-total-detail"></div>
-              <div style="font-size:16px;font-weight:800;color:var(--color-text)" id="pos-total-val"></div>
-            </div>
-            <div style="font-size:11px;margin-top:4px" id="pos-total-pnl"></div>
           </div>
           <div class="form-grid">
             <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Tech, Monde..."></div>
-            <div class="field"><label>Plateforme</label><select id="f-platform" onchange="updateBrokerBtn()"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
+            <div class="field"><label>Plateforme</label><select id="f-platform"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
           </div>
           <div class="field">
             <label>Alerte prix (€) <span class="tooltip-icon" data-tip="Notification si le prix descend sous ce seuil">?</span></label>
             <input type="number" id="f-alert" step="0.01" placeholder="Ex: 85 — alerte si prix < 85€">
           </div>
-          <div class="btn-row" style="flex-direction:column;gap:10px">
-            <!-- Bouton principal -->
-            <button class="btn-primary" onclick="addPos()" style="width:100%">
-              ✅ Ajouter au portefeuille
-            </button>
-            <!-- Bouton Ajouter + Ouvrir dans XTB (affiché si plateforme = XTB) -->
-            <button id="btn-add-open-xtb" onclick="addPosAndOpenBroker()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:rgba(22,163,74,0.08);border:1.5px solid rgba(22,163,74,0.3);border-radius:12px;font-size:14px;font-weight:700;color:#16a34a;cursor:pointer">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              Ajouter + Ouvrir dans XTB
-            </button>
+          <div class="btn-row">
+            <button class="btn-primary" onclick="addPos()">Ajouter au portefeuille</button>
             <button class="btn-secondary" onclick="loadDemo()">Charger un exemple</button>
           </div>
         </div>
@@ -2006,414 +1533,70 @@ window.addEventListener('load', function() {
     </section>
 
     <!-- AI -->
-    <section id="sec-ai" class="sec" style="padding:0;background:var(--color-bg)">
-  <div style="display:flex;min-height:calc(100vh - 60px)">
+    <section id="sec-ai" class="sec">
 
-    <!-- ══ COLONNE PRINCIPALE ══ -->
-    <div style="flex:1;min-width:0;overflow-y:auto;max-height:calc(100vh - 60px);padding:24px 24px 32px">
-
-      <!-- HEADER -->
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
-        <div>
-          <h1 style="display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;color:var(--color-text);margin:0 0 4px;letter-spacing:-0.03em">
-            Agent IA
-            <span style="background:linear-gradient(135deg,#16a34a,#059669);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;letter-spacing:0.05em">PREMIUM</span>
-          </h1>
-          <p style="font-size:13px;color:var(--color-text-secondary);margin:0">Ton copilote financier personnel qui travaille 24h/24 pour optimiser tes investissements.</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--color-text-tertiary)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span id="agent-last-update">Analyse réalisée il y a 1h</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer" onclick="void 0"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
-          </div>
-          <button onclick="refreshAllAgentBlocks()" id="agent-refresh-all"
-            style="display:flex;align-items:center;gap:6px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
-            Actualiser
-          </button>
-        </div>
-      </div>
-
-      <!-- ① HERO : RÉSUMÉ IA DU JOUR + SCORE -->
-      <div style="background:linear-gradient(135deg,#0a0f1e 0%,#0d1628 60%,#0a1a12 100%);border:1px solid rgba(99,102,241,0.2);border-radius:20px;padding:28px;margin-bottom:20px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:-60px;right:-60px;width:240px;height:240px;background:radial-gradient(circle,rgba(99,102,241,0.08),transparent 70%);pointer-events:none"></div>
-        <div style="position:absolute;bottom:-40px;left:40%;width:180px;height:180px;background:radial-gradient(circle,rgba(22,163,74,0.06),transparent 70%);pointer-events:none"></div>
-
-        <div style="display:flex;gap:28px">
-          <!-- Texte résumé -->
-          <div style="flex:1;min-width:0">
-            <!-- Salutation personnalisée -->
-            <div style="margin-bottom:16px">
-              <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.03em;margin-bottom:4px" id="agent-greeting">Bonjour 👋</div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <div style="display:flex;align-items:center;gap:4px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);border-radius:99px;padding:2px 8px">
-                  <div style="width:4px;height:4px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
-                  <span style="font-size:10px;font-weight:700;color:#4ade80">Analyse à jour</span>
-                </div>
-                <button onclick="generateDailyBrief()" id="brief-refresh-btn"
-                  style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:3px 10px;color:rgba(255,255,255,0.35);font-size:11px;font-weight:600;cursor:pointer">
-                  Actualiser
-                </button>
-              </div>
-            </div>
-            <div id="agent-brief-content" style="font-size:14px;color:rgba(255,255,255,0.82);line-height:1.75;min-height:70px">
-              <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);font-size:13px">
-                <svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                Analyse de ton portefeuille...
-              </div>
-            </div>
-            <!-- 3 métriques -->
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px" id="agent-hero-metrics">
-              <div onclick="document.getElementById('agent-alerts-cards')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('agent-alerts-cards')?.animate([{opacity:0.3},{opacity:1}],{duration:600,iterations:2})"
-                style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px;cursor:pointer;transition:transform 0.15s"
-                onmouseenter="this.style.transform='scale(1.02)'" onmouseleave="this.style.transform=''">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-                  <span id="hero-risk-count" style="font-size:20px;font-weight:900;color:#fff">—</span>
-                </div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.5)">Risques détectés</div>
-                <div id="hero-risk-label" style="font-size:10px;font-weight:700;color:#f87171;margin-top:2px">Voir les alertes →</div>
-              </div>
-              <div onclick="document.getElementById('agent-opps-content')?.scrollIntoView({behavior:'smooth',block:'start'})"
-                style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.15);border-radius:12px;padding:12px;cursor:pointer;transition:transform 0.15s"
-                onmouseenter="this.style.transform='scale(1.02)'" onmouseleave="this.style.transform=''">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                  <span id="hero-opp-count" style="font-size:20px;font-weight:900;color:#fff">—</span>
-                </div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.5)">Opportunités</div>
-                <div style="font-size:10px;font-weight:700;color:#4ade80;margin-top:2px">Voir les opportunités →</div>
-              </div>
-              <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.15);border-radius:12px;padding:12px">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  <span id="hero-obj-days" style="font-size:20px;font-weight:900;color:#fff">—</span>
-                </div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.5)">Objectif en avance</div>
-                <div id="hero-obj-pct" style="font-size:10px;font-weight:700;color:#a5b4fc;margin-top:2px">—% atteint</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Score InvestIQ -->
-          <div style="width:200px;flex-shrink:0;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:18px;text-align:center">
-            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px">Score InvestIQ</div>
-            <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px">
-              <svg width="90" height="90" viewBox="0 0 90 90">
-                <circle cx="45" cy="45" r="38" stroke="rgba(255,255,255,0.06)" stroke-width="7" fill="none"/>
-                <circle id="iq-score-ring" cx="45" cy="45" r="38" stroke="url(#sgGrad)" stroke-width="7" fill="none"
-                  stroke-linecap="round" stroke-dasharray="0 239" stroke-dashoffset="60"
-                  style="transition:stroke-dasharray 1.2s ease"/>
-                <defs>
-                  <linearGradient id="sgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#6366f1"/>
-                    <stop offset="100%" stop-color="#4ade80"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div style="position:absolute;text-align:center">
-                <div id="iq-score-val" style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.04em">—</div>
-                <div style="font-size:9px;color:rgba(255,255,255,0.3);font-weight:600">/100</div>
-              </div>
-            </div>
-            <div id="iq-score-label" style="font-size:13px;font-weight:700;color:#a5b4fc;margin-bottom:10px">Calcul...</div>
-            <div id="iq-score-delta" style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px"></div>
-            <!-- Graphique score (sparkline fictif) -->
-            <svg width="100%" height="36" viewBox="0 0 160 36" style="margin-bottom:8px">
-              <path d="M0 28 L20 24 L40 26 L60 20 L80 22 L100 16 L120 14 L140 10 L160 8" stroke="#4ade80" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.6"/>
-              <circle cx="160" cy="8" r="3" fill="#4ade80"/>
-            </svg>
-            <button onclick="sq('Pourquoi mon score InvestIQ est-il de ' + (document.getElementById('iq-score-val').textContent||'ce niveau') + ' ? Explique chaque sous-score.')"
-              style="width:100%;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.25);border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:#a5b4fc;cursor:pointer">
-              Pourquoi ce score ?
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ② DEPUIS HIER — pleine largeur, prominent -->
-      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:18px 20px;margin-bottom:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div style="font-size:15px;font-weight:800;color:var(--color-text);display:flex;align-items:center;gap:8px">
-            <span style="font-size:16px">📅</span>
-            Depuis hier
-          </div>
-          <span id="agent-brief-date" style="font-size:11px;color:var(--color-text-tertiary)"></span>
-        </div>
-        <div id="agent-changes-content" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-          <div style="font-size:12px;color:var(--color-text-secondary);opacity:0.4;grid-column:1/-1">Chargement...</div>
-        </div>
-      </div>
-
-      <!-- ③ ALERTES & OPPORTUNITÉS -->
-      <div style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <h2 style="font-size:16px;font-weight:800;color:var(--color-text);margin:0">Alertes &amp; opportunités</h2>
-            <span id="agent-alerts-badge" style="background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;display:none"></span>
-          </div>
-          <button onclick="sq('Donne-moi le détail de toutes mes alertes et opportunités.')" style="font-size:12px;font-weight:600;color:var(--color-text-secondary);background:none;border:none;cursor:pointer">Tout voir →</button>
-        </div>
-        <!-- Cards horizontales scrollables -->
-        <div id="agent-alerts-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-          <!-- Rempli par renderAgentAlertsCards() -->
-          <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:16px;height:120px;display:flex;align-items:center;justify-content:center">
-            <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          </div>
-        </div>
-      </div>
-
-      <!-- ③ RECOMMANDATIONS IA -->
-      <div style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div>
-            <h2 style="font-size:16px;font-weight:800;color:var(--color-text);margin:0 0 2px">Recommandations IA</h2>
-            <p style="font-size:12px;color:var(--color-text-secondary);margin:0">Basées sur ton profil, ton portefeuille et les conditions de marché</p>
-          </div>
-          <button onclick="generateWhatWouldIQ()" id="wwiq-btn"
-            style="display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,rgba(22,163,74,0.15),rgba(5,150,105,0.1));border:1px solid rgba(22,163,74,0.3);border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;color:#4ade80;cursor:pointer">
-            <span style="font-size:14px">🤔</span>
-            Que ferait InvestIQ ?
-          </button>
-        </div>
-        <div id="agent-reco-content" style="display:flex;flex-direction:column;gap:8px">
-          <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:20px;display:flex;align-items:center;gap:10px">
-            <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            <span style="font-size:13px;color:var(--color-text-secondary)">Génération des recommandations...</span>
-          </div>
-        </div>
-        <!-- "Que ferait InvestIQ ?" — PERMANENT -->
-        <div id="agent-wwiq-block" style="margin-top:12px;background:linear-gradient(135deg,#0a1a0f,#0d2015);border:1px solid rgba(22,163,74,0.3);border-radius:14px;padding:18px 20px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="width:26px;height:26px;background:rgba(22,163,74,0.2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px">🤔</div>
-              <div style="font-size:13px;font-weight:800;color:#4ade80">Si ce portefeuille était le mien...</div>
-            </div>
-            <button onclick="generateWhatWouldIQ()" id="wwiq-refresh"
-              style="background:rgba(22,163,74,0.12);border:1px solid rgba(22,163,74,0.2);border-radius:7px;padding:4px 10px;color:#4ade80;font-size:11px;font-weight:600;cursor:pointer">
-              Relancer →
-            </button>
-          </div>
-          <div id="agent-wwiq-content" style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.7;font-style:italic">
-            Clique sur "Relancer" pour que l'IA décide comme si c'était son argent.
-          </div>
-          <!-- Impact estimé (rempli après génération) -->
-          <div id="agent-wwiq-impact" style="display:none;margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"></div>
-        </div>
-      </div>
-
-      <!-- ④ PRIORITÉS DU JOUR + CHAT (2 colonnes) -->
-      <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:16px;margin-bottom:20px">
-
-        <!-- Priorités du jour -->
-        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:18px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <h3 style="font-size:13px;font-weight:800;color:var(--color-text);margin:0" data-section="priorities-title">Décisions récentes</h3>
-            <button onclick="sq('Quelles sont toutes mes priorités aujourd'hui ?')" style="font-size:11px;color:var(--color-text-secondary);background:none;border:none;cursor:pointer;font-weight:600">Voir toutes →</button>
-          </div>
-          <div id="agent-priorities-content" style="display:flex;flex-direction:column;gap:8px">
-            <div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Chargement...</div>
-          </div>
-        </div>
-
-        <!-- Chat IA compact -->
-        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column">
-          <div style="padding:14px 16px;border-bottom:1px solid var(--color-border)">
-            <h3 style="font-size:13px;font-weight:800;color:var(--color-text);margin:0 0 8px">Pose une question à ton Agent IA</h3>
-            <!-- Suggestions rapides -->
-            <div style="display:flex;gap:6px;flex-wrap:wrap" id="agent-quick-btns">
-              <button onclick="sq('Analyser une action')" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">💬 Analyser une action</button>
-              <button onclick="sq('Simuler un scénario de crise sur mon portefeuille')" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">🌪 Simuler un scénario</button>
-              <button onclick="sq('Optimise mon plan DCA pour atteindre mon objectif plus vite')" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">📅 Optimiser mon DCA</button>
-              <button onclick="sq('Génère un rapport hebdomadaire complet de mon portefeuille')" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap">📋 Rapport hebdomadaire</button>
-            </div>
-          </div>
-          <!-- Messages -->
-          <div id="agent-context-bar" style="display:none"></div>
-          <div id="agent-suggestions" style="display:none"></div>
-          <div class="chat-messages" id="ai-chat" style="flex:1;overflow-y:auto;padding:14px 16px;min-height:120px;max-height:220px;display:flex;flex-direction:column;gap:8px">
-            <div class="bubble bot" id="ai-welcome" style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:12px;padding:11px 13px;font-size:13px">Bonjour ! Pose-moi n'importe quelle question sur ton portefeuille.</div>
-          </div>
-          <!-- Input -->
-          <div style="border-top:1px solid var(--color-border);padding:10px 12px;display:flex;gap:8px;align-items:center">
-            <div id="ai-free-counter" style="display:none"></div>
-            <input type="text" id="ai-in" placeholder="Pose ta question ou donne un ordre..."
-              onkeydown="if(event.key==='Enter')sendAI()"
-              style="flex:1;font-size:13px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:9px 14px;color:var(--color-text);outline:none">
-            <button onclick="sendAI()" id="ai-send-btn"
-              style="width:38px;height:38px;background:#16a34a;color:#fff;border:none;border-radius:10px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(22,163,74,0.3)">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ⑤ BARRE DU BAS : outils premium -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px">
-        <button onclick="sq('Génère un rapport hebdomadaire complet : performances, mouvements, opportunités manquées, recommandations pour la semaine prochaine.')"
-          style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:14px;text-align:left;cursor:pointer;transition:border-color 0.15s"
-          onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='var(--color-border)'">
-          <div style="font-size:18px;margin-bottom:6px">📋</div>
-          <div style="font-size:12px;font-weight:700;color:var(--color-text);margin-bottom:2px">Rapport hebdomadaire</div>
-          <div style="font-size:11px;color:var(--color-text-secondary)">Dimanche à 9h</div>
-        </button>
-        <button onclick="sq('Fais une analyse approfondie et complète de mon portefeuille : diversification, risques, opportunités, corrélations, scénarios.')"
-          style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:14px;text-align:left;cursor:pointer;transition:border-color 0.15s"
-          onmouseover="this.style.borderColor='#4ade80'" onmouseout="this.style.borderColor='var(--color-border)'">
-          <div style="font-size:18px;margin-bottom:6px">🔬</div>
-          <div style="font-size:12px;font-weight:700;color:var(--color-text);margin-bottom:2px">Analyse approfondie</div>
-          <div style="font-size:11px;color:var(--color-text-secondary)">De ton portefeuille</div>
-        </button>
-        <button onclick="sq('Simule l'impact d'une crise sévère sur mon portefeuille : krach 2008, COVID, hausse taux. Donne perte estimée, durée de récupération et actifs les plus touchés.')"
-          style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:14px;text-align:left;cursor:pointer;transition:border-color 0.15s"
-          onmouseover="this.style.borderColor='#f87171'" onmouseout="this.style.borderColor='var(--color-border)'">
-          <div style="font-size:18px;margin-bottom:6px">🌪</div>
-          <div style="font-size:12px;font-weight:700;color:var(--color-text);margin-bottom:2px">Scénario de crise</div>
-          <div style="font-size:11px;color:var(--color-text-secondary)">Stress test personnalisé</div>
-        </button>
-        <button onclick="sq('Résume tout ce que tu sais de mon profil investisseur, mes préférences, mon historique de décisions et propose des ajustements.')"
-          style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:14px;text-align:left;cursor:pointer;transition:border-color 0.15s"
-          onmouseover="this.style.borderColor='#fbbf24'" onmouseout="this.style.borderColor='var(--color-border)'">
-          <div style="font-size:18px;margin-bottom:6px">🧠</div>
-          <div style="font-size:12px;font-weight:700;color:var(--color-text);margin-bottom:2px">Mémoire IA</div>
-          <div style="font-size:11px;color:var(--color-text-secondary)">Profil mis à jour hier</div>
-        </button>
-      </div>
-
-      <div style="text-align:center;font-size:11px;color:var(--color-text-tertiary);padding-top:12px">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
-        L'IA peut se tromper. Vérifie toujours les informations importantes.
-      </div>
+  <!-- HEADER -->
+  <div class="page-header">
+    <div>
+      <h1 style="display:flex;align-items:center;gap:10px">
+        Agent IA
+        <span style="background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;letter-spacing:0.3px">LIVE</span>
+      </h1>
+      <p class="page-sub">Ton copilote financier personnel</p>
     </div>
+    <button class="btn-secondary" onclick="clearChat()" style="font-size:13px;padding:8px 14px">Effacer</button>
+  </div>
 
-    <!-- ══ SIDEBAR DROITE — 100% IA ══ -->
-    <div id="ai-sidebar" style="width:240px;flex-shrink:0;border-left:1px solid var(--color-border);overflow-y:auto;max-height:calc(100vh - 60px);display:flex;flex-direction:column;gap:0">
-
-      <!-- En-tête IA -->
-      <div style="padding:16px 14px 12px;border-bottom:1px solid var(--color-border)">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <div style="width:28px;height:28px;background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(22,163,74,0.2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">🧠</div>
-          <div style="font-size:13px;font-weight:800;color:var(--color-text)">Analyse IA</div>
-          <div style="margin-left:auto;display:flex;align-items:center;gap:3px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);border-radius:99px;padding:2px 7px">
-            <div style="width:4px;height:4px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
-            <span style="font-size:9px;font-weight:700;color:#4ade80">LIVE</span>
-          </div>
-        </div>
-        <!-- Confiance IA + timing -->
-        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <span style="font-size:11px;color:var(--color-text-secondary)">Confiance IA</span>
-            <span id="ai-side-global-conf" style="font-size:13px;font-weight:900;color:#22c55e">—%</span>
-          </div>
-          <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden;margin-bottom:8px">
-            <div id="ai-side-global-conf-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width 1s"></div>
-          </div>
-          <div style="display:flex;justify-content:space-between">
-            <div>
-              <div style="font-size:9px;color:var(--color-text-tertiary);margin-bottom:1px">Dernière analyse</div>
-              <div id="ai-side-last-update" style="font-size:10px;font-weight:700;color:var(--color-text-secondary)">—</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:9px;color:var(--color-text-tertiary);margin-bottom:1px">Prochaine analyse</div>
-              <div id="ai-side-next-update" style="font-size:10px;font-weight:700;color:#4ade80">—</div>
-            </div>
-          </div>
+  <!-- RÉSUMÉ QUOTIDIEN -->
+  <div id="agent-daily-brief" style="background:linear-gradient(135deg,#0f0f14,#1a1a24);border-radius:18px;padding:18px;margin-bottom:14px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(26,127,90,0.15),transparent);pointer-events:none"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:32px;height:32px;background:rgba(26,127,90,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px">🧠</div>
+        <div>
+          <div style="font-size:13px;font-weight:800;color:#fff">Briefing du jour</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.35);font-weight:500" id="agent-brief-date">—</div>
         </div>
       </div>
-
-      <!-- Risque principal -->
-      <div style="padding:16px;border-bottom:1px solid var(--color-border)">
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">⚠️ Risque principal</div>
-        <div id="ai-side-risk-title" style="font-size:14px;font-weight:800;color:#ef4444;margin-bottom:5px">—</div>
-        <div id="ai-side-risk-body" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;margin-bottom:10px">—</div>
-        <button id="ai-side-risk-btn" style="width:100%;padding:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:9px;font-size:11px;font-weight:700;color:#ef4444;cursor:pointer;text-align:left"
-          onclick="sq(this.dataset.q||'Explique mon risque principal et comment le réduire.')">
-          Analyser ce risque →
-        </button>
+      <button onclick="generateDailyBrief()" id="brief-refresh-btn"
+        style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;cursor:pointer">
+        ↻ Actualiser
+      </button>
+    </div>
+    <div id="agent-brief-content" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);font-size:13px">
+        <svg class="spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        Analyse en cours...
       </div>
-
-      <!-- Opportunité principale -->
-      <div style="padding:16px;border-bottom:1px solid var(--color-border)">
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">💡 Opportunité principale</div>
-        <div id="ai-side-opp-title" style="font-size:14px;font-weight:800;color:#22c55e;margin-bottom:5px">—</div>
-        <div id="ai-side-opp-body" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;margin-bottom:10px">—</div>
-        <button id="ai-side-opp-btn" style="width:100%;padding:8px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:9px;font-size:11px;font-weight:700;color:#22c55e;cursor:pointer;text-align:left"
-          onclick="sq(this.dataset.q||'Analyse cette opportunité en détail.')">
-          Voir l'opportunité →
-        </button>
-      </div>
-
-      <!-- Action recommandée -->
-      <div style="padding:16px;border-bottom:1px solid var(--color-border)">
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">🎯 Action recommandée</div>
-        <div id="ai-side-action-title" style="font-size:14px;font-weight:800;color:var(--color-text);margin-bottom:5px">—</div>
-        <div id="ai-side-action-body" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;margin-bottom:10px">—</div>
-        <!-- Niveau de confiance -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-          <span style="font-size:10px;color:var(--color-text-tertiary)">Niveau de confiance</span>
-          <span id="ai-side-conf-val" style="font-size:11px;font-weight:800;color:#22c55e">—%</span>
-        </div>
-        <div style="height:4px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden">
-          <div id="ai-side-conf-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width 1s"></div>
-        </div>
-      </div>
-
-      <!-- Score IQ compact -->
-      <div style="padding:16px;border-bottom:1px solid var(--color-border)">
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">⭐ Score InvestIQ</div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="position:relative;width:52px;height:52px;flex-shrink:0">
-            <svg width="52" height="52" viewBox="0 0 52 52">
-              <circle cx="26" cy="26" r="20" stroke="rgba(255,255,255,0.06)" stroke-width="5" fill="none"/>
-              <circle id="iq-score-ring" cx="26" cy="26" r="20" stroke="url(#sgGrad2)" stroke-width="5" fill="none"
-                stroke-linecap="round" stroke-dasharray="0 126" stroke-dashoffset="31.5"
-                style="transition:stroke-dasharray 1.2s ease"/>
-              <defs>
-                <linearGradient id="sgGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#3b82f6"/>
-                  <stop offset="100%" stop-color="#4ade80"/>
-                </linearGradient>
-              </defs>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-              <span id="iq-score-val" style="font-size:14px;font-weight:900;color:var(--color-text)">—</span>
-            </div>
-          </div>
-          <div style="flex:1">
-            <div id="iq-score-label" style="font-size:13px;font-weight:800;color:#60a5fa;margin-bottom:4px">—</div>
-            <div id="iq-score-breakdown" style="display:flex;flex-direction:column;gap:3px"></div>
-          </div>
-        </div>
-        <button onclick="sq('Pourquoi mon score InvestIQ est-il de ' + (document.getElementById('iq-score-val').textContent||'ce niveau') + ' ? Explique chaque sous-score en détail.')"
-          style="width:100%;margin-top:10px;padding:7px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.15);border-radius:8px;font-size:11px;font-weight:700;color:#60a5fa;cursor:pointer">
-          Pourquoi ce score ?
-        </button>
-      </div>
-
-      <!-- Radar risque compact -->
-      <div style="padding:16px">
-        <div style="font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">📊 Radar de risque</div>
-        <div id="ai-side-radar" style="display:flex;flex-direction:column;gap:6px"></div>
-      </div>
-
-      <!-- IDs fantômes pour compatibilité updateAISidebar -->
-      <span id="ai-side-pnl" style="display:none"></span>
-      <span id="ai-side-pnl-right" style="display:none"></span>
-      <span id="ai-side-tv" style="display:none"></span>
-      <span id="ai-side-liquid" style="display:none"></span>
-      <span id="ai-side-invested" style="display:none"></span>
-      <span id="ai-side-positions" style="display:none"></span>
-      <span id="ai-side-obj-pct" style="display:none"></span>
-      <span id="ai-side-obj-bar" style="display:none"></span>
-      <span id="ai-side-obj-detail" style="display:none"></span>
-      <span id="health-ring" style="display:none"></span>
-      <span id="health-score-val" style="display:none"></span>
-      <span id="health-score-label" style="display:none"></span>
-      <span id="ai-side-sparkline" style="display:none"></span>
-
     </div>
   </div>
+
+  <!-- BARRE DE CONTEXTE -->
+  <div id="agent-context-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+
+  <!-- SUGGESTIONS -->
+  <div id="agent-suggestions" style="margin-bottom:12px"></div>
+
+  <!-- CHAT -->
+  <div class="card chat-card" style="padding:0;overflow:hidden">
+    <div class="chat-messages" id="ai-chat" style="min-height:260px;max-height:45vh;padding:16px">
+      <div class="bubble bot" id="ai-welcome">Bonjour ! Je suis ton copilote IA. Je connais ton portefeuille, tes objectifs et ton profil. Pose-moi n'importe quelle question ou donne-moi un ordre.</div>
+    </div>
+    <div style="border-top:1px solid #f0f0f0;padding:10px 12px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none" id="agent-quick-actions">
+      <button onclick="sq('Analyse mon portefeuille en détail')" style="background:#f5f5f5;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;white-space:nowrap;flex-shrink:0">📊 Analyse portef.</button>
+      <button onclick="sq('Quelles sont les meilleures opportunités en ce moment ?')" style="background:#f5f5f5;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;white-space:nowrap;flex-shrink:0">⚡ Opportunités</button>
+      <button onclick="sq('Dois-je rééquilibrer mon portefeuille ?')" style="background:#f5f5f5;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;white-space:nowrap;flex-shrink:0">⚖️ Rééquilibrage</button>
+      <button onclick="sq('Comment optimiser mes versements mensuels ?')" style="background:#f5f5f5;border:none;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#1c1c1e;cursor:pointer;white-space:nowrap;flex-shrink:0">💰 Optimiser DCA</button>
+    </div>
+    <div class="chat-input-row" style="border-top:1px solid #f0f0f0;margin:0;padding:10px 12px">
+      <input type="text" id="ai-in" placeholder="Pose ta question ou donne un ordre..." onkeydown="if(event.key==='Enter')sendAI()" style="font-size:14px;background:#f5f5f5;border-radius:12px;padding:11px 14px">
+      <button onclick="sendAI()" id="ai-send-btn" style="background:#1c1c1e;color:#fff;border:none;border-radius:12px;padding:11px 14px;cursor:pointer;flex-shrink:0;transition:all 0.15s"
+        onmouseover="this.style.background='#1a7f5a'" onmouseout="this.style.background='#1c1c1e'">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
 </section>
 
     <!-- CRISE -->
@@ -2434,157 +1617,45 @@ window.addEventListener('load', function() {
 
     <!-- SETTINGS -->
     <section id="sec-settings" class="sec">
-  <div class="page-header">
-    <div>
-      <h1>Paramètres</h1>
-      <p class="page-sub">Personnalise ton expérience InvestIQ</p>
-    </div>
-  </div>
-
-  <!-- BLOCS SETTINGS -->
-  <div style="display:flex;flex-direction:column;gap:10px;max-width:860px">
-
-    <!-- Compte & Profil -->
-    <div class="settings-row" onclick="openSettingsPanel('compte')" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:18px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--color-border-strong)';this.style.background='var(--color-surface-raised)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-surface)'">
-      <div style="width:44px;height:44px;background:rgba(63,185,80,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:700;color:var(--color-text);margin-bottom:3px">Compte & Sécurité</div>
-        <div style="font-size:13px;color:var(--color-text-secondary)">Gère tes informations personnelles et ton mot de passe</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;margin-right:12px">
-        <div style="font-size:13px;color:var(--color-text-secondary)" id="set-email-display">—</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <!-- 🔔 Notifications Push -->
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;overflow:hidden">
-      <!-- Ligne info -->
-      <div style="display:flex;align-items:center;gap:14px;padding:16px 20px">
-        <div style="width:40px;height:40px;background:rgba(251,191,36,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <div class="page-header"><h1>Paramètres</h1></div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="card-icon dark">$</span>Profil investisseur</div></div>
+        <div class="form-grid">
+          <div class="field"><label>Bankroll (€)</label><input type="number" id="s-bankroll" value="5000" step="100"></div>
+          <div class="field"><label>Horizon</label><select id="s-horizon"><option value="court">Court (&lt;3 ans)</option><option value="moyen" selected>Moyen (3–7 ans)</option><option value="long">Long (&gt;7 ans)</option></select></div>
+          <div class="field"><label>Tolérance au risque</label><select id="s-risk"><option value="faible" selected>Faible</option><option value="modere">Modérée</option><option value="eleve">Élevée</option></select></div>
+          <div class="field"><label>Notifications</label><select id="s-notif"><option value="daily">Quotidiennes</option><option value="weekly">Hebdomadaires</option><option value="off">Désactivées</option></select></div>
         </div>
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:700;color:var(--color-text);margin-bottom:2px">Notifications push</div>
-          <div style="font-size:12px;color:var(--color-text-secondary)">Briefing matinal · Alertes · Opportunités</div>
-          <span id="push-status-label" style="font-size:11px;color:var(--color-text-tertiary)">Désactivées</span>
+        <button class="btn-save" onclick="saveSettings()">Sauvegarder le profil</button>
+        <div id="settings-msg" style="margin-top:10px;font-size:14px;color:#00b386;display:none;font-weight:700">✓ Sauvegardé</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="card-icon dark">🔒</span>Sécurité</div></div>
+        <div class="field"><label>Nouveau mot de passe</label><input type="password" id="new-pass" placeholder="Min. 6 caractères"></div>
+        <div class="field"><label>Confirmer</label><input type="password" id="new-pass2" placeholder="••••••••"></div>
+        <button class="btn-primary" onclick="changePassword()">Changer le mot de passe</button>
+        <div id="pass-msg" style="margin-top:10px;font-size:14px;display:none;font-weight:700"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="card-icon" style="background:#e8f8f0;color:#1a7f5a">?</span>Aide & Tutoriel</div></div>
+        <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">Revoir le guide de démarrage ou explorer l'app avec des données fictives.</div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="showOnboarding(true)" style="flex:1">
+            📋 Revoir le tutoriel
+          </button>
+          <button class="btn-secondary" onclick="loadDemo();nav('portfolio')" style="flex:1">
+            👀 Mode démo
+          </button>
         </div>
       </div>
-      <!-- Boutons sur leur propre ligne -->
-      <div style="display:flex;gap:10px;padding:0 20px 16px;border-top:1px solid var(--color-border);padding-top:12px">
-        <button id="push-toggle-btn"
-          onclick="togglePushNotifications()"
-          style="flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;background:rgba(251,191,36,0.12);border:2px solid rgba(251,191,36,0.4);color:#fbbf24;-webkit-tap-highlight-color:rgba(251,191,36,0.2);touch-action:manipulation">
-          Activer les notifications
-        </button>
+      <div class="card">
+        <div class="card-head"><div class="card-title"><span class="card-icon red">⚠</span>Export & Danger</div></div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="exportPDF()">📄 Exporter en PDF</button>
+          <button class="btn-danger" onclick="logout()">Se déconnecter</button>
+        </div>
       </div>
-      <div id="push-test-row" style="display:none;padding:0 20px 16px">
-        <button id="push-test-btn"
-          onclick="testPushNotification()"
-          style="width:100%;padding:11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;-webkit-tap-highlight-color:rgba(96,165,250,0.2);touch-action:manipulation">
-          🧪 Envoyer une notification test
-        </button>
-      </div>
-    </div>
-
-    <!-- Préférences IA -->
-    <div class="settings-row" onclick="openSettingsPanel('ia')" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:18px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--color-border-strong)';this.style.background='var(--color-surface-raised)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-surface)'">
-      <div style="width:44px;height:44px;background:rgba(139,92,246,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:700;color:var(--color-text);margin-bottom:3px">Préférences d'analyse IA</div>
-        <div style="font-size:13px;color:var(--color-text-secondary)">Profil de risque, horizon et bankroll</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;margin-right:12px">
-        <div style="font-size:13px;color:var(--color-text-secondary)" id="set-risk-display">—</div>
-        <div style="font-size:12px;color:#a78bfa;font-weight:600" id="set-horizon-display">—</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <!-- Notifications -->
-    <div class="settings-row" onclick="openSettingsPanel('notifs')" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:18px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--color-border-strong)';this.style.background='var(--color-surface-raised)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-surface)'">
-      <div style="width:44px;height:44px;background:rgba(251,191,36,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:700;color:var(--color-text);margin-bottom:3px">Notifications & Alertes</div>
-        <div style="font-size:13px;color:var(--color-text-secondary)">Alertes de prix, signaux IA et résumés</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;margin-right:12px">
-        <div style="font-size:12px;color:#fbbf24;font-weight:600" id="set-notif-display">—</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <!-- Interface -->
-    <div class="settings-row" onclick="openSettingsPanel('interface')" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:18px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--color-border-strong)';this.style.background='var(--color-surface-raised)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-surface)'">
-      <div style="width:44px;height:44px;background:rgba(56,189,248,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:700;color:var(--color-text);margin-bottom:3px">Interface & Affichage</div>
-        <div style="font-size:13px;color:var(--color-text-secondary)">Thème, langue et préférences d'affichage</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;margin-right:12px">
-        <div style="font-size:13px;color:var(--color-text-secondary)" id="set-theme-display">—</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <!-- Données & Confidentialité -->
-    <div class="settings-row" onclick="openSettingsPanel('data')" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:18px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--color-border-strong)';this.style.background='var(--color-surface-raised)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-surface)'">
-      <div style="width:44px;height:44px;background:rgba(248,113,113,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:700;color:var(--color-text);margin-bottom:3px">Données & Confidentialité</div>
-        <div style="font-size:13px;color:var(--color-text-secondary)">Export, suppression et gestion des données</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;margin-right:12px">
-        <div style="font-size:12px;color:#4ade80;font-weight:600">Données sécurisées</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <!-- Aide & Support -->
-    <div class="settings-row" onclick="openSettingsPanel('aide')" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:18px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--color-border-strong)';this.style.background='var(--color-surface-raised)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-surface)'">
-      <div style="width:44px;height:44px;background:rgba(255,255,255,0.06);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:700;color:var(--color-text);margin-bottom:3px">Aide & Support</div>
-        <div style="font-size:13px;color:var(--color-text-secondary)">Tutoriel, mode démo et déconnexion</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <!-- Banner Agent IA -->
-    <div style="background:linear-gradient(135deg,rgba(63,185,80,0.06),rgba(22,163,74,0.03));border:1px solid rgba(63,185,80,0.15);border-radius:16px;padding:24px;display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:6px">
-      <div>
-        <div style="font-size:16px;font-weight:700;color:var(--color-text);margin-bottom:6px">Besoin d'aide pour configurer InvestIQ ?</div>
-        <div style="font-size:13px;color:var(--color-text-secondary)">Notre Agent IA peut t'accompagner dans tes réglages.</div>
-      </div>
-      <button onclick="nav('ai')" style="flex-shrink:0;padding:10px 20px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Discuter avec l'Agent IA →</button>
-    </div>
-  </div>
-
-  <!-- PANELS (drawers inline) -->
-  <div id="settings-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:var(--color-surface);border-left:1px solid var(--color-border);z-index:300;overflow-y:auto;box-shadow:-20px 0 60px rgba(0,0,0,0.15)">
-    <div style="padding:24px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-        <div id="panel-title" style="font-size:18px;font-weight:800;color:var(--color-text)">—</div>
-        <button onclick="closeSettingsPanel()" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">✕ Fermer</button>
-      </div>
-      <div id="panel-content"></div>
-    </div>
-  </div>
-  <div id="settings-overlay" onclick="closeSettingsPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:299"></div>
-
-</section>
+    </section>
 
   </main>
 </div>
@@ -2637,27 +1708,38 @@ window.addEventListener('load', function() {
     </div>
   </nav>
 
-  <style>
-    .bubble.bot { background: var(--color-surface-raised) !important; border: 1px solid var(--color-border) !important; border-radius: 16px !important; padding: 18px 20px !important; line-height: 1.65 !important; font-size: 14px !important; }
-    .bubble.user { background: linear-gradient(135deg,#16a34a,#059669) !important; color: #fff !important; border-radius: 16px 16px 4px 16px !important; padding: 12px 18px !important; margin-left: auto !important; max-width: 80% !important; display: block; width: fit-content !important; }
-    #ai-chat { display: flex !important; flex-direction: column !important; gap: 14px !important; }
-    #ai-chat .bubble { margin: 0 !important; }
-  </style>
-  <script>
-    async function loginWithGoogle() {
-      try {
-        const { error } = await sb.auth.signInWithOAuth({
-          provider: 'google',
-          options: { redirectTo: window.location.origin }
-        });
-        if (error) {
-          const msg = document.getElementById('auth-msg');
-          if (msg) { msg.textContent = error.message; msg.style.color = '#ff4444'; }
-        }
-      } catch(e) {
-        console.error('Google login error:', e);
-      }
-    }
-  </script>
+  <!-- BILAN PREMIUM MODAL -->
+  <div id="bilan-modal" class="modal-overlay" style="display:none">
+    <div style="background:var(--color-surface);border-radius:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;position:relative">
+      <div style="background:linear-gradient(135deg,#080c10,#0d1520);border-radius:24px 24px 0 0;padding:28px 32px 24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:42px;height:42px;background:rgba(63,185,80,0.15);border:1px solid rgba(63,185,80,0.3);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px">✦</div>
+            <div>
+              <div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.04em">Bilan Financier Premium</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px">Analyse complète · Généré par Claude IA</div>
+            </div>
+          </div>
+          <button onclick="closeBilan()" style="background:rgba(255,255,255,0.08);border:none;border-radius:8px;padding:6px 12px;color:rgba(255,255,255,0.5);cursor:pointer;font-size:16px">✕</button>
+        </div>
+        <div style="display:flex;gap:4px" id="bilan-progress-bar">
+          <div id="bpb-0" style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.15);transition:background 0.3s"></div>
+          <div id="bpb-1" style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.15);transition:background 0.3s"></div>
+          <div id="bpb-2" style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.15);transition:background 0.3s"></div>
+          <div id="bpb-3" style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.15);transition:background 0.3s"></div>
+          <div id="bpb-4" style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.15);transition:background 0.3s"></div>
+          <div id="bpb-5" style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.15);transition:background 0.3s"></div>
+          <div id="bpb-6" style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.15);transition:background 0.3s"></div>
+          <div id="bpb-7" style="flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.15);transition:background 0.3s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.3)" id="bilan-step-label">Étape 1 / 8</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.3)" id="bilan-step-title">Situation personnelle</div>
+        </div>
+      </div>
+      <div style="padding:28px 32px" id="bilan-content"></div>
+    </div>
+  </div>
+
 </body>
 </html>
