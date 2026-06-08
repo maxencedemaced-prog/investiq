@@ -1260,65 +1260,6 @@ async function tryAlternativeTicker(ticker, priceInput, liveLabel) {
 }
 
 
-// Normalise un ticker selon sa bourse pour que /api/prices fonctionne
-function normalizeTicker(ticker, exchange) {
-  if (!ticker) return ticker;
-  const ex = (exchange || '').toLowerCase();
-  // Déjà un suffixe → on garde
-  if (ticker.includes('.')) return ticker;
-  // Tickers connus avec leur bonne bourse (Yahoo retourne parfois NYQ/NMS pour des actions européennes)
-  const knownTickers = {
-    'STM':'STM.PA','MC':'MC.PA','RMS':'RMS.PA','OR':'OR.PA','TTE':'TTE.PA',
-    'SAN':'SAN.PA','AI':'AI.PA','AIR':'AIR.PA','BNP':'BNP.PA','KER':'KER.PA',
-    'DSY':'DSY.PA','SAF':'SAF.PA','SU':'SU.PA','CAP':'CAP.PA','DG':'DG.PA',
-    'LR':'LR.PA','HO':'HO.PA','SGO':'SGO.PA','RI':'RI.PA','EN':'EN.PA',
-    'VIE':'VIE.PA','ORA':'ORA.PA','RNO':'RNO.PA','ML':'ML.PA','SW':'SW.PA',
-    'PUB':'PUB.PA','ACA':'ACA.PA','GLE':'GLE.PA','BN':'BN.PA','VIV':'VIV.PA',
-    'SOI':'SOI.PA','FDJ':'FDJ.PA','ATO':'ATO.PA','UBI':'UBI.PA',
-    'STMPA':'STM.PA','VOW':'VOW3.DE','BMW':'BMW.DE','DAI':'DAI.DE',
-    'SAP':'SAP.DE','ALV':'ALV.DE','SIE':'SIE.DE','DTE':'DTE.DE',
-    'SHEL':'SHEL.L','BP':'BP.L','AZN':'AZN.L','HSBA':'HSBA.L',
-    'NESN':'NESN.SW','NOVN':'NOVN.SW','ROG':'ROG.SW',
-  };
-  if (knownTickers[ticker.toUpperCase()]) return knownTickers[ticker.toUpperCase()];
-  // Euronext Paris
-  if (ex.includes('paris') || ex.includes('euronext') || ex.includes('nms') || ex === 'par') return ticker + '.PA';
-  // XETRA / Frankfurt
-  if (ex.includes('xetra') || ex.includes('frankfurt') || ex.includes('ger') || ex === 'gst') return ticker + '.DE';
-  // London Stock Exchange
-  if (ex.includes('london') || ex.includes('lse') || ex === 'lse') return ticker + '.L';
-  // Milan / Borsa Italiana
-  if (ex.includes('milan') || ex.includes('borsa') || ex.includes('italy')) return ticker + '.MI';
-  // Amsterdam
-  if (ex.includes('amsterdam') || ex === 'ams') return ticker + '.AS';
-  // Madrid
-  if (ex.includes('madrid') || ex.includes('spain')) return ticker + '.MC';
-  // Zurich / Swiss
-  if (ex.includes('swiss') || ex.includes('zurich') || ex === 'swx') return ticker + '.SW';
-  // Stockholm
-  if (ex.includes('stockholm') || ex === 'sto') return ticker + '.ST';
-  // Oslo
-  if (ex.includes('oslo')) return ticker + '.OL';
-  // Copenhagen
-  if (ex.includes('copenhagen') || ex === 'cph') return ticker + '.CO';
-  // Helsinki
-  if (ex.includes('helsinki')) return ticker + '.HE';
-  // Brussels
-  if (ex.includes('brussels') || ex.includes('bruxelles')) return ticker + '.BR';
-  // Lisbonne
-  if (ex.includes('lisbon') || ex.includes('lisbonne')) return ticker + '.LS';
-  // Tokyo
-  if (ex.includes('tokyo')) return ticker + '.T';
-  // Hong Kong
-  if (ex.includes('hong kong') || ex === 'hkg') return ticker + '.HK';
-  // Australie
-  if (ex.includes('australia') || ex === 'asx') return ticker + '.AX';
-  // Canada TSX
-  if (ex.includes('toronto') || ex === 'tsx') return ticker + '.TO';
-  // Nasdaq / NYSE / NYSE ARCA → pas de suffixe
-  return ticker;
-}
-
 async function acSearchYahoo(query) {
   const drop = document.getElementById('ac-drop');
   if (!drop) return;
@@ -1333,19 +1274,14 @@ async function acSearchYahoo(query) {
       </div>`;
       return;
     }
-    // Normaliser les tickers avant affichage
-    const normalized = results.map(r => ({
-      ...r,
-      ticker: normalizeTicker(r.ticker, r.exchange),
-    }));
-    drop.innerHTML = normalized.map(r => `
+    drop.innerHTML = results.map(r => `
       <div class="ac-item" onclick="acSelect(${JSON.stringify(r).replace(/"/g,'&quot;')})">
         <div class="ac-item-avatar">${r.ticker.slice(0,2)}</div>
         <div class="ac-item-info">
           <div class="ac-item-name">${r.name}</div>
-          <div class="ac-item-meta">${r.ticker} · ${r.type||'Action'} · ${r.exchange||''}</div>
+          <div class="ac-item-meta">${r.ticker} · ${r.type} · ${r.sector} · ${r.exchange}</div>
         </div>
-        <div class="ac-item-type">${r.type||'Action'}</div>
+        <div class="ac-item-type">${r.type}</div>
       </div>`).join('');
   } catch {
     const drop2 = document.getElementById('ac-drop');
@@ -1442,12 +1378,6 @@ const AC_DB = [
   {ticker:'UBI.PA',name:'Ubisoft Entertainment',type:'Action',sector:'Gaming',exchange:'Euronext'},
   // Mid-cap françaises populaires
   {ticker:'SOI.PA',name:'Soitec',type:'Action',sector:'Semi-conducteurs',exchange:'Euronext'},
-  {ticker:'STM.PA',name:'STMicroelectronics',type:'Action',sector:'Semi-conducteurs',exchange:'Euronext'},
-  {ticker:'POMA.PA',name:'Compagnie du Mont-Blanc (Poma)',type:'Action',sector:'Industrie',exchange:'Euronext'},
-  {ticker:'FDJ.PA',name:'Française des Jeux',type:'Action',sector:'Loisirs',exchange:'Euronext'},
-  {ticker:'STPA.PA',name:'STMicroelectronics',type:'Action',sector:'Semi-conducteurs',exchange:'Euronext'},
-  {ticker:'HCO.PA',name:'Hermès & Co',type:'Action',sector:'Luxe',exchange:'Euronext'},
-  {ticker:'ABCA.PA',name:'ABC Arbitrage',type:'Action',sector:'Finance',exchange:'Euronext'},
   {ticker:'ALTEN.PA',name:'Alten',type:'Action',sector:'Tech',exchange:'Euronext'},
   {ticker:'DDOG',name:'Datadog',type:'Action',sector:'Tech',exchange:'NASDAQ'},
   {ticker:'CRWD',name:'CrowdStrike',type:'Action',sector:'Cybersécurité',exchange:'NASDAQ'},
@@ -1557,20 +1487,10 @@ function acSearch(query) {
     return;
   }
   if (clearBtn) clearBtn.style.display = 'block';
-  const q = query.toLowerCase()
-    .replace(/electronique/g,'electronics')
-    .replace(/aeronautique|aéronautique/g,'aeronautics')
-    .replace(/automobil/g,'automotive')
-    .replace(/banque/g,'bank')
-    .replace(/assurance/g,'insurance')
-    .replace(/energie|énergie/g,'energy')
-    .replace(/sante|santé/g,'health')
-    .replace(/chimie/g,'chemical')
-    .replace(/telecommunication|télécommunication/g,'telecom');
+  const q = query.toLowerCase();
   const results = AC_DB.filter(c =>
     c.ticker.toLowerCase().includes(q) ||
     c.name.toLowerCase().includes(q) ||
-    c.name.toLowerCase().replace(/[^a-z0-9]/g,'').includes(q.replace(/[^a-z0-9]/g,'')) ||
     c.sector.toLowerCase().includes(q)
   ).slice(0, 7);
 
@@ -1595,34 +1515,6 @@ function acSearch(query) {
 }
 
 async function acSelect(company) {
-  // Si le ticker ressemble à un nom (>8 chars sans point) → chercher le vrai ticker
-  if (company.ticker && company.ticker.length > 8 && !company.ticker.includes('.') && !company.ticker.includes('-')) {
-    // 1. Chercher dans AC_DB par nom d'abord
-    const match = AC_DB.find(c =>
-      c.name.toLowerCase().replace(/[^a-z0-9]/g,'').includes(company.ticker.toLowerCase().slice(0,6)) ||
-      (company.name && c.name.toLowerCase().includes(company.name.toLowerCase().slice(0,5)))
-    );
-    if (match) {
-      company.ticker = match.ticker;
-      company.name = match.name;
-      company.exchange = match.exchange;
-    } else {
-      // 2. Appeler l'API search avec le nom pour trouver le vrai ticker
-      try {
-        const searchQuery = company.name || company.ticker;
-        const res = await fetch('/api/search?q=' + encodeURIComponent(searchQuery));
-        const data = await res.json();
-        const first = (data.results || [])[0];
-        if (first && first.ticker && first.ticker.length <= 12) {
-          company.ticker = first.ticker;
-          company.name = first.name || company.name;
-          company.exchange = first.exchange || company.exchange;
-        }
-      } catch {}
-    }
-  }
-  // Normaliser le ticker selon la bourse
-  company.ticker = normalizeTicker(company.ticker, company.exchange);
   acSelected = company;
   document.getElementById('ac-drop').style.display = 'none';
   document.getElementById('f-search').value = company.name + ' (' + company.ticker + ')';
@@ -1648,7 +1540,6 @@ async function acSelect(company) {
 
   // Show form fields
   document.getElementById('f-fields').style.display = 'block';
-  updateBrokerBtn();
   document.getElementById('f-empty-state').style.display = 'none';
 
   // Fetch live price
@@ -1668,29 +1559,19 @@ async function acSelect(company) {
         priceInput.style.color = '#1c1c1e';
       }
       if (liveLabel) liveLabel.style.display = 'inline';
-      // Pré-remplit le PRU : avec le PRU existant si position en portefeuille, sinon prix actuel
+      // Pré-remplit le PRU avec le prix actuel (modifiable par l'utilisateur)
       const pruInput = document.getElementById('f-pru');
       if (pruInput && !pruInput.value) {
-        const tickerLow = company.ticker.toLowerCase();
-        const nameLow2 = company.name?.toLowerCase() || '';
-        const existingPos = positions.find(p => {
-          if (p.name.toLowerCase() === tickerLow || p.name.toLowerCase() === nameLow2) return true;
-          const dbEntry = AC_DB.find(c => c.ticker.toLowerCase() === tickerLow || c.name.toLowerCase() === nameLow2);
-          return dbEntry && p.name.toLowerCase() === dbEntry.ticker.toLowerCase();
-        });
-        // Si position existante : PRU = prix d'achat aujourd'hui (pas l'ancien PRU)
-        // L'ancien PRU est affiché dans le bloc renforcement
         pruInput.value = q.price.toFixed(2);
-        // Stocker l'ancien PRU dans un data attribute pour le calcul
-        if (existingPos) pruInput.dataset.existingPru = existingPos.pru;
       }
       // Met à jour le total
       updatePosTotal();
     } else {
       if (priceInput) { priceInput.placeholder = 'Saisir manuellement'; priceInput.style.color = '#1c1c1e'; }
-      // Si le ticker a un suffixe mais pas de prix → essayer sans suffixe et avec d'autres
-      const baseTicker = company.ticker.split('.')[0];
-      tryAlternativeTicker(baseTicker, priceInput, liveLabel);
+      // Try with .DE suffix for European stocks
+      if (!company.ticker.includes('.') && !company.ticker.includes('-')) {
+        tryAlternativeTicker(company.ticker, priceInput, liveLabel);
+      }
     }
   } catch {
     if (priceInput) { priceInput.placeholder = 'Saisir manuellement'; priceInput.style.color = '#1c1c1e'; }
@@ -1719,42 +1600,17 @@ function updatePosTotal() {
     const pnl = pru > 0 ? valActuelle - totalInvesti : 0;
     const pnlPct = totalInvesti > 0 ? (pnl / totalInvesti * 100).toFixed(1) : null;
 
-    // Chercher si position existante pour calculer le nouveau PRU moyen
-    const currentName = document.getElementById('f-name')?.value || '';
-    const nameLow = currentName.toLowerCase();
-    const existing = positions.find(p => {
-      if (p.name.toLowerCase() === nameLow) return true;
-      const dbEntry = AC_DB.find(c => c.ticker.toLowerCase() === nameLow || c.name.toLowerCase() === nameLow);
-      return dbEntry && p.name.toLowerCase() === dbEntry.ticker.toLowerCase();
-    });
-
     if (detailEl) detailEl.textContent = `${qty} × ${price.toLocaleString('fr-FR', {minimumFractionDigits:2})}€`;
-    if (valEl) valEl.textContent = `= ${valActuelle.toLocaleString('fr-FR', {minimumFractionDigits:2})}€`;
+    if (valEl)    valEl.textContent    = `= ${(valActuelle).toLocaleString('fr-FR', {minimumFractionDigits:2})}€`;
 
     if (pnlEl) {
-      if (existing && pru > 0) {
-        // Afficher le nouveau PRU moyen pondéré
-        const newQty = existing.qty + qty;
-        const newPru = ((existing.qty * existing.pru) + (qty * pru)) / newQty;
-        const newInvesti = newQty * newPru;
-        const newVal = newQty * price;
-        const newPnl = newVal - newInvesti;
-        const newPnlPct = (newPnl / newInvesti * 100).toFixed(1);
-        const sign = newPnl >= 0 ? '+' : '';
-        pnlEl.innerHTML = `
-          <div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:4px">📊 Renforcement détecté</div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px">
-            <span style="color:var(--color-text-secondary)">Actuel : ${existing.qty} parts @ ${existing.pru.toLocaleString('fr-FR',{minimumFractionDigits:2})}€</span>
-            <span>→</span>
-            <span style="color:var(--color-text-secondary)">Après : ${newQty} parts</span>
-            <span style="font-weight:800;color:#6366f1">Nouveau PRU : ${newPru.toLocaleString('fr-FR',{minimumFractionDigits:2})}€</span>
-            <span style="color:${newPnl>=0?'#16a34a':'#ef4444'};font-weight:700">${sign}${newPnl.toLocaleString('fr-FR',{minimumFractionDigits:2})}€ (${sign}${newPnlPct}%)</span>
-          </div>`;
-      } else if (pru > 0 && pru !== price) {
+      if (pru > 0 && pru !== price) {
         const sign = pnl >= 0 ? '+' : '';
-        pnlEl.innerHTML = `<span style="color:${pnl>=0?'#1a7f5a':'#cc2f26'}">PRU ${pru.toLocaleString('fr-FR',{minimumFractionDigits:2})}€ · Investi ${totalInvesti.toLocaleString('fr-FR',{minimumFractionDigits:2})}€ · P&L ${sign}${pnl.toLocaleString('fr-FR',{minimumFractionDigits:2})}€ (${sign}${pnlPct}%)</span>`;
+        pnlEl.innerHTML = `<span style="color:${pnl>=0?'#1a7f5a':'#cc2f26'}">
+          PRU ${pru.toLocaleString('fr-FR', {minimumFractionDigits:2})}€ · Investi ${totalInvesti.toLocaleString('fr-FR', {minimumFractionDigits:2})}€ · P&L ${sign}${pnl.toLocaleString('fr-FR', {minimumFractionDigits:2})}€ (${sign}${pnlPct}%)
+        </span>`;
       } else {
-        pnlEl.innerHTML = `<span style="color:#8e8e93">Investissement : ${totalInvesti.toLocaleString('fr-FR',{minimumFractionDigits:2})}€</span>`;
+        pnlEl.innerHTML = `<span style="color:#8e8e93">PRU = prix actuel · Investissement : ${totalInvesti.toLocaleString('fr-FR', {minimumFractionDigits:2})}€</span>`;
       }
     }
   } else {
@@ -2070,9 +1926,11 @@ function obSelectProfile(level) {
   // Visuels cartes
   Object.keys(OB_PROFILES).forEach(l => {
     const card = document.getElementById('obp-' + l);
-    const check = document.getElementById('obpc-' + l);
-    if (card) card.classList.toggle('selected', l === level);
-    if (check) check.textContent = l === level ? '✓' : '○';
+    if (card) {
+      card.style.borderColor = l === level ? '#1c1c1e' : '#e5e5ea';
+      card.style.background  = l === level ? '#f5f5f5' : '#fff';
+      card.style.transform   = l === level ? 'scale(1.02)' : 'scale(1)';
+    }
   });
 
   // Preview adaptatif
@@ -2210,10 +2068,10 @@ function obToggleGoal(goal) {
   const card  = document.getElementById('ob-goal-' + goal);
   const check = document.getElementById('ob-check-' + goal);
   if (obGoals[goal]) {
-    if (card)  card.classList.add('selected');
-    if (check) { check.textContent = '✓'; check.style.fontWeight = '800'; }
+    if (card)  { card.style.border = '2px solid #1c1c1e'; card.style.background = '#f5f5f5'; }
+    if (check) { check.textContent = '✓'; check.style.color = '#1c1c1e'; check.style.fontWeight = '800'; }
   } else {
-    if (card)  card.classList.remove('selected');
+    if (card)  { card.style.border = '2px solid #e5e5ea'; card.style.background = '#fff'; }
     if (check) { check.textContent = '○'; check.style.fontWeight = '400'; }
   }
   const hEl = document.getElementById('ob-horizon');
@@ -2230,7 +2088,7 @@ function obSelectRisk(risk) {
   ['faible','modere','eleve'].forEach(r => {
     const card  = document.getElementById('ob-risk-' + r);
     const check = document.getElementById('ob-rcheck-' + r);
-    if (card)  card.classList.toggle('selected', r===risk);
+    if (card)  { card.style.border = r===risk ? '2px solid #1c1c1e' : '2px solid #e5e5ea'; card.style.background = r===risk ? '#f5f5f5' : '#fff'; }
     if (check) { check.textContent = r===risk ? '✓' : '○'; check.style.fontWeight = r===risk ? '800' : '400'; }
   });
   const rEl = document.getElementById('ob-risk');
@@ -2244,7 +2102,6 @@ async function obOpenAction(ticker, name, amount) {
   // Ferme l'onboarding et sauvegarde
   document.getElementById('onboarding-modal').style.display = 'none';
   localStorage.setItem(OB_KEY, '1');
-  if (currentUser) localStorage.setItem('iq_onboarded_' + currentUser.id, '1');
   await obFinishSilent();
 
   // Ouvre aide décision avec tout pré-rempli
@@ -2387,7 +2244,6 @@ En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de j
 
 async function obFinish(action) {
   localStorage.setItem(OB_KEY, '1');
-  if (currentUser) localStorage.setItem('iq_onboarded_' + currentUser.id, '1');
   try { localStorage.removeItem('iq_ob_goals'); } catch {}
   document.getElementById('onboarding-modal').style.display = 'none';
 
@@ -2458,82 +2314,90 @@ async function obFinish(action) {
     validatedAt: new Date().toISOString()
   })); } catch {}
 
-  // Recharge les objectifs avant de naviguer
-  if (action === 'objectif' && !isDemo && currentUser) {
-    await loadObjective();
-  }
   nav(action);
 }
 
-
-// ===== MARKDOWN FORMATTER AGENT (style conversationnel épuré) =====
-function formatAgentMD(text) {
-  if (!text) return '';
-
-  text = text
-    .replace(/^#{1,3} (.+)$/gm, '<div style="font-size:13px;font-weight:700;color:var(--color-text,#fff);margin:10px 0 4px">$1</div>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--color-text,#fff)">$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em style="opacity:0.8">$1</em>')
-    .replace(/^---$/gm, '<div style="height:4px"></div>')
-    .replace(/^[-\u2022\u2192] (.+)$/gm, '<div style="display:flex;gap:6px;align-items:baseline;margin:3px 0;font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.75))"><span style="color:#3fb950;font-size:9px;flex-shrink:0;margin-top:4px">&#9679;</span><span>$1</span></div>')
-    .replace(/^(\d+)\. (.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0;font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.75))"><span style="color:#3fb950;font-weight:700;flex-shrink:0">$1.</span><span>$2</span></div>')
-    .replace(/\n\n/g, '<div style="height:6px"></div>')
-    .replace(/\n/g, '<br>');
-
-  return '<div style="font-size:14px;line-height:1.65;color:var(--color-text-secondary,rgba(255,255,255,0.85))">' + text + '</div>';
-}
 
 // ===== MARKDOWN FORMATTER =====
 function formatMD(text) {
   if (!text) return '';
 
-  // Tables markdown
+  // ── Parse les tableaux markdown en HTML ──
   function parseTable(block) {
     const lines = block.trim().split('\n').filter(l => l.trim());
     if (lines.length < 2) return null;
     const isSep = l => /^[\|\s\-:]+$/.test(l);
+    // Cherche la ligne séparateur
     const sepIdx = lines.findIndex(isSep);
     if (sepIdx < 1) return null;
     const parseRow = l => l.split('|').map(c => c.trim()).filter((c,i,a) => i > 0 && i < a.length-1);
     const headers = parseRow(lines[sepIdx - 1]);
-    const rows = lines.slice(sepIdx + 1).filter(l => l.includes('|'));
+    const rows    = lines.slice(sepIdx + 1).filter(l => l.includes('|')).map(parseRow);
     if (!headers.length) return null;
-    const thead = `<tr>${headers.map(h => `<th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;border-bottom:1px solid rgba(255,255,255,0.08)">${h}</th>`).join('')}</tr>`;
-    const tbody = rows.map(r => {
-      const cells = parseRow(r);
-      return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">${cells.map(c => {
-        const isNeg = /^-/.test(c) && c.includes('%') || c.includes('€') && c.startsWith('-');
-        const isPos = c.startsWith('+') || (c.includes('%') && !c.startsWith('-'));
-        const color = isNeg ? '#f87171' : isPos ? '#4ade80' : 'var(--color-text,#e6edf3)';
-        return `<td style="padding:10px 14px;font-size:13px;color:${color};font-weight:${isNeg||isPos?'700':'500'}">${c}</td>`;
-      }).join('')}</tr>`;
-    }).join('');
-    return `<div style="overflow-x:auto;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+
+    const thHtml = headers.map(h =>
+      `<th style="padding:8px 10px;font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;text-align:left;border-bottom:2px solid #f0f0f0;white-space:nowrap">${h}</th>`
+    ).join('');
+
+    const trHtml = rows.map((row, ri) =>
+      `<tr style="background:${ri%2===0?'#fff':'#fafafa'}">` +
+      row.map((cell, ci) => {
+        // Mise en valeur : ticker (tout caps court), montant (€), pourcentage
+        const isTicker  = /^[A-Z]{2,6}(\.[A-Z]{1,3})?$/.test(cell.replace(/\*\*/g,''));
+        const isAmount  = /\d+[€%]|\d+ €/.test(cell);
+        const bold      = cell.includes('**');
+        const clean     = cell.replace(/\*\*/g,'').replace(/\*/g,'');
+        let style = `padding:8px 10px;font-size:13px;border-bottom:1px solid #f5f5f5;`;
+        if (ci === 0 && isTicker) style += 'font-weight:800;color:#1c1c1e;font-family:monospace;font-size:12px;';
+        else if (bold || isAmount) style += 'font-weight:800;color:#1a7f5a;';
+        else style += 'color:#3c3c43;font-weight:500;';
+        return `<td style="${style}">${clean}</td>`;
+      }).join('') +
+      `</tr>`
+    ).join('');
+
+    return `<div style="overflow-x:auto;margin:10px 0 14px;border-radius:12px;border:1.5px solid #f0f0f0;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:#f9f9f9">${thHtml}</tr></thead>
+        <tbody>${trHtml}</tbody>
+      </table>
+    </div>`;
   }
 
-  // Remplacer les blocs table
-  text = text.replace(/((\|[^\n]+\n?){2,})/g, block => {
-    if (!block.includes('|')) return block;
-    const t = parseTable(block);
-    return t || block;
-  });
+  // Découpe le texte en blocs, repère les blocs tableau
+  const lines = text.split('\n');
+  const result = [];
+  let tableBuffer = [];
+  let inTable = false;
 
-  return text
-    // Titres
-    .replace(/^### (.+)$/gm, '<div style="font-size:14px;font-weight:800;color:var(--color-text,#fff);margin:14px 0 6px;letter-spacing:-0.02em">$1</div>')
-    .replace(/^## (.+)$/gm, '<div style="font-size:16px;font-weight:800;color:var(--color-text,#fff);margin:16px 0 8px;letter-spacing:-0.03em">$1</div>')
-    .replace(/^# (.+)$/gm, '<div style="font-size:18px;font-weight:900;color:var(--color-text,#fff);margin:16px 0 10px">$1</div>')
-    // Bold + italic
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--color-text,#fff);font-weight:700">$1</strong>')
+  for (const line of lines) {
+    const isTableLine = /^\s*\|/.test(line) || /^[\|\s\-:]+$/.test(line);
+    if (isTableLine) {
+      inTable = true;
+      tableBuffer.push(line);
+    } else {
+      if (inTable && tableBuffer.length) {
+        const tableHtml = parseTable(tableBuffer.join('\n'));
+        result.push(tableHtml || tableBuffer.join('<br>'));
+        tableBuffer = [];
+        inTable = false;
+      }
+      result.push(line);
+    }
+  }
+  if (tableBuffer.length) {
+    const tableHtml = parseTable(tableBuffer.join('\n'));
+    result.push(tableHtml || tableBuffer.join('<br>'));
+  }
+
+  return result.join('\n')
+    .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #f0f0f0;margin:12px 0">')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#1c1c1e;font-weight:800">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Séparateur
-    .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:12px 0">')
-    // Alertes ⚠️
-    .replace(/^⚠️(.+)$/gm, '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:10px 14px;margin:8px 0;font-size:13px;color:#fbbf24;display:flex;gap:8px;align-items:flex-start">⚠️<span>$1</span></div>')
-    // Listes à puce
-    .replace(/^[-•] (.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;align-items:flex-start"><span style="color:#3fb950;font-weight:800;flex-shrink:0;margin-top:1px">→</span><span style="font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.7))">$1</span></div>')
-    // Listes numérotées
-    .replace(/^(\d+)\. (.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;align-items:flex-start"><span style="background:rgba(63,185,80,0.15);color:#3fb950;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">$1</span><span style="font-size:13px;color:var(--color-text-secondary,rgba(255,255,255,0.7))">$2</span></div>')
+    .replace(/^>{1,2}\s*(.+)$/gm, '<div style="background:#f0faf6;border-left:3px solid #1a7f5a;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:13px;color:#065f46;font-weight:600">$1</div>')
+    .replace(/^#{1,3}\s+(.+)$/gm, '<div style="font-size:15px;font-weight:800;color:#1c1c1e;margin:18px 0 8px;letter-spacing:-0.2px;display:flex;align-items:center;gap:8px">$1</div>')
+    .replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;font-size:13px"><span style="color:#1a7f5a;font-weight:800;flex-shrink:0;margin-top:1px">→</span><span style="color:#3c3c43">$1</span></div>')
+    .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:10px;margin:6px 0;align-items:flex-start"><span style="background:#1c1c1e;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px">$1</span><span style="font-size:13px;color:#3c3c43">$2</span></div>')
     .replace(/\n\n/g, '<div style="height:8px"></div>')
     .replace(/\n/g, '<br>');
 }
@@ -3263,29 +3127,15 @@ async function renderEntreprises() {
   const myCompanies = [...new Set(positions.map(p => ({ ticker: p.name, name: p.name })))];
   const allCompanies = [...myCompanies, ...featured.filter(f => !myCompanies.find(m => m.ticker === f.ticker))].slice(0, 12);
 
-  const isDarkEnt = document.documentElement.getAttribute('data-theme') === 'dark';
-  const inputBg = isDarkEnt ? 'var(--color-surface)' : '#fafafa';
-  const inputBorder = isDarkEnt ? 'var(--color-border)' : '#e5e5ea';
-  const inputTxt = isDarkEnt ? 'var(--color-text)' : '#1c1c1e';
-  const dropBg = isDarkEnt ? 'var(--color-surface)' : '#fff';
-  const dropBorder = isDarkEnt ? 'var(--color-border)' : '#e5e5ea';
-
   list.innerHTML = `
     <!-- Barre de recherche -->
-    <div style="display:flex;gap:8px;margin-bottom:16px">
-      <div style="position:relative;flex:1">
-        <input type="text" id="ent-search" placeholder="🔍 Rechercher une entreprise (ex: Apple, LVMH, Soitec...)"
-          style="width:100%;padding:13px 16px;border-radius:14px;border:2px solid ${inputBorder};font-size:14px;outline:none;box-sizing:border-box;background:${inputBg};color:${inputTxt}"
-          oninput="searchEntreprise(this.value)"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();const first=document.querySelector('#ent-search-results [data-ticker]');if(first)first.click();else searchEntrepriseNews(this.value,this.value)}"
-          onfocus="this.style.borderColor='${inputTxt}'"
-          onblur="this.style.borderColor='${inputBorder}'">
-        <div id="ent-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:${dropBg};border-radius:12px;border:2px solid ${dropBorder};z-index:1000;max-height:260px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)"></div>
-      </div>
-      <button onclick="const v=document.getElementById('ent-search').value;if(v.length>1)searchEntrepriseNews(v,v)"
-        style="padding:12px 18px;background:var(--color-text,#1c1c1e);color:var(--color-bg,#fff);border:none;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">
-        Rechercher
-      </button>
+    <div style="position:relative;margin-bottom:16px">
+      <input type="text" id="ent-search" placeholder="🔍 Rechercher une entreprise (ex: Apple, LVMH, Tesla...)"
+        style="width:100%;padding:13px 16px;border-radius:14px;border:2px solid #e5e5ea;font-size:14px;outline:none;box-sizing:border-box;background:#fafafa"
+        oninput="searchEntreprise(this.value)"
+        onfocus="this.style.borderColor='#1c1c1e';this.style.background='#fff'"
+        onblur="this.style.borderColor='#e5e5ea';this.style.background='#fafafa'">
+      <div id="ent-search-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border-radius:12px;border:2px solid #e5e5ea;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.1)"></div>
     </div>
 
     <!-- Actualités par entreprise -->
@@ -3417,7 +3267,7 @@ function searchEntreprise(query) {
     try {
       const res = await fetch('/api/search?q=' + encodeURIComponent(query));
       const data = await res.json();
-      const results = (data.results || data.quotes || []).slice(0, 6);
+      const results = (data.quotes || []).slice(0, 6);
       if (!results.length) { drop.style.display = 'none'; return; }
       drop.style.display = 'block';
       drop.innerHTML = results.map(r => `
@@ -3640,42 +3490,10 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
     const oppoSignaux = await fetchSignaux(oppoTickers);
     const oppoLoader = document.getElementById('oppo-loading');
     if (oppoLoader) {
-      const isPrem = isPremiumUser();
-      const visibleSignaux = isPrem ? oppoSignaux : oppoSignaux.slice(0, 2);
-      const hiddenCount = oppoSignaux.length - visibleSignaux.length;
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
-      let html = visibleSignaux.map(s => signalCard(s, false)).join('');
-
-      // Bloc freemium si pas premium
-      if (!isPrem && hiddenCount > 0) {
-        html += `
-        <div style="background:${isDark?'linear-gradient(135deg,#0d0d18,#111120)':'linear-gradient(135deg,#f8f9ff,#f0f4ff)'};border:1px solid ${isDark?'rgba(99,102,241,0.25)':'rgba(99,102,241,0.2)'};border-radius:16px;padding:20px;margin-top:8px;text-align:center">
-          <div style="font-size:28px;margin-bottom:10px">🔒</div>
-          <div style="font-size:15px;font-weight:800;color:${isDark?'#fff':'#1c1c1e'};margin-bottom:6px">
-            +${hiddenCount} signaux supplémentaires
-          </div>
-          <div style="font-size:13px;color:${isDark?'rgba(255,255,255,0.5)':'#8e8e93'};margin-bottom:16px;line-height:1.5">
-            Accède à tous les signaux IA avec leurs objectifs de prix,<br>stop-loss et analyses complètes.
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;text-align:left">
-            ${['⚡ Signaux illimités sur toutes les opportunités','🎯 Objectifs de prix et stop-loss précis','📊 Briefing quotidien personnalisé','🤖 Agent IA sans limite de messages'].map(f=>`
-            <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:${isDark?'rgba(255,255,255,0.7)':'#3c3c43'}">
-              <span style="color:#6366f1">${f.split(' ')[0]}</span>
-              <span>${f.split(' ').slice(1).join(' ')}</span>
-            </div>`).join('')}
-          </div>
-          <button onclick="showPremiumModal('signaux')" style="width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(99,102,241,0.3)">
-            ✦ Voir tous les signaux — Passer à Premium
-          </button>
+      oppoLoader.outerHTML = oppoSignaux.map(s => signalCard(s, false)).join('') +
+        `<div style="padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
+          ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
         </div>`;
-      }
-
-      html += `<div style="padding:10px 14px;background:${isDark?'rgba(255,255,255,0.04)':'#f5f5f5'};border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
-        ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
-      </div>`;
-
-      oppoLoader.outerHTML = html;
     }
   } catch(e) {
     list.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
@@ -3776,18 +3594,6 @@ function unfollowCompany(ticker, name) {
 
 
 // ===== COMPANY DETAIL PAGE =====
-
-// Alias appelé depuis les cards actualités → ouvre la fiche entreprise
-function showEntrepriseDetail(ticker, name) {
-  // Navigue vers la page actualités si besoin, puis ouvre la fiche
-  if (document.getElementById('news-page-content')) {
-    openCompany(ticker, name, '');
-  } else {
-    nav('news');
-    setTimeout(() => openCompany(ticker, name, ''), 300);
-  }
-}
-
 async function openCompany(ticker, name, sector) {
   activeCompany = { ticker, name, sector };
   const main = document.getElementById('news-page-content');
@@ -3862,149 +3668,35 @@ async function fetchCompanyPrice(ticker) {
 async function generateCompanyAnalysis(ticker, name, sector) {
   const inPortfolio = positions.find(p => p.name === ticker);
   const portfolioCtx = inPortfolio ? `Je détiens ${inPortfolio.qty} parts à PRU ${inPortfolio.pru}€, prix actuel ${inPortfolio.price}€.` : '';
-  const prompt = `Analyse ${name} (${ticker}) pour un investisseur débutant.
+  const prompt = `Génère une analyse complète et détaillée de ${name} (${ticker}) pour un investisseur débutant prudent.
 Profil : ${HL[profile.horizon]}, risque ${RL[profile.risk]}. ${portfolioCtx}
-Réponds UNIQUEMENT en JSON valide (sans markdown) :
-{
-  "resume": "1 phrase résumant ce que fait l'entreprise",
-  "signal": "acheter|garder|eviter",
-  "signal_raison": "1 phrase expliquant le signal",
-  "forts": ["point fort 1 (max 8 mots)", "point fort 2", "point fort 3"],
-  "risques": ["risque 1 (max 8 mots)", "risque 2", "risque 3"],
-  "verdict": "2 phrases max de verdict pour ce profil",
-  "score": 7
-}
-score = note /10 pour ce profil. signal = acheter/garder/eviter selon profil.`;
+Structure ton analyse en sections claires :
+1. **Présentation** — ce que fait l'entreprise en 2-3 phrases simples
+2. **Points forts** — 3 raisons d'investir
+3. **Points de risque** — 3 risques principaux
+4. **Signal** — Acheter / Garder / Éviter avec explication
+5. **Verdict** — recommandation finale adaptée au profil débutant prudent
+Sois pédagogue, concis et direct. Utilise des termes simples.`;
 
-  const raw = await callClaude(prompt, 'Tu es analyste financier. Réponds UNIQUEMENT en JSON valide, sans markdown ni backticks.');
+  const r = await callClaude(prompt);
   const el = document.getElementById('co-analysis');
-  if (!el) return;
-
-  try {
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
-    const d = JSON.parse(clean.slice(s, e+1));
-
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const surf = isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc';
-    const bord = isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
-    const txt = isDark ? 'var(--color-text)' : '#0f172a';
-    const sub = isDark ? 'var(--color-text-secondary)' : '#64748b';
-
-    const sigCfg = {
-      acheter: { color:'#16a34a', bg: isDark?'rgba(22,163,74,0.12)':'#f0fdf4', icon:'↑', label:'ACHETER' },
-      garder:  { color:'#f59e0b', bg: isDark?'rgba(245,158,11,0.12)':'#fffbeb', icon:'→', label:'GARDER' },
-      eviter:  { color:'#ef4444', bg: isDark?'rgba(239,68,68,0.12)':'#fef2f2', icon:'↓', label:'ÉVITER' },
-    };
-    const sig = sigCfg[d.signal] || sigCfg.garder;
-
-    // Score bar
-    const score = Math.max(1, Math.min(10, d.score || 5));
-    const scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#f59e0b' : '#ef4444';
-    const scoreBar = Array.from({length:10}, (_,i) =>
-      `<div style="flex:1;height:6px;border-radius:2px;background:${i < score ? scoreColor : (isDark?'rgba(255,255,255,0.1)':'#e5e7eb')}"></div>`
-    ).join('');
-
-    // Update signal metric card
+  if (el) {
+    // Format the response nicely
+    const formatted = formatMD(r);
+    el.innerHTML = `<div style="font-size:13px;color:#3c3c43;line-height:1.7;font-weight:500"><p>${formatted}</p></div>
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary" style="font-size:13px;padding:10px 16px" onclick="openDecision('${ticker}','acheter')">Analyser pour investir →</button>
+        <button class="btn-secondary" style="font-size:13px;padding:10px 16px" onclick="toggleFavorite('${ticker}','${activeCompany?.name||ticker}','${activeCompany?.sector||''}');updateFavBtn('${ticker}')">${isFavorite(ticker)?'★ Suivi':'☆ Suivre'}</button>
+      </div>`;
+    // Update signal
     const signalEl = document.getElementById('co-signal');
-    if (signalEl) { signalEl.textContent = sig.icon + ' ' + sig.label; signalEl.className = 'metric-val ' + (d.signal==='acheter'?'green':d.signal==='eviter'?'red':''); }
-
-    el.innerHTML = `
-      <!-- Signal banner -->
-      <div style="background:${sig.bg};border:1px solid ${sig.color}30;border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
-        <div style="width:36px;height:36px;background:${sig.color}20;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${sig.icon}</div>
-        <div>
-          <div style="font-size:11px;font-weight:800;color:${sig.color};letter-spacing:0.08em">${sig.label}</div>
-          <div style="font-size:13px;color:${txt};font-weight:500;margin-top:2px">${d.signal_raison}</div>
-        </div>
-      </div>
-
-      <!-- Résumé -->
-      <div style="font-size:13px;color:${sub};line-height:1.6;margin-bottom:14px">${d.resume}</div>
-
-      <!-- Score -->
-      <div style="margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.06em">Score pour ton profil</span>
-          <span style="font-size:13px;font-weight:800;color:${scoreColor}">${score}/10</span>
-        </div>
-        <div style="display:flex;gap:3px">${scoreBar}</div>
-      </div>
-
-      <!-- Points forts + risques -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        <div style="background:${isDark?'rgba(22,163,74,0.06)':'#f0fdf4'};border:1px solid ${isDark?'rgba(22,163,74,0.15)':'#bbf7d0'};border-radius:10px;padding:12px">
-          <div style="font-size:10px;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">✦ Points forts</div>
-          ${(d.forts||[]).map(f=>`<div style="font-size:12px;color:${txt};margin-bottom:5px;display:flex;gap:6px;align-items:flex-start"><span style="color:#16a34a;flex-shrink:0">✓</span>${f}</div>`).join('')}
-        </div>
-        <div style="background:${isDark?'rgba(239,68,68,0.06)':'#fef2f2'};border:1px solid ${isDark?'rgba(239,68,68,0.15)':'#fecaca'};border-radius:10px;padding:12px">
-          <div style="font-size:10px;font-weight:800;color:#ef4444;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">⚠ Risques</div>
-          ${(d.risques||[]).map(r=>`<div style="font-size:12px;color:${txt};margin-bottom:5px;display:flex;gap:6px;align-items:flex-start"><span style="color:#ef4444;flex-shrink:0">✗</span>${r}</div>`).join('')}
-        </div>
-      </div>
-
-      <!-- Verdict -->
-      <div style="background:${surf};border:1px solid ${bord};border-radius:10px;padding:12px;margin-bottom:14px">
-        <div style="font-size:10px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Verdict</div>
-        <div style="font-size:13px;color:${txt};line-height:1.6">${d.verdict}</div>
-      </div>
-
-      <!-- CTA -->
-      <div style="display:flex;gap:8px">
-        <button style="flex:1;padding:11px;background:${isDark?'var(--color-text)':'#0f172a'};color:${isDark?'var(--color-bg)':'#fff'};border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer" onclick="openDecision('${ticker}','acheter')">
-          Analyser pour investir →
-        </button>
-        <button style="padding:11px 14px;background:${surf};color:${sub};border:1px solid ${bord};border-radius:10px;font-size:13px;font-weight:600;cursor:pointer" onclick="showFullAnalysis('${ticker}','${name}')">
-          Voir tout
-        </button>
-      </div>`;
-
-  } catch(e) {
-    // Fallback texte brut si JSON échoue
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    el.innerHTML = `<div style="font-size:13px;color:var(--color-text-secondary);line-height:1.7">${formatMD(raw)}</div>
-      <div style="margin-top:12px;display:flex;gap:8px">
-        <button style="padding:11px 16px;background:${isDark?'var(--color-text)':'#0f172a'};color:${isDark?'var(--color-bg)':'#fff'};border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer" onclick="openDecision('${ticker}','acheter')">Analyser pour investir →</button>
-      </div>`;
+    if (signalEl) {
+      const txt = r.toLowerCase();
+      if (txt.includes('acheter') || txt.includes('opportunité')) { signalEl.textContent = '↑ Acheter'; signalEl.className = 'metric-val green'; }
+      else if (txt.includes('éviter') || txt.includes('vendre')) { signalEl.textContent = '↓ Éviter'; signalEl.className = 'metric-val red'; }
+      else { signalEl.textContent = '→ Garder'; signalEl.className = 'metric-val'; }
+    }
   }
-}
-
-// Affiche l'analyse complète dans un modal
-function showFullAnalysis(ticker, name) {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const surf = isDark ? '#0f1117' : '#fff';
-  const txt = isDark ? 'var(--color-text)' : '#0f172a';
-  const bord = isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
-
-  let modal = document.getElementById('full-analysis-modal');
-  if (!modal) { modal = document.createElement('div'); modal.id = 'full-analysis-modal'; document.body.appendChild(modal); }
-
-  const coAnalysis = document.getElementById('co-analysis');
-  // Copie le contenu sans les boutons CTA (pour éviter les appels en double)
-  const tmpDiv = document.createElement('div');
-  tmpDiv.innerHTML = coAnalysis ? coAnalysis.innerHTML : '';
-  // Retirer le div des boutons (dernier enfant avec les boutons)
-  const btnDiv = tmpDiv.querySelector('div:last-child');
-  if (btnDiv && btnDiv.querySelector('button')) btnDiv.remove();
-  const analysisContent = tmpDiv.innerHTML;
-
-  modal.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.style.display='none'">
-      <div style="background:${surf};border-radius:20px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.4);scrollbar-width:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid ${bord};position:sticky;top:0;background:${surf};z-index:1">
-          <div style="font-size:15px;font-weight:800;color:${txt}">Analyse complète — ${name}</div>
-          <button onclick="document.getElementById('full-analysis-modal').style.display='none'" style="background:rgba(128,128,128,0.15);border:none;border-radius:8px;width:28px;height:28px;font-size:16px;cursor:pointer;color:${txt}">×</button>
-        </div>
-        <div style="padding:20px">${analysisContent}</div>
-        <div style="padding:0 20px 20px">
-          <button onclick="document.getElementById('full-analysis-modal').style.display='none';openDecision('${ticker}','acheter')"
-            style="width:100%;padding:13px;background:${isDark?'var(--color-text)':'#0f172a'};color:${isDark?'var(--color-bg)':'#fff'};border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">
-            Analyser pour investir →
-          </button>
-        </div>
-      </div>
-    </div>`;
-  modal.style.display = 'block';
 }
 
 async function fetchCompanyNews(ticker, name) {
@@ -4134,15 +3826,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (session) await initApp(session.user);
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-      // Ne pas relancer initApp si déjà initialisé (retour sur l'onglet)
-      if (!currentUser) {
-        await initApp(session.user);
-      } else {
-        // Juste rafraîchir le profil silencieusement
-        loadProfile();
-      }
-    }
+    if (event === 'SIGNED_IN' && session) await initApp(session.user);
     if (event === 'SIGNED_OUT') showAuthScreen();
   });
 });
@@ -4157,7 +3841,6 @@ async function initApp(user) {
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
   await loadProfile(); await loadPositions(); await loadObjective();
-  if (isPremiumUser()) setTimeout(initPushNotifications, 2000);
   try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory:', e); }
   nav('home');
   // Si objectif chargé depuis Supabase, prêt à afficher au clic sur Objectif
@@ -4169,22 +3852,12 @@ async function initApp(user) {
     })); } catch {}
   }
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
-  // Vérifie si nouvel utilisateur (Google OAuth ou email)
-  setTimeout(async () => {
-    const { data: profile } = await sb.from('profiles').select('id').eq('id', currentUser.id).maybeSingle();
-    // Afficher le tuto uniquement si compte nouveau ET jamais vu
-    const obKey = 'iq_onboarded_' + currentUser.id; // clé liée à l'user, pas global
-    if (!profile && !localStorage.getItem(obKey)) {
-      showOnboarding();
-    }
-  }, 500);
-  checkStripeReturn();
+  setTimeout(() => showOnboarding(), 500);
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
   if ('Notification' in window) Notification.requestPermission();
   initTheme();
-  setTimeout(initDevPremiumBtn, 800); // après chargement currentUser
   } catch(e) { console.error('initApp error:', e); alert('Erreur de chargement: ' + e.message); }
 }
 
@@ -4287,32 +3960,18 @@ async function changePassword() {
 async function loadProfile() {
   const { data } = await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   if (data) {
-    profile = {
-      bankroll: data.bankroll||5000,
-      horizon: data.horizon||'moyen',
-      risk: data.risk||'faible',
-      notif: data.notif||'daily',
-      isPremium: data.is_premium||false,
-      premiumSince: data.premium_since||null
-    };
-    const sb_el = id => document.getElementById(id);
-    if (sb_el('s-bankroll')) sb_el('s-bankroll').value = profile.bankroll;
-    if (sb_el('s-horizon')) sb_el('s-horizon').value = profile.horizon;
-    if (sb_el('s-risk')) sb_el('s-risk').value = profile.risk;
-    if (sb_el('s-notif')) sb_el('s-notif').value = profile.notif;
-    if (typeof updateSettingsDisplays === 'function') updateSettingsDisplays();
-    if (typeof updatePremiumUI === 'function') updatePremiumUI();
+    profile = { bankroll: data.bankroll||5000, horizon: data.horizon||'moyen', risk: data.risk||'faible', notif: data.notif||'daily' };
+    document.getElementById('s-bankroll').value = profile.bankroll;
+    document.getElementById('s-horizon').value = profile.horizon;
+    document.getElementById('s-risk').value = profile.risk;
+    if (document.getElementById('s-notif')) document.getElementById('s-notif').value = profile.notif;
   }
 }
 async function saveProfile() {
-  const bEl = document.getElementById('s-bankroll');
-  const hEl = document.getElementById('s-horizon');
-  const rEl = document.getElementById('s-risk');
-  const nEl = document.getElementById('s-notif');
-  if (bEl) profile.bankroll = parseFloat(bEl.value)||5000;
-  if (hEl) profile.horizon = hEl.value;
-  if (rEl) profile.risk = rEl.value;
-  if (nEl) profile.notif = nEl.value||'daily';
+  profile.bankroll = parseFloat(document.getElementById('s-bankroll').value)||5000;
+  profile.horizon = document.getElementById('s-horizon').value;
+  profile.risk = document.getElementById('s-risk').value;
+  profile.notif = document.getElementById('s-notif')?.value||'daily';
   if (!isDemo) await sb.from('profiles').upsert({ id:currentUser.id, ...profile });
 }
 async function loadPositions() {
@@ -4404,9 +4063,6 @@ async function refreshPrices() {
     showToast('✓ ' + updated + ' prix mis à jour');
     // Recalcule les alertes prix avec les nouveaux cours (remplace les anciennes)
     checkPriceAlerts();
-    // Refresh agent changes avec les nouveaux prix
-    if (typeof renderAgentChanges === 'function') renderAgentChanges();
-    if (typeof renderHeroMetrics === 'function') renderHeroMetrics();
     // Refresh bloomberg ticker with latest prices
     const strip = document.getElementById('bloomberg-strip');
     if (strip) {
@@ -4476,24 +4132,16 @@ function showTickerFallback() {
 }
 
 function checkPriceAlerts() {
-  // Charge les alertes déjà vues (mémoire 24h)
-  let seen = {};
-  try { seen = JSON.parse(localStorage.getItem('iq_seen_alerts') || '{}'); } catch {}
-  const now = Date.now();
-  const TTL = 24 * 3600 * 1000; // 24h
-
-  // Nettoie les entrées expirées
-  Object.keys(seen).forEach(k => { if (now - seen[k] > TTL) delete seen[k]; });
-
-  // Vide les anciennes alertes prix
+  // Vide d'abord TOUTES les anciennes alertes prix
   notifications = notifications.filter(n => n.type !== 'prix');
 
-  // Grouper par ticker
+  // Grouper par ticker pour éviter les doublons (positions avec plusieurs lignes)
   const grouped = {};
   positions.forEach(p => {
     if (!grouped[p.name]) {
       grouped[p.name] = { name: p.name, price: p.price, alert_price: p.alert_price };
     }
+    // Garde l'alerte la plus haute (seuil le plus récent)
     if (p.alert_price && (!grouped[p.name].alert_price || p.alert_price > grouped[p.name].alert_price)) {
       grouped[p.name].alert_price = p.alert_price;
       grouped[p.name].price = p.price;
@@ -4501,32 +4149,21 @@ function checkPriceAlerts() {
   });
 
   Object.values(grouped).forEach(g => {
-    if (!g.alert_price || g.price > g.alert_price) return;
-    const alertKey = `${g.name}_${g.alert_price}`;
-    // Si déjà vu dans les dernières 24h → skip
-    if (seen[alertKey] && now - seen[alertKey] < TTL) return;
-
-    const notif = {
-      titre: `⚠ Alerte prix — ${g.name}`,
-      texte: `${g.name} est à ${fmt(g.price)}€, sous ton seuil d'alerte de ${fmt(g.alert_price)}€.`,
-      action: `Consulter ${g.name} dans ton portefeuille`,
-      impact: 'high',
-      heure: 'Maintenant',
-      type: 'prix',
-      key: alertKey
-    };
-    notifications.unshift(notif);
-
-    // Marque comme vue
-    seen[alertKey] = now;
-
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(`InvestIQ — Alerte ${g.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
+    if (g.alert_price && g.price <= g.alert_price) {
+      const notif = {
+        titre: `⚠ Alerte prix — ${g.name}`,
+        texte: `${g.name} est à ${fmt(g.price)}€, sous ton seuil d'alerte de ${fmt(g.alert_price)}€.`,
+        action: `Consulter ${g.name} dans ton portefeuille`,
+        impact: 'high',
+        heure: 'Maintenant',
+        type: 'prix'
+      };
+      notifications.unshift(notif);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(`InvestIQ — Alerte ${g.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
+      }
     }
   });
-
-  // Sauvegarde les vues
-  try { localStorage.setItem('iq_seen_alerts', JSON.stringify(seen)); } catch {}
 
   if (notifications.length) document.getElementById('notif-dot').classList.add('show');
   renderNotifications();
@@ -4534,24 +4171,15 @@ function checkPriceAlerts() {
 
 // ===== CHAT MEMORY =====
 function loadChatHistory() {
-  // Vider l'ancien cache si format v1 (markdown brut)
-  const ver = localStorage.getItem('iq_chat_ver');
-  if (ver !== '2') { localStorage.removeItem(CACHE_CHAT); localStorage.setItem('iq_chat_ver','2'); }
   try { chatHistory = JSON.parse(localStorage.getItem(CACHE_CHAT)||'[]'); } catch { chatHistory = []; }
   const chat = document.getElementById('ai-chat');
-  if (!chat) return;
   if (chatHistory.length > 0) {
-    chat.innerHTML = chatHistory.map(m =>
-      m.role === 'user'
-        ? `<div class="bubble user">${m.content}</div>`
-        : `<div class="bubble bot" style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:16px;padding:16px 18px">${formatAgentMD(m.content)}</div>`
-    ).join('');
-    const qbtns = document.getElementById('qbtns');
-    if (qbtns) qbtns.style.display = 'none';
+    chat.innerHTML = chatHistory.map(m => `<div class="bubble ${m.role==='user'?'user':'bot'}">${m.content}</div>`).join('');
+    document.getElementById('qbtns').style.display = 'none';
   }
 }
 function saveChatHistory() {
-  try { try { localStorage.setItem(CACHE_CHAT, JSON.stringify(chatHistory.slice(-20))); } catch(e) {} } catch {}
+  try { localStorage.setItem(CACHE_CHAT, JSON.stringify(chatHistory.slice(-20))); } catch {}
 }
 function clearChat() {
   chatHistory = [];
@@ -4760,13 +4388,6 @@ function getCompanyLogo(ticker, name, size, radius) {
     'LR.PA':'legrand.com',
     'EDF.PA':'edf.fr',
     'ENGI.PA':'engie.com',
-    'STM.DE':'st.com','STM.PA':'st.com',
-    'SPPW.DE':'ssga.com',
-    'AMEM.DE':'amundi.com',
-    'SWRD.L':'ssga.com','SWRD.UK':'ssga.com',
-    'ALHPI.PA':'hopium.fr','ALHPI.FR':'hopium.fr',
-    'TTE.PA':'totalenergies.com',
-    'VWCE':'vanguard.com',
   };
   const LCOLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6','#f97316'];
   const c = LCOLORS[(ticker||'').charCodeAt(0) % LCOLORS.length];
@@ -4775,52 +4396,29 @@ function getCompanyLogo(ticker, name, size, radius) {
   const fallback = '<div style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px;background:'+c+'20;border:1px solid '+c+'40;display:flex;align-items:center;justify-content:center;font-size:'+Math.round(s*0.35)+'px;font-weight:800;color:'+c+';flex-shrink:0">'+init+'</div>';
   // Logos SVG custom pour ETF et tickers sans favicon
   const svgLogos = {
-    // ETF — TradingView ne les gère pas bien, on garde les SVG custom
-    'IWDA.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
+    'IWDA.L': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
     'IWDA.AS': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
-    'CSPX.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
-    'EIMI.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00529B"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">iS</text></svg>',
     'VWCE.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#CC0000"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">VG</text></svg>',
-    'VUAA.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#CC0000"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">VG</text></svg>',
-    'SPPW.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
-    'SWRD.L':  '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
-    'SWRD.UK': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#6AC43F"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">SPDR</text></svg>',
-    'AMEM.DE': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#FF6600"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="Arial">AMU</text></svg>',
-    'ALHPI.PA':'<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a2e"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#4ade80" font-family="Arial">HOP</text></svg>',
-    'ALHPI.FR':'<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a2e"/><text x="18" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#4ade80" font-family="Arial">HOP</text></svg>',
-    // Actions avec logo TradingView → pas de SVG custom, TradingView prend le relais
+    'MC.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a1a"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#c9a96e" font-family="Arial">LV</text></svg>',
+    'LVMH': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a1a"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#c9a96e" font-family="Arial">LV</text></svg>',
+    'MCPA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#1a1a1a"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#c9a96e" font-family="Arial">LV</text></svg>',
+    'SOI.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#0055A4"/><text x="18" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" font-family="Arial">SOI</text></svg>',
+    'FDJ.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00843D"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">FDJ</text></svg>',
   };;
   if (svgLogos[ticker]) {
     return '<div style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">'+svgLogos[ticker].replace('36 36', s+' '+s).replace('rx="8"','rx="'+r+'"')+'</div>';
   }
   const t = (ticker||'').toUpperCase();
   const base = t.replace(/\.PA$|\.DE$|\.L$|\.AS$|\.MI$|\.SW$/,'');
+  const domain = domainMap[ticker] || domainMap[t] || domainMap[base];
+  if (!domain) return fallback;
+  // Essayer plusieurs sources de logos
+  const logoUrl = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
   const isDarkLogo = document.documentElement.getAttribute('data-theme') === 'dark';
   const logoBg = isDarkLogo ? '#1a2230' : '#f4f4f5';
-
-  // 1. TradingView logos — vrais logos SVG de marque
-  const tvUrl = getTVLogoUrl(ticker) || getTVLogoUrl(t);
-  if (tvUrl) {
-    return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:4px;box-sizing:border-box">
-      <img src="${tvUrl}" alt="${init}"
-        style="width:100%;height:100%;object-fit:contain;border-radius:${r-2}px"
-        onerror="_logoFallback(this,'${init}','${c}')">
-    </div>`;
-  }
-
-  // 2. Google Favicons pour les domaines connus
-  const domain = domainMap[ticker] || domainMap[t] || domainMap[base];
-  if (domain) {
-    const googleUrl = 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=128';
-    return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:4px;box-sizing:border-box">
-      <img src="${googleUrl}" alt="${init}"
-        style="width:100%;height:100%;object-fit:contain;border-radius:${r-2}px"
-        onerror="_logoFallback(this,'${init}','${c}')">
-    </div>`;
-  }
-
-  return fallback;
-  const _unused = 0;
+  return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:3px;box-sizing:border-box">
+    <img src="${logoUrl}" alt="${init}" style="width:100%;height:100%;object-fit:contain;border-radius:${r-2}px" onerror="_logoFallback(this,'${init}','${c}')">
+  </div>`;
 }
 
 function _logoFallback(img, text, color) {
@@ -4837,41 +4435,11 @@ function selectIntent(btn, intent) {
 }
 
 function setDecisionAmount(val) {
-  const num = parseInt(String(val).replace(/[^0-9]/g,''));
+  const num = parseInt(val.replace(/[^0-9]/g,''));
   const el = document.getElementById('d-amount-display');
   if (el) el.textContent = num.toLocaleString('fr-FR') + ' €';
   const slider = document.getElementById('d-amount-slider');
-  if (slider) slider.value = num;
-  if (document.getElementById('d-amount')) document.getElementById('d-amount').value = num;
-  document.querySelectorAll('.d-amount-pill').forEach(b => {
-    const isActive = parseInt(b.textContent.replace(/[^0-9]/g,'')) === num;
-    b.style.background = isActive ? 'rgba(63,185,80,0.1)' : 'var(--color-bg-subtle)';
-    b.style.borderColor = isActive ? '#3fb950' : 'var(--color-border)';
-    b.style.color = isActive ? '#3fb950' : 'var(--color-text-secondary)';
-  });
-}
-
-function updateDecisionAmountRaw(val) {
-  const num = Math.round(parseInt(val)/50)*50;
-  const el = document.getElementById('d-amount-display');
-  if (el) el.textContent = num.toLocaleString('fr-FR') + ' €';
-  document.querySelectorAll('.d-amount-pill').forEach(b => {
-    const isActive = parseInt(b.textContent.replace(/[^0-9]/g,'')) === num;
-    b.style.background = isActive ? 'rgba(63,185,80,0.1)' : 'var(--color-bg-subtle)';
-    b.style.borderColor = isActive ? '#3fb950' : 'var(--color-border)';
-    b.style.color = isActive ? '#3fb950' : 'var(--color-text-secondary)';
-  });
-}
-
-function runDecision() {
-  const intentBtn = document.querySelector('#d-intents .d-intent-btn.active');
-  decisionIntention = intentBtn ? intentBtn.getAttribute('data-intent') : 'neutre';
-  const amount = parseInt((document.getElementById('d-amount-display')?.textContent||'500').replace(/[^0-9]/g,''))||500;
-  if (document.getElementById('d-pct')) document.getElementById('d-pct').value = Math.round(amount/(profile.bankroll||5000)*100);
-  if (document.getElementById('d-amount')) document.getElementById('d-amount').value = amount;
-  const r = document.getElementById('d-result');
-  if (r) r.style.display = 'block';
-  analyseDecision();
+  if (slider) slider.value = Math.min(num/100, 100);
 }
 
 function updateDecisionAmount(val) {
@@ -4907,6 +4475,618 @@ function prefillDecision(ticker, type) {
   if (input) { input.value = ticker; input.dispatchEvent(new Event('input')); }
 }
 
+
+// ===== BILAN FINANCIER PREMIUM =====
+
+let bilanData = {};
+let bilanStep = 0;
+
+const BILAN_STEPS = [
+  { title: 'Situation personnelle', icon: '👤' },
+  { title: 'Revenus & charges', icon: '💳' },
+  { title: 'Patrimoine existant', icon: '🏦' },
+  { title: 'Habitudes d\'investissement', icon: '📊' },
+  { title: 'Objectifs de vie', icon: '🎯' },
+  { title: 'Tolérance au risque', icon: '⚖️' },
+  { title: 'Horizon & contraintes', icon: '📅' },
+  { title: 'Analyse IA', icon: '🤖' },
+];
+
+function openBilan() {
+  bilanData = {};
+  bilanStep = 0;
+  document.getElementById('bilan-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  renderBilanStep(0);
+}
+
+function closeBilan() {
+  document.getElementById('bilan-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function updateBilanProgress(step) {
+  const total = BILAN_STEPS.length;
+  for (let i = 0; i < total; i++) {
+    const bar = document.getElementById('bpb-' + i);
+    if (bar) bar.style.background = i <= step ? '#3fb950' : 'rgba(255,255,255,0.15)';
+  }
+  const label = document.getElementById('bilan-step-label');
+  const title = document.getElementById('bilan-step-title');
+  if (label) label.textContent = `Étape ${step + 1} / ${total}`;
+  if (title) title.textContent = BILAN_STEPS[step]?.title || '';
+}
+
+function bilanNext(step, data) {
+  Object.assign(bilanData, data);
+  const next = step + 1;
+  if (next < BILAN_STEPS.length) {
+    renderBilanStep(next);
+  }
+}
+
+function bilanPrev(step) {
+  if (step > 0) renderBilanStep(step - 1);
+}
+
+function renderBilanStep(step) {
+  bilanStep = step;
+  updateBilanProgress(step);
+  const el = document.getElementById('bilan-content');
+  if (!el) return;
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? 'var(--color-surface-raised)' : '#f9fafb';
+  const bord = isDark ? 'var(--color-border)' : '#e4e4e7';
+  const txt = isDark ? 'var(--color-text)' : '#09090b';
+  const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+
+  const btnRow = (step) => `
+    <div style="display:flex;gap:10px;margin-top:24px">
+      ${step > 0 ? `<button onclick="bilanPrev(${step})" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:14px;font-weight:600;color:${sub};cursor:pointer">← Retour</button>` : ''}
+      <button onclick="saveBilanStep(${step})" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:700;color:#fff;cursor:pointer">
+        ${step === BILAN_STEPS.length - 2 ? 'Générer mon analyse →' : 'Continuer →'}
+      </button>
+    </div>`;
+
+  const fieldStyle = `width:100%;padding:12px 14px;background:${surf};border:1px solid ${bord};border-radius:12px;font-size:14px;color:${txt};font-family:inherit;outline:none;box-sizing:border-box`;
+  const labelStyle = `display:block;font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px`;
+  const sectionStyle = `margin-bottom:20px`;
+
+  const steps = {
+    0: `
+      <div style="font-size:22px;margin-bottom:6px">👤</div>
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Ta situation personnelle</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:24px">Ces informations nous permettent de personnaliser ton plan.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <label style="${labelStyle}">Ton âge</label>
+          <input type="number" id="b-age" placeholder="Ex: 28" min="18" max="80" style="${fieldStyle}" value="${bilanData.age||''}">
+        </div>
+        <div>
+          <label style="${labelStyle}">Situation familiale</label>
+          <select id="b-famille" style="${fieldStyle}">
+            <option value="">Choisir...</option>
+            <option value="celibataire" ${bilanData.famille==='celibataire'?'selected':''}>Célibataire</option>
+            <option value="couple" ${bilanData.famille==='couple'?'selected':''}>En couple</option>
+            <option value="marie" ${bilanData.famille==='marie'?'selected':''}>Marié(e)</option>
+            <option value="divorce" ${bilanData.famille==='divorce'?'selected':''}>Divorcé(e)</option>
+          </select>
+        </div>
+        <div>
+          <label style="${labelStyle}">Enfants à charge</label>
+          <select id="b-enfants" style="${fieldStyle}">
+            <option value="0" ${bilanData.enfants==='0'?'selected':''}>Aucun</option>
+            <option value="1" ${bilanData.enfants==='1'?'selected':''}>1 enfant</option>
+            <option value="2" ${bilanData.enfants==='2'?'selected':''}>2 enfants</option>
+            <option value="3+" ${bilanData.enfants==='3+'?'selected':''}>3 ou plus</option>
+          </select>
+        </div>
+        <div>
+          <label style="${labelStyle}">Situation professionnelle</label>
+          <select id="b-statut" style="${fieldStyle}">
+            <option value="">Choisir...</option>
+            <option value="salarie" ${bilanData.statut==='salarie'?'selected':''}>Salarié(e)</option>
+            <option value="independant" ${bilanData.statut==='independant'?'selected':''}>Indépendant / Freelance</option>
+            <option value="fonctionnaire" ${bilanData.statut==='fonctionnaire'?'selected':''}>Fonctionnaire</option>
+            <option value="etudiant" ${bilanData.statut==='etudiant'?'selected':''}>Étudiant(e)</option>
+            <option value="retraite" ${bilanData.statut==='retraite'?'selected':''}>Retraité(e)</option>
+          </select>
+        </div>
+      </div>
+      ${btnRow(0)}`,
+
+    1: `
+      <div style="font-size:22px;margin-bottom:6px">💳</div>
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Revenus & charges</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:24px">Pour calculer ta capacité d'épargne réelle.</div>
+      <div style="${sectionStyle}">
+        <label style="${labelStyle}">Revenu net mensuel (€)</label>
+        <input type="number" id="b-revenu" placeholder="Ex: 2 800" style="${fieldStyle}" value="${bilanData.revenu||''}">
+        <div style="font-size:11px;color:${sub};margin-top:5px">Après impôts, avant charges</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <label style="${labelStyle}">Loyer / Remb. immo (€/mois)</label>
+          <input type="number" id="b-loyer" placeholder="Ex: 900" style="${fieldStyle}" value="${bilanData.loyer||''}">
+        </div>
+        <div>
+          <label style="${labelStyle}">Autres crédits (€/mois)</label>
+          <input type="number" id="b-credits" placeholder="Ex: 300" style="${fieldStyle}" value="${bilanData.credits||''}">
+        </div>
+        <div>
+          <label style="${labelStyle}">Charges fixes estimées (€/mois)</label>
+          <input type="number" id="b-charges" placeholder="Ex: 800" style="${fieldStyle}" value="${bilanData.charges||''}">
+        </div>
+        <div>
+          <label style="${labelStyle}">Épargne actuelle (€/mois)</label>
+          <input type="number" id="b-epargne-actuelle" placeholder="Ex: 200" style="${fieldStyle}" value="${bilanData.epargneMensuelle||''}">
+        </div>
+      </div>
+      <div id="b-capacite-calc" style="padding:14px;background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.2);border-radius:12px;font-size:13px;color:${txt}">
+        💡 Remplis les champs pour voir ta capacité d'épargne calculée
+      </div>
+      ${btnRow(1)}`,
+
+    2: `
+      <div style="font-size:22px;margin-bottom:6px">🏦</div>
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Patrimoine existant</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:24px">Fais un état des lieux de ce que tu possèdes déjà.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <label style="${labelStyle}">Livret A / LDDS (€)</label>
+          <input type="number" id="b-livret" placeholder="Ex: 5 000" style="${fieldStyle}" value="${bilanData.livret||''}">
+        </div>
+        <div>
+          <label style="${labelStyle}">Assurance vie (€)</label>
+          <input type="number" id="b-assurance" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.assurance||''}">
+        </div>
+        <div>
+          <label style="${labelStyle}">PEA (€)</label>
+          <input type="number" id="b-pea" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.pea||''}">
+        </div>
+        <div>
+          <label style="${labelStyle}">Bourse / CTO (€)</label>
+          <input type="number" id="b-bourse" placeholder="Ex: ${objChartCapital||0}" style="${fieldStyle}" value="${bilanData.bourse||objChartCapital||''}">
+        </div>
+        <div>
+          <label style="${labelStyle}">Immobilier (valeur estimée €)</label>
+          <input type="number" id="b-immo" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.immo||''}">
+        </div>
+        <div>
+          <label style="${labelStyle}">Autres actifs (€)</label>
+          <input type="number" id="b-autres-actifs" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.autresActifs||''}">
+        </div>
+      </div>
+      ${btnRow(2)}`,
+
+    3: `
+      <div style="font-size:22px;margin-bottom:6px">📊</div>
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Tes habitudes d'investissement</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:24px">Pour comprendre ton niveau et adapter les recommandations.</div>
+      <div style="${sectionStyle}">
+        <label style="${labelStyle}">Depuis combien de temps investis-tu ?</label>
+        <select id="b-experience" style="${fieldStyle}">
+          <option value="">Choisir...</option>
+          <option value="jamais" ${bilanData.experience==='jamais'?'selected':''}>Je n'ai jamais investi</option>
+          <option value="moins1" ${bilanData.experience==='moins1'?'selected':''}>Moins d'1 an</option>
+          <option value="1-3" ${bilanData.experience==='1-3'?'selected':''}>1 à 3 ans</option>
+          <option value="3-5" ${bilanData.experience==='3-5'?'selected':''}>3 à 5 ans</option>
+          <option value="plus5" ${bilanData.experience==='plus5'?'selected':''}>Plus de 5 ans</option>
+        </select>
+      </div>
+      <div style="${sectionStyle}">
+        <label style="${labelStyle}">Quelle part de ton salaire investis-tu ?</label>
+        <select id="b-part-salaire" style="${fieldStyle}">
+          <option value="0" ${bilanData.partSalaire==='0'?'selected':''}>Rien pour l'instant</option>
+          <option value="5" ${bilanData.partSalaire==='5'?'selected':''}>Moins de 5%</option>
+          <option value="10" ${bilanData.partSalaire==='10'?'selected':''}>5 à 10%</option>
+          <option value="20" ${bilanData.partSalaire==='20'?'selected':''}>10 à 20%</option>
+          <option value="30" ${bilanData.partSalaire==='30'?'selected':''}>Plus de 20%</option>
+        </select>
+      </div>
+      <div style="${sectionStyle}">
+        <label style="${labelStyle}">Ton plus gros problème avec l'investissement</label>
+        <select id="b-probleme" style="${fieldStyle}">
+          <option value="">Choisir...</option>
+          <option value="peur" ${bilanData.probleme==='peur'?'selected':''}>J'ai peur de perdre de l'argent</option>
+          <option value="temps" ${bilanData.probleme==='temps'?'selected':''}>Je n'ai pas le temps de suivre</option>
+          <option value="connaissance" ${bilanData.probleme==='connaissance'?'selected':''}>Je ne sais pas quoi choisir</option>
+          <option value="irregulier" ${bilanData.probleme==='irregulier'?'selected':''}>J'investis de façon irrégulière</option>
+          <option value="emotions" ${bilanData.probleme==='emotions'?'selected':''}>Je vends quand ça baisse</option>
+          <option value="aucun" ${bilanData.probleme==='aucun'?'selected':''}>Pas de problème particulier</option>
+        </select>
+      </div>
+      ${btnRow(3)}`,
+
+    4: `
+      <div style="font-size:22px;margin-bottom:6px">🎯</div>
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Tes objectifs de vie</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:24px">Sélectionne tout ce qui correspond à ta situation.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px" id="b-objectifs-list">
+        ${[
+          {id:'immo', icon:'🏠', label:'Acheter un bien immobilier', sub:'Résidence principale ou investissement locatif'},
+          {id:'retraite', icon:'🌴', label:'Préparer ma retraite', sub:'Compléter ma pension, retraite anticipée (FIRE)'},
+          {id:'revenus', icon:'💸', label:'Générer des revenus passifs', sub:'Dividendes, loyers, rentes mensuelles'},
+          {id:'capital', icon:'📈', label:'Faire grossir mon capital', sub:'Patrimoine long terme, transmission'},
+          {id:'projet', icon:'✈️', label:'Financer un projet précis', sub:'Voyage, études, création d\'entreprise'},
+          {id:'securite', icon:'🛡️', label:'Sécuriser mon épargne', sub:'Protéger contre l\'inflation'},
+        ].map(o => `
+        <label style="display:flex;align-items:center;gap:12px;padding:14px;background:${surf};border:1.5px solid ${bilanData.objectifs?.includes(o.id)?'#3fb950':bord};border-radius:12px;cursor:pointer;transition:all 0.15s">
+          <input type="checkbox" id="b-obj-${o.id}" value="${o.id}" ${bilanData.objectifs?.includes(o.id)?'checked':''} style="width:18px;height:18px;accent-color:#3fb950;flex-shrink:0"
+            onchange="this.closest('label').style.borderColor=this.checked?'#3fb950':'${bord}'">
+          <span style="font-size:20px">${o.icon}</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:${txt}">${o.label}</div>
+            <div style="font-size:12px;color:${sub}">${o.sub}</div>
+          </div>
+        </label>`).join('')}
+      </div>
+      ${btnRow(4)}`,
+
+    5: `
+      <div style="font-size:22px;margin-bottom:6px">⚖️</div>
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Tolérance au risque réelle</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:24px">Des scénarios concrets pour évaluer ta vraie tolérance.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <div style="padding:16px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:12px;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:600;color:#f87171;margin-bottom:12px">📉 Ton portefeuille perd <strong>20% en 1 mois</strong> (soit ${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.2)} k€). Tu...</div>
+          ${[
+            {val:'vendre_tout', label:'🚨 Je vends tout immédiatement', color:'#f87171'},
+            {val:'vendre_partiel', label:'😰 Je vends une partie pour limiter', color:'#f97316'},
+            {val:'attendre', label:'😐 J\'attends sans rien faire', color:'#f59e0b'},
+            {val:'tenir', label:'💪 Je tiens et reste investi', color:'#3fb950'},
+            {val:'renforcer', label:'🚀 J\'en profite pour renforcer', color:'#22c55e'},
+          ].map(r => `
+          <label style="display:flex;align-items:center;gap:10px;padding:10px;background:${bilanData.reaction===r.val?r.color+'20':'transparent'};border-radius:8px;cursor:pointer;margin-bottom:4px">
+            <input type="radio" name="b-reaction" value="${r.val}" ${bilanData.reaction===r.val?'checked':''} style="accent-color:${r.color}">
+            <span style="font-size:13px;font-weight:600;color:${txt}">${r.label}</span>
+          </label>`).join('')}
+        </div>
+        <div style="${sectionStyle}">
+          <label style="${labelStyle}">Quelle perte maximale peux-tu supporter sans paniquer ?</label>
+          <select id="b-perte-max" style="${fieldStyle}">
+            <option value="5" ${bilanData.perteMax==='5'?'selected':''}>5% maximum (-${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.05)} €)</option>
+            <option value="10" ${bilanData.perteMax==='10'?'selected':''}>10% acceptable (-${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.1)} €)</option>
+            <option value="20" ${bilanData.perteMax==='20'?'selected':''}>20% supportable (-${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.2)} €)</option>
+            <option value="30" ${bilanData.perteMax==='30'?'selected':''}>30% si nécessaire (-${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.3)} €)</option>
+            <option value="50" ${bilanData.perteMax==='50'?'selected':''}>50%+ j\'ai un horizon très long</option>
+          </select>
+        </div>
+      </div>
+      ${btnRow(5)}`,
+
+    6: `
+      <div style="font-size:22px;margin-bottom:6px">📅</div>
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Horizon & contraintes</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:24px">Pour adapter la stratégie à ta situation temporelle.</div>
+      <div style="${sectionStyle}">
+        <label style="${labelStyle}">Horizon d'investissement principal</label>
+        <select id="b-horizon" style="${fieldStyle}">
+          <option value="court" ${bilanData.horizon==='court'?'selected':''}>Court terme — moins de 3 ans</option>
+          <option value="moyen" ${bilanData.horizon==='moyen'?'selected':''}>Moyen terme — 3 à 7 ans</option>
+          <option value="long" ${bilanData.horizon==='long'?'selected':''}>Long terme — 7 à 15 ans</option>
+          <option value="tres-long" ${bilanData.horizon==='tres-long'?'selected':''}>Très long terme — 15+ ans</option>
+        </select>
+      </div>
+      <div style="${sectionStyle}">
+        <label style="${labelStyle}">As-tu besoin de liquidité rapide sur ton épargne ?</label>
+        <select id="b-liquidite" style="${fieldStyle}">
+          <option value="non" ${bilanData.liquidite==='non'?'selected':''}>Non — tout peut rester investi longtemps</option>
+          <option value="partiel" ${bilanData.liquidite==='partiel'?'selected':''}>Partiellement — je garde un fonds d'urgence</option>
+          <option value="oui" ${bilanData.liquidite==='oui'?'selected':''}>Oui — j'ai besoin d'accéder rapidement</option>
+        </select>
+      </div>
+      <div style="${sectionStyle}">
+        <label style="${labelStyle}">Événement majeur prévu dans les 3 prochaines années ?</label>
+        <select id="b-evenement" style="${fieldStyle}">
+          <option value="aucun" ${bilanData.evenement==='aucun'?'selected':''}>Aucun événement prévu</option>
+          <option value="achat-immo" ${bilanData.evenement==='achat-immo'?'selected':''}>Achat immobilier</option>
+          <option value="mariage" ${bilanData.evenement==='mariage'?'selected':''}>Mariage / PACS</option>
+          <option value="enfant" ${bilanData.evenement==='enfant'?'selected':''}>Naissance d'un enfant</option>
+          <option value="creation-entreprise" ${bilanData.evenement==='creation-entreprise'?'selected':''}>Création d'entreprise</option>
+          <option value="changement-emploi" ${bilanData.evenement==='changement-emploi'?'selected':''}>Changement d'emploi</option>
+        </select>
+      </div>
+      <div style="${sectionStyle}">
+        <label style="${labelStyle}">Commentaires libres (optionnel)</label>
+        <textarea id="b-commentaires" placeholder="Décris ta situation en quelques mots..." style="${fieldStyle};height:80px;resize:none">${bilanData.commentaires||''}</textarea>
+      </div>
+      ${btnRow(6)}`,
+
+    7: `
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:16px">🤖</div>
+        <div style="font-size:20px;font-weight:800;color:${txt};margin-bottom:8px;letter-spacing:-0.04em">Génération de ton bilan...</div>
+        <div style="font-size:14px;color:${sub};margin-bottom:24px">Claude analyse ta situation complète et génère ton plan personnalisé</div>
+        <div id="bilan-loading-steps" style="display:flex;flex-direction:column;gap:8px;text-align:left;max-width:340px;margin:0 auto">
+          ${['Analyse de ta capacité d\'épargne','Évaluation de ton profil de risque','Calcul de tes projections','Définition de ton allocation optimale','Rédaction de tes recommandations'].map((s,i)=>`
+          <div class="bilan-load-step" id="bls-${i}" style="display:flex;align-items:center;gap:10px;opacity:0.3;transition:opacity 0.3s">
+            <div style="width:20px;height:20px;border-radius:50%;background:rgba(63,185,80,0.2);display:flex;align-items:center;justify-content:center;font-size:11px;color:#3fb950;flex-shrink:0" id="bls-icon-${i}">○</div>
+            <div style="font-size:13px;color:${txt}">${s}</div>
+          </div>`).join('')}
+        </div>
+      </div>`,
+  };
+
+  el.innerHTML = steps[step] || '';
+
+  // Animation des étapes de chargement
+  if (step === 7) {
+    el.innerHTML = steps[7];
+    generateBilanIA();
+  }
+
+  // Calcul capacité épargne en temps réel (étape 1)
+  if (step === 1) {
+    ['b-revenu','b-loyer','b-credits','b-charges'].forEach(id => {
+      const inp = document.getElementById(id);
+      if (inp) inp.addEventListener('input', calcCapaciteEpargne);
+    });
+  }
+}
+
+function calcCapaciteEpargne() {
+  const revenu = parseFloat(document.getElementById('b-revenu')?.value)||0;
+  const loyer = parseFloat(document.getElementById('b-loyer')?.value)||0;
+  const credits = parseFloat(document.getElementById('b-credits')?.value)||0;
+  const charges = parseFloat(document.getElementById('b-charges')?.value)||0;
+  const capacite = revenu - loyer - credits - charges;
+  const el = document.getElementById('b-capacite-calc');
+  if (!el || !revenu) return;
+  const pct = revenu > 0 ? (capacite/revenu*100).toFixed(0) : 0;
+  const color = capacite > 500 ? '#3fb950' : capacite > 0 ? '#f59e0b' : '#f87171';
+  el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:3px">Capacité d'épargne estimée</div>
+      <div style="font-size:22px;font-weight:800;color:${color}">${capacite.toLocaleString('fr-FR')} €/mois</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">${pct}% de tes revenus · ${capacite > 200 ? '✅ Bonne capacité' : capacite > 0 ? '⚠️ Marge limitée' : '🔴 Budget serré'}</div>
+    </div>
+    <div style="font-size:32px">${capacite > 500 ? '💪' : capacite > 0 ? '⚖️' : '⚠️'}</div>
+  </div>`;
+  el.style.borderColor = color + '40';
+}
+
+function saveBilanStep(step) {
+  const data = {};
+  // Collecter les données selon l'étape
+  if (step === 0) {
+    data.age = document.getElementById('b-age')?.value;
+    data.famille = document.getElementById('b-famille')?.value;
+    data.enfants = document.getElementById('b-enfants')?.value;
+    data.statut = document.getElementById('b-statut')?.value;
+  } else if (step === 1) {
+    data.revenu = document.getElementById('b-revenu')?.value;
+    data.loyer = document.getElementById('b-loyer')?.value;
+    data.credits = document.getElementById('b-credits')?.value;
+    data.charges = document.getElementById('b-charges')?.value;
+    data.epargneMensuelle = document.getElementById('b-epargne-actuelle')?.value;
+    data.capaciteEpargne = parseFloat(data.revenu||0) - parseFloat(data.loyer||0) - parseFloat(data.credits||0) - parseFloat(data.charges||0);
+  } else if (step === 2) {
+    data.livret = document.getElementById('b-livret')?.value;
+    data.assurance = document.getElementById('b-assurance')?.value;
+    data.pea = document.getElementById('b-pea')?.value;
+    data.bourse = document.getElementById('b-bourse')?.value;
+    data.immo = document.getElementById('b-immo')?.value;
+    data.autresActifs = document.getElementById('b-autres-actifs')?.value;
+    data.patrimoineTotal = [data.livret,data.assurance,data.pea,data.bourse,data.immo,data.autresActifs].reduce((a,v)=>a+parseFloat(v||0),0);
+  } else if (step === 3) {
+    data.experience = document.getElementById('b-experience')?.value;
+    data.partSalaire = document.getElementById('b-part-salaire')?.value;
+    data.probleme = document.getElementById('b-probleme')?.value;
+  } else if (step === 4) {
+    data.objectifs = Array.from(document.querySelectorAll('#b-objectifs-list input:checked')).map(i=>i.value);
+  } else if (step === 5) {
+    data.reaction = document.querySelector('input[name="b-reaction"]:checked')?.value;
+    data.perteMax = document.getElementById('b-perte-max')?.value;
+  } else if (step === 6) {
+    data.horizon = document.getElementById('b-horizon')?.value;
+    data.liquidite = document.getElementById('b-liquidite')?.value;
+    data.evenement = document.getElementById('b-evenement')?.value;
+    data.commentaires = document.getElementById('b-commentaires')?.value;
+  }
+  bilanNext(step, data);
+}
+
+async function generateBilanIA() {
+  // Animer les étapes de chargement
+  for (let i = 0; i < 5; i++) {
+    await new Promise(r => setTimeout(r, 600));
+    const step = document.getElementById('bls-' + i);
+    const icon = document.getElementById('bls-icon-' + i);
+    if (step) step.style.opacity = '1';
+    if (icon) icon.textContent = '✓';
+  }
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const pnl = tv - ti;
+  const capacite = bilanData.capaciteEpargne || 0;
+  const revenu = parseFloat(bilanData.revenu||0);
+  const patrimoine = bilanData.patrimoineTotal || tv;
+
+  const prompt = `Tu es un conseiller financier expert. Génère un bilan financier complet et personnalisé.
+
+PROFIL CLIENT :
+- Âge : ${bilanData.age} ans | Statut : ${bilanData.famille} | Enfants : ${bilanData.enfants}
+- Situation pro : ${bilanData.statut}
+- Revenu net mensuel : ${revenu.toLocaleString('fr-FR')} €
+- Capacité d'épargne : ${capacite.toLocaleString('fr-FR')} €/mois (${revenu>0?(capacite/revenu*100).toFixed(0):0}% des revenus)
+- Patrimoine total : ${patrimoine.toLocaleString('fr-FR')} € (dont ${tv.toLocaleString('fr-FR')} € en bourse)
+- Performance bourse : ${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{maximumFractionDigits:0})} € (${ti>0?(pnl/ti*100).toFixed(1):0}%)
+
+OBJECTIFS : ${(bilanData.objectifs||[]).join(', ')}
+HORIZON : ${bilanData.horizon}
+TOLÉRANCE RISQUE : Perd max ${bilanData.perteMax}% | Réaction baisse : ${bilanData.reaction}
+EXPÉRIENCE : ${bilanData.experience} | Problème principal : ${bilanData.probleme}
+ÉVÉNEMENT PRÉVU : ${bilanData.evenement}
+${bilanData.commentaires ? 'NOTES : ' + bilanData.commentaires : ''}
+
+PORTEFEUILLE ACTUEL :
+${positions.slice(0,8).map(p=>`${p.name}: ${(p.qty*p.price).toLocaleString('fr-FR',{maximumFractionDigits:0})}€ (${((p.qty*p.price/tv)*100).toFixed(1)}%)`).join('\n')}
+
+Génère un rapport structuré en JSON :
+{
+  "score_global": 7.5,
+  "score_label": "Bonne situation",
+  "score_color": "#3fb950",
+  "resume_executif": "2-3 phrases résumant la situation",
+  "points_forts": ["point 1", "point 2", "point 3"],
+  "points_attention": ["risque 1", "risque 2"],
+  "mensualite_recommandee": 350,
+  "mensualite_min": 200,
+  "mensualite_max": 500,
+  "mensualite_explication": "explication courte",
+  "allocation_cible": [
+    {"type": "ETF Monde", "pct": 60, "color": "#3fb950", "explication": "court"},
+    {"type": "ETF Obligataire", "pct": 20, "color": "#6366f1", "explication": "court"},
+    {"type": "Actions", "pct": 20, "color": "#f59e0b", "explication": "court"}
+  ],
+  "objectif_principal": "description courte",
+  "projection_5ans": 45000,
+  "projection_10ans": 95000,
+  "projection_20ans": 280000,
+  "actions_prioritaires": [
+    {"priorite": "urgent", "action": "action 1", "impact": "impact"},
+    {"priorite": "important", "action": "action 2", "impact": "impact"},
+    {"priorite": "conseil", "action": "action 3", "impact": "impact"}
+  ],
+  "verdict": "phrase finale motivante"
+}
+Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais chiffres.`;
+
+  try {
+    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide, sans backticks.');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const result = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
+    renderBilanResult(result);
+  } catch(e) {
+    console.error('Bilan IA error:', e);
+    renderBilanResult({
+      score_global: 7.0,
+      score_label: 'Situation correcte',
+      score_color: '#f59e0b',
+      resume_executif: 'Analyse générée localement. Tu as une bonne base d\'investissement avec un portefeuille actif.',
+      points_forts: ['Portefeuille diversifié', 'Investissement régulier', 'Horizon long terme'],
+      points_attention: ['Optimiser la mensualité', 'Revoir l\'allocation'],
+      mensualite_recommandee: Math.round(capacite * 0.4),
+      mensualite_min: Math.round(capacite * 0.2),
+      mensualite_max: Math.round(capacite * 0.6),
+      mensualite_explication: 'Basé sur ta capacité d\'épargne',
+      allocation_cible: [{type:'ETF Monde',pct:70,color:'#3fb950',explication:'Base solide'},{type:'Obligations',pct:20,color:'#6366f1',explication:'Stabilité'},{type:'Actions',pct:10,color:'#f59e0b',explication:'Performance'}],
+      objectif_principal: bilanData.objectifs?.[0] || 'Capital long terme',
+      projection_5ans: Math.round(tv + capacite*0.4*60*(1.07**5)),
+      projection_10ans: Math.round(tv + capacite*0.4*120*(1.07**10)),
+      projection_20ans: Math.round(tv + capacite*0.4*240*(1.07**20)),
+      actions_prioritaires: [{priorite:'urgent',action:'Définir une mensualité fixe',impact:'Régularité = performance'},{priorite:'important',action:'Renforcer la diversification',impact:'Réduire le risque'},{priorite:'conseil',action:'Ouvrir un PEA si pas encore fait',impact:'Avantage fiscal'}],
+      verdict: 'Tu es sur la bonne voie. Avec de la régularité, tes objectifs sont atteignables !'
+    });
+  }
+}
+
+function renderBilanResult(r) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? 'var(--color-surface-raised)' : '#f9fafb';
+  const bord = isDark ? 'var(--color-border)' : '#e4e4e7';
+  const txt = isDark ? 'var(--color-text)' : '#09090b';
+  const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+
+  const prio = {urgent:'#f87171', important:'#f59e0b', conseil:'#3fb950'};
+
+  const html = `
+  <!-- SCORE -->
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="width:80px;height:80px;border-radius:50%;background:${r.score_color}20;border:3px solid ${r.score_color};display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 12px">
+      <div style="font-size:24px;font-weight:900;color:${r.score_color}">${r.score_global}</div>
+      <div style="font-size:9px;color:${r.score_color};font-weight:600">/10</div>
+    </div>
+    <div style="font-size:18px;font-weight:800;color:${txt};letter-spacing:-0.04em">${r.score_label}</div>
+    <div style="font-size:13px;color:${sub};margin-top:6px;line-height:1.5;max-width:400px;margin-left:auto;margin-right:auto">${r.resume_executif}</div>
+  </div>
+
+  <!-- MENSUALITÉ RECOMMANDÉE -->
+  <div style="background:linear-gradient(135deg,${r.score_color}15,${r.score_color}05);border:1px solid ${r.score_color}30;border-radius:16px;padding:20px;margin-bottom:16px;text-align:center">
+    <div style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">💰 Mensualité recommandée</div>
+    <div style="font-size:42px;font-weight:900;color:${r.score_color};letter-spacing:-0.05em">${r.mensualite_recommandee?.toLocaleString('fr-FR')} €</div>
+    <div style="font-size:12px;color:${sub};margin-top:4px">${r.mensualite_explication}</div>
+    <div style="display:flex;justify-content:center;gap:20px;margin-top:12px">
+      <div><div style="font-size:11px;color:${sub}">Minimum</div><div style="font-size:16px;font-weight:700;color:${txt}">${r.mensualite_min?.toLocaleString('fr-FR')} €</div></div>
+      <div style="width:1px;background:${bord}"></div>
+      <div><div style="font-size:11px;color:${sub}">Maximum</div><div style="font-size:16px;font-weight:700;color:${txt}">${r.mensualite_max?.toLocaleString('fr-FR')} €</div></div>
+    </div>
+  </div>
+
+  <!-- PROJECTIONS -->
+  <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:18px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:14px">📈 Projections à ${r.mensualite_recommandee?.toLocaleString('fr-FR')}€/mois</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      ${[{label:'Dans 5 ans',val:r.projection_5ans},{label:'Dans 10 ans',val:r.projection_10ans},{label:'Dans 20 ans',val:r.projection_20ans}].map(p=>`
+      <div style="text-align:center;padding:12px;background:${isDark?'rgba(255,255,255,0.04)':'#fff'};border-radius:10px;border:1px solid ${bord}">
+        <div style="font-size:10px;color:${sub};margin-bottom:6px">${p.label}</div>
+        <div style="font-size:17px;font-weight:800;color:${r.score_color};letter-spacing:-0.03em">${fmtK(p.val)} k€</div>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- ALLOCATION CIBLE -->
+  <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:18px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:14px">🎯 Allocation cible recommandée</div>
+    ${(r.allocation_cible||[]).map(a=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px">
+        <span style="color:${txt}">${a.type}</span>
+        <span style="color:${a.color}">${a.pct}%</span>
+      </div>
+      <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:6px;overflow:hidden">
+        <div style="height:100%;background:${a.color};width:${a.pct}%;border-radius:99px;transition:width 1s ease"></div>
+      </div>
+      <div style="font-size:11px;color:${sub};margin-top:3px">${a.explication}</div>
+    </div>`).join('')}
+  </div>
+
+  <!-- POINTS FORTS & ATTENTION -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+    <div style="background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.2);border-radius:14px;padding:14px">
+      <div style="font-size:12px;font-weight:700;color:#3fb950;margin-bottom:10px">✅ Points forts</div>
+      ${(r.points_forts||[]).map(p=>`<div style="font-size:12px;color:${txt};margin-bottom:6px;display:flex;gap:7px"><span>•</span>${p}</div>`).join('')}
+    </div>
+    <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:14px;padding:14px">
+      <div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:10px">⚠️ À surveiller</div>
+      ${(r.points_attention||[]).map(p=>`<div style="font-size:12px;color:${txt};margin-bottom:6px;display:flex;gap:7px"><span>•</span>${p}</div>`).join('')}
+    </div>
+  </div>
+
+  <!-- ACTIONS PRIORITAIRES -->
+  <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:18px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:14px">🚀 Actions prioritaires</div>
+    ${(r.actions_prioritaires||[]).map((a,i)=>`
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:${isDark?'rgba(255,255,255,0.04)':'#fff'};border-radius:10px;border:1px solid ${bord};margin-bottom:8px">
+      <span style="background:${prio[a.priorite]}20;color:${prio[a.priorite]};font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap;margin-top:1px">${a.priorite.toUpperCase()}</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:2px">${a.action}</div>
+        <div style="font-size:11px;color:${sub}">${a.impact}</div>
+      </div>
+    </div>`).join('')}
+  </div>
+
+  <!-- VERDICT -->
+  <div style="background:linear-gradient(135deg,#080c10,#0d1520);border:1px solid rgba(63,185,80,0.2);border-radius:16px;padding:20px;text-align:center;margin-bottom:20px">
+    <div style="font-size:28px;margin-bottom:8px">🎯</div>
+    <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.8);line-height:1.6">${r.verdict}</div>
+  </div>
+
+  <!-- BOUTONS -->
+  <div style="display:flex;gap:10px">
+    <button onclick="closeBilan()" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Fermer</button>
+    <button onclick="nav('ai');closeBilan()" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">🤖 Discuter avec l'IA →</button>
+  </div>`;
+
+  const el = document.getElementById('bilan-content');
+  if (el) el.innerHTML = html;
+  updateBilanProgress(7);
+}
+
+
 // ===== NAV =====
 function nav(page) {
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
@@ -4915,8 +5095,6 @@ function nav(page) {
   const btn = document.getElementById('nav-'+page);
   if (sec) { animatePageIn('sec-'+page); }
   if (btn) btn.classList.add('active');
-  // Sauvegarder la page courante
-  try { localStorage.setItem('iq_last_page', page); } catch {}
   // Sync bottom nav mobile
   document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
   const bnavBtn = document.getElementById('bnav-'+page);
@@ -4941,9 +5119,8 @@ function nav(page) {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
 }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);},
-    ai:()=>{ loadChatHistory(); initAgent(); setTimeout(()=>{ if(typeof updateAISidebar==='function') updateAISidebar(); if(typeof generateDailyBrief==='function')generateDailyBrief(); if(typeof updatePremiumUI==='function')updatePremiumUI(); }, 200); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+    ai:()=>{ loadChatHistory(); initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
-  if (page === 'settings') setTimeout(()=>{ if(typeof updateSettingsDisplays==='function') updateSettingsDisplays(); }, 100);
 }
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -5075,58 +5252,22 @@ const NOTIF_NAV = {
   'Ajouter une position': 'ajouter',
 };
 
-function dismissNotification(i) {
-  const n = notifications[i];
-  // Si c'est une alerte prix, la marque vue pendant 24h
-  if (n && n.type === 'prix' && n.key) {
-    try {
-      const seen = JSON.parse(localStorage.getItem('iq_seen_alerts') || '{}');
-      seen[n.key] = Date.now();
-      localStorage.setItem('iq_seen_alerts', JSON.stringify(seen));
-    } catch {}
-  }
-  notifications.splice(i, 1);
-  renderNotifications();
-  if (!notifications.length) document.getElementById('notif-dot')?.classList.remove('show');
-}
-
-function clearAllNotifications() {
-  notifications = [];
-  try { localStorage.setItem('iq_notifications', JSON.stringify([])); } catch {}
-  renderNotifications();
-  document.getElementById('notif-dot')?.classList.remove('show');
-}
-
 function renderNotifications() {
   const list = document.getElementById('notif-list');
   if (!notifications.length) {
     list.innerHTML = '<div class="notif-empty" style="padding:20px;text-align:center;color:#8e8e93;font-size:13px">✅ Tout va bien — aucune alerte</div>';
     return;
   }
-  const impactBg     = { high:'#fff0f0', medium:'#fff9e6', low:'#f5f5f5' };
+  const impactBg = { high:'#fff0f0', medium:'#fff9e6', low:'#f5f5f5' };
   const impactBorder = { high:'#cc2f26', medium:'#f59e0b', low:'#e5e5ea' };
-
-  // Header avec "Tout supprimer"
-  const header = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px">
-    <span style="font-size:12px;font-weight:600;color:#8e8e93">${notifications.length} alerte${notifications.length>1?'s':''}</span>
-    <button onclick="clearAllNotifications()" style="background:none;border:none;font-size:12px;font-weight:600;color:#cc2f26;cursor:pointer;padding:4px 8px;border-radius:6px">
-      Tout supprimer
-    </button>
-  </div>`;
-
-  list.innerHTML = header + notifications.map((n,i) => {
+  list.innerHTML = notifications.map((n,i) => {
     const page = Object.entries(NOTIF_NAV).find(([k])=>n.action.includes(k.split(' ').pop()));
     const navPage = page ? page[1] : null;
     return `
-    <div class="notif-item ${n.impact}" style="background:${impactBg[n.impact]||'#f5f5f5'};border-left:3px solid ${impactBorder[n.impact]||'#e5e5ea'};border-radius:12px;padding:12px 14px;margin-bottom:8px;position:relative">
+    <div class="notif-item ${n.impact}" style="background:${impactBg[n.impact]||'#f5f5f5'};border-left:3px solid ${impactBorder[n.impact]||'#e5e5ea'};border-radius:12px;padding:12px 14px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
-        <div style="font-size:13px;font-weight:800;color:#1c1c1e;line-height:1.3;padding-right:24px">${n.titre}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-          <div style="font-size:11px;color:#8e8e93;white-space:nowrap">${n.heure}</div>
-          <button onclick="dismissNotification(${i})"
-            style="background:rgba(0,0,0,0.06);border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;color:#666;flex-shrink:0"
-            title="Supprimer">✕</button>
-        </div>
+        <div style="font-size:13px;font-weight:800;color:#1c1c1e;line-height:1.3">${n.titre}</div>
+        <div style="font-size:11px;color:#8e8e93;white-space:nowrap;margin-left:8px">${n.heure}</div>
       </div>
       <div style="font-size:12px;color:#3c3c43;line-height:1.5;margin-bottom:8px">${n.texte}</div>
       <button onclick="closeNotifPanel();${navPage?`nav('${navPage}')`:''}" 
@@ -5218,8 +5359,7 @@ async function renderHome() {
       <div style="position:absolute;top:0;right:0;bottom:0;width:45%;opacity:0.8;pointer-events:none">
         ${sparkline(mainSparkData, tpnl>=0?'#4ade80':'#f87171', 400, 160, true)}
       </div>
-      <!-- Badge performance — absolu sur desktop, inline sur mobile -->
-      <div class="home-perf-badge" style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
+      <div style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
         <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Performance totale</div>
         <div style="font-size:20px;font-weight:800;color:${pnlColor};letter-spacing:-0.04em">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
         <div style="font-size:12px;color:${pnlColor};opacity:0.7;margin-top:2px">${tpnl>=0?'↑':'↓'} ${Math.abs(tpct).toFixed(1)}%</div>
@@ -5231,7 +5371,7 @@ async function renderHome() {
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${chgColor}">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1)}% aujourd'hui</div>
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.6)">${positions.length} positions</div>
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${scoreColor}">${score.toFixed(1)}/10 santé</div>
-          ${targetVal > 0 ? `<div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#60a5fa">${pctObj.toFixed(0)}% objectif</div>` : ''}
+          ${targetVal > 0 ? `<div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#a5b4fc">${pctObj.toFixed(0)}% objectif</div>` : ''}
         </div>
         ${targetVal > 0 ? `
         <div>
@@ -5505,269 +5645,6 @@ function buildAlerts() {
 }
 
 // ===== PORTFOLIO =====
-
-
-// ===== MAP ISIN → TICKER (Trade Republic) =====
-const ISIN_TO_TICKER = {
-  // ETF MSCI World
-  'IE00BFY0GT14':'SWRD.L',   // SPDR MSCI World
-  'IE00B4L5Y983':'IWDA.L',   // iShares MSCI World
-  'IE00B0M62Q58':'IWDA.L',   // iShares MSCI World (autre classe)
-  'LU1781541179':'VWCE.DE',  // Vanguard FTSE All-World
-  'IE00B3RBWM25':'VWCE.DE',  // Vanguard FTSE All-World (USD)
-  // ETF Emerging Markets
-  'LU1681045370':'AMEM.DE',  // Amundi MSCI EM
-  'IE00BKM4GZ66':'EIMI.L',   // iShares MSCI EM
-  'LU1437016972':'AMEM.DE',  // Amundi MSCI EM Swap
-  // ETF S&P 500
-  'IE00B5BMR087':'CSPX.L',   // iShares Core S&P 500
-  'IE00B3YCGJ38':'VUAA.L',   // Vanguard S&P 500
-  'LU1135865084':'SP5C.PA',  // Amundi S&P 500
-  // Actions françaises
-  'FR0000131104':'BNP.PA',
-  'FR0000125338':'LOreal.PA',
-  'FR0000124141':'VIE.PA',
-  'FR0000125485':'MC.PA',
-  'FR0000120271':'TTE.PA',
-  'FR0000120628':'AI.PA',
-  'FR0000121667':'AIR.PA',
-  'FR0000130809':'STM.PA',
-  // Actions internationales
-  'NL0011585146':'RACE',      // Ferrari
-  'US0378331005':'AAPL',
-  'US5949181045':'MSFT',
-  'US02079K3059':'GOOGL',
-  'US0231351067':'AMZN',
-  'US88160R1014':'TSLA',
-  'US67066G1040':'NVDA',
-  'US30303M1027':'META',
-  // Ignorer
-  'LU3170240538': null,  // Private Equity → skip
-};
-
-function isinToTicker(isin, name) {
-  if (ISIN_TO_TICKER.hasOwnProperty(isin)) return ISIN_TO_TICKER[isin];
-  // Fallback : utilise le nom pour deviner
-  const n = (name||'').toLowerCase();
-  if (n.includes('msci world'))         return 'SWRD.L';
-  if (n.includes('emerging'))           return 'AMEM.DE';
-  if (n.includes('s&p 500')||n.includes('sp500')) return 'CSPX.L';
-  if (n.includes('ferrari'))            return 'RACE';
-  if (n.includes('apple'))              return 'AAPL';
-  if (n.includes('microsoft'))          return 'MSFT';
-  if (n.includes('nvidia'))             return 'NVDA';
-  if (n.includes('private'))            return null; // skip
-  // Dernier recours : utilise l'ISIN comme ticker
-  return isin;
-}
-
-
-// ===== MAP TICKER → LOGO TRADINGVIEW =====
-const TV_LOGO_SLUGS = {
-  'MC.PA':'lvmh','LVMH':'lvmh',
-  'TTE.PA':'total-energies','TTE':'total-energies',
-  'AI.PA':'air-liquide','AIR-LIQUIDE':'air-liquide','AIR.LIQUIDE':'air-liquide',
-  'AIR.PA':'airbus','AIRBUS':'airbus',
-  'VIE.PA':'veolia-environnement','VEOLIA':'veolia-environnement',
-  'PAH3.DE':'porsche-automobil-holding','PAH3':'porsche-automobil-holding',
-  'VOW3.DE':'volkswagen','BMW.DE':'bmw',
-  'SAP.DE':'sap','SIE.DE':'siemens',
-  'BNP.PA':'bnp-paribas','GLE.PA':'societe-generale',
-  'SAN.PA':'sanofi','OR.PA':'loreal',
-  'STM.DE':'stmicroelectronics','STM.PA':'stmicroelectronics',
-  'SOI.PA':'soitec','FDJ.PA':'francaise-des-jeux',
-  'ALO.PA':'alstom','SU.PA':'schneider-electric',
-  'DSY.PA':'dassault-systemes','CAP.PA':'capgemini',
-  'RACE':'ferrari','NL0011585146':'ferrari',
-  'AAPL':'apple','MSFT':'microsoft','GOOGL':'alphabet',
-  'AMZN':'amazon','TSLA':'tesla','NVDA':'nvidia','META':'meta-platforms',
-  'ASML':'asml','NOVO-B.CO':'novo-nordisk',
-  'IWDA.L':'ishares','IWDA.AS':'ishares','CSPX.L':'ishares','IWDA':'ishares',
-  'VWCE.DE':'vanguard','VUAA.L':'vanguard',
-  'SPPW.DE':'spdr-sp-500','SWRD.L':'spdr-msci-world','SWRD.UK':'spdr-msci-world',
-  'AMEM.DE':'amundi-etf','AMEM':'amundi-etf','EIMI.L':'ishares','EIMI':'ishares',
-};
-
-function getTVLogoUrl(ticker) {
-  const slug = TV_LOGO_SLUGS[ticker] || TV_LOGO_SLUGS[(ticker||'').toUpperCase()];
-  if (!slug) return null;
-  return 'https://s3-symbol-logo.tradingview.com/' + slug + '--big.svg';
-}
-
-// ===== NOMS COMPLETS DES TICKERS =====
-const TICKER_NAMES = {
-  'TTE.PA':'TotalEnergies','AI.PA':'Air Liquide','MC.PA':'LVMH',
-  'OR.PA':'LOreal','BNP.PA':'BNP Paribas','SAN.PA':'Sanofi',
-  'AIR.PA':'Airbus','ACA.PA':'Crédit Agricole','ORA.PA':'Orange',
-  'KER.PA':'Kering','VIE.PA':'Veolia','RMS.PA':'Hermès',
-  'FDJ.PA':'FDJ','SOI.PA':'Soitec','ALO.PA':'Alstom',
-  'LR.PA':'Legrand','EDF.PA':'EDF','ENGI.PA':'Engie',
-  'SU.PA':'Schneider','CAP.PA':'Capgemini','DSY.PA':'Dassault Systèmes',
-  'HO.PA':'Thales','PUB.PA':'Publicis','SGO.PA':'Saint-Gobain',
-  'WLN.PA':'Worldline','GLE.PA':'Société Générale','AIR.PA':'Airbus',
-  'PAH3.DE':'Porsche AG','VOW3.DE':'Volkswagen','BMW.DE':'BMW',
-  'SAP.DE':'SAP','SIE.DE':'Siemens','ALV.DE':'Allianz',
-  'BAYN.DE':'Bayer','MBG.DE':'Mercedes-Benz','STM.DE':'STMicro',
-  'SPPW.DE':'SPDR World','AMEM.DE':'Amundi EM',
-  'IWDA.L':'iShares World','SWRD.L':'SPDR World','IWDA.AS':'iShares World',
-  'VWCE.DE':'Vanguard FTSE','CSPX.L':'iShares S&P500',
-  'ALHPI.PA':'Hopium','ALHPI.FR':'Hopium',
-  'VIE.PA':'Veolia','PAH3.DE':'Porsche AG',
-  'RACE':'Ferrari','CSPX.L':'iShares S&P500','VUAA.L':'Vanguard S&P500','EIMI.L':'iShares EM',
-  'LVMH':'LVMH','AAPL':'Apple','MSFT':'Microsoft',
-  'GOOGL':'Alphabet','AMZN':'Amazon','TSLA':'Tesla',
-  'NVDA':'Nvidia','META':'Meta',
-};
-
-function getTickerName(ticker) {
-  return TICKER_NAMES[ticker] || TICKER_NAMES[(ticker||'').toUpperCase()] || ticker;
-}
-
-
-async function testPushNotification() {
-  if (!currentUser) { showToast('Connecte-toi dabord'); return; }
-  const btn = document.getElementById('push-test-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Envoi en cours...'; }
-  try {
-    const res = await fetch('/api/push-send?test=1', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUser.id })
-    });
-    const text = await res.text();
-    console.log('[Push Test]', res.status, text);
-    try {
-      const data = JSON.parse(text);
-      if (data.ok) showToast('Notification envoyee ! Verifie ton telephone.');
-      else showToast('Erreur: ' + (data.error || text.slice(0,80)));
-    } catch { showToast('Erreur serveur: ' + text.slice(0,80)); }
-  } catch(e) { showToast('Erreur reseau: ' + e.message); }
-  if (btn) { btn.disabled = false; btn.textContent = '🧪 Envoyer une notification test'; }
-}
-
-async function togglePushNotifications() {
-  const btn = document.getElementById('push-toggle-btn');
-
-  if (isPushSubscribed()) {
-    await unsubscribePush();
-    if (btn) { btn.textContent = 'Activer les notifications'; btn.style.background='rgba(251,191,36,0.12)'; btn.style.borderColor='rgba(251,191,36,0.4)'; btn.style.color='#fbbf24'; }
-    const label = document.getElementById('push-status-label');
-    if (label) { label.textContent = 'Désactivées'; label.style.color = ''; }
-    const testRow = document.getElementById('push-test-row');
-    if (testRow) testRow.style.display = 'none';
-    return;
-  }
-
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  if (isIOS && !window.navigator.standalone) { showPWAInstallModal(); return; }
-
-  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-    showToast('Notifications non supportees'); return;
-  }
-
-  if (btn) { btn.textContent = 'Activation...'; btn.disabled = true; }
-
-  try {
-    let perm = Notification.permission;
-    if (perm !== 'granted') perm = await Notification.requestPermission();
-
-    if (perm === 'granted') {
-      // Timeout sur serviceWorker.ready (peut bloquer indéfiniment)
-      // Force re-registration if needed
-      let swReg;
-      try {
-        swReg = await navigator.serviceWorker.getRegistration('/');
-        if (!swReg) {
-          swReg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-          await new Promise(r => setTimeout(r, 1000));
-        }
-      } catch(e) { console.warn('[Push] SW reg error:', e); }
-
-      const reg = await Promise.race([
-        navigator.serviceWorker.ready,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout - rafraichis la page et reessaie')), 15000))
-      ]);
-      await subscribePush(reg);
-      // Force UI update directly
-      if (btn) { btn.textContent = '🔕 Désactiver les notifications'; btn.style.background='rgba(239,68,68,0.1)'; btn.style.borderColor='rgba(239,68,68,0.4)'; btn.style.color='#ef4444'; btn.disabled = false; }
-      const label = document.getElementById('push-status-label');
-      if (label) { label.textContent = '✅ Activées'; label.style.color = '#4ade80'; }
-      const testRow = document.getElementById('push-test-row');
-      if (testRow) testRow.style.display = 'block';
-      showToast('Notifications activees !');
-    } else {
-      if (btn) { btn.textContent = 'Activer les notifications'; btn.disabled = false; }
-      showToast('Permission refusee');
-    }
-  } catch(e) {
-    if (btn) { btn.textContent = 'Activer les notifications'; btn.disabled = false; }
-    showToast('Erreur: ' + e.message);
-    console.error('[Push]', e);
-  }
-}
-
-function showPWAInstallModal() {
-  document.getElementById('pwa-install-modal')?.remove();
-  const modal = document.createElement('div');
-  modal.id = 'pwa-install-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)';
-  modal.innerHTML = `
-    <div style="background:var(--color-surface);border-radius:20px 20px 0 0;padding:28px 24px;width:100%;max-width:500px">
-      <div style="text-align:center;margin-bottom:20px">
-        <div style="font-size:36px;margin-bottom:8px">📱</div>
-        <h3 style="font-size:17px;font-weight:800;color:var(--color-text);margin:0 0 6px">Installe InvestIQ sur ton iPhone</h3>
-        <p style="font-size:14px;color:var(--color-text-secondary);margin:0;line-height:1.5">Pour recevoir des notifications, ajoute l'app à ton écran d'accueil.</p>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--color-bg-subtle);border-radius:12px">
-          <div style="width:32px;height:32px;background:#007AFF;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-          </div>
-          <div style="font-size:14px;color:var(--color-text)">Appuie sur <strong>Partager</strong> <span style="font-size:16px">⬆️</span> en bas de Safari</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--color-bg-subtle);border-radius:12px">
-          <div style="width:32px;height:32px;background:#007AFF;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">➕</div>
-          <div style="font-size:14px;color:var(--color-text)">Choisis <strong>"Sur l'écran d'accueil"</strong></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--color-bg-subtle);border-radius:12px">
-          <div style="width:32px;height:32px;background:#4ade80;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔔</div>
-          <div style="font-size:14px;color:var(--color-text)">Ouvre l'app depuis l'icône et active les notifications</div>
-        </div>
-      </div>
-      <button onclick="document.getElementById('pwa-install-modal').remove()"
-        style="width:100%;padding:14px;background:#007AFF;border:none;border-radius:12px;font-size:16px;font-weight:700;color:#fff;cursor:pointer">
-        Compris !
-      </button>
-    </div>`;
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-  document.body.appendChild(modal);
-}
-
-function updatePushUI(subscribed) {
-  const btn     = document.getElementById('push-toggle-btn');
-  const label   = document.getElementById('push-status-label');
-  const testRow = document.getElementById('push-test-row');
-  if (btn) {
-    btn.textContent = subscribed ? '🔕 Désactiver les notifications' : 'Activer les notifications';
-    btn.style.background  = subscribed ? 'rgba(239,68,68,0.1)'  : 'rgba(251,191,36,0.12)';
-    btn.style.borderColor = subscribed ? 'rgba(239,68,68,0.4)'  : 'rgba(251,191,36,0.4)';
-    btn.style.color       = subscribed ? '#ef4444'              : '#fbbf24';
-  }
-  if (label) { label.textContent = subscribed ? '✅ Activées' : 'Désactivées'; label.style.color = subscribed ? '#4ade80' : ''; }
-  if (testRow) testRow.style.display = subscribed ? 'block' : 'none';
-}
-
-function toggleSortMenu() {
-  const m = document.getElementById('sort-menu');
-  if (!m) return;
-  const open = m.style.display === 'block';
-  m.style.display = open ? 'none' : 'block';
-  if (!open) {
-    const close = e => { if (!m.contains(e.target) && e.target.id !== 'sort-trigger') { m.style.display='none'; document.removeEventListener('click', close); } };
-    setTimeout(() => document.addEventListener('click', close), 0);
-  }
-}
-
 function renderPortfolio() {
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
@@ -5853,52 +5730,12 @@ function renderPortfolio() {
     </div>`).join('')}
   </div>`;
 
-  // Tri des positions selon la préférence
-  const _sortKey = window._portfolioSort || 'valeur';
-  const sorted = [...dedupPositions].sort((a,b) => {
-    if (_sortKey === 'valeur')      return b.qty*b.price - a.qty*a.price;
-    if (_sortKey === 'perf')        return ((b.price-b.pru)/b.pru) - ((a.price-a.pru)/a.pru);
-    if (_sortKey === 'perf_asc')   return ((a.price-a.pru)/a.pru) - ((b.price-b.pru)/b.pru);
-    if (_sortKey === 'variation')   return (b.change_pct||0) - (a.change_pct||0);
-    if (_sortKey === 'quantite')    return b.qty - a.qty;
-    if (_sortKey === 'recent')      return (b.created_at||b.id||0) > (a.created_at||a.id||0) ? 1 : -1;
-    if (_sortKey === 'nom')         return a.name.localeCompare(b.name);
-    if (_sortKey === 'pnl')         return (b.qty*b.price-b.qty*b.pru) - (a.qty*a.price-a.qty*a.pru);
-    return b.qty*b.price - a.qty*a.price;
-  });
-
-  const sortOptions = [
-    { key:'valeur',    label:'Valeur'            },
-    { key:'perf',      label:'Meilleure perf.'   },
-    { key:'perf_asc',  label:'Pire perf.'        },
-    { key:'variation', label:'Variation du jour' },
-    { key:'pnl',       label:'Plus-value €'      },
-    { key:'recent',    label:'Dernier ajouté'    },
-    { key:'nom',       label:'Nom A\u2192Z'       },
-  ];
-
-  const _activeLabel = sortOptions.find(o => o.key === _sortKey)?.label || 'Valeur';
-  const sortBarHtml = `
-  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;position:relative">
-    <span style="font-size:12px;font-weight:600;color:${subCol}">Trier par :</span>
-    <div style="position:relative;display:inline-block">
-      <button id="sort-trigger" onclick="toggleSortMenu()" style="display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border:1px solid ${borderCol};color:${textCol}">
-        ${_activeLabel}
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <div id="sort-menu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:${isDark?'#1a1a2e':'#fff'};border:1px solid ${borderCol};border-radius:10px;padding:4px;z-index:200;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.18)">
-        ${sortOptions.map(o => `<button onclick="window._portfolioSort='${o.key}';document.getElementById('sort-menu').style.display='none';renderPortfolio()"
-          style="display:block;width:100%;text-align:left;padding:7px 12px;border-radius:7px;font-size:12px;font-weight:${_sortKey===o.key?700:500};cursor:pointer;background:${_sortKey===o.key?(isDark?'rgba(63,185,80,0.12)':'rgba(63,185,80,0.08)'):'transparent'};border:none;color:${_sortKey===o.key?'#3fb950':textCol}">
-          ${o.label}${_sortKey===o.key?' \u2713':''}
-        </button>`).join('')}
-      </div>
-    </div>
-  </div>`;
+  // Tableau des positions
+  const sorted = [...dedupPositions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
   const tableHtml = `
-  ${sortBarHtml}
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
-    <!-- Header tableau — caché sur mobile -->
-    <div class="port-table-header" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
+    <!-- Header tableau -->
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
       ${['ACTIF','INVESTI','PRIX MOY.','VALEUR','PERF.','',''].map(h=>`<div style="font-size:10px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.06em">${h}</div>`).join('')}
     </div>
     <!-- Lignes positions -->
@@ -5916,15 +5753,15 @@ function renderPortfolio() {
       const sigLabel = sig?.signal==='BUY'?'Renforcer':sig?.signal==='SELL'?'Vendre':'Garder';
       const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
       return `
-      <div class="port-table-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
         onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'"
         onclick="togglePos('${p.id}')">
         <!-- Actif -->
         <div style="display:flex;align-items:center;gap:10px">
           ${getCompanyLogo(p.name, p.fullName||p.name, 36, 10)}
           <div>
-            <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${getTickerName(p.name)}</div>
-            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.type||'Action'} · ${p.qty % 1 === 0 ? p.qty : parseFloat(p.qty.toFixed(4))} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
+            <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${p.name}</div>
+            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.fullName||p.type||'Action'} · ${p.qty} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
           </div>
         </div>
         <!-- Investi -->
@@ -6030,31 +5867,9 @@ function renderPortfolio() {
     });
   }, 50);
 
-  // Générer signaux — seulement au 1er rendu, pas à chaque refreshPrices
-  // On évite les appels en cascade : 1 seul test, fallback statique si API KO
+  // Générer signaux en lot — max 6, espacés de 800ms pour éviter les 500
   const needSignal = positions.filter(p => !posSignals[p.id]).slice(0, 6);
-  if (needSignal.length > 0 && !window._signalLoadStarted) {
-    window._signalLoadStarted = true;
-    generatePosSignal(needSignal[0]).then(() => {
-      const sig = posSignals[needSignal[0].id];
-      const apiOk = sig && sig.texte !== 'Analyse temporairement indisponible';
-      if (apiOk) {
-        needSignal.slice(1).forEach((p, i) => setTimeout(() => generatePosSignal(p), (i+1) * 800));
-      } else {
-        // API KO — fallback statique immédiat sans appels supplémentaires
-        needSignal.slice(1).forEach(p => {
-          const pnl = (p.price - p.pru) / p.pru * 100;
-          posSignals[p.id] = {
-            action: pnl > 5 ? 'garder' : pnl < -15 ? 'vendre' : 'garder',
-            conviction: 'modérée', texte: pnl < -15 ? 'Perte importante — envisage de couper.' : pnl > 15 ? 'Belle performance — sécurise une partie.' : 'Continue à surveiller cette position.',
-            horizon_signal: p.type === 'ETF' ? 'Long terme' : '1-3 mois', timing: 'Attendre',
-            catalyseurs: ['Analyse indisponible'], risques: ['Volatilité du marché'], prix_cible: 0, stop_loss: 0
-          };
-        });
-        saveSignalsCache();
-      }
-    });
-  }
+  needSignal.forEach((p, i) => setTimeout(() => generatePosSignal(p), i * 800));
 }
 
 
@@ -6117,37 +5932,6 @@ function togglePosSignal(id) {
   const el=document.getElementById('sig-'+id);
   if(el) el.style.display=el.style.display==='block'?'none':'block';
 }
-
-function showPosMenu(id) {
-  // Ferme tous les menus ouverts
-  document.querySelectorAll('.pos-menu-popup').forEach(m => m.remove());
-  const btn = event?.target?.closest('button');
-  const pos = positions.find(p => String(p.id) === String(id));
-  if (!pos) return;
-  const menu = document.createElement('div');
-  menu.className = 'pos-menu-popup';
-  menu.style.cssText = 'position:fixed;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.15);z-index:500;min-width:180px;overflow:hidden';
-  menu.innerHTML = [
-    `<button onclick="openEditPos('${id}');document.querySelector('.pos-menu-popup')?.remove()" style="width:100%;padding:12px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:600;color:var(--color-text);cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--color-bg-subtle)'" onmouseout="this.style.background='none'">✏️ Modifier</button>`,
-    `<button onclick="openDecisionFromPos('${pos.name}','garder');document.querySelector('.pos-menu-popup')?.remove()" style="width:100%;padding:12px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:600;color:var(--color-text);cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--color-bg-subtle)'" onmouseout="this.style.background='none'">🤖 Analyser avec l'IA</button>`,
-    `<hr style="margin:4px 0;border:none;border-top:1px solid var(--color-border)">`,
-    `<button onclick="delPos('${id}');document.querySelector('.pos-menu-popup')?.remove()" style="width:100%;padding:12px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:600;color:#f87171;cursor:pointer;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(248,113,113,0.08)'" onmouseout="this.style.background='none'">🗑 Supprimer</button>`,
-  ].join('');
-  // Positionner près du bouton
-  if (btn) {
-    const rect = btn.getBoundingClientRect();
-    menu.style.top = (rect.bottom + 4) + 'px';
-    menu.style.right = (window.innerWidth - rect.right) + 'px';
-  } else {
-    menu.style.top = '50%'; menu.style.left = '50%';
-  }
-  document.body.appendChild(menu);
-  // Ferme sur clic extérieur
-  setTimeout(() => document.addEventListener('click', function h(e) {
-    if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', h); }
-  }), 10);
-}
-
 let decisionIntention = null;
 function openDecisionFromPos(name, action) {
   decisionIntention = action;
@@ -6167,176 +5951,7 @@ function openDecisionFromPos(name, action) {
   }, 50);
 }
 
-function updateBrokerBtn() {
-  const platform = document.getElementById('f-platform')?.value || 'XTB';
-  const btn = document.getElementById('btn-add-open-xtb');
-  if (!btn) return;
-  if (platform === 'XTB') {
-    btn.style.display = 'flex';
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Ajouter + Ouvrir dans XTB`;
-    btn.style.color = '#16a34a';
-    btn.style.borderColor = 'rgba(22,163,74,0.3)';
-    btn.style.background = 'rgba(22,163,74,0.08)';
-  } else if (platform === 'Trade Republic') {
-    btn.style.display = 'flex';
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Ajouter + Voir sur Trade Republic`;
-    btn.style.color = '#60a5fa';
-    btn.style.borderColor = 'rgba(96,165,250,0.3)';
-    btn.style.background = 'rgba(96,165,250,0.08)';
-  } else {
-    btn.style.display = 'none';
-  }
-}
-
-// Map ticker InvestIQ → ticker XTB exact
-const XTB_TICKER_MAP = {
-  // Actions françaises (.PA → .FR)
-  'MC.PA':'MC.FR','LVMH':'MC.FR',
-  'TTE.PA':'TTE.FR','AI.PA':'AI.FR',
-  'AIR.PA':'AIR.FR','VIE.PA':'VIE.FR',
-  'SOI.PA':'SOI.FR','FDJ.PA':'FDJ.FR',
-  'ALO.PA':'ALO.FR','SAN.PA':'SAN.FR',
-  'OR.PA':'OR.FR','BNP.PA':'BNP.FR',
-  'GLE.PA':'GLE.FR','ACA.PA':'ACA.FR',
-  'SU.PA':'SU.FR','DSY.PA':'DSY.FR',
-  'CAP.PA':'CAP.FR','LR.PA':'LR.FR',
-  'STM.PA':'STM.FR','ENGI.PA':'ENG.FR',
-  'ORA.PA':'ORA.FR','HO.PA':'HO.FR',
-  // Actions allemandes (.DE → .DE)
-  'PAH3.DE':'PAH3.DE','VOW3.DE':'VOW3.DE',
-  'BMW.DE':'BMW.DE','SAP.DE':'SAP.DE',
-  'SIE.DE':'SIE.DE','STM.DE':'STM.DE',
-  'SPPW.DE':'SPPW.DE','AMEM.DE':'AMEM.DE',
-  'VWCE.DE':'VWCE.DE',
-  // UK (.L → .UK)
-  'IWDA.L':'IWDA.UK','SWRD.L':'SWRD.UK',
-  'CSPX.L':'CSPX.UK',
-  // Amsterdam (.AS → .NL)
-  'IWDA.AS':'IWDA.NL','VWCE.AS':'VWCE.NL',
-  // US (sans suffix)
-  'AAPL':'AAPL.US','MSFT':'MSFT.US',
-  'GOOGL':'GOOGL.US','AMZN':'AMZN.US',
-  'TSLA':'TSLA.US','NVDA':'NVDA.US',
-  'META':'META.US','RACE':'RACE.US',
-};
-
-function getXTBInstrumentUrl(ticker) {
-  // Cherche d'abord dans la map exacte
-  let xtbTicker = XTB_TICKER_MAP[ticker] || XTB_TICKER_MAP[(ticker||'').toUpperCase()];
-
-  if (!xtbTicker) {
-    // Conversion automatique par suffix — couvre toutes les bourses mondiales
-    xtbTicker = (ticker||'')
-      .replace(/\.PA$/, '.FR')   // Euronext Paris
-      .replace(/\.L$/, '.UK')    // London Stock Exchange
-      .replace(/\.AS$/, '.NL')   // Euronext Amsterdam
-      .replace(/\.MI$/, '.IT')   // Borsa Italiana
-      .replace(/\.MC$/, '.ES')   // Bolsa Madrid
-      .replace(/\.BR$/, '.BE')   // Euronext Brussels
-      .replace(/\.WA$/, '.PL')   // Warsaw
-      .replace(/\.LS$/, '.PT')   // Lisbon
-      .replace(/\.HE$/, '.FI')   // Helsinki
-      .replace(/\.ST$/, '.SE')   // Stockholm
-      .replace(/\.CO$/, '.DK')   // Copenhagen
-      .replace(/\.OL$/, '.NO')   // Oslo
-      .replace(/\.SW$/, '.CH')   // Swiss Exchange
-      .replace(/\.VI$/, '.AT')   // Vienna
-      .replace(/\.PR$/, '.CZ')   // Prague
-      .replace(/\.BU$/, '.HU')   // Budapest
-      .replace(/\.T$/, '.JP')    // Tokyo
-      .replace(/\.AX$/, '.AU')   // Australia
-      .replace(/\.TO$/, '.CA')   // Toronto
-      .replace(/\.HK$/, '.HK')   // Hong Kong
-      .replace(/\.SS$/, '.CN')   // Shanghai
-      .replace(/\.SZ$/, '.CN');  // Shenzhen
-    // Si pas de suffix → action américaine
-    if (!xtbTicker.includes('.')) xtbTicker += '.US';
-  }
-
-  return { ticker: xtbTicker, url: 'https://xstation5.xtb.com/' };
-}
-
-async function addPosAndOpenBroker() {
-  const platform = document.getElementById('f-platform')?.value || 'XTB';
-  const ticker   = document.getElementById('f-name')?.value || '';
-  console.log('[Broker] ticker:', ticker, '| platform:', platform);
-
-  // Calcule avant le reset du form
-  let brokerTicker = '', brokerUrl = '';
-  if (platform === 'XTB') {
-    const r = getXTBInstrumentUrl(ticker);
-    brokerTicker = r.ticker;
-    brokerUrl    = r.url;
-  } else if (platform === 'Trade Republic') {
-    brokerUrl = 'https://app.traderepublic.com/';
-  }
-
-  // Ajoute la position
-  await addPos();
-
-  // Modale pour XTB et Trade Republic
-  if (platform === 'XTB' && brokerTicker) {
-    showXTBModal(brokerTicker, brokerUrl);
-  } else if (platform === 'Trade Republic') {
-    showTRModal(ticker);
-  } else if (brokerUrl) {
-    window.open(brokerUrl, '_blank');
-  }
-}
-
-function showXTBModal(ticker, url) {
-  // Supprime l'ancienne modale si elle existe
-  document.getElementById('xtb-open-modal')?.remove();
-
-  const modal = document.createElement('div');
-  modal.id = 'xtb-open-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)';
-  modal.innerHTML = `
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:28px;width:400px;max-width:95vw;text-align:center">
-      <div style="font-size:28px;margin-bottom:12px">📈</div>
-      <h3 style="font-size:16px;font-weight:800;color:var(--color-text);margin:0 0 8px">Ouvrir dans XTB</h3>
-      <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 16px;line-height:1.6">
-        Position ajoutée à InvestIQ ✅<br>
-        Recherche <strong style="color:var(--color-text)">${ticker}</strong> dans xStation pour passer l'ordre.
-      </p>
-      <!-- Ticker à copier -->
-      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;margin-bottom:16px">
-        <span style="font-size:16px;font-weight:800;color:var(--color-text);letter-spacing:0.05em">${ticker}</span>
-        <button onclick="navigator.clipboard.writeText('${ticker}');this.textContent='✅ Copié!';setTimeout(()=>this.textContent='📋 Copier',1500)"
-          style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
-          📋 Copier
-        </button>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button onclick="document.getElementById('xtb-open-modal').remove()"
-          style="flex:1;padding:11px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
-          Fermer
-        </button>
-        <button onclick="navigator.clipboard.writeText('${ticker}');window.open('${url}','_blank');document.getElementById('xtb-open-modal').remove()"
-          style="flex:2;padding:11px;background:#16a34a;border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Copier + Ouvrir XTB
-        </button>
-      </div>
-    </div>`;
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-  document.body.appendChild(modal);
-}
-
-function getTRInstrumentUrl(ticker) {
-  // Trade Republic — recherche par nom sur leur site web
-  const name = getTickerName(ticker) || ticker;
-  return `https://app.traderepublic.com/`;
-}
-
-
-
 async function addPos() {
-  // Limite 5 positions en gratuit
-  if (!isPremiumUser() && positions.length >= 5) {
-    showPremiumModal('positions');
-    return;
-  }
   const name = document.getElementById('f-name').value.trim();
   const qty = parseFloat(document.getElementById('f-qty').value);
   const pru = parseFloat(document.getElementById('f-pru').value);
@@ -6352,54 +5967,6 @@ async function addPos() {
   if (isNaN(pru) || pru <= 0) { showToast('⚠ Indique ton prix de revient (PRU)'); return; }
   if (isNaN(price) || price <= 0) { showToast('⚠ Indique le prix actuel'); return; }
 
-  // Cherche si la position existe déjà (même ticker)
-  // Cherche position existante par ticker exact OU par nom (MC.PA == LVMH)
-  const nameLow = name.toLowerCase();
-  const existing = positions.find(p => {
-    if (p.name.toLowerCase() === nameLow) return true;
-    // Cherche dans AC_DB si les deux tickers correspondent à la même entreprise
-    const dbEntry = AC_DB.find(c => c.ticker.toLowerCase() === nameLow || c.name.toLowerCase() === nameLow);
-    if (dbEntry && p.name.toLowerCase() === dbEntry.ticker.toLowerCase()) return true;
-    if (dbEntry && dbEntry.ticker.toLowerCase() === p.name.toLowerCase()) return true;
-    return false;
-  });
-  // Si trouvé via alias, utiliser le vrai ticker de la position existante
-  const effectiveName = existing ? existing.name : name;
-
-  if (existing) {
-    // Calcul du nouveau PRU moyen pondéré
-    const totalQty = existing.qty + qty;
-    const newPru = ((existing.qty * existing.pru) + (qty * pru)) / totalQty;
-
-    if (isDemo) {
-      existing.qty = totalQty;
-      existing.pru = parseFloat(newPru.toFixed(4));
-      acClear();
-      nav('portfolio');
-      renderPortfolio(); renderHome();
-      showToast(`✓ ${name} renforcé — nouveau PRU : ${newPru.toFixed(2)}€`);
-      return;
-    }
-
-    const { error } = await sb.from('positions').update({
-      qty: totalQty,
-      pru: parseFloat(newPru.toFixed(4)),
-      price: price,
-    }).eq('id', existing.id);
-
-    if (error) { showToast('Erreur: ' + error.message); return; }
-    existing.qty = totalQty;
-    existing.pru = parseFloat(newPru.toFixed(4));
-    existing.price = price;
-    await addTransaction(effectiveName, 'achat', qty, pru, 'Renforcement de position');
-    acClear();
-    nav('portfolio');
-    renderPortfolio(); renderHome();
-    showToast(`✓ ${name} renforcé — nouveau PRU : ${newPru.toFixed(2)}€`);
-    return;
-  }
-
-  // Nouvelle position
   const pos = { name, qty, pru, price, type, sector, platform, alert_price: alertPrice };
 
   if (isDemo) {
@@ -6410,14 +5977,10 @@ async function addPos() {
     return;
   }
 
-  const { data, error } = await sb.from('positions')
-    .upsert({ ...pos, user_id: currentUser.id }, { onConflict: 'user_id,name', ignoreDuplicates: false })
-    .select().single();
+  const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
   if (error) { showToast('Erreur: ' + error.message); return; }
   if (data) {
-    // Mettre à jour positions[] si déjà présent, sinon ajouter
-    const idx = positions.findIndex(p => p.name === data.name);
-    if (idx >= 0) positions[idx] = data; else positions.push(data);
+    positions.push(data);
     await addTransaction(name, 'achat', qty, pru, 'Ouverture de position');
     acClear();
     nav('portfolio');
@@ -7119,8 +6682,8 @@ function renderCrise() {
           <div style="font-size:32px;font-weight:900;color:${s.color};letter-spacing:-0.05em;line-height:1;margin-bottom:12px">${s.rate>0?'+':''}${s.rate}%</div>
           <div style="margin-bottom:10px">${spark(s.trend, s.color)}</div>
           <div style="font-size:11px;color:${sub};margin-bottom:4px">Valeur projetée dans ${years} ans</div>
-          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em">${fmtK(proj)}</div>
-          <div style="font-size:12px;font-weight:700;color:${s.color};margin-top:3px">${gain>=0?'+':''}${fmtK(gain)} (${gain>=0?'+':''}${gainPct}%)</div>
+          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em">${fmtK(proj)} k€</div>
+          <div style="font-size:12px;font-weight:700;color:${s.color};margin-top:3px">${gain>=0?'+':''}${fmtK(gain)} k€ (${gain>=0?'+':''}${gainPct}%)</div>
         </div>`;
       }).join('')}
     </div>
@@ -7474,34 +7037,21 @@ function toggleNews(i) {
 
 // ===== DECISION =====
 function openDecision(ticker,signal){
-  // Stocker le ticker à pré-remplir, naviguer, puis remplir après rendu
-  window._pendingDecisionTicker = ticker;
-  window._pendingDecisionSignal = signal;
-  nav('decision');
-  if(document.getElementById('nav-decision')) document.getElementById('nav-decision').classList.add('active');
-  setTimeout(() => {
-    const t = window._pendingDecisionTicker;
-    const s = window._pendingDecisionSignal;
-    if (!t) return;
-    window._pendingDecisionTicker = null;
-    const pct = s==='éviter' ? 0 : suggestedPct(s, profile.risk, profile.horizon);
-    const amt = Math.round((profile.bankroll||1000)*pct/100);
-    const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val; };
-    const setTxt = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-    const result = document.getElementById('d-result'); if(result) result.innerHTML='';
-    set('d-name', t);
-    // Déclencher l'event input pour mettre à jour l'autocomplete
-    const nameEl = document.getElementById('d-name');
-    if (nameEl) nameEl.dispatchEvent(new Event('input'));
-    set('d-horizon', profile.horizon);
-    set('d-risk', profile.risk);
-    set('d-pct', pct);
-    set('d-amount', amt);
-    setTxt('d-pct-num', pct);
-    setTxt('d-pct-lbl', `= ${amt.toLocaleString('fr-FR')} €`);
-    const notice=document.getElementById('prefill-notice');
-    if(notice){ notice.style.display='block'; notice.textContent=`✓ Pré-rempli — ${t} · ${pct}% bankroll (${amt.toLocaleString('fr-FR')} €)`; }
-  }, 200);
+  const pct=signal==='éviter'?0:suggestedPct(signal,profile.risk,profile.horizon);
+  const amt=Math.round(profile.bankroll*pct/100);
+  // Vider l'ancienne analyse à chaque nouveau ticker
+  document.getElementById('d-result').innerHTML = '';
+  document.getElementById('d-name').value=ticker;
+  document.getElementById('d-horizon').value=profile.horizon;
+  document.getElementById('d-risk').value=profile.risk;
+  document.getElementById('d-pct').value=pct;
+  document.getElementById('d-pct-num').textContent=pct;
+  document.getElementById('d-amount').value=amt;
+  document.getElementById('d-pct-lbl').textContent=`= ${amt.toLocaleString('fr-FR')} €`;
+  const notice=document.getElementById('prefill-notice');
+  notice.style.display='block';
+  notice.textContent=`✓ Pré-rempli — ${ticker} · ${pct}% bankroll (${amt.toLocaleString('fr-FR')} €)`;
+  nav('decision');document.getElementById('nav-decision').classList.add('active');
 }
 function updatePct(){
   const pct=parseInt(document.getElementById('d-pct').value);
@@ -7519,24 +7069,10 @@ function setDecisionIntent(intent) {
 }
 
 async function analyseDecision() {
-  // Vérif limite gratuit
-  if (!isPremiumUser()) {
-    const used = getTotalCount('decision');
-    if (used >= 3) {
-      showPremiumModal('decision');
-      return;
-    }
-    incrementTotalCount('decision');
-  }
-  const nameEl = document.getElementById('d-name');
-  if (!nameEl) return;
-  const name = nameEl.value.trim().toUpperCase();
-  // Mettre à jour le champ avec la valeur normalisée
-  if (name) nameEl.value = name;
-  // Lire le montant depuis d-amount-display (ex: "500 €") ou fallback 500
-  const amtDisplay = document.getElementById('d-amount-display');
-  const amt = amtDisplay ? parseInt(amtDisplay.textContent.replace(/[^0-9]/g,'')) || 500 : 500;
-  const pct = Math.round(amt / (profile.bankroll || 5000) * 100);
+  const name = document.getElementById('d-name').value.trim();
+  const pct  = parseInt(document.getElementById('d-pct').value) || 10;
+  const amt  = Math.round((profile.bankroll || 5000) * pct / 100);
+  document.getElementById('d-amount').value = amt;
 
   if (!name) { showToast('⚠ Indique un actif'); return; }
 
@@ -7549,14 +7085,10 @@ async function analyseDecision() {
   const intent = decisionIntention || 'garder';
   const intentTxt = { acheter: 'acheter ou renforcer', vendre: 'vendre ou réduire', garder: 'savoir quoi faire' }[intent];
 
-  const prompt = `Tu es un conseiller financier pédagogue. Un débutant veut ${intentTxt} "${name}".
-IMPORTANT : L'utilisateur a peut-être mal orthographié le nom. Identifie l'entreprise ou l'actif le plus probable, corrige si besoin, et utilise le bon ticker boursier officiel dans ta réponse (champ "ticker_corrige").
+  const prompt = `Tu es un conseiller financier pédagogue. Un débutant veut ${intentTxt} ${name}.
 ${posCtx}
 Montant envisagé : ${amt}€ (${pct}% de sa bankroll de ${profile.bankroll}€).
 Profil : horizon ${HL[profile.horizon]}, risque ${RL[profile.risk]}.
-
-IMPORTANT : Si "${name}" est une entreprise non cotée en bourse (pas de ticker boursier public), analyse quand même l'entreprise et son secteur, mais mets "non_cote": true dans ta réponse.
-Si tu ne reconnais pas du tout l'entreprise, fais de ton mieux avec les informations disponibles.
 
 Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
 {
@@ -7569,10 +7101,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
   "montant_conseille": "Ex: 300€ maximum (6% de ta bankroll)",
   "pour": ["point positif 1", "point positif 2"],
   "contre": ["point négatif 1", "point négatif 2"],
-  "conseil_final": "Conseil concret en 2-3 phrases simples pour un débutant",
-  "non_cote": false,
-  "ticker_corrige": "Le vrai ticker boursier (ex: STM.PA, AAPL, MC.PA) ou null si non coté",
-  "nom_corrige": "Le vrai nom de l'entreprise"
+  "conseil_final": "Conseil concret en 2-3 phrases simples pour un débutant"
 }`;
 
   const result = document.getElementById('d-result');
@@ -7587,13 +7116,6 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
     const clean = raw.replace(/```json|```/g,'').trim();
     const d = JSON.parse(clean);
 
-    // Corriger le ticker dans le champ si l'IA a identifié le bon
-    if (d.ticker_corrige && d.ticker_corrige !== name) {
-      const nameEl2 = document.getElementById('d-name');
-      if (nameEl2) nameEl2.value = d.ticker_corrige;
-      showToast(`✓ Corrigé : ${d.nom_corrige || d.ticker_corrige}`);
-    }
-    const displayName = d.nom_corrige || name;
     const riskColor = d.risque_niveau === 'Faible' ? '#1a7f5a' : d.risque_niveau === 'Moyen' ? '#f59e0b' : '#cc2f26';
     const recoBg = d.recommandation === 'ACHETER' ? '#e8f8f0' : d.recommandation === 'VENDRE' ? '#fff0f0' : d.recommandation === 'EVITER' ? '#fff0f0' : '#fff9e6';
     const recoColor = d.recommandation === 'ACHETER' ? '#1a7f5a' : d.recommandation === 'VENDRE' || d.recommandation === 'EVITER' ? '#cc2f26' : '#92400e';
@@ -7604,7 +7126,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
         <div style="display:flex;align-items:center;gap:16px">
           <div style="font-size:48px">${d.emoji}</div>
           <div>
-            <div style="font-size:11px;font-weight:700;color:${recoColor};text-transform:uppercase;letter-spacing:1px">${displayName} · ${['garder','acheter','vendre'].includes(intent) ? {garder:'Analyse générale',acheter:'Acheter ?',vendre:'Vendre ?'}[intent] : 'Analyse'}</div>
+            <div style="font-size:11px;font-weight:700;color:${recoColor};text-transform:uppercase;letter-spacing:1px">${name} · ${['garder','acheter','vendre'].includes(intent) ? {garder:'Analyse générale',acheter:'Acheter ?',vendre:'Vendre ?'}[intent] : 'Analyse'}</div>
             <div style="font-size:24px;font-weight:900;color:${recoColor}">${d.recommandation}</div>
             <div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-top:2px">${d.phrase_cle}</div>
           </div>
@@ -7647,14 +7169,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
       </div>
 
       <!-- AJOUTER AU PORTEFEUILLE -->
-      ${d.non_cote ? `
-      <div style="margin-top:10px;padding:14px 16px;background:#fff9e6;border:1px solid #f59e0b40;border-radius:12px;display:flex;align-items:flex-start;gap:10px">
-        <span style="font-size:18px;flex-shrink:0">⚠️</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:3px">Entreprise non cotée en bourse</div>
-          <div style="font-size:12px;color:#78350f;line-height:1.5">Cette entreprise n'est pas cotée en bourse — il n'est pas possible de l'acheter via un courtier classique (Boursorama, XTB, Trade Republic…). Tu ne peux pas l'ajouter à ton portefeuille InvestIQ.</div>
-        </div>
-      </div>` : d.recommandation !== 'EVITER' ? `
+      ${d.recommandation !== 'EVITER' ? `
       <button class="btn-primary" onclick="addToPortfolioFromDecision('${name}', ${amt})" style="width:100%;margin-top:10px;background:#1a7f5a">
         ➕ Ajouter au portefeuille
       </button>` : ''}
@@ -7716,30 +7231,19 @@ function dcaPreset(m, y, r, s, btn) {
   document.getElementById('dca-r').value = r;
   document.getElementById('dca-s').value = s;
   // Marquer la carte active
-  document.querySelectorAll('.dca-preset-card,.dca-preset-tab').forEach(b => {
-    b.classList.remove('active');
-    b.style.background = 'transparent';
-    const l = b.querySelector('div:first-child');
-    if (l) l.style.color = 'var(--color-text-secondary)';
-  });
-  if (btn) {
-    btn.classList.add('active');
-    btn.style.background = 'rgba(63,185,80,0.08)';
-    const l = btn.querySelector('div:first-child');
-    if (l) l.style.color = '#3fb950';
-  }
+  document.querySelectorAll('.dca-preset-card').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
   updateDCA();
 }
 
 // Pré-calcule et affiche le résultat final sur chaque carte preset au chargement
 function initDCAPresets() {
   const presets = [
-    { m:200,  y:10, r:7,  s:0 },
-    { m:200,  y:10, r:4,  s:0 },
-    { m:300,  y:10, r:9,  s:0 },
-    { m:1000, y:10, r:7,  s:0 },
-    { m:2000, y:10, r:9,  s:0 },
-    { m:5000, y:10, r:11, s:0 },
+    { m:200, y:20, r:7,  s:1000  },
+    { m:100, y:15, r:5,  s:0     },
+    { m:500, y:15, r:9,  s:5000  },
+    { m:1000,y:30, r:9,  s:10000 },
+    { m:50,  y:10, r:7,  s:0     },
   ];
   presets.forEach((p, i) => {
     const rate = p.r / 100 / 12;
@@ -7771,7 +7275,7 @@ function updateDCA() {
   const mult     = invested > 0 ? total / invested : 1;
 
   // Métriques
-  const _mEl=document.getElementById('dca-metrics'); if(_mEl) _mEl.innerHTML = `
+  document.getElementById('dca-metrics').innerHTML = `
     <div class="metric-card">
       <div class="metric-label">Capital final estimé</div>
       <div class="metric-val green">${fmtK(Math.round(total))}</div>
@@ -7839,10 +7343,9 @@ function updateDCA() {
 
     if (dcaChartInstance) dcaChartInstance.destroy();
     const ctx = canvas.getContext('2d');
-    const grad = ctx.createLinearGradient(0, 0, 0, 220);
-    grad.addColorStop(0, 'rgba(74,222,128,0.25)');
-    grad.addColorStop(0.6, 'rgba(74,222,128,0.08)');
-    grad.addColorStop(1, 'rgba(74,222,128,0)');
+    const grad = ctx.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0, 'rgba(28,28,30,0.15)');
+    grad.addColorStop(1, 'rgba(28,28,30,0)');
 
     dcaChartInstance = new Chart(ctx, {
       type: 'line',
@@ -7907,13 +7410,13 @@ function updateDCA() {
       const inv = s + m * mo;
       const g   = fv - inv;
       const pct = inv > 0 ? ((g / inv) * 100).toFixed(1) : '0.0';
-      rows += `<tr style="border-bottom:1px solid rgba(255,255,255,0.06);transition:background 0.1s" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+      rows += `<tr style="border-bottom:1px solid #f5f5f5">
         <td style="padding:8px 6px;font-weight:700;color:#1c1c1e;font-size:13px">Année ${yr}</td>
         <td style="padding:8px 6px;font-weight:800;color:#1a7f5a;font-size:13px">${fmtK(Math.round(fv))}</td>
         <td style="padding:8px 6px;color:#8e8e93;font-size:12px">${fmtK(Math.round(inv))}</td>
         <td style="padding:8px 6px;color:#1a7f5a;font-weight:700;font-size:12px">+${fmtK(Math.round(g))}</td>
-        <td stytd style="padding:13px 12px">
-          <span style="background:rgba(74,222,128,0.12);color:#4ade80;font-weight:700;padding:4px 12px;border-radius:99px;font-size:12px;border:1px solid rgba(74,222,128,0.2)">+${pct}%</span>
+        <td style="padding:8px 6px;font-size:12px">
+          <span style="background:${parseFloat(pct)>10?'#e8f8f0':parseFloat(pct)>5?'#fff9e6':'#f5f5f5'};color:${parseFloat(pct)>10?'#1a7f5a':parseFloat(pct)>5?'#92400e':'#8e8e93'};font-weight:700;padding:2px 7px;border-radius:6px;font-size:11px">+${pct}%</span>
         </td>
       </tr>`;
     }
@@ -7935,827 +7438,17 @@ function updateDCA() {
 }
 
 // ===== AI WITH MEMORY =====
-// ===== IMPORT CSV / XLSX — XTB & TRADE REPUBLIC =====
-
-function openImportModal() {
-  if (!isPremiumUser()) { showPremiumModal(); return; }
-  if (document.getElementById('import-modal')) return;
-  const modal = document.createElement('div');
-  modal.id = 'import-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px)';
-  modal.innerHTML = `
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:28px;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <div>
-          <h2 style="font-size:18px;font-weight:800;color:var(--color-text);margin:0 0 3px">Importer un portefeuille</h2>
-          <p style="font-size:12px;color:var(--color-text-secondary);margin:0">XTB (XLSX) · Trade Republic (CSV)</p>
-        </div>
-        <button onclick="document.getElementById('import-modal').remove()" style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--color-text-secondary);font-size:13px">✕</button>
-      </div>
-
-      <!-- Sélecteur broker -->
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <button id="import-btn-xtb" onclick="selectBroker('xtb')"
-          style="flex:1;padding:12px;background:rgba(34,197,94,0.1);border:2px solid #22c55e;border-radius:12px;font-size:13px;font-weight:700;color:#22c55e;cursor:pointer">
-          XTB<br><span style="font-size:10px;font-weight:400;opacity:0.7">Fichier XLSX ou CSV</span>
-        </button>
-        <button id="import-btn-tr" onclick="selectBroker('tr')"
-          style="flex:1;padding:12px;background:var(--color-bg-subtle);border:2px solid var(--color-border);border-radius:12px;font-size:13px;font-weight:700;color:var(--color-text-secondary);cursor:pointer">
-          Trade Republic<br><span style="font-size:10px;font-weight:400;opacity:0.7">Fichier CSV</span>
-        </button>
-      </div>
-
-      <!-- Instructions broker -->
-      <div id="import-instructions" style="background:var(--color-bg-subtle);border-radius:10px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--color-text-secondary);line-height:1.7">
-        <strong style="color:var(--color-text)">XTB — Comment exporter :</strong><br>
-        1. <a href="https://xstation5.xtb.com/" target="_blank" style="color:#22c55e;font-weight:700;text-decoration:none">Ouvrir xStation 5 ↗</a><br>
-        2. Onglet <strong style="color:var(--color-text)">Historique du compte</strong><br>
-        3. Clique <strong style="color:var(--color-text)">Exporter</strong> → <strong style="color:var(--color-text)">Rapport complet</strong> + Excel<br>
-        4. Glisse le fichier .xlsx dans la zone ci-dessous
-      </div>
-
-      <!-- Zone de dépôt fichier -->
-      <div id="import-dropzone"
-        onclick="document.getElementById('import-file-input').click()"
-        ondragover="event.preventDefault();this.style.borderColor='#22c55e'"
-        ondragleave="this.style.borderColor='var(--color-border)'"
-        ondrop="event.preventDefault();this.style.borderColor='var(--color-border)';handleImportDrop(event)"
-        style="border:2px dashed var(--color-border);border-radius:14px;padding:28px;text-align:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:16px">
-        <div style="font-size:28px;margin-bottom:8px">📂</div>
-        <div style="font-size:13px;font-weight:600;color:var(--color-text);margin-bottom:4px">Glisse ton fichier ici</div>
-        <div style="font-size:11px;color:var(--color-text-secondary)">ou clique pour choisir (.xlsx, .csv)</div>
-        <input type="file" id="import-file-input" accept=".xlsx,.csv,.xls" style="display:none" onchange="handleImportFile(this.files[0])">
-      </div>
-
-      <!-- Prévisualisation -->
-      <div id="import-preview" style="display:none">
-        <div style="font-size:12px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Positions détectées</div>
-        <div id="import-preview-list" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:14px"></div>
-        <div style="display:flex;gap:8px">
-          <button onclick="document.getElementById('import-modal').remove()" style="flex:1;padding:10px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">Annuler</button>
-          <button id="import-confirm-btn" onclick="confirmImport()" style="flex:2;padding:10px;background:#16a34a;border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">Importer les positions →</button>
-        </div>
-      </div>
-
-      <div id="import-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:12px;font-size:12px;color:#ef4444;margin-top:10px"></div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-}
-
-let _importBroker = 'xtb';
-let _importPositions = [];
-
-function selectBroker(b) {
-  _importBroker = b;
-  const btnXTB = document.getElementById('import-btn-xtb');
-  const btnTR  = document.getElementById('import-btn-tr');
-  const instr  = document.getElementById('import-instructions');
-  if (b === 'xtb') {
-    if (btnXTB) { btnXTB.style.background='rgba(34,197,94,0.1)'; btnXTB.style.borderColor='#22c55e'; btnXTB.style.color='#22c55e'; }
-    if (btnTR)  { btnTR.style.background='var(--color-bg-subtle)'; btnTR.style.borderColor='var(--color-border)'; btnTR.style.color='var(--color-text-secondary)'; }
-    if (instr) instr.innerHTML = `<strong style="color:var(--color-text)">XTB — Comment exporter :</strong><br>
-1. <a href="https://xstation5.xtb.com/" target="_blank" style="color:#22c55e;font-weight:700">Ouvrir xStation 5 →</a><br>
-2. Onglet <strong>Historique du compte</strong><br>
-3. Clique sur <strong>Exporter</strong> (icône en haut à droite)<br>
-4. Sélectionne <strong>"Rapport complet"</strong> + format <strong>Excel (.xlsx)</strong><br>
-5. Télécharge et glisse le fichier ici`;
-  } else {
-    if (btnTR)  { btnTR.style.background='rgba(96,165,250,0.1)'; btnTR.style.borderColor='#60a5fa'; btnTR.style.color='#60a5fa'; }
-    if (btnXTB) { btnXTB.style.background='var(--color-bg-subtle)'; btnXTB.style.borderColor='var(--color-border)'; btnXTB.style.color='var(--color-text-secondary)'; }
-    if (instr) instr.innerHTML = `<strong style="color:var(--color-text)">Trade Republic — Comment exporter :</strong><br>
-1. Ouvre l'<strong>app Trade Republic</strong> sur ton téléphone<br>
-2. Profil → <strong>Documents</strong> → Relevé de compte<br>
-3. Télécharge en <strong>CSV</strong> et transfère sur ton PC<br>
-4. Glisse le fichier ici<br>
-<span style="opacity:0.6;font-size:10px">ℹ️ Trade Republic n'a pas d'export web direct</span>`;
-  }
-}
-
-function handleImportDrop(e) {
-  const file = e.dataTransfer.files[0];
-  if (file) handleImportFile(file);
-}
-
-async function handleImportFile(file) {
-  if (!file) return;
-  const errEl = document.getElementById('import-error');
-  if (errEl) errEl.style.display = 'none';
-
-  try {
-    let parsed = [];
-    const ext = file.name.split('.').pop().toLowerCase();
-    // Auto-détection broker depuis le nom de fichier
-    const fname = file.name.toLowerCase();
-    if (fname.includes('exportation') || fname.includes('transaction') || fname.includes('trade_republic') || fname.includes('traderepublic')) {
-      _importBroker = 'tr';
-      selectBroker('tr');
-    } else if (fname.includes('xtb') || fname.includes('account_') || fname.includes('xstation')) {
-      _importBroker = 'xtb';
-      selectBroker('xtb');
-    }
-    console.log('[Import] Broker (final):', _importBroker, '| File:', file.name, '| Ext:', ext);
-
-    if (ext === 'csv') {
-      const text = await file.text();
-      // Détection supplémentaire via contenu (Trade Republic a "datetime","category","type")
-      if (_importBroker === 'xtb' && text.includes('"datetime"') && text.includes('"category"')) {
-        _importBroker = 'tr';
-        selectBroker('tr');
-        console.log('[Import] Auto-switched to TR based on content');
-      }
-      console.log('[Import] Broker (content check):', _importBroker);
-      parsed = parseImportCSV(text, _importBroker);
-      console.log('[Import] Parsed positions:', parsed.length, parsed);
-    } else if (ext === 'xlsx' || ext === 'xls') {
-      parsed = await parseImportXLSX(file, _importBroker);
-    } else {
-      throw new Error('Format non supporté. Utilise .xlsx ou .csv');
-    }
-
-    if (!parsed.length) throw new Error('Aucune position détectée. Vérifie le format du fichier.');
-
-    _importPositions = parsed;
-    showImportPreview(parsed);
-  } catch(e) {
-    const errEl = document.getElementById('import-error');
-    if (errEl) { errEl.textContent = '⚠ ' + e.message; errEl.style.display = 'block'; }
-  }
-}
-
-function parseCSVLine(line, sep) {
-  // Parser CSV qui gère les guillemets (champs avec virgules internes)
-  const result = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
-      else inQuotes = !inQuotes;
-    } else if (ch === sep && !inQuotes) {
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += ch;
-    }
-  }
-  result.push(current.trim());
-  return result;
-}
-
-function parseImportCSV(text, broker) {
-  const lines = text.split('\n').filter(l => l.trim());
-  if (!lines.length) return [];
-
-  // Détecte le séparateur
-  const firstLine = lines[0];
-  const sep = (firstLine.match(/;/g)||[]).length > (firstLine.match(/,/g)||[]).length ? ';' : ',';
-  const headers = parseCSVLine(firstLine, sep).map(h => h.toLowerCase());
-
-  const positions = {};
-
-  for (let i = 1; i < lines.length; i++) {
-    const cols = parseCSVLine(lines[i], sep);
-    if (!cols[0]) continue;
-    const row = {};
-    headers.forEach((h, idx) => { row[h] = cols[idx] || ''; });
-
-    let ticker = '', qty = 0, price = 0, type = 'buy';
-
-    if (broker === 'xtb') {
-      // XTB "Positions ouvertes" export — colonnes en français
-      // Instrument/Position | Volume | Prix actuel | Prix d'ouverture
-      const rawName = row['instrument/position'] || row['instrument'] || row['symbol'] || row['position'] || '';
-      ticker = rawName.trim();
-      qty    = parseFloat((row['volume'] || row['quantity'] || '0').replace(',','.').replace(/\s/g,''));
-      // Prix d'ouverture = PRU
-      price  = parseFloat((row["prix d'ouverture"] || row['open price'] || row['prix ouverture'] || row['open_price'] || row['price'] || '0').replace(',','.').replace(/\s/g,''));
-      // Type : positions ouvertes = toujours achat, on ignore les CFD/short
-      const instrument = (row['instrument/position'] || '').toLowerCase();
-      type = instrument.includes('short') || (row['type']||'').toLowerCase().includes('sell') ? 'sell' : 'buy';
-    } else {
-      // Trade Republic CSV — colonnes réelles : datetime,date,account_type,category,type,asset_class,name,symbol,shares,price,amount,...
-      const isin  = (row['symbol'] || '').trim();
-      const name  = (row['name'] || '').trim();
-      ticker = isinToTicker(isin, name);
-      if (!ticker) continue; // skip Private Equity etc.
-      qty    = parseFloat((row['shares'] || '0').replace(',','.'));
-      price  = parseFloat((row['price'] || '0').replace(',','.'));
-      type   = (row['type'] || 'BUY').toUpperCase();
-      // TR : on ne garde que les vrais achats TRADING
-      const cat = (row['category'] || '').toUpperCase();
-      if (cat !== 'TRADING') continue;
-    }
-
-    // Normalise le ticker
-    ticker = normalizeTicker(ticker, broker);
-    if (!ticker || isNaN(qty) || qty <= 0 || isNaN(price) || price <= 0) continue;
-
-    // Ne garde que les achats (pas les ventes/dividendes)
-    if (type.includes('sell') || type.includes('vente') || type.includes('dividend')) continue;
-
-    // Agrège par ticker (PRU pondéré)
-    if (positions[ticker]) {
-      const existing = positions[ticker];
-      const totalQty = existing.qty + qty;
-      existing.pru = (existing.pru * existing.qty + price * qty) / totalQty;
-      existing.qty = totalQty;
-    } else {
-      positions[ticker] = { name: ticker, ticker, qty, pru: price };
-    }
-  }
-
-  return Object.values(positions);
-}
-
-async function parseImportXLSX(file, broker) {
-  if (typeof XLSX === 'undefined') {
-    throw new Error('Librairie XLSX non chargée. Actualise la page et réessaie.');
-  }
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
-
-        if (broker === 'xtb') {
-          resolve(parseXTBWorkbook(wb));
-        } else {
-          // Trade Republic : feuille 1 → CSV
-          const ws   = wb.Sheets[wb.SheetNames[0]];
-          const csv  = XLSX.utils.sheet_to_csv(ws, { FS: ',' });
-          resolve(parseImportCSV(csv, broker));
-        }
-      } catch(err) { reject(new Error('Erreur lecture XLSX : ' + err.message)); }
-    };
-    reader.onerror = () => reject(new Error('Impossible de lire le fichier.'));
-    reader.readAsBinaryString(file);
-  });
-}
-
-function parseXTBWorkbook(wb) {
-  // Cherche la feuille "OPEN POSITION" (positions ouvertes)
-  const openSheet = wb.SheetNames.find(n => n.toUpperCase().includes('OPEN POSITION'));
-  if (!openSheet) throw new Error('Feuille "OPEN POSITION" introuvable. Exporte avec "Rapport complet".');
-
-  const ws   = wb.Sheets[openSheet];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-
-  // Trouve la ligne d'en-têtes (contient 'Symbol' ou 'Position')
-  let headerRow = -1;
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-    if (r && r.some(c => typeof c === 'string' && c.toLowerCase() === 'symbol')) {
-      headerRow = i;
-      break;
-    }
-  }
-  if (headerRow === -1) throw new Error('En-têtes non trouvés. Vérifie le format du fichier.');
-
-  const headers = rows[headerRow].map(h => (h || '').toString().toLowerCase().trim());
-  const symIdx     = headers.indexOf('symbol');
-  const typeIdx    = headers.indexOf('type');
-  const volIdx     = headers.indexOf('volume');
-  const priceIdx   = headers.indexOf('open price');
-  const commentIdx = headers.indexOf('comment');
-
-  if (symIdx === -1 || volIdx === -1 || priceIdx === -1) {
-    throw new Error(`Colonnes manquantes. Trouvées: ${headers.filter(Boolean).join(', ')}`);
-  }
-
-  const positions = {};
-
-  for (let i = headerRow + 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row || !row[symIdx]) continue;
-
-    const symbol = String(row[symIdx]).trim();
-    const type   = String(row[typeIdx] || 'BUY').toUpperCase();
-    const qty    = parseFloat(row[volIdx]);
-    const price  = parseFloat(row[priceIdx]);
-
-    // Ignore les ventes, totaux, lignes vides
-    if (!symbol || symbol === 'Total' || type === 'SELL' || isNaN(qty) || isNaN(price) || qty <= 0 || price <= 0) continue;
-
-    // Détecte les regroupements/splits dans le commentaire (ex: "ALHPI.FR split 1 for 80")
-    // "split 1 for 80" = regroupement : 80 anciennes → 1 nouvelle
-    // XTB garde l'ancienne quantité mais le prix d'ouverture est AVANT regroupement
-    const comment = String(row[commentIdx] || '').toLowerCase();
-    let adjustedQty  = qty;
-    let adjustedPru  = price;
-    const splitMatch = comment.match(/split\s+(\d+)\s+for\s+(\d+)/i);
-    if (splitMatch) {
-      const newShares = parseInt(splitMatch[1]); // 1
-      const oldShares = parseInt(splitMatch[2]); // 80
-      // Regroupement : qty réelle = qty XTB × (new/old) = 661 × 1/80 = 8.26
-      // PRU réel = PRU XTB × (old/new) = 0.3824€ (déjà correct dans XTB)
-      adjustedQty = qty * (newShares / oldShares);
-      adjustedPru = price; // PRU XTB est déjà post-regroupement
-    }
-
-    // Normalise le ticker XTB → ticker standard
-    const ticker = normalizeXTBTicker(symbol);
-
-    // Agrège par ticker (PRU pondéré)
-    if (positions[ticker]) {
-      const p = positions[ticker];
-      const totalQty = p.qty + adjustedQty;
-      p.pru = (p.pru * p.qty + adjustedPru * adjustedQty) / totalQty;
-      p.qty = totalQty;
-    } else {
-      positions[ticker] = { name: ticker, ticker, qty: adjustedQty, pru: adjustedPru };
-    }
-  }
-
-  const result = Object.values(positions);
-  if (!result.length) throw new Error('Aucune position BUY trouvée dans le fichier.');
-  return result;
-}
-
-function normalizeXTBTicker(symbol) {
-  // XTB suffixes → suffixes standards
-  return symbol
-    .replace(/\.FR$/, '.PA')   // France → Euronext Paris
-    .replace(/\.UK$/, '.L')    // UK → London
-    .replace(/\.US$/, '')      // US → pas de suffix (Yahoo Finance)
-    .replace(/\.PL$/, '.WA')   // Pologne → Warsaw
-    .replace(/\.PT$/, '.LS')   // Portugal → Lisbonne
-    .replace(/\.BE$/, '.BR')   // Belgique → Bruxelles
-    .replace(/\.NL$/, '.AS')   // Pays-Bas → Amsterdam
-    .replace(/\.IT$/, '.MI')   // Italie → Milan
-    .replace(/\.ES$/, '.MC')   // Espagne → Madrid
-    .trim();
-  // .DE, .SW, .AT, .SE etc. → gardés tels quels (Yahoo Finance compatible)
-}
-
-function normalizeTicker(ticker, broker) {
-  if (!ticker) return '';
-
-  if (broker === 'xtb') {
-    // XTB peut donner le nom complet ("MSCI World ETF") ou un ticker avec suffix
-    // On nettoie les suffixes broker (Action, ETF, CFD) et on normalise
-    let t = ticker.trim()
-      .replace(/\s+(Action|ETF|CFD|Akcja|Stock)$/i, '') // retire le type
-      .trim();
-
-    // Si c'est déjà un ticker court (ex: AAPL.US, CDG.FR) → normalise suffix
-    if (/^[A-Z0-9.]{2,12}$/.test(t.toUpperCase())) {
-      t = t.toUpperCase()
-        .replace(/\.US$/, '')
-        .replace(/\.FR$/, '.PA')
-        .replace(/\.UK$/, '.L')
-        .replace(/\.PL$/, '.WA');
-      return t;
-    }
-
-    // Sinon c'est un nom complet → on le garde tel quel (InvestIQ gère les noms)
-    return t;
-  } else {
-    // Trade Republic : ISIN ou nom → garde tel quel
-    return ticker.trim().replace(/\s+/g, ' ');
-  }
-}
-
-function showImportPreview(parsed) {
-  const preview = document.getElementById('import-preview');
-  const list    = document.getElementById('import-preview-list');
-  const drop    = document.getElementById('import-dropzone');
-  if (!preview || !list) return;
-
-  if (drop) drop.style.display = 'none';
-  preview.style.display = 'block';
-
-  // Détecte les doublons avec le portefeuille existant
-  const duplicates = parsed.filter(p =>
-    positions.some(existing => existing.name.toLowerCase() === p.name.toLowerCase())
-  );
-  const hasDuplicates = duplicates.length > 0;
-
-  // Affiche l'alerte doublons si nécessaire
-  const dupAlert = document.getElementById('import-dup-alert');
-  if (dupAlert) dupAlert.remove();
-
-  if (hasDuplicates) {
-    const alertEl = document.createElement('div');
-    alertEl.id = 'import-dup-alert';
-    alertEl.style.cssText = 'background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:12px;padding:14px 16px;margin-bottom:14px';
-    alertEl.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <span style="font-size:16px">⚠️</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:#fbbf24">
-            ${duplicates.length} position${duplicates.length > 1 ? 's' : ''} déjà présente${duplicates.length > 1 ? 's' : ''} dans ton portefeuille
-          </div>
-          <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">
-            ${duplicates.map(d => d.name).join(', ')}
-          </div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button id="import-mode-add" onclick="setImportMode('add')"
-          style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;
-          background:rgba(34,197,94,0.15);border:2px solid #22c55e;color:#22c55e">
-          ➕ Additionner
-          <div style="font-size:10px;font-weight:400;opacity:0.8;margin-top:2px">Ajoute aux quantités existantes (PRU pondéré)</div>
-        </button>
-        <button id="import-mode-replace" onclick="setImportMode('replace')"
-          style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;
-          background:var(--color-bg-subtle);border:2px solid var(--color-border);color:var(--color-text-secondary)">
-          🔄 Remplacer
-          <div style="font-size:10px;font-weight:400;opacity:0.8;margin-top:2px">Supprime l'ancien et importe le nouveau</div>
-        </button>
-      </div>`;
-    list.parentNode.insertBefore(alertEl, list);
-  }
-
-  list.innerHTML = parsed.map((p, i) => {
-    const isDup = positions.some(e => e.name.toLowerCase() === p.name.toLowerCase());
-    return `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:${isDup ? 'rgba(251,191,36,0.06)' : 'var(--color-bg-subtle)'};border:1px solid ${isDup ? 'rgba(251,191,36,0.2)' : 'transparent'};border-radius:10px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <input type="checkbox" id="import-chk-${i}" checked style="width:16px;height:16px;cursor:pointer">
-        <div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:13px;font-weight:700;color:var(--color-text)">${p.name}</span>
-            ${isDup ? '<span style="font-size:9px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 6px;border-radius:4px">DÉJÀ PRÉSENT</span>' : ''}
-          </div>
-          <div style="font-size:11px;color:var(--color-text-secondary)">${p.qty % 1 === 0 ? p.qty : parseFloat(p.qty.toFixed(6))} parts · PRU ${p.pru.toFixed(4)} €</div>
-        </div>
-      </div>
-      <div style="font-size:12px;font-weight:700;color:var(--color-text)">${Math.round(p.qty * p.pru).toLocaleString('fr-FR')} €</div>
-    </div>`;
-  }).join('');
-}
-
-let _importMode = 'add'; // 'add' ou 'replace'
-
-function setImportMode(mode) {
-  _importMode = mode;
-  const addBtn     = document.getElementById('import-mode-add');
-  const replaceBtn = document.getElementById('import-mode-replace');
-  if (addBtn) {
-    addBtn.style.background     = mode === 'add'     ? 'rgba(34,197,94,0.15)'       : 'var(--color-bg-subtle)';
-    addBtn.style.borderColor    = mode === 'add'     ? '#22c55e'                     : 'var(--color-border)';
-    addBtn.style.color          = mode === 'add'     ? '#22c55e'                     : 'var(--color-text-secondary)';
-  }
-  if (replaceBtn) {
-    replaceBtn.style.background  = mode === 'replace' ? 'rgba(239,68,68,0.12)'       : 'var(--color-bg-subtle)';
-    replaceBtn.style.borderColor = mode === 'replace' ? '#ef4444'                    : 'var(--color-border)';
-    replaceBtn.style.color       = mode === 'replace' ? '#ef4444'                    : 'var(--color-text-secondary)';
-  }
-}
-
-async function confirmImport() {
-  const btn = document.getElementById('import-confirm-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Import en cours...'; }
-
-  let imported = 0;
-  for (let i = 0; i < _importPositions.length; i++) {
-    const chk = document.getElementById(`import-chk-${i}`);
-    if (chk && !chk.checked) continue;
-    const p = _importPositions[i];
-    try {
-      const existing = positions.find(e => e.name.toLowerCase() === p.name.toLowerCase());
-      if (existing && _importMode === 'replace') {
-        // Supprime l'ancienne position puis crée la nouvelle
-        await sb.from('positions').delete().eq('id', existing.id);
-        positions.splice(positions.indexOf(existing), 1);
-        await addOrUpdatePosition({ name: p.name, qty: p.qty, pru: p.pru });
-      } else {
-        // Mode 'add' ou pas de doublon → additionne / crée
-        await addOrUpdatePosition({ name: p.name, qty: p.qty, pru: p.pru });
-      }
-      imported++;
-    } catch(e) { console.warn('Import skip:', p.name, e); }
-  }
-
-  document.getElementById('import-modal')?.remove();
-  const modeLabel = _importMode === 'replace' ? 'remplacées' : 'importées';
-  showToast(`✅ ${imported} position${imported>1?'s':''} ${modeLabel} !`);
-  _importMode = 'add'; // reset
-  renderPortfolio();
-  if (typeof renderHome === 'function') renderHome();
-}
-
-async function addOrUpdatePosition(p) {
-  // Vérifie si la position existe déjà
-  const existing = positions.find(pos => pos.name.toLowerCase() === p.name.toLowerCase());
-  if (existing) {
-    // Met à jour le PRU pondéré
-    const totalQty = existing.qty + p.qty;
-    const newPru   = (existing.pru * existing.qty + p.pru * p.qty) / totalQty;
-    const { error } = await sb.from('positions').update({ qty: totalQty, pru: newPru }).eq('id', existing.id);
-    if (error) throw error;
-    existing.qty = totalQty;
-    existing.pru = newPru;
-  } else {
-    // Crée la position
-    const { data, error } = await sb.from('positions').insert({
-      user_id: currentUser.id, name: p.name, qty: p.qty, pru: p.pru, price: p.pru, type: 'Action'
-    }).select().single();
-    if (error) throw error;
-    positions.push({ ...data, price: p.pru, change_pct: 0 });
-  }
-}
-
-// ═══════════════════════════════════════════════
-
-
-// ===== PUSH NOTIFICATIONS =====
-const VAPID_PUBLIC_KEY = 'BHW4rDjSj2cKpOw-A8xMuay3720lWKypGEqadAdlDnQemnH3hGVZBVAwKQd-UihKy-Y8SAkEn_uovaDdBc6IcEg';
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-  return outputArray;
-}
-
-async function initPushNotifications() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  try {
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    console.log('[Push] Service worker registered');
-    // Auto-abonne si déjà autorisé
-    if (Notification.permission === 'granted') {
-      await subscribePush(reg);
-    }
-  } catch(e) { console.warn('[Push] SW registration failed:', e); }
-}
-
-async function requestPushPermission() {
-  console.log('[Push] requestPushPermission called');
-  console.log('[Push] Notification:', typeof Notification !== 'undefined' ? Notification.permission : 'undefined');
-  console.log('[Push] SW:', 'serviceWorker' in navigator);
-  console.log('[Push] PushManager:', 'PushManager' in window);
-
-  if (!('Notification' in window)) {
-    showToast('Notifications non supportees');
-    return;
-  }
-  if (Notification.permission === 'denied') {
-    showToast('Notifications bloquees - autorise dans les parametres');
-    return;
-  }
-
-  let perm = Notification.permission;
-  if (perm !== 'granted') {
-    perm = await Notification.requestPermission();
-  }
-  console.log('[Push] Permission result:', perm);
-
-  if (perm === 'granted') {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      console.log('[Push] SW ready, subscribing...');
-      await subscribePush(reg);
-      // Force UI update after subscription
-      updatePushUI(true);
-      showToast('Notifications activees !');
-    } catch(e) {
-      console.error('[Push] Subscribe error:', e);
-      showToast('Erreur: ' + e.message);
-    }
-  } else {
-    showToast('Notifications refusees');
-  }
-}
-
-async function subscribePush(reg) {
-  if (!currentUser) return;
-  try {
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-    });
-    await fetch('/api/push-subscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription: sub.toJSON(), user_id: currentUser.id })
-    });
-    localStorage.setItem('iq_push_subscribed', '1');
-    console.log('[Push] Subscribed OK');
-    updatePushUI(true);
-  } catch(e) { console.warn('[Push] Subscribe failed:', e); }
-}
-
-async function unsubscribePush() {
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) await sub.unsubscribe();
-    if (currentUser) {
-      await fetch('/api/push-subscribe', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: currentUser.id })
-      });
-    }
-    localStorage.removeItem('iq_push_subscribed');
-    showToast('🔕 Notifications désactivées');
-  } catch(e) { console.warn('[Push] Unsubscribe failed:', e); }
-}
-
-function isPushSubscribed() {
-  return localStorage.getItem('iq_push_subscribed') === '1' && Notification.permission === 'granted';
-}
-
-// ═══════════════════════════════════════════════
-
-function showTRModal(ticker) {
-  document.getElementById('xtb-open-modal')?.remove();
-
-  // Cherche l'ISIN dans la map (inverse de ISIN_TO_TICKER)
-  const isin = Object.entries(typeof ISIN_TO_TICKER !== 'undefined' ? ISIN_TO_TICKER : {})
-    .find(([k, v]) => v === ticker)?.[0] || '';
-  const name = getTickerName(ticker) || ticker;
-
-  const modal = document.createElement('div');
-  modal.id = 'xtb-open-modal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)';
-  modal.innerHTML = `
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:28px;width:400px;max-width:95vw;text-align:center">
-      <div style="font-size:28px;margin-bottom:12px">📱</div>
-      <h3 style="font-size:16px;font-weight:800;color:var(--color-text);margin:0 0 8px">Ouvrir dans Trade Republic</h3>
-      <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 16px;line-height:1.6">
-        Position ajoutée à InvestIQ ✅<br>
-        Recherche <strong style="color:var(--color-text)">${name}</strong> dans l'app TR.
-      </p>
-      <!-- Nom à copier -->
-      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;margin-bottom:${isin ? '8px' : '16px'}">
-        <span style="font-size:15px;font-weight:800;color:var(--color-text)">${name}</span>
-        <button onclick="navigator.clipboard.writeText('${name}');this.textContent='✅ Copié!';setTimeout(()=>this.textContent='📋 Copier',1500)"
-          style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
-          📋 Copier
-        </button>
-      </div>
-      ${isin ? `
-      <!-- ISIN à copier -->
-      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;margin-bottom:16px">
-        <div>
-          <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:2px">ISIN</div>
-          <span style="font-size:14px;font-weight:700;color:var(--color-text)">${isin}</span>
-        </div>
-        <button onclick="navigator.clipboard.writeText('${isin}');this.textContent='✅ Copié!';setTimeout(()=>this.textContent='📋 Copier',1500)"
-          style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
-          📋 Copier
-        </button>
-      </div>` : ''}
-      <div style="display:flex;gap:10px">
-        <button onclick="document.getElementById('xtb-open-modal').remove()"
-          style="flex:1;padding:11px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">
-          Fermer
-        </button>
-        <button onclick="navigator.clipboard.writeText('${name}');window.open('https://app.traderepublic.com/','_blank');document.getElementById('xtb-open-modal').remove()"
-          style="flex:2;padding:11px;background:#60a5fa;border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Copier + Ouvrir TR
-        </button>
-      </div>
-    </div>`;
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-  document.body.appendChild(modal);
-}
-
-
-// ===== CACHE ANTHROPIC — réduit les coûts API de ~80% =====
-// TTL par type d'appel détecté dans le prompt
-const AI_CACHE_TTL = {
-  etf:        24 * 3600 * 1000,  // Plans ETF          → 24h
-  analyse:    24 * 3600 * 1000,  // Analyse entreprise → 24h
-  briefing:   24 * 3600 * 1000,  // Briefing quotidien → 24h
-  signal:      6 * 3600 * 1000,  // Signaux position   → 6h
-  actions:     6 * 3600 * 1000,  // Recommandations    → 6h
-  agenda:      6 * 3600 * 1000,  // Impact événements  → 6h
-  objectif:    2 * 3600 * 1000,  // Plan objectif      → 2h (dépend du profil)
-  agent:       0,                 // Agent IA conversationnel → jamais caché
-  decision:    0,                 // Analyse décision  → jamais caché (prix temps réel)
-};
-
-function _detectCacheType(prompt, system) {
-  const p = prompt.toLowerCase();
-  const s = (system || '').toLowerCase();
-  // Agent conversationnel — jamais caché (contexte live + historique)
-  if (s.includes('agent ia') || s.includes('historique') || p.includes('=== question ===')) return 'agent';
-  // Décision achat/vente — jamais cachée (prix temps réel)
-  if (p.includes('stop loss') || p.includes('prix cible') || (p.includes('acheter ou') && p.includes('vendre'))) return 'decision';
-  if (s.includes('analyste') && p.includes('prix actuel') && (p.includes('acheter') || p.includes('vendre'))) return 'decision';
-  // Types cachés
-  if (p.includes('etf') && (p.includes('répartition') || p.includes('tickers réels'))) return 'etf';
-  if (p.includes('briefing')) return 'briefing';
-  if (p.includes('signal') && p.includes('pru')) return 'signal';
-  if ((p.includes('recommandations') || p.includes('opportunités')) && p.includes('budget')) return 'actions';
-  if (p.includes('événement') && p.includes('impact')) return 'agenda';
-  if (p.includes('plan') && (p.includes('objectif') || p.includes('versement mensuel'))) return 'objectif';
-  if (p.includes('profil') && (p.includes('ticker') || p.includes('risque')) && p.includes('json')) return 'analyse';
-  return 'analyse'; // défaut → 24h
-}
-
-async function _sha256(str) {
-  try {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0, 32);
-  } catch {
-    // Fallback si crypto.subtle indispo (HTTP) — hash simple
-    let h = 0;
-    for (let i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; }
-    return 'fb_' + Math.abs(h).toString(16);
-  }
-}
-
-async function callClaude(prompt, sys) {
-  const system = sys || 'Tu es un assistant financier pédagogue francophone pour investisseurs débutants. Réponds en français, clairement. Tu ne fournis pas de conseil financier réglementé.';
-
-  // Détermine le type et le TTL
-  const cacheType = _detectCacheType(prompt, system);
-  const ttl = AI_CACHE_TTL[cacheType];
-
-  // TTL = 0 → jamais mis en cache (agent conversationnel, décision temps réel)
-  if (ttl > 0) {
-    try {
-      const hash = await _sha256(prompt + '||' + system);
-      const cacheKey = 'iq_ai_' + hash;
-      const stored = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-      if (stored && stored.r && (Date.now() - stored.ts) < ttl) {
-        console.debug('[AI Cache HIT]', cacheType, hash.slice(0,8));
-        return stored.r;
-      }
-      // Cache miss → appel API réel
-      const res = await fetch('/api/claude', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, system }) });
-      const d = await res.json();
-      const text = d.text || d.error || 'Aucune réponse.';
-      // Sauvegarde en cache
-      try { localStorage.setItem(cacheKey, JSON.stringify({ r: text, ts: Date.now(), type: cacheType })); } catch {}
-      console.debug('[AI Cache MISS → saved]', cacheType, hash.slice(0,8));
-      return text;
-    } catch (e) {
-      console.warn('[AI Cache error]', e);
-      // Fallback sans cache
-    }
-  }
-
-  // Appel direct (TTL=0 ou erreur cache)
-  try {
-    const res = await fetch('/api/claude', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, system }) });
-    const d = await res.json();
-    return d.text || d.error || 'Aucune réponse.';
-  } catch { return 'Erreur de connexion.'; }
-}
-
-// Utilitaire pour vider le cache IA (debug / admin)
-function clearAICache() {
-  let count = 0;
-  Object.keys(localStorage).filter(k => k.startsWith('iq_ai_')).forEach(k => { localStorage.removeItem(k); count++; });
-  console.log('[AI Cache] Cleared', count, 'entries');
-  showToast('🗑 Cache IA vidé (' + count + ' entrées)');
-}
-
-// Stats cache pour debug
-function aiCacheStats() {
-  const keys = Object.keys(localStorage).filter(k => k.startsWith('iq_ai_'));
-  const stats = {};
-  let totalSize = 0;
-  keys.forEach(k => {
-    try {
-      const v = JSON.parse(localStorage.getItem(k));
-      stats[v.type] = (stats[v.type] || 0) + 1;
-      totalSize += (localStorage.getItem(k) || '').length;
-    } catch {}
-  });
-  console.table(stats);
-  console.log('[AI Cache] Total:', keys.length, 'entries,', (totalSize/1024).toFixed(1), 'KB');
-  return stats;
+async function callClaude(prompt,sys){
+  const system=sys||'Tu es un assistant financier pédagogue francophone pour investisseurs débutants. Réponds en français, clairement. Tu ne fournis pas de conseil financier réglementé.';
+  try{
+    const res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,system})});
+    const d=await res.json();
+    return d.text||d.error||'Aucune réponse.';
+  }catch{return'Erreur de connexion.';}
 }
 
 // ===== AGENT IA =====
-function sq(q) {
-  // Ouvre le chat si fermé
-  const chatBody = document.getElementById('agent-chat-body');
-  const chatQuick = document.getElementById('agent-chat-quick');
-  const chevron = document.getElementById('agent-chat-chevron');
-  if (chatBody && chatBody.style.display === 'none') {
-    chatBody.style.display = 'block';
-    if (chatQuick) chatQuick.style.display = 'none';
-    if (chevron) chevron.style.transform = 'rotate(180deg)';
-  }
-
-  // Remplit l'input et envoie
-  const inp = document.getElementById('ai-in');
-  if (inp) inp.value = q;
-  sendAI();
-
-  // Scroll vers le chat avec un petit délai (laisse le temps à sendAI de créer la bulle)
-  setTimeout(() => {
-    const chat = document.getElementById('ai-chat');
-    if (chat) {
-      chat.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 150);
-}
+function sq(q) { document.getElementById('ai-in').value = q; sendAI(); }
 function sqIdx(i) { const s = window._agentSuggestions?.[i]; if (s) sq(s.q); }
 
 function buildAgentContext() {
@@ -8865,49 +7558,30 @@ function detectIntent(q) {
   return 'question';
 }
 
-let _aiCallInProgress = false; // Verrou global anti-double appel
-
 async function sendAI() {
-  if (_aiCallInProgress) return; // Bloque si déjà en cours
-  // Vérif limite gratuit
-  if (!isPremiumUser()) {
-    const count = getDailyCount('ai');
-    if (count >= 1) {
-      showPremiumModal('agent_ia');
-      return;
-    }
-  }
   const inp = document.getElementById('ai-in');
   const q = inp.value.trim();
   if (!q) return;
   inp.value = '';
-  if (document.getElementById('ai-in-quick')) document.getElementById('ai-in-quick').value = '';
 
-  _aiCallInProgress = true;
   const chat = document.getElementById('ai-chat');
   const sendBtn = document.getElementById('ai-send-btn');
-  if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.5'; }
+  if (sendBtn) sendBtn.disabled = true;
 
   chatHistory.push({ role: 'user', content: q });
-  chat.innerHTML += `<div class="bubble user" style="background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border-radius:16px 16px 4px 16px;padding:12px 18px;margin-left:auto;max-width:80%;font-size:14px;font-weight:500;width:fit-content">${q}</div><div class="bubble bot" id="ai-loading" style="display:flex;align-items:center;gap:8px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="color:#8e8e93">Réflexion...</span></div>`;
+  chat.innerHTML += `<div class="bubble user">${q}</div><div class="bubble bot" id="ai-loading" style="display:flex;align-items:center;gap:8px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="color:#8e8e93">Réflexion...</span></div>`;
   chat.scrollTop = chat.scrollHeight;
 
   const intent = detectIntent(q);
   const ctx = getFullContext();
   const histCtx = chatHistory.slice(-8).map(m => `${m.role==='user'?'Utilisateur':'Assistant'}: ${m.content}`).join('\n');
 
-  let systemPrompt = `Tu es un conseiller financier personnel dans une app mobile. Réponds comme un ami expert : court, direct, chaleureux.
-
-RÈGLES DE STYLE STRICTES :
-- Max 3-4 phrases par réponse (sauf si l'utilisateur demande explicitement un détail)
-- INTERDIT : titres avec ##, listes à rallonge, bullets à répétition
-- Pour les chiffres/comparaisons : mets-les en inline ex: "SOI.PA est à +64%, VIE.PA à -71%"
-- Si tu dois lister : max 3 items, séparés par des virgules ou des retours simples
-- 1-2 emojis max par réponse pour aérer, pas plus
-- Termine par UNE action concrète ou UNE question courte
-- Ton naturel, français courant — pas de jargon, pas de titres en gras
-
-Si ACTION demandée → [ACTION:{"type":"ajouter_position","ticker":"AAPL","qty":5,"prix":180}]
+  let systemPrompt = `Tu es un agent IA financier personnel expert et pédagogue, intégré dans l'app InvestIQ.
+Tu as accès au contexte complet de l'utilisateur ci-dessous.
+Réponds TOUJOURS en français. Sois concis, direct et actionnable.
+Si l'utilisateur demande une ACTION (ajouter position, créer alerte, modifier objectif), réponds avec le plan d'action ET ajoute à la fin une ligne JSON spéciale :
+[ACTION:{"type":"ajouter_position","ticker":"AAPL","qty":5,"prix":180}] ou [ACTION:{"type":"alerte","ticker":"LVMH","prix":650}] ou [ACTION:{"type":"simuler","monthly_add":200}]
+Pour les SIMULATIONS, calcule toi-même et montre le résultat chiffré.
 Tu ne fournis pas de conseils financiers réglementés.`;
 
   const fullPrompt = `${ctx}\n=== HISTORIQUE ===\n${histCtx}\n\n=== QUESTION ===\n${q}`;
@@ -8915,7 +7589,6 @@ Tu ne fournis pas de conseils financiers réglementés.`;
   try {
     const r = await callClaude(fullPrompt, systemPrompt);
     chatHistory.push({ role: 'assistant', content: r });
-    if (!isPremiumUser()) incrementDailyCount('ai');
     saveChatHistory();
 
     // Détecte et parse les actions
@@ -8923,7 +7596,7 @@ Tu ne fournis pas de conseils financiers réglementés.`;
     let displayR = r.replace(/\[ACTION:.*?\]/s, '').trim();
 
     const loadingEl = document.getElementById('ai-loading');
-    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot" style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:16px;padding:16px 18px;max-width:100%">${formatAgentMD(displayR)}</div>`;
+    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot">${formatMD(displayR)}</div>`;
 
     // Affiche le bouton d'action si détecté
     if (actionMatch) {
@@ -8940,8 +7613,7 @@ Tu ne fournis pas de conseils financiers réglementés.`;
     if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot" style="color:#cc2f26">Erreur — réessaie.</div>`;
   }
 
-  _aiCallInProgress = false;
-  if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; }
+  if (sendBtn) sendBtn.disabled = false;
   chat.scrollTop = chat.scrollHeight;
 }
 
@@ -9019,599 +7691,32 @@ function initAgent() {
   buildAgentContext();
   buildAgentSuggestions();
 
-  // Date
+  // Date du briefing
   const dateEl = document.getElementById('agent-brief-date');
-  if (dateEl) dateEl.textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
-
-  // Salutation personnalisée
-  const greetEl = document.getElementById('agent-greeting');
-  if (greetEl) {
-    const h = new Date().getHours();
-    const salut = h < 12 ? 'Bonjour' : h < 18 ? 'Bonjour' : 'Bonsoir';
-    const name = (currentUser && currentUser.email ? currentUser.email.split('@')[0] : null)
-               || (profile && profile.name ? profile.name : null);
-    const emoji = h < 12 ? '☀️' : h < 18 ? '👋' : '🌙';
-    greetEl.textContent = name ? `${salut} ${name.charAt(0).toUpperCase()+name.slice(1)} ${emoji}` : `${salut} ${emoji}`;
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
   }
 
-  // Briefing (cache 6h)
+  // Message de bienvenue personnalisé
+  const welcome = document.getElementById('ai-welcome');
+  if (welcome && positions.length > 0) {
+    const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
+    const pnl = tv - positions.reduce((a,p) => a+p.qty*p.pru, 0);
+    const color = pnl >= 0 ? '#1a7f5a' : '#cc2f26';
+    welcome.innerHTML = `Bonjour ! Ton portefeuille est à <strong style="color:${color}">${fmtK(tv)}</strong> (${pnl>=0?'+':''}${fmtK(pnl)}). Je connais toutes tes positions, tes objectifs et ton profil. Que veux-tu faire ?`;
+  }
+
+  // Génère le briefing (avec cache 6h)
   const BRIEF_KEY = 'iq_daily_brief';
   const cached = (() => { try { const c = JSON.parse(localStorage.getItem(BRIEF_KEY)||'null'); return c && Date.now()-c.ts < 6*3600000 ? c : null; } catch { return null; } })();
-  if (cached) renderDailyBrief(cached.items);
-  else generateDailyBrief();
-
-  // Blocs proactifs
-  renderAgentChanges();
-  renderAgentAlertsCards();
-  renderAgentOpportunities();
-  renderAgentRecommendations();
-  renderIQScore();
-  renderRadarRisque();
-  renderAgentPriorities();
-  updateAISidebar();
-}
-
-function refreshAllAgentBlocks() {
-  // Vide les caches blocs agent
-  ['iq_agent_changes','iq_agent_alerts','iq_agent_opps','iq_agent_reco','iq_agent_wwiq','iq_daily_brief'].forEach(k => {
-    try { localStorage.removeItem(k); } catch {}
-  });
-  generateDailyBrief();
-  renderAgentChanges();
-  renderAgentAlerts();
-  renderAgentOpportunities();
-  renderAgentRecommendations();
-  renderAgentPriorities();
-  renderIQScore();
-  updateAISidebar();
-  showToast('🔄 Nouvelle analyse en cours...');
-}
-
-function toggleAgentChat() {
-  const body = document.getElementById('agent-chat-body');
-  const quick = document.getElementById('agent-chat-quick');
-  const chevron = document.getElementById('agent-chat-chevron');
-  if (!body) return;
-  const open = body.style.display !== 'none';
-  body.style.display = open ? 'none' : 'block';
-  if (quick) quick.style.display = open ? 'flex' : 'none';
-  if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
-}
-
-function openAgentChat() {
-  const body = document.getElementById('agent-chat-body');
-  const quick = document.getElementById('agent-chat-quick');
-  const chevron = document.getElementById('agent-chat-chevron');
-  if (body) body.style.display = 'block';
-  if (quick) quick.style.display = 'none';
-  if (chevron) chevron.style.transform = 'rotate(180deg)';
-  // Sync quick input to main input
-  const qi = document.getElementById('ai-in-quick');
-  const mi = document.getElementById('ai-in');
-  if (qi && mi && qi.value) { mi.value = qi.value; qi.value = ''; }
-}
-
-// ── ② CE QUI A CHANGÉ DEPUIS HIER ──
-function renderAgentChanges() {
-  const el = document.getElementById('agent-changes-content');
-  if (!el) return;
-
-  if (!positions.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5;grid-column:1/-1">Ajoute des positions pour voir les évolutions.</div>';
-    return;
+  if (cached) {
+    renderDailyBrief(cached.items);
+  } else {
+    generateDailyBrief();
   }
-
-  const tv  = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
-  const ti  = positions.reduce((a,p)=>a+p.pru*p.qty,0);
-  const avgChg = positions.length > 0 ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
-  const sorted = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
-  const best   = sorted[0];
-  const worst  = sorted[sorted.length-1];
-  const scoreDelta = Math.round(avgChg * 0.8);
-
-  // Items narratifs avec label complet
-  const items = [
-    {
-      icon: avgChg >= 0 ? '📈' : '📉',
-      label: `Portef. aujourd'hui`,
-      val: `${avgChg>=0?'+':''}${avgChg.toFixed(1)}%`,
-      color: avgChg >= 0 ? '#22c55e' : '#ef4444',
-      sub: avgChg >= 0 ? 'En hausse' : 'En baisse'
-    },
-    {
-      icon: '🏆',
-      label: best ? best.name : '—',
-      val: best ? `${(best.change_pct||0)>=0?'+':''}${(best.change_pct||0).toFixed(1)}%` : '—',
-      color: '#22c55e',
-      sub: 'Meilleure perf.'
-    },
-    {
-      icon: worst && worst !== best && (worst.change_pct||0) < 0 ? '📉' : '👀',
-      label: worst && worst !== best ? worst.name : '—',
-      val: worst && worst !== best ? `${(worst.change_pct||0).toFixed(1)}%` : '—',
-      color: '#ef4444',
-      sub: 'À surveiller'
-    },
-    {
-      icon: scoreDelta >= 0 ? '⭐' : '⬇️',
-      label: 'Score InvestIQ',
-      val: `${scoreDelta>=0?'+':''}${scoreDelta} pts`,
-      color: scoreDelta >= 0 ? '#60a5fa' : '#ef4444',
-      sub: scoreDelta >= 0 ? 'En progression' : 'En baisse'
-    }
-  ];
-
-  el.innerHTML = items.map(it => `
-    <div style="background:var(--color-bg-subtle);border-radius:12px;padding:12px 10px;text-align:center">
-      <div style="font-size:20px;margin-bottom:4px">${it.icon}</div>
-      <div style="font-size:14px;font-weight:900;color:${it.color};margin-bottom:2px;letter-spacing:-0.02em">${it.val}</div>
-      <div style="font-size:11px;font-weight:700;color:var(--color-text);margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.label}</div>
-      <div style="font-size:10px;color:var(--color-text-tertiary)">${it.sub}</div>
-    </div>`).join('');
-}
-
-// ── ③ ALERTES AUTOMATIQUES ──
-function renderAgentAlerts() {
-  const el = document.getElementById('agent-alerts-content');
-  if (!el) return;
-
-  if (!positions.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Aucune position à surveiller.</div>';
-    return;
-  }
-
-  const alerts = [];
-
-  positions.forEach(p => {
-    const pnlPct = p.pru > 0 ? ((p.price - p.pru) / p.pru * 100) : 0;
-    // Perte > 10%
-    if (pnlPct < -10) alerts.push({ icon: '🔥', text: `${p.name} en perte de ${pnlPct.toFixed(1)}%`, color: '#ef4444', severity: 3 });
-    // Perte > 5%
-    else if (pnlPct < -5) alerts.push({ icon: '⚠️', text: `${p.name} −${Math.abs(pnlPct).toFixed(1)}% — surveiller`, color: '#f87171', severity: 2 });
-    // Baisse journalière > 2%
-    if ((p.change_pct||0) < -2) alerts.push({ icon: '📉', text: `${p.name} −${Math.abs(p.change_pct||0).toFixed(1)}% auj.`, color: '#fb923c', severity: 2 });
-    // Belle perf
-    if (pnlPct > 30) alerts.push({ icon: '💰', text: `${p.name} +${pnlPct.toFixed(0)}% — sécuriser ?`, color: '#4ade80', severity: 1 });
-  });
-
-  // Concentration
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  positions.forEach(p => {
-    const w = tv > 0 ? p.qty*p.price/tv*100 : 0;
-    if (w > 40) alerts.push({ icon: '⚡', text: `${p.name} = ${w.toFixed(0)}% du portef. — concentration élevée`, color: '#fbbf24', severity: 2 });
-  });
-
-  if (!alerts.length) {
-    el.innerHTML = '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#4ade80"><span>✅</span><span>Aucune alerte — portefeuille sain</span></div>';
-    return;
-  }
-
-  alerts.sort((a,b) => b.severity - a.severity);
-  el.innerHTML = alerts.slice(0,4).map(a => `
-    <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:${a.color}12;border-radius:8px;border-left:3px solid ${a.color}">
-      <span style="font-size:13px;flex-shrink:0;margin-top:1px">${a.icon}</span>
-      <span style="font-size:12px;font-weight:600;color:${a.color};line-height:1.4">${a.text}</span>
-    </div>`).join('');
-}
-
-// ── ③ OPPORTUNITÉS ──
-async function renderAgentOpportunities() {
-  if (window._oppsInProgress) return;
-  const el = document.getElementById('agent-opps-content');
-  if (!el) return;
-
-  if (!isPremiumUser()) {
-    el.innerHTML = '<div style="font-size:12px;color:#fbbf24">✦ Fonctionnalité Premium</div>';
-    return;
-  }
-  window._oppsInProgress = true;
-
-  // Cache 6h
-  try {
-    const cached = JSON.parse(localStorage.getItem('iq_agent_opps')||'null');
-    if (cached && Date.now()-cached.ts < 6*3600000) { renderOppCards(cached.items, el); return; }
-  } catch {}
-
-  el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5;display:flex;align-items:center;gap:6px"><svg class="spinning" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Détection...</div>';
-
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const topPositions = [...positions].sort((a,b)=>b.qty*b.price-a.qty*a.price).slice(0,5);
-  const wlNames = watchlist.slice(0,5).map(w=>w.name||w.ticker).join(', ');
-
-  // Contexte détaillé pour opportunités
-  const allPos = positions.map(p => {
-    const pnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
-    const w   = tv>0 ? p.qty*p.price/tv*100 : 0;
-    return `${p.name}(PRU:${p.pru.toFixed(0)}€,cours:${(p.price||p.pru).toFixed(0)}€,PnL:${pnl>=0?'+':''}${pnl.toFixed(0)}%,poids:${w.toFixed(0)}%)`;
-  }).join(', ');
-
-  const prompt = `Tu es analyste financier senior. Identifie 3 opportunités CONCRÈTES pour ce portefeuille.
-
-PORTEFEUILLE (${Math.round(tv).toLocaleString('fr-FR')}€) : ${allPos}
-PROFIL : ${profile.risk||'prudent'}, horizon ${profile.horizon||'long terme'}
-WATCHLIST : ${wlNames||'aucune'}
-
-RÈGLES :
-- Priorité aux positions déjà détenues en forte baisse (zone de rachat ?) ou en forte hausse (renforcement momentum ?)
-- Utilise les vrais PRU et cours pour argumenter
-- Score réaliste : renforcer une position −85% = risque élevé, score max 5
-- Une opportunité peut être "couper une perte" si c'est la bonne action
-
-Format JSON UNIQUEMENT — 3 items :
-[{
-  "ticker":"IWDA.AS",
-  "label":"Renforcer IWDA (DCA)",
-  "score":8,
-  "raison":"Meilleure perf du portef. +43%. DCA mensuel recommandé pour profil prudent.",
-  "type":"renforcer"
-},{
-  "ticker":"PAH3.DE",
-  "label":"Couper PAH3 (stop loss)",
-  "score":7,
-  "raison":"−85% — capital immobilisé. Libérer vers ETF diversifié.",
-  "type":"vendre"
-},{
-  "ticker":"ALO.PA",
-  "label":"Air Liquide — dividende stable",
-  "score":6,
-  "raison":"+11% PnL, dividende croissant. Conserver et renforcer progressivement.",
-  "type":"surveiller"
-}]
-Types : acheter/renforcer/vendre/surveiller.`;
-
-  try {
-    const raw = await callClaude(prompt, 'Tu es analyste senior. Réponds UNIQUEMENT en JSON valide, sans texte autour.');
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const items = JSON.parse(clean.slice(clean.indexOf('['),clean.lastIndexOf(']')+1));
-    try { localStorage.setItem('iq_agent_opps', JSON.stringify({items,ts:Date.now()})); } catch {}
-    renderOppCards(items, el);
-  } catch {
-    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary)">Données indisponibles.</div>';
-  } finally {
-    window._oppsInProgress = false;
-  }
-}
-
-function renderOppCards(items, el) {
-  const typeCfg = {
-    acheter:   { color:'#4ade80', bg:'rgba(74,222,128,0.08)',   label:'ACHETER'   },
-    renforcer: { color:'#60a5fa', bg:'rgba(165,180,252,0.08)', label:'RENFORCER' },
-    surveiller:{ color:'#fbbf24', bg:'rgba(251,191,36,0.08)',  label:'SURVEILLER'},
-  };
-  el.innerHTML = items.slice(0,3).map(it => {
-    const cfg = typeCfg[it.type]||typeCfg.surveiller;
-    const stars = Math.round(it.score/2);
-    return `<div style="padding:8px 10px;background:${cfg.bg};border-radius:10px;border-left:3px solid ${cfg.color};cursor:pointer"
-      data-sq="Analyse l&#39;opportunité ${it.ticker} : ${it.raison}"
-      onclick="sq(this.dataset.sq)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-        <span style="font-size:12px;font-weight:700;color:${cfg.color}">${it.label}</span>
-        <span style="font-size:10px;font-weight:700;color:${cfg.color};background:${cfg.bg};padding:1px 6px;border-radius:4px">${cfg.label}</span>
-      </div>
-      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">${it.raison}</div>
-      <div style="display:flex;align-items:center;gap:4px">
-        ${'⭐'.repeat(stars)}${'☆'.repeat(5-stars)}
-        <span style="font-size:10px;color:var(--color-text-tertiary);margin-left:2px">${it.score}/10</span>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── ④ RECOMMANDATIONS + CONFIANCE ──
-async function renderAgentRecommendations() {
-  if (window._recoInProgress) return;
-  const el = document.getElementById('agent-reco-content');
-  if (!el) return;
-
-  if (!isPremiumUser()) {
-    el.innerHTML = '<div style="font-size:12px;color:#fbbf24">✦ Fonctionnalité Premium</div>';
-    return;
-  }
-  if (!positions.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary)">Ajoute des positions pour recevoir des recommandations.</div>';
-    return;
-  }
-  window._recoInProgress = true;
-
-  // Cache 6h
-  try {
-    const cached = JSON.parse(localStorage.getItem('iq_agent_reco')||'null');
-    if (cached && Date.now()-cached.ts < 6*3600000) { renderRecoCards(cached.items, el); return; }
-  } catch {}
-
-  el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5;display:flex;align-items:center;gap:6px"><svg class="spinning" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Génération...</div>';
-
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
-  // Contexte enrichi — toutes les positions avec PRU, perte/gain, poids, variation jour
-  const posCtx = positions.map(p => {
-    const w    = tv > 0 ? p.qty * p.price / tv * 100 : 0;
-    const pnl  = p.pru > 0 ? (p.price - p.pru) / p.pru * 100 : 0;
-    const chg  = p.change_pct || 0;
-    const val  = p.qty * p.price;
-    return `${p.name}[PRU:${p.pru.toFixed(2)}€,cours:${(p.price||p.pru).toFixed(2)}€,PnL:${pnl>=0?'+':''}${pnl.toFixed(1)}%,poids:${w.toFixed(0)}%,auj:${chg>=0?'+':''}${chg.toFixed(1)}%,val:${Math.round(val)}€]`;
-  }).join(' | ');
-
-  const posLosers  = positions.filter(p => p.pru>0 && (p.price-p.pru)/p.pru*100 < -15).map(p=>p.name).join(', ');
-  const posWinners = positions.filter(p => p.pru>0 && (p.price-p.pru)/p.pru*100 > 20).map(p=>p.name).join(', ');
-  const posHeavy   = positions.filter(p => tv>0 && p.qty*p.price/tv*100 > 30).map(p=>`${p.name}(${(p.qty*p.price/tv*100).toFixed(0)}%)`).join(', ');
-  const pnlGlob    = ti > 0 ? ((tv-ti)/ti*100).toFixed(1) : '0';
-
-  const prompt = `Tu es un gestionnaire de portefeuille senior. Analyse ce portefeuille réel et génère 3 recommandations ULTRA-SPÉCIFIQUES.
-
-PORTEFEUILLE RÉEL (${positions.length} positions, valeur totale ${Math.round(tv).toLocaleString('fr-FR')}€, P&L global ${pnlGlob>=0?'+':''}${pnlGlob}%) :
-${posCtx}
-
-PROFIL : ${profile.risk||'prudent'}, horizon ${profile.horizon||'long terme'}, objectif ${(typeof objChartCapital!=='undefined'&&objChartCapital>0)?objChartCapital+'€':'non défini'}
-${posLosers  ? 'PERTES MAJEURES (>−15%) : ' + posLosers  : ''}
-${posWinners ? 'GAINS IMPORTANTS (>+20%) : ' + posWinners : ''}
-${posHeavy   ? 'SURPONDÉRATIONS (>30%) : '  + posHeavy   : ''}
-
-RÈGLES ABSOLUES :
-- Cite UNIQUEMENT des positions déjà dans le portefeuille (pas de nouvelles actions)
-- Priorise les positions en perte majeure (couper ou moyenner ?)
-- Sois direct : "Vendre 50% de PAH3.DE" pas "Envisager de réduire"
-- Justifie avec les vrais chiffres (PRU, cours actuel, poids %)
-- Confiance réaliste : une perte de −85% = confiance basse pour renforcer
-
-Format JSON UNIQUEMENT — 3 items :
-[{
-  "action":"Couper PAH3.DE",
-  "ticker":"PAH3.DE",
-  "priorite":1,
-  "confiance":88,
-  "raison":"−85% depuis PRU 210€. Capital mort. Libérer pour IWDA.",
-  "impact_rendement":"+1.2% (capital redéployé)",
-  "impact_risque":"−4.1%",
-  "impact_score":"+5 pts"
-}]`;
-
-  try {
-    const raw = await callClaude(prompt, 'Tu es analyste senior. Réponds UNIQUEMENT en JSON valide, sans texte autour.');
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const items = JSON.parse(clean.slice(clean.indexOf('['),clean.lastIndexOf(']')+1));
-    try { localStorage.setItem('iq_agent_reco', JSON.stringify({items,ts:Date.now()})); } catch {}
-    renderRecoCards(items, el);
-  } catch {
-    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary)">Données indisponibles.</div>';
-  } finally {
-    window._recoInProgress = false;
-  }
-}
-
-function renderRecoCards(items, el) {
-  const confCfg = c => c >= 75
-    ? { color:'#4ade80', bar:'linear-gradient(90deg,#4ade80,#22c55e)', label:'Élevée' }
-    : c >= 55
-    ? { color:'#fbbf24', bar:'linear-gradient(90deg,#fbbf24,#f59e0b)', label:'Modérée' }
-    : { color:'#f87171', bar:'linear-gradient(90deg,#f87171,#ef4444)', label:'Faible' };
-
-  el.innerHTML = items.slice(0,3).map((it,i) => {
-    const cc = confCfg(it.confiance||70);
-    return `<div style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:12px;padding:12px 14px;cursor:pointer;transition:border-color 0.15s"
-      data-sq="Explique la recommandation : ${it.action.replace(/'/g,'&#39;')} — ${it.raison.replace(/'/g,'&#39;')}"
-      onclick="sq(this.dataset.sq)">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:22px;height:22px;background:${cc.color}20;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${cc.color};flex-shrink:0">${i+1}</div>
-          <div style="font-size:13px;font-weight:700;color:var(--color-text)">${it.action}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:11px;font-weight:700;color:${cc.color}">${it.confiance||70}%</div>
-          <div style="font-size:10px;color:var(--color-text-tertiary)">${cc.label}</div>
-        </div>
-      </div>
-      <!-- Barre confiance -->
-      <div style="height:3px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden;margin-bottom:8px">
-        <div style="height:100%;width:${it.confiance||70}%;background:${cc.bar};border-radius:99px;transition:width 1s"></div>
-      </div>
-      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">${it.raison}</div>
-      <!-- Impact estimé -->
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${it.impact_rendement ? `<span style="font-size:10px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.1);padding:2px 7px;border-radius:4px">📈 Rendement ${it.impact_rendement}</span>` : ''}
-        ${it.impact_risque ? `<span style="font-size:10px;font-weight:700;color:#60a5fa;background:rgba(165,180,252,0.1);padding:2px 7px;border-radius:4px">🛡 Risque ${it.impact_risque}</span>` : ''}
-        ${it.impact_score ? `<span style="font-size:10px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 7px;border-radius:4px">⭐ Score ${it.impact_score}</span>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── ⑤ QUE FERAIT INVESTIQ ? ──
-async function generateWhatWouldIQ() {
-  const el = document.getElementById('agent-wwiq-content');
-  const btn = document.getElementById('wwiq-btn');
-  if (!el || !isPremiumUser()) { showPremiumModal(); return; }
-  if (!positions.length) { el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.5)">Ajoute des positions pour activer cette analyse.</div>'; return; }
-
-  // Cache 6h
-  try {
-    const cached = JSON.parse(localStorage.getItem('iq_agent_wwiq')||'null');
-    if (cached && Date.now()-cached.ts < 6*3600000) { el.innerHTML = cached.html; return; }
-  } catch {}
-
-  if (btn) btn.disabled = true;
-  el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,0.4)"><svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Analyse en cours...</div>';
-
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
-  const pnlGlobal = ((tv-ti)/ti*100).toFixed(1);
-  const posCtx = positions.map(p=>{
-    const w=tv>0?p.qty*p.price/tv*100:0;
-    const pnl=p.pru>0?(p.price-p.pru)/p.pru*100:0;
-    return `${p.name}(${w.toFixed(0)}%,${pnl>=0?'+':''}${pnl.toFixed(1)}%)`;
-  }).join(', ');
-
-  // Contexte ultra-détaillé pour WWIQ
-  const wwiqLines = positions.map(p => {
-    const pnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
-    const w   = tv>0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
-    const chg = p.change_pct||0;
-    return `${p.name} : PRU ${p.pru.toFixed(0)}€ → ${(p.price||p.pru).toFixed(0)}€ (${pnl>=0?'+':''}${pnl.toFixed(1)}%), poids ${w.toFixed(0)}%, auj ${chg>=0?'+':''}${chg.toFixed(1)}%`;
-  }).join('\n');
-
-  const prompt = `Si ce portefeuille était le mien, voici exactement ce que je ferais. Je parle à la 1ère personne, sans filtre.
-
-MON PORTEFEUILLE (${Math.round(tv).toLocaleString('fr-FR')}€, P&L global ${pnlGlobal>=0?'+':''}${pnlGlobal}%) :
-${wwiqLines}
-PROFIL : ${profile.risk||'prudent'}, horizon ${profile.horizon||'long terme'}
-
-Réponds en 4-5 décisions fermes. Chaque point doit :
-- Citer le ticker exact
-- Indiquer l'action précise (vendre X%, renforcer, conserver, couper)
-- Justifier en 1 phrase avec les vrais chiffres
-- Utiliser **gras** pour l'action
-
-Exemple de style attendu :
-1. Je **couperais immédiatement** PAH3.DE — −85% depuis mon PRU de 210€, c'est du capital mort que je redéploierais sur IWDA.
-2. Je **conserverais** IWDA.AS — +43%, c'est le cœur de mon portefeuille, j'augmenterais mon DCA mensuel.
-
-Sois tranché, direct, comme si c'était vraiment ton argent. 4-5 points max.
-
-Termine par une ligne d'impact estimé :
-Impact estimé : diversification +X, risque −X, score IQ +X pts`;
-
-  try {
-    const r = await callClaude(prompt, 'Tu es un gestionnaire de portefeuille qui parle à la première personne. Sois direct et concret.');
-    const htmlR = formatAgentMD(r);
-    try { localStorage.setItem('iq_agent_wwiq', JSON.stringify({html:htmlR,ts:Date.now()})); } catch {}
-    const block = document.getElementById('agent-wwiq-block'); if (block) { block.style.display = 'block'; block.style.opacity = '1'; }
-    el.innerHTML = htmlR;
-    el.style.fontStyle = 'normal';
-    el.style.color = 'rgba(255,255,255,0.82)';
-    // Impact chips
-    const impactEl = document.getElementById('agent-wwiq-impact');
-    if (impactEl) {
-      impactEl.style.display = 'flex';
-      impactEl.innerHTML = [
-        {icon:'📈', label:'Diversification +4', c:'rgba(34,197,94,0.15)', bc:'rgba(34,197,94,0.3)', tc:'#22c55e'},
-        {icon:'🛡', label:'Risque −3',          c:'rgba(96,165,250,0.15)', bc:'rgba(96,165,250,0.3)', tc:'#60a5fa'},
-        {icon:'⭐', label:'Score IQ +2 pts',    c:'rgba(251,191,36,0.12)', bc:'rgba(251,191,36,0.25)', tc:'#fbbf24'},
-      ].map(i => `<span style="background:${i.c};border:1px solid ${i.bc};border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;color:${i.tc}">${i.icon} ${i.label}</span>`).join('');
-    }
-    // Also update sidebar action
-    updateAISidebarIA();
-  } catch {
-    el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.5)">Erreur — réessaie.</div>';
-  }
-  if (btn) { btn.disabled = false; btn.textContent = 'Relancer →'; }
-}
-
-// ── SCORE INVESTIQ ──
-function renderIQScore() {
-  if (!positions.length) return;
-
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
-  const pnl = tv - ti;
-
-  // Calculs des sous-scores
-  // Diversification : nombre de positions distinctes
-  const uniquePos = new Set(positions.map(p=>p.name)).size;
-  const diversScore = Math.min(100, uniquePos * 12 + 10);
-
-  // Concentration : poids max d'une position
-  const maxW = Math.max(...positions.map(p=>tv>0?p.qty*p.price/tv*100:0));
-  const concenScore = Math.max(10, 100 - maxW * 1.5);
-
-  // Performance : P&L global
-  const pnlPct = ti > 0 ? (pnl/ti*100) : 0;
-  const perfScore = Math.min(100, Math.max(10, 50 + pnlPct * 2));
-
-  // Liquidité : % ETF vs actions
-  const etfWeight = positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/Math.max(tv,1)*100;
-  const liquiScore = Math.min(100, 40 + etfWeight * 0.6);
-
-  const globalScore = Math.round((diversScore*0.25 + concenScore*0.3 + perfScore*0.25 + liquiScore*0.2));
-
-  // Affiche
-  const valEl = document.getElementById('iq-score-val');
-  const labelEl = document.getElementById('iq-score-label');
-  const ringEl = document.getElementById('iq-score-ring');
-  const breakEl = document.getElementById('iq-score-breakdown');
-
-  if (valEl) valEl.textContent = globalScore;
-  if (labelEl) {
-    const lbl = globalScore >= 80 ? 'Excellent 🏆' : globalScore >= 65 ? 'Bon 👍' : globalScore >= 50 ? 'Correct ⚡' : 'À améliorer 🔧';
-    const col = globalScore >= 80 ? '#4ade80' : globalScore >= 65 ? '#a5b4fc' : globalScore >= 50 ? '#fbbf24' : '#f87171';
-    labelEl.textContent = lbl;
-    labelEl.style.color = col;
-  }
-  if (ringEl) {
-    const circ = 2 * Math.PI * 34;
-    setTimeout(() => { ringEl.setAttribute('stroke-dasharray', `${circ * globalScore/100} ${circ}`); }, 100);
-  }
-
-  // Sous-scores
-  const subs = [
-    { label:'Diversification', val: Math.round(diversScore) },
-    { label:'Concentration',   val: Math.round(concenScore)  },
-    { label:'Performance',     val: Math.round(perfScore)    },
-    { label:'Liquidité',       val: Math.round(liquiScore)   },
-  ];
-  if (breakEl) {
-    breakEl.innerHTML = subs.map(s => {
-      const c = s.val >= 70 ? '#4ade80' : s.val >= 50 ? '#fbbf24' : '#f87171';
-      return `<div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:2px">
-          <span style="font-size:10px;color:rgba(255,255,255,0.45)">${s.label}</span>
-          <span style="font-size:10px;font-weight:700;color:${c}">${s.val}</span>
-        </div>
-        <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden">
-          <div style="height:100%;width:${s.val}%;background:${c};border-radius:99px;transition:width 1.2s"></div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-}
-
-// ── RADAR RISQUE ──
-function renderRadarRisque() {
-  const el = document.getElementById('ai-side-radar');
-  if (!el || !positions.length) return;
-
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const maxW = Math.max(...positions.map(p=>tv>0?p.qty*p.price/tv*100:0));
-  const uniquePos = new Set(positions.map(p=>p.name)).size;
-  const avgChg = positions.reduce((a,p)=>a+Math.abs(p.change_pct||0),0)/positions.length;
-  const etfPct = positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/Math.max(tv,1)*100;
-
-  const metrics = [
-    { label:'Diversif.',  val: Math.min(10, Math.round(uniquePos * 1.2)), max:10 },
-    { label:'Concentr.',  val: Math.max(1, Math.round(10 - maxW/12)),     max:10 },
-    { label:'Volatilité', val: Math.max(1, Math.round(10 - avgChg)),      max:10 },
-    { label:'ETF/Actions',val: Math.round(etfPct/10),                     max:10 },
-  ];
-
-  el.innerHTML = metrics.map(m => {
-    const c = m.val >= 7 ? '#4ade80' : m.val >= 5 ? '#fbbf24' : '#f87171';
-    return `<div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:2px">
-        <span style="font-size:10px;color:var(--color-text-tertiary)">${m.label}</span>
-        <span style="font-size:10px;font-weight:700;color:${c}">${m.val}/${m.max}</span>
-      </div>
-      <div style="height:4px;background:var(--color-bg-subtle);border-radius:99px;overflow:hidden">
-        <div style="height:100%;width:${m.val/m.max*100}%;background:${c};border-radius:99px;transition:width 1s"></div>
-      </div>
-    </div>`;
-  }).join('');
 }
 
 async function generateDailyBrief() {
-  // Cache 24h — premium uniquement
-  if (!isPremiumUser()) {
-    const briefEl = document.getElementById('agent-brief-content');
-    if (briefEl) briefEl.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.15);border-radius:10px;font-size:13px;color:#fbbf24;display:flex;align-items:center;gap:8px"><span>✦</span><span>Briefing quotidien disponible en <strong>Premium</strong></span></div>';
-    return;
-  }
-  const cached = getCachedResponse('briefing', CACHE_TTL.briefing);
-  if (cached) {
-    const briefEl = document.getElementById('agent-brief-content');
-    if (briefEl) briefEl.innerHTML = cached;
-    const dateEl = document.getElementById('agent-brief-date');
-    if (dateEl) dateEl.textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
-    return;
-  }
-
   const el = document.getElementById('agent-brief-content');
   const btn = document.getElementById('brief-refresh-btn');
   if (!el) return;
@@ -9632,41 +7737,24 @@ async function generateDailyBrief() {
 
   if (!positions.length) {
     renderDailyBrief([
-      { icon:'👋', text:'Bienvenue ! Ajoute tes premières positions pour recevoir un briefing personnalisé.', color:'#60a5fa', type:'info' }
+      { icon:'👋', text:'Bienvenue ! Ajoute tes premières positions pour recevoir un briefing personnalisé.', color:'#a5b4fc', type:'info' }
     ]);
     if (btn) btn.disabled = false;
     return;
   }
 
-  // Contexte complet pour le briefing
-  const briefPosCtx = positions.map(p => {
-    const pnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
-    const chg = p.change_pct || 0;
-    return `${p.name}:${pnl>=0?'+':''}${pnl.toFixed(1)}%(${chg>=0?'+':''}${chg.toFixed(1)}%auj)`;
-  }).join(', ');
-  const bestPos  = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0))[0];
-  const worstPos = [...positions].sort((a,b)=>(a.change_pct||0)-(b.change_pct||0))[0];
-  const bigLoss  = positions.filter(p=>p.pru>0&&(p.price-p.pru)/p.pru*100 < -20);
+  const prompt = `Tu es un conseiller financier IA. Génère un briefing ULTRA court pour ce portefeuille.
+Valeur: ${fmtK(tv)} · P&L: ${pnl>=0?'+':''}${fmtK(pnl)} · Variation auj: ${avgChg>=0?'+':''}${avgChg.toFixed(1)}%
+Positions: ${positions.slice(0,6).map(p=>`${p.name}(${(p.change_pct||0).toFixed(1)}%)`).join(', ')}
+${pctObj ? `Objectif: ${pctObj}% atteint` : ''}
 
-  const prompt = `Tu es un conseiller financier personnel. Génère un briefing matinal PERSONNALISÉ et PERCUTANT.
-
-PORTEFEUILLE : ${Math.round(tv).toLocaleString('fr-FR')}€ · P&L ${pnl>=0?'+':''}${Math.round(pnl).toLocaleString('fr-FR')}€ · Aujourd'hui ${avgChg>=0?'+':''}${avgChg.toFixed(1)}%
-POSITIONS : ${briefPosCtx}
-${pctObj ? `OBJECTIF : ${pctObj}% atteint` : ''}
-${bigLoss.length ? 'PERTES MAJEURES : ' + bigLoss.map(p=>`${p.name} (${((p.price-p.pru)/p.pru*100).toFixed(1)}%)`).join(', ') : ''}
-
-Génère EXACTEMENT 3 points. Chaque point doit :
-- Citer un vrai ticker du portefeuille
-- Donner un chiffre précis (%, €, jours)
-- Être actionnable (pas juste descriptif)
-
-Format JSON :
+Génère exactement 3 points courts. Format JSON UNIQUEMENT:
 [
-  {"icon":"📈","text":"Observation sur la perf d'une position spécifique avec chiffre","color":"#4ade80","type":"perf"},
-  {"icon":"⚠️","text":"Alerte sur une position en danger ou risque identifié","color":"#f87171","type":"alert"},
-  {"icon":"🎯","text":"Action concrète recommandée avec impact estimé","color":"#fbbf24","type":"tip"}
+  {"icon":"📈","text":"Une observation courte (max 12 mots)","color":"#4ade80","type":"perf"},
+  {"icon":"⚡","text":"Une alerte ou opportunité courte","color":"#fbbf24","type":"alert"},
+  {"icon":"💡","text":"Un conseil actionnable court","color":"#a5b4fc","type":"tip"}
 ]
-Max 15 mots par point. Utilise uniquement les vrais tickers du portefeuille.`;
+Sois TRÈS concis. Max 12 mots par point. Utilise les vraies données.`;
 
   try {
     const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.');
@@ -9679,17 +7767,12 @@ Max 15 mots par point. Utilise uniquement les vrais tickers du portefeuille.`;
     const items = [
       { icon: avgChg>=0?'📈':'📉', text: `Portef. ${avgChg>=0?'en hausse':'en baisse'} de ${Math.abs(avgChg).toFixed(1)}% aujourd'hui`, color: avgChg>=0?'#4ade80':'#f87171', type:'perf' },
       { icon: best?'🏆':'—', text: best ? `${best.name} meilleure perf. (+${(best.change_pct||0).toFixed(1)}%)` : 'Pas de données', color:'#fbbf24', type:'alert' },
-      { icon: '💡', text: pctObj ? `${pctObj}% de l'objectif atteint · Continue le DCA` : 'Définis un objectif pour suivre ta progression', color:'#60a5fa', type:'tip' }
+      { icon: '💡', text: pctObj ? `${pctObj}% de l'objectif atteint · Continue le DCA` : 'Définis un objectif pour suivre ta progression', color:'#a5b4fc', type:'tip' }
     ];
     try { localStorage.setItem('iq_daily_brief', JSON.stringify({items, ts:Date.now()})); } catch {}
     renderDailyBrief(items);
   }
   if (btn) btn.disabled = false;
-}
-
-function showBriefDetail(btn) {
-  const text = btn.getAttribute('data-text') || '';
-  sq(text + ' — explique-moi en détail');
 }
 
 function renderDailyBrief(items) {
@@ -9699,1080 +7782,9 @@ function renderDailyBrief(items) {
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;border-left:3px solid ${item.color}">
       <span style="font-size:18px;flex-shrink:0">${item.icon}</span>
       <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);line-height:1.4">${item.text}</span>
-      <button onclick="showBriefDetail(this)"
-        data-text="${item.text.replace(/"/g,'&quot;')}"
+      <button onclick="sq('${item.text.replace(/'/g,"\'")} — explique-moi en détail')"
         style="margin-left:auto;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0;white-space:nowrap">
         → Détails
       </button>
     </div>`).join('');
 }
-
-
-// ===== DCA DONUT =====
-function updateDCADonut() {
-  const m=parseFloat(document.getElementById('dca-m')?.value)||200;
-  const y=parseInt(document.getElementById('dca-y')?.value)||10;
-  const r=parseFloat(document.getElementById('dca-r')?.value)||7;
-  const s=parseFloat(document.getElementById('dca-s')?.value)||0;
-  const rate=r/100/12,n=y*12;
-  const total=s*Math.pow(1+rate,n)+(rate>0?m*((Math.pow(1+rate,n)-1)/rate):m*n);
-  const invested=s+m*n;
-  const gain=total-invested;
-  const gainPct=invested>0?Math.round(gain/invested*100):0;
-  const g=id=>document.getElementById(id);
-  if(g('dca-hero-total')) g('dca-hero-total').textContent=fmtK(Math.round(total));
-  if(g('dca-hero-gain'))  g('dca-hero-gain').textContent='+'+fmtK(Math.round(gain));
-  if(g('dca-hero-inv'))   g('dca-hero-inv').textContent=fmtK(Math.round(invested));
-  if(g('dca-hero-mult'))  g('dca-hero-mult').textContent='×'+(invested>0?(total/invested).toFixed(2):'1.00');
-  const circle=g('dca-donut-circle');
-  if(circle){const c=2*Math.PI*36;circle.setAttribute('stroke-dasharray',Math.min(gainPct/100,1)*c*0.75+' '+c);}
-  if(g('dca-donut-pct')) g('dca-donut-pct').textContent=gainPct+'%';
-  // Labels sliders
-  if(g('dca-m-o')) g('dca-m-o').textContent=m.toLocaleString('fr-FR')+' €';
-  if(g('dca-y-o')) g('dca-y-o').textContent=y;
-  if(g('dca-r-o')) g('dca-r-o').textContent=r.toFixed(1)+' %';
-  if(g('dca-s-o')) g('dca-s-o').textContent=s.toLocaleString('fr-FR')+' €';
-}
-
-
-// ===== AGENT IA SIDEBAR =====
-function updateAISidebarIA() {
-  // Alimente la nouvelle sidebar 100% IA
-  if (!positions || !positions.length) return;
-
-  // Confiance globale (moyenne des recos en cache)
-  let globalConf = 80;
-  try {
-    const cr = JSON.parse(localStorage.getItem('iq_agent_reco')||'null');
-    if (cr && cr.items) globalConf = Math.round(cr.items.reduce((a,i)=>a+(i.confiance||80),0)/cr.items.length);
-  } catch {}
-  const confEl  = document.getElementById('ai-side-global-conf');
-  const confBar = document.getElementById('ai-side-global-conf-bar');
-  if (confEl)  { confEl.textContent = globalConf + '%'; confEl.style.color = globalConf>=75?'#22c55e':globalConf>=55?'#f59e0b':'#ef4444'; }
-  if (confBar) setTimeout(()=>{ confBar.style.width = globalConf + '%'; confBar.style.background = globalConf>=75?'linear-gradient(90deg,#16a34a,#4ade80)':'linear-gradient(90deg,#f59e0b,#fbbf24)'; }, 200);
-
-  // Timing dernière / prochaine analyse
-  const lastEl = document.getElementById('ai-side-last-update');
-  const nextEl = document.getElementById('ai-side-next-update');
-  if (lastEl || nextEl) {
-    const CACHE_TS = (() => { try { const c = JSON.parse(localStorage.getItem('iq_daily_brief')||'null'); return c ? c.ts : null; } catch { return null; } })();
-    const now = Date.now();
-    if (CACHE_TS) {
-      const elapsedMin = Math.round((now - CACHE_TS) / 60000);
-      const remainMin  = Math.max(0, 360 - elapsedMin); // TTL 6h
-      if (lastEl) lastEl.textContent = elapsedMin < 2 ? "À l'instant" : elapsedMin < 60 ? "Il y a " + elapsedMin + " min" : "Il y a " + Math.round(elapsedMin/60) + "h";
-      if (nextEl) nextEl.textContent = remainMin < 2 ? "Imminent" : remainMin < 60 ? "Dans " + remainMin + " min" : "Dans " + Math.round(remainMin/60) + "h";
-    } else {
-      if (lastEl) lastEl.textContent = 'En attente';
-      if (nextEl) nextEl.textContent = 'Au prochain chargement';
-    }
-  }
-  const tv  = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
-  const ti  = positions.reduce((a,p)=>a+p.pru*p.qty,0);
-
-  // Risque principal : position la plus concentrée ou en plus grande perte
-  const sorted = [...positions].sort((a,b) => {
-    const wa = tv>0?a.qty*(a.price||a.pru)/tv*100:0;
-    const wb = tv>0?b.qty*(b.price||b.pru)/tv*100:0;
-    const pa = a.pru>0?(a.price-a.pru)/a.pru*100:0;
-    const pb = b.pru>0?(b.price-b.pru)/b.pru*100:0;
-    return (wb > 35 ? wb : Math.abs(pb)) - (wa > 35 ? wa : Math.abs(pa));
-  });
-  const riskPos = sorted[0];
-  const riskW   = riskPos ? tv>0?riskPos.qty*(riskPos.price||riskPos.pru)/tv*100:0 : 0;
-  const riskPnl = riskPos && riskPos.pru>0 ? (riskPos.price-riskPos.pru)/riskPos.pru*100 : 0;
-
-  const rtEl  = document.getElementById('ai-side-risk-title');
-  const rbEl  = document.getElementById('ai-side-risk-body');
-  const rbtn  = document.getElementById('ai-side-risk-btn');
-  if (rtEl && riskPos) {
-    if (riskW > 35) {
-      rtEl.textContent = riskPos.name + ' trop concentré';
-      if (rbEl) rbEl.textContent = riskPos.name + ' représente ' + riskW.toFixed(0) + '% de ton portefeuille. Idéal : 20-25%.';
-      if (rbtn) rbtn.dataset.q = 'Comment réduire ma concentration sur ' + riskPos.name + ' (' + riskW.toFixed(0) + '%) ?';
-    } else {
-      rtEl.textContent = riskPos.name + ' (' + (riskPnl>=0?'+':'') + riskPnl.toFixed(1) + '%)';
-      if (rbEl) rbEl.textContent = 'Position à surveiller. Perte latente de ' + Math.abs(riskPnl).toFixed(1) + '%.';
-      if (rbtn) rbtn.dataset.q = 'Que faire pour ' + riskPos.name + ' avec une variation de ' + riskPnl.toFixed(1) + '% ?';
-    }
-  }
-
-  // Opportunité principale : meilleure perf du jour ou position avec bon PnL
-  const oppPos = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0))[0];
-  const otEl   = document.getElementById('ai-side-opp-title');
-  const obEl   = document.getElementById('ai-side-opp-body');
-  const obtn   = document.getElementById('ai-side-opp-btn');
-  if (otEl && oppPos) {
-    const chg = oppPos.change_pct || 0;
-    otEl.textContent = oppPos.name + (chg !== 0 ? ' ' + (chg>=0?'+':'') + chg.toFixed(1) + '% auj.' : '');
-    if (obEl) obEl.textContent = 'Momentum positif détecté. Zone potentielle de renforcement.';
-    if (obtn) obtn.dataset.q = "Analyse l'opportunité sur " + oppPos.name + ' — est-ce le bon moment pour renforcer ?';
-  }
-
-  // Action recommandée : basée sur les recommandations en cache
-  const atEl  = document.getElementById('ai-side-action-title');
-  const abEl  = document.getElementById('ai-side-action-body');
-  const confV = document.getElementById('ai-side-conf-val');
-  const confB = document.getElementById('ai-side-conf-bar');
-  try {
-    const cachedReco = JSON.parse(localStorage.getItem('iq_agent_reco')||'null');
-    if (cachedReco && cachedReco.items && cachedReco.items[0]) {
-      const top = cachedReco.items[0];
-      if (atEl) atEl.textContent = top.action || '—';
-      if (abEl) abEl.textContent = top.raison || '—';
-      const c = top.confiance || 80;
-      if (confV) { confV.textContent = c + '%'; confV.style.color = c >= 75 ? '#22c55e' : c >= 55 ? '#f59e0b' : '#ef4444'; }
-      if (confB) { setTimeout(()=>{ confB.style.width = c + '%'; confB.style.background = c>=75?'linear-gradient(90deg,#16a34a,#4ade80)':c>=55?'linear-gradient(90deg,#f59e0b,#fbbf24)':'linear-gradient(90deg,#ef4444,#f87171)'; }, 300); }
-    } else {
-      // Défaut calculé
-      const maxWPos = [...positions].sort((a,b)=>(tv>0?b.qty*(b.price||b.pru)/tv:0)-(tv>0?a.qty*(a.price||a.pru)/tv:0))[0];
-      if (atEl && maxWPos) atEl.textContent = 'Surveiller ' + maxWPos.name;
-      if (abEl) abEl.textContent = 'Maintenir la position et surveiller les supports.';
-      if (confV) confV.textContent = '72%';
-      if (confB) setTimeout(()=>{ confB.style.width = '72%'; }, 300);
-    }
-  } catch {}
-}
-
-function updateAISidebar() {
-  if (!positions || positions.length === 0) return;
-  let totalVal = 0, totalCost = 0;
-  positions.forEach(p => {
-    totalVal  += (p.price || p.pru) * p.qty;
-    totalCost += p.pru * p.qty;
-  });
-  const totalPnl = totalVal - totalCost;
-  const pnlPct   = totalCost > 0 ? (totalPnl / totalCost * 100) : 0;
-  const pnlColor = totalPnl >= 0 ? '#4ade80' : '#f87171';
-
-  // Valeur totale
-  const tvEl = document.getElementById('ai-side-tv');
-  if (tvEl) tvEl.textContent = Math.round(totalVal).toLocaleString('fr-FR') + ' €';
-
-  // P&L (gauche hero + droite sidebar)
-  const pnlSign = totalPnl >= 0 ? '+' : '';
-  const pnlStr  = pnlSign + Math.round(totalPnl).toLocaleString('fr-FR') + ' € (' + pnlSign + pnlPct.toFixed(1) + '%)';
-  ['ai-side-pnl','ai-side-pnl-right'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.textContent = pnlStr; el.style.color = pnlColor; }
-  });
-
-  // Sparkline couleur
-  const spark = document.getElementById('ai-side-sparkline');
-  if (spark) { const p = spark.querySelector('path'); if (p) p.setAttribute('stroke', pnlColor); }
-
-  // Métriques sidebar
-  const liquidEl = document.getElementById('ai-side-liquid');
-  const investEl = document.getElementById('ai-side-invested');
-  const posEl    = document.getElementById('ai-side-positions');
-  if (liquidEl) liquidEl.textContent = (profile && profile.bankroll ? Math.max(0, profile.bankroll - totalCost).toLocaleString('fr-FR') + ' €' : '—');
-  if (investEl) investEl.textContent = Math.round(totalCost).toLocaleString('fr-FR') + ' €';
-  if (posEl)    posEl.textContent    = positions.length;
-
-  // Santé — reprend le score IQ
-  renderHealthRing();
-
-  // Objectif
-  renderSidebarObjectif();
-
-  // Hero métriques : risques + opps + objectif
-  renderHeroMetrics();
-
-  // Sidebar IA
-  updateAISidebarIA();
-}
-
-function renderHealthRing() {
-  const ring  = document.getElementById('health-ring');
-  const valEl = document.getElementById('health-score-val');
-  const lblEl = document.getElementById('health-score-label');
-  if (!ring || !positions.length) return;
-
-  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
-  const maxW = Math.max(...positions.map(p=>tv>0?p.qty*(p.price||p.pru)/tv*100:0));
-  const uniquePos = new Set(positions.map(p=>p.name)).size;
-  const diversScore = Math.min(100, uniquePos * 14);
-  const concenScore = Math.max(10, 100 - maxW * 1.5);
-  const pnlPct = (() => { const tc=positions.reduce((a,p)=>a+p.pru*p.qty,0); return tc>0?(tv-tc)/tc*100:0; })();
-  const perfScore = Math.min(100, Math.max(10, 50 + pnlPct * 2));
-  const health = Math.round((diversScore + concenScore + perfScore) / 3);
-
-  const circ = 2 * Math.PI * 22;
-  setTimeout(() => { ring.setAttribute('stroke-dasharray', `${circ * health/100} ${circ}`); }, 150);
-  const col = health >= 70 ? '#4ade80' : health >= 50 ? '#fbbf24' : '#f87171';
-  ring.setAttribute('stroke', col);
-  if (valEl) valEl.textContent = health;
-  if (lblEl) { lblEl.textContent = health >= 70 ? 'Bon' : health >= 50 ? 'Correct' : 'À améliorer'; lblEl.style.color = col; }
-}
-
-function renderSidebarObjectif() {
-  const pctEl    = document.getElementById('ai-side-obj-pct');
-  const barEl    = document.getElementById('ai-side-obj-bar');
-  const detailEl = document.getElementById('ai-side-obj-detail');
-  if (!pctEl) return;
-
-  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
-  const target = (typeof objChartCapital !== 'undefined' && objChartCapital > 0) ? objChartCapital
-               : (profile && profile.target ? profile.target : 100000);
-  const pct = Math.min(100, Math.round(tv / target * 100));
-
-  if (pctEl) pctEl.textContent = pct + '%';
-  if (barEl) setTimeout(() => { barEl.style.width = pct + '%'; }, 200);
-  if (detailEl) detailEl.textContent = `Objectif ${Math.round(target).toLocaleString('fr-FR')} € · ${Math.round(tv).toLocaleString('fr-FR')} / ${Math.round(target).toLocaleString('fr-FR')} €`;
-
-  // Hero: objectif en avance (jours)
-  const heroObjDays = document.getElementById('hero-obj-days');
-  const heroObjPct  = document.getElementById('hero-obj-pct');
-  if (heroObjDays) {
-    const monthly = (typeof objChartMonthly !== 'undefined' && objChartMonthly > 0) ? objChartMonthly : (profile && profile.monthly ? profile.monthly : 200);
-    const remaining = Math.max(0, target - tv);
-    const months = monthly > 0 ? remaining / monthly : 0;
-    const daysAhead = Math.max(0, Math.round((target - tv > 0 ? 0 : Math.abs(tv - target) / (monthly || 200) * 30)));
-    heroObjDays.textContent = daysAhead > 0 ? '+' + daysAhead + 'j' : Math.round(months) + 'm';
-  }
-  if (heroObjPct) heroObjPct.textContent = pct + '% atteint';
-}
-
-function renderHeroMetrics() {
-  if (!positions.length) return;
-  // Risques détectés
-  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
-  // Compte les risques en utilisant la même logique que renderAgentAlertsCards
-  let riskCount = 0;
-  positions.forEach(p => {
-    const w = tv > 0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
-    if (w > 35) riskCount++; // Concentration élevée
-  });
-  // Ajoute les pertes majeures (>-10%) en dédupliquant par ticker
-  const bigLossTickers = new Set(
-    positions.filter(p => p.pru>0 && (p.price-p.pru)/p.pru*100 < -10)
-             .map(p => p.name)
-  );
-  riskCount += bigLossTickers.size;
-  const heroRisk  = document.getElementById('hero-risk-count');
-  const heroRiskL = document.getElementById('hero-risk-label');
-  if (heroRisk)  heroRisk.textContent  = riskCount;
-  if (heroRiskL) { heroRiskL.textContent = riskCount > 2 ? 'Priorité élevée' : riskCount > 0 ? 'À surveiller' : 'Aucun risque'; heroRiskL.style.color = riskCount > 1 ? '#f87171' : riskCount > 0 ? '#fbbf24' : '#4ade80'; }
-
-  // Opportunités (depuis cache)
-  try {
-    const cachedOpps = JSON.parse(localStorage.getItem('iq_agent_opps')||'null');
-    const oppCount = cachedOpps && cachedOpps.items ? cachedOpps.items.length : '—';
-    const heroOpp = document.getElementById('hero-opp-count');
-    if (heroOpp) heroOpp.textContent = oppCount;
-  } catch {}
-
-  // Badge alertes
-  const badge = document.getElementById('agent-alerts-badge');
-  if (badge && riskCount > 0) {
-    badge.textContent = riskCount + ' nouvelle' + (riskCount > 1 ? 's' : '');
-    badge.style.display = 'inline-block';
-  }
-}
-
-// ── PRIORITÉS DU JOUR ──
-function renderAgentPriorities() {
-  // Remplacé par renderRecentDecisions — garde pour compat
-  renderRecentDecisions();
-}
-
-function renderRecentDecisions() {
-  const el = document.getElementById('agent-priorities-content');
-  const titleEl = document.querySelector('[data-section="priorities-title"]');
-  if (titleEl) titleEl.textContent = 'Décisions récentes';
-  if (!el) return;
-
-  if (!positions.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);opacity:0.5">Aucune position enregistrée.</div>';
-    return;
-  }
-
-  // Génère des décisions récentes basées sur les positions (avec dates simulées)
-  const decisions = [];
-  const now = Date.now();
-  const dayMs = 86400000;
-
-  positions.slice(0,5).forEach((p, i) => {
-    const pnl = p.pru > 0 ? (p.price-p.pru)/p.pru*100 : 0;
-    const daysAgo = i === 0 ? 0 : i === 1 ? 2 : i === 2 ? 5 : i * 3;
-    const dateStr = daysAgo === 0 ? "Aujourd'hui" : daysAgo === 1 ? "Hier" : `Il y a ${daysAgo}j`;
-
-    let action, icon, color;
-    if (pnl < -20)      { action = `Achat ${p.name} (position ouverte)`; icon = '🔴'; color = '#ef4444'; }
-    else if (pnl > 20)  { action = `Renforcement ${p.name}`; icon = '✅'; color = '#22c55e'; }
-    else                { action = `Achat ${p.name}`; icon = '✅'; color = '#22c55e'; }
-
-    decisions.push({ action, icon, color, date: dateStr, ticker: p.name,
-      q: `Analyse la décision d'achat sur ${p.name} (PRU ${p.pru.toFixed(0)}€, cours actuel ${(p.price||p.pru).toFixed(0)}€, PnL ${pnl>=0?'+':''}${pnl.toFixed(1)}%). Était-ce une bonne décision ?` });
-  });
-
-  el.innerHTML = decisions.slice(0,4).map(d => `
-    <div data-sq="${d.q.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
-      onclick="sq(this.dataset.sq)"
-      style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--color-bg-subtle);border-radius:10px;cursor:pointer;transition:background 0.15s"
-      onmouseenter="this.style.background='var(--color-surface-raised)'"
-      onmouseleave="this.style.background='var(--color-bg-subtle)'">
-      <span style="font-size:14px;flex-shrink:0">${d.icon}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.action}</div>
-        <div style="font-size:10px;color:var(--color-text-tertiary)">${d.date}</div>
-      </div>
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${d.color}" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-    </div>`).join('');
-}
-
-function _renderAgentPrioritiesOld() {
-  const el = document.getElementById('agent-priorities-content');
-  if (!el || !positions.length) return;
-
-  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
-  const priorities = [];
-
-  // Calcule les priorités selon le portefeuille
-  positions.forEach(p => {
-    const pnlPct = p.pru > 0 ? (p.price - p.pru)/p.pru*100 : 0;
-    const w = tv > 0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
-    const chg = p.change_pct || 0;
-
-    if (pnlPct < -15) priorities.push({ icon:'🔴', label:`Agir sur ${p.name}`, sub:'Perte dépasse 15%', color:'#f87171', q:`Que faire pour ${p.name} avec une perte de ${pnlPct.toFixed(1)}% ?` });
-    else if (w > 40)  priorities.push({ icon:'⚡', label:`Réduire ${p.name}`, sub:'Concentration trop élevée', color:'#fbbf24', q:`Comment réduire mon exposition à ${p.name} (${w.toFixed(0)}% du portefeuille) ?` });
-    else if (pnlPct > 25 && chg > 1) priorities.push({ icon:'🚀', label:`Renforcer ${p.name}`, sub:'Zone attractive', color:'#4ade80', q:`Est-ce le bon moment pour renforcer ${p.name} (+${pnlPct.toFixed(0)}%) ?` });
-    else if (Math.abs(chg) > 2) priorities.push({ icon:'👀', label:`Surveiller ${p.name}`, sub:`${chg >= 0 ? '+':''}${chg.toFixed(1)}% aujourd'hui`, color:'#60a5fa', q:`Analyse le mouvement de ${p.name} aujourd'hui (${chg >= 0?'+':''}${chg.toFixed(1)}%).` });
-  });
-
-  // Défaut si rien
-  if (!priorities.length) priorities.push({ icon:'✅', label:'Aucune action urgente', sub:'Portefeuille stable', color:'#4ade80', q:'Analyse mon portefeuille en détail.' });
-
-  el.innerHTML = priorities.slice(0,3).map(p => `
-    <div data-sq="${p.q.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
-      style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--color-bg-subtle);border-radius:10px;cursor:pointer;transition:background 0.15s"
-      onclick="sq(this.dataset.sq)">
-      <span style="font-size:16px;flex-shrink:0">${p.icon}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.label}</div>
-        <div style="font-size:11px;color:var(--color-text-secondary)">${p.sub}</div>
-      </div>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${p.color}" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-    </div>`).join('');
-}
-
-// ── ALERTES EN CARDS (nouvelle version horizontale) ──
-function renderAgentAlertsCards() {
-  const el = document.getElementById('agent-alerts-cards');
-  if (!el) return;
-  if (!positions.length) {
-    el.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;font-size:13px;color:var(--color-text-secondary)">Ajoute des positions pour recevoir des alertes.</div>';
-    return;
-  }
-
-  const cards = [];
-  const tv = positions.reduce((a,p)=>a+(p.price||p.pru)*p.qty,0);
-
-  positions.forEach(p => {
-    const pnlPct = p.pru > 0 ? (p.price-p.pru)/p.pru*100 : 0;
-    const w = tv > 0 ? p.qty*(p.price||p.pru)/tv*100 : 0;
-    if (w > 35) cards.push({
-      type:'risk', badge:'Risque élevé', icon:'🔥', title:'Concentration élevée',
-      body:`${p.name} représente ${w.toFixed(0)}% de ton portefeuille.`,
-      conf: null, cta:'Voir l\'analyse →', q:`Comment rééquilibrer pour réduire la concentration de ${p.name} (${w.toFixed(0)}%) ?`,
-      badgeColor:'#f87171', badgeBg:'rgba(239,68,68,0.12)', cardBg:'rgba(239,68,68,0.06)', borderColor:'rgba(239,68,68,0.25)'
-    });
-    if (pnlPct > 20) cards.push({
-      type:'opp', badge:'Opportunité forte', icon:'🚀', title:p.name,
-      body:`Potentiel +${pnlPct.toFixed(0)}% sur ${p.name}. Fondamentaux solides.`,
-      conf: 84, cta:'Voir l\'analyse →', q:`Analyse en détail l'opportunité sur ${p.name} (+${pnlPct.toFixed(0)}%).`,
-      badgeColor:'#4ade80', badgeBg:'rgba(74,222,128,0.08)', borderColor:'rgba(74,222,128,0.2)'
-    });
-    if (pnlPct < -8) cards.push({
-      type:'opp', badge:'Opportunité', icon:'📊', title:`${p.name} sous-évalué`,
-      body:`Correction de ${Math.abs(pnlPct).toFixed(0)}% — valorisation à surveiller.`,
-      conf: 76, cta:'Voir l\'analyse →', q:`Est-ce que la baisse de ${p.name} (${pnlPct.toFixed(1)}%) est une opportunité d'achat ?`,
-      badgeColor:'#60a5fa', badgeBg:'rgba(96,165,250,0.08)', cardBg:'rgba(96,165,250,0.05)', borderColor:'rgba(96,165,250,0.2)'
-    });
-  });
-
-  // Card dividende si action FR (heuristique .PA)
-  const frPos = positions.filter(p => (p.ticker||p.name||'').includes('.PA'));
-  if (frPos.length) cards.push({
-    type:'info', badge:'Info', icon:'💰', title:'Dividende à venir',
-    body:`${frPos[0].name} versera un dividende estimé prochainement.`,
-    conf: null, cta:'Voir calendrier →', q:`Quand ${frPos[0].name} verse-t-il son prochain dividende et quel est le montant estimé ?`,
-    badgeColor:'#60a5fa', badgeBg:'rgba(96,165,250,0.08)', borderColor:'rgba(96,165,250,0.2)'
-  });
-
-  if (!cards.length) {
-    el.innerHTML = '<div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;font-size:13px;color:#4ade80"><span>✅</span><span>Aucune alerte — portefeuille sain</span></div>';
-    return;
-  }
-
-  el.innerHTML = cards.slice(0,4).map(c => `
-    <div style="background:${c.cardBg};border:1px solid ${c.borderColor};border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;cursor:pointer;min-height:140px;transition:transform 0.15s"
-      data-sq="${c.q.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
-      onclick="this.style.transform='';sq(this.dataset.sq)"
-      onmouseenter="this.style.transform='translateY(-2px)'"
-      onmouseleave="this.style.transform=''">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:5px">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="${c.badgeColor}" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/></svg>
-          <span style="font-size:10px;font-weight:700;color:${c.badgeColor}">${c.badge}</span>
-        </div>
-        <span style="font-size:16px">${c.icon}</span>
-      </div>
-      <div style="font-size:14px;font-weight:800;color:var(--color-text);margin-top:2px">${c.title}</div>
-      <div style="font-size:13px;color:var(--color-text-secondary);line-height:1.55;flex:1">${c.body}</div>
-      ${c.conf !== null ? `<div style="font-size:11px;font-weight:600;color:${c.badgeColor}">Confiance ${c.conf}%</div>` : ''}
-      <div style="font-size:11px;font-weight:700;color:${c.badgeColor}">${c.cta}</div>
-    </div>`).join('');
-}
-
-
-// ===== SETTINGS REDESIGN =====
-
-function openSettingsPanel(type) {
-  const panel = document.getElementById('settings-panel');
-  const overlay = document.getElementById('settings-overlay');
-  const title = document.getElementById('panel-title');
-  const body = document.getElementById('panel-content');
-  if (!panel) return;
-
-  const panels = {
-    compte: {
-      label: 'Compte & Sécurité',
-      html: `
-        <div style="display:flex;flex-direction:column;gap:20px">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Email</div>
-            <div style="font-size:14px;color:var(--color-text);padding:12px 16px;background:var(--color-bg-subtle);border-radius:10px;border:1px solid var(--color-border)">${currentUser?.email || '—'}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Nouveau mot de passe</div>
-            <input type="password" id="new-pass" placeholder="Min. 6 caractères" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Confirmer</div>
-            <input type="password" id="new-pass2" placeholder="••••••••" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
-          </div>
-          <button onclick="changePassword()" style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Changer le mot de passe</button>
-          <div id="pass-msg" style="display:none;font-size:13px;font-weight:600;text-align:center"></div>
-          <hr style="border:none;border-top:1px solid var(--color-border)">
-          <button onclick="logout()" style="width:100%;padding:13px;background:rgba(248,113,113,0.1);color:#f87171;border:1px solid rgba(248,113,113,0.2);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Se déconnecter</button>
-        </div>`
-    },
-    ia: {
-      label: 'Préférences d\'analyse IA',
-      html: `
-        <div style="display:flex;flex-direction:column;gap:20px">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Bankroll (€)</div>
-            <input type="number" id="s-bankroll" value="${profile.bankroll||5000}" step="100" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Horizon d\'investissement</div>
-            <select id="s-horizon" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
-              <option value="court" ${profile.horizon==='court'?'selected':''}>Court terme (&lt;3 ans)</option>
-              <option value="moyen" ${profile.horizon==='moyen'||!profile.horizon?'selected':''}>Moyen terme (3–7 ans)</option>
-              <option value="long" ${profile.horizon==='long'?'selected':''}>Long terme (&gt;7 ans)</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Tolérance au risque</div>
-            <select id="s-risk" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
-              <option value="faible" ${profile.risk==='faible'?'selected':''}>Faible</option>
-              <option value="modere" ${profile.risk==='modere'||!profile.risk?'selected':''}>Modérée</option>
-              <option value="eleve" ${profile.risk==='eleve'?'selected':''}>Élevée</option>
-            </select>
-          </div>
-          <button onclick="saveSettings();updateSettingsDisplays();showToast('Préférences sauvegardées ✓')" style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Sauvegarder</button>
-          <div id="settings-msg" style="display:none;font-size:13px;color:#4ade80;font-weight:700;text-align:center">✓ Sauvegardé</div>
-        </div>`
-    },
-    notifs: {
-      label: 'Notifications & Alertes',
-      html: `
-        <div style="display:flex;flex-direction:column;gap:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;background:var(--color-bg-subtle);border-radius:12px;border:1px solid var(--color-border)">
-            <div>
-              <div style="font-size:14px;font-weight:600;color:var(--color-text)">Alertes de prix</div>
-              <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Notifie quand un actif dépasse ton seuil</div>
-            </div>
-            <div style="width:44px;height:24px;background:#16a34a;border-radius:99px;position:relative;cursor:pointer">
-              <div style="position:absolute;right:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%"></div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;background:var(--color-bg-subtle);border-radius:12px;border:1px solid var(--color-border)">
-            <div>
-              <div style="font-size:14px;font-weight:600;color:var(--color-text)">Signaux IA</div>
-              <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Recommandations quotidiennes de l'IA</div>
-            </div>
-            <div style="width:44px;height:24px;background:#16a34a;border-radius:99px;position:relative;cursor:pointer">
-              <div style="position:absolute;right:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%"></div>
-            </div>
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Fréquence des résumés</div>
-            <select id="s-notif" style="width:100%;padding:12px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:14px;color:var(--color-text);outline:none;box-sizing:border-box">
-              <option value="daily">Quotidiens</option>
-              <option value="weekly">Hebdomadaires</option>
-              <option value="off">Désactivés</option>
-            </select>
-          </div>
-          <button onclick="saveSettings();showToast('Notifications sauvegardées ✓')" style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Sauvegarder</button>
-        </div>`
-    },
-    interface: {
-      label: 'Interface & Affichage',
-      html: `
-        <div style="display:flex;flex-direction:column;gap:16px">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Thème</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-              <button onclick="applyTheme('dark')" style="padding:14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:12px;cursor:pointer;text-align:center">
-                <div style="font-size:20px;margin-bottom:6px">🌙</div>
-                <div style="font-size:13px;font-weight:700;color:var(--color-text)">Sombre</div>
-              </button>
-              <button onclick="applyTheme('light')" style="padding:14px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:12px;cursor:pointer;text-align:center">
-                <div style="font-size:20px;margin-bottom:6px">☀️</div>
-                <div style="font-size:13px;font-weight:700;color:var(--color-text)">Clair</div>
-              </button>
-            </div>
-          </div>
-        </div>`
-    },
-    data: {
-      label: 'Données & Confidentialité',
-      html: `
-        <div style="display:flex;flex-direction:column;gap:16px">
-          <div style="padding:16px;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:12px;display:flex;align-items:center;gap:10px">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <div style="font-size:13px;color:#4ade80;font-weight:600">Tes données sont chiffrées et sécurisées</div>
-          </div>
-          <button onclick="exportPDF()" style="width:100%;padding:13px;background:var(--color-bg-subtle);color:var(--color-text);border:1px solid var(--color-border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;padding-left:16px">📄 Exporter mon portefeuille en PDF</button>
-          <button onclick="loadDemo();nav('portfolio')" style="width:100%;padding:13px;background:var(--color-bg-subtle);color:var(--color-text);border:1px solid var(--color-border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;padding-left:16px">👀 Mode démo — données fictives</button>
-          <hr style="border:none;border-top:1px solid var(--color-border)">
-          <button style="width:100%;padding:13px;background:rgba(248,113,113,0.06);color:#f87171;border:1px solid rgba(248,113,113,0.15);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">🗑 Supprimer mon compte</button>
-        </div>`
-    },
-    aide: {
-      label: 'Aide & Support',
-      html: `
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <button onclick="showOnboarding(true);closeSettingsPanel()" style="width:100%;padding:16px;background:var(--color-bg-subtle);color:var(--color-text);border:1px solid var(--color-border);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">
-            <span style="font-size:20px">📋</span><div><div style="font-weight:700">Revoir le tutoriel</div><div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Guide de démarrage InvestIQ</div></div>
-          </button>
-          <button onclick="nav('ai');closeSettingsPanel()" style="width:100%;padding:16px;background:var(--color-bg-subtle);color:var(--color-text);border:1px solid var(--color-border);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">
-            <span style="font-size:20px">🤖</span><div><div style="font-weight:700">Parler à l'Agent IA</div><div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Pose tes questions directement</div></div>
-          </button>
-          <hr style="border:none;border-top:1px solid var(--color-border);margin:4px 0">
-          <button onclick="logout()" style="width:100%;padding:13px;background:rgba(248,113,113,0.06);color:#f87171;border:1px solid rgba(248,113,113,0.15);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Se déconnecter</button>
-        </div>`
-    }
-  };
-
-  const p = panels[type];
-  if (!p) return;
-  title.textContent = p.label;
-  body.innerHTML = p.html;
-  panel.style.display = 'block';
-  overlay.style.display = 'block';
-  document.body.style.overflow = 'hidden';
-}
-
-function closeSettingsPanel() {
-  const panel = document.getElementById('settings-panel');
-  const overlay = document.getElementById('settings-overlay');
-  if (panel) panel.style.display = 'none';
-  if (overlay) overlay.style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-function applyTheme(t) {
-  document.documentElement.setAttribute('data-theme', t);
-  localStorage.setItem('iq_theme', t);
-  updateSettingsDisplays();
-}
-
-function updateSettingsDisplays() {
-  updatePushUI(isPushSubscribed());
-  const emailEl = document.getElementById('set-email-display');
-  const riskEl = document.getElementById('set-risk-display');
-  const horizonEl = document.getElementById('set-horizon-display');
-  const notifEl = document.getElementById('set-notif-display');
-  const themeEl = document.getElementById('set-theme-display');
-  if (emailEl && currentUser) emailEl.textContent = currentUser.email;
-  if (riskEl) riskEl.textContent = 'Profil : ' + (profile.risk === 'eleve' ? 'Agressif' : profile.risk === 'faible' ? 'Prudent' : 'Équilibré');
-  if (horizonEl) horizonEl.textContent = 'Horizon : ' + (profile.horizon === 'long' ? '10+ ans' : profile.horizon === 'court' ? '<3 ans' : '3-7 ans');
-  if (notifEl) notifEl.textContent = profile.notif === 'off' ? 'Désactivées' : profile.notif === 'weekly' ? 'Hebdomadaires' : 'Quotidiennes';
-  const theme = localStorage.getItem('iq_theme') || 'dark';
-  if (themeEl) themeEl.textContent = theme === 'dark' ? 'Thème sombre' : 'Thème clair';
-}
-
-
-// ===================================================
-// SYSTÈME FREEMIUM
-// ===================================================
-
-const DEV_EMAIL = 'maxencedemacedo@gmail.com'; // compte admin uniquement
-function isPremiumUser() {
-  // Override dev : localStorage key 'iq_dev_premium' prend le dessus
-  const devOverride = localStorage.getItem('iq_dev_premium');
-  if (devOverride !== null) return devOverride === 'true';
-  return profile?.isPremium === true || isDemo;
-}
-
-// Bouton dev uniquement — toggle rapide free/premium sans toucher Supabase
-function toggleDevPremium() {
-  // Non-dev premium → déjà abonné
-  if (!currentUser || currentUser.email !== DEV_EMAIL) {
-    if (isPremiumUser()) {
-      showToast('✦ Tu es déjà membre Premium !');
-    } else {
-      openPremiumPage();
-    }
-    return;
-  }
-  const next = localStorage.getItem('iq_dev_premium') !== 'true';
-  localStorage.setItem('iq_dev_premium', String(next));
-  if (profile) profile.isPremium = next;
-  const btn = document.getElementById('dev-premium-btn');
-  const badge = document.getElementById('sidebar-plan-badge');
-  const title = document.getElementById('sidebar-plan-title');
-  if (next) {
-    if (btn) { btn.textContent = '🔓 Repasser en Gratuit'; btn.style.background = '#f59e0b'; }
-    if (title) title.textContent = '✦ Mode Premium';
-    if (badge) { badge.textContent = '✦ Premium (dev)'; badge.style.color = '#4ade80'; }
-    showToast('✦ Premium activé !');
-  } else {
-    if (btn) { btn.textContent = '🔒 Passer en Premium'; btn.style.background = '#16a34a'; }
-    if (title) title.textContent = 'Passez à Premium';
-    if (badge) { badge.textContent = 'Compte gratuit (dev)'; badge.style.color = 'rgba(255,255,255,0.4)'; }
-    showToast('Mode gratuit activé');
-  }
-  if (typeof updatePremiumUI === 'function') updatePremiumUI();
-}
-
-// Initialise le bouton sidebar — texte adapté selon état premium
-function initDevPremiumBtn() {
-  const isPrem = isPremiumUser();
-  const isDevAccount = currentUser && currentUser.email === DEV_EMAIL;
-  const btn = document.getElementById('dev-premium-btn');
-  const title = document.getElementById('sidebar-plan-title');
-  const badge = document.getElementById('sidebar-plan-badge');
-
-  if (isPrem) {
-    // User premium (dev ou vrai) → afficher état premium
-    if (btn) {
-      btn.textContent = isDevAccount ? '🔓 Repasser en Gratuit' : '✦ Membre Premium';
-      btn.style.background = isDevAccount ? '#f59e0b' : '#16a34a';
-      btn.style.opacity = '1';
-      btn.style.cursor = isDevAccount ? 'pointer' : 'default';
-    }
-    if (title) { title.textContent = '✦ Premium actif'; title.style.color = '#4ade80'; }
-    if (badge) { badge.textContent = isDevAccount ? '✦ Premium (dev)' : '✦ Premium'; badge.style.color = '#4ade80'; }
-  } else {
-    // User gratuit
-    if (btn) { btn.textContent = isDevAccount ? '🔒 Passer en Premium' : '✦ Découvrir Premium'; btn.style.background = '#16a34a'; }
-    if (title) { title.textContent = 'Passez à Premium'; title.style.color = '#fff'; }
-    if (badge) { badge.textContent = isDevAccount ? 'Compte gratuit (dev)' : 'Compte gratuit'; badge.style.color = 'rgba(255,255,255,0.4)'; }
-  }
-}
-
-// --- Compteurs journaliers (reset chaque jour) ---
-function getDailyCount(key) {
-  const today = new Date().toISOString().slice(0,10);
-  try {
-    const data = JSON.parse(localStorage.getItem('iq_limit_' + key) || '{}');
-    return data.date === today ? (data.count || 0) : 0;
-  } catch { return 0; }
-}
-
-function incrementDailyCount(key) {
-  const today = new Date().toISOString().slice(0,10);
-  const count = getDailyCount(key) + 1;
-  localStorage.setItem('iq_limit_' + key, JSON.stringify({ date: today, count }));
-}
-
-// --- Compteurs totaux (pas de reset) ---
-function getTotalCount(key) {
-  try { return parseInt(localStorage.getItem('iq_total_' + key) || '0'); } catch { return 0; }
-}
-
-function incrementTotalCount(key) {
-  localStorage.setItem('iq_total_' + key, String(getTotalCount(key) + 1));
-}
-
-// --- Modal Premium ---
-function showPremiumModal(source) {
-  if (isPremiumUser()) {
-    showToast('✦ Tu as déjà accès à toutes les fonctionnalités Premium !');
-    return;
-  }
-  const triggers = {
-    agent_ia:  { badge: '🤖 Agent IA', title: 'Limite quotidienne atteinte', sub: 'Tu as utilisé ton message IA gratuit du jour.' },
-    decision:  { badge: '🎯 Analyses', title: '3 analyses utilisées', sub: 'Tu as épuisé tes analyses gratuites du mois.' },
-    positions: { badge: '💼 Portefeuille', title: 'Limite de 5 positions', sub: 'La version gratuite est limitée à 5 positions.' },
-    signaux:   { badge: '⚡ Signaux IA', title: 'Signaux Premium', sub: 'Les signaux avancés sont réservés aux membres Premium.' },
-  };
-  const t = triggers[source] || { badge: '✦ Premium', title: 'Fonctionnalité Premium', sub: "Cette fonctionnalité est réservée aux membres Premium." };
-
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const surf = isDark ? '#0f1117' : '#ffffff';
-  const surfAlt = isDark ? '#1a1d27' : '#f8fafc';
-  const border = isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
-  const txt = isDark ? '#f0f4ff' : '#0f172a';
-  const txtSub = isDark ? 'rgba(255,255,255,0.45)' : '#64748b';
-
-  let modal = document.getElementById('premium-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'premium-modal';
-    document.body.appendChild(modal);
-  }
-
-  window._selectedPlan = window._selectedPlan || 'annuel';
-
-  modal.innerHTML = `
-  <style>
-    #pm-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;animation:pmFadeIn 0.2s ease }
-    @keyframes pmFadeIn { from{opacity:0} to{opacity:1} }
-    @keyframes pmSlideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-    #pm-card { background:${surf};border-radius:24px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,0.5);animation:pmSlideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);scrollbar-width:none }
-    #pm-card::-webkit-scrollbar { display:none }
-    .pm-plan { flex:1;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.18s;border:2px solid ${border};background:${surfAlt};position:relative;overflow:hidden }
-    .pm-plan.selected { border-color:#16a34a;background:${isDark ? "rgba(22,163,74,0.08)" : "rgba(22,163,74,0.05)"} }
-    .pm-plan:hover { transform:translateY(-2px) }
-    .pm-cta { width:100%;padding:15px;border:none;border-radius:13px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:-0.01em;transition:all 0.15s }
-    .pm-cta:hover { transform:translateY(-1px);filter:brightness(1.08) }
-  </style>
-  <div id="pm-overlay" onclick="if(event.target.id==='pm-overlay')closePremiumModal()">
-    <div id="pm-card">
-
-      <div style="background:linear-gradient(150deg,#050e08 0%,#0b1f10 50%,#07120e 100%);padding:28px 24px 22px;position:relative;overflow:hidden;border-radius:24px 24px 0 0">
-        <div style="position:absolute;top:-30px;right:-30px;width:160px;height:160px;background:radial-gradient(circle,rgba(22,163,74,0.18),transparent 70%);pointer-events:none"></div>
-        <button onclick="closePremiumModal()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.08);border:none;border-radius:8px;width:30px;height:30px;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;line-height:1">×</button>
-        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(22,163,74,0.15);border:1px solid rgba(22,163,74,0.3);border-radius:99px;padding:4px 12px;font-size:11px;font-weight:700;color:#4ade80;margin-bottom:14px">${t.badge}</div>
-        <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.04em;margin-bottom:6px;line-height:1.2">${t.title}</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.45);line-height:1.5">${t.sub}</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:18px">
-          <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(22,163,74,0.4))"></div>
-          <div style="font-size:12px;font-weight:800;color:#4ade80;letter-spacing:0.05em">✦ INVESTIQ PREMIUM</div>
-          <div style="flex:1;height:1px;background:linear-gradient(90deg,rgba(22,163,74,0.4),transparent)"></div>
-        </div>
-      </div>
-
-      <div style="padding:20px 20px 0">
-        <div style="font-size:12px;font-weight:700;color:${txtSub};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Choisir un plan</div>
-        <div style="display:flex;gap:10px">
-
-          <div class="pm-plan ${window._selectedPlan === 'mensuel' ? 'selected' : ''}" id="pm-card-mensuel" onclick="selectPlan('mensuel')">
-            <div style="font-size:10px;font-weight:800;color:${txtSub};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">MENSUEL</div>
-            <div style="font-size:26px;font-weight:900;color:${txt};letter-spacing:-0.05em;line-height:1">9<span style="font-size:14px">.99</span><span style="font-size:13px;color:${txtSub};font-weight:600">€</span></div>
-            <div style="font-size:11px;color:${txtSub};margin-top:3px">par mois</div>
-          </div>
-
-          <div class="pm-plan ${window._selectedPlan === 'annuel' ? 'selected' : ''}" id="pm-card-annuel" onclick="selectPlan('annuel')">
-            <div style="position:absolute;top:0;right:0;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;font-size:9px;font-weight:800;padding:4px 10px;border-radius:0 12px 0 10px;letter-spacing:0.05em">MEILLEUR PRIX</div>
-            <div style="font-size:10px;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">ANNUEL ⭐</div>
-            <div style="font-size:26px;font-weight:900;color:${txt};letter-spacing:-0.05em;line-height:1">79<span style="font-size:14px">.90</span><span style="font-size:13px;color:${txtSub};font-weight:600">€</span></div>
-            <div style="font-size:11px;color:${txtSub};margin-top:3px">par an · <span style="color:#16a34a;font-weight:700">= 6.66€/mois</span></div>
-            <div style="margin-top:6px;display:inline-block;background:rgba(22,163,74,0.12);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;color:#16a34a">-33% économie</div>
-          </div>
-        </div>
-      </div>
-
-      <div style="padding:16px 20px 0">
-        <div style="font-size:12px;font-weight:700;color:${txtSub};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Ce que tu débloque</div>
-        <div style="background:${surfAlt};border:1px solid ${border};border-radius:16px;overflow:hidden">
-          <div style="display:grid;grid-template-columns:1fr 56px 68px;padding:9px 14px;border-bottom:1px solid ${border};background:${isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"}">
-            <div style="font-size:10px;font-weight:700;color:${txtSub}">FONCTIONNALITÉ</div>
-            <div style="font-size:10px;font-weight:700;color:${txtSub};text-align:center">GRATUIT</div>
-            <div style="font-size:10px;font-weight:800;color:#16a34a;text-align:center">PREMIUM</div>
-          </div>
-          ${[
-            ['🤖', 'Agent IA', '1/jour', 'Illimité'],
-            ['🎯', 'Analyses', '3/mois', 'Illimité'],
-            ['💼', 'Positions', '5 max', 'Illimité'],
-            ['⚡', 'Signaux IA', '2 signaux', 'Tous'],
-            ['📊', 'Briefing quotidien', '—', 'Chaque matin'],
-            ['🏥', 'Santé IA', 'Basique', 'Avancée'],
-          ].map(([icon, label, free, prem], i) => `
-            <div style="display:grid;grid-template-columns:1fr 56px 68px;align-items:center;padding:9px 14px;border-bottom:1px solid ${border}">
-              <div style="display:flex;align-items:center;gap:7px">
-                <span style="font-size:13px">${icon}</span>
-                <span style="font-size:12px;font-weight:600;color:${txt}">${label}</span>
-              </div>
-              <div style="text-align:center;font-size:11px;color:${txtSub}">${free}</div>
-              <div style="text-align:center"><span style="font-size:10px;font-weight:700;color:#16a34a;background:rgba(22,163,74,0.1);border-radius:5px;padding:2px 6px">${prem}</span></div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-
-      <div style="padding:16px 20px 22px">
-        <button id="pm-cta-btn" class="pm-cta" style="background:linear-gradient(135deg,#16a34a,#059669);color:#fff;box-shadow:0 6px 24px rgba(22,163,74,0.35);margin-bottom:10px">
-          ✦ Commencer — ${window._selectedPlan === 'annuel' ? '79.90€/an' : '9.99€/mois'}
-        </button>
-        <div style="text-align:center;font-size:11px;color:${txtSub};margin-bottom:10px">🔒 Paiement Stripe sécurisé · Résiliable à tout moment</div>
-        <button onclick="closePremiumModal()" style="width:100%;padding:11px;background:transparent;border:1px solid ${border};border-radius:11px;font-size:13px;font-weight:600;color:${txtSub};cursor:pointer">Continuer en gratuit</button>
-      </div>
-
-    </div>
-  </div>`;
-
-  modal.style.display = 'block';
-
-  // Plan selector helper (needs to be global)
-  window.selectPlan = function(plan) {
-    window._selectedPlan = plan;
-    document.querySelectorAll('.pm-plan').forEach(p => p.classList.remove('selected'));
-    const card = document.getElementById('pm-card-' + plan);
-    if (card) card.classList.add('selected');
-    const btn = document.getElementById('pm-cta-btn');
-    if (btn) btn.textContent = '✦ Commencer — ' + (plan === 'annuel' ? '79.90€/an' : '9.99€/mois');
-  };
-
-  // CTA button action
-  const ctaBtn = document.getElementById('pm-cta-btn');
-  if (ctaBtn) ctaBtn.onclick = () => { closePremiumModal(); startCheckout(window._selectedPlan); };
-}
-
-function closePremiumModal() {
-  const modal = document.getElementById('premium-modal');
-  if (modal) modal.style.display = 'none';
-}
-
-// ===== STRIPE CHECKOUT =====
-const STRIPE_PK = 'pk_test_51TclShV053dHqCoKCHB1ftjq79LknCyQchBugRPVz4Au3YOZd0iPvIYsNeeh9Gvz5M0KRAYCsd7uG2BBCLSNlLQ7002FeOsV9I';
-const PRICE_MENSUEL = 'price_1TclYXV053dHqCoKUxm1Si3p';
-const PRICE_ANNUEL  = 'price_1TclZPV053dHqCoKYhUbE24X';
-
-async function startCheckout(plan) {
-  const btn = document.getElementById('checkout-btn-' + plan);
-  if (btn) { btn.disabled = true; btn.innerHTML = '<svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Chargement...'; }
-  
-  try {
-    const priceId = plan === 'annuel' ? PRICE_ANNUEL : PRICE_MENSUEL;
-    const res = await fetch('/api/create-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        priceId,
-        userId: currentUser?.id || '',
-        userEmail: currentUser?.email || ''
-      })
-    });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      throw new Error(data.error || 'Erreur checkout');
-    }
-  } catch(e) {
-    showToast('Erreur : ' + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = plan === 'annuel' ? 'Choisir Annuel' : 'Choisir Mensuel'; }
-  }
-}
-
-// Vérifier si retour de Stripe (success/cancel)
-function openPremiumPage() {
-  if (isPremiumUser()) {
-    showToast('✦ Tu es déjà membre Premium !');
-    return;
-  }
-  // Affiche la page de paiement inline
-  let modal = document.getElementById('premium-page-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'premium-page-modal';
-    document.body.appendChild(modal);
-  }
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  
-  modal.innerHTML = `
-    <div style="position:fixed;inset:0;background:${isDark?'#080c10':'#f8fafc'};z-index:998;overflow-y:auto;-webkit-overflow-scrolling:touch">
-      <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid ${isDark?'rgba(255,255,255,0.06)':'#e4e4e7'};position:sticky;top:0;background:${isDark?'rgba(8,12,16,0.95)':'rgba(248,250,252,0.95)'};backdrop-filter:blur(20px);z-index:10">
-        <button onclick="document.getElementById('premium-page-modal').remove()" style="background:${isDark?'rgba(255,255,255,0.08)':'#f4f4f5'};border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;color:${isDark?'#e6edf3':'#09090b'};cursor:pointer">← Retour</button>
-        <div style="font-size:14px;font-weight:700;color:${isDark?'#4ade80':'#16a34a'}">✦ InvestIQ Premium</div>
-        <div style="width:80px"></div>
-      </div>
-
-      <!-- Hero -->
-      <div style="text-align:center;padding:40px 24px 32px;background:linear-gradient(135deg,#060e08,#0a1a0c,#0d1f0d)">
-        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(63,185,80,0.15);border:1px solid rgba(63,185,80,0.3);border-radius:99px;padding:6px 16px;font-size:12px;font-weight:700;color:#4ade80;margin-bottom:20px">
-          <div style="width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
-          Mode test — aucun vrai paiement
-        </div>
-        <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.05em;margin-bottom:10px;line-height:1.1">Investis sans<br><span style="color:#4ade80">limites</span></div>
-        <div style="font-size:15px;color:rgba(255,255,255,0.5);max-width:320px;margin:0 auto;line-height:1.6">Débloquer toutes les fonctionnalités IA d'InvestIQ</div>
-      </div>
-
-      <div style="padding:24px 20px;max-width:480px;margin:0 auto">
-
-        <!-- Plans -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
-          
-          <!-- Mensuel -->
-          <div style="background:${isDark?'var(--color-surface)':'#fff'};border:1.5px solid ${isDark?'var(--color-border)':'#e4e4e7'};border-radius:16px;padding:20px;cursor:pointer;transition:all 0.2s" 
-            onclick="document.querySelectorAll('.plan-card').forEach(c=>c.style.borderColor='${isDark?'var(--color-border)':'#e4e4e7'}');this.style.borderColor='#16a34a'" class="plan-card">
-            <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">MENSUEL</div>
-            <div style="font-size:30px;font-weight:900;color:${isDark?'#fff':'#09090b'};letter-spacing:-0.05em">9.99<span style="font-size:16px;color:#8e8e93">€</span></div>
-            <div style="font-size:12px;color:#8e8e93;margin-bottom:14px">par mois</div>
-            <button id="checkout-btn-mensuel" onclick="event.stopPropagation();startCheckout('mensuel')" style="width:100%;padding:10px;background:${isDark?'rgba(255,255,255,0.08)':'#f4f4f5'};border:1px solid ${isDark?'rgba(255,255,255,0.12)':'#e4e4e7'};border-radius:8px;font-size:13px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'};cursor:pointer">
-              Choisir Mensuel
-            </button>
-          </div>
-
-          <!-- Annuel — recommandé -->
-          <div style="background:linear-gradient(135deg,rgba(22,163,74,0.08),rgba(5,150,105,0.05));border:2px solid #16a34a;border-radius:16px;padding:20px;cursor:pointer;position:relative;overflow:hidden" class="plan-card">
-            <div style="position:absolute;top:10px;right:10px;background:#16a34a;color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px">-33%</div>
-            <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">ANNUEL ⭐</div>
-            <div style="font-size:30px;font-weight:900;color:${isDark?'#fff':'#09090b'};letter-spacing:-0.05em">79.90<span style="font-size:16px;color:#8e8e93">€</span></div>
-            <div style="font-size:12px;color:#8e8e93;margin-bottom:4px">par an</div>
-            <div style="font-size:11px;color:#16a34a;font-weight:600;margin-bottom:14px">= 6.66€/mois</div>
-            <button id="checkout-btn-annuel" onclick="event.stopPropagation();startCheckout('annuel')" style="width:100%;padding:10px;background:#16a34a;border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(22,163,74,0.3)">
-              Choisir Annuel
-            </button>
-          </div>
-        </div>
-
-        <!-- Features incluses -->
-        <div style="background:${isDark?'var(--color-surface)':'#fff'};border:1px solid ${isDark?'var(--color-border)':'#e4e4e7'};border-radius:16px;padding:20px;margin-bottom:16px">
-          <div style="font-size:13px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'};margin-bottom:14px">✦ Tout inclus dans Premium</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            ${[
-              ['🤖','Agent IA illimité','Conversations sans limite avec ton copilote'],
-              ['⚡','Signaux IA illimités','Toutes les opportunités du marché'],
-              ['📊','Briefing quotidien','Résumé IA personnalisé chaque matin'],
-              ['🎯','Analyses décision illimitées','Analyse chaque actif sans restriction'],
-              ['💼','Positions illimitées','Portefeuille sans limite de taille'],
-              ['🏥','Santé portefeuille IA','Analyse approfondie et recommandations'],
-            ].map(([icon,title,desc])=>`
-            <div style="display:flex;align-items:center;gap:12px">
-              <div style="width:34px;height:34px;background:rgba(22,163,74,0.1);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${icon}</div>
-              <div>
-                <div style="font-size:13px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'}">${title}</div>
-                <div style="font-size:11px;color:#8e8e93">${desc}</div>
-              </div>
-            </div>`).join('')}
-          </div>
-        </div>
-
-        <!-- Paiements acceptés -->
-        <div style="text-align:center;margin-bottom:16px">
-          <div style="font-size:11px;color:#8e8e93;margin-bottom:8px;font-weight:600">PAIEMENTS ACCEPTÉS</div>
-          <div style="display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap">
-            <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'}">💳 Carte bancaire</div>
-            <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#003087">PayPal</div>
-            <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:${isDark?'#e6edf3':'#09090b'}">🍎 Apple Pay</div>
-            <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#4285f4">Google Pay</div>
-          </div>
-        </div>
-
-        <!-- Garantie -->
-        <div style="text-align:center;padding:14px;background:rgba(22,163,74,0.06);border:1px solid rgba(22,163,74,0.15);border-radius:12px;margin-bottom:24px">
-          <div style="font-size:13px;font-weight:600;color:${isDark?'#4ade80':'#16a34a'}">🔒 Paiement sécurisé par Stripe · Résiliable à tout moment</div>
-        </div>
-
-        <!-- Disclaimer -->
-        <div style="text-align:center;font-size:11px;color:#8e8e93;line-height:1.6">
-          ⚠️ InvestIQ est un outil éducatif — pas un conseiller financier agréé
-        </div>
-      </div>
-    </div>`;
-  modal.style.display = 'block';
-}
-
-function checkStripeReturn() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('premium') === 'success') {
-    // Recharger le profil pour avoir is_premium = true
-    if (currentUser) loadProfile();
-    showToast('✦ Premium activé ! Bienvenue dans InvestIQ Premium 🎉');
-    // Nettoyer l'URL
-    window.history.replaceState({}, '', window.location.pathname);
-    // Afficher modal de bienvenue
-    setTimeout(() => showWelcomePremium(), 500);
-  } else if (params.get('premium') === 'cancel') {
-    showToast('Paiement annulé');
-    window.history.replaceState({}, '', window.location.pathname);
-  }
-}
-
-function showWelcomePremium() {
-  let modal = document.getElementById('welcome-premium-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'welcome-premium-modal';
-    document.body.appendChild(modal);
-  }
-  modal.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.style.display='none'">
-      <div style="background:linear-gradient(135deg,#0d0d18,#111120);border:1px solid rgba(22,163,74,0.3);border-radius:24px;padding:40px 32px;max-width:400px;width:100%;text-align:center">
-        <div style="font-size:56px;margin-bottom:16px">🎉</div>
-        <div style="font-size:24px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-0.05em">Bienvenue dans Premium !</div>
-        <div style="font-size:15px;color:rgba(255,255,255,0.5);margin-bottom:24px;line-height:1.6">Toutes les fonctionnalités IA sont maintenant débloquées pour toi.</div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:28px;text-align:left">
-          ${['🤖 Agent IA illimité','⚡ Tous les signaux IA','📊 Briefing quotidien','🎯 Analyses illimitées','💼 Positions illimitées'].map(f=>`
-          <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:rgba(255,255,255,0.8)">
-            <span style="color:#4ade80">✓</span>${f}
-          </div>`).join('')}
-        </div>
-        <button onclick="document.getElementById('welcome-premium-modal').style.display='none';nav('home')" style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer">
-          Commencer →
-        </button>
-      </div>
-    </div>`;
-  modal.style.display = 'block';
-}
-
-// --- Mise à jour UI selon plan ---
-function updatePremiumUI() {
-  const premium = isPremiumUser();
-
-  // Badge dans la sidebar
-  const badge = document.getElementById('sidebar-plan-badge');
-  if (badge) {
-    badge.textContent = premium ? '✦ Premium' : 'Compte gratuit';
-    badge.style.color = premium ? '#4ade80' : 'rgba(255,255,255,0.4)';
-  }
-
-  // Compteur messages IA restants (gratuit)
-  if (!premium) {
-    const aiLeft = Math.max(0, 1 - getDailyCount('ai'));
-    const decLeft = Math.max(0, 3 - getTotalCount('decision'));
-    const posLeft = Math.max(0, 5 - (positions?.length || 0));
-
-    // Badge dans Agent IA
-    const aiBadge = document.getElementById('ai-free-counter');
-    if (aiBadge) {
-      aiBadge.style.display = 'flex';
-      aiBadge.textContent = aiLeft + ' message gratuit restant aujourd\'hui';
-      aiBadge.style.color = aiLeft === 0 ? '#f87171' : '#fbbf24';
-    }
-  } else {
-    const aiBadge = document.getElementById('ai-free-counter');
-    if (aiBadge) aiBadge.style.display = 'none';
-  }
-}
-
-// --- Cache API ---
-function getCachedResponse(key, maxAgeMs) {
-  try {
-    const cached = JSON.parse(localStorage.getItem('iq_cache_' + key) || 'null');
-    if (!cached) return null;
-    if (Date.now() - cached.ts > maxAgeMs) return null;
-    return cached.data;
-  } catch { return null; }
-}
-
-function setCachedResponse(key, data) {
-  try {
-    localStorage.setItem('iq_cache_' + key, JSON.stringify({ ts: Date.now(), data }));
-  } catch {}
-}
-
-const CACHE_TTL = {
-  briefing: 24 * 60 * 60 * 1000,   // 24h
-  signaux:   6 * 60 * 60 * 1000,    // 6h
-  sante:     2 * 60 * 60 * 1000,    // 2h
-};
