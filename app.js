@@ -56,10 +56,41 @@ async function validateObjectif(labelOverride) {
         if (error) console.warn('[validateObjectif] insert error:', error.message);
         else if (inserted) savedId = inserted.id;
       }
-      // Recharge tous les objectifs
+      // Recharge tous les objectifs depuis Supabase
       await loadObjective();
+      // Activer le dernier objectif créé (le plus récent = dernier dans la liste)
+      if (allObjectives.length > 0) {
+        activeObjId = allObjectives[allObjectives.length - 1].id;
+        applyObjData(allObjectives[allObjectives.length - 1]);
+      }
       renderMultiObjChart();
-    } catch(e) { console.warn('Supabase objectif save failed:', e); }
+    } catch(e) {
+      console.warn('Supabase objectif save failed:', e);
+      // Fallback local : ajouter à allObjectives manuellement
+      const localId = 'local_' + Date.now();
+      allObjectives.push({
+        id: localId, label: labelOverride || ('Objectif ' + allObjectives.length),
+        capital: objChartCapital, monthly: objChartMonthly, target: objChartTarget,
+        years: objChartYears, rate: objChartRate, risk: objRisk,
+        color: OBJ_COLORS[allObjectives.length % OBJ_COLORS.length]
+      });
+      activeObjId = localId;
+      renderMultiObjChart();
+    }
+  } else {
+    // Mode démo ou non connecté : ajouter localement
+    const localId = 'local_' + Date.now();
+    const exists = allObjectives.find(o => o.target === objChartTarget && o.monthly === objChartMonthly);
+    if (!exists) {
+      allObjectives.push({
+        id: localId, label: labelOverride || ('Objectif ' + (allObjectives.length + 1)),
+        capital: objChartCapital, monthly: objChartMonthly, target: objChartTarget,
+        years: objChartYears, rate: objChartRate, risk: objRisk,
+        color: OBJ_COLORS[allObjectives.length % OBJ_COLORS.length]
+      });
+      activeObjId = localId;
+    }
+    renderMultiObjChart();
   }
   const btn = document.querySelector('.btn-obj-validate');
   if (btn) { btn.textContent = '✓ Objectif sauvegardé !'; btn.style.background = '#1a7f5a'; btn.disabled = true; }
@@ -246,7 +277,7 @@ function renderETFCards(etfs, containerEl) {
       <div style="display:flex;align-items:center;gap:6px">
         <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">Plan ETF long terme</span>
       </div>
-      <span style="font-size:11px;color:${sub}">Répartition ciblée — ${targetPct}% · ${fmtK(montantCapital)} k€</span>
+      <span style="font-size:11px;color:${sub}">Répartition ciblée — ${targetPct}% · ${fmtK(montantCapital)}</span>
     </div>
     ${etfs.map((e,i) => {
       const montant = Math.round(montantCapital * (e.pct_capital||33) / 100);
@@ -279,7 +310,7 @@ function renderETFCards(etfs, containerEl) {
       <div style="display:flex;align-items:center;gap:6px">
         <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">⊕ Épargne mens.</span>
       </div>
-      <span style="font-size:11px;color:${sub}">${montantMensuel}% · ${fmtK(montantMensuel)} k€</span>
+      <span style="font-size:11px;color:${sub}">${montantMensuel}% · ${fmtK(montantMensuel)}</span>
     </div>
     ${etfs.map((e,i) => {
       const montant = Math.round(montantMensuel * (e.pct_mensuel||33) / 100);
@@ -4906,7 +4937,8 @@ async function generateBilanIA() {
   const pnl = tv - ti;
   const capacite = bilanData.capaciteEpargne || 0;
   const revenu = parseFloat(bilanData.revenu||0);
-  const patrimoine = bilanData.patrimoineTotal || tv;
+  const bilanCapital = parseFloat(bilanData.bourse||0) + parseFloat(bilanData.pea||0) + parseFloat(bilanData.assurance||0);
+  const patrimoine = bilanData.patrimoineTotal || bilanCapital || tv;
 
   const prompt = `Tu es un conseiller financier expert. Génère un bilan financier complet et personnalisé.
 
@@ -4979,9 +5011,9 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
       mensualite_explication: 'Basé sur ta capacité d\'épargne',
       allocation_cible: [{type:'ETF Monde',pct:70,color:'#3fb950',explication:'Base solide'},{type:'Obligations',pct:20,color:'#6366f1',explication:'Stabilité'},{type:'Actions',pct:10,color:'#f59e0b',explication:'Performance'}],
       objectif_principal: bilanData.objectifs?.[0] || 'Capital long terme',
-      projection_5ans: Math.round(tv + capacite*0.4*60*(1.07**5)),
-      projection_10ans: Math.round(tv + capacite*0.4*120*(1.07**10)),
-      projection_20ans: Math.round(tv + capacite*0.4*240*(1.07**20)),
+      projection_5ans: Math.round(bilanCapital + capacite*0.4*60*(1.07**5)),
+      projection_10ans: Math.round(bilanCapital + capacite*0.4*120*(1.07**10)),
+      projection_20ans: Math.round(bilanCapital + capacite*0.4*240*(1.07**20)),
       actions_prioritaires: [{priorite:'urgent',action:'Définir une mensualité fixe',impact:'Régularité = performance'},{priorite:'important',action:'Renforcer la diversification',impact:'Réduire le risque'},{priorite:'conseil',action:'Ouvrir un PEA si pas encore fait',impact:'Avantage fiscal'}],
       verdict: 'Tu es sur la bonne voie. Avec de la régularité, tes objectifs sont atteignables !'
     };
@@ -7036,8 +7068,8 @@ function renderCrise() {
           <div style="font-size:32px;font-weight:900;color:${s.color};letter-spacing:-0.05em;line-height:1;margin-bottom:12px">${s.rate>0?'+':''}${s.rate}%</div>
           <div style="margin-bottom:10px">${spark(s.trend, s.color)}</div>
           <div style="font-size:11px;color:${sub};margin-bottom:4px">Valeur projetée dans ${years} ans</div>
-          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em">${fmtK(proj)} k€</div>
-          <div style="font-size:12px;font-weight:700;color:${s.color};margin-top:3px">${gain>=0?'+':''}${fmtK(gain)} k€ (${gain>=0?'+':''}${gainPct}%)</div>
+          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em">${fmtK(proj)}</div>
+          <div style="font-size:12px;font-weight:700;color:${s.color};margin-top:3px">${gain>=0?'+':''}${fmtK(gain)} (${gain>=0?'+':''}${gainPct}%)</div>
         </div>`;
       }).join('')}
     </div>
@@ -7055,7 +7087,7 @@ function renderCrise() {
         <div style="width:36px;height:36px;background:${isDark?'rgba(239,68,68,0.15)':'#fef2f2'};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">⚡</div>
         <div>
           <div style="font-size:15px;font-weight:700;color:${text};letter-spacing:-0.03em">Chocs de marché</div>
-          <div style="font-size:12px;color:${sub}">Impact d'une baisse brutale sur ton portefeuille actuel (${fmtK(tv)} k€)</div>
+          <div style="font-size:12px;color:${sub}">Impact d'une baisse brutale sur ton portefeuille actuel (${fmtK(tv)})</div>
         </div>
       </div>
       <button style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:${raised};border:1px solid ${border};border-radius:8px;font-size:12px;font-weight:600;color:${sub};cursor:pointer">
@@ -7074,8 +7106,8 @@ function renderCrise() {
             <span style="font-size:16px;font-weight:900;color:${s.color}">${s.label}</span>
             <span style="font-size:11px;color:${sub}">${s.desc}</span>
           </div>
-          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em;margin-bottom:4px">${fmtK(newVal)} k€</div>
-          <div style="font-size:13px;font-weight:700;color:${s.color};margin-bottom:10px">${fmtK(loss)} k€ de perte</div>
+          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em;margin-bottom:4px">${fmtK(newVal)}</div>
+          <div style="font-size:13px;font-weight:700;color:${s.color};margin-bottom:10px">${fmtK(loss)} de perte</div>
           <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:5px;overflow:hidden">
             <div style="height:100%;background:${s.color};width:${100+s.pct}%;border-radius:99px;transition:width 0.8s ease"></div>
           </div>
@@ -7359,7 +7391,7 @@ function renderNewsList() {
         <div style="flex-shrink:0;text-align:center;min-width:80px">
           <div style="font-size:10px;font-weight:600;color:${sub2};margin-bottom:4px;white-space:nowrap">Impact portef.</div>
           <div style="font-size:18px;font-weight:800;color:${impactColor};letter-spacing:-0.03em">${impactPct>=0?'+':''}${impactPct}%</div>
-          <div style="font-size:10px;color:${sub2};margin-top:2px">≈ ${fmtK(Math.abs(impactPct/100 * positions.reduce((a,p)=>a+p.qty*p.price,0)))} k€</div>
+          <div style="font-size:10px;color:${sub2};margin-top:2px">≈ ${fmtK(Math.abs(impactPct/100 * positions.reduce((a,p)=>a+p.qty*p.price,0)))}</div>
         </div>` : ''}
         <!-- Recommandation IA -->
         <div style="flex-shrink:0;min-width:120px;border-left:1px solid ${bord};padding-left:14px">
