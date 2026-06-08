@@ -4205,7 +4205,7 @@ function loadChatHistory() {
   try { chatHistory = JSON.parse(localStorage.getItem(CACHE_CHAT)||'[]'); } catch { chatHistory = []; }
   const chat = document.getElementById('ai-chat');
   if (chatHistory.length > 0) {
-    chat.innerHTML = chatHistory.map(m => `<div class="bubble ${m.role==='user'?'user':'bot'}">${m.content}</div>`).join('');
+    chat.innerHTML = chatHistory.map(m => `<div class="bubble ${m.role==='user'?'user':'bot'}">${m.role==='user' ? m.content : formatMD(m.content)}</div>`).join('');
     document.getElementById('qbtns').style.display = 'none';
   }
 }
