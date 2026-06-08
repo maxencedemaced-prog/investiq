@@ -4959,10 +4959,11 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
     const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide, sans backticks.');
     const clean = raw.replace(/```json|```/g,'').trim();
     const result = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
+    window._lastBilanResult = result;
     renderBilanResult(result);
   } catch(e) {
     console.error('Bilan IA error:', e);
-    renderBilanResult({
+    const _fallbackResult = {
       score_global: 7.0,
       score_label: 'Situation correcte',
       score_color: '#f59e0b',
@@ -4980,7 +4981,9 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
       projection_20ans: Math.round(tv + capacite*0.4*240*(1.07**20)),
       actions_prioritaires: [{priorite:'urgent',action:'Définir une mensualité fixe',impact:'Régularité = performance'},{priorite:'important',action:'Renforcer la diversification',impact:'Réduire le risque'},{priorite:'conseil',action:'Ouvrir un PEA si pas encore fait',impact:'Avantage fiscal'}],
       verdict: 'Tu es sur la bonne voie. Avec de la régularité, tes objectifs sont atteignables !'
-    });
+    };
+    window._lastBilanResult = _fallbackResult;
+    renderBilanResult(_fallbackResult);
   }
 }
 
@@ -5075,10 +5078,16 @@ function renderBilanResult(r) {
     <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.8);line-height:1.6">${r.verdict}</div>
   </div>
 
-  <!-- BOUTONS -->
-  <div style="display:flex;gap:10px">
-    <button onclick="closeBilan()" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Fermer</button>
-    <button onclick="nav('ai');closeBilan()" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">🤖 Discuter avec l'IA →</button>
+  <!-- BOUTONS FINAUX -->
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+    <div style="display:flex;gap:10px">
+      <button onclick="createObjectifFromBilan()" style="flex:1;padding:13px 10px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">🎯 Créer mon objectif</button>
+      <button onclick="exportBilanPDF()" style="flex:1;padding:13px 10px;background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">📄 Exporter PDF</button>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeBilan()" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Fermer</button>
+      <button onclick="nav('ai');closeBilan()" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">🤖 Discuter avec l'IA →</button>
+    </div>
   </div>`;
 
   const el = document.getElementById('bilan-content');
@@ -5086,6 +5095,270 @@ function renderBilanResult(r) {
   updateBilanProgress(7);
 }
 
+
+
+// ===== BILAN — CRÉER OBJECTIF =====
+function createObjectifFromBilan() {
+  if (!window._lastBilanResult) {
+    closeBilan();
+    nav('objectif');
+    return;
+  }
+  const r = window._lastBilanResult;
+  const monthly = r.mensualite_recommandee || 200;
+  const target = r.projection_10ans || 50000;
+  const years = 10;
+  const rate = 7;
+
+  // Pré-remplir les variables globales du wizard objectif
+  objChartMonthly = monthly;
+  objChartTarget = target;
+  objChartYears = years;
+  objChartRate = rate;
+  objChartCapital = bilanData.bourse || bilanData.pea || 0;
+
+  closeBilan();
+  nav('objectif');
+
+  // Petit délai pour laisser la page charger puis déclencher la validation
+  setTimeout(() => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const surf = isDark ? 'var(--color-surface-raised)' : '#f9fafb';
+    const bord = isDark ? 'var(--color-border)' : '#e4e4e7';
+    const txt = isDark ? 'var(--color-text)' : '#09090b';
+    const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+
+    // Afficher une bannière d'import
+    const banner = document.createElement('div');
+    banner.id = 'bilan-import-banner';
+    banner.style.cssText = `position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;
+      background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:12px 20px;border-radius:14px;
+      font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(37,99,235,0.4);display:flex;align-items:center;gap:10px;
+      max-width:380px;text-align:center`;
+    banner.innerHTML = `<span style="font-size:18px">✅</span>
+      <span>Objectif pré-rempli depuis ton Bilan — mensualité ${monthly.toLocaleString('fr-FR')} €/mois, cible ${(target/1000).toFixed(0)} k€</span>
+      <button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700">×</button>`;
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 6000);
+
+    // Construire le graphique avec les données pré-remplies
+    buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
+    showValidatedChart();
+  }, 400);
+}
+
+// ===== BILAN — EXPORT PDF =====
+async function exportBilanPDF() {
+  if (!window._lastBilanResult) {
+    alert("Aucun résultat de bilan à exporter.");
+    return;
+  }
+
+  // Bouton en état loading
+  const btn = document.querySelector('[onclick="exportBilanPDF()"]');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '⏳ Génération...'; btn.disabled = true; }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const r = window._lastBilanResult;
+    const d = bilanData;
+    const pageW = 210;
+    const margin = 16;
+    const colW = pageW - margin * 2;
+    let y = 0;
+
+    // ── Helpers ──
+    const addPage = () => { doc.addPage(); y = 16; };
+    const checkY = (need) => { if (y + need > 280) addPage(); };
+    const hex2rgb = (hex) => {
+      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+      return [r,g,b];
+    };
+    const colorToRgb = (c) => {
+      if (c && c.startsWith('#')) return hex2rgb(c);
+      if (c === '#f87171') return [248,113,113];
+      return [22,163,74];
+    };
+
+    // ── HEADER ──
+    doc.setFillColor(8, 12, 16);
+    doc.rect(0, 0, 210, 42, 'F');
+    doc.setFillColor(22, 163, 74);
+    doc.rect(0, 38, 210, 4, 'F');
+
+    // Logo texte
+    doc.setFontSize(22); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text('InvestIQ', margin, 18);
+    doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(120,180,120);
+    doc.text('Bilan Financier Premium', margin, 26);
+
+    // Date
+    doc.setFontSize(9); doc.setTextColor(150,150,150);
+    const now = new Date();
+    doc.text(`Généré le ${now.toLocaleDateString('fr-FR')} à ${now.toHours ? now.toHours() : now.getHours()}h${String(now.getMinutes()).padStart(2,'0')}`, pageW - margin, 18, {align:'right'});
+
+    // Score cercle (simulé avec rect arrondi)
+    const sc = r.score_global || 0;
+    const scColor = r.score_color || '#16a34a';
+    doc.setFontSize(10); doc.setTextColor(200,200,200);
+    doc.text(`Score global : ${sc}/10 — ${r.score_label || ''}`, pageW - margin, 28, {align:'right'});
+
+    y = 52;
+
+    // ── RÉSUMÉ EXÉCUTIF ──
+    doc.setFillColor(245,248,245);
+    doc.roundedRect(margin, y, colW, 20, 3, 3, 'F');
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+    const resumeLines = doc.splitTextToSize(r.resume_executif || '', colW - 8);
+    doc.text(resumeLines, margin + 4, y + 7);
+    y += 26;
+
+    // ── MENSUALITÉ ──
+    checkY(28);
+    doc.setFillColor(230,247,235);
+    doc.roundedRect(margin, y, colW, 26, 3, 3, 'F');
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(22,100,50);
+    doc.text(`Mensualité recommandée : ${(r.mensualite_recommandee||0).toLocaleString('fr-FR')} €/mois`, margin+4, y+10);
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+    doc.text(`Min : ${(r.mensualite_min||0).toLocaleString('fr-FR')} €  —  Max : ${(r.mensualite_max||0).toLocaleString('fr-FR')} €`, margin+4, y+18);
+    doc.setFontSize(8); doc.setTextColor(100,100,100);
+    const explLines = doc.splitTextToSize(r.mensualite_explication || '', colW - 8);
+    doc.text(explLines, margin + 4, y + 22);
+    y += 32;
+
+    // ── PROJECTIONS ──
+    checkY(28);
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+    doc.text('Projections', margin, y); y += 6;
+    const projs = [
+      {label:'5 ans', val: r.projection_5ans},
+      {label:'10 ans', val: r.projection_10ans},
+      {label:'20 ans', val: r.projection_20ans}
+    ];
+    const projW = (colW - 8) / 3;
+    projs.forEach((p, i) => {
+      const px = margin + i * (projW + 4);
+      doc.setFillColor(240,250,242);
+      doc.roundedRect(px, y, projW, 18, 2, 2, 'F');
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+      doc.text(`Dans ${p.label}`, px + projW/2, y+6, {align:'center'});
+      doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(22,163,74);
+      const kval = p.val >= 1000 ? `${(p.val/1000).toFixed(0)} k€` : `${Math.round(p.val)} €`;
+      doc.text(kval, px + projW/2, y+14, {align:'center'});
+    });
+    y += 24;
+
+    // ── ALLOCATION ──
+    checkY(40);
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+    doc.text('Allocation cible recommandée', margin, y); y += 6;
+    (r.allocation_cible || []).forEach(a => {
+      checkY(14);
+      doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(30,30,30);
+      doc.text(a.type, margin, y+4);
+      doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+      doc.text(`${a.pct}%`, margin + colW - 10, y+4, {align:'right'});
+      // Barre
+      doc.setFillColor(220,220,220);
+      doc.roundedRect(margin, y+6, colW, 4, 2, 2, 'F');
+      try {
+        const rgb = colorToRgb(a.color || '#16a34a');
+        doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+      } catch(e) { doc.setFillColor(22,163,74); }
+      doc.roundedRect(margin, y+6, colW * a.pct/100, 4, 2, 2, 'F');
+      doc.setFontSize(7.5); doc.setTextColor(120,120,120);
+      const explA = doc.splitTextToSize(a.explication || '', colW);
+      doc.text(explA, margin, y+14);
+      y += 16 + (explA.length > 1 ? (explA.length-1)*3 : 0);
+    });
+    y += 4;
+
+    // ── POINTS FORTS & ATTENTION ──
+    checkY(50);
+    const halfW = (colW - 6) / 2;
+    doc.setFillColor(235,252,240); doc.roundedRect(margin, y, halfW, 6, 2, 2, 'F');
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(22,163,74);
+    doc.text('✅ Points forts', margin+3, y+4.5);
+
+    doc.setFillColor(255,247,230); doc.roundedRect(margin + halfW + 6, y, halfW, 6, 2, 2, 'F');
+    doc.setTextColor(180,120,0);
+    doc.text('⚠️ À surveiller', margin + halfW + 9, y+4.5);
+    y += 8;
+
+    const forts = r.points_forts || [];
+    const attention = r.points_attention || [];
+    const maxRows = Math.max(forts.length, attention.length);
+    for (let i=0; i<maxRows; i++) {
+      checkY(8);
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(40,40,40);
+      if (forts[i]) {
+        const lines = doc.splitTextToSize(`• ${forts[i]}`, halfW - 4);
+        doc.text(lines, margin+2, y+4);
+      }
+      if (attention[i]) {
+        const lines = doc.splitTextToSize(`• ${attention[i]}`, halfW - 4);
+        doc.text(lines, margin + halfW + 8, y+4);
+      }
+      y += 8;
+    }
+    y += 6;
+
+    // ── ACTIONS PRIORITAIRES ──
+    checkY(20);
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+    doc.text('🚀 Actions prioritaires', margin, y); y += 6;
+    const pColors = {urgent:[248,113,113], important:[245,158,11], conseil:[63,185,80]};
+    (r.actions_prioritaires || []).forEach(a => {
+      checkY(16);
+      const pRgb = pColors[a.priorite] || [22,163,74];
+      doc.setFillColor(pRgb[0]+80, pRgb[1]+80, pRgb[2]+80 > 255 ? 220 : pRgb[2]+80);
+      doc.roundedRect(margin, y, 22, 6, 1, 1, 'F');
+      doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(pRgb[0], pRgb[1], pRgb[2]);
+      doc.text((a.priorite||'').toUpperCase(), margin+11, y+4.2, {align:'center'});
+      doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+      doc.text(a.action || '', margin+26, y+4.5);
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+      const impactLines = doc.splitTextToSize(a.impact || '', colW - 28);
+      doc.text(impactLines, margin+26, y+9);
+      y += 14 + (impactLines.length > 1 ? (impactLines.length-1)*3 : 0);
+    });
+    y += 4;
+
+    // ── VERDICT ──
+    checkY(28);
+    doc.setFillColor(8, 12, 16);
+    doc.roundedRect(margin, y, colW, 26, 4, 4, 'F');
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(200,240,200);
+    doc.text('🎯 Verdict', margin+4, y+8);
+    doc.setFont('helvetica','normal'); doc.setTextColor(200,200,200);
+    const verdictLines = doc.splitTextToSize(r.verdict || '', colW - 8);
+    doc.text(verdictLines, margin+4, y+14);
+    y += 32;
+
+    // ── FOOTER ──
+    const totalPages = doc.getNumberOfPages();
+    for (let i=1; i<=totalPages; i++) {
+      doc.setPage(i);
+      doc.setFillColor(240,240,240);
+      doc.rect(0, 287, 210, 10, 'F');
+      doc.setFontSize(7.5); doc.setTextColor(130,130,130); doc.setFont('helvetica','normal');
+      doc.text('InvestIQ — Bilan Financier Premium — Confidentiel', margin, 293);
+      doc.text(`Page ${i}/${totalPages}`, pageW - margin, 293, {align:'right'});
+    }
+
+    // ── Sauvegarde ──
+    const filename = `InvestIQ_Bilan_${now.toLocaleDateString('fr-FR').replace(/\//g,'-')}.pdf`;
+    doc.save(filename);
+
+  } catch(err) {
+    console.error('PDF error:', err);
+    alert('Erreur lors de la génération du PDF. Réessaie.');
+  } finally {
+    if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+  }
+}
 
 // ===== NAV =====
 function nav(page) {
