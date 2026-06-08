@@ -6643,22 +6643,31 @@ function objGo(step) {
       wp.classList.toggle('done', i<step);
     }
   });
-  // Étape 1 : pré-remplit le capital avec la valeur du portefeuille
+  // Étape 1 : afficher bouton "Importer" optionnel, ne pas auto-remplir
   if (step === 1) {
     const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
     const capitalEl = document.getElementById('obj-capital');
     const monthlyEl = document.getElementById('obj-monthly');
-    if (capitalEl && tv > 0 && !capitalEl.value) {
-      capitalEl.value = Math.round(tv);
+    // Ne PAS pré-remplir le capital automatiquement — l'utilisateur doit saisir
+    if (capitalEl && !capitalEl.value) {
+      capitalEl.value = ''; // toujours vide par défaut
     }
-    if (monthlyEl && objChartMonthly > 0 && !monthlyEl.value) {
-      monthlyEl.value = objChartMonthly;
-    }
-    // Affiche un message informatif
+    // Affiche bouton d'import seulement si un portefeuille existe
     const hint = document.getElementById('obj-capital-hint');
-    if (hint && tv > 0) {
-      hint.textContent = `💡 Pré-rempli avec ton portefeuille actuel (${fmtK(tv)})`;
-      hint.style.display = 'block';
+    if (hint) {
+      if (tv > 0) {
+        hint.innerHTML = `<button type="button" onclick="
+          document.getElementById('obj-capital').value=${Math.round(tv)};
+          this.style.background='#16a34a';
+          this.innerHTML='✓ Importé — ${fmtK(tv)}';
+          this.disabled=true;
+        " style="background:#1d4ed8;border:none;color:#fff;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">
+          📥 Importer mon portefeuille (${fmtK(tv)})
+        </button>`;
+        hint.style.display = 'block';
+      } else {
+        hint.style.display = 'none';
+      }
     }
   }
 }
