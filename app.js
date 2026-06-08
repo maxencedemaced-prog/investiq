@@ -4647,7 +4647,10 @@ function renderBilanStep(step) {
         </div>
         <div>
           <label style="${labelStyle}">Bourse / CTO (€)</label>
-          <input type="number" id="b-bourse" placeholder="Ex: ${objChartCapital||0}" style="${fieldStyle}" value="${bilanData.bourse||objChartCapital||''}">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="b-bourse" placeholder="Ex: 0" style="${fieldStyle};flex:1" value="${bilanData.bourse||''}">
+            ${objChartCapital > 0 ? `<button type="button" onclick="document.getElementById('b-bourse').value='${objChartCapital}';this.style.background='#16a34a';this.innerHTML='✓ Importé'" style="padding:8px 12px;background:#1d4ed8;border:none;border-radius:10px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">📥 Importer (${fmtI(objChartCapital)} €)</button>` : ''}
+          </div>
         </div>
         <div>
           <label style="${labelStyle}">Immobilier (valeur estimée €)</label>
@@ -5110,6 +5113,38 @@ function createObjectifFromBilan() {
   const years = 10;
   const rate = 7;
 
+  // Si 3 objectifs déjà, proposer de remplacer
+  if (allObjectives.length >= 3) {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const surf = isDark ? '#1a1f2e' : '#fff';
+    const txt = isDark ? '#f0f0f0' : '#09090b';
+    const sub = isDark ? '#888' : '#71717a';
+    const bord = isDark ? '#2a2f3e' : '#e4e4e7';
+
+    // Créer modal de remplacement
+    const overlay = document.createElement('div');
+    overlay.id = 'bilan-replace-modal';
+    overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px`;
+    overlay.innerHTML = `
+      <div style="background:${surf};border-radius:20px;padding:24px;max-width:400px;width:100%;border:1px solid ${bord}">
+        <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:6px">⚠️ 3 objectifs déjà créés</div>
+        <div style="font-size:13px;color:${sub};margin-bottom:20px;line-height:1.5">Tu as atteint le maximum. Choisis quel objectif remplacer par celui du bilan :</div>
+        ${allObjectives.map((obj, i) => `
+          <div onclick="replaceBilanObjectif('${obj.id}')" style="padding:14px;border:1px solid ${bord};border-radius:12px;margin-bottom:10px;cursor:pointer;transition:all 0.2s"
+            onmouseover="this.style.borderColor='#2563eb';this.style.background='${isDark?'rgba(37,99,235,0.1)':'#eff6ff'}'"
+            onmouseout="this.style.borderColor='${bord}';this.style.background='transparent'">
+            <div style="font-size:13px;font-weight:700;color:${txt}">${obj.label || 'Objectif ' + (i+1)}</div>
+            <div style="font-size:11px;color:${sub};margin-top:2px">${obj.monthly}€/mois · cible ${fmtI(obj.target)}€ · ${obj.years} ans</div>
+          </div>`).join('')}
+        <button onclick="document.getElementById('bilan-replace-modal').remove()" style="width:100%;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer;margin-top:4px">Annuler</button>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    // Store pending bilan data for replaceBilanObjectif
+    window._pendingBilanObjectif = { monthly, target, years, rate };
+    return;
+  }
+
   // Pré-remplir les variables globales du wizard objectif
   objChartMonthly = monthly;
   objChartTarget = target;
@@ -5147,7 +5182,55 @@ function createObjectifFromBilan() {
   }, 400);
 }
 
+// ===== BILAN — REMPLACER OBJECTIF =====
+async function replaceBilanObjectif(idToReplace) {
+  document.getElementById('bilan-replace-modal')?.remove();
+  const pending = window._pendingBilanObjectif;
+  if (!pending) return;
+
+  // Supprimer l'objectif existant
+  allObjectives = allObjectives.filter(o => o.id !== idToReplace);
+  if (activeObjId === idToReplace) activeObjId = allObjectives[0]?.id || null;
+
+  // Supprimer en base si connecté
+  if (!isDemo && currentUser) {
+    try { await supabase.from('objectives').delete().eq('id', idToReplace); } catch(e) {}
+  }
+
+  // Pré-remplir
+  objChartMonthly = pending.monthly;
+  objChartTarget = pending.target;
+  objChartYears = pending.years;
+  objChartRate = pending.rate;
+  objChartCapital = bilanData.bourse || bilanData.pea || 0;
+
+  closeBilan();
+  nav('objectif');
+
+  setTimeout(() => {
+    buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
+    showValidatedChart();
+
+    const banner = document.createElement('div');
+    banner.style.cssText = `position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;
+      background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:12px 20px;border-radius:14px;
+      font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(37,99,235,0.4);display:flex;align-items:center;gap:10px;max-width:380px`;
+    banner.innerHTML = `<span>✅ Objectif remplacé depuis le Bilan — ${pending.monthly.toLocaleString('fr-FR')} €/mois</span>
+      <button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700">×</button>`;
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 5000);
+  }, 400);
+}
+
 // ===== BILAN — EXPORT PDF =====
+function stripEmoji(str) {
+  if (!str) return '';
+  return (str + '').replace(/[^\u0000-\u00FF\u0100-\u024F\u2000-\u206F]/g, '').replace(/\s+/g, ' ').trim();
+}
+function safeK(val) {
+  if (!val && val !== 0) return '0 EUR';
+  return val >= 1000 ? (val/1000).toFixed(0) + ' k EUR' : Math.round(val) + ' EUR';
+}
 async function exportBilanPDF() {
   if (!window._lastBilanResult) {
     alert("Aucun résultat de bilan à exporter.");
@@ -5203,7 +5286,7 @@ async function exportBilanPDF() {
     const sc = r.score_global || 0;
     const scColor = r.score_color || '#16a34a';
     doc.setFontSize(10); doc.setTextColor(200,200,200);
-    doc.text(`Score global : ${sc}/10 — ${r.score_label || ''}`, pageW - margin, 28, {align:'right'});
+    doc.text(`Score global : ${sc}/10 - ${stripEmoji(r.score_label || '')}`, pageW - margin, 28, {align:'right'});
 
     y = 52;
 
@@ -5211,7 +5294,7 @@ async function exportBilanPDF() {
     doc.setFillColor(245,248,245);
     doc.roundedRect(margin, y, colW, 20, 3, 3, 'F');
     doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
-    const resumeLines = doc.splitTextToSize(r.resume_executif || '', colW - 8);
+    const resumeLines = doc.splitTextToSize(stripEmoji(r.resume_executif || ''), colW - 8);
     doc.text(resumeLines, margin + 4, y + 7);
     y += 26;
 
@@ -5224,7 +5307,7 @@ async function exportBilanPDF() {
     doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
     doc.text(`Min : ${(r.mensualite_min||0).toLocaleString('fr-FR')} €  —  Max : ${(r.mensualite_max||0).toLocaleString('fr-FR')} €`, margin+4, y+18);
     doc.setFontSize(8); doc.setTextColor(100,100,100);
-    const explLines = doc.splitTextToSize(r.mensualite_explication || '', colW - 8);
+    const explLines = doc.splitTextToSize(stripEmoji(r.mensualite_explication || ''), colW - 8);
     doc.text(explLines, margin + 4, y + 22);
     y += 32;
 
@@ -5245,7 +5328,7 @@ async function exportBilanPDF() {
       doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
       doc.text(`Dans ${p.label}`, px + projW/2, y+6, {align:'center'});
       doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(22,163,74);
-      const kval = p.val >= 1000 ? `${(p.val/1000).toFixed(0)} k€` : `${Math.round(p.val)} €`;
+      const kval = safeK(p.val);
       doc.text(kval, px + projW/2, y+14, {align:'center'});
     });
     y += 24;
@@ -5257,7 +5340,7 @@ async function exportBilanPDF() {
     (r.allocation_cible || []).forEach(a => {
       checkY(14);
       doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(30,30,30);
-      doc.text(a.type, margin, y+4);
+      doc.text(stripEmoji(a.type || ''), margin, y+4);
       doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
       doc.text(`${a.pct}%`, margin + colW - 10, y+4, {align:'right'});
       // Barre
@@ -5269,7 +5352,7 @@ async function exportBilanPDF() {
       } catch(e) { doc.setFillColor(22,163,74); }
       doc.roundedRect(margin, y+6, colW * a.pct/100, 4, 2, 2, 'F');
       doc.setFontSize(7.5); doc.setTextColor(120,120,120);
-      const explA = doc.splitTextToSize(a.explication || '', colW);
+      const explA = doc.splitTextToSize(stripEmoji(a.explication || ''), colW);
       doc.text(explA, margin, y+14);
       y += 16 + (explA.length > 1 ? (explA.length-1)*3 : 0);
     });
@@ -5280,11 +5363,11 @@ async function exportBilanPDF() {
     const halfW = (colW - 6) / 2;
     doc.setFillColor(235,252,240); doc.roundedRect(margin, y, halfW, 6, 2, 2, 'F');
     doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(22,163,74);
-    doc.text('✅ Points forts', margin+3, y+4.5);
+    doc.text('Points forts', margin+3, y+4.5);
 
     doc.setFillColor(255,247,230); doc.roundedRect(margin + halfW + 6, y, halfW, 6, 2, 2, 'F');
     doc.setTextColor(180,120,0);
-    doc.text('⚠️ À surveiller', margin + halfW + 9, y+4.5);
+    doc.text('A surveiller', margin + halfW + 9, y+4.5);
     y += 8;
 
     const forts = r.points_forts || [];
@@ -5294,11 +5377,11 @@ async function exportBilanPDF() {
       checkY(8);
       doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(40,40,40);
       if (forts[i]) {
-        const lines = doc.splitTextToSize(`• ${forts[i]}`, halfW - 4);
+        const lines = doc.splitTextToSize(`- ${stripEmoji(forts[i])}`, halfW - 4);
         doc.text(lines, margin+2, y+4);
       }
       if (attention[i]) {
-        const lines = doc.splitTextToSize(`• ${attention[i]}`, halfW - 4);
+        const lines = doc.splitTextToSize(`- ${stripEmoji(attention[i])}`, halfW - 4);
         doc.text(lines, margin + halfW + 8, y+4);
       }
       y += 8;
@@ -5308,7 +5391,7 @@ async function exportBilanPDF() {
     // ── ACTIONS PRIORITAIRES ──
     checkY(20);
     doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
-    doc.text('🚀 Actions prioritaires', margin, y); y += 6;
+    doc.text('Actions prioritaires', margin, y); y += 6;
     const pColors = {urgent:[248,113,113], important:[245,158,11], conseil:[63,185,80]};
     (r.actions_prioritaires || []).forEach(a => {
       checkY(16);
@@ -5318,9 +5401,9 @@ async function exportBilanPDF() {
       doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(pRgb[0], pRgb[1], pRgb[2]);
       doc.text((a.priorite||'').toUpperCase(), margin+11, y+4.2, {align:'center'});
       doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
-      doc.text(a.action || '', margin+26, y+4.5);
+      doc.text(stripEmoji(a.action || ''), margin+26, y+4.5);
       doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
-      const impactLines = doc.splitTextToSize(a.impact || '', colW - 28);
+      const impactLines = doc.splitTextToSize(stripEmoji(a.impact || ''), colW - 28);
       doc.text(impactLines, margin+26, y+9);
       y += 14 + (impactLines.length > 1 ? (impactLines.length-1)*3 : 0);
     });
@@ -5331,9 +5414,9 @@ async function exportBilanPDF() {
     doc.setFillColor(8, 12, 16);
     doc.roundedRect(margin, y, colW, 26, 4, 4, 'F');
     doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(200,240,200);
-    doc.text('🎯 Verdict', margin+4, y+8);
+    doc.text('Verdict', margin+4, y+8);
     doc.setFont('helvetica','normal'); doc.setTextColor(200,200,200);
-    const verdictLines = doc.splitTextToSize(r.verdict || '', colW - 8);
+    const verdictLines = doc.splitTextToSize(stripEmoji(r.verdict || ''), colW - 8);
     doc.text(verdictLines, margin+4, y+14);
     y += 32;
 
