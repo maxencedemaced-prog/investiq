@@ -4733,7 +4733,7 @@ function renderBilanStep(step) {
       <div style="font-size:13px;color:${sub};margin-bottom:24px">Des scénarios concrets pour évaluer ta vraie tolérance.</div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
         <div style="padding:16px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:12px;margin-bottom:6px">
-          <div style="font-size:13px;font-weight:600;color:#f87171;margin-bottom:12px">📉 Ton portefeuille perd <strong>20% en 1 mois</strong> (soit ${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.2)} k€). Tu...</div>
+          <div style="font-size:13px;font-weight:600;color:#f87171;margin-bottom:12px">📉 Ton portefeuille perd <strong>20% en 1 mois</strong> (soit ${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.2)}). Tu...</div>
           ${[
             {val:'vendre_tout', label:'🚨 Je vends tout immédiatement', color:'#f87171'},
             {val:'vendre_partiel', label:'😰 Je vends une partie pour limiter', color:'#f97316'},
@@ -5029,7 +5029,7 @@ function renderBilanResult(r) {
       ${[{label:'Dans 5 ans',val:r.projection_5ans},{label:'Dans 10 ans',val:r.projection_10ans},{label:'Dans 20 ans',val:r.projection_20ans}].map(p=>`
       <div style="text-align:center;padding:12px;background:${isDark?'rgba(255,255,255,0.04)':'#fff'};border-radius:10px;border:1px solid ${bord}">
         <div style="font-size:10px;color:${sub};margin-bottom:6px">${p.label}</div>
-        <div style="font-size:17px;font-weight:800;color:${r.score_color};letter-spacing:-0.03em">${fmtK(p.val)} k€</div>
+        <div style="font-size:17px;font-weight:800;color:${r.score_color};letter-spacing:-0.03em">${fmtK(p.val)}</div>
       </div>`).join('')}
     </div>
   </div>
@@ -5150,35 +5150,28 @@ function createObjectifFromBilan() {
   objChartTarget = target;
   objChartYears = years;
   objChartRate = rate;
-  objChartCapital = bilanData.bourse || bilanData.pea || 0;
+  objChartCapital = parseFloat(bilanData.bourse) || parseFloat(bilanData.pea) || 0;
 
   closeBilan();
   nav('objectif');
 
   // Petit délai pour laisser la page charger puis déclencher la validation
-  setTimeout(() => {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const surf = isDark ? 'var(--color-surface-raised)' : '#f9fafb';
-    const bord = isDark ? 'var(--color-border)' : '#e4e4e7';
-    const txt = isDark ? 'var(--color-text)' : '#09090b';
-    const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+  setTimeout(async () => {
+    // Construire le graphique et sauvegarder en base
+    buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
+    await validateObjectif('Objectif Bilan');
+    showValidatedChart();
 
-    // Afficher une bannière d'import
+    // Bannière de confirmation
     const banner = document.createElement('div');
     banner.id = 'bilan-import-banner';
     banner.style.cssText = `position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;
       background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:12px 20px;border-radius:14px;
-      font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(37,99,235,0.4);display:flex;align-items:center;gap:10px;
-      max-width:380px;text-align:center`;
-    banner.innerHTML = `<span style="font-size:18px">✅</span>
-      <span>Objectif pré-rempli depuis ton Bilan — mensualité ${monthly.toLocaleString('fr-FR')} €/mois, cible ${(target/1000).toFixed(0)} k€</span>
-      <button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700">×</button>`;
+      font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(37,99,235,0.4);display:flex;align-items:center;gap:10px;max-width:380px`;
+    banner.innerHTML = `<span>Objectif Bilan créé — ${monthly.toLocaleString('fr-FR')} EUR/mois, cible ${(target/1000).toFixed(0)} k EUR</span>
+      <button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700">x</button>`;
     document.body.appendChild(banner);
     setTimeout(() => banner.remove(), 6000);
-
-    // Construire le graphique avec les données pré-remplies
-    buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
-    showValidatedChart();
   }, 400);
 }
 
@@ -5202,20 +5195,25 @@ async function replaceBilanObjectif(idToReplace) {
   objChartTarget = pending.target;
   objChartYears = pending.years;
   objChartRate = pending.rate;
-  objChartCapital = bilanData.bourse || bilanData.pea || 0;
+  objChartCapital = parseFloat(bilanData.bourse) || parseFloat(bilanData.pea) || 0;
 
   closeBilan();
   nav('objectif');
 
-  setTimeout(() => {
+  setTimeout(async () => {
+    // Construire le graphique avec les nouvelles données
     buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
+
+    // Sauvegarder le nouvel objectif en base (allObjectives a maintenant < 3 éléments)
+    await validateObjectif('Objectif Bilan');
+
     showValidatedChart();
 
     const banner = document.createElement('div');
     banner.style.cssText = `position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;
       background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:12px 20px;border-radius:14px;
       font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(37,99,235,0.4);display:flex;align-items:center;gap:10px;max-width:380px`;
-    banner.innerHTML = `<span>✅ Objectif remplacé depuis le Bilan — ${pending.monthly.toLocaleString('fr-FR')} €/mois</span>
+    banner.innerHTML = `<span>✅ Objectif créé depuis le Bilan — ${pending.monthly.toLocaleString('fr-FR')} €/mois</span>
       <button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700">×</button>`;
     document.body.appendChild(banner);
     setTimeout(() => banner.remove(), 5000);
@@ -6717,7 +6715,7 @@ async function generateObjPlan() {
   setProgress('Enregistrement...');
 
   const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
-  const capital = parseFloat(document.getElementById('obj-capital').value) || tv || 0;
+  const capital = parseFloat(document.getElementById('obj-capital').value) || 0;
   const monthly = parseFloat(document.getElementById('obj-monthly').value) || 200;
   const target = parseFloat(document.getElementById('obj-target').value) || 100000;
   const years = parseInt(document.getElementById('obj-years').value) || 10;
