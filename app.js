@@ -4090,6 +4090,8 @@ async function refreshPrices() {
     console.log('Prix mis à jour:', updated, 'positions sur', positions.length);
     renderPortfolio();
     renderHome();
+    // Re-render la page Agent IA avec les prix frais (si elle est ouverte ou pour la prochaine visite)
+    try { renderAgentDashboard(); } catch(e) {}
     setTimeout(() => showPriceTicker(), 100);
     showToast('✓ ' + updated + ' prix mis à jour');
     // Recalcule les alertes prix avec les nouveaux cours (remplace les anciennes)
