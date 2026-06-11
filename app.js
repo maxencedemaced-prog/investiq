@@ -8168,6 +8168,7 @@ function renderAgentDashboard() {
               <button onclick="openBilan()" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;cursor:pointer;margin-left:auto">Bilan rapide</button>
               <button onclick="nav('sante')" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#a5b4fc;cursor:pointer">Santé détail</button>
             </div>
+            <div style="font-size:9px;font-weight:700;color:rgba(74,222,128,0.7);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px">✦ Aujourd'hui j'ai trouvé</div>
             <div id="agent-hero-notifs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
               <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);font-size:12px">
                 <svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -8206,7 +8207,7 @@ function renderAgentDashboard() {
   }
 
   if (!positions.length) {
-    ['agent-hier','agent-alertes','agent-recos','agent-banner','agent-priorites','agent-right'].forEach(id => {
+    ['agent-hier','agent-alertes','agent-recos','agent-banner','agent-priorites','agent-right','agent-footer-cards'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = '';
     });
@@ -8410,6 +8411,28 @@ function renderAgentDashboard() {
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${bord}">
         <span style="font-size:10px;color:${sub}">${l}</span>
         <span style="font-size:11px;font-weight:800;color:${c}">${v}</span>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  // ── 4 CARDS DU BAS ──
+  const footerEl = document.getElementById('agent-footer-cards');
+  if (footerEl) {
+    const footerCards = [
+      {icon:'📋', title:'Rapport hebdomadaire', sub:'Demander à l\'IA', q:'Génère mon rapport hebdomadaire complet', color:'#6366f1'},
+      {icon:'🔬', title:'Analyse approfondie', sub:'Diversification, risques, corrélations', q:'Fais une analyse approfondie et complète de mon portefeuille : diversification, risques, opportunités, corrélations, scénarios.', color:'#16a34a'},
+      {icon:'📅', title:'Retour de la veille', sub:'Marchés, actus, mon portef.', q:'Fais-moi un résumé de ce qui s\'est passé hier sur les marchés et l\'impact sur mon portefeuille', color:'#f59e0b'},
+      {icon:'🧠', title:'Mémoire IA', sub:'Profil et préférences appris', q:'Qu\'est-ce que tu sais de moi et de mon profil d\'investisseur ?', color:'#ec4899'},
+    ];
+    footerEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+      ${footerCards.map(c => `
+      <div onclick="sq('${c.q.replace(/'/g,"\\'")}')" style="cursor:pointer;background:${surf};border:1px solid ${bord};border-radius:14px;padding:16px;text-align:center;transition:all 0.2s"
+        onmouseover="this.style.borderColor='${c.color}';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.borderColor='${bord}';this.style.transform='translateY(0)'">
+        <div style="width:38px;height:38px;background:${c.color}15;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;margin:0 auto 9px">${c.icon}</div>
+        <div style="font-size:12px;font-weight:800;color:${txt};margin-bottom:3px">${c.title}</div>
+        <div style="font-size:10px;color:${sub}">${c.sub}</div>
       </div>`).join('')}
     </div>`;
   }
