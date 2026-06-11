@@ -8082,9 +8082,10 @@ function executeAgentAction(action) {
 }
 
 function initAgent() {
-  buildAgentContext();
-  buildAgentSuggestions();
-  renderAgentDashboard();
+  // Dashboard d'abord (priorité visuelle), chaque bloc isolé en try/catch
+  try { renderAgentDashboard(); } catch(e) { console.error('renderAgentDashboard:', e); }
+  try { buildAgentContext(); } catch(e) { console.error('buildAgentContext:', e); }
+  try { buildAgentSuggestions(); } catch(e) { console.error('buildAgentSuggestions:', e); }
 
   const updEl = document.getElementById('agent-last-update');
   if (updEl) updEl.textContent = `Mis à jour ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
