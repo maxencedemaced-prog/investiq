@@ -5933,7 +5933,6 @@ async function renderHome() {
 }
 
 
-
 function buildAlertsData() {
   const tv = positions.reduce((a,p) => a + p.qty*p.price, 0);
   if (!tv) return [];
@@ -8085,12 +8084,10 @@ function executeAgentAction(action) {
 function initAgent() {
   buildAgentContext();
   buildAgentSuggestions();
+  renderAgentDashboard();
 
-  // Date du briefing
-  const dateEl = document.getElementById('agent-brief-date');
-  if (dateEl) {
-    dateEl.textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
-  }
+  const updEl = document.getElementById('agent-last-update');
+  if (updEl) updEl.textContent = `Mis à jour ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
 
   // Message de bienvenue personnalisé
   const welcome = document.getElementById('ai-welcome');
@@ -8101,7 +8098,7 @@ function initAgent() {
     welcome.innerHTML = `Bonjour ! Ton portefeuille est à <strong style="color:${color}">${fmtK(tv)}</strong> (${pnl>=0?'+':''}${fmtK(pnl)}). Je connais toutes tes positions, tes objectifs et ton profil. Que veux-tu faire ?`;
   }
 
-  // Génère le briefing (avec cache 6h)
+  // Génère le briefing IA pour la hero card (avec cache 6h)
   const BRIEF_KEY = 'iq_daily_brief';
   const cached = (() => { try { const c = JSON.parse(localStorage.getItem(BRIEF_KEY)||'null'); return c && Date.now()-c.ts < 6*3600000 ? c : null; } catch { return null; } })();
   if (cached) {
@@ -8109,7 +8106,315 @@ function initAgent() {
   } else {
     generateDailyBrief();
   }
+
+  // Responsive
+  const layout = document.getElementById('agent-layout');
+  const bottom = document.getElementById('agent-bottom');
+  const applyResp = () => {
+    if (layout) layout.style.gridTemplateColumns = window.innerWidth < 980 ? '1fr' : '1fr 300px';
+    if (bottom) bottom.style.gridTemplateColumns = window.innerWidth < 720 ? '1fr' : '240px 1fr';
+  };
+  applyResp();
 }
+
+// ═══════════════════════════════════════════════
+//  AGENT IA — DASHBOARD STYLE RÉFÉRENCE
+// ═══════════════════════════════════════════════
+function renderAgentDashboard() {
+  const name = isDemo ? 'Toi' : (currentUser?.email||'').split('@')[0];
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+  const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
+  const tpnl = tv - ti;
+  const avgChange = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const {score, items: scoreItems} = calcScore();
+  const scoreColor = score>=7?'#16a34a':score>=5?'#f59e0b':'#dc2626';
+  const sorted = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
+  const topByWeight = [...positions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
+  const pnlColor = tpnl >= 0 ? '#4ade80' : '#f87171';
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? 'var(--color-surface-raised)' : '#fff';
+  const bord = isDark ? 'var(--color-border)' : '#e4e4e7';
+  const txt = isDark ? 'var(--color-text)' : '#09090b';
+  const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+  const bg  = isDark ? 'var(--color-bg)' : '#f9fafb';
+  const alerts = buildAlertsData();
+
+  function spark(data, color, w=60, h=20) {
+    if (!data||data.length<2) return '';
+    const mn=Math.min(...data), mx=Math.max(...data), rng=mx-mn||1;
+    const pts = data.map((v,i)=>`${(i/(data.length-1))*w},${h-((v-mn)/rng)*(h-3)-1.5}`).join('L');
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block"><path d="M${pts} L${w},${h} L0,${h} Z" fill="${color}" fill-opacity="0.12"/><path d="M${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+  }
+  function genSpark(t,n=14){const d=[50];for(let i=1;i<n;i++)d.push(Math.max(10,Math.min(90,d[i-1]+(Math.random()-0.45)*5+t*0.5)));return d;}
+
+  // ── HERO ──
+  const heroEl = document.getElementById('agent-hero');
+  if (heroEl) {
+    if (!positions.length) {
+      heroEl.innerHTML = `<div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:30px;text-align:center;margin-bottom:10px">
+        <div style="font-size:36px;margin-bottom:10px">🤖</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:6px">Ton Agent IA t'attend</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:18px">Ajoute des positions pour activer la surveillance intelligente</div>
+        <button onclick="nav('ajouter')" style="padding:11px 22px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">+ Ajouter une position</button>
+      </div>`;
+    } else {
+      heroEl.innerHTML = `
+      <div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:20px 22px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div style="font-size:17px;font-weight:900;color:#fff">Bonjour ${name}</div>
+              <span style="font-size:16px">👋</span>
+              <button onclick="openBilan()" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;cursor:pointer;margin-left:auto">Bilan rapide</button>
+              <button onclick="nav('sante')" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#a5b4fc;cursor:pointer">Santé détail</button>
+            </div>
+            <div id="agent-hero-notifs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);font-size:12px">
+                <svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Analyse IA en cours...
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
+                <div style="display:flex;align-items:center;justify-content:center;gap:5px;font-size:18px;font-weight:900;color:#f87171">⚠ <span>${alerts.filter(a=>a.type==='err').length}</span></div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Risques détectés</div>
+              </div>
+              <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
+                <div style="display:flex;align-items:center;justify-content:center;gap:5px;font-size:18px;font-weight:900;color:#fbbf24">✦ <span>${alerts.filter(a=>a.type==='warn').length}</span></div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Opportunités</div>
+              </div>
+              <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
+                <div style="font-size:18px;font-weight:900;color:${pnlColor}">${tpnl>=0?'+':''}${fmtI(tpnl)}€</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Objectif en cours</div>
+              </div>
+            </div>
+          </div>
+          <!-- Score circulaire -->
+          <div style="text-align:center;min-width:96px">
+            <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Score Premium</div>
+            <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(${scoreColor} ${score*36}deg, rgba(255,255,255,0.08) 0deg);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;position:relative">
+              <div style="width:62px;height:62px;border-radius:50%;background:#0d1422;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <div style="font-size:22px;font-weight:900;color:#fff;line-height:1">${Math.round(score*10)}</div>
+                <div style="font-size:8px;color:rgba(255,255,255,0.35);font-weight:600">Bon ▲</div>
+              </div>
+            </div>
+            <button onclick="sq('Pourquoi mon score est de ${score.toFixed(1)}/10 ? Comment l\\'améliorer ?')" style="background:#16a34a;border:none;color:#fff;font-size:10px;font-weight:700;padding:6px 11px;border-radius:8px;cursor:pointer;white-space:nowrap">Pourquoi ce score ?</button>
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+
+  if (!positions.length) {
+    ['agent-hier','agent-alertes','agent-recos','agent-banner','agent-priorites','agent-right'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+    return;
+  }
+
+  // ── DEPUIS HIER ──
+  const hierEl = document.getElementById('agent-hier');
+  if (hierEl) {
+    hierEl.innerHTML = `
+    <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:13px 15px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:13px">📊</span>
+          <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">Depuis hier</span>
+        </div>
+        <span style="font-size:10px;color:${sub}">perf. du jour</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        ${sorted.slice(0,4).map(p => {
+          const c = (p.change_pct||0)>=0?'#16a34a':'#dc2626';
+          return `<div onclick="nav('portfolio')" style="cursor:pointer;text-align:center;padding:9px 5px;background:${bg};border-radius:10px;border:1px solid ${bord}">
+            <div style="font-size:14px;font-weight:900;color:${c}">${(p.change_pct||0)>=0?'+':''}${(p.change_pct||0).toFixed(1)}%</div>
+            <div style="font-size:9px;font-weight:600;color:${sub};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.ticker||p.name}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── ALERTES & OPPORTUNITÉS ──
+  const alertesEl = document.getElementById('agent-alertes');
+  if (alertesEl) {
+    const cards = topByWeight.slice(0,4).map(p => {
+      const pPct = tv>0 ? p.qty*p.price/tv*100 : 0;
+      const pPnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
+      const isRisk = pPct > 35 || pPnl < -10;
+      const isOpp = pPnl > 5 && pPct < 25;
+      const theme = isRisk ? {c:'#dc2626',bg:'#fef2f2',tag:'⚠ Risque évalué',action:'Rééquilibrer'} :
+                    isOpp ? {c:'#16a34a',bg:'#f0fdf4',tag:'✦ Opportunité',action:'Renforcer ?'} :
+                    {c:'#6366f1',bg:'#eef2ff',tag:'Position solide',action:'Conserver'};
+      return `<div onclick="sq('Analyse ma position ${p.name} : dois-je ${theme.action.toLowerCase().replace(' ?','')} ?')" style="cursor:pointer;background:${theme.bg};border-radius:12px;padding:11px;border:1px solid ${theme.c}22">
+        <div style="font-size:9px;font-weight:700;color:${theme.c};margin-bottom:5px">${theme.tag}</div>
+        <div style="font-size:12px;font-weight:800;color:${txt};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px">${p.name}</div>
+        <div style="font-size:10px;color:${sub};margin-bottom:6px">${pPnl>=0?'+':''}${pPnl.toFixed(1)}% · ${pPct.toFixed(0)}% du portef.</div>
+        <div style="font-size:10px;font-weight:700;color:${theme.c}">${theme.action} → IA Catalyser</div>
+      </div>`;
+    }).join('');
+    alertesEl.innerHTML = `
+    <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:13px 15px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">Alertes & opportunités</span>
+          <span style="background:#fef2f2;color:#dc2626;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px">${alerts.filter(a=>a.type!=='ok').length} actives</span>
+        </div>
+        <button onclick="nav('sante')" style="font-size:10px;font-weight:600;color:${sub};background:none;border:none;cursor:pointer">Tout voir →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">${cards}</div>
+    </div>`;
+  }
+
+  // ── RECOMMANDATIONS IA ──
+  const recosEl = document.getElementById('agent-recos');
+  if (recosEl) {
+    recosEl.innerHTML = `
+    <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:13px 15px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+        <div>
+          <div style="font-size:12px;font-weight:800;color:${txt}">Recommandations IA</div>
+          <div style="font-size:10px;color:${sub};margin-top:1px">Basées sur ton profil et les conditions de marché</div>
+        </div>
+        <button onclick="sq('Donne-moi tes 3 meilleures recommandations actuelles')" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:8px;padding:5px 11px;font-size:10px;font-weight:700;cursor:pointer">🤖 Mon Conseil par IA →</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        ${topByWeight.slice(0,3).map((p,i) => {
+          const pPct = tv>0 ? p.qty*p.price/tv*100 : 0;
+          const pPnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
+          const c = pPct>35?'#d97706':pPnl>=0?'#16a34a':'#dc2626';
+          const verb = pPct>35?'Réduire':pPnl>8?'Renforcer':'Surveiller';
+          const conf = Math.min(95, 60 + Math.abs(pPnl)*2 + (pPct>35?15:0));
+          return `<div onclick="sq('Explique ta recommandation ${verb} pour ${p.name}')" style="cursor:pointer;padding:10px 12px;background:${bg};border-radius:11px;border:1px solid ${bord};border-left:3px solid ${c}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+              <div style="font-size:12px;font-weight:800;color:${txt}">${i+1}. ${verb} ${p.name}</div>
+              <span style="font-size:11px;font-weight:800;color:${c}">${conf.toFixed(0)}%</span>
+            </div>
+            <div style="font-size:10px;color:${sub};margin-bottom:6px">Position ${pPct.toFixed(0)}% · perf ${pPnl>=0?'+':''}${pPnl.toFixed(1)}% — ${verb==='Réduire'?'concentration au-dessus du seuil conseillé':verb==='Renforcer'?'momentum positif sur profil solide':"consolidation en cours, pas d'action requise"}</div>
+            <div style="background:${bord};border-radius:99px;height:3px;overflow:hidden">
+              <div style="height:100%;background:${c};width:${conf}%;border-radius:99px"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── BANNIÈRE ──
+  const bannerEl = document.getElementById('agent-banner');
+  if (bannerEl) {
+    bannerEl.innerHTML = `
+    <div onclick="openBilan()" style="cursor:pointer;background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:3px">💡 Et si ton portefeuille était optimisé au max ?</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.45)">Lance ton Bilan Premium : l'IA analyse tout et te dit où tu perds de l'argent.</div>
+      </div>
+      <button style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer;flex-shrink:0">Bilan me →</button>
+    </div>`;
+  }
+
+  // ── PRIORITÉS DU JOUR ──
+  const prioEl = document.getElementById('agent-priorites');
+  if (prioEl) {
+    const prios = [
+      sorted[sorted.length-1] && (sorted[sorted.length-1].change_pct||0) < -1 ? {t:`Agir sur ${sorted[sorted.length-1].ticker||sorted[sorted.length-1].name}`, s:`${(sorted[sorted.length-1].change_pct||0).toFixed(1)}% aujourd'hui`, c:'#dc2626', q:`Que faire avec ${sorted[sorted.length-1].name} qui baisse ?`} : null,
+      topByWeight[0] && topByWeight[0].qty*topByWeight[0].price/tv > 0.3 ? {t:`Gérer ${topByWeight[0].ticker||topByWeight[0].name}`, s:`Poids ${(topByWeight[0].qty*topByWeight[0].price/tv*100).toFixed(0)}%`, c:'#d97706', q:`Comment réduire mon exposition à ${topByWeight[0].name} ?`} : null,
+      sorted[0] && (sorted[0].change_pct||0) > 1 ? {t:`Agir sur ${sorted[0].ticker||sorted[0].name}`, s:`+${(sorted[0].change_pct||0).toFixed(1)}% — prendre gains ?`, c:'#16a34a', q:`Dois-je prendre mes gains sur ${sorted[0].name} ?`} : null,
+    ].filter(Boolean);
+    if (!prios.length) prios.push({t:'Tout est calme', s:'Aucune action urgente', c:'#16a34a', q:'Fais-moi un point complet sur mon portefeuille'});
+    prioEl.innerHTML = `
+    <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:13px 14px;height:100%">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">Priorités du jour</span>
+        <button onclick="nav('decision')" style="font-size:9px;font-weight:600;color:${sub};background:none;border:none;cursor:pointer">Voir toutes</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        ${prios.map(p => `
+        <button onclick="sq('${p.q.replace(/'/g,"\\\\'")}')" style="text-align:left;padding:9px 10px;background:${bg};border:1px solid ${bord};border-radius:10px;cursor:pointer;border-left:3px solid ${p.c};width:100%">
+          <div style="font-size:11px;font-weight:700;color:${txt}">${p.t}</div>
+          <div style="font-size:9px;color:${sub};margin-top:1px">${p.s}</div>
+        </button>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ── PANEL DROIT — ANALYSE IA ──
+  const rightEl = document.getElementById('agent-right');
+  if (rightEl) {
+    const worst = sorted[sorted.length-1];
+    const riskiest = topByWeight[0];
+    rightEl.innerHTML = `
+    <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:12px;font-weight:800;color:${txt}">🤖 Analyse IA</span>
+        <span style="background:#f0fdf4;color:#16a34a;font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px">LIVE</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="color:${sub}">Confiance IA</span><span style="font-weight:800;color:#16a34a">${Math.min(95,65+positions.length*3)}%</span>
+      </div>
+      <div style="background:${bord};border-radius:99px;height:5px;overflow:hidden;margin-bottom:4px">
+        <div style="height:100%;background:#16a34a;width:${Math.min(95,65+positions.length*3)}%;border-radius:99px"></div>
+      </div>
+      <div style="font-size:9px;color:${sub}">Basée sur ${positions.length} positions analysées</div>
+    </div>
+
+    ${worst && (worst.change_pct||0) < 0 ? `
+    <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
+      <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">⚠ Risque principal</div>
+      <div style="font-size:14px;font-weight:900;color:#dc2626;margin-bottom:3px">${worst.name} (${(worst.change_pct||0).toFixed(1)}%)</div>
+      <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:8px">Position la plus faible aujourd'hui. Surveille l'évolution avant d'agir.</div>
+      <button onclick="sq('Analyse le risque sur ${worst.name}')" style="width:100%;padding:7px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;color:#dc2626;font-size:10px;font-weight:700;cursor:pointer">Analyser ce risque →</button>
+    </div>` : ''}
+
+    ${riskiest ? `
+    <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
+      <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">💰 Opportunité principale</div>
+      <div style="font-size:13px;font-weight:900;color:${txt};margin-bottom:3px">Optimise ${riskiest.ticker||riskiest.name}</div>
+      <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:6px">Position leader (${(riskiest.qty*riskiest.price/tv*100).toFixed(0)}% en perte de ${((riskiest.price-riskiest.pru)/riskiest.pru*100).toFixed(1)}%) — rééquilibrage rémunéré pour profil faible risque</div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+        <span style="color:${sub}">Conviction</span><span style="font-weight:800;color:#d97706">72%</span>
+      </div>
+      <div style="background:${bord};border-radius:99px;height:4px;overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;background:#d97706;width:72%;border-radius:99px"></div>
+      </div>
+      <button onclick="sq('Comment optimiser ma position ${riskiest.name} ?')" style="width:100%;padding:7px;background:#fffbeb;border:1px solid #fde68a;border-radius:9px;color:#d97706;font-size:10px;font-weight:700;cursor:pointer">Voir l'opportunité →</button>
+    </div>` : ''}
+
+    <!-- Scores santé -->
+    <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
+      <div style="font-size:10px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">📊 Scores santé détail</div>
+      ${scoreItems.map(it => {
+        const ic = it.score>=7?'#16a34a':it.score>=5?'#f59e0b':'#dc2626';
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+          <div style="font-size:9px;color:${sub};width:80px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.label}</div>
+          <div style="flex:1;background:${bord};border-radius:99px;height:4px;overflow:hidden">
+            <div style="height:100%;background:${ic};width:${it.score/10*100}%;border-radius:99px"></div>
+          </div>
+          <div style="font-size:9px;font-weight:800;color:${ic};width:18px;text-align:right">${it.score.toFixed(0)}</div>
+        </div>`;
+      }).join('')}
+      <button onclick="sq('Pourquoi mon score santé est-il de ${score.toFixed(1)}/10 ?')" style="width:100%;padding:6px;background:${bg};border:1px solid ${bord};border-radius:8px;color:${sub};font-size:10px;font-weight:700;cursor:pointer;margin-top:4px">Pourquoi ces scores ?</button>
+    </div>
+
+    <!-- Stats rapides -->
+    <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px">
+      <div style="font-size:10px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:9px">⚡ Stats rapides</div>
+      ${[
+        ['Valeur totale', fmtK(tv), txt],
+        ['P&L global', `${tpnl>=0?'+':''}${fmtK(tpnl)}`, tpnl>=0?'#16a34a':'#dc2626'],
+        ['Perf. moyenne jour', `${avgChange>=0?'+':''}${avgChange.toFixed(2)}%`, avgChange>=0?'#16a34a':'#dc2626'],
+        ['Positions', positions.length, txt],
+      ].map(([l,v,c]) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${bord}">
+        <span style="font-size:10px;color:${sub}">${l}</span>
+        <span style="font-size:11px;font-weight:800;color:${c}">${v}</span>
+      </div>`).join('')}
+    </div>`;
+  }
+}
+
 
 async function generateDailyBrief() {
   const el = document.getElementById('agent-brief-content');
@@ -8171,7 +8476,8 @@ Sois TRÈS concis. Max 12 mots par point. Utilise les vraies données.`;
 }
 
 function renderDailyBrief(items) {
-  const el = document.getElementById('agent-brief-content');
+  // Cible la zone notifs de la hero card (nouveau design), fallback vers l'ancienne zone
+  const el = document.getElementById('agent-hero-notifs') || document.getElementById('agent-brief-content');
   if (!el || !items?.length) return;
   el.innerHTML = items.map(item => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;border-left:3px solid ${item.color}">
