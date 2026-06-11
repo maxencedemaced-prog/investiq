@@ -4204,9 +4204,11 @@ function checkPriceAlerts() {
 function loadChatHistory() {
   try { chatHistory = JSON.parse(localStorage.getItem(CACHE_CHAT)||'[]'); } catch { chatHistory = []; }
   const chat = document.getElementById('ai-chat');
-  if (chatHistory.length > 0) {
+  if (chat && chatHistory.length > 0) {
     chat.innerHTML = chatHistory.map(m => `<div class="bubble ${m.role==='user'?'user':'bot'}">${m.role==='user' ? m.content : formatMD(m.content)}</div>`).join('');
-    document.getElementById('qbtns').style.display = 'none';
+    const qbtns = document.getElementById('qbtns');
+    if (qbtns) qbtns.style.display = 'none';
+    chat.scrollTop = chat.scrollHeight;
   }
 }
 function saveChatHistory() {
@@ -5505,7 +5507,7 @@ function nav(page) {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
 }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);},
-    ai:()=>{ loadChatHistory(); initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+    ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
