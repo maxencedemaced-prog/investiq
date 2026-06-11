@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=202606111132">
+  <link rel="stylesheet" href="style.css?v=202606111139">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1548,7 +1548,7 @@ window.addEventListener('load', function() {
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <span id="agent-last-update" style="font-size:11px;color:var(--color-text-tertiary)"></span>
-      <button class="btn-secondary" onclick="initAgent();showToast('Agent actualisé')" style="font-size:13px;padding:8px 14px">↻ Actualiser</button>
+      <button class="btn-secondary" onclick="refreshPrices().then(()=>initAgent())" style="font-size:13px;padding:8px 14px">↻ Actualiser</button>
       <button class="btn-secondary" onclick="clearChat()" style="font-size:13px;padding:8px 14px">Effacer</button>
     </div>
   </div>
@@ -1699,7 +1699,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=202606111132"></script>
+<script src="app.js?v=202606111139"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
