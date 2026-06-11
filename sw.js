@@ -1,12 +1,28 @@
 // ===== InvestIQ Service Worker =====
-const CACHE_NAME = 'investiq-v1';
+const CACHE_NAME = 'investiq-v2'; // incrémenté pour forcer la mise à jour
 
 self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(self.clients.claim());
+  // PURGE tous les anciens caches (y compris ceux d'anciennes versions du SW)
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+// Stratégie network-first pour les fichiers de l'app : toujours la version fraîche
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  // Seulement pour nos propres fichiers JS/CSS/HTML
+  if (url.origin === self.location.origin && /\.(js|css|html)$|\/$/.test(url.pathname)) {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match(e.request))
+    );
+  }
 });
 
 // ─── Réception d'une notification push ───
