@@ -4411,9 +4411,21 @@ async function _resolveLogoDomain(ticker, name) {
     // Nettoyer le nom pour la recherche (retirer suffixes de ticker)
     const query = (typeof displayName === 'function' ? displayName(ticker) : null) || name || ticker;
     const q = query.replace(/\.(PA|DE|L|AS|MI|SW|CO)$/i, '').trim();
-    const res = await fetch('https://autocomplete.clearbit.com/v1/companies/suggest?query=' + encodeURIComponent(q));
-    const list = await res.json();
-    const found = Array.isArray(list) && list[0]?.domain ? list[0].domain : null;
+    // Résolution via /api/search (Yahoo Finance) : ticker → website si dispo, sinon devine nom.com
+    let found = null;
+    try {
+      const res = await fetch('/api/search?q=' + encodeURIComponent(q));
+      const data = await res.json();
+      const hit = (data.results || [])[0];
+      if (hit && hit.name) {
+        // Deviner le domaine à partir du nom de la société (heuristique simple)
+        const slug = hit.name.toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/\b(sa|se|nv|plc|inc|corp|group|holding|ag|spa|the)\b/g, '')
+          .replace(/[^a-z0-9]/g, '').slice(0, 20);
+        if (slug.length >= 3) found = slug + '.com';
+      }
+    } catch {}
     _logoDomainCache[ticker] = found || 'none';
     try { localStorage.setItem('iq_logo_domains', JSON.stringify(_logoDomainCache)); } catch {}
     if (found) {
@@ -4426,7 +4438,7 @@ async function _resolveLogoDomain(ticker, name) {
         el.style.border = 'none';
         el.style.padding = '3px';
         el.style.boxSizing = 'border-box';
-        el.innerHTML = '<img src="https://logo.clearbit.com/' + found + '" data-ddg="https://icons.duckduckgo.com/ip3/' + found + '.ico" style="width:100%;height:100%;object-fit:contain;border-radius:' + Math.max(r-2,2) + 'px" onerror="_logoErr(this,\'\',\'#888\')">';
+        el.innerHTML = '<img src="https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://' + found + '&size=64" data-ddg="https://icons.duckduckgo.com/ip3/' + found + '.ico" style="width:100%;height:100%;object-fit:contain;border-radius:' + Math.max(r-2,2) + 'px" onerror="_logoErr(this,\'\',\'#888\')">';
         el.removeAttribute('data-logo-pending');
       });
     }
@@ -4528,7 +4540,7 @@ function getCompanyLogo(ticker, name, size, radius) {
   const isDarkLogo = document.documentElement.getAttribute('data-theme') === 'dark';
   const logoBg = isDarkLogo ? '#1a2230' : '#f4f4f5';
   return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:3px;box-sizing:border-box">
-    <img src="https://logo.clearbit.com/${domain}" alt="${init}" data-ddg="https://icons.duckduckgo.com/ip3/${domain}.ico" style="width:100%;height:100%;object-fit:contain;border-radius:${Math.max(r-2,2)}px" onerror="_logoErr(this,'${init}','${c}')">
+    <img src="https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${domain}&size=64" alt="${init}" data-ddg="https://icons.duckduckgo.com/ip3/${domain}.ico" style="width:100%;height:100%;object-fit:contain;border-radius:${Math.max(r-2,2)}px" onerror="_logoErr(this,'${init}','${c}')">
   </div>`;
 }
 
@@ -8217,6 +8229,13 @@ async function generateInvestIQVerdict(force = false) {
   // Cache 24h (sauf actualisation manuelle)
   const cached = getCachedVerdict();
   if (cached && !force) { renderVerdict(cached.data, cached.ts); return; }
+  // Cooldown après échec : pas de re-tentative auto pendant 5 min
+  if (!force) {
+    try {
+      const cd = parseInt(localStorage.getItem(VERDICT_CACHE_KEY + '_cooldown') || 0);
+      if (cd && Date.now() - cd < 5 * 60 * 1000) { renderVerdictError(); return; }
+    } catch {}
+  }
 
   renderVerdictLoading();
 
@@ -8275,6 +8294,8 @@ Les impacts sont tes estimations en points de % si l'utilisateur suivait toutes 
     renderVerdict(data, ts);
   } catch(e) {
     console.warn('verdict:', e);
+    // Cooldown 5 min : ne pas re-tenter automatiquement à chaque navigation
+    try { localStorage.setItem(VERDICT_CACHE_KEY + '_cooldown', Date.now()); } catch {}
     renderVerdictError();
   }
 }
@@ -9091,6 +9112,7 @@ Sois TRÈS concis. Max 12 mots par point. Utilise les vraies données.`;
       { icon: '💡', text: pctObj ? `${pctObj}% de l'objectif atteint · Continue le DCA` : 'Définis un objectif pour suivre ta progression', color:'#a5b4fc', type:'tip' }
     ];
     try { localStorage.setItem('iq_daily_brief', JSON.stringify({items, ts:Date.now()})); } catch {}
+    try { localStorage.setItem('iq_daily_brief', JSON.stringify({items, ts: Date.now() - 5.5*3600000})); } catch {}
     renderDailyBrief(items);
   }
   if (btn) btn.disabled = false;
