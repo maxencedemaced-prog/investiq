@@ -4398,6 +4398,45 @@ function toggleTheme() {
 
 
 // ===== LOGOS ENTREPRISES =====
+// ═══ RÉSOLUTION AUTO DES LOGOS INCONNUS ═══
+// Cache persistant ticker → domaine ('none' = introuvable, on ne réessaie pas)
+let _logoDomainCache = {};
+try { _logoDomainCache = JSON.parse(localStorage.getItem('iq_logo_domains') || '{}'); } catch {}
+const _logoResolving = new Set();
+
+async function _resolveLogoDomain(ticker, name) {
+  if (_logoResolving.has(ticker)) return;
+  _logoResolving.add(ticker);
+  try {
+    // Nettoyer le nom pour la recherche (retirer suffixes de ticker)
+    const query = (typeof displayName === 'function' ? displayName(ticker) : null) || name || ticker;
+    const q = query.replace(/\.(PA|DE|L|AS|MI|SW|CO)$/i, '').trim();
+    const res = await fetch('https://autocomplete.clearbit.com/v1/companies/suggest?query=' + encodeURIComponent(q));
+    const list = await res.json();
+    const found = Array.isArray(list) && list[0]?.domain ? list[0].domain : null;
+    _logoDomainCache[ticker] = found || 'none';
+    try { localStorage.setItem('iq_logo_domains', JSON.stringify(_logoDomainCache)); } catch {}
+    if (found) {
+      // Remplacer tous les fallbacks en attente pour ce ticker
+      document.querySelectorAll('[data-logo-pending="' + ticker + '"]').forEach(el => {
+        const s = el.offsetWidth || 36;
+        const r = parseInt(el.style.borderRadius) || 10;
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        el.style.background = isDark ? '#1a2230' : '#f4f4f5';
+        el.style.border = 'none';
+        el.style.padding = '3px';
+        el.style.boxSizing = 'border-box';
+        el.innerHTML = '<img src="https://icons.duckduckgo.com/ip3/' + found + '.ico" style="width:100%;height:100%;object-fit:contain;border-radius:' + Math.max(r-2,2) + 'px" onerror="this.parentElement.style.display=\'none\'">';
+        el.removeAttribute('data-logo-pending');
+      });
+    }
+  } catch(e) {
+    _logoDomainCache[ticker] = 'none';
+  } finally {
+    _logoResolving.delete(ticker);
+  }
+}
+
 function getCompanyLogo(ticker, name, size, radius) {
   size = size || 36; radius = radius || 10;
   const domainMap = {
@@ -4438,6 +4477,16 @@ function getCompanyLogo(ticker, name, size, radius) {
     'LR.PA':'legrand.com',
     'EDF.PA':'edf.fr',
     'ENGI.PA':'engie.com',
+    'BAC':'bankofamerica.com', 'RACE':'ferrari.com', 'XOM':'exxonmobil.com',
+    'SWRD.L':'ssga.com', 'SPPW.DE':'ssga.com',
+    'AMEM.DE':'amundi.com', 'AMEM':'amundi.com',
+    'STM.DE':'st.com', 'STM.PA':'st.com', 'STM':'st.com',
+    'ALHPI.PA':'hopium.com',
+    'TTE.PA':'totalenergies.com', 'AIR.PA':'airbus.com',
+    'JPM':'jpmorganchase.com', 'GS':'goldmansachs.com', 'V':'visa.com', 'MA':'mastercard.com',
+    'KO':'coca-cola.com', 'PEP':'pepsico.com', 'MCD':'mcdonalds.com', 'NKE':'nike.com',
+    'DIS':'disney.com', 'BA':'boeing.com', 'CAT':'caterpillar.com', 'JNJ':'jnj.com',
+    'PFE':'pfizer.com', 'WMT':'walmart.com', 'COST':'costco.com', 'BRK-B':'berkshirehathaway.com',
   };
   const LCOLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6','#f97316'];
   const c = LCOLORS[(ticker||'').charCodeAt(0) % LCOLORS.length];
@@ -4460,8 +4509,21 @@ function getCompanyLogo(ticker, name, size, radius) {
   }
   const t = (ticker||'').toUpperCase();
   const base = t.replace(/\.PA$|\.DE$|\.L$|\.AS$|\.MI$|\.SW$/,'');
-  const domain = domainMap[ticker] || domainMap[t] || domainMap[base];
-  if (!domain) return fallback;
+  let domain = domainMap[ticker] || domainMap[t] || domainMap[base];
+
+  // Résolution auto des logos inconnus (cache + API Clearbit)
+  if (!domain) {
+    const cached = _logoDomainCache[t];
+    if (cached && cached !== 'none') {
+      domain = cached;
+    } else if (cached === 'none') {
+      return fallback; // déjà cherché, introuvable
+    } else {
+      // Pas encore cherché : fallback immédiat marqué, résolution en arrière-plan
+      _resolveLogoDomain(t, name || ticker);
+      return fallback.replace('<div style=', '<div data-logo-pending="' + t + '" style=');
+    }
+  }
   // Essayer plusieurs sources de logos
   const logoUrl = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
   const isDarkLogo = document.documentElement.getAttribute('data-theme') === 'dark';
