@@ -17,10 +17,13 @@
     },
     {
       "path": "/api/push-send?mode=alerts",
-      "schedule": "30 8,11,14,16 * * 1-5"
+      "schedule": "0 15 * * 1-5"
     }
   ],
   "rewrites": [
-    { "source": "/sw.js", "destination": "/sw.js" }
+    {
+      "source": "/sw.js",
+      "destination": "/sw.js"
+    }
   ]
 }
