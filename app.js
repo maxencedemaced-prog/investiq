@@ -7804,22 +7804,27 @@ function dcaPreset(m, y, r, s, btn) {
   updateDCA();
 }
 
-// Pré-calcule et affiche le résultat final sur chaque carte preset au chargement
+// Génère les chips de presets avec leur résultat pré-calculé
 function initDCAPresets() {
+  const el = document.getElementById('dca-presets');
+  if (!el) return;
   const presets = [
-    { m:200, y:20, r:7,  s:1000  },
-    { m:100, y:15, r:5,  s:0     },
-    { m:500, y:15, r:9,  s:5000  },
-    { m:1000,y:30, r:9,  s:10000 },
-    { m:50,  y:10, r:7,  s:0     },
+    { label:'🌱 Mini',      m:50,   y:10, r:7, s:0     },
+    { label:'👣 Débutant',  m:100,  y:15, r:5, s:0     },
+    { label:'⭐ Classique', m:200,  y:20, r:7, s:1000  },
+    { label:'🚀 Agressif',  m:500,  y:15, r:9, s:5000  },
+    { label:'🏖️ Retraite',  m:1000, y:30, r:9, s:10000 },
   ];
-  presets.forEach((p, i) => {
-    const rate = p.r / 100 / 12;
-    const n    = p.y * 12;
-    const total = p.s * Math.pow(1+rate,n) + (rate>0 ? p.m*((Math.pow(1+rate,n)-1)/rate) : p.m*n);
-    const el = document.getElementById('pre-res-' + i);
-    if (el) el.textContent = '→ ' + fmtK(Math.round(total));
-  });
+  el.innerHTML = presets.map((p, i) => {
+    const rate = p.r/100/12, n = p.y*12;
+    const total = p.s*Math.pow(1+rate,n) + (rate>0 ? p.m*((Math.pow(1+rate,n)-1)/rate) : p.m*n);
+    return `<button class="dca-preset-card" onclick="dcaPreset(${p.m},${p.y},${p.r},${p.s},this)"
+      style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 14px;background:var(--color-surface);border:1.5px solid var(--color-border);border-radius:13px;cursor:pointer;font-family:inherit;transition:all 0.15s;min-width:128px">
+      <span style="font-size:11px;font-weight:700;color:var(--color-text-secondary)">${p.label}</span>
+      <span style="font-size:12px;font-weight:800;color:var(--color-text)">${p.m.toLocaleString('fr-FR')}€/mois · ${p.y} ans</span>
+      <span style="font-size:12px;font-weight:800;color:#16a34a">→ ${fmtK(Math.round(total))}</span>
+    </button>`;
+  }).join('');
 }
 
 function updateDCA() {
@@ -7842,24 +7847,23 @@ function updateDCA() {
   const gain     = total - invested;
   const mult     = invested > 0 ? total / invested : 1;
 
-  // Métriques
-  document.getElementById('dca-metrics').innerHTML = `
-    <div class="metric-card">
-      <div class="metric-label">Capital final estimé</div>
-      <div class="metric-val green">${fmtK(Math.round(total))}</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Total investi</div>
-      <div class="metric-val">${fmtK(Math.round(invested))}</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Intérêts composés</div>
-      <div class="metric-val green">+${fmtK(Math.round(gain))}</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Multiplicateur</div>
-      <div class="metric-val">×${mult.toFixed(2)}</div>
-    </div>`;
+  // Hero card : métriques + barre investi/intérêts
+  const heroTotal = document.getElementById('dca-hero-total');
+  if (heroTotal) heroTotal.textContent = fmtK(Math.round(total));
+  const heroSub = document.getElementById('dca-hero-sub');
+  if (heroSub) heroSub.textContent = `${m.toLocaleString('fr-FR')} €/mois pendant ${y} an${y>1?'s':''} à ${rAnn.toFixed(1)}%${s>0 ? ' · départ ' + fmtK(s) : ''}`;
+  const heroInv = document.getElementById('dca-hero-invested');
+  if (heroInv) heroInv.textContent = fmtK(Math.round(invested));
+  const heroGain = document.getElementById('dca-hero-gain');
+  if (heroGain) heroGain.textContent = '+' + fmtK(Math.round(gain));
+  const heroMult = document.getElementById('dca-hero-mult');
+  if (heroMult) heroMult.textContent = '×' + mult.toFixed(2);
+  const barInv = document.getElementById('dca-bar-inv');
+  const barGain = document.getElementById('dca-bar-gain');
+  if (barInv && barGain && total > 0) {
+    barInv.style.width = (invested/total*100).toFixed(1) + '%';
+    barGain.style.width = (gain/total*100).toFixed(1) + '%';
+  }
 
   // Message tip + warning si rendement irréaliste
   const tipEl = document.getElementById('dca-tip');
@@ -7912,8 +7916,8 @@ function updateDCA() {
     if (dcaChartInstance) dcaChartInstance.destroy();
     const ctx = canvas.getContext('2d');
     const grad = ctx.createLinearGradient(0, 0, 0, 200);
-    grad.addColorStop(0, 'rgba(28,28,30,0.15)');
-    grad.addColorStop(1, 'rgba(28,28,30,0)');
+    grad.addColorStop(0, 'rgba(74,222,128,0.28)');
+    grad.addColorStop(1, 'rgba(74,222,128,0)');
 
     dcaChartInstance = new Chart(ctx, {
       type: 'line',
@@ -7923,7 +7927,7 @@ function updateDCA() {
           {
             label: 'Capital projeté',
             data: valData,
-            borderColor: '#1c1c1e',
+            borderColor: '#4ade80',
             backgroundColor: grad,
             borderWidth: 2.5,
             fill: true,
@@ -7934,7 +7938,7 @@ function updateDCA() {
           {
             label: 'Capital investi',
             data: invData,
-            borderColor: '#c7c7cc',
+            borderColor: 'rgba(255,255,255,0.3)',
             borderWidth: 1.5,
             borderDash: [5, 4],
             fill: false,
@@ -7955,8 +7959,8 @@ function updateDCA() {
           }
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' }, color: '#8e8e93', maxRotation: 0 } },
-          y: { grid: { color: '#f5f5f5' }, ticks: { font: { size: 10, weight: '600' }, color: '#8e8e93', callback: v => fmtK(v) } }
+          x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' }, color: 'rgba(255,255,255,0.35)', maxRotation: 0 } },
+          y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { font: { size: 10, weight: '600' }, color: 'rgba(255,255,255,0.35)', callback: v => fmtK(v) } }
         }
       }
     });
@@ -7978,10 +7982,10 @@ function updateDCA() {
       const inv = s + m * mo;
       const g   = fv - inv;
       const pct = inv > 0 ? ((g / inv) * 100).toFixed(1) : '0.0';
-      rows += `<tr style="border-bottom:1px solid #f5f5f5">
-        <td style="padding:8px 6px;font-weight:700;color:#1c1c1e;font-size:13px">Année ${yr}</td>
+      rows += `<tr style="border-bottom:1px solid var(--color-border,#f5f5f5)">
+        <td style="padding:8px 6px;font-weight:700;color:var(--color-text,#1c1c1e);font-size:13px">Année ${yr}</td>
         <td style="padding:8px 6px;font-weight:800;color:#1a7f5a;font-size:13px">${fmtK(Math.round(fv))}</td>
-        <td style="padding:8px 6px;color:#8e8e93;font-size:12px">${fmtK(Math.round(inv))}</td>
+        <td style="padding:8px 6px;color:var(--color-text-secondary,#8e8e93);font-size:12px">${fmtK(Math.round(inv))}</td>
         <td style="padding:8px 6px;color:#1a7f5a;font-weight:700;font-size:12px">+${fmtK(Math.round(g))}</td>
         <td style="padding:8px 6px;font-size:12px">
           <span style="background:${parseFloat(pct)>10?'#e8f8f0':parseFloat(pct)>5?'#fff9e6':'#f5f5f5'};color:${parseFloat(pct)>10?'#1a7f5a':parseFloat(pct)>5?'#92400e':'#8e8e93'};font-weight:700;padding:2px 7px;border-radius:6px;font-size:11px">+${pct}%</span>
@@ -7992,7 +7996,7 @@ function updateDCA() {
     tableEl.innerHTML = `
       <table style="width:100%;border-collapse:collapse">
         <thead>
-          <tr style="border-bottom:2px solid #f0f0f0">
+          <tr style="border-bottom:2px solid var(--color-border,#f0f0f0)">
             <th style="text-align:left;padding:8px 6px;font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase">Année</th>
             <th style="text-align:left;padding:8px 6px;font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase">Capital</th>
             <th style="text-align:left;padding:8px 6px;font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase">Investi</th>
