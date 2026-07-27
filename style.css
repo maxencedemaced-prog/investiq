@@ -497,7 +497,9 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 .bloomberg-ticker:hover{animation-play-state:paused}
 @keyframes ticker-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 .dca-preset-card{transition:all 0.2s}
-.dca-preset-card.active{border:2px solid #1c1c1e !important;background:var(--color-bg) !important}
+.dca-preset-card.active{border-color:var(--color-primary,#16a34a) !important;background:rgba(22,163,74,0.06) !important}
+.dca-preset-card:hover{border-color:var(--color-primary,#16a34a)}
+[data-theme="dark"] .dca-preset-card.active{background:rgba(22,163,74,0.12) !important}
 .skeleton{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:400px 100%;animation:shimmer 1.2s infinite;border-radius:6px}
 @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
 .card{transition:box-shadow 0.2s ease,transform 0.15s ease}
