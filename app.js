@@ -4380,7 +4380,10 @@ function toggleTheme() {
 // ═══ RÉSOLUTION AUTO DES LOGOS INCONNUS ═══
 // Cache persistant ticker → domaine ('none' = introuvable, on ne réessaie pas)
 let _logoDomainCache = {};
-try { _logoDomainCache = JSON.parse(localStorage.getItem('iq_logo_domains') || '{}'); } catch {}
+try {
+  _logoDomainCache = JSON.parse(localStorage.getItem('iq_logo_domains_v2') || '{}');
+  localStorage.removeItem('iq_logo_domains'); // purge l'ancien cache (domaines mal devinés)
+} catch {}
 const _logoResolving = new Set();
 
 async function _resolveLogoDomain(ticker, name) {
@@ -4406,7 +4409,7 @@ async function _resolveLogoDomain(ticker, name) {
       }
     } catch {}
     _logoDomainCache[ticker] = found || 'none';
-    try { localStorage.setItem('iq_logo_domains', JSON.stringify(_logoDomainCache)); } catch {}
+    try { localStorage.setItem('iq_logo_domains_v2', JSON.stringify(_logoDomainCache)); } catch {}
     if (found) {
       // Remplacer tous les fallbacks en attente pour ce ticker
       document.querySelectorAll('[data-logo-pending="' + ticker + '"]').forEach(el => {
@@ -4468,6 +4471,9 @@ function getCompanyLogo(ticker, name, size, radius) {
     'LR.PA':'legrand.com',
     'EDF.PA':'edf.fr',
     'ENGI.PA':'engie.com',
+    'EIMI.L':'ishares.com', 'IS3N.DE':'ishares.com', 'WSML.L':'ishares.com',
+    'IITU.L':'ishares.com', 'AGGH.L':'ishares.com', 'EUNL.DE':'ishares.com',
+    'VUSA.L':'vanguard.com', 'VWRL.L':'vanguard.com',
     'BAC':'bankofamerica.com', 'RACE':'ferrari.com', 'XOM':'exxonmobil.com',
     'SWRD.L':'ssga.com', 'SPPW.DE':'ssga.com',
     'AMEM.DE':'amundi.com', 'AMEM':'amundi.com',
@@ -7996,6 +8002,9 @@ const COMPANY_NAMES = {
   'VWCE.DE':'Vanguard FTSE All-World', 'VWCE':'Vanguard FTSE All-World',
   'SWRD.L':'SPDR MSCI World', 'SPPW.DE':'SPDR MSCI World',
   'CSPX.L':'iShares Core S&P 500', 'AMEM.DE':'Amundi MSCI Emerging Markets',
+  'EIMI.L':'iShares Core MSCI EM IMI', 'IS3N.DE':'iShares Core MSCI EM IMI',
+  'WSML.L':'iShares MSCI World Small Cap', 'IITU.L':'iShares S&P 500 IT',
+  'AGGH.L':'iShares Global Aggregate Bond',
   'LVMH':'LVMH', 'MC.PA':'LVMH',
   'Air Liquide':'Air Liquide', 'AI.PA':'Air Liquide',
   'VIE.PA':'Veolia', 'TTE.PA':'TotalEnergies', 'AIR.PA':'Airbus',
