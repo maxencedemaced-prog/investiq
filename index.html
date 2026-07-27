@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260727110525">
+  <link rel="stylesheet" href="style.css?v=20260727111007">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1352,76 +1352,101 @@ window.addEventListener('load', function() {
 
     <!-- DCA -->
     <section id="sec-dca" class="sec">
-      <div class="page-header"><h1>Simulateur DCA</h1></div>
-
-      <!-- PRESETS -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px">
-        <div class="dca-preset-card card" onclick="dcaPreset(200,20,7,1000,this)" style="padding:12px;cursor:pointer;text-align:center">
-          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Classique</div>
-          <div style="font-size:13px;font-weight:800;color:#1c1c1e">200€/mois · 20 ans</div>
-          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-0"></div>
-        </div>
-        <div class="dca-preset-card card" onclick="dcaPreset(100,15,5,0,this)" style="padding:12px;cursor:pointer;text-align:center">
-          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Débutant</div>
-          <div style="font-size:13px;font-weight:800;color:#1c1c1e">100€/mois · 15 ans</div>
-          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-1"></div>
-        </div>
-        <div class="dca-preset-card card" onclick="dcaPreset(500,15,9,5000,this)" style="padding:12px;cursor:pointer;text-align:center">
-          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Agressif</div>
-          <div style="font-size:13px;font-weight:800;color:#1c1c1e">500€/mois · 15 ans</div>
-          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-2"></div>
-        </div>
-        <div class="dca-preset-card card" onclick="dcaPreset(1000,30,9,10000,this)" style="padding:12px;cursor:pointer;text-align:center">
-          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Retraite</div>
-          <div style="font-size:13px;font-weight:800;color:#1c1c1e">1 000€/mois · 30 ans</div>
-          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-3"></div>
-        </div>
-        <div class="dca-preset-card card" onclick="dcaPreset(50,10,7,0,this)" style="padding:12px;cursor:pointer;text-align:center">
-          <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:3px">Mini</div>
-          <div style="font-size:13px;font-weight:800;color:#1c1c1e">50€/mois · 10 ans</div>
-          <div style="font-size:12px;color:#1a7f5a;font-weight:700;margin-top:2px" id="pre-res-4"></div>
+      <div class="page-header">
+        <div>
+          <h1>Simulateur DCA</h1>
+          <p class="page-sub">Vois ce que la régularité et les intérêts composés font de ton épargne.</p>
         </div>
       </div>
 
-      <!-- SLIDERS -->
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon green">↻</span>Investissement régulier</div></div>
-        <div class="slider-group">
-          <div class="slider-row"><label>Versement mensuel</label><span id="dca-m-o">200 €</span></div>
-          <input type="range" min="10" max="5000" step="10" value="200" id="dca-m" oninput="updateDCA()">
-          <div class="slider-row"><label>Durée</label><span id="dca-y-o">10 ans</span></div>
-          <input type="range" min="1" max="40" step="1" value="10" id="dca-y" oninput="updateDCA()">
-          <div class="slider-row"><label>Rendement estimé</label><span id="dca-r-o">7.0 %</span></div>
-          <input type="range" min="1" max="20" step="0.5" value="7" id="dca-r" oninput="updateDCA()">
-          <div class="slider-row"><label>Capital de départ</label><span id="dca-s-o">0 €</span></div>
-          <input type="range" min="0" max="100000" step="500" value="0" id="dca-s" oninput="updateDCA()">
+      <!-- PRESETS (générés par JS) -->
+      <div id="dca-presets" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+
+      <!-- ═══ HERO CARD SOMBRE : RÉSULTAT + GRAPHIQUE ═══ -->
+      <div style="background:linear-gradient(135deg,#0a0f1e,#111827);border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;margin-bottom:12px;position:relative;overflow:hidden">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:6px">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Capital final estimé</div>
+            <div id="dca-hero-total" style="font-size:40px;font-weight:900;color:#fff;letter-spacing:-0.05em;line-height:1">—</div>
+            <div id="dca-hero-sub" style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:8px"></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="text-align:center;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;min-width:92px">
+              <div id="dca-hero-invested" style="font-size:17px;font-weight:900;color:rgba(255,255,255,0.85)">—</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:2px;font-weight:600">TOTAL INVESTI</div>
+            </div>
+            <div style="text-align:center;padding:10px 14px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);border-radius:12px;min-width:92px">
+              <div id="dca-hero-gain" style="font-size:17px;font-weight:900;color:#4ade80">—</div>
+              <div style="font-size:9px;color:rgba(74,222,128,0.6);margin-top:2px;font-weight:600">INTÉRÊTS COMPOSÉS</div>
+            </div>
+            <div style="text-align:center;padding:10px 14px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);border-radius:12px;min-width:70px">
+              <div id="dca-hero-mult" style="font-size:17px;font-weight:900;color:#a5b4fc">—</div>
+              <div style="font-size:9px;color:rgba(165,180,252,0.6);margin-top:2px;font-weight:600">MULTIPLICATEUR</div>
+            </div>
+          </div>
         </div>
-        <div id="dca-metrics" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px"></div>
-        <div id="dca-tip" style="margin-top:12px"></div>
-      </div>
-
-      <!-- GRAPHIQUE -->
-      <div class="card" style="margin-top:12px">
-        <div class="card-head"><div class="card-title"><span class="card-icon dark">📈</span>Projection graphique</div></div>
-        <div style="height:220px;position:relative"><canvas id="dca-chart"></canvas></div>
-        <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:#8e8e93;font-weight:600">
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:3px;background:#1c1c1e;display:inline-block;border-radius:2px"></span>Capital projeté</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:3px;background:#c7c7cc;display:inline-block;border-radius:2px;border-top:2px dashed #c7c7cc"></span>Capital investi</span>
+        <!-- Barre investi vs intérêts -->
+        <div style="margin:14px 0 16px">
+          <div style="display:flex;height:8px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,0.06)">
+            <div id="dca-bar-inv" style="background:rgba(255,255,255,0.35);width:60%;transition:width 0.6s ease"></div>
+            <div id="dca-bar-gain" style="background:linear-gradient(90deg,#16a34a,#4ade80);width:40%;transition:width 0.6s ease"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.35);margin-top:5px">
+            <span>⬜ Ce que tu verses</span><span style="color:#4ade80">🟩 Ce que le marché génère</span>
+          </div>
         </div>
+        <div style="height:210px;position:relative"><canvas id="dca-chart"></canvas></div>
       </div>
 
-      <!-- TABLEAU ANNUEL -->
-      <div class="card" style="margin-top:12px">
-        <div class="card-head"><div class="card-title"><span class="card-icon dark">📋</span>Projection annuelle</div></div>
-        <div id="dca-table" style="overflow-x:auto"></div>
+      <!-- ═══ RÉGLAGES ═══ -->
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;padding:20px;margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px 28px" id="dca-sliders">
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:700;color:var(--color-text-secondary)">💶 Versement mensuel</span>
+              <span id="dca-m-o" style="font-size:14px;font-weight:900;color:var(--color-text)">200 €</span>
+            </div>
+            <input type="range" min="10" max="5000" step="10" value="200" id="dca-m" class="slider" oninput="updateDCA()" style="width:100%">
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:700;color:var(--color-text-secondary)">📅 Durée</span>
+              <span id="dca-y-o" style="font-size:14px;font-weight:900;color:var(--color-text)">10 ans</span>
+            </div>
+            <input type="range" min="1" max="40" step="1" value="10" id="dca-y" class="slider" oninput="updateDCA()" style="width:100%">
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:700;color:var(--color-text-secondary)">📈 Rendement estimé</span>
+              <span id="dca-r-o" style="font-size:14px;font-weight:900;color:var(--color-text)">7.0 %</span>
+            </div>
+            <input type="range" min="1" max="20" step="0.5" value="7" id="dca-r" class="slider" oninput="updateDCA()" style="width:100%">
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:700;color:var(--color-text-secondary)">🏦 Capital de départ</span>
+              <span id="dca-s-o" style="font-size:14px;font-weight:900;color:var(--color-text)">0 €</span>
+            </div>
+            <input type="range" min="0" max="100000" step="500" value="0" id="dca-s" class="slider" oninput="updateDCA()" style="width:100%">
+          </div>
+        </div>
+        <div id="dca-tip" style="margin-top:16px"></div>
       </div>
 
-      <!-- BOUTON SAUVEGARDER -->
-      <div style="margin-top:12px">
-        <button class="btn-primary" onclick="saveDCAAsObjective()" style="width:100%;padding:14px;font-size:15px;font-weight:700">
-          🎯 Sauvegarder comme objectif & générer mon plan IA
+      <!-- ═══ TABLEAU ANNUEL (repliable) ═══ -->
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;overflow:hidden;margin-bottom:12px">
+        <button onclick="const t=document.getElementById('dca-table');const a=document.getElementById('dca-table-arrow');const open=t.style.display!=='none';t.style.display=open?'none':'block';a.style.transform=open?'rotate(0deg)':'rotate(180deg)'"
+          style="width:100%;padding:15px 20px;background:none;border:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:inherit">
+          <span style="font-size:13px;font-weight:800;color:var(--color-text)">📋 Projection année par année</span>
+          <span id="dca-table-arrow" style="transition:transform 0.2s;color:var(--color-text-secondary)">▼</span>
         </button>
+        <div id="dca-table" style="display:none;overflow-x:auto;padding:0 20px 16px"></div>
       </div>
+
+      <!-- CTA -->
+      <button class="btn-primary" onclick="saveDCAAsObjective()" style="width:100%;padding:15px;font-size:15px;font-weight:800;border-radius:16px">
+        🎯 Sauvegarder comme objectif & générer mon plan IA
+      </button>
     </section>
 
     <!-- MODAL PLAN DCA -->
@@ -1698,7 +1723,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260727110525"></script>
+<script src="app.js?v=20260727111007"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
