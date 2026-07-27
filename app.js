@@ -194,7 +194,7 @@ function showValidatedChart() {
   }
 }
 
-const CACHE_ETF_PLAN = 'iq_etf_plan';
+const CACHE_ETF_PLAN = 'iq_etf_plan_v2'; // v2 : structure socle/satellites
 const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // 24h
 
 async function generateETFPlan(objId) {
@@ -216,8 +216,10 @@ async function generateETFPlan(objId) {
 
   const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
 
-  const prompt = `Conseiller financier. Propose exactement 3 ETF pour un profil ${riskLabel}.
+  const socleMin = objRisk === 'agressif' ? 55 : objRisk === 'equilibre' ? 70 : 60;
+  const prompt = `Conseiller financier long terme. Propose exactement 3 ETF pour un profil ${riskLabel}.
 Capital de départ : ${objChartCapital}€ · Versement mensuel : ${objChartMonthly}€ · Durée : ${objChartYears} ans.
+RÈGLE ABSOLUE : le 1er ETF est TOUJOURS un socle Monde diversifié (MSCI World ou FTSE All-World) avec au minimum ${socleMin}% du capital ET du mensuel. Les 2 autres sont des satellites adaptés au profil (émergents, small caps, secteur, ou obligations pour prudent). Le champ "role" vaut "socle" pour le 1er, "satellite" pour les autres.
 Réponds UNIQUEMENT en JSON valide sans markdown :
 [
   {
@@ -226,6 +228,7 @@ Réponds UNIQUEMENT en JSON valide sans markdown :
     "desc": "1600+ entreprises mondiales diversifiées",
     "pct_capital": 70,
     "pct_mensuel": 70,
+    "role": "socle",
     "color": "#1a7f5a",
     "pourquoi": "Cœur du portefeuille — diversification maximale"
   }
@@ -254,18 +257,19 @@ Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, a
   // Fallback
   const fallback = objRisk === 'agressif'
     ? [
-        { ticker:'IWDA.L',  name:'iShares MSCI World',      desc:'1600+ entreprises mondiales',    pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Base solide du portefeuille' },
-        { ticker:'VWCE.DE', name:'Vanguard FTSE All-World',  desc:'Inclut les marchés émergents',   pct_capital:20, pct_mensuel:20, color:'#6366f1', pourquoi:'Diversification globale' },
-        { ticker:'IITU.L',  name:'iShares S&P 500 IT ETF',   desc:'Top tech US : Apple, NVIDIA...', pct_capital:20, pct_mensuel:20, color:'#f59e0b', pourquoi:'Exposition tech croissance' },
+        { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',      pct_capital:55, pct_mensuel:55, color:'#1a7f5a', pourquoi:'Socle diversifié — indispensable même en agressif' },
+        { ticker:'EIMI.L',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents (Chine, Inde...)', role:'satellite', type:'ETF Émergents',  pct_capital:25, pct_mensuel:25, color:'#f59e0b', pourquoi:'Potentiel de croissance supérieur, plus volatil' },
+        { ticker:'WSML.L',  name:'iShares MSCI World Small Cap', desc:'Petites capitalisations mondiales', role:'satellite', type:'ETF Small Cap', pct_capital:20, pct_mensuel:20, color:'#6366f1', pourquoi:'Booster de performance sur horizon 10 ans+' },
       ]
     : objRisk === 'equilibre'
     ? [
-        { ticker:'IWDA.L',  name:'iShares MSCI World',       desc:'1600+ entreprises mondiales',   pct_capital:80, pct_mensuel:80, color:'#1a7f5a', pourquoi:'Cœur du portefeuille' },
-        { ticker:'VWCE.DE', name:'Vanguard FTSE All-World',   desc:'Inclut les marchés émergents',  pct_capital:20, pct_mensuel:20, color:'#6366f1', pourquoi:'Complément diversifié' },
+        { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:70, pct_mensuel:70, color:'#1a7f5a', pourquoi:'Cœur du portefeuille' },
+        { ticker:'EIMI.L',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents diversifiés',      role:'satellite', type:'ETF Émergents',   pct_capital:15, pct_mensuel:15, color:'#f59e0b', pourquoi:'Diversification géographique' },
+        { ticker:'AGGH.L',  name:'iShares Global Aggregate',   desc:'Obligations mondiales stables',      role:'satellite', type:'ETF Obligations', pct_capital:15, pct_mensuel:15, color:'#0ea5e9', pourquoi:'Amortisseur en cas de crise' },
       ]
     : [
-        { ticker:'IWDA.L',  name:'iShares MSCI World',       desc:'1600+ entreprises mondiales',   pct_capital:90, pct_mensuel:90, color:'#1a7f5a', pourquoi:'Maximum de diversification' },
-        { ticker:'AGGH.L',  name:'iShares Global Aggregate', desc:'Obligations mondiales stables', pct_capital:10, pct_mensuel:10, color:'#0ea5e9', pourquoi:'Stabilité et protection' },
+        { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Diversification maximale' },
+        { ticker:'AGGH.L',  name:'iShares Global Aggregate',   desc:'Obligations mondiales stables',      role:'satellite', type:'ETF Obligations', pct_capital:40, pct_mensuel:40, color:'#0ea5e9', pourquoi:'Stabilité et protection du capital' },
       ];
   renderETFCards(fallback, el);
 }
@@ -279,86 +283,60 @@ function renderETFCards(etfs, containerEl) {
   const text = isDark ? 'var(--color-text)' : '#09090b';
   const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
   const trackBg = isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f2';
-  const totalCapital = montantCapital;
-  const targetPct = 80;
 
   containerEl.innerHTML = `
-  ${montantCapital > 0 ? `
-  <!-- PLAN ETF LONG TERME -->
-  <div style="margin-bottom:6px">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">Plan ETF long terme</span>
-      </div>
-      <span style="font-size:11px;color:${sub}">Répartition ciblée — ${targetPct}% · ${fmtK(montantCapital)}</span>
+  <!-- EN-TÊTE RÉCAP -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 12px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:12px;font-weight:800;color:${text}">📐 Ton plan d'investissement long terme</div>
+    <div style="display:flex;gap:8px;font-size:11px;color:${sub}">
+      ${montantCapital > 0 ? `<span style="background:${trackBg};padding:3px 9px;border-radius:7px;font-weight:700">Départ ${fmtK(montantCapital)}</span>` : ''}
+      <span style="background:${trackBg};padding:3px 9px;border-radius:7px;font-weight:700">+${montantMensuel.toLocaleString('fr-FR')} €/mois</span>
     </div>
-    ${etfs.map((e,i) => {
-      const montant = Math.round(montantCapital * (e.pct_capital||33) / 100);
-      const pct = e.pct_capital || 33;
-      return `
-      <div onclick="openActionFromObjectif('${e.ticker}','${e.name}',${montant})" style="background:${surface};border:1px solid ${border};border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden"
-        onmouseover="this.style.borderColor='${e.color}'" onmouseout="this.style.borderColor='${border}'">
-        <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${e.color};border-radius:3px 0 0 3px"></div>
-        <div style="display:flex;align-items:center;gap:12px;padding-left:8px">
-          <div style="width:36px;height:36px;border-radius:10px;background:${e.color}20;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${e.color};flex-shrink:0">${(e.ticker||'ET').slice(0,2)}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:700;color:${text}">${e.name} <span style="font-size:10px;color:${sub};background:${isDark?'rgba(255,255,255,0.08)':'#f4f4f5'};padding:1px 6px;border-radius:4px;font-weight:500">${e.ticker||''}</span></div>
-            <div style="font-size:11px;color:${sub};margin-top:2px">${e.type||'Obligations'} · ${e.desc||''}</div>
-            <div style="margin-top:6px;background:${trackBg};border-radius:99px;height:3px;overflow:hidden">
-              <div style="height:100%;background:${e.color};width:${pct}%;border-radius:99px;transition:width 1s ease"></div>
-            </div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:15px;font-weight:800;color:${e.color}">${montant.toLocaleString('fr-FR')} € ›</div>
-            <div style="font-size:11px;color:${sub};margin-top:2px">${pct}% du plan</div>
-          </div>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>` : ''}
+  </div>
 
-  <!-- ÉPARGNE MENSUELLE -->
-  <div style="margin-bottom:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">⊕ Épargne mens.</span>
-      </div>
-      <span style="font-size:11px;color:${sub}">${montantMensuel}% · ${fmtK(montantMensuel)}</span>
-    </div>
-    ${etfs.map((e,i) => {
-      const montant = Math.round(montantMensuel * (e.pct_mensuel||33) / 100);
-      return `
-      <div onclick="openActionFromObjectif('${e.ticker}','${e.name}',${montant})" style="background:${surface};border:1px solid ${border};border-radius:12px;padding:12px 16px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden"
-        onmouseover="this.style.borderColor='${e.color}'" onmouseout="this.style.borderColor='${border}'">
-        <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${e.color};border-radius:3px 0 0 3px"></div>
-        <div style="width:32px;height:32px;border-radius:9px;background:${e.color}20;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${e.color};flex-shrink:0;margin-left:8px">${(e.ticker||'ET').slice(0,2)}</div>
+  <!-- UNE CARTE PAR ETF (montant initial + mensuel réunis) -->
+  ${etfs.map((e,i) => {
+    const pctC = e.pct_capital || Math.round(100/etfs.length);
+    const pctM = e.pct_mensuel || pctC;
+    const mCap = Math.round(montantCapital * pctC / 100);
+    const mMens = Math.round(montantMensuel * pctM / 100);
+    const isSocle = e.role === 'socle' || i === 0;
+    return `
+    <div onclick="openActionFromObjectif('${e.ticker}','${(e.name||'').replace(/'/g,"\\'")}',${mCap||mMens})" style="background:${surface};border:1px solid ${border};border-radius:14px;padding:14px 16px;margin-bottom:9px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden"
+      onmouseover="this.style.borderColor='${e.color}'" onmouseout="this.style.borderColor='${border}'">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${e.color}"></div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding-left:8px">
+        ${getCompanyLogo(e.ticker, e.name, 38, 10)}
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:${text}">${e.name} <span style="font-size:10px;color:${sub}">${e.ticker||''}</span></div>
-          <div style="font-size:11px;color:#3fb950;font-weight:600;margin-top:1px">${e.pourquoi||'Croissance long terme'}</div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:800;color:${text}">${e.name}</span>
+            <span style="font-size:9px;color:${sub};background:${trackBg};padding:1px 6px;border-radius:4px;font-weight:600">${e.ticker||''}</span>
+            <span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:5px;background:${isSocle?'rgba(26,127,90,0.12)':'rgba(99,102,241,0.12)'};color:${isSocle?'#1a7f5a':'#6366f1'}">${isSocle?'🏛️ SOCLE':'🛰️ SATELLITE'}</span>
+          </div>
+          <div style="font-size:11px;color:${sub};margin-top:3px">${e.desc||''}</div>
+          <div style="font-size:11px;color:${sub};margin-top:2px;font-style:italic">${e.pourquoi||''}</div>
+          <div style="margin-top:8px;background:${trackBg};border-radius:99px;height:4px;overflow:hidden">
+            <div style="height:100%;background:${e.color};width:${pctC}%;border-radius:99px;transition:width 1s ease"></div>
+          </div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:14px;font-weight:800;color:${e.color}">+${montant.toLocaleString('fr-FR')} € ›</div>
-          <div style="font-size:10px;color:${sub}">${e.pct_mensuel||33}% / mois</div>
+          ${mCap > 0 ? `<div style="font-size:14px;font-weight:900;color:${e.color}">${mCap.toLocaleString('fr-FR')} €</div>
+          <div style="font-size:9px;color:${sub}">mise initiale · ${pctC}%</div>` : ''}
+          <div style="font-size:13px;font-weight:800;color:${text};margin-top:${mCap>0?'6px':'0'}">+${mMens.toLocaleString('fr-FR')} €<span style="font-size:10px;color:${sub}">/mois</span></div>
+          <div style="font-size:9px;color:${sub}">${pctM}% du versement</div>
         </div>
-      </div>`;
-    }).join('')}
-  </div>
+      </div>
+    </div>`;
+  }).join('')}
 
-  <!-- CTA analyser -->
-  <div style="background:${isDark?'rgba(63,185,80,0.08)':'#f0fdf4'};border:1px solid ${isDark?'rgba(63,185,80,0.2)':'rgba(22,163,74,0.2)'};border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:${isDark?'rgba(255,255,255,0.5)':sub}">
-      <span>💡</span>
-      <span>Cliquez sur un ETF pour l'analyser avec l'IA InvestIQ</span>
-    </div>
-    <button onclick="nav('ai')" style="padding:5px 12px;background:#16a34a;border:none;border-radius:6px;font-size:11px;font-weight:700;color:#fff;cursor:pointer">Analyser</button>
+  <!-- CTA + disclaimer -->
+  <div style="background:${isDark?'rgba(63,185,80,0.08)':'#f0fdf4'};border:1px solid ${isDark?'rgba(63,185,80,0.2)':'rgba(22,163,74,0.2)'};border-radius:11px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
+    <span style="font-size:12px;color:${isDark?'rgba(255,255,255,0.55)':sub}">💡 Clique sur un ETF pour l'analyser en détail avec l'IA</span>
+    <button onclick="event.stopPropagation();sq('Explique-moi mon plan ETF : pourquoi cette répartition socle/satellites ?');nav('ai')" style="padding:6px 13px;background:#16a34a;border:none;border-radius:8px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0">Comprendre le plan →</button>
   </div>
+  <div style="font-size:10px;color:${sub};padding:0 2px">Répartition indicative basée sur ton profil — pas un conseil financier réglementé. Performances passées ≠ performances futures.</div>
   `;
-
 }
-
-
-
-
 
 // ===== PLAN COURT TERME =====
 async function getAIActionRecommendations(risk, capital) {
@@ -394,22 +372,23 @@ Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Co
   }
 
   // Fallback statique si l'IA échoue
+  // Fallback réaliste : socle ETF + blue chips, horizons 12 mois+, fourchettes HISTORIQUES (pas des promesses)
   return risk === 'agressif' || risk === 'eleve'
     ? [
-        { ticker:'NVDA', name:'NVIDIA',   gain:'+12-20%', horizon:'3-6 mois', desc:'Leader IA & GPU',    color:'#6366f1', montant: Math.round(capital*0.4) },
-        { ticker:'TSLA', name:'Tesla',    gain:'+8-15%',  horizon:'2-4 mois', desc:'Volatile potentiel', color:'#ec4899', montant: Math.round(capital*0.35) },
-        { ticker:'META', name:'Meta',     gain:'+8-12%',  horizon:'3-6 mois', desc:'Pub digitale',       color:'#3b82f6', montant: Math.round(capital*0.25) },
+        { ticker:'IWDA.L', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Socle obligatoire même en agressif', color:'#1a7f5a', montant: Math.round(capital*0.5) },
+        { ticker:'NVDA',   name:'Nvidia',             gain:'volatil ±30%',  horizon:'12+ mois', desc:'Leader IA — forte volatilité assumée', color:'#6366f1', montant: Math.round(capital*0.3) },
+        { ticker:'MC.PA',  name:'LVMH',               gain:'~8%/an hist.',  horizon:'12+ mois', desc:'Leader luxe mondial',                 color:'#f59e0b', montant: Math.round(capital*0.2) },
       ]
     : risk === 'equilibre' || risk === 'modere'
     ? [
-        { ticker:'AAPL',  name:'Apple',     gain:'+5-10%', horizon:'3-6 mois', desc:'Stable dividendes',  color:'#8b5cf6', montant: Math.round(capital*0.35) },
-        { ticker:'MSFT',  name:'Microsoft', gain:'+6-10%', horizon:'3-6 mois', desc:'Cloud IA solide',    color:'#0ea5e9', montant: Math.round(capital*0.35) },
-        { ticker:'MC.PA', name:'LVMH',      gain:'+5-10%', horizon:'4-8 mois', desc:'Luxe mondial',       color:'#f59e0b', montant: Math.round(capital*0.30) },
+        { ticker:'IWDA.L', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification mondiale',    color:'#1a7f5a', montant: Math.round(capital*0.6) },
+        { ticker:'MSFT',   name:'Microsoft',          gain:'~10%/an hist.', horizon:'12+ mois', desc:'Cloud & IA, bilan solide',    color:'#0ea5e9', montant: Math.round(capital*0.2) },
+        { ticker:'AI.PA',  name:'Air Liquide',        gain:'~6%/an hist.',  horizon:'12+ mois', desc:'Dividende croissant 40 ans',  color:'#10b981', montant: Math.round(capital*0.2) },
       ]
     : [
-        { ticker:'AI.PA',  name:'Air Liquide',   gain:'+4-8%', horizon:'6-12 mois', desc:'Défensif dividendes', color:'#10b981', montant: Math.round(capital*0.4) },
-        { ticker:'OR.PA',  name:'LOreal',        gain:'+4-7%', horizon:'6-12 mois', desc:'Consommation stable', color:'#f43f5e', montant: Math.round(capital*0.3) },
-        { ticker:'TTE.PA', name:'TotalEnergies', gain:'+5-9%', horizon:'4-8 mois',  desc:'Énergie dividende',   color:'#f97316', montant: Math.round(capital*0.3) },
+        { ticker:'IWDA.L', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification maximale',    color:'#1a7f5a', montant: Math.round(capital*0.5) },
+        { ticker:'AI.PA',  name:'Air Liquide',        gain:'~6%/an hist.',  horizon:'12+ mois', desc:'Défensif, dividendes stables', color:'#10b981', montant: Math.round(capital*0.25) },
+        { ticker:'TTE.PA', name:'TotalEnergies',      gain:'~5% div./an',   horizon:'12+ mois', desc:'Rendement du dividende',       color:'#f97316', montant: Math.round(capital*0.25) },
       ];
 }
 
@@ -2247,7 +2226,7 @@ async function obGeneratePlan() {
     const monthlyTrade = both ? Math.round(monthly * 0.3) : monthly;
     html += `
     <div style="background:#fff9e6;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #f59e0b">
-      <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:4px">⚡ PLAN COURT TERME — Complément de salaire</div>
+      <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:4px">💼 Idées complémentaires — moyen terme (12 mois+)</div>
       <div style="font-size:12px;color:#92400e;margin-bottom:12px">Capital : ${fmtK(capitalCourt)} · ${monthlyTrade}€/mois · Objectif +5 à 15%/an</div>
       <div id="ob-action-recs" style="text-align:center;padding:16px;color:#8e8e93">
         <div style="font-size:20px;margin-bottom:6px">🧠</div>
