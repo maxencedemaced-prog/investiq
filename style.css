@@ -1607,3 +1607,15 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
   /* "Depuis hier" : 2 colonnes au lieu de 4 sur mobile */
   #agent-hier > div > div[style*="repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; }
 }
+
+/* ═══ AIDE À LA DÉCISION — refonte ═══ */
+.d-intent-btn { background: var(--color-bg-subtle, #f7f7f8); border: 2px solid var(--color-border, #e5e5ea); color: var(--color-text-secondary, #3c3c43); }
+.d-intent-btn:hover { border-color: var(--color-primary, #16a34a); }
+.d-intent-btn.active { background: var(--color-primary, #16a34a); border-color: var(--color-primary, #16a34a); color: #fff; }
+[data-theme="dark"] .d-intent-btn { background: var(--color-surface-raised); border-color: var(--color-border); color: var(--color-text-secondary); }
+[data-theme="dark"] .d-intent-btn.active { background: var(--color-primary, #16a34a); border-color: var(--color-primary, #16a34a); color: #fff; }
+
+/* Dark mode : couleurs du résultat d'analyse (fonds pastel en dur dans le JS) */
+[data-theme="dark"] [style*="background:#e8f8f0"] { background: rgba(26,127,90,0.15) !important; }
+[data-theme="dark"] [style*="background:#fff0f0"] { background: rgba(204,47,38,0.13) !important; }
+[data-theme="dark"] [style*="background:#fff9e6"] { background: rgba(245,158,11,0.13) !important; }
