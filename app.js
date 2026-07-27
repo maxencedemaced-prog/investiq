@@ -214,7 +214,7 @@ function showValidatedChart() {
     } else {
       buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
     }
-    renderCourtTermePlan();
+    // renderCourtTermePlan(); // remplacé par le Plan du mois
   }, 100);
 
   // Plan pour l'objectif ACTIF
@@ -232,7 +232,8 @@ function showValidatedChart() {
       <div id="obj-monthly-plan"></div>
 
       <!-- Plan ETF de référence -->
-      <div style="font-size:12px;font-weight:700;color:var(--color-text,#1c1c1e);margin-bottom:8px">🏦 Répartition cible de référence</div>
+      <div style="font-size:12px;font-weight:700;color:var(--color-text,#1c1c1e);margin-bottom:4px">🎯 Ta répartition cible (vue d'ensemble)</div>
+      <div style="font-size:11px;color:var(--color-text-secondary,#71717a);margin-bottom:10px">La structure idéale de ton portefeuille sur le long terme. Le plan du mois ci-dessus te dit concrètement quoi acheter maintenant.</div>
       <div id="obj-etf-plan" style="margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:8px;padding:14px;color:#8e8e93;background:#f9f9f9;border-radius:12px">
           <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -630,7 +631,7 @@ function forceRefreshActions() {
   // Vide le cache de l'objectif actif
   try { localStorage.removeItem(CACHE_ACTIONS); } catch {}
   if (activeObjId) { try { localStorage.removeItem(CACHE_ACTIONS + '_' + activeObjId); } catch {} }
-  renderCourtTermePlan();
+  // renderCourtTermePlan(); // remplacé par le Plan du mois
 }
 
 function renderActionCard(a, i, isOld) {
