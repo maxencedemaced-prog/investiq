@@ -1217,12 +1217,14 @@ function startSmartRefresh() {
   }, 3 * 60 * 1000); // every 3 minutes
 }
 
-// Pause when tab hidden, resume when visible
+// Pause when tab hidden, resume when visible (économise CPU/mémoire → moins de risque que Chrome décharge l'onglet)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     startSmartRefresh();
+    if (typeof showPriceTicker === 'function') showPriceTicker(); // relance le ticker
   } else {
     if (priceInterval) clearInterval(priceInterval);
+    if (tickerInterval) { clearInterval(tickerInterval); tickerInterval = null; }
   }
 });
 
@@ -3873,7 +3875,10 @@ async function initApp(user) {
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
   await loadProfile(); await loadPositions(); await loadObjective();
   try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory:', e); }
-  nav('home');
+  // Restaure la page où l'utilisateur était (si l'onglet a été rechargé par Chrome)
+  let lastPage = 'home';
+  try { lastPage = sessionStorage.getItem('iq_last_page') || 'home'; } catch {}
+  nav(lastPage);
   // Si objectif chargé depuis Supabase, prêt à afficher au clic sur Objectif
   if (objChartCapital && objChartTarget) {
     try { localStorage.setItem('iq_validated_objective', JSON.stringify({
@@ -5479,6 +5484,8 @@ async function exportBilanPDF() {
 
 // ===== NAV =====
 function nav(page) {
+  // Mémorise la page pour la restaurer si Chrome recharge l'onglet (Memory Saver)
+  try { sessionStorage.setItem('iq_last_page', page); } catch {}
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const sec = document.getElementById('sec-'+page);
