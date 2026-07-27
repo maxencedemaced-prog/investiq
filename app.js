@@ -7839,7 +7839,20 @@ function updateDCA() {
 async function callClaude(prompt,sys){
   const system=sys||'Tu es un assistant financier pédagogue francophone pour investisseurs débutants. Réponds en français, clairement. Tu ne fournis pas de conseil financier réglementé.';
   try{
-    const res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,system})});
+    // Récupère le token de session Supabase (requis par l'API sécurisée)
+    let token = null;
+    try {
+      const { data } = await sb.auth.getSession();
+      token = data?.session?.access_token || null;
+    } catch {}
+    if (!token) {
+      return "🔒 Connecte-toi pour utiliser l'assistant IA. L'accès à l'IA est réservé aux comptes InvestIQ.";
+    }
+    const res=await fetch('/api/claude',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({prompt,system})
+    });
     const d=await res.json();
     return d.text||d.error||'Aucune réponse.';
   }catch{return'Erreur de connexion.';}
