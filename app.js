@@ -598,10 +598,8 @@ async function openActionFromObjectif(ticker, name, amount) {
   setTimeout(() => {
     const nameEl = document.getElementById('d-name');
     if (nameEl) nameEl.value = ticker;
-    const pct = Math.max(1, Math.min(50, Math.round(amount / (profile.bankroll || 1000) * 100)));
-    const pctEl = document.getElementById('d-pct');
-    if (pctEl) { pctEl.value = pct; updatePct(); }
-    setDecisionIntent('acheter');
+    updateDecisionAmount(Math.max(50, Math.round(amount)));
+    selectIntent('acheter');
     document.getElementById('sec-decision')?.scrollTo(0,0);
   }, 100);
 }
@@ -2156,10 +2154,8 @@ async function obOpenAction(ticker, name, amount) {
   setTimeout(() => {
     const nameEl = document.getElementById('d-name');
     if (nameEl) nameEl.value = ticker;
-    const pct = Math.max(1, Math.min(50, Math.round(amount / (profile.bankroll || 1000) * 100)));
-    const pctEl = document.getElementById('d-pct');
-    if (pctEl) { pctEl.value = pct; updatePct(); }
-    setDecisionIntent('acheter');
+    updateDecisionAmount(Math.max(50, Math.round(amount)));
+    selectIntent('acheter');
     // Lance l'analyse automatiquement
     setTimeout(() => analyseDecision(), 200);
   }, 150);
@@ -4482,51 +4478,97 @@ function _logoFallback(img, text, color) {
 }
 
 
-function selectIntent(btn, intent) {
-  document.querySelectorAll('#d-intents .d-intent-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  btn.setAttribute('data-intent', intent);
+// ═══ AIDE À LA DÉCISION — refonte ═══
+
+function selectIntent(intent) {
+  decisionIntention = intent;
+  ['garder','acheter','vendre'].forEach(i => {
+    const btn = document.getElementById('d-int-'+i);
+    if (btn) btn.classList.toggle('active', i === intent);
+  });
+  updateDecisionCTA();
 }
 
-function setDecisionAmount(val) {
-  const num = parseInt(val.replace(/[^0-9]/g,''));
-  const el = document.getElementById('d-amount-display');
-  if (el) el.textContent = num.toLocaleString('fr-FR') + ' €';
-  const slider = document.getElementById('d-amount-slider');
-  if (slider) slider.value = Math.min(num/100, 100);
-}
+const DECISION_AMOUNTS = [100, 250, 500, 1000, 2500, 5000];
 
-function updateDecisionAmount(val) {
-  const amount = Math.round(val * 50);
-  const el = document.getElementById('d-amount-display');
-  if (el) el.textContent = amount.toLocaleString('fr-FR') + ' €';
-}
-
-function initDecisionPage() {
-  // Afficher les positions rapides
-  const el = document.getElementById('d-quick-pos');
+function renderAmountChips() {
+  const el = document.getElementById('d-amount-chips');
   if (!el) return;
-  const dedupMap = {};
-  positions.forEach(p => { const k = p.name; if (!dedupMap[k]) dedupMap[k] = p; });
-  const dedup = Object.values(dedupMap).slice(0, 8);
-  el.innerHTML = dedup.map(p => {
-    const pnl = ((p.price - p.pru)/p.pru*100).toFixed(1);
-    const color = parseFloat(pnl) >= 0 ? '#3fb950' : '#f87171';
-    return `<button onclick="prefillDecision('${p.name}','${p.type||'Action'}')"
-      style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;cursor:pointer;transition:all 0.15s;font-family:inherit"
-      onmouseover="this.style.borderColor='${color}'" onmouseout="this.style.borderColor='var(--color-border)'">
-      ${getCompanyLogo(p.name, p.name, 24, 7)}
-      <div style="text-align:left">
-        <div style="font-size:12px;font-weight:700;color:var(--color-text)">${p.name}</div>
-        <div style="font-size:10px;color:${color}">${parseFloat(pnl)>=0?'+':''}${pnl}%</div>
-      </div>
+  const current = parseInt(document.getElementById('d-amount-display')?.dataset.amount || 500);
+  el.innerHTML = DECISION_AMOUNTS.map(m => {
+    const active = m === current;
+    return `<button onclick="updateDecisionAmount(${m})" data-chip="${m}"
+      style="padding:8px 15px;background:${active?'var(--color-primary,#16a34a)':'var(--color-bg-subtle,#f5f5f5)'};border:1px solid ${active?'var(--color-primary,#16a34a)':'var(--color-border)'};border-radius:10px;font-size:13px;font-weight:700;color:${active?'#fff':'var(--color-text-secondary)'};cursor:pointer;transition:all 0.15s">
+      ${m.toLocaleString('fr-FR')} €
     </button>`;
   }).join('');
 }
 
-function prefillDecision(ticker, type) {
+function updateDecisionAmount(euros) {
+  euros = Math.max(50, Math.min(5000, Math.round(euros / 50) * 50));
+  const display = document.getElementById('d-amount-display');
+  if (display) { display.textContent = euros.toLocaleString('fr-FR') + ' €'; display.dataset.amount = euros; }
+  const slider = document.getElementById('d-amount-slider');
+  if (slider) slider.value = euros;
+  // % de la bankroll si connue
+  const pctEl = document.getElementById('d-amount-pct');
+  if (pctEl) {
+    const bk = profile.bankroll || 0;
+    pctEl.textContent = bk > 0 ? `= ${(euros / bk * 100).toFixed(1)}% de ta bankroll` : '';
+  }
+  renderAmountChips();
+  updateDecisionCTA();
+}
+
+function updateDecisionCTA() {
+  const cta = document.getElementById('d-cta');
+  if (!cta) return;
+  const name = document.getElementById('d-name')?.value.trim();
+  const amount = document.getElementById('d-amount-display')?.dataset.amount || 500;
+  const intentLbl = { garder: 'Que faire ?', acheter: 'Acheter', vendre: 'Vendre' }[decisionIntention || 'garder'];
+  if (name) {
+    cta.innerHTML = `🤖 Analyser <strong style="margin:0 4px">${name}</strong> · ${intentLbl} · ${parseInt(amount).toLocaleString('fr-FR')} €`;
+    cta.style.opacity = '1';
+  } else {
+    cta.innerHTML = `🤖 Obtenir mon analyse personnalisée`;
+    cta.style.opacity = '0.8';
+  }
+}
+
+function initDecisionPage() {
+  // Positions rapides (dédupliquées)
+  const el = document.getElementById('d-quick-pos');
+  if (el) {
+    const dedupMap = {};
+    positions.forEach(p => { const k = p.name; if (!dedupMap[k]) dedupMap[k] = p; });
+    const dedup = Object.values(dedupMap).slice(0, 8);
+    el.innerHTML = dedup.map(p => {
+      const pnl = p.pru > 0 ? ((p.price - p.pru)/p.pru*100).toFixed(1) : '0.0';
+      const color = parseFloat(pnl) >= 0 ? '#3fb950' : '#f87171';
+      return `<button onclick="prefillDecision('${p.name.replace(/'/g,"\\'")}')"
+        style="display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--color-bg-subtle,#f7f7f8);border:1px solid var(--color-border);border-radius:10px;cursor:pointer;transition:all 0.15s;font-family:inherit"
+        onmouseover="this.style.borderColor='${color}'" onmouseout="this.style.borderColor='var(--color-border)'">
+        ${getCompanyLogo(p.name, p.name, 22, 6)}
+        <div style="text-align:left">
+          <div style="font-size:12px;font-weight:700;color:var(--color-text)">${p.name}</div>
+          <div style="font-size:10px;font-weight:600;color:${color}">${parseFloat(pnl)>=0?'+':''}${pnl}%</div>
+        </div>
+      </button>`;
+    }).join('');
+  }
+  renderAmountChips();
+  updateDecisionAmount(parseInt(document.getElementById('d-amount-display')?.dataset.amount || 500));
+  updateDecisionCTA();
+}
+
+function prefillDecision(ticker) {
   const input = document.getElementById('d-name');
-  if (input) { input.value = ticker; input.dispatchEvent(new Event('input')); }
+  if (input) { input.value = ticker; }
+  const drop = document.getElementById('d-ac-drop');
+  if (drop) drop.style.display = 'none';
+  updateDecisionCTA();
+  // Scroll doux vers l'intention
+  document.getElementById('d-intents')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 
@@ -5530,7 +5572,7 @@ function nav(page) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);},
+}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
@@ -6353,12 +6395,8 @@ function openDecisionFromPos(name, action) {
   setTimeout(() => {
     const nameEl = document.getElementById('d-name');
     if (nameEl) nameEl.value = name;
-    const hEl = document.getElementById('d-horizon');
-    if (hEl) hEl.value = profile.horizon;
-    const rEl = document.getElementById('d-risk');
-    if (rEl) rEl.value = profile.risk;
-    updatePct();
-    setDecisionIntent(action);
+    updateDecisionAmount(parseInt(document.getElementById('d-amount-display')?.dataset.amount || 500));
+    selectIntent(action);
     document.getElementById('sec-decision')?.scrollTo(0,0);
   }, 50);
 }
@@ -7458,44 +7496,30 @@ function toggleNews(i) {
 
 // ===== DECISION =====
 function openDecision(ticker,signal){
-  const pct=signal==='éviter'?0:suggestedPct(signal,profile.risk,profile.horizon);
-  const amt=Math.round(profile.bankroll*pct/100);
-  // Vider l'ancienne analyse à chaque nouveau ticker
+  const pct = signal==='éviter' ? 0 : suggestedPct(signal,profile.risk,profile.horizon);
+  const amt = Math.max(50, Math.round((profile.bankroll||5000)*pct/100));
   document.getElementById('d-result').innerHTML = '';
-  document.getElementById('d-name').value=ticker;
-  document.getElementById('d-horizon').value=profile.horizon;
-  document.getElementById('d-risk').value=profile.risk;
-  document.getElementById('d-pct').value=pct;
-  document.getElementById('d-pct-num').textContent=pct;
-  document.getElementById('d-amount').value=amt;
-  document.getElementById('d-pct-lbl').textContent=`= ${amt.toLocaleString('fr-FR')} €`;
-  const notice=document.getElementById('prefill-notice');
-  notice.style.display='block';
-  notice.textContent=`✓ Pré-rempli — ${ticker} · ${pct}% bankroll (${amt.toLocaleString('fr-FR')} €)`;
-  nav('decision');document.getElementById('nav-decision').classList.add('active');
+  nav('decision');
+  setTimeout(() => {
+    const nameEl = document.getElementById('d-name');
+    if (nameEl) nameEl.value = ticker;
+    updateDecisionAmount(amt);
+    showToast(`✓ Pré-rempli — ${ticker} · ${amt.toLocaleString('fr-FR')} €`);
+  }, 150);
 }
-function updatePct(){
-  const pct=parseInt(document.getElementById('d-pct').value);
-  const amt=Math.round(profile.bankroll*pct/100);
-  document.getElementById('d-pct-num').textContent=pct;
-  document.getElementById('d-amount').value=amt;
-  document.getElementById('d-pct-lbl').textContent=`= ${amt.toLocaleString('fr-FR')} €`;
-}
-function setDecisionIntent(intent) {
-  decisionIntention = intent;
-  ['garder','acheter','vendre'].forEach(i => {
-    const btn = document.getElementById('d-int-'+i);
-    if (btn) btn.classList.toggle('active', i === intent);
-  });
-}
+function setDecisionIntent(intent) { selectIntent(intent); } // alias compat
 
 async function analyseDecision() {
   const name = document.getElementById('d-name').value.trim();
-  const pct  = parseInt(document.getElementById('d-pct').value) || 10;
-  const amt  = Math.round((profile.bankroll || 5000) * pct / 100);
-  document.getElementById('d-amount').value = amt;
+  const amt  = parseInt(document.getElementById('d-amount-display')?.dataset.amount || 500);
+  const bk   = profile.bankroll || 5000;
+  const pct  = Math.round(amt / bk * 100) || 1;
 
-  if (!name) { showToast('⚠ Indique un actif'); return; }
+  if (!name) {
+    showToast('⚠ Choisis d\'abord un actif (étape 1)');
+    document.getElementById('d-name')?.focus();
+    return;
+  }
 
   // Contexte position existante
   const pos = positions.find(p => p.name.toLowerCase() === name.toLowerCase());
