@@ -12,8 +12,12 @@
   ],
   "crons": [
     {
-      "path": "/api/push-send",
-      "schedule": "0 8 * * *"
+      "path": "/api/push-send?mode=briefing",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/push-send?mode=alerts",
+      "schedule": "30 8,11,14,16 * * 1-5"
     }
   ],
   "rewrites": [
