@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260727103801">
+  <link rel="stylesheet" href="style.css?v=20260727104836">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1272,89 +1272,82 @@ window.addEventListener('load', function() {
   <div class="page-header">
     <div>
       <h1>Aide à la décision</h1>
-      <p class="page-sub">Analyse IA personnalisée pour chaque actif de ton portefeuille</p>
+      <p class="page-sub">Dis-moi ce que tu envisages, l'IA te donne un avis clair et chiffré.</p>
     </div>
   </div>
 
   <!-- FORM PRINCIPAL -->
   <div id="d-step1">
-    <!-- Recherche actif -->
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <div style="width:38px;height:38px;background:rgba(245,158,11,0.12);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px">🔍</div>
+
+    <!-- ÉTAPE 1 · ACTIF -->
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;padding:20px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:28px;height:28px;background:var(--color-primary,#16a34a);color:#fff;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">1</div>
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--color-text);letter-spacing:-0.03em">Quel actif veux-tu analyser ?</div>
-          <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Action, ETF, crypto ou indice</div>
+          <div style="font-size:15px;font-weight:800;color:var(--color-text);letter-spacing:-0.02em">Quel actif ?</div>
+          <div style="font-size:12px;color:var(--color-text-secondary)">Cherche un titre ou clique sur une de tes positions</div>
         </div>
       </div>
       <div class="ac-wrap">
         <div class="ac-box">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="d-name" placeholder="Ex: IWDA, LVMH, Apple, Bitcoin..." autocomplete="off" oninput="acSearch(this.value,'d-ac-drop','d-ac-sel')">
+          <input type="text" id="d-name" placeholder="Ex: IWDA, LVMH, Apple, Bitcoin..." autocomplete="off" oninput="acSearch(this.value,'d-ac-drop','d-ac-sel');updateDecisionCTA()">
         </div>
         <div id="d-ac-drop" class="ac-drop" style="display:none"></div>
       </div>
       <div id="d-ac-sel"></div>
-
-      <!-- Positions rapides -->
-      <div style="margin-top:14px">
-        <div style="font-size:11px;font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Mes positions</div>
-        <div id="d-quick-pos" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-      </div>
+      <div id="d-quick-pos" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"></div>
     </div>
 
-    <!-- Intention -->
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <div style="width:38px;height:38px;background:rgba(99,102,241,0.12);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px">🎯</div>
-        <div style="font-size:15px;font-weight:700;color:var(--color-text);letter-spacing:-0.03em">Qu'est-ce que tu veux faire ?</div>
+    <!-- ÉTAPE 2 · INTENTION -->
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;padding:20px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:28px;height:28px;background:var(--color-primary,#16a34a);color:#fff;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">2</div>
+        <div style="font-size:15px;font-weight:800;color:var(--color-text);letter-spacing:-0.02em">Ton intention</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="d-intents">
-        <button class="d-intent-btn active" onclick="selectIntent(this,'neutre')" data-intent="neutre" style="padding:14px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:600">
-          <span style="font-size:24px">🤔</span>
-          <span>Je sais pas / Que faire ?</span>
+        <button class="d-intent-btn active" id="d-int-garder" onclick="selectIntent('garder')" style="padding:14px 10px;border-radius:13px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12.5px;font-weight:700;cursor:pointer">
+          <span style="font-size:22px">🤔</span>
+          <span>Que faire ?</span>
         </button>
-        <button class="d-intent-btn" onclick="selectIntent(this,'acheter')" data-intent="acheter" style="padding:14px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:600">
-          <span style="font-size:24px">📈</span>
+        <button class="d-intent-btn" id="d-int-acheter" onclick="selectIntent('acheter')" style="padding:14px 10px;border-radius:13px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12.5px;font-weight:700;cursor:pointer">
+          <span style="font-size:22px">📈</span>
           <span>Acheter / Renforcer</span>
         </button>
-        <button class="d-intent-btn" onclick="selectIntent(this,'vendre')" data-intent="vendre" style="padding:14px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:600">
-          <span style="font-size:24px">📉</span>
+        <button class="d-intent-btn" id="d-int-vendre" onclick="selectIntent('vendre')" style="padding:14px 10px;border-radius:13px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12.5px;font-weight:700;cursor:pointer">
+          <span style="font-size:22px">📉</span>
           <span>Vendre / Réduire</span>
         </button>
       </div>
     </div>
 
-    <!-- Montant -->
-    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:24px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <div style="width:38px;height:38px;background:rgba(63,185,80,0.12);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px">💰</div>
-        <div style="font-size:15px;font-weight:700;color:var(--color-text);letter-spacing:-0.03em">Montant envisagé</div>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-        ${['100€','250€','500€','1 000€','2 500€','5 000€'].map(m=>`<button onclick="setDecisionAmount('${m}')" style="padding:8px 16px;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='#3fb950';this.style.color='#3fb950'" onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-secondary)'">${m}</button>`).join('')}
-      </div>
-      <div style="display:flex;align-items:center;gap:12px">
-        <input type="range" min="0" max="100" step="5" value="10" id="d-amount-slider" class="slider" oninput="updateDecisionAmount(this.value)" style="flex:1">
-        <div style="background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:10px 14px;min-width:90px;text-align:center">
-          <div id="d-amount-display" style="font-size:16px;font-weight:800;color:var(--color-text)">500 €</div>
-          <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:2px">% · montant</div>
+    <!-- ÉTAPE 3 · MONTANT -->
+    <div id="d-amount-card" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:18px;padding:20px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:28px;height:28px;background:var(--color-primary,#16a34a);color:#fff;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">3</div>
+          <div style="font-size:15px;font-weight:800;color:var(--color-text);letter-spacing:-0.02em">Montant envisagé</div>
+        </div>
+        <div style="text-align:right">
+          <div id="d-amount-display" data-amount="500" style="font-size:20px;font-weight:900;color:var(--color-text);letter-spacing:-0.03em">500 €</div>
+          <div id="d-amount-pct" style="font-size:11px;color:var(--color-text-tertiary)"></div>
         </div>
       </div>
+      <div id="d-amount-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <input type="range" min="50" max="5000" step="50" value="500" id="d-amount-slider" class="slider" oninput="updateDecisionAmount(parseInt(this.value))" style="width:100%">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-tertiary);margin-top:6px">
-        <span>Prudent 1%</span><span>Équilibré 15%</span><span>Agressif 50%</span>
+        <span>50 €</span><span>2 500 €</span><span>5 000 €</span>
       </div>
     </div>
 
     <!-- CTA -->
-    <button onclick="runDecision()" style="width:100%;padding:16px;background:var(--color-primary);color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:-0.02em;transition:opacity 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.2)">
-      <span style="font-size:20px">🤖</span>
-      Obtenir mon analyse personnalisée
+    <button id="d-cta" onclick="analyseDecision()" style="width:100%;padding:16px;background:var(--color-primary,#16a34a);color:#fff;border:none;border-radius:16px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:-0.02em;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+      🤖 Obtenir mon analyse personnalisée
     </button>
   </div>
 
   <!-- RÉSULTAT -->
-  <div id="d-result" style="display:none"></div>
+  <div id="d-result" style="display:block;margin-top:14px"></div>
 </section>
 
     <!-- DCA -->
@@ -1705,7 +1698,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260727103801"></script>
+<script src="app.js?v=20260727104836"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
