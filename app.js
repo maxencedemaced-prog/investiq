@@ -6290,7 +6290,7 @@ function renderPortfolio() {
       const sigLabel = sig?.signal==='BUY'?'Renforcer':sig?.signal==='SELL'?'Vendre':'Garder';
       const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
       return `
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
+      <div id="row-${p.id}" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
         onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'"
         onclick="togglePos('${p.id}')">
         <!-- Actif -->
@@ -6464,6 +6464,44 @@ Réponds UNIQUEMENT en JSON valide sans markdown :
   saveSignalsCache();
   const sigEl = document.getElementById('sig-'+p.id);
   if (sigEl && sigEl.style.display === 'block') renderPortfolio();
+}
+
+// Déplie un panneau d'actions sous la ligne de position cliquée
+function togglePos(id) {
+  const existing = document.getElementById('posdetail-' + id);
+  if (existing) { existing.remove(); return; }
+  // Fermer tout autre panneau ouvert
+  document.querySelectorAll('[id^="posdetail-"]').forEach(el => el.remove());
+
+  const row = document.getElementById('row-' + id);
+  const p = positions.find(x => String(x.id) === String(id));
+  if (!row || !p) return;
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const bg = isDark ? 'rgba(255,255,255,0.02)' : '#fafafa';
+  const bord = isDark ? 'var(--color-border)' : '#eee';
+  const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+  const val = p.qty * p.price;
+  const pnl = p.pru > 0 ? (p.price - p.pru) / p.pru * 100 : 0;
+  const pnlEur = val - p.qty * p.pru;
+  const c = pnl >= 0 ? '#3fb950' : '#f87171';
+
+  const panel = document.createElement('div');
+  panel.id = 'posdetail-' + id;
+  panel.style.cssText = `background:${bg};border-bottom:1px solid ${bord};padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;animation:fadeIn 0.15s ease`;
+  panel.innerHTML = `
+    <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:${sub}">
+      <span>PRU <strong style="color:var(--color-text)">${fmt(p.pru)} €</strong></span>
+      <span>Prix <strong style="color:var(--color-text)">${fmt(p.price)} €</strong></span>
+      <span>P&L <strong style="color:${c}">${pnlEur>=0?'+':''}${fmtI(pnlEur)} € (${pnl>=0?'+':''}${pnl.toFixed(1)}%)</strong></span>
+      ${p.alert_price ? `<span>🔔 Alerte <strong style="color:var(--color-text)">${fmt(p.alert_price)} €</strong></span>` : ''}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="event.stopPropagation();openDecisionFromPos('${p.name.replace(/'/g,"\\'")}', 'garder')" style="padding:7px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser</button>
+      <button onclick="event.stopPropagation();sq('Que penses-tu de ma position ${p.name.replace(/'/g,"\\'")} ?');nav('ai')" style="padding:7px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;color:#16a34a;cursor:pointer">💬 Demander à l'IA</button>
+      <button onclick="event.stopPropagation();openEditPos('${p.id}')" style="padding:7px 13px;background:var(--color-bg-subtle,#f5f5f5);border:1px solid var(--color-border,#e4e4e7);border-radius:9px;font-size:12px;font-weight:700;color:var(--color-text-secondary);cursor:pointer">✏️ Modifier</button>
+    </div>`;
+  row.after(panel);
 }
 
 function togglePosSignal(id) {
