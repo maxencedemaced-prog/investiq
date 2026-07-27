@@ -8494,15 +8494,35 @@ function renderAgentDashboard() {
   }
 
   // ── RECOMMANDATIONS IA ──
-  // Collecte pour l'historique de fiabilité (enregistrées puis évaluées à J+7)
+  // Source unique de calcul : formule de conviction non-saturante + raisons cohérentes
   const _recosToTrack = topByWeight.slice(0,3).map(p => {
     const pPct = tv>0 ? p.qty*p.price/tv*100 : 0;
     const pPnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
-    const verb = pPct>35?'reduire':pPnl>8?'renforcer':'surveiller';
-    const conf = Math.min(95, Math.round(60 + Math.abs(pPnl)*2 + (pPct>35?15:0)));
+    let verb, reason;
+    if (pPct > 35) {
+      verb = 'reduire';
+      reason = `poids de ${pPct.toFixed(0)}% — au-dessus du seuil de concentration conseillé`;
+    } else if (pPnl < -15) {
+      verb = 'surveiller';
+      reason = `moins-value de ${pPnl.toFixed(1)}% — analyse recommandée avant tout arbitrage`;
+    } else if (pPnl > 8) {
+      verb = 'renforcer';
+      reason = `momentum positif (+${pPnl.toFixed(1)}%) sur position de qualité`;
+    } else {
+      verb = 'conserver';
+      reason = `position équilibrée — pas d'action requise`;
+    }
+    // Conviction : base 50, facteurs plafonnés individuellement, cap global 92, plancher 38
+    // "surveiller" = incertitude assumée → conviction volontairement plus basse
+    let conf = 50
+      + Math.min(Math.abs(pPnl), 25) * 0.9          // le P&L compte, mais plafonné
+      + (pPct > 35 ? 12 : 0)                        // concentration = signal fort
+      + (verb === 'surveiller' ? -18 : 0)
+      + (verb === 'conserver' ? -8 : 0);
+    conf = Math.round(Math.max(38, Math.min(92, conf)));
     return { ticker: p.ticker||p.name, name: p.name, action: verb, price: p.price,
-             weightPct: Math.round(pPct*10)/10, pnlPct: Math.round(pPnl*10)/10, confidence: conf,
-             reason: verb==='reduire'?'concentration au-dessus du seuil':verb==='renforcer'?'momentum positif':'consolidation' };
+             weightPct: Math.round(pPct*10)/10, pnlPct: Math.round(pPnl*10)/10,
+             confidence: conf, reason };
   });
   saveAIRecommendations(_recosToTrack);
 
@@ -8518,20 +8538,17 @@ function renderAgentDashboard() {
         <button onclick="sq('Donne-moi tes 3 meilleures recommandations actuelles')" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:8px;padding:5px 11px;font-size:10px;font-weight:700;cursor:pointer">🤖 Mon Conseil par IA →</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:7px">
-        ${topByWeight.slice(0,3).map((p,i) => {
-          const pPct = tv>0 ? p.qty*p.price/tv*100 : 0;
-          const pPnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
-          const c = pPct>35?'#d97706':pPnl>=0?'#16a34a':'#dc2626';
-          const verb = pPct>35?'Réduire':pPnl>8?'Renforcer':'Surveiller';
-          const conf = Math.min(95, 60 + Math.abs(pPnl)*2 + (pPct>35?15:0));
-          return `<div onclick="sq('Explique ta recommandation ${verb} pour ${p.name}')" style="cursor:pointer;padding:10px 12px;background:${bg};border-radius:11px;border:1px solid ${bord};border-left:3px solid ${c}">
+        ${_recosToTrack.map((r,i) => {
+          const verbLabel = {reduire:'Réduire', renforcer:'Renforcer', surveiller:'Surveiller', conserver:'Conserver'}[r.action];
+          const c = r.action==='reduire'?'#d97706':r.action==='renforcer'?'#16a34a':r.action==='surveiller'?'#dc2626':'#6366f1';
+          return `<div onclick="sq('Explique ta recommandation ${verbLabel} pour ${r.name}')" style="cursor:pointer;padding:10px 12px;background:${bg};border-radius:11px;border:1px solid ${bord};border-left:3px solid ${c}">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-              <div style="font-size:12px;font-weight:800;color:${txt}">${i+1}. ${verb} ${p.name}</div>
-              <span style="font-size:11px;font-weight:800;color:${c}">${conf.toFixed(0)}%</span>
+              <div style="font-size:12px;font-weight:800;color:${txt}">${i+1}. ${verbLabel} ${r.name}</div>
+              <span style="font-size:11px;font-weight:800;color:${c}">${r.confidence}%</span>
             </div>
-            <div style="font-size:10px;color:${sub};margin-bottom:6px">Position ${pPct.toFixed(0)}% · perf ${pPnl>=0?'+':''}${pPnl.toFixed(1)}% — ${verb==='Réduire'?'concentration au-dessus du seuil conseillé':verb==='Renforcer'?'momentum positif sur profil solide':"consolidation en cours, pas d'action requise"}</div>
+            <div style="font-size:10px;color:${sub};margin-bottom:6px">Position ${r.weightPct.toFixed(0)}% · perf ${r.pnlPct>=0?'+':''}${r.pnlPct.toFixed(1)}% — ${r.reason}</div>
             <div style="background:${bord};border-radius:99px;height:3px;overflow:hidden">
-              <div style="height:100%;background:${c};width:${conf}%;border-radius:99px"></div>
+              <div style="height:100%;background:${c};width:${r.confidence}%;border-radius:99px"></div>
             </div>
           </div>`;
         }).join('')}
@@ -8616,7 +8633,7 @@ function renderAgentDashboard() {
           : rPnl < -10
             ? `moins-value importante — analyse avant tout arbitrage`
             : `position stable — surveille les prochains mouvements`;
-      const rConviction = Math.min(95, Math.round(55 + Math.abs(rPnl) + (rPct > 35 ? 15 : 0)));
+      const rConviction = Math.round(Math.max(38, Math.min(90, 50 + Math.min(Math.abs(rPnl), 25)*0.8 + (rPct > 35 ? 12 : 0))));
       return `
     <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
       <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">💰 Opportunité principale</div>
