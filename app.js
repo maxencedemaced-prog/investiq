@@ -8072,6 +8072,181 @@ function renderRecoHistory() {
 }
 
 
+// ═══════════════════════════════════════════════════════════
+//  ⭐ QUE FERAIT INVESTIQ ? — Fonctionnalité signature
+//  L'IA prend position sur chaque ligne du portefeuille.
+//  Généré par Claude (pas des règles), cache 24h, décisions
+//  enregistrées dans le tracking de fiabilité (J+7).
+// ═══════════════════════════════════════════════════════════
+
+const VERDICT_CACHE_KEY = 'iq_verdict';
+const VERDICT_TTL = 24 * 3600 * 1000; // 24h
+
+function getCachedVerdict() {
+  try {
+    const c = JSON.parse(localStorage.getItem(VERDICT_CACHE_KEY) || 'null');
+    return c && Date.now() - c.ts < VERDICT_TTL ? c : null;
+  } catch { return null; }
+}
+
+async function generateInvestIQVerdict(force = false) {
+  const el = document.getElementById('agent-verdict');
+  if (!el || !positions.length) { if (el) el.innerHTML = ''; return; }
+
+  // Cache 24h (sauf actualisation manuelle)
+  const cached = getCachedVerdict();
+  if (cached && !force) { renderVerdict(cached.data, cached.ts); return; }
+
+  renderVerdictLoading();
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+  // Regrouper par nom (les doublons multi-plateformes) et garder les 8 plus grosses lignes
+  const grouped = {};
+  positions.forEach(p => {
+    if (!grouped[p.name]) grouped[p.name] = { name: p.name, ticker: p.ticker||p.name, qty: 0, cost: 0, price: p.price, type: p.type };
+    grouped[p.name].qty += p.qty;
+    grouped[p.name].cost += p.qty * p.pru;
+  });
+  const lines = Object.values(grouped)
+    .map(g => ({ ...g, val: g.qty*g.price, pnlPct: g.cost>0 ? (g.qty*g.price-g.cost)/g.cost*100 : 0, weightPct: tv>0 ? g.qty*g.price/tv*100 : 0 }))
+    .sort((a,b)=>b.val-a.val).slice(0,8);
+
+  const prompt = `Voici le portefeuille réel de l'utilisateur (${fmtK(tv)} au total, profil ${profile.risk||'équilibré'}, horizon ${profile.horizon||'long terme'}) :
+${lines.map(l => `- ${l.name} (${l.ticker}, ${l.type||'?'}) : ${l.weightPct.toFixed(0)}% du portefeuille, P&L ${l.pnlPct>=0?'+':''}${l.pnlPct.toFixed(1)}%`).join('\n')}
+${objChartTarget > 0 ? `Objectif : ${fmtK(objChartTarget)} — ${Math.min(tv/objChartTarget*100,100).toFixed(0)}% atteint.` : ''}
+
+EXERCICE "QUE FERAIT INVESTIQ ?" : si ce portefeuille était le tien, que ferais-tu AUJOURD'HUI ? Prends position clairement sur chaque ligne. Sois sélectif : la plupart des lignes méritent "conserver" — ne recommande renforcer/reduire/vendre que si c'est vraiment justifié.
+
+Réponds UNIQUEMENT en JSON valide, sans backticks :
+{
+  "synthese": "1-2 phrases au ton chaleureux et direct (tutoiement) résumant ta lecture du portefeuille",
+  "decisions": [
+    {"ticker":"IWDA.L","name":"IWDA","action":"conserver|renforcer|reduire|vendre","raison":"max 10 mots, concret et chiffré"}
+  ],
+  "achat_semaine": "phrase courte : achèterais-tu quelque chose cette semaine ? quoi et pourquoi, ou pourquoi rien",
+  "impacts": {"risque": -4, "diversification": 6, "score": 5}
+}
+Les impacts sont tes estimations en points de % si l'utilisateur suivait toutes tes décisions (risque négatif = risque réduit).`;
+
+  try {
+    const raw = await callClaude(prompt, `Tu es InvestIQ, copilote financier IA. Tu assumes des positions claires — c'est ta signature.\n${AI_PERSONA}\nRéponds UNIQUEMENT en JSON valide sans backticks ni texte autour.`);
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
+    if (!data.decisions?.length) throw new Error('empty');
+
+    // Compléter les prix pour le tracking
+    data.decisions.forEach(d => {
+      const l = lines.find(x => x.ticker === d.ticker || x.name === d.name);
+      d._price = l?.price; d._weightPct = l?.weightPct; d._pnlPct = l?.pnlPct;
+    });
+
+    const ts = Date.now();
+    try { localStorage.setItem(VERDICT_CACHE_KEY, JSON.stringify({ data, ts })); } catch {}
+
+    // Enregistrer dans le tracking de fiabilité (évalué à J+7)
+    saveAIRecommendations(data.decisions.filter(d => d._price).map(d => ({
+      ticker: d.ticker, name: d.name,
+      action: d.action === 'vendre' ? 'reduire' : d.action,
+      price: d._price, weightPct: d._weightPct, pnlPct: d._pnlPct,
+      confidence: null, reason: '[Verdict] ' + (d.raison||'')
+    })));
+
+    renderVerdict(data, ts);
+  } catch(e) {
+    console.warn('verdict:', e);
+    renderVerdictError();
+  }
+}
+
+function renderVerdictLoading() {
+  const el = document.getElementById('agent-verdict');
+  if (!el) return;
+  el.innerHTML = `
+  <div style="background:linear-gradient(135deg,#0c1220,#131a2e);border:1px solid rgba(99,102,241,0.25);border-radius:18px;padding:18px 20px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      <span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:600">InvestIQ analyse ton portefeuille et prend position...</span>
+    </div>
+  </div>`;
+}
+
+function renderVerdictError() {
+  const el = document.getElementById('agent-verdict');
+  if (!el) return;
+  el.innerHTML = `
+  <div style="background:linear-gradient(135deg,#0c1220,#131a2e);border:1px solid rgba(99,102,241,0.25);border-radius:18px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <span style="font-size:12px;color:rgba(255,255,255,0.5)">Le verdict InvestIQ n'a pas pu être généré.</span>
+    <button onclick="generateInvestIQVerdict(true)" style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;font-size:11px;font-weight:700;padding:7px 13px;border-radius:9px;cursor:pointer">Réessayer</button>
+  </div>`;
+}
+
+function renderVerdict(data, ts) {
+  const el = document.getElementById('agent-verdict');
+  if (!el) return;
+  const ACTIONS = {
+    conserver: { icon:'✔', color:'#4ade80', label:'Je conserverais' },
+    renforcer: { icon:'▲', color:'#22d3ee', label:'Je renforcerais' },
+    reduire:   { icon:'◆', color:'#fbbf24', label:'Je réduirais' },
+    vendre:    { icon:'✘', color:'#f87171', label:'Je vendrais' },
+  };
+  const when = new Date(ts).toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) + ' ' +
+               new Date(ts).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  const imp = data.impacts || {};
+  const impChip = (label, val, invert) => {
+    if (val === undefined || val === null) return '';
+    const good = invert ? val < 0 : val > 0;
+    const c = val === 0 ? 'rgba(255,255,255,0.4)' : good ? '#4ade80' : '#f87171';
+    return `<div style="text-align:center;padding:8px 6px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
+      <div style="font-size:15px;font-weight:900;color:${c}">${val>0?'+':''}${val}%</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:1px">${label}</div>
+    </div>`;
+  };
+
+  el.innerHTML = `
+  <div style="background:linear-gradient(135deg,#0c1220,#131a2e);border:1px solid rgba(99,102,241,0.3);border-radius:18px;padding:18px 20px;margin-bottom:10px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,rgba(99,102,241,0.15),transparent 70%);pointer-events:none"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:relative">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:7px;letter-spacing:0.03em">⭐ SIGNATURE</span>
+        <span style="font-size:14px;font-weight:900;color:#fff">Que ferait InvestIQ ?</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:9px;color:rgba(255,255,255,0.3)">${when}</span>
+        <button onclick="generateInvestIQVerdict(true)" title="Actualiser" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.6;margin-bottom:12px;position:relative">${data.synthese||''}</div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;position:relative">
+      ${(data.decisions||[]).map(d => {
+        const a = ACTIONS[d.action] || ACTIONS.conserver;
+        return `<div onclick="sq('Explique pourquoi tu ${a.label.toLowerCase().replace('je ','')} ${d.name} aujourd\\'hui')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 11px;background:rgba(255,255,255,0.04);border-radius:10px;border-left:3px solid ${a.color}">
+          <span style="font-size:13px;font-weight:900;color:${a.color};width:16px;text-align:center">${a.icon}</span>
+          <span style="font-size:12px;font-weight:800;color:#fff;flex-shrink:0">${a.label} ${d.name}</span>
+          <span style="font-size:10px;color:rgba(255,255,255,0.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">— ${d.raison||''}</span>
+        </div>`;
+      }).join('')}
+    </div>
+
+    ${data.achat_semaine ? `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 11px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:10px;margin-bottom:12px;position:relative">
+      <span style="font-size:12px">🛒</span>
+      <span style="font-size:11px;color:rgba(255,255,255,0.7);line-height:1.5">${data.achat_semaine}</span>
+    </div>` : ''}
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;position:relative">
+      ${impChip('Risque', imp.risque, true)}
+      ${impChip('Diversification', imp.diversification, false)}
+      ${impChip('Score', imp.score, false)}
+    </div>
+
+    <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:10px;position:relative">Opinion de l'IA suivie et évaluée à J+7 dans l'historique — pas un conseil financier réglementé.</div>
+  </div>`;
+}
+
+
 // ===== AGENT IA =====
 function sq(q) {
   if (aiBusy) { showToast('⏳ Attends la réponse en cours...'); return; }
@@ -8340,6 +8515,8 @@ function initAgent() {
       renderRecoHistory();
     } catch(e) { console.warn('recoHistory:', e); }
   })();
+  // ⭐ Verdict signature "Que ferait InvestIQ ?" (cache 24h)
+  try { generateInvestIQVerdict(); } catch(e) { console.warn('verdict:', e); }
   try { buildAgentContext(); } catch(e) { console.error('buildAgentContext:', e); }
   try { buildAgentSuggestions(); } catch(e) { console.error('buildAgentSuggestions:', e); }
 
