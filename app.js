@@ -7865,6 +7865,197 @@ async function callClaude(prompt,sys){
   }catch{return'Erreur de connexion.';}
 }
 
+// ═══════════════════════════════════════════════════════════
+//  SUIVI DES RECOMMANDATIONS IA
+//  Enregistre chaque reco affichée, l'évalue à J+7, calcule
+//  les statistiques réelles de performance de l'IA.
+// ═══════════════════════════════════════════════════════════
+
+const RECO_EVAL_DAYS = 7;               // évaluation après 7 jours
+const RECO_LOCAL_KEY = 'iq_ai_recos';   // fallback localStorage (mode démo)
+let aiRecoStats = null;                  // cache des stats pour l'affichage
+
+// ── Enregistre une liste de recos (anti-doublon : 1 reco / ticker+action / 7 jours) ──
+async function saveAIRecommendations(recos) {
+  if (!recos?.length) return;
+  const now = Date.now();
+
+  if (!isDemo && currentUser) {
+    try {
+      // Recos récentes non encore évaluées → éviter les doublons
+      const { data: recent } = await sb.from('ai_recommendations')
+        .select('ticker,action,created_at')
+        .eq('user_id', currentUser.id)
+        .gte('created_at', new Date(now - RECO_EVAL_DAYS*86400000).toISOString());
+      const existing = new Set((recent||[]).map(r => r.ticker + '|' + r.action));
+
+      const fresh = recos.filter(r => !existing.has(r.ticker + '|' + r.action));
+      if (!fresh.length) return;
+
+      await sb.from('ai_recommendations').insert(fresh.map(r => ({
+        user_id: currentUser.id,
+        ticker: r.ticker, name: r.name, action: r.action,
+        reason: r.reason || null, confidence: r.confidence || null,
+        price_at_reco: r.price, weight_pct: r.weightPct || null, pnl_pct: r.pnlPct || null,
+      })));
+    } catch(e) { console.warn('saveAIRecommendations:', e); }
+  } else {
+    // Mode démo : localStorage
+    try {
+      const store = JSON.parse(localStorage.getItem(RECO_LOCAL_KEY) || '[]');
+      const existing = new Set(store.filter(r => now - r.created_at < RECO_EVAL_DAYS*86400000)
+        .map(r => r.ticker + '|' + r.action));
+      recos.filter(r => !existing.has(r.ticker + '|' + r.action)).forEach(r => {
+        store.push({ id: 'l'+now+Math.random().toString(36).slice(2,6), ticker: r.ticker, name: r.name,
+          action: r.action, reason: r.reason, confidence: r.confidence,
+          price_at_reco: r.price, weight_pct: r.weightPct, pnl_pct: r.pnlPct,
+          created_at: now, evaluated_at: null });
+      });
+      localStorage.setItem(RECO_LOCAL_KEY, JSON.stringify(store.slice(-100)));
+    } catch(e) {}
+  }
+}
+
+// ── Verdict : la reco était-elle correcte au vu de l'évolution du prix ? ──
+function judgeReco(action, perfPct) {
+  // Renforcer correcte si le prix a monté ; Réduire correcte s'il a baissé.
+  // Conserver/Surveiller = pas de pari directionnel → neutre (exclu du % de réussite : honnêteté)
+  if (action === 'renforcer') return perfPct > 1 ? 'correct' : perfPct < -1 ? 'incorrect' : 'neutral';
+  if (action === 'reduire')   return perfPct < -1 ? 'correct' : perfPct > 1 ? 'incorrect' : 'neutral';
+  return 'neutral';
+}
+
+// ── Évalue les recos arrivées à maturité (>= 7 jours) avec les prix actuels ──
+async function evaluateAIRecommendations() {
+  const cutoff = new Date(Date.now() - RECO_EVAL_DAYS*86400000).toISOString();
+  const priceOf = (ticker) => {
+    const p = positions.find(x => x.name === ticker || x.ticker === ticker);
+    return p ? p.price : null;
+  };
+
+  if (!isDemo && currentUser) {
+    try {
+      const { data: pending } = await sb.from('ai_recommendations')
+        .select('*').eq('user_id', currentUser.id)
+        .is('evaluated_at', null).lte('created_at', cutoff);
+      for (const r of (pending||[])) {
+        const cur = priceOf(r.ticker);
+        if (!cur || !r.price_at_reco) continue;   // position vendue → non évaluable, reste en attente
+        const perf = (cur - r.price_at_reco) / r.price_at_reco * 100;
+        await sb.from('ai_recommendations').update({
+          evaluated_at: new Date().toISOString(),
+          price_at_eval: cur, perf_pct: perf, outcome: judgeReco(r.action, perf)
+        }).eq('id', r.id);
+      }
+    } catch(e) { console.warn('evaluateAIRecommendations:', e); }
+  } else {
+    try {
+      const store = JSON.parse(localStorage.getItem(RECO_LOCAL_KEY) || '[]');
+      const cutoffTs = Date.now() - RECO_EVAL_DAYS*86400000;
+      store.forEach(r => {
+        if (r.evaluated_at || r.created_at > cutoffTs) return;
+        const cur = priceOf(r.ticker);
+        if (!cur || !r.price_at_reco) return;
+        const perf = (cur - r.price_at_reco) / r.price_at_reco * 100;
+        r.evaluated_at = Date.now(); r.price_at_eval = cur;
+        r.perf_pct = perf; r.outcome = judgeReco(r.action, perf);
+      });
+      localStorage.setItem(RECO_LOCAL_KEY, JSON.stringify(store));
+    } catch(e) {}
+  }
+}
+
+// ── Charge l'historique + calcule les stats ──
+async function loadAIRecoStats() {
+  let all = [];
+  if (!isDemo && currentUser) {
+    try {
+      const { data } = await sb.from('ai_recommendations')
+        .select('*').eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false }).limit(50);
+      all = data || [];
+    } catch(e) {}
+  } else {
+    try { all = JSON.parse(localStorage.getItem(RECO_LOCAL_KEY) || '[]').reverse(); } catch(e) {}
+  }
+  const evaluated = all.filter(r => r.evaluated_at);
+  const scored = evaluated.filter(r => r.outcome === 'correct' || r.outcome === 'incorrect');
+  const correct = scored.filter(r => r.outcome === 'correct').length;
+  aiRecoStats = {
+    all, evaluated,
+    total: all.length,
+    pending: all.length - evaluated.length,
+    scoredCount: scored.length,
+    correct,
+    hitRate: scored.length ? Math.round(correct / scored.length * 100) : null,
+  };
+  return aiRecoStats;
+}
+
+// ── Bloc HTML "Historique & fiabilité IA" pour la page Agent IA ──
+function renderRecoHistory() {
+  const el = document.getElementById('agent-history');
+  if (!el) return;
+  const s = aiRecoStats;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? 'var(--color-surface-raised)' : '#fff';
+  const bord = isDark ? 'var(--color-border)' : '#e4e4e7';
+  const txt  = isDark ? 'var(--color-text)' : '#09090b';
+  const sub  = isDark ? 'var(--color-text-secondary)' : '#71717a';
+  const bg   = isDark ? 'var(--color-bg)' : '#f9fafb';
+
+  if (!s || !s.total) {
+    el.innerHTML = `
+    <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:13px 15px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">📜 Historique & fiabilité IA</div>
+      <div style="font-size:12px;color:${sub};line-height:1.6">L'IA vient de commencer à suivre ses propres recommandations. Chaque conseil affiché est enregistré avec le cours du jour, puis <strong style="color:${txt}">évalué automatiquement 7 jours plus tard</strong> contre le cours réel. Les résultats s'afficheront ici — les bons comme les mauvais.</div>
+    </div>`;
+    return;
+  }
+
+  const actionLabel = {renforcer:'Renforcer', reduire:'Réduire', conserver:'Conserver', surveiller:'Surveiller'};
+  const rows = s.evaluated.slice(0, 5).map(r => {
+    const ok = r.outcome === 'correct';
+    const neutral = r.outcome === 'neutral';
+    const c = neutral ? sub : ok ? '#16a34a' : '#dc2626';
+    const icon = neutral ? '─' : ok ? '✔' : '✘';
+    const d = new Date(r.created_at).toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+    return `<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid ${bord}">
+      <span style="font-size:12px;font-weight:800;color:${c};width:14px">${icon}</span>
+      <div style="flex:1;min-width:0">
+        <span style="font-size:11px;font-weight:700;color:${txt}">${actionLabel[r.action]||r.action} ${r.ticker}</span>
+        <span style="font-size:10px;color:${sub};margin-left:5px">le ${d}</span>
+      </div>
+      <span style="font-size:11px;font-weight:800;color:${(r.perf_pct||0)>=0?'#16a34a':'#dc2626'}">${(r.perf_pct||0)>=0?'+':''}${(r.perf_pct||0).toFixed(1)}%</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+  <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:13px 15px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.08em">📜 Historique & fiabilité IA</div>
+      <span style="font-size:9px;color:${sub}">évaluation auto à J+${RECO_EVAL_DAYS}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:${s.evaluated.length?'10px':'0'}">
+      <div style="text-align:center;padding:9px;background:${bg};border-radius:10px;border:1px solid ${bord}">
+        <div style="font-size:17px;font-weight:900;color:${txt}">${s.total}</div>
+        <div style="font-size:9px;color:${sub};margin-top:1px">Recos suivies</div>
+      </div>
+      <div style="text-align:center;padding:9px;background:${bg};border-radius:10px;border:1px solid ${bord}">
+        <div style="font-size:17px;font-weight:900;color:${s.hitRate===null?sub:s.hitRate>=60?'#16a34a':s.hitRate>=45?'#f59e0b':'#dc2626'}">${s.hitRate===null?'—':s.hitRate+'%'}</div>
+        <div style="font-size:9px;color:${sub};margin-top:1px">Taux de réussite</div>
+      </div>
+      <div style="text-align:center;padding:9px;background:${bg};border-radius:10px;border:1px solid ${bord}">
+        <div style="font-size:17px;font-weight:900;color:#6366f1">${s.pending}</div>
+        <div style="font-size:9px;color:${sub};margin-top:1px">En attente J+${RECO_EVAL_DAYS}</div>
+      </div>
+    </div>
+    ${rows}
+    ${s.hitRate===null && s.pending>0 ? `<div style="font-size:10px;color:${sub};margin-top:8px;line-height:1.5">⏳ Premières évaluations dans ${RECO_EVAL_DAYS} jours — le taux de réussite sera calculé sur les cours réels, sans triche.</div>` : ''}
+  </div>`;
+}
+
+
 // ===== AGENT IA =====
 function sq(q) { document.getElementById('ai-in').value = q; sendAI(); }
 function sqIdx(i) { const s = window._agentSuggestions?.[i]; if (s) sq(s.q); }
@@ -8108,6 +8299,14 @@ function executeAgentAction(action) {
 function initAgent() {
   // Dashboard d'abord (priorité visuelle), chaque bloc isolé en try/catch
   try { renderAgentDashboard(); } catch(e) { console.error('renderAgentDashboard:', e); }
+  // Historique IA : évalue les recos à maturité puis affiche les stats réelles
+  (async () => {
+    try {
+      await evaluateAIRecommendations();
+      await loadAIRecoStats();
+      renderRecoHistory();
+    } catch(e) { console.warn('recoHistory:', e); }
+  })();
   try { buildAgentContext(); } catch(e) { console.error('buildAgentContext:', e); }
   try { buildAgentSuggestions(); } catch(e) { console.error('buildAgentSuggestions:', e); }
 
@@ -8295,6 +8494,18 @@ function renderAgentDashboard() {
   }
 
   // ── RECOMMANDATIONS IA ──
+  // Collecte pour l'historique de fiabilité (enregistrées puis évaluées à J+7)
+  const _recosToTrack = topByWeight.slice(0,3).map(p => {
+    const pPct = tv>0 ? p.qty*p.price/tv*100 : 0;
+    const pPnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
+    const verb = pPct>35?'reduire':pPnl>8?'renforcer':'surveiller';
+    const conf = Math.min(95, Math.round(60 + Math.abs(pPnl)*2 + (pPct>35?15:0)));
+    return { ticker: p.ticker||p.name, name: p.name, action: verb, price: p.price,
+             weightPct: Math.round(pPct*10)/10, pnlPct: Math.round(pPnl*10)/10, confidence: conf,
+             reason: verb==='reduire'?'concentration au-dessus du seuil':verb==='renforcer'?'momentum positif':'consolidation' };
+  });
+  saveAIRecommendations(_recosToTrack);
+
   const recosEl = document.getElementById('agent-recos');
   if (recosEl) {
     recosEl.innerHTML = `
