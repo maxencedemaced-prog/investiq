@@ -8057,7 +8057,16 @@ function renderRecoHistory() {
 
 
 // ===== AGENT IA =====
-function sq(q) { document.getElementById('ai-in').value = q; sendAI(); }
+function sq(q) {
+  if (aiBusy) { showToast('⏳ Attends la réponse en cours...'); return; }
+  const inp = document.getElementById('ai-in');
+  if (!inp) return;
+  inp.value = q;
+  // Descend automatiquement vers le chat pour voir la question et la réponse
+  const chatCard = document.querySelector('.chat-card') || document.getElementById('ai-chat');
+  if (chatCard) chatCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  sendAI();
+}
 function sqIdx(i) { const s = window._agentSuggestions?.[i]; if (s) sq(s.q); }
 
 function buildAgentContext() {
@@ -8167,15 +8176,20 @@ function detectIntent(q) {
   return 'question';
 }
 
+let aiBusy = false; // verrou : une seule requête IA à la fois
+
 async function sendAI() {
+  if (aiBusy) { showToast('⏳ Attends la réponse en cours...'); return; }
   const inp = document.getElementById('ai-in');
   const q = inp.value.trim();
   if (!q) return;
   inp.value = '';
+  aiBusy = true;
 
   const chat = document.getElementById('ai-chat');
+  if (!chat) { aiBusy = false; return; } // page AI pas affichée → ne pas bloquer le verrou
   const sendBtn = document.getElementById('ai-send-btn');
-  if (sendBtn) sendBtn.disabled = true;
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.4'; }
 
   chatHistory.push({ role: 'user', content: q });
   chat.innerHTML += `<div class="bubble user">${q}</div><div class="bubble bot" id="ai-loading" style="display:flex;align-items:center;gap:8px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="color:#8e8e93">Réflexion...</span></div>`;
@@ -8222,7 +8236,8 @@ Tu ne fournis pas de conseils financiers réglementés.`;
     if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot" style="color:#cc2f26">Erreur — réessaie.</div>`;
   }
 
-  if (sendBtn) sendBtn.disabled = false;
+  aiBusy = false;
+  if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; }
   chat.scrollTop = chat.scrollHeight;
 }
 
