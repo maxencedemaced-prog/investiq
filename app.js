@@ -4776,9 +4776,9 @@ function renderBilanStep(step) {
             {val:'tenir', label:'💪 Je tiens et reste investi', color:'#3fb950'},
             {val:'renforcer', label:'🚀 J\'en profite pour renforcer', color:'#22c55e'},
           ].map(r => `
-          <label style="display:flex;align-items:center;gap:10px;padding:10px;background:${bilanData.reaction===r.val?r.color+'20':'transparent'};border-radius:8px;cursor:pointer;margin-bottom:4px">
-            <input type="radio" name="b-reaction" value="${r.val}" ${bilanData.reaction===r.val?'checked':''} style="accent-color:${r.color}">
-            <span style="font-size:13px;font-weight:600;color:${txt}">${r.label}</span>
+          <label style="display:flex;align-items:center;justify-content:flex-start;gap:10px;padding:10px 12px;background:${bilanData.reaction===r.val?r.color+'20':'transparent'};border-radius:8px;cursor:pointer;margin-bottom:4px;width:100%;text-align:left;box-sizing:border-box">
+            <input type="radio" name="b-reaction" value="${r.val}" ${bilanData.reaction===r.val?'checked':''} style="accent-color:${r.color};flex-shrink:0;margin:0">
+            <span style="font-size:13px;font-weight:600;color:${txt};flex:1;text-align:left">${r.label}</span>
           </label>`).join('')}
         </div>
         <div style="${sectionStyle}">
@@ -8190,8 +8190,8 @@ function renderAgentDashboard() {
                 <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Opportunités</div>
               </div>
               <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
-                <div style="font-size:18px;font-weight:900;color:${pnlColor}">${tpnl>=0?'+':''}${fmtI(tpnl)}€</div>
-                <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Objectif en cours</div>
+                <div style="font-size:18px;font-weight:900;color:${pnlColor}">${tpnl>=0?'+':''}${fmtI(tpnl)} €</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">P&L global</div>
               </div>
             </div>
           </div>
@@ -8200,8 +8200,8 @@ function renderAgentDashboard() {
             <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Score Premium</div>
             <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(${scoreColor} ${score*36}deg, rgba(255,255,255,0.08) 0deg);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;position:relative">
               <div style="width:62px;height:62px;border-radius:50%;background:#0d1422;display:flex;flex-direction:column;align-items:center;justify-content:center">
-                <div style="font-size:22px;font-weight:900;color:#fff;line-height:1">${Math.round(score*10)}</div>
-                <div style="font-size:8px;color:rgba(255,255,255,0.35);font-weight:600">Bon ▲</div>
+                <div style="font-size:20px;font-weight:900;color:#fff;line-height:1">${score.toFixed(1)}<span style="font-size:10px;color:rgba(255,255,255,0.4)">/10</span></div>
+                <div style="font-size:8px;color:${score>=7?'#4ade80':score>=5?'#fbbf24':'#f87171'};font-weight:700;margin-top:2px">${score>=7?'Bon ▲':score>=5?'Moyen ●':'Faible ▼'}</div>
               </div>
             </div>
             <button onclick="sq('Pourquoi mon score est de ${score.toFixed(1)}/10 ? Comment l\\'améliorer ?')" style="background:#16a34a;border:none;color:#fff;font-size:10px;font-weight:700;padding:6px 11px;border-radius:8px;cursor:pointer;white-space:nowrap">Pourquoi ce score ?</button>
@@ -8254,11 +8254,11 @@ function renderAgentDashboard() {
       const theme = isRisk ? {c:'#dc2626',bg:'#fef2f2',tag:'⚠ Risque évalué',action:'Rééquilibrer'} :
                     isOpp ? {c:'#16a34a',bg:'#f0fdf4',tag:'✦ Opportunité',action:'Renforcer ?'} :
                     {c:'#6366f1',bg:'#eef2ff',tag:'Position solide',action:'Conserver'};
-      return `<div onclick="sq('Analyse ma position ${p.name} : dois-je ${theme.action.toLowerCase().replace(' ?','')} ?')" style="cursor:pointer;background:${theme.bg};border-radius:12px;padding:11px;border:1px solid ${theme.c}22">
+      return `<div onclick="sq('Analyse ma position ${p.name} : dois-je ${theme.action.toLowerCase().replace(' ?','')} ?')" style="cursor:pointer;background:${theme.bg};border-radius:12px;padding:11px;border:1px solid ${theme.c}22;display:flex;flex-direction:column;min-height:104px">
         <div style="font-size:9px;font-weight:700;color:${theme.c};margin-bottom:5px">${theme.tag}</div>
         <div style="font-size:12px;font-weight:800;color:${txt};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px">${p.name}</div>
         <div style="font-size:10px;color:${sub};margin-bottom:6px">${pPnl>=0?'+':''}${pPnl.toFixed(1)}% · ${pPct.toFixed(0)}% du portef.</div>
-        <div style="font-size:10px;font-weight:700;color:${theme.c}">${theme.action} → IA Catalyser</div>
+        <div style="font-size:10px;font-weight:700;color:${theme.c};margin-top:auto">${theme.action} — Demander à l'IA →</div>
       </div>`;
     }).join('');
     alertesEl.innerHTML = `
@@ -8317,7 +8317,7 @@ function renderAgentDashboard() {
         <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:3px">💡 Et si ton portefeuille était optimisé au max ?</div>
         <div style="font-size:11px;color:rgba(255,255,255,0.45)">Lance ton Bilan Premium : l'IA analyse tout et te dit où tu perds de l'argent.</div>
       </div>
-      <button style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer;flex-shrink:0">Bilan me →</button>
+      <button style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer;flex-shrink:0">Lancer le Bilan →</button>
     </div>`;
   }
 
@@ -8374,19 +8374,32 @@ function renderAgentDashboard() {
       <button onclick="sq('Analyse le risque sur ${worst.name}')" style="width:100%;padding:7px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;color:#dc2626;font-size:10px;font-weight:700;cursor:pointer">Analyser ce risque →</button>
     </div>` : ''}
 
-    ${riskiest ? `
+    ${riskiest ? (() => {
+      const rPct = tv > 0 ? riskiest.qty*riskiest.price/tv*100 : 0;
+      const rPnl = riskiest.pru > 0 ? (riskiest.price-riskiest.pru)/riskiest.pru*100 : 0;
+      const rGainWord = rPnl >= 0 ? 'en gain de +' : 'en perte de ';
+      const rMsg = rPct > 35
+        ? `concentration élevée — un rééquilibrage réduirait ton risque`
+        : rPnl > 5
+          ? `momentum positif — renforcement possible selon ton profil`
+          : rPnl < -10
+            ? `moins-value importante — analyse avant tout arbitrage`
+            : `position stable — surveille les prochains mouvements`;
+      const rConviction = Math.min(95, Math.round(55 + Math.abs(rPnl) + (rPct > 35 ? 15 : 0)));
+      return `
     <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
       <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">💰 Opportunité principale</div>
       <div style="font-size:13px;font-weight:900;color:${txt};margin-bottom:3px">Optimise ${riskiest.ticker||riskiest.name}</div>
-      <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:6px">Position leader (${(riskiest.qty*riskiest.price/tv*100).toFixed(0)}% en perte de ${((riskiest.price-riskiest.pru)/riskiest.pru*100).toFixed(1)}%) — rééquilibrage rémunéré pour profil faible risque</div>
+      <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:6px">Position leader (${rPct.toFixed(0)}% du portef., ${rGainWord}${rPnl.toFixed(1)}%) — ${rMsg}</div>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
-        <span style="color:${sub}">Conviction</span><span style="font-weight:800;color:#d97706">72%</span>
+        <span style="color:${sub}">Conviction</span><span style="font-weight:800;color:#d97706">${rConviction}%</span>
       </div>
       <div style="background:${bord};border-radius:99px;height:4px;overflow:hidden;margin-bottom:8px">
-        <div style="height:100%;background:#d97706;width:72%;border-radius:99px"></div>
+        <div style="height:100%;background:#d97706;width:${rConviction}%;border-radius:99px"></div>
       </div>
       <button onclick="sq('Comment optimiser ma position ${riskiest.name} ?')" style="width:100%;padding:7px;background:#fffbeb;border:1px solid #fde68a;border-radius:9px;color:#d97706;font-size:10px;font-weight:700;cursor:pointer">Voir l'opportunité →</button>
-    </div>` : ''}
+    </div>`;
+    })() : ''}
 
     <!-- Scores santé -->
     <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
@@ -8409,7 +8422,7 @@ function renderAgentDashboard() {
       <div style="font-size:10px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:9px">⚡ Stats rapides</div>
       ${[
         ['Valeur totale', fmtK(tv), txt],
-        ['P&L global', `${tpnl>=0?'+':''}${fmtK(tpnl)}`, tpnl>=0?'#16a34a':'#dc2626'],
+        ['P&L global', `${tpnl>=0?'+':''}${fmtI(tpnl)} €`, tpnl>=0?'#16a34a':'#dc2626'],
         ['Perf. moyenne jour', `${avgChange>=0?'+':''}${avgChange.toFixed(2)}%`, avgChange>=0?'#16a34a':'#dc2626'],
         ['Positions', positions.length, txt],
       ].map(([l,v,c]) => `
