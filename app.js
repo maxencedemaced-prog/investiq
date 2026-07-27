@@ -2366,6 +2366,7 @@ async function obFinish(action) {
 
 // ===== MARKDOWN FORMATTER =====
 function formatMD(text) {
+  if (text) text = String(text).replace(/```[a-z]*\n?/g, '').replace(/```/g, ''); // retire les blocs de code résiduels
   if (!text) return '';
 
   // ── Parse les tableaux markdown en HTML ──
@@ -8396,6 +8397,7 @@ ${AI_PERSONA}
 
 RÈGLES TECHNIQUES :
 - Réponds TOUJOURS en français. Concis, direct, actionnable.
+- N'utilise JAMAIS de blocs de code (\`\`\`) ni de tableaux markdown : ils ne s'affichent pas dans le chat. Texte simple, gras (**) et listes courtes uniquement.
 - Si l'utilisateur demande une ACTION (ajouter position, créer alerte, modifier objectif), réponds avec le plan d'action ET ajoute à la fin une ligne JSON spéciale :
 [ACTION:{"type":"ajouter_position","ticker":"AAPL","qty":5,"prix":180}] ou [ACTION:{"type":"alerte","ticker":"LVMH","prix":650}] ou [ACTION:{"type":"simuler","monthly_add":200}]
 - Pour les SIMULATIONS, calcule toi-même et montre le résultat chiffré.`;
