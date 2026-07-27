@@ -178,8 +178,11 @@ function showValidatedChart() {
         </div>
       </div>
 
-      <!-- Plan ETF -->
-      <div style="font-size:12px;font-weight:700;color:#1c1c1e;margin-bottom:8px">🏦 Où et comment investir</div>
+      <!-- 📅 PLAN DU MOIS -->
+      <div id="obj-monthly-plan"></div>
+
+      <!-- Plan ETF de référence -->
+      <div style="font-size:12px;font-weight:700;color:var(--color-text,#1c1c1e);margin-bottom:8px">🏦 Répartition cible de référence</div>
       <div id="obj-etf-plan" style="margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:8px;padding:14px;color:#8e8e93;background:#f9f9f9;border-radius:12px">
           <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -191,8 +194,162 @@ function showValidatedChart() {
         <button class="btn-secondary" onclick="nav('ai')" style="font-size:13px;padding:9px 16px;flex:1">🤖 Analyse IA →</button>
       </div>`;
     generateETFPlan(activeObjId);
+    // Plan du mois : auto si nouveau mois (pas encore de plan ce mois-ci), sinon affiche le cache
+    try { generateMonthlyPlan(false); } catch(e) { console.warn('monthlyPlan:', e); }
   }
 }
+
+// ═══════════════════════════════════════════════════════════
+//  📅 PLAN MENSUEL — "Ce mois-ci, voici quoi acheter"
+//  Répartit le budget mensuel de l'objectif actif en un plan
+//  d'achats frais, tenant compte des marchés et du portefeuille.
+//  Déclenché : auto le 1er du mois OU bouton manuel.
+// ═══════════════════════════════════════════════════════════
+
+const MONTHLY_PLAN_KEY = 'iq_monthly_plan';
+
+function currentMonthId() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function monthLabel() {
+  return new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+}
+
+function getCachedMonthlyPlan() {
+  try {
+    const c = JSON.parse(localStorage.getItem(MONTHLY_PLAN_KEY) || 'null');
+    return c && c.month === currentMonthId() ? c : null;
+  } catch { return null; }
+}
+
+async function generateMonthlyPlan(force = false) {
+  const el = document.getElementById('obj-monthly-plan');
+  if (!el) return;
+
+  const budget = objChartMonthly || 200;
+  const cached = getCachedMonthlyPlan();
+  if (cached && !force) { renderMonthlyPlan(cached, false); return; }
+
+  // Loading
+  el.innerHTML = `
+  <div style="background:linear-gradient(135deg,#0a0f1e,#111827);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:16px 18px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      <span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:600">InvestIQ prépare ton plan de ${monthLabel()}...</span>
+    </div>
+  </div>`;
+
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+  const held = positions.slice(0, 12).map(p => {
+    const pnl = p.pru>0 ? ((p.price-p.pru)/p.pru*100).toFixed(1) : '0';
+    return `${displayName(p.name)} (${p.name}) : ${(p.qty*p.price/tv*100||0).toFixed(0)}% du portef., P&L ${pnl>=0?'+':''}${pnl}%`;
+  }).join('\n');
+  const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
+
+  const prompt = `On est en ${monthLabel()}. L'utilisateur investit ${budget}€ ce mois-ci (profil ${riskLabel}, horizon ${objChartYears||10} ans).
+
+Son portefeuille actuel (${fmtK(tv)}) :
+${held || 'Portefeuille vide, premier mois.'}
+
+EXERCICE "PLAN DU MOIS" : répartis ses ${budget}€ de ce mois entre 2 à 4 lignes concrètes (ETF en priorité, actions en satellite selon profil). Prends en compte ce qu'il a DÉJÀ : renforce ce qui est sous-pondéré, évite de surcharger ce qui pèse déjà trop. Garde toujours un socle ETF Monde majoritaire.
+
+Réponds UNIQUEMENT en JSON valide sans backticks :
+{
+  "synthese": "1 phrase chaleureuse (tutoiement) sur l'esprit du mois",
+  "lignes": [
+    {"ticker":"IWDA.L","name":"iShares Core MSCI World","montant":120,"pct":60,"role":"socle","raison":"max 10 mots, concret"}
+  ],
+  "note_marche": "1 phrase sur le contexte de marché du mois, factuelle et prudente"
+}
+La somme des montants doit faire exactement ${budget}.`;
+
+  try {
+    const raw = await callClaude(prompt, `Tu es InvestIQ, copilote financier. ${typeof AI_PERSONA!=='undefined'?AI_PERSONA:''}\nRéponds UNIQUEMENT en JSON valide.`);
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
+    if (!data.lignes?.length) throw new Error('empty');
+
+    // Compléter prix pour le tracking
+    data.lignes.forEach(l => {
+      const p = positions.find(x => x.name === l.ticker || x.ticker === l.ticker);
+      l._price = p?.price || null;
+    });
+
+    const plan = { month: currentMonthId(), budget, data, ts: Date.now() };
+    try { localStorage.setItem(MONTHLY_PLAN_KEY, JSON.stringify(plan)); } catch {}
+
+    // Enregistrer dans le tracking (chaque ligne = un "renforcer" évalué à J+7)
+    if (typeof saveAIRecommendations === 'function') {
+      saveAIRecommendations(data.lignes.filter(l => l._price).map(l => ({
+        ticker: l.ticker, name: l.name, action: 'renforcer',
+        price: l._price, confidence: null, reason: '[Plan mensuel] ' + (l.raison||'')
+      })));
+    }
+
+    renderMonthlyPlan(plan, false);
+  } catch(e) {
+    console.warn('monthlyPlan:', e);
+    el.innerHTML = `
+    <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span style="font-size:12px;color:var(--color-text-secondary)">Le plan du mois n'a pas pu être généré.</span>
+      <button onclick="generateMonthlyPlan(true)" style="background:#6366f1;border:none;color:#fff;font-size:11px;font-weight:700;padding:7px 13px;border-radius:9px;cursor:pointer">Réessayer</button>
+    </div>`;
+  }
+}
+
+function renderMonthlyPlan(plan, isNew) {
+  const el = document.getElementById('obj-monthly-plan');
+  if (!el) return;
+  const d = plan.data;
+  const budget = plan.budget;
+  const generated = new Date(plan.ts).toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+
+  el.innerHTML = `
+  <div style="background:linear-gradient(135deg,#0a0f1e,#141d33);border:1px solid rgba(99,102,241,0.3);border-radius:18px;padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-40px;right:-40px;width:140px;height:140px;background:radial-gradient(circle,rgba(99,102,241,0.15),transparent 70%);pointer-events:none"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:relative">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:7px;text-transform:capitalize">📅 ${monthLabel()}</span>
+        <span style="font-size:14px;font-weight:900;color:#fff">Ton plan du mois</span>
+      </div>
+      <button onclick="generateMonthlyPlan(true)" title="Régénérer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button>
+    </div>
+
+    <div style="font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5;margin-bottom:14px;position:relative">${d.synthese||''}</div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;position:relative">
+      ${(d.lignes||[]).map(l => {
+        const isSocle = l.role === 'socle';
+        const c = isSocle ? '#4ade80' : '#a5b4fc';
+        return `<div onclick="openActionFromObjectif('${l.ticker}','${(l.name||'').replace(/'/g,"\\\\'")}',${l.montant})" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:11px 13px;background:rgba(255,255,255,0.04);border-radius:12px;border-left:3px solid ${c}">
+          ${typeof getCompanyLogo==='function' ? getCompanyLogo(l.ticker, l.name, 34, 9) : ''}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:800;color:#fff">${displayName(l.name||l.ticker)} <span style="font-size:9px;color:rgba(255,255,255,0.4)">${l.ticker}</span></div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:1px">${l.raison||''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:16px;font-weight:900;color:${c}">${l.montant} €</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.35)">${l.pct||Math.round(l.montant/budget*100)}% du mois</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    ${d.note_marche ? `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 11px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:10px;margin-bottom:8px;position:relative">
+      <span style="font-size:12px">📰</span>
+      <span style="font-size:11px;color:rgba(255,255,255,0.65);line-height:1.5">${d.note_marche}</span>
+    </div>` : ''}
+
+    <div style="display:flex;align-items:center;justify-content:space-between;position:relative">
+      <span style="font-size:10px;color:rgba(255,255,255,0.3)">Budget ${budget} €/mois · généré le ${generated}</span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.3)">Suivi à J+7 dans l'historique IA</span>
+    </div>
+  </div>`;
+}
+
 
 const CACHE_ETF_PLAN = 'iq_etf_plan_v2'; // v2 : structure socle/satellites
 const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // 24h
