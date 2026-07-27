@@ -4550,7 +4550,7 @@ function initDecisionPage() {
         onmouseover="this.style.borderColor='${color}'" onmouseout="this.style.borderColor='var(--color-border)'">
         ${getCompanyLogo(p.name, p.name, 22, 6)}
         <div style="text-align:left">
-          <div style="font-size:12px;font-weight:700;color:var(--color-text)">${p.name}</div>
+          <div style="font-size:12px;font-weight:700;color:var(--color-text)">${displayName(p.name)}</div>
           <div style="font-size:10px;font-weight:600;color:${color}">${parseFloat(pnl)>=0?'+':''}${pnl}%</div>
         </div>
       </button>`;
@@ -6213,8 +6213,8 @@ function renderPortfolio() {
         <div style="display:flex;align-items:center;gap:10px">
           ${getCompanyLogo(p.name, p.fullName||p.name, 36, 10)}
           <div>
-            <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${p.name}</div>
-            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.fullName||p.type||'Action'} · ${p.qty} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
+            <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${displayName(p.name)}</div>
+            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.name} · ${p.type||'Action'} · ${p.qty} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
           </div>
         </div>
         <!-- Investi -->
@@ -7884,6 +7884,30 @@ function updateDCA() {
 }
 
 // ===== AI WITH MEMORY =====
+
+// ═══ NOMS COMPLETS DES SOCIÉTÉS (affichage lisible au lieu des tickers) ═══
+const COMPANY_NAMES = {
+  'IWDA.L':'iShares Core MSCI World', 'IWDA.AS':'iShares Core MSCI World', 'IWDA':'iShares Core MSCI World',
+  'VWCE.DE':'Vanguard FTSE All-World', 'VWCE':'Vanguard FTSE All-World',
+  'SWRD.L':'SPDR MSCI World', 'SPPW.DE':'SPDR MSCI World',
+  'CSPX.L':'iShares Core S&P 500', 'AMEM.DE':'Amundi MSCI Emerging Markets',
+  'LVMH':'LVMH', 'MC.PA':'LVMH',
+  'Air Liquide':'Air Liquide', 'AI.PA':'Air Liquide',
+  'VIE.PA':'Veolia', 'TTE.PA':'TotalEnergies', 'AIR.PA':'Airbus',
+  'SOI.PA':'Soitec', 'FDJ.PA':'FDJ United', 'ALHPI.PA':'Hopium',
+  'PAH3.DE':'Porsche Holding', 'STM.DE':'STMicroelectronics', 'STM.PA':'STMicroelectronics',
+  'BAC':'Bank of America', 'NVDA':'Nvidia', 'RACE':'Ferrari', 'XOM':'ExxonMobil',
+  'AAPL':'Apple', 'MSFT':'Microsoft', 'GOOGL':'Alphabet', 'AMZN':'Amazon', 'TSLA':'Tesla', 'META':'Meta',
+  'BNP.PA':'BNP Paribas', 'OR.PA':"L'Oréal", 'SAN.PA':'Sanofi', 'SU.PA':'Schneider Electric',
+  'CAP.PA':'Capgemini', 'DG.PA':'Vinci', 'KER.PA':'Kering', 'RMS.PA':'Hermès', 'EL.PA':'EssilorLuxottica',
+  'BTC':'Bitcoin', 'ETH':'Ethereum',
+};
+// Nom lisible d'un actif : nom complet si connu, sinon le ticker tel quel
+function displayName(ticker) {
+  if (!ticker) return '';
+  return COMPANY_NAMES[ticker] || COMPANY_NAMES[(ticker+'').toUpperCase()] || ticker;
+}
+
 async function callClaude(prompt,sys){
   const system=sys||('Tu es le copilote financier IA d\'InvestIQ, pour investisseurs particuliers francophones.\n'+AI_PERSONA);
   try{
@@ -8249,7 +8273,7 @@ function renderVerdict(data, ts) {
         const a = ACTIONS[d.action] || ACTIONS.conserver;
         return `<div onclick="sq('Explique pourquoi tu ${a.label.toLowerCase().replace('je ','')} ${d.name} aujourd\\'hui')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 11px;background:rgba(255,255,255,0.04);border-radius:10px;border-left:3px solid ${a.color}">
           <span style="font-size:13px;font-weight:900;color:${a.color};width:16px;text-align:center">${a.icon}</span>
-          <span style="font-size:12px;font-weight:800;color:#fff;flex-shrink:0">${a.label} ${d.name}</span>
+          <span style="font-size:12px;font-weight:800;color:#fff;flex-shrink:0">${a.label} ${displayName(d.name)}</span>
           <span style="font-size:10px;color:rgba(255,255,255,0.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">— ${d.raison||''}</span>
         </div>`;
       }).join('')}
@@ -8711,7 +8735,7 @@ function renderAgentDashboard() {
                     {c:'#6366f1',bg:'#eef2ff',tag:'Position solide',action:'Conserver'};
       return `<div onclick="sq('Analyse ma position ${p.name} : dois-je ${theme.action.toLowerCase().replace(' ?','')} ?')" style="cursor:pointer;background:${theme.bg};border-radius:12px;padding:11px;border:1px solid ${theme.c}22;display:flex;flex-direction:column;min-height:104px">
         <div style="font-size:9px;font-weight:700;color:${theme.c};margin-bottom:5px">${theme.tag}</div>
-        <div style="font-size:12px;font-weight:800;color:${txt};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px">${p.name}</div>
+        <div style="font-size:12px;font-weight:800;color:${txt};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px">${displayName(p.name)}</div>
         <div style="font-size:10px;color:${sub};margin-bottom:6px">${pPnl>=0?'+':''}${pPnl.toFixed(1)}% · ${pPct.toFixed(0)}% du portef.</div>
         <div style="font-size:10px;font-weight:700;color:${theme.c};margin-top:auto">${theme.action} — Demander à l'IA →</div>
       </div>`;
@@ -8779,7 +8803,7 @@ function renderAgentDashboard() {
           const c = r.action==='reduire'?'#d97706':r.action==='renforcer'?'#16a34a':r.action==='surveiller'?'#dc2626':'#6366f1';
           return `<div onclick="sq('Explique ta recommandation ${verbLabel} pour ${r.name}')" style="cursor:pointer;padding:10px 12px;background:${bg};border-radius:11px;border:1px solid ${bord};border-left:3px solid ${c}">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-              <div style="font-size:12px;font-weight:800;color:${txt}">${i+1}. ${verbLabel} ${r.name}</div>
+              <div style="font-size:12px;font-weight:800;color:${txt}">${i+1}. ${verbLabel} ${displayName(r.name)}</div>
               <span style="font-size:11px;font-weight:800;color:${c}">${r.confidence}%</span>
             </div>
             <div style="font-size:10px;color:${sub};margin-bottom:6px">Position ${r.weightPct.toFixed(0)}% · perf ${r.pnlPct>=0?'+':''}${r.pnlPct.toFixed(1)}% — ${r.reason}</div>
@@ -8853,7 +8877,7 @@ function renderAgentDashboard() {
     ${worst && (worst.change_pct||0) < 0 ? `
     <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
       <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">⚠ Risque principal</div>
-      <div style="font-size:14px;font-weight:900;color:#dc2626;margin-bottom:3px">${worst.name} (${(worst.change_pct||0).toFixed(1)}%)</div>
+      <div style="font-size:14px;font-weight:900;color:#dc2626;margin-bottom:3px">${displayName(worst.name)} (${(worst.change_pct||0).toFixed(1)}%)</div>
       <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:8px">Position la plus faible aujourd'hui. Surveille l'évolution avant d'agir.</div>
       <button onclick="sq('Analyse le risque sur ${worst.name}')" style="width:100%;padding:7px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;color:#dc2626;font-size:10px;font-weight:700;cursor:pointer">Analyser ce risque →</button>
     </div>` : ''}
