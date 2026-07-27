@@ -4426,7 +4426,7 @@ async function _resolveLogoDomain(ticker, name) {
         el.style.border = 'none';
         el.style.padding = '3px';
         el.style.boxSizing = 'border-box';
-        el.innerHTML = '<img src="https://icons.duckduckgo.com/ip3/' + found + '.ico" style="width:100%;height:100%;object-fit:contain;border-radius:' + Math.max(r-2,2) + 'px" onerror="this.parentElement.style.display=\'none\'">';
+        el.innerHTML = '<img src="https://logo.clearbit.com/' + found + '" data-ddg="https://icons.duckduckgo.com/ip3/' + found + '.ico" style="width:100%;height:100%;object-fit:contain;border-radius:' + Math.max(r-2,2) + 'px" onerror="_logoErr(this,\'\',\'#888\')">';
         el.removeAttribute('data-logo-pending');
       });
     }
@@ -4524,13 +4524,23 @@ function getCompanyLogo(ticker, name, size, radius) {
       return fallback.replace('<div style=', '<div data-logo-pending="' + t + '" style=');
     }
   }
-  // Essayer plusieurs sources de logos
-  const logoUrl = 'https://icons.duckduckgo.com/ip3/' + domain + '.ico';
+  // Cascade de sources : Clearbit (haute qualité, vraie 404) → favicon DuckDuckGo → initiales
   const isDarkLogo = document.documentElement.getAttribute('data-theme') === 'dark';
   const logoBg = isDarkLogo ? '#1a2230' : '#f4f4f5';
   return `<div style="width:${s}px;height:${s}px;border-radius:${r}px;overflow:hidden;flex-shrink:0;background:${logoBg};display:flex;align-items:center;justify-content:center;padding:3px;box-sizing:border-box">
-    <img src="${logoUrl}" alt="${init}" style="width:100%;height:100%;object-fit:contain;border-radius:${r-2}px" onerror="_logoFallback(this,'${init}','${c}')">
+    <img src="https://logo.clearbit.com/${domain}" alt="${init}" data-ddg="https://icons.duckduckgo.com/ip3/${domain}.ico" style="width:100%;height:100%;object-fit:contain;border-radius:${Math.max(r-2,2)}px" onerror="_logoErr(this,'${init}','${c}')">
   </div>`;
+}
+
+// Cascade d'erreurs : 1er échec → DuckDuckGo, 2e échec → initiales
+function _logoErr(img, text, color) {
+  const ddg = img.dataset.ddg;
+  if (ddg && img.src !== ddg) {
+    img.src = ddg;
+    img.dataset.ddg = '';
+  } else {
+    _logoFallback(img, text, color);
+  }
 }
 
 function _logoFallback(img, text, color) {
