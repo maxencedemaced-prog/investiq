@@ -20,21 +20,71 @@ function hasValidObj(o) {
   return o && o.target && o.target > 0;
 }
 
+// ═══ MODAL "3 OBJECTIFS MAX" — choisir lequel remplacer ═══
+// pendingObj : {capital, monthly, target, years, rate, risk, label}
+function showReplaceObjectiveModal(pendingObj, onReplace) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#161b26' : '#fff';
+  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
+  const txt  = isDark ? '#f0f0f0' : '#09090b';
+  const sub  = isDark ? '#888' : '#71717a';
+  const bg   = isDark ? '#0f1420' : '#f9fafb';
+
+  document.getElementById('replace-obj-modal')?.remove();
+  window._pendingReplaceObj = pendingObj;
+  window._pendingReplaceCb = onReplace;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'replace-obj-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:${surf};border-radius:20px;padding:24px;max-width:420px;width:100%;border:1px solid ${bord}">
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:6px">Tu as déjà 3 objectifs</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:18px;line-height:1.5">C'est le maximum. Choisis lequel remplacer par ton nouvel objectif${pendingObj.label ? ' « ' + pendingObj.label + ' »' : ''} :</div>
+      ${allObjectives.map((o, i) => {
+        const c = OBJ_COLORS[i % OBJ_COLORS.length];
+        return `<div onclick="confirmReplaceObjective('${o.id}')" style="padding:14px;border:1px solid ${bord};border-radius:12px;margin-bottom:10px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:12px"
+          onmouseover="this.style.borderColor='${c}';this.style.background='${bg}'" onmouseout="this.style.borderColor='${bord}';this.style.background='transparent'">
+          <div style="width:10px;height:10px;border-radius:50%;background:${c};flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:${txt}">${o.label || 'Objectif ' + (i+1)}</div>
+            <div style="font-size:11px;color:${sub};margin-top:2px">${o.monthly}€/mois · cible ${fmtK(o.target)} · ${o.years} ans</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:${c}">Remplacer →</span>
+        </div>`;
+      }).join('')}
+      <button onclick="document.getElementById('replace-obj-modal').remove()" style="width:100%;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer;margin-top:4px">Annuler</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function confirmReplaceObjective(idToReplace) {
+  document.getElementById('replace-obj-modal')?.remove();
+  const pending = window._pendingReplaceObj;
+  const cb = window._pendingReplaceCb;
+  if (!pending) return;
+
+  // Supprimer l'ancien (base + local)
+  if (!isDemo && currentUser) {
+    try { await sb.from('objectives').delete().eq('id', idToReplace); } catch(e) {}
+  }
+  allObjectives = allObjectives.filter(o => o.id !== idToReplace);
+  if (activeObjId === idToReplace) activeObjId = allObjectives[0]?.id || null;
+
+  // Callback de création (fourni par l'appelant)
+  if (typeof cb === 'function') await cb();
+}
+
 async function validateObjectif(labelOverride) {
-  // Vérifie si c'est une mise à jour d'un objectif existant
-  const isUpdate = allObjectives.some(o => o.target === objChartTarget && o.monthly === objChartMonthly);
+  // Mise à jour UNIQUEMENT si on édite l'objectif actuellement actif (pas juste des valeurs proches)
+  const activeObj = allObjectives.find(o => o.id === activeObjId);
+  const isUpdate = activeObj && activeObj.target === objChartTarget && activeObj.monthly === objChartMonthly;
   if (!isUpdate && allObjectives.length >= 3) {
-    // Bandeau rouge
-    const existing = document.getElementById('obj-max-banner');
-    if (!existing) {
-      const banner = document.createElement('div');
-      banner.id = 'obj-max-banner';
-      banner.style.cssText = 'background:#fff0f0;border:2px solid #cc2f26;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px';
-      banner.innerHTML = '<div><div style="font-size:14px;font-weight:800;color:#cc2f26">⚠ Maximum 3 objectifs atteint</div><div style="font-size:13px;color:#7f1d1d;margin-top:3px">Supprime un objectif existant (bouton ×) pour en créer un nouveau.</div></div><button onclick="document.getElementById(\'obj-max-banner\').remove()" style="background:#cc2f26;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">OK</button>';
-      const resultsEl = document.getElementById('obj-results');
-      if (resultsEl) resultsEl.insertBefore(banner, resultsEl.firstChild);
-    }
-    renderMultiObjChart();
+    // Modal de remplacement au lieu du bandeau
+    showReplaceObjectiveModal(
+      { capital:objChartCapital, monthly:objChartMonthly, target:objChartTarget, years:objChartYears, rate:objChartRate, risk:objRisk, label:labelOverride||'Nouvel objectif' },
+      async () => { await validateObjectif(labelOverride); }
+    );
     return;
   }
   const label = labelOverride || ('Objectif ' + (allObjectives.length + 1));
@@ -47,8 +97,8 @@ async function validateObjectif(labelOverride) {
   try { localStorage.setItem(OBJ_STORAGE, JSON.stringify({...data, validatedAt: data.validated_at})); } catch {}
   if (!isDemo && currentUser) {
     try {
-      // Vérifie si un objectif identique existe déjà (même target+monthly = mise à jour)
-      const existing = allObjectives.find(o => o.target === data.target && o.monthly === data.monthly);
+      // Update seulement si on édite l'objectif actif (sinon création)
+      const existing = allObjectives.find(o => o.id === activeObjId && o.target === data.target && o.monthly === data.monthly);
       let savedId = null;
       if (existing) {
         // Mise à jour — sans updated_at si la colonne n'existe pas
@@ -2459,40 +2509,48 @@ async function obFinish(action) {
   objChartRate    = risk === 'eleve' ? 9 : risk === 'modere' ? 7 : 5;
   objRisk         = risk === 'eleve' ? 'agressif' : risk === 'modere' ? 'equilibre' : 'prudent';
 
-  // Sauvegarde profil + objectif en Supabase
-  if (!isDemo && currentUser) {
-    await saveProfile();
-    try {
-      // Update si objectif existant, sinon insert
-      if (allObjectives.length > 0) {
-        // Mise à jour du premier objectif existant
-        const { error: oue } = await sb.from('objectives').update({
-          capital: bankroll, monthly: monthly,
-          target: target, years: 10, rate: objChartRate,
-          risk: objRisk
-        }).eq('id', allObjectives[0].id);
-        if (oue) console.warn('[obFinish] update error:', oue.message);
-      } else if (allObjectives.length < 3) {
-        // Nouvel objectif seulement si moins de 3
-        const { error: oie } = await sb.from('objectives').insert({
-          user_id: currentUser.id, capital: bankroll, monthly: monthly,
-          target: target, years: 10, rate: objChartRate,
-          risk: objRisk
-        });
-        if (oie) console.warn('[obFinish] insert error:', oie.message);
-      }
-      await loadObjective();
-    } catch(e) {}
-  }
+  await saveProfile();
 
-  // localStorage fallback
+  // Fonction de création du nouvel objectif (insert, jamais écrasement)
+  const createNew = async () => {
+    if (!isDemo && currentUser) {
+      try {
+        const { error } = await sb.from('objectives').insert({
+          user_id: currentUser.id, capital: bankroll, monthly: monthly,
+          target: target, years: 10, rate: objChartRate, risk: objRisk
+        });
+        if (error) console.warn('[obFinish] insert error:', error.message);
+        await loadObjective();
+        // Activer le tout dernier objectif créé
+        if (allObjectives.length) { activeObjId = allObjectives[allObjectives.length-1].id; applyObjData(allObjectives[allObjectives.length-1]); }
+      } catch(e) {}
+    } else {
+      // Mode démo : ajout local
+      const id = 'local_' + Date.now();
+      allObjectives.push({ id, label:'Objectif ' + (allObjectives.length+1), capital:bankroll, monthly, target, years:10, rate:objChartRate, risk:objRisk, color:OBJ_COLORS[allObjectives.length % OBJ_COLORS.length] });
+      activeObjId = id;
+    }
+    nav('objectif');
+    setTimeout(() => { if (typeof renderMultiObjChart==='function') renderMultiObjChart(); }, 100);
+  };
+
+  // Si déjà 3 objectifs → modal de remplacement, sinon création directe
+  if (allObjectives.length >= 3) {
+    nav('objectif');
+    setTimeout(() => showReplaceObjectiveModal(
+      { capital:bankroll, monthly, target, years:10, rate:objChartRate, risk:objRisk, label:'Nouvel objectif' },
+      createNew
+    ), 200);
+    return;
+  }
+  // localStorage fallback (avant création pour cohérence)
   try { localStorage.setItem('iq_validated_objective', JSON.stringify({
     capital: bankroll, monthly: monthly, target: target,
     years: 10, rate: objChartRate, risk: objRisk,
     validatedAt: new Date().toISOString()
   })); } catch {}
 
-  nav(action);
+  await createNew();
 }
 
 
