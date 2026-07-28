@@ -6676,10 +6676,26 @@ function renderPortfolio() {
   </div>`;
 
   // Tableau des positions
+  setTimeout(() => { if (typeof selectMode !== 'undefined' && selectMode) toggleSelectMode(true); }, 30);
   const sorted = [...dedupPositions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
   const tableHtml = `
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
     <!-- Header tableau -->
+    <!-- Barre d'actions groupées (visible en mode sélection) -->
+    <div id="bulk-bar" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:rgba(99,102,241,0.08);border-bottom:1px solid ${borderCol}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:700;color:${textCol}">
+          <input type="checkbox" id="bulk-all" onchange="toggleSelectAll(this.checked)" style="width:16px;height:16px;accent-color:#6366f1">
+          Tout sélectionner
+        </label>
+        <span id="bulk-count" style="font-size:12px;color:${subCol}">0 sélectionnée</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="bulkDelete()" style="padding:6px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer">🗑️ Supprimer</button>
+        <button onclick="bulkAskAI()" style="padding:6px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser</button>
+        <button onclick="toggleSelectMode(false)" style="padding:6px 13px;background:transparent;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer">Annuler</button>
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
       ${['ACTIF','INVESTI','PRIX MOY.','VALEUR','PERF.','',''].map(h=>`<div style="font-size:10px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.06em">${h}</div>`).join('')}
     </div>
@@ -6703,6 +6719,7 @@ function renderPortfolio() {
         onclick="togglePos('${p.id}')">
         <!-- Actif -->
         <div style="display:flex;align-items:center;gap:10px">
+          <input type="checkbox" class="pos-check" data-id="${p.id}" onclick="event.stopPropagation();updateBulkCount()" style="display:none;width:16px;height:16px;accent-color:#6366f1;flex-shrink:0">
           ${getCompanyLogo(p.name, p.fullName||p.name, 36, 10)}
           <div>
             <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${displayName(p.name)}</div>
@@ -6727,7 +6744,7 @@ function renderPortfolio() {
         <div style="display:flex;align-items:center">${miniSparkline(chg>0?1:-1, pnl>=0?'#3fb950':'#f87171')}</div>
         <!-- Menu -->
         <div style="display:flex;align-items:center;justify-content:center">
-          <button onclick="event.stopPropagation();showPosMenu('${p.id}')" style="background:none;border:none;cursor:pointer;color:${subCol};font-size:16px;padding:4px;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='rgba(128,128,128,0.1)'" onmouseout="this.style.background='none'">⋯</button>
+          <button onclick="event.stopPropagation();showPosMenu('${p.id}', event)" style="background:none;border:none;cursor:pointer;color:${subCol};font-size:16px;padding:4px;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='rgba(128,128,128,0.1)'" onmouseout="this.style.background='none'">⋯</button>
         </div>
       </div>`;
     }).join('')}
@@ -9148,6 +9165,134 @@ async function confirmCSVImport() {
   refreshPrices();
   showToast(`✓ Import terminé : ${added} ajoutée${added>1?'s':''}, ${updated} mise${updated>1?'s':''} à jour`);
 }
+
+// ═══════════════════════════════════════════════════════════
+//  ☑️ SÉLECTION MULTIPLE + MENU CONTEXTUEL DES POSITIONS
+// ═══════════════════════════════════════════════════════════
+
+let selectMode = false;
+
+function toggleSelectMode(force) {
+  selectMode = (force === undefined) ? !selectMode : force;
+  const bar = document.getElementById('bulk-bar');
+  const btn = document.getElementById('btn-select-mode');
+  if (bar) bar.style.display = selectMode ? 'flex' : 'none';
+  if (btn) {
+    btn.innerHTML = selectMode ? '✕ Quitter la sélection' : '☑️ Sélectionner';
+    btn.style.background = selectMode ? 'rgba(99,102,241,0.12)' : '';
+  }
+  document.querySelectorAll('.pos-check').forEach(cb => {
+    cb.style.display = selectMode ? 'block' : 'none';
+    if (!selectMode) cb.checked = false;
+  });
+  const all = document.getElementById('bulk-all');
+  if (all && !selectMode) all.checked = false;
+  updateBulkCount();
+}
+
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.pos-check').forEach(cb => cb.checked = checked);
+  updateBulkCount();
+}
+
+function getSelectedIds() {
+  return [...document.querySelectorAll('.pos-check')].filter(cb => cb.checked).map(cb => cb.dataset.id);
+}
+
+function updateBulkCount() {
+  const n = getSelectedIds().length;
+  const el = document.getElementById('bulk-count');
+  if (el) el.textContent = n === 0 ? 'Aucune sélectionnée' : `${n} sélectionnée${n > 1 ? 's' : ''}`;
+}
+
+// ── Suppression groupée ──
+async function bulkDelete() {
+  const ids = getSelectedIds();
+  if (!ids.length) { showToast('⚠️ Sélectionne au moins une position'); return; }
+  const names = ids.map(id => {
+    const p = positions.find(x => String(x.id) === String(id));
+    return p ? displayName(p.name) : '';
+  }).filter(Boolean);
+  if (!confirm(`Supprimer ${ids.length} position${ids.length>1?'s':''} ?\n\n${names.slice(0,8).join('\n')}${names.length>8 ? '\n…et '+(names.length-8)+' autre(s)' : ''}`)) return;
+
+  if (!isDemo && currentUser) {
+    try { await sb.from('positions').delete().in('id', ids); } catch(e) { showToast('Erreur: ' + e.message); return; }
+  }
+  positions = positions.filter(p => !ids.includes(String(p.id)));
+  toggleSelectMode(false);
+  renderAll();
+  showToast(`✓ ${ids.length} position${ids.length>1?'s':''} supprimée${ids.length>1?'s':''}`);
+}
+
+// ── Analyse groupée par l'IA ──
+function bulkAskAI() {
+  const ids = getSelectedIds();
+  if (!ids.length) { showToast('⚠️ Sélectionne au moins une position'); return; }
+  const names = ids.map(id => {
+    const p = positions.find(x => String(x.id) === String(id));
+    return p ? `${displayName(p.name)} (${p.name})` : '';
+  }).filter(Boolean);
+  toggleSelectMode(false);
+  nav('ai');
+  setTimeout(() => sq(`Analyse ces positions de mon portefeuille et dis-moi quoi en faire : ${names.join(', ')}`), 250);
+}
+
+// ── Menu contextuel d'une position (bouton ⋯) ──
+function showPosMenu(id, ev) {
+  document.getElementById('pos-menu')?.remove();
+  const p = positions.find(x => String(x.id) === String(id));
+  if (!p) return;
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#1a2030' : '#fff';
+  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
+  const txt  = isDark ? '#f0f0f0' : '#09090b';
+
+  const items = [
+    { icon:'🤖', label:"Analyser avec l'IA", fn:`openDecisionFromPos('${(p.name||'').replace(/'/g,"\\\\'")}','garder')` },
+    { icon:'💬', label:"Demander à l'Agent", fn:`nav('ai');setTimeout(()=>sq('Que penses-tu de ma position ${(p.name||'').replace(/'/g,"\\\\'")} ?'),250)` },
+    { icon:'✏️', label:'Modifier', fn:`openEditPos('${p.id}')` },
+    { icon:'🔔', label:p.alert_price ? `Alerte : ${Number(p.alert_price).toFixed(2)} €` : 'Définir une alerte', fn:`openEditPos('${p.id}')` },
+  ];
+  if (p.platform && p.platform !== 'Autre') {
+    items.push({ icon:'🔗', label:`Ouvrir sur ${p.platform}`, fn:`openOnPlatform('${p.platform}','${(p.name||'').replace(/'/g,"\\\\'")}')` });
+  }
+  items.push({ icon:'🗑️', label:'Supprimer', fn:`deletePosConfirm('${p.id}')`, danger:true });
+
+  const menu = document.createElement('div');
+  menu.id = 'pos-menu';
+  const rect = ev?.currentTarget?.getBoundingClientRect();
+  const top = rect ? Math.min(rect.bottom + 6, window.innerHeight - 280) : 100;
+  const left = rect ? Math.max(12, rect.left - 190) : 100;
+  menu.style.cssText = `position:fixed;top:${top}px;left:${left}px;background:${surf};border:1px solid ${bord};border-radius:13px;box-shadow:0 8px 30px rgba(0,0,0,0.25);z-index:10003;min-width:215px;overflow:hidden;padding:5px`;
+  menu.innerHTML = items.map(it => `
+    <button onclick="document.getElementById('pos-menu').remove();${it.fn}" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;background:none;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;color:${it.danger ? '#dc2626' : txt};text-align:left;font-family:inherit"
+      onmouseover="this.style.background='${isDark?'rgba(255,255,255,0.06)':'#f5f5f5'}'" onmouseout="this.style.background='none'">
+      <span style="font-size:14px;width:18px">${it.icon}</span>${it.label}
+    </button>`).join('');
+  document.body.appendChild(menu);
+
+  // Fermeture au clic extérieur
+  setTimeout(() => {
+    const close = (e) => {
+      if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); }
+    };
+    document.addEventListener('click', close);
+  }, 10);
+}
+
+async function deletePosConfirm(id) {
+  const p = positions.find(x => String(x.id) === String(id));
+  if (!p) return;
+  if (!confirm(`Supprimer ${displayName(p.name)} de ton portefeuille ?`)) return;
+  if (!isDemo && currentUser) {
+    try { await sb.from('positions').delete().eq('id', id); } catch(e) { showToast('Erreur: ' + e.message); return; }
+  }
+  positions = positions.filter(x => String(x.id) !== String(id));
+  renderAll();
+  showToast(`✓ ${displayName(p.name)} supprimée`);
+}
+
 
 // ═══ APERÇU LIVE DU FORMULAIRE D'AJOUT ═══
 // Calcule investi / valeur / P&L en direct pendant la saisie
