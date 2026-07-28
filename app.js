@@ -332,7 +332,7 @@ function renderAllocSlider(containerId, prefix, stockPct = 30, glide = false) {
 
     <!-- Slider -->
     <input type="range" min="0" max="100" step="1" value="${stockPct}" id="${prefix}-alloc-slider" class="slider"
-      oninput="updateAllocSlider('${prefix}', parseInt(this.value))" style="width:100%;margin-bottom:10px">
+      oninput="updateAllocSlider('${prefix}', parseInt(this.value))" ondragstart="return false" draggable="false" style="width:100%;margin-bottom:10px;touch-action:none">
 
     <!-- Barre de risque colorée -->
     <div style="height:8px;border-radius:99px;background:linear-gradient(90deg,#16a34a 0%,#84cc16 30%,#f59e0b 55%,#dc2626 100%);position:relative;margin-bottom:8px">
