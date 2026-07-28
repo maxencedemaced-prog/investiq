@@ -6882,6 +6882,7 @@ function togglePos(id) {
       <button onclick="event.stopPropagation();openDecisionFromPos('${p.name.replace(/'/g,"\\'")}', 'garder')" style="padding:7px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser</button>
       <button onclick="event.stopPropagation();sq('Que penses-tu de ma position ${p.name.replace(/'/g,"\\'")} ?');nav('ai')" style="padding:7px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;color:#16a34a;cursor:pointer">💬 Demander à l'IA</button>
       <button onclick="event.stopPropagation();openEditPos('${p.id}')" style="padding:7px 13px;background:var(--color-bg-subtle,#f5f5f5);border:1px solid var(--color-border,#e4e4e7);border-radius:9px;font-size:12px;font-weight:700;color:var(--color-text-secondary);cursor:pointer">✏️ Modifier</button>
+      ${p.platform && p.platform !== 'Autre' ? `<button onclick="event.stopPropagation();openOnPlatform('${p.platform}','${(p.name||'').replace(/'/g,"\\'")}')" style="padding:7px 13px;background:${p.platform==='Trade Republic'?'#eef2ff':'#fff7ed'};border:1px solid ${p.platform==='Trade Republic'?'#c7d2fe':'#fed7aa'};border-radius:9px;font-size:12px;font-weight:700;color:${p.platform==='Trade Republic'?'#4f46e5':'#ea580c'};cursor:pointer">🔗 ${p.platform}</button>` : ''}
     </div>`;
   row.after(panel);
 }
@@ -8865,6 +8866,198 @@ function renderVerdict(data, ts) {
 
     <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:10px;position:relative">Opinion de l'IA suivie et évaluée à J+7 dans l'historique — pas un conseil financier réglementé.</div>
   </div>`;
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  📥 IMPORT CSV — Trade Republic, XTB et formats génériques
+//  Détection auto du séparateur et des colonnes, prévisualisation
+//  avant import, fusion intelligente avec les positions existantes.
+// ═══════════════════════════════════════════════════════════
+
+function handleCSVImport(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const rows = parseCSVSmart(e.target.result);
+      if (!rows.length) { showToast('⚠️ Aucune position détectée dans ce fichier'); return; }
+      showCSVPreview(rows, file.name);
+    } catch(err) {
+      console.error('CSV:', err);
+      showToast('⚠️ Fichier illisible — vérifie que c\'est bien un export CSV');
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// Parse un CSV avec détection auto (séparateur ; , ou tab · colonnes par mots-clés)
+function parseCSVSmart(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  // Détecter le séparateur sur l'en-tête
+  const header = lines[0];
+  const sep = [';', ',', '\t'].reduce((best, s) =>
+    header.split(s).length > header.split(best).length ? s : best, ';');
+
+  const splitLine = (l) => {
+    // Split en respectant les guillemets
+    const out = []; let cur = '', inQ = false;
+    for (const ch of l) {
+      if (ch === '"') inQ = !inQ;
+      else if (ch === sep && !inQ) { out.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur.trim());
+    return out;
+  };
+
+  const cols = splitLine(header).map(c => c.toLowerCase().replace(/"/g,''));
+
+  // Détection heuristique des colonnes (FR/EN, Trade Republic, XTB)
+  const findCol = (keywords) => cols.findIndex(c => keywords.some(k => c.includes(k)));
+  const iName  = findCol(['instrument','produit','name','nom','titre','désignation','designation','asset','position']);
+  const iTicker= findCol(['symbol','symbole','ticker','isin']);
+  const iQty   = findCol(['quantit','quantity','volume','nombre','shares','qty','anzahl']);
+  const iPru   = findCol(['pru','prix moyen','avg','average','achat','open price','prix d\'ouverture','purchase','buy','cost']);
+  const iPrice = findCol(['prix actuel','current','market price','cours','last','close','dernier']);
+
+  if (iQty === -1 || (iName === -1 && iTicker === -1)) return [];
+
+  const num = (s) => {
+    if (!s) return 0;
+    // Gère "1 234,56" et "1,234.56" et "1234.56"
+    s = String(s).replace(/"/g,'').replace(/\s/g,'').replace(/€|\$|USD|EUR/gi,'');
+    if (s.includes(',') && s.includes('.')) s = s.replace(/,/g, s.lastIndexOf(',') > s.lastIndexOf('.') ? '.' : '');
+    else s = s.replace(',', '.');
+    // retire un éventuel 2e point de milliers
+    const parts = s.split('.');
+    if (parts.length > 2) s = parts.slice(0,-1).join('') + '.' + parts[parts.length-1];
+    return parseFloat(s) || 0;
+  };
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const c = splitLine(lines[i]);
+    if (c.length < 2) continue;
+    let name = (iTicker >= 0 && c[iTicker]) ? c[iTicker].replace(/"/g,'') : (c[iName]||'').replace(/"/g,'');
+    // Si c'est un ISIN (ex: IE00B4L5Y983), préférer le nom lisible — les prix live utilisent les tickers
+    if (/^[A-Z]{2}[A-Z0-9]{10}$/.test(name) && iName >= 0 && c[iName]) {
+      name = c[iName].replace(/"/g,'');
+    }
+    const qty = num(c[iQty]);
+    if (!name || qty <= 0) continue;
+    const pru = iPru >= 0 ? num(c[iPru]) : 0;
+    const price = iPrice >= 0 ? num(c[iPrice]) : pru;
+    rows.push({
+      name: name.slice(0, 30),
+      fullName: iName >= 0 && iTicker >= 0 ? (c[iName]||'').replace(/"/g,'').slice(0,50) : '',
+      qty: Math.round(qty * 10000) / 10000,
+      pru: Math.round(pru * 100) / 100,
+      price: Math.round((price || pru) * 100) / 100,
+      checked: true,
+    });
+  }
+  return rows.slice(0, 60);
+}
+
+// Prévisualisation avant import
+function showCSVPreview(rows, filename) {
+  window._csvRows = rows;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#161b26' : '#fff';
+  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
+  const txt  = isDark ? '#f0f0f0' : '#09090b';
+  const sub  = isDark ? '#888' : '#71717a';
+
+  // Détecter la plateforme depuis le nom de fichier
+  const platform = /trade\s*republic|traderepublic/i.test(filename) ? 'Trade Republic'
+                 : /xtb/i.test(filename) ? 'XTB' : 'Autre';
+  window._csvPlatform = platform;
+
+  document.getElementById('csv-preview-modal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'csv-preview-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:${surf};border-radius:20px;padding:22px;max-width:560px;width:100%;max-height:82vh;display:flex;flex-direction:column">
+      <div style="font-size:17px;font-weight:800;color:${txt}">📥 ${rows.length} position${rows.length>1?'s':''} détectée${rows.length>1?'s':''}</div>
+      <div style="font-size:12px;color:${sub};margin:4px 0 6px">${filename} · plateforme : 
+        <select id="csv-platform-sel" style="background:transparent;border:1px solid ${bord};border-radius:6px;padding:2px 6px;color:${txt};font-size:12px">
+          <option ${platform==='Trade Republic'?'selected':''}>Trade Republic</option>
+          <option ${platform==='XTB'?'selected':''}>XTB</option>
+          <option ${platform==='Autre'?'selected':''}>Autre</option>
+        </select>
+      </div>
+      <div style="font-size:11px;color:${sub};margin-bottom:10px">Décoche ce que tu ne veux pas importer. Les doublons (même nom) mettront à jour la position existante.</div>
+      <div style="flex:1;overflow-y:auto;border:1px solid ${bord};border-radius:12px">
+        ${rows.map((r, i) => `
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid ${bord};cursor:pointer">
+          <input type="checkbox" checked onchange="window._csvRows[${i}].checked=this.checked" style="width:16px;height:16px;accent-color:#16a34a;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:700;color:${txt}">${displayName(r.name)}${r.fullName && r.fullName !== r.name ? ` <span style="font-weight:400;color:${sub}">· ${r.fullName}</span>` : ''}</div>
+            <div style="font-size:10px;color:${sub}">${r.qty} part${r.qty>1?'s':''} · PRU ${r.pru>0 ? r.pru.toFixed(2)+' €' : '—'} ${r.price>0 && r.price!==r.pru ? '· prix '+r.price.toFixed(2)+' €' : ''}</div>
+          </div>
+        </label>`).join('')}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button onclick="document.getElementById('csv-preview-modal').remove()" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Annuler</button>
+        <button onclick="confirmCSVImport()" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:13px;font-weight:800;color:#fff;cursor:pointer">Importer la sélection</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function confirmCSVImport() {
+  const rows = (window._csvRows || []).filter(r => r.checked);
+  const platform = document.getElementById('csv-platform-sel')?.value || window._csvPlatform || 'Autre';
+  document.getElementById('csv-preview-modal')?.remove();
+  if (!rows.length) return;
+
+  let added = 0, updated = 0;
+  for (const r of rows) {
+    const existing = positions.find(p => p.name.toUpperCase() === r.name.toUpperCase());
+    if (existing) {
+      existing.qty = r.qty;
+      if (r.pru > 0) existing.pru = r.pru;
+      if (r.price > 0) existing.price = r.price;
+      existing.platform = platform;
+      if (!isDemo && currentUser) {
+        try { await sb.from('positions').update({ qty: existing.qty, pru: existing.pru, price: existing.price, platform }).eq('id', existing.id); } catch(e) {}
+      }
+      updated++;
+    } else {
+      const pos = { name: r.name, qty: r.qty, pru: r.pru || r.price || 0, price: r.price || r.pru || 0,
+                    type: 'Action', sector: '', platform, alert_price: null };
+      if (!isDemo && currentUser) {
+        try {
+          const { data } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
+          if (data) pos.id = data.id;
+        } catch(e) {}
+      }
+      if (!pos.id) pos.id = 'csv_' + Date.now() + '_' + added;
+      positions.push(pos);
+      added++;
+    }
+  }
+  renderAll();
+  refreshPrices();
+  showToast(`✓ Import terminé : ${added} ajoutée${added>1?'s':''}, ${updated} mise${updated>1?'s':''} à jour`);
+}
+
+// ═══ LIENS DIRECTS VERS LES PLATEFORMES ═══
+// Copie le ticker + ouvre la plateforme (colle dans la recherche pour trouver l'actif)
+function openOnPlatform(platform, ticker) {
+  const urls = {
+    'Trade Republic': 'https://app.traderepublic.com',
+    'XTB': 'https://xstation5.xtb.com',
+  };
+  const url = urls[platform];
+  if (!url) return;
+  try { navigator.clipboard.writeText(ticker); } catch {}
+  showToast(`📋 "${ticker}" copié — colle-le dans la recherche ${platform}`);
+  window.open(url, '_blank');
 }
 
 
