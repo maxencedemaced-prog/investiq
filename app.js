@@ -96,6 +96,7 @@ async function validateObjectif(labelOverride) {
     capital: objChartCapital, monthly: objChartMonthly,
     target: objChartTarget, years: objChartYears,
     rate: objChartRate, risk: objRisk,
+    stock_pct: objStockPct, glide: objGlide,
     label, validated_at: new Date().toISOString()
   };
   try { localStorage.setItem(OBJ_STORAGE, JSON.stringify({...data, validatedAt: data.validated_at})); } catch {}
@@ -108,7 +109,8 @@ async function validateObjectif(labelOverride) {
         // Mise à jour — sans updated_at si la colonne n'existe pas
         const updatePayload = {
           capital: data.capital, monthly: data.monthly, target: data.target,
-          years: data.years, rate: data.rate, risk: data.risk
+          years: data.years, rate: data.rate, risk: data.risk,
+          stock_pct: data.stock_pct, glide: data.glide
         };
         const { error } = await sb.from('objectives').update(updatePayload).eq('id', existing.id);
         if (error) console.warn('[validateObjectif] update error:', error.message);
@@ -117,7 +119,8 @@ async function validateObjectif(labelOverride) {
         // Nouvel objectif — sans updated_at
         const insertPayload = {
           user_id: currentUser.id, capital: data.capital, monthly: data.monthly,
-          target: data.target, years: data.years, rate: data.rate, risk: data.risk
+          target: data.target, years: data.years, rate: data.rate, risk: data.risk,
+          stock_pct: data.stock_pct, glide: data.glide
         };
         const { data: inserted, error } = await sb.from('objectives').insert(insertPayload).select().single();
         if (error) console.warn('[validateObjectif] insert error:', error.message);
@@ -139,6 +142,7 @@ async function validateObjectif(labelOverride) {
         id: localId, label: labelOverride || ('Objectif ' + allObjectives.length),
         capital: objChartCapital, monthly: objChartMonthly, target: objChartTarget,
         years: objChartYears, rate: objChartRate, risk: objRisk,
+        stock_pct: objStockPct, glide: objGlide,
         color: OBJ_COLORS[allObjectives.length % OBJ_COLORS.length]
       });
       activeObjId = localId;
@@ -153,6 +157,7 @@ async function validateObjectif(labelOverride) {
         id: localId, label: labelOverride || ('Objectif ' + (allObjectives.length + 1)),
         capital: objChartCapital, monthly: objChartMonthly, target: objChartTarget,
         years: objChartYears, rate: objChartRate, risk: objRisk,
+        stock_pct: objStockPct, glide: objGlide,
         color: OBJ_COLORS[allObjectives.length % OBJ_COLORS.length]
       });
       activeObjId = localId;
@@ -2655,7 +2660,7 @@ async function obFinish(action) {
     } else {
       // Mode démo : ajout local
       const id = 'local_' + Date.now();
-      allObjectives.push({ id, label:'Objectif ' + (allObjectives.length+1), capital:bankroll, monthly, target, years:10, rate:objChartRate, risk:objRisk, color:OBJ_COLORS[allObjectives.length % OBJ_COLORS.length] });
+      allObjectives.push({ id, label:'Objectif ' + (allObjectives.length+1), capital:bankroll, monthly, target, years:10, rate:objChartRate, risk:objRisk, stock_pct:objStockPct, glide:objGlide, color:OBJ_COLORS[allObjectives.length % OBJ_COLORS.length] });
       activeObjId = id;
     }
     nav('objectif');
@@ -4366,6 +4371,8 @@ async function loadObjective() {
         years: d.years || 10,
         rate: d.rate || 7,
         risk: d.risk || 'equilibre',
+        stock_pct: (d.stock_pct !== null && d.stock_pct !== undefined) ? d.stock_pct : (d.risk==='agressif'?60:d.risk==='prudent'?15:30),
+        glide: d.glide || false,
         color: OBJ_COLORS[i % OBJ_COLORS.length],
         validated_at: d.validated_at
       }));
