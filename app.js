@@ -169,6 +169,14 @@ async function validateObjectif(labelOverride) {
   showToast('🎯 Objectif sauvegardé !');
 }
 
+// ═══ Sauvegarde locale de la répartition (secours si la colonne base est absente) ═══
+function saveAllocLocal(objId, stockPct, glide) {
+  try { localStorage.setItem('iq_alloc_' + objId, JSON.stringify({ stock_pct: stockPct, glide })); } catch {}
+}
+function loadAllocLocal(objId) {
+  try { return JSON.parse(localStorage.getItem('iq_alloc_' + objId) || 'null'); } catch { return null; }
+}
+
 function applyObjData(d) {
   // Applique les données objectif aux variables globales
   objChartCapital = d.capital !== null && d.capital !== undefined ? d.capital : 0;
@@ -177,8 +185,18 @@ function applyObjData(d) {
   objChartYears   = d.years   || 10;
   objChartRate    = d.rate    || 7;
   objRisk         = d.risk    || 'equilibre';
-  objStockPct     = (d.stock_pct !== null && d.stock_pct !== undefined) ? d.stock_pct : (objRisk==='agressif'?60:objRisk==='prudent'?15:30);
-  objGlide        = d.glide || false;
+  // Priorité : valeur en base → sauvegarde locale → défaut selon profil
+  const localAlloc = d.id ? loadAllocLocal(d.id) : null;
+  if (d.stock_pct !== null && d.stock_pct !== undefined) {
+    objStockPct = d.stock_pct;
+    objGlide = d.glide || false;
+  } else if (localAlloc) {
+    objStockPct = localAlloc.stock_pct;
+    objGlide = localAlloc.glide || false;
+  } else {
+    objStockPct = objRisk==='agressif'?60:objRisk==='prudent'?15:30;
+    objGlide = false;
+  }
 }
 
 async function loadValidatedObjectif() {
@@ -2652,10 +2670,22 @@ async function obFinish(action) {
           target: target, years: 10, rate: objChartRate, risk: objRisk,
           stock_pct: objStockPct, glide: objGlide
         });
-        if (error) console.warn('[obFinish] insert error:', error.message);
+        if (error) {
+          console.error('[obFinish] insert error:', error.message);
+          showToast('⚠️ Sauvegarde partielle : ' + (error.message||'').slice(0,50));
+        }
+        // Capture la répartition choisie AVANT le rechargement (qui peut l'écraser)
+        const chosenPct = objStockPct, chosenGlide = objGlide, chosenRisk = objRisk, chosenRate = objChartRate;
         await loadObjective();
         // Activer le tout dernier objectif créé
-        if (allObjectives.length) { activeObjId = allObjectives[allObjectives.length-1].id; applyObjData(allObjectives[allObjectives.length-1]); }
+        if (allObjectives.length) {
+          const last = allObjectives[allObjectives.length-1];
+          activeObjId = last.id;
+          // Restaure la répartition choisie (prioritaire sur ce que la base a renvoyé) + sauvegarde locale
+          last.stock_pct = chosenPct; last.glide = chosenGlide; last.risk = chosenRisk; last.rate = chosenRate;
+          saveAllocLocal(last.id, chosenPct, chosenGlide);
+          applyObjData(last);
+        }
       } catch(e) {}
     } else {
       // Mode démo : ajout local
@@ -7250,6 +7280,7 @@ async function saveAllocEdit() {
   }
   const obj = allObjectives.find(o => o.id === activeObjId);
   if (obj) { obj.stock_pct=objStockPct; obj.glide=objGlide; obj.risk=objRisk; obj.rate=objChartRate; }
+  if (activeObjId) saveAllocLocal(activeObjId, objStockPct, objGlide);
   // Invalider les caches (plan mensuel + plan ETF) pour forcer une vraie régénération
   try {
     localStorage.removeItem(MONTHLY_PLAN_KEY);
