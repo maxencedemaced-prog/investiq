@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260728095619">
+  <link rel="stylesheet" href="style.css?v=20260728100102">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1057,6 +1057,10 @@ window.addEventListener('load', function() {
           <p class="page-sub">Suivez la performance de vos investissements en temps réel.</p>
         </div>
         <div style="display:flex;gap:8px">
+          <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none" onchange="handleCSVImport(this.files[0]);this.value=''">
+          <button class="btn-secondary" onclick="document.getElementById('csv-file-input').click()" style="display:flex;align-items:center;gap:6px;font-size:13px" title="Importer un export CSV Trade Republic ou XTB">
+            📥 Importer CSV
+          </button>
           <button class="btn-secondary" onclick="refreshPrices()" style="display:flex;align-items:center;gap:6px;font-size:13px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
             Prix live
@@ -1508,7 +1512,12 @@ window.addEventListener('load', function() {
           </div>
           <div class="form-grid">
             <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Tech, Monde..."></div>
-            <div class="field"><label>Plateforme</label><select id="f-platform"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
+            <div class="field"><label>Plateforme</label><select id="f-platform"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select>
+              <div style="display:flex;gap:6px;margin-top:7px">
+                <button type="button" onclick="openOnPlatform('Trade Republic', document.getElementById('f-name').value || document.getElementById('f-search').value)" style="flex:1;padding:6px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;font-size:11px;font-weight:700;color:#4f46e5;cursor:pointer">🔗 Voir sur Trade Republic</button>
+                <button type="button" onclick="openOnPlatform('XTB', document.getElementById('f-name').value || document.getElementById('f-search').value)" style="flex:1;padding:6px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:11px;font-weight:700;color:#ea580c;cursor:pointer">🔗 Voir sur XTB</button>
+              </div>
+            </div>
           </div>
           <div class="field">
             <label>Alerte prix (€) <span class="tooltip-icon" data-tip="Notification si le prix descend sous ce seuil">?</span></label>
@@ -1704,7 +1713,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260728095619"></script>
+<script src="app.js?v=20260728100102"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
