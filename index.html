@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260728102302">
+  <link rel="stylesheet" href="style.css?v=20260728103329">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1059,7 +1059,7 @@ window.addEventListener('load', function() {
         <div style="display:flex;gap:8px">
           <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none" onchange="handleCSVImport(this.files[0]);this.value=''">
           <button class="btn-secondary" onclick="toggleSelectMode()" id="btn-select-mode" style="display:flex;align-items:center;gap:6px;font-size:13px" title="Sélectionner plusieurs positions">
-            ☑️ Sélectionner
+            ☑️ Sélectionner <span style="font-size:10px;opacity:0.7">✨</span>
           </button>
           <button class="btn-secondary" onclick="showCSVHelp()" style="display:flex;align-items:center;gap:6px;font-size:13px" title="Importer tes positions depuis Trade Republic ou XTB">
             📥 Importer mes positions
@@ -1714,7 +1714,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260728102302"></script>
+<script src="app.js?v=20260728103329"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
