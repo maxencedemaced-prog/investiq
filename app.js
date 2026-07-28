@@ -168,6 +168,8 @@ function applyObjData(d) {
   objChartYears   = d.years   || 10;
   objChartRate    = d.rate    || 7;
   objRisk         = d.risk    || 'equilibre';
+  objStockPct     = (d.stock_pct !== null && d.stock_pct !== undefined) ? d.stock_pct : (objRisk==='agressif'?60:objRisk==='prudent'?15:30);
+  objGlide        = d.glide || false;
 }
 
 async function loadValidatedObjectif() {
@@ -241,6 +243,7 @@ function showValidatedChart() {
         </div>
       </div>
       <div style="display:flex;gap:8px">
+        <button class="btn-secondary" onclick="openAllocModal()" style="font-size:13px;padding:9px 16px;flex:1">🎚️ Ajuster actions/ETF</button>
         <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px;flex:1">✏ Modifier</button>
         <button class="btn-secondary" onclick="nav('ai')" style="font-size:13px;padding:9px 16px;flex:1">🤖 Analyse IA →</button>
       </div>`;
@@ -256,6 +259,86 @@ function showValidatedChart() {
 //  d'achats frais, tenant compte des marchés et du portefeuille.
 //  Déclenché : auto le 1er du mois OU bouton manuel.
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+//  🎚️ CURSEUR RÉPARTITION ACTIONS/ETF + INDICATEUR DE RISQUE
+//  Remplace le choix Prudent/Équilibré/Agressif.
+//  Le % d'actions détermine le profil, la couleur et le label.
+// ═══════════════════════════════════════════════════════════
+
+// Déduit le profil de risque à partir du % d'actions
+function riskFromStockPct(stockPct) {
+  if (stockPct <= 15) return { key:'prudent',   label:'Prudent',   color:'#16a34a', rate:5, desc:'Capital protégé, croissance douce' };
+  if (stockPct <= 40) return { key:'equilibre', label:'Équilibré', color:'#84cc16', rate:7, desc:'Bon compromis risque/rendement' };
+  if (stockPct <= 65) return { key:'dynamique', label:'Dynamique', color:'#f59e0b', rate:8, desc:'Croissance visée, volatilité assumée' };
+  return                    { key:'agressif',  label:'Agressif',  color:'#dc2626', rate:9, desc:'Performance max, fortes secousses' };
+}
+
+// Rend le composant dans un container donné.
+// prefix = préfixe des IDs (ex: 'ob' pour le tuto, 'edit' pour la modif)
+// stockPct = valeur initiale (0-100), glide = bool "plus prudent avec le temps"
+function renderAllocSlider(containerId, prefix, stockPct = 30, glide = false) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const r = riskFromStockPct(stockPct);
+  el.innerHTML = `
+    <div style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-size:12px;font-weight:700;color:var(--color-text-secondary,#71717a)">Ta répartition</span>
+      <span style="font-size:11px;color:var(--color-text-tertiary,#a1a1aa)">tu choisis, l'IA s'adapte</span>
+    </div>
+
+    <!-- Valeurs actions / ETF -->
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <div><span id="${prefix}-stock-val" style="font-size:20px;font-weight:900;color:var(--color-text)">${stockPct}%</span> <span style="font-size:12px;color:var(--color-text-secondary)">actions</span></div>
+      <div style="text-align:right"><span id="${prefix}-etf-val" style="font-size:20px;font-weight:900;color:var(--color-text)">${100-stockPct}%</span> <span style="font-size:12px;color:var(--color-text-secondary)">ETF</span></div>
+    </div>
+
+    <!-- Slider -->
+    <input type="range" min="0" max="100" step="5" value="${stockPct}" id="${prefix}-alloc-slider" class="slider"
+      oninput="updateAllocSlider('${prefix}', parseInt(this.value))" style="width:100%;margin-bottom:10px">
+
+    <!-- Barre de risque colorée -->
+    <div style="height:8px;border-radius:99px;background:linear-gradient(90deg,#16a34a 0%,#84cc16 30%,#f59e0b 55%,#dc2626 100%);position:relative;margin-bottom:8px">
+      <div id="${prefix}-risk-cursor" style="position:absolute;top:-3px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid ${r.color};box-shadow:0 1px 4px rgba(0,0,0,0.3);left:calc(${stockPct}% - 7px);transition:left 0.1s"></div>
+    </div>
+
+    <!-- Label + description -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span id="${prefix}-risk-label" style="font-size:12px;font-weight:800;padding:3px 10px;border-radius:7px;background:${r.color}1a;color:${r.color}">${r.label}</span>
+      <span id="${prefix}-risk-desc" style="font-size:11px;color:var(--color-text-secondary)">${r.desc}</span>
+    </div>
+
+    <!-- Option glide path -->
+    <label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--color-bg-subtle,#f7f7f8);border:1px solid var(--color-border);border-radius:11px;cursor:pointer">
+      <input type="checkbox" id="${prefix}-glide" ${glide?'checked':''} style="width:17px;height:17px;accent-color:var(--color-primary,#16a34a);flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--color-text)">Devenir plus prudent avec le temps</div>
+        <div style="font-size:10.5px;color:var(--color-text-secondary);margin-top:1px">Réduit progressivement la part d'actions à l'approche de ton objectif</div>
+      </div>
+    </label>`;
+}
+
+// Mise à jour live quand on bouge le curseur
+function updateAllocSlider(prefix, stockPct) {
+  const r = riskFromStockPct(stockPct);
+  const set = (id, v) => { const e = document.getElementById(prefix+'-'+id); if (e) e.textContent = v; };
+  set('stock-val', stockPct + '%');
+  set('etf-val', (100-stockPct) + '%');
+  const label = document.getElementById(prefix+'-risk-label');
+  if (label) { label.textContent = r.label; label.style.background = r.color+'1a'; label.style.color = r.color; }
+  set('risk-desc', r.desc);
+  const cursor = document.getElementById(prefix+'-risk-cursor');
+  if (cursor) { cursor.style.left = `calc(${stockPct}% - 7px)`; cursor.style.borderColor = r.color; }
+}
+
+// Lit les valeurs du composant
+function readAllocSlider(prefix) {
+  const stockPct = parseInt(document.getElementById(prefix+'-alloc-slider')?.value ?? 30);
+  const glide = document.getElementById(prefix+'-glide')?.checked || false;
+  const r = riskFromStockPct(stockPct);
+  return { stockPct, etfPct: 100-stockPct, glide, risk: r.key, rate: r.rate };
+}
+
 
 const MONTHLY_PLAN_KEY = 'iq_monthly_plan';
 
@@ -303,7 +386,9 @@ async function generateMonthlyPlan(force = false) {
 Son portefeuille actuel (${fmtK(tv)}) :
 ${held || 'Portefeuille vide, premier mois.'}
 
-EXERCICE "PLAN DU MOIS" : répartis ses ${budget}€ de ce mois entre 2 à 4 lignes concrètes (ETF en priorité, actions en satellite selon profil). Prends en compte ce qu'il a DÉJÀ : renforce ce qui est sous-pondéré, évite de surcharger ce qui pèse déjà trop. Garde toujours un socle ETF Monde majoritaire.
+SA RÉPARTITION CIBLE CHOISIE : ${objStockPct}% actions / ${100-objStockPct}% ETF${objGlide ? ' (elle deviendra plus prudente à l\'approche de l\'objectif)' : ''}.
+
+EXERCICE "PLAN DU MOIS" : répartis ses ${budget}€ de ce mois pour RESPECTER sa cible ${objStockPct}% actions / ${100-objStockPct}% ETF. IMPORTANT : regarde ce qu'il détient DÉJÀ et oriente le budget vers ce qui est sous-pondéré par rapport à sa cible (rééquilibrage par les apports, sans vendre). S'il a trop d'actions vs sa cible, mets plus d'ETF ce mois-ci, et inversement. Toujours un socle ETF Monde dans la partie ETF.
 
 Réponds UNIQUEMENT en JSON valide sans backticks :
 {
@@ -800,6 +885,8 @@ let objChartMonthly = 200;
 let objChartRate = 7;
 let objChartTarget = 100000;
 let objRisk = 'equilibre';
+let objStockPct = 30; // % actions (le reste en ETF) — pilote le profil de risque
+let objGlide = false; // devenir plus prudent avec le temps
 // Multi-objectifs
 let allObjectives = []; // [{id, label, capital, monthly, target, years, rate, risk, color}]
 let activeObjId = null;
@@ -2178,8 +2265,7 @@ function obSelectProfile(level) {
   const btn = document.getElementById('ob-btn-1');
   if (btn) btn.disabled = false;
 
-  // Pré-sélectionne le risque recommandé
-  obSelectRisk(p.defaultRisk);
+  // (le profil est désormais choisi via le curseur actions/ETF à l'étape 3)
 }
 
 function showOnboarding(force) {
@@ -2249,9 +2335,9 @@ function obNext(step) {
   // Étape 3 : reco risque selon profil
   if (step === 3) {
     const p = OB_PROFILES[obProfileLevel];
-    const recoEl = document.getElementById('ob-risk-reco');
-    if (recoEl && p) { recoEl.innerHTML = p.riskReco; recoEl.style.display = 'block'; }
-    if (p) obSelectRisk(p.defaultRisk);
+    // Défaut du curseur selon le profil suggéré par le parcours
+    const defaultPct = p && p.defaultRisk === 'eleve' ? 60 : p && p.defaultRisk === 'faible' ? 15 : 30;
+    renderAllocSlider('ob-alloc-container', 'ob', defaultPct, false);
   }
 
   // Étape 4 : label profil + générer plan
@@ -2316,6 +2402,8 @@ function obToggleGoal(goal) {
 }
 
 function obSelectRisk(risk) {
+  const hidden = document.getElementById('ob-risk'); if (hidden) hidden.value = risk;
+  if (!document.getElementById('ob-rcheck-faible')) return; // cartes supprimées → no-op
   ['faible','modere','eleve'].forEach(r => {
     const card  = document.getElementById('ob-risk-' + r);
     const check = document.getElementById('ob-rcheck-' + r);
@@ -2351,8 +2439,13 @@ async function obOpenAction(ticker, name, amount) {
 async function obFinishSilent() {
   const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 1000;
   const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 200;
-  const risk     = document.getElementById('ob-risk')?.value    || 'faible';
+  const alloc    = readAllocSlider('ob');
+  const risk     = alloc.risk;
   const horizon  = document.getElementById('ob-horizon')?.value || 'long';
+  objStockPct = alloc.stockPct;
+  objGlide = alloc.glide;
+  objRisk = alloc.risk;
+  objChartRate = alloc.rate;
   profile.bankroll = bankroll;
   profile.risk     = risk;
   profile.horizon  = horizon === 'mixte' ? 'moyen' : horizon;
@@ -2518,7 +2611,8 @@ async function obFinish(action) {
       try {
         const { error } = await sb.from('objectives').insert({
           user_id: currentUser.id, capital: bankroll, monthly: monthly,
-          target: target, years: 10, rate: objChartRate, risk: objRisk
+          target: target, years: 10, rate: objChartRate, risk: objRisk,
+          stock_pct: objStockPct, glide: objGlide
         });
         if (error) console.warn('[obFinish] insert error:', error.message);
         await loadObjective();
@@ -7072,6 +7166,44 @@ function toggleObjDetail() {
   const open = wrap.style.display === 'block';
   wrap.style.display = open ? 'none' : 'block';
   btn.textContent = open ? '▾ Voir la projection détaillée' : '▴ Masquer la projection';
+}
+
+// ═══ MODAL "AJUSTER MA RÉPARTITION" ═══
+function openAllocModal() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#161b26' : '#fff';
+  const txt = isDark ? '#f0f0f0' : '#09090b';
+  document.getElementById('alloc-modal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'alloc-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:${surf};border-radius:20px;padding:24px;max-width:440px;width:100%">
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px">🎚️ Ajuste ta répartition</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:18px">Choisis ta part d'actions et d'ETF. Ton plan sera recalculé en conséquence.</div>
+      <div id="edit-alloc-container" style="margin-bottom:20px"></div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('alloc-modal').remove()" style="flex:1;padding:12px;background:transparent;border:1px solid var(--color-border);border-radius:12px;font-size:13px;font-weight:600;color:var(--color-text-secondary);cursor:pointer">Annuler</button>
+        <button onclick="saveAllocEdit()" style="flex:2;padding:12px;background:var(--color-primary,#16a34a);border:none;border-radius:12px;font-size:13px;font-weight:800;color:#fff;cursor:pointer">Valider & recalculer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  renderAllocSlider('edit-alloc-container', 'edit', objStockPct, objGlide);
+}
+
+async function saveAllocEdit() {
+  const alloc = readAllocSlider('edit');
+  objStockPct = alloc.stockPct; objGlide = alloc.glide; objRisk = alloc.risk; objChartRate = alloc.rate;
+  document.getElementById('alloc-modal')?.remove();
+  if (!isDemo && currentUser && activeObjId) {
+    try { await sb.from('objectives').update({ stock_pct:objStockPct, glide:objGlide, risk:objRisk, rate:objChartRate }).eq('id', activeObjId); } catch(e) {}
+  }
+  const obj = allObjectives.find(o => o.id === activeObjId);
+  if (obj) { obj.stock_pct=objStockPct; obj.glide=objGlide; obj.risk=objRisk; obj.rate=objChartRate; }
+  showToast('✓ Répartition mise à jour — plan recalculé');
+  try { generateMonthlyPlan(true); } catch(e) {}
+  try { generateETFPlan(activeObjId); } catch(e) {}
+  try { if (typeof renderMultiObjChart==='function') renderMultiObjChart(); } catch(e) {}
 }
 
 function resetObj() {
