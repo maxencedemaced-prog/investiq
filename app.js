@@ -73,6 +73,10 @@ async function confirmReplaceObjective(idToReplace) {
 
   // Callback de création (fourni par l'appelant)
   if (typeof cb === 'function') await cb();
+  // Rafraîchir onglets + graphique
+  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  try { renderObjLegend(tv); } catch(e) {}
+  try { renderMultiObjChart(); } catch(e) {}
 }
 
 async function validateObjectif(labelOverride) {
@@ -353,7 +357,11 @@ function monthLabel() {
 function getCachedMonthlyPlan() {
   try {
     const c = JSON.parse(localStorage.getItem(MONTHLY_PLAN_KEY) || 'null');
-    return c && c.month === currentMonthId() ? c : null;
+    // Valide seulement si même mois, même objectif ET même répartition (sinon on régénère)
+    const sameContext = c && c.month === currentMonthId()
+      && c.objId === activeObjId
+      && c.stockPct === objStockPct;
+    return sameContext ? c : null;
   } catch { return null; }
 }
 
@@ -388,7 +396,12 @@ ${held || 'Portefeuille vide, premier mois.'}
 
 SA RÉPARTITION CIBLE CHOISIE : ${objStockPct}% actions / ${100-objStockPct}% ETF${objGlide ? ' (elle deviendra plus prudente à l\'approche de l\'objectif)' : ''}.
 
-EXERCICE "PLAN DU MOIS" : répartis ses ${budget}€ de ce mois pour RESPECTER sa cible ${objStockPct}% actions / ${100-objStockPct}% ETF. IMPORTANT : regarde ce qu'il détient DÉJÀ et oriente le budget vers ce qui est sous-pondéré par rapport à sa cible (rééquilibrage par les apports, sans vendre). S'il a trop d'actions vs sa cible, mets plus d'ETF ce mois-ci, et inversement. Toujours un socle ETF Monde dans la partie ETF.
+EXERCICE "PLAN DU MOIS" : répartis ses ${budget}€ de ce mois pour RESPECTER sa cible ${objStockPct}% actions / ${100-objStockPct}% ETF.
+RÈGLES STRICTES SUR LA RÉPARTITION :
+${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (ou quasi tout) en ACTIONS individuelles. NE propose AUCUN ETF (ou 1 seul minoritaire si ${objStockPct}<100).` : objStockPct <= 10 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (ou quasi tout) en ETF. NE propose quasiment AUCUNE action individuelle.` : `- Respecte le ratio ${objStockPct}% actions / ${100-objStockPct}% ETF dans la répartition des montants.`}
+- Rééquilibrage par apports : regarde ce qu'il détient DÉJÀ et oriente le budget vers ce qui est sous-pondéré vs sa cible, sans vendre.
+- La somme des montants "actions" doit représenter ~${objStockPct}% du budget, et les ETF ~${100-objStockPct}%.
+${objStockPct < 100 ? 'Dans la poche ETF, privilégie un socle Monde (MSCI World / All-World).' : ''}
 
 Réponds UNIQUEMENT en JSON valide sans backticks :
 {
@@ -412,7 +425,7 @@ La somme des montants doit faire exactement ${budget}.`;
       l._price = p?.price || null;
     });
 
-    const plan = { month: currentMonthId(), budget, data, ts: Date.now() };
+    const plan = { month: currentMonthId(), objId: activeObjId, stockPct: objStockPct, budget, data, ts: Date.now() };
     try { localStorage.setItem(MONTHLY_PLAN_KEY, JSON.stringify(plan)); } catch {}
 
     // Enregistrer dans le tracking (chaque ligne = un "renforcer" évalué à J+7)
@@ -2630,7 +2643,11 @@ async function obFinish(action) {
       activeObjId = id;
     }
     nav('objectif');
-    setTimeout(() => { if (typeof renderMultiObjChart==='function') renderMultiObjChart(); }, 100);
+    setTimeout(() => {
+      const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+      try { renderObjLegend(tv); } catch(e) {}
+      if (typeof renderMultiObjChart==='function') renderMultiObjChart();
+    }, 100);
   };
 
   // Si déjà 3 objectifs → modal de remplacement, sinon création directe
