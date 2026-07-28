@@ -398,6 +398,8 @@ function getCachedMonthlyPlan() {
   } catch { return null; }
 }
 
+let _monthlyPlanBusy = false; // verrou anti-boucle
+
 async function generateMonthlyPlan(force = false) {
   const el = document.getElementById('obj-monthly-plan');
   if (!el) return;
@@ -405,6 +407,15 @@ async function generateMonthlyPlan(force = false) {
   const budget = objChartMonthly || 200;
   const cached = getCachedMonthlyPlan();
   if (cached && !force) { renderMonthlyPlan(cached, false); return; }
+  if (_monthlyPlanBusy) return; // génération déjà en cours
+  // Cooldown 5 min après un échec (évite les rafales d'appels API)
+  if (!force) {
+    try {
+      const cd = parseInt(localStorage.getItem(MONTHLY_PLAN_KEY + '_cooldown') || 0);
+      if (cd && Date.now() - cd < 5*60*1000) return;
+    } catch {}
+  }
+  _monthlyPlanBusy = true;
 
   // Loading
   el.innerHTML = `
@@ -469,8 +480,11 @@ La somme des montants doit faire exactement ${budget}.`;
       })));
     }
 
+    _monthlyPlanBusy = false;
     renderMonthlyPlan(plan, false);
   } catch(e) {
+    _monthlyPlanBusy = false;
+    try { localStorage.setItem(MONTHLY_PLAN_KEY + '_cooldown', Date.now()); } catch {}
     console.warn('monthlyPlan:', e);
     el.innerHTML = `
     <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -536,9 +550,12 @@ function renderMonthlyPlan(plan, isNew) {
 const CACHE_ETF_PLAN = 'iq_etf_plan_v2'; // v2 : structure socle/satellites
 const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // 24h
 
+let _etfPlanBusy = false; // verrou anti-boucle
+
 async function generateETFPlan(objId) {
   const el = document.getElementById('obj-etf-plan');
   if (!el) return;
+  if (_etfPlanBusy) return;
 
   // Cas quasi-100% actions : pas d'ETF à proposer dans la répartition de référence
   if (objStockPct >= 95) {
@@ -583,6 +600,7 @@ Réponds UNIQUEMENT en JSON valide sans markdown :
 ]
 Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, adapté au profil ${riskLabel}.`;
 
+  _etfPlanBusy = true;
   try {
     const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.');
     const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
@@ -597,10 +615,16 @@ Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, a
           localStorage.setItem(CACHE_ETF_PLAN + '_' + activeObjId, cacheData);
         }
       } catch {}
+      _etfPlanBusy = false;
       renderETFCards(etfs, el);
       return;
     }
   } catch(e) {}
+  _etfPlanBusy = false;
+  // Échec → on met le fallback EN CACHE aussi, sinon on re-appelle l'IA à chaque rendu
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify({ etfs: null, risk: objRisk, stockPct: objStockPct, ts: Date.now() - CACHE_ETF_TTL + 300000 }));
+  } catch {}
 
   // Fallback
   const fallback = objRisk === 'agressif'
@@ -1914,6 +1938,7 @@ async function acSelect(company) {
   // Show form fields
   document.getElementById('f-fields').style.display = 'block';
   try { updateAddButtons(); } catch(e) {}
+  try { updateAddPreview(); } catch(e) {}
   document.getElementById('f-empty-state').style.display = 'none';
 
   // Fetch live price
@@ -9100,6 +9125,52 @@ async function confirmCSVImport() {
   renderAll();
   refreshPrices();
   showToast(`✓ Import terminé : ${added} ajoutée${added>1?'s':''}, ${updated} mise${updated>1?'s':''} à jour`);
+}
+
+// ═══ APERÇU LIVE DU FORMULAIRE D'AJOUT ═══
+// Calcule investi / valeur / P&L en direct pendant la saisie
+function updateAddPreview() {
+  const el = document.getElementById('f-preview');
+  if (!el) return;
+  const qty   = parseFloat(document.getElementById('f-qty')?.value) || 0;
+  const pru   = parseFloat(document.getElementById('f-pru')?.value) || 0;
+  const price = parseFloat(document.getElementById('f-price')?.value) || 0;
+
+  if (qty <= 0 || (pru <= 0 && price <= 0)) { el.style.display = 'none'; return; }
+
+  const invested = qty * pru;
+  const value    = qty * (price || pru);
+  const pnl      = value - invested;
+  const pnlPct   = invested > 0 ? (pnl / invested * 100) : 0;
+  const c = pnl >= 0 ? '#16a34a' : '#dc2626';
+
+  // Poids de la nouvelle position dans le portefeuille
+  const tvCurrent = positions.reduce((a,p) => a + p.qty*p.price, 0);
+  const weight = (tvCurrent + value) > 0 ? value / (tvCurrent + value) * 100 : 0;
+
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+      <div>
+        <div style="font-size:10px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-weight:700">Investi</div>
+        <div style="font-size:16px;font-weight:900;color:var(--color-text)">${invested.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
+      </div>
+      ${price > 0 && price !== pru ? `
+      <div>
+        <div style="font-size:10px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-weight:700">Valeur actuelle</div>
+        <div style="font-size:16px;font-weight:900;color:var(--color-text)">${value.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-weight:700">Plus/moins-value</div>
+        <div style="font-size:16px;font-weight:900;color:${c}">${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} € <span style="font-size:12px">(${pnl>=0?'+':''}${pnlPct.toFixed(1)}%)</span></div>
+      </div>` : ''}
+      ${weight > 0 ? `
+      <div style="margin-left:auto;text-align:right">
+        <div style="font-size:10px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-weight:700">Poids portefeuille</div>
+        <div style="font-size:16px;font-weight:900;color:${weight>35?'#d97706':'var(--color-text)'}">${weight.toFixed(1)}%</div>
+      </div>` : ''}
+    </div>
+    ${weight > 35 ? `<div style="font-size:11px;color:#d97706;margin-top:8px">⚠️ Cette position représenterait plus d'un tiers de ton portefeuille — pense à diversifier.</div>` : ''}`;
 }
 
 // ═══ BOUTON COMBINÉ "Ajouter + ouvrir la plateforme" ═══
