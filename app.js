@@ -6950,6 +6950,28 @@ async function addPos() {
 
   const pos = { name, qty, pru, price, type, sector, platform, alert_price: alertPrice };
 
+  // ── FUSION : si la position existe déjà, on cumule les parts et on recalcule le PRU moyen pondéré ──
+  const existing = positions.find(p => p.name.toUpperCase() === name.toUpperCase());
+  if (existing) {
+    const totalQty = existing.qty + qty;
+    const newPru = (existing.qty * existing.pru + qty * pru) / totalQty;
+    existing.qty = Math.round(totalQty * 10000) / 10000;
+    existing.pru = Math.round(newPru * 100) / 100;
+    existing.price = price;
+    if (alertPrice) existing.alert_price = alertPrice;
+    if (!isDemo && currentUser) {
+      const { error } = await sb.from('positions')
+        .update({ qty: existing.qty, pru: existing.pru, price: existing.price, alert_price: existing.alert_price })
+        .eq('id', existing.id);
+      if (error) { showToast('Erreur: ' + error.message); return; }
+      await addTransaction(name, 'achat', qty, pru, 'Renforcement de position');
+    }
+    acClear();
+    nav('portfolio');
+    showToast(`✓ ${displayName(name)} renforcé — ${existing.qty} parts, PRU moyen ${existing.pru.toFixed(2)} €`);
+    return;
+  }
+
   if (isDemo) {
     positions.push({ id: 'd'+Date.now(), ...pos });
     acClear();
@@ -9132,11 +9154,29 @@ async function confirmCSVImport() {
 function updateAddPreview() {
   const el = document.getElementById('f-preview');
   if (!el) return;
+  const name  = document.getElementById('f-name')?.value.trim() || '';
   const qty   = parseFloat(document.getElementById('f-qty')?.value) || 0;
   const pru   = parseFloat(document.getElementById('f-pru')?.value) || 0;
   const price = parseFloat(document.getElementById('f-price')?.value) || 0;
 
   if (qty <= 0 || (pru <= 0 && price <= 0)) { el.style.display = 'none'; return; }
+
+  // Position déjà détenue ? → on prévoit une fusion avec PRU moyen pondéré
+  const existing = name ? positions.find(p => p.name.toUpperCase() === name.toUpperCase()) : null;
+  let mergeHtml = '';
+  if (existing) {
+    const totalQty = existing.qty + qty;
+    const newPru = (existing.qty * existing.pru + qty * pru) / totalQty;
+    mergeHtml = `
+    <div style="background:rgba(99,102,241,0.09);border:1px solid rgba(99,102,241,0.25);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:800;color:#6366f1;margin-bottom:5px">🔀 Tu détiens déjà cette position — elle sera fusionnée</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--color-text-secondary)">
+        <span>Actuel : <strong style="color:var(--color-text)">${existing.qty} × ${existing.pru.toFixed(2)} €</strong></span>
+        <span>+ Ajout : <strong style="color:var(--color-text)">${qty} × ${pru.toFixed(2)} €</strong></span>
+        <span>→ Total : <strong style="color:#6366f1">${totalQty.toLocaleString('fr-FR',{maximumFractionDigits:4})} parts · PRU moyen ${newPru.toFixed(2)} €</strong></span>
+      </div>
+    </div>`;
+  }
 
   const invested = qty * pru;
   const value    = qty * (price || pru);
@@ -9144,12 +9184,14 @@ function updateAddPreview() {
   const pnlPct   = invested > 0 ? (pnl / invested * 100) : 0;
   const c = pnl >= 0 ? '#16a34a' : '#dc2626';
 
-  // Poids de la nouvelle position dans le portefeuille
+  // Poids de la position dans le portefeuille (fusion incluse)
   const tvCurrent = positions.reduce((a,p) => a + p.qty*p.price, 0);
-  const weight = (tvCurrent + value) > 0 ? value / (tvCurrent + value) * 100 : 0;
+  const newTotal  = tvCurrent + value;
+  const posValue  = existing ? (existing.qty * existing.price + value) : value;
+  const weight    = newTotal > 0 ? posValue / newTotal * 100 : 0;
 
   el.style.display = 'block';
-  el.innerHTML = `
+  el.innerHTML = mergeHtml + `
     <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
       <div>
         <div style="font-size:10px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-weight:700">Investi</div>
