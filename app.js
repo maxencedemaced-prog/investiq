@@ -237,9 +237,9 @@ function showValidatedChart() {
       <!-- 📅 PLAN DU MOIS -->
       <div id="obj-monthly-plan"></div>
 
-      <!-- Plan ETF de référence -->
+      <!-- Répartition de référence -->
       <div style="font-size:12px;font-weight:700;color:var(--color-text,#1c1c1e);margin-bottom:4px">🎯 Ta répartition cible (vue d'ensemble)</div>
-      <div style="font-size:11px;color:var(--color-text-secondary,#71717a);margin-bottom:10px">La structure idéale de ton portefeuille sur le long terme. Le plan du mois ci-dessus te dit concrètement quoi acheter maintenant.</div>
+      <div style="font-size:11px;color:var(--color-text-secondary,#71717a);margin-bottom:10px">${objStockPct}% actions · ${100-objStockPct}% ETF — la structure visée sur le long terme. Le plan du mois ci-dessus te dit quoi acheter maintenant.</div>
       <div id="obj-etf-plan" style="margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:8px;padding:14px;color:#8e8e93;background:#f9f9f9;border-radius:12px">
           <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -507,6 +507,15 @@ async function generateETFPlan(objId) {
   const el = document.getElementById('obj-etf-plan');
   if (!el) return;
 
+  // Cas 100% actions : pas d'ETF à proposer dans la répartition de référence
+  if (objStockPct >= 100) {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    el.innerHTML = `<div style="background:${isDark?'rgba(220,38,38,0.1)':'#fff5f5'};border:1px solid ${isDark?'rgba(220,38,38,0.25)':'#fecaca'};border-radius:12px;padding:14px 16px;font-size:12px;color:${isDark?'rgba(255,255,255,0.6)':'#7f1d1d'};line-height:1.5">
+      🎯 Tu as choisi <strong>100% actions</strong> — pas d'ETF dans ta répartition cible. Le plan du mois ci-dessus te propose directement les actions à acheter. <span style="opacity:0.7">Rappel : un portefeuille 100% actions individuelles est très concentré et volatil. Tu peux ajouter une part d'ETF via « Ajuster actions/ETF » pour diversifier.</span>
+    </div>`;
+    return;
+  }
+
   // Utilise l'ID passé, sinon l'objectif actif global
   const effectiveId = objId || activeObjId;
   const cacheKey = effectiveId ? CACHE_ETF_PLAN + '_' + effectiveId : CACHE_ETF_PLAN;
@@ -514,7 +523,7 @@ async function generateETFPlan(objId) {
   // Vérifie le cache — d'abord par ID, puis global
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || localStorage.getItem(CACHE_ETF_PLAN) || 'null');
-    if (cached && cached.etfs && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk) {
+    if (cached && cached.etfs && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk && cached.stockPct === objStockPct) {
       renderETFCards(cached.etfs, el);
       return;
     }
@@ -523,7 +532,7 @@ async function generateETFPlan(objId) {
   const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
 
   const socleMin = objRisk === 'agressif' ? 55 : objRisk === 'equilibre' ? 70 : 60;
-  const prompt = `Conseiller financier long terme. Propose exactement 3 ETF pour un profil ${riskLabel}.
+  const prompt = `Conseiller financier long terme. Propose exactement ${objStockPct >= 85 ? '1 à 2' : '3'} ETF pour un profil ${riskLabel}. L'utilisateur vise ${objStockPct}% actions / ${100-objStockPct}% ETF, donc ces ETF ne sont que sa POCHE ETF ; les pct_capital/pct_mensuel sont relatifs à cette poche (ils somment à 100 entre eux).
 Capital de départ : ${objChartCapital}€ · Versement mensuel : ${objChartMonthly}€ · Durée : ${objChartYears} ans.
 RÈGLE ABSOLUE : le 1er ETF est TOUJOURS un socle Monde diversifié (MSCI World ou FTSE All-World) avec au minimum ${socleMin}% du capital ET du mensuel. Les 2 autres sont des satellites adaptés au profil (émergents, small caps, secteur, ou obligations pour prudent). Le champ "role" vaut "socle" pour le 1er, "satellite" pour les autres.
 Réponds UNIQUEMENT en JSON valide sans markdown :
@@ -547,7 +556,7 @@ Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, a
     const etfs = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']') + 1));
     if (Array.isArray(etfs) && etfs.length > 0) {
       try {
-        const cacheData = JSON.stringify({ etfs, risk: objRisk, ts: Date.now() });
+        const cacheData = JSON.stringify({ etfs, risk: objRisk, stockPct: objStockPct, ts: Date.now() });
         localStorage.setItem(cacheKey, cacheData);
         localStorage.setItem(CACHE_ETF_PLAN, cacheData);
         // Sauvegarde aussi avec l'activeObjId si différent
@@ -7221,9 +7230,16 @@ async function saveAllocEdit() {
   }
   const obj = allObjectives.find(o => o.id === activeObjId);
   if (obj) { obj.stock_pct=objStockPct; obj.glide=objGlide; obj.risk=objRisk; obj.rate=objChartRate; }
+  // Invalider les caches (plan mensuel + plan ETF) pour forcer une vraie régénération
+  try {
+    localStorage.removeItem(MONTHLY_PLAN_KEY);
+    localStorage.removeItem(CACHE_ETF_PLAN);
+    if (activeObjId) localStorage.removeItem(CACHE_ETF_PLAN + '_' + activeObjId);
+  } catch(e) {}
   showToast('✓ Répartition mise à jour — plan recalculé');
+  // showValidatedChart re-render le titre ET rappelle generateETFPlan + generateMonthlyPlan
+  try { showValidatedChart(); } catch(e) {}
   try { generateMonthlyPlan(true); } catch(e) {}
-  try { generateETFPlan(activeObjId); } catch(e) {}
   try { if (typeof renderMultiObjChart==='function') renderMultiObjChart(); } catch(e) {}
 }
 
