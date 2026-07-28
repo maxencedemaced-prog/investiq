@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260728100102">
+  <link rel="stylesheet" href="style.css?v=20260728100746">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1058,8 +1058,8 @@ window.addEventListener('load', function() {
         </div>
         <div style="display:flex;gap:8px">
           <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none" onchange="handleCSVImport(this.files[0]);this.value=''">
-          <button class="btn-secondary" onclick="document.getElementById('csv-file-input').click()" style="display:flex;align-items:center;gap:6px;font-size:13px" title="Importer un export CSV Trade Republic ou XTB">
-            📥 Importer CSV
+          <button class="btn-secondary" onclick="showCSVHelp()" style="display:flex;align-items:center;gap:6px;font-size:13px" title="Importer tes positions depuis Trade Republic ou XTB">
+            📥 Importer mes positions
           </button>
           <button class="btn-secondary" onclick="refreshPrices()" style="display:flex;align-items:center;gap:6px;font-size:13px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
@@ -1512,20 +1512,15 @@ window.addEventListener('load', function() {
           </div>
           <div class="form-grid">
             <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Tech, Monde..."></div>
-            <div class="field"><label>Plateforme</label><select id="f-platform"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select>
-              <div style="display:flex;gap:6px;margin-top:7px">
-                <button type="button" onclick="openOnPlatform('Trade Republic', document.getElementById('f-name').value || document.getElementById('f-search').value)" style="flex:1;padding:6px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;font-size:11px;font-weight:700;color:#4f46e5;cursor:pointer">🔗 Voir sur Trade Republic</button>
-                <button type="button" onclick="openOnPlatform('XTB', document.getElementById('f-name').value || document.getElementById('f-search').value)" style="flex:1;padding:6px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:11px;font-weight:700;color:#ea580c;cursor:pointer">🔗 Voir sur XTB</button>
-              </div>
-            </div>
+            <div class="field"><label>Plateforme</label><select id="f-platform" onchange="updateAddButtons()"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
           </div>
           <div class="field">
             <label>Alerte prix (€) <span class="tooltip-icon" data-tip="Notification si le prix descend sous ce seuil">?</span></label>
             <input type="number" id="f-alert" step="0.01" placeholder="Ex: 85 — alerte si prix < 85€">
           </div>
-          <div class="btn-row">
-            <button class="btn-primary" onclick="addPos()">Ajouter au portefeuille</button>
-            <button class="btn-secondary" onclick="loadDemo()">Charger un exemple</button>
+          <div id="f-action-buttons" style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+            <button class="btn-primary" onclick="addPos()" style="width:100%">Ajouter au portefeuille</button>
+            <button id="f-btn-combined" class="btn-secondary" onclick="addPosAndOpenPlatform()" style="width:100%"></button>
           </div>
         </div>
 
@@ -1713,7 +1708,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260728100102"></script>
+<script src="app.js?v=20260728100746"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
