@@ -7240,7 +7240,13 @@ async function saveAllocEdit() {
   objStockPct = alloc.stockPct; objGlide = alloc.glide; objRisk = alloc.risk; objChartRate = alloc.rate;
   document.getElementById('alloc-modal')?.remove();
   if (!isDemo && currentUser && activeObjId) {
-    try { await sb.from('objectives').update({ stock_pct:objStockPct, glide:objGlide, risk:objRisk, rate:objChartRate }).eq('id', activeObjId); } catch(e) {}
+    const { error } = await sb.from('objectives').update({ stock_pct:objStockPct, glide:objGlide, risk:objRisk, rate:objChartRate }).eq('id', activeObjId);
+    if (error) {
+      console.error('[saveAllocEdit] Supabase:', error);
+      showToast('⚠️ Erreur base : ' + (error.message||'').slice(0,60));
+    } else {
+      console.log('[saveAllocEdit] OK — stock_pct sauvé:', objStockPct);
+    }
   }
   const obj = allObjectives.find(o => o.id === activeObjId);
   if (obj) { obj.stock_pct=objStockPct; obj.glide=objGlide; obj.risk=objRisk; obj.rate=objChartRate; }
