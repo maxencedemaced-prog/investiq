@@ -2605,8 +2605,15 @@ async function obFinish(action) {
   const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
   const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
   const target   = parseFloat(document.getElementById('ob-target')?.value)   || 50000;
-  const risk     = document.getElementById('ob-risk')?.value    || 'faible';
   const horizon  = document.getElementById('ob-horizon')?.value || 'long';
+
+  // Lit la répartition depuis le curseur actions/ETF (source de vérité)
+  const alloc = (typeof readAllocSlider==='function') ? readAllocSlider('ob') : { risk:'equilibre', stockPct:30, glide:false, rate:7 };
+  const risk = alloc.risk;
+  objStockPct  = alloc.stockPct;
+  objGlide     = alloc.glide;
+  objRisk      = alloc.risk;
+  objChartRate = alloc.rate;
 
   // Ne sauvegarde que si les champs ont été remplis
   if (bankroll === 0 && monthly === 0) {
