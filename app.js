@@ -84,10 +84,20 @@ async function validateObjectif(labelOverride) {
   const activeObj = allObjectives.find(o => o.id === activeObjId);
   const isUpdate = activeObj && activeObj.target === objChartTarget && activeObj.monthly === objChartMonthly;
   if (!isUpdate && allObjectives.length >= 3) {
-    // Modal de remplacement au lieu du bandeau
+    // Modal de remplacement au lieu du bandeau — on FIGE les valeurs courantes
+    // (elles peuvent être écrasées par un chargement async pendant que la modal est ouverte)
+    const FROZEN = { capital:objChartCapital, monthly:objChartMonthly, target:objChartTarget,
+                     years:objChartYears, rate:objChartRate, risk:objRisk,
+                     stockPct:objStockPct, glide:objGlide };
     showReplaceObjectiveModal(
-      { capital:objChartCapital, monthly:objChartMonthly, target:objChartTarget, years:objChartYears, rate:objChartRate, risk:objRisk, label:labelOverride||'Nouvel objectif' },
-      async () => { await validateObjectif(labelOverride); }
+      { ...FROZEN, label:labelOverride||'Nouvel objectif' },
+      async () => {
+        // Ré-applique les valeurs figées avant de créer
+        objChartCapital=FROZEN.capital; objChartMonthly=FROZEN.monthly; objChartTarget=FROZEN.target;
+        objChartYears=FROZEN.years; objChartRate=FROZEN.rate; objRisk=FROZEN.risk;
+        objStockPct=FROZEN.stockPct; objGlide=FROZEN.glide;
+        await validateObjectif(labelOverride);
+      }
     );
     return;
   }
@@ -2630,13 +2640,15 @@ async function obFinish(action) {
   const target   = parseFloat(document.getElementById('ob-target')?.value)   || 50000;
   const horizon  = document.getElementById('ob-horizon')?.value || 'long';
 
-  // Lit la répartition depuis le curseur actions/ETF (source de vérité)
+  // Lit la répartition depuis le curseur actions/ETF et la FIGE en constantes locales
+  // (les globales peuvent être écrasées par un rechargement async pendant la modal de remplacement)
   const alloc = (typeof readAllocSlider==='function') ? readAllocSlider('ob') : { risk:'equilibre', stockPct:30, glide:false, rate:7 };
   const risk = alloc.risk;
-  objStockPct  = alloc.stockPct;
-  objGlide     = alloc.glide;
-  objRisk      = alloc.risk;
-  objChartRate = alloc.rate;
+  const CHOSEN = { stockPct: alloc.stockPct, glide: alloc.glide, risk: alloc.risk, rate: alloc.rate };
+  objStockPct  = CHOSEN.stockPct;
+  objGlide     = CHOSEN.glide;
+  objRisk      = CHOSEN.risk;
+  objChartRate = CHOSEN.rate;
 
   // Ne sauvegarde que si les champs ont été remplis
   if (bankroll === 0 && monthly === 0) {
@@ -2663,35 +2675,36 @@ async function obFinish(action) {
 
   // Fonction de création du nouvel objectif (insert, jamais écrasement)
   const createNew = async () => {
+    // Ré-applique le choix figé (immunisé contre tout écrasement async pendant la modal)
+    objStockPct = CHOSEN.stockPct; objGlide = CHOSEN.glide; objRisk = CHOSEN.risk; objChartRate = CHOSEN.rate;
     if (!isDemo && currentUser) {
       try {
         const { error } = await sb.from('objectives').insert({
           user_id: currentUser.id, capital: bankroll, monthly: monthly,
-          target: target, years: 10, rate: objChartRate, risk: objRisk,
-          stock_pct: objStockPct, glide: objGlide
+          target: target, years: 10, rate: CHOSEN.rate, risk: CHOSEN.risk,
+          stock_pct: CHOSEN.stockPct, glide: CHOSEN.glide
         });
         if (error) {
           console.error('[obFinish] insert error:', error.message);
           showToast('⚠️ Sauvegarde partielle : ' + (error.message||'').slice(0,50));
         }
-        // Capture la répartition choisie AVANT le rechargement (qui peut l'écraser)
-        const chosenPct = objStockPct, chosenGlide = objGlide, chosenRisk = objRisk, chosenRate = objChartRate;
         await loadObjective();
         // Activer le tout dernier objectif créé
         if (allObjectives.length) {
           const last = allObjectives[allObjectives.length-1];
           activeObjId = last.id;
-          // Restaure la répartition choisie (prioritaire sur ce que la base a renvoyé) + sauvegarde locale
-          last.stock_pct = chosenPct; last.glide = chosenGlide; last.risk = chosenRisk; last.rate = chosenRate;
-          saveAllocLocal(last.id, chosenPct, chosenGlide);
+          // Restaure la répartition CHOISIE (prioritaire sur la base) + sauvegarde locale
+          last.stock_pct = CHOSEN.stockPct; last.glide = CHOSEN.glide; last.risk = CHOSEN.risk; last.rate = CHOSEN.rate;
+          saveAllocLocal(last.id, CHOSEN.stockPct, CHOSEN.glide);
           applyObjData(last);
         }
       } catch(e) {}
     } else {
       // Mode démo : ajout local
       const id = 'local_' + Date.now();
-      allObjectives.push({ id, label:'Objectif ' + (allObjectives.length+1), capital:bankroll, monthly, target, years:10, rate:objChartRate, risk:objRisk, stock_pct:objStockPct, glide:objGlide, color:OBJ_COLORS[allObjectives.length % OBJ_COLORS.length] });
+      allObjectives.push({ id, label:'Objectif ' + (allObjectives.length+1), capital:bankroll, monthly, target, years:10, rate:CHOSEN.rate, risk:CHOSEN.risk, stock_pct:CHOSEN.stockPct, glide:CHOSEN.glide, color:OBJ_COLORS[allObjectives.length % OBJ_COLORS.length] });
       activeObjId = id;
+      saveAllocLocal(id, CHOSEN.stockPct, CHOSEN.glide);
     }
     nav('objectif');
     setTimeout(() => {
