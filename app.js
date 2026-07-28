@@ -1913,6 +1913,7 @@ async function acSelect(company) {
 
   // Show form fields
   document.getElementById('f-fields').style.display = 'block';
+  try { updateAddButtons(); } catch(e) {}
   document.getElementById('f-empty-state').style.display = 'none';
 
   // Fetch live price
@@ -8875,6 +8876,61 @@ function renderVerdict(data, ts) {
 //  avant import, fusion intelligente avec les positions existantes.
 // ═══════════════════════════════════════════════════════════
 
+// Écran d'aide : explique à quoi sert l'import et comment obtenir le fichier
+function showCSVHelp() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#161b26' : '#fff';
+  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
+  const txt  = isDark ? '#f0f0f0' : '#09090b';
+  const sub  = isDark ? '#8b95a5' : '#71717a';
+  const bg   = isDark ? 'rgba(255,255,255,0.03)' : '#f9fafb';
+
+  document.getElementById('csv-help-modal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'csv-help-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:${surf};border-radius:20px;padding:24px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto">
+      <div style="font-size:19px;font-weight:800;color:${txt};margin-bottom:5px">📥 Importer tes positions</div>
+      <div style="font-size:13px;color:${sub};line-height:1.55;margin-bottom:18px">Au lieu de saisir chaque ligne à la main, importe le fichier d'export de ton courtier : InvestIQ ajoutera automatiquement toutes tes positions avec leurs quantités et prix d'achat.</div>
+
+      <!-- Trade Republic -->
+      <div style="background:${bg};border:1px solid ${bord};border-radius:14px;padding:14px 16px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:#eef2ff;color:#4f46e5">Trade Republic</span>
+        </div>
+        <ol style="margin:0;padding-left:18px;font-size:12px;color:${sub};line-height:1.75">
+          <li>Ouvre l'app Trade Republic sur ton téléphone</li>
+          <li>Profil (en bas à droite) → <strong style="color:${txt}">Relevés et documents</strong></li>
+          <li>Choisis <strong style="color:${txt}">Relevé de portefeuille</strong> et exporte-le</li>
+          <li>Envoie-le sur ton ordinateur (mail, AirDrop...)</li>
+        </ol>
+      </div>
+
+      <!-- XTB -->
+      <div style="background:${bg};border:1px solid ${bord};border-radius:14px;padding:14px 16px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:#fff7ed;color:#ea580c">XTB</span>
+        </div>
+        <ol style="margin:0;padding-left:18px;font-size:12px;color:${sub};line-height:1.75">
+          <li>Connecte-toi à <strong style="color:${txt}">xStation 5</strong> sur ordinateur</li>
+          <li>Onglet <strong style="color:${txt}">Positions ouvertes</strong> (en bas)</li>
+          <li>Clic droit dans le tableau → <strong style="color:${txt}">Exporter</strong> → CSV</li>
+        </ol>
+      </div>
+
+      <div style="font-size:11px;color:${sub};background:${bg};border-radius:10px;padding:10px 13px;margin-bottom:16px;line-height:1.5">
+        💡 Formats acceptés : <strong style="color:${txt}">.csv</strong> de n'importe quel courtier. InvestIQ détecte tout seul les colonnes (nom, quantité, prix d'achat). Tu verras un aperçu et pourras décocher ce que tu ne veux pas avant de valider — rien n'est importé sans ton accord.
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('csv-help-modal').remove()" style="flex:1;padding:13px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Fermer</button>
+        <button onclick="document.getElementById('csv-help-modal').remove();document.getElementById('csv-file-input').click()" style="flex:2;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:13px;font-weight:800;color:#fff;cursor:pointer">📂 Choisir mon fichier</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
 function handleCSVImport(file) {
   if (!file) return;
   const reader = new FileReader();
@@ -9044,6 +9100,33 @@ async function confirmCSVImport() {
   renderAll();
   refreshPrices();
   showToast(`✓ Import terminé : ${added} ajoutée${added>1?'s':''}, ${updated} mise${updated>1?'s':''} à jour`);
+}
+
+// ═══ BOUTON COMBINÉ "Ajouter + ouvrir la plateforme" ═══
+function updateAddButtons() {
+  const btn = document.getElementById('f-btn-combined');
+  if (!btn) return;
+  const platform = document.getElementById('f-platform')?.value || 'Autre';
+  if (platform === 'Autre') {
+    btn.style.display = 'none';
+    return;
+  }
+  const style = platform === 'Trade Republic'
+    ? 'background:#eef2ff;border:1px solid #c7d2fe;color:#4f46e5'
+    : 'background:#fff7ed;border:1px solid #fed7aa;color:#ea580c';
+  btn.style.display = 'block';
+  btn.style.cssText = `width:100%;padding:12px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;${style}`;
+  btn.innerHTML = `Ajouter au portefeuille + ouvrir ${platform} →`;
+}
+
+// Ajoute la position PUIS ouvre la plateforme avec le ticker copié
+async function addPosAndOpenPlatform() {
+  const platform = document.getElementById('f-platform')?.value || 'Autre';
+  const ticker = document.getElementById('f-name')?.value || document.getElementById('f-search')?.value || '';
+  await addPos();
+  if (platform !== 'Autre' && ticker) {
+    setTimeout(() => openOnPlatform(platform, ticker), 400);
+  }
 }
 
 // ═══ LIENS DIRECTS VERS LES PLATEFORMES ═══
