@@ -512,8 +512,8 @@ async function generateETFPlan(objId) {
   const el = document.getElementById('obj-etf-plan');
   if (!el) return;
 
-  // Cas 100% actions : pas d'ETF à proposer dans la répartition de référence
-  if (objStockPct >= 100) {
+  // Cas quasi-100% actions : pas d'ETF à proposer dans la répartition de référence
+  if (objStockPct >= 95) {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     el.innerHTML = `<div style="background:${isDark?'rgba(220,38,38,0.1)':'#fff5f5'};border:1px solid ${isDark?'rgba(220,38,38,0.25)':'#fecaca'};border-radius:12px;padding:14px 16px;font-size:12px;color:${isDark?'rgba(255,255,255,0.6)':'#7f1d1d'};line-height:1.5">
       🎯 Tu as choisi <strong>100% actions</strong> — pas d'ETF dans ta répartition cible. Le plan du mois ci-dessus te propose directement les actions à acheter. <span style="opacity:0.7">Rappel : un portefeuille 100% actions individuelles est très concentré et volatil. Tu peux ajouter une part d'ETF via « Ajuster actions/ETF » pour diversifier.</span>
