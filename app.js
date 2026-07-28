@@ -2475,7 +2475,10 @@ async function obGeneratePlan() {
   const bankroll = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
   const monthly  = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
   const target   = parseFloat(document.getElementById('ob-target')?.value)   || 50000;
-  const risk     = document.getElementById('ob-risk')?.value || 'faible';
+  // Lit la répartition depuis le curseur actions/ETF (source de vérité)
+  const alloc = (typeof readAllocSlider==='function') ? readAllocSlider('ob') : { risk:'equilibre', stockPct:30, glide:false, rate:7 };
+  const risk = alloc.risk;
+  objStockPct = alloc.stockPct; objGlide = alloc.glide; objRisk = alloc.risk; objChartRate = alloc.rate;
   const planEl   = document.getElementById('ob-plan-content');
 
   // Calculs de projection
@@ -2483,10 +2486,12 @@ async function obGeneratePlan() {
   const budgetCourt = Math.round(bankroll * 0.3);
   const budgetLong  = bankroll - budgetCourt;
 
-  // Allocation ETF selon risque
-  const etfAlloc = risk === 'eleve'
+  // Allocation ETF selon la répartition choisie (le socle World domine la poche ETF)
+  const etfAlloc = (risk === 'agressif' || risk === 'eleve')
     ? ['70% IWDA (ETF Monde)', '30% VWCE (ETF All-World)']
-    : risk === 'modere'
+    : (risk === 'dynamique')
+    ? ['75% IWDA (ETF Monde)', '25% VWCE (ETF All-World)']
+    : (risk === 'equilibre' || risk === 'modere')
     ? ['80% IWDA (ETF Monde)', '20% VWCE (ETF All-World)']
     : ['90% IWDA (ETF Monde)', '10% VWCE (ETF All-World)'];
 
@@ -2600,8 +2605,7 @@ async function obFinish(action) {
   objChartMonthly = monthly;
   objChartTarget  = target;
   objChartYears   = 10;
-  objChartRate    = risk === 'eleve' ? 9 : risk === 'modere' ? 7 : 5;
-  objRisk         = risk === 'eleve' ? 'agressif' : risk === 'modere' ? 'equilibre' : 'prudent';
+  // objRisk, objChartRate, objStockPct, objGlide déjà définis par le curseur (readAllocSlider)
 
   await saveProfile();
 
