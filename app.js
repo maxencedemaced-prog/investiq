@@ -4406,7 +4406,9 @@ async function changePassword() {
 async function loadProfile() {
   const { data } = await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   if (data) {
-    profile = { bankroll: data.bankroll||5000, horizon: data.horizon||'moyen', risk: data.risk||'faible', notif: data.notif||'daily' };
+    profile = { bankroll: data.bankroll||5000, horizon: data.horizon||'moyen', risk: data.risk||'faible', notif: data.notif||'daily',
+                is_premium: data.is_premium || data.premium || false,
+                premium_until: data.premium_until || data.subscription_end || null };
     document.getElementById('s-bankroll').value = profile.bankroll;
     document.getElementById('s-horizon').value = profile.horizon;
     document.getElementById('s-risk').value = profile.risk;
@@ -9161,7 +9163,7 @@ async function confirmCSVImport() {
       added++;
     }
   }
-  renderAll();
+  refreshPortfolioUI();
   refreshPrices();
   showToast(`✓ Import terminé : ${added} ajoutée${added>1?'s':''}, ${updated} mise${updated>1?'s':''} à jour`);
 }
@@ -9170,9 +9172,74 @@ async function confirmCSVImport() {
 //  ☑️ SÉLECTION MULTIPLE + MENU CONTEXTUEL DES POSITIONS
 // ═══════════════════════════════════════════════════════════
 
+// ═══ STATUT PREMIUM ═══
+function isPremiumUser() {
+  if (isDemo) return false;
+  if (profile?.is_premium === true) return true;
+  // Abonnement avec date de fin
+  if (profile?.premium_until) {
+    try { return new Date(profile.premium_until).getTime() > Date.now(); } catch { return false; }
+  }
+  return false;
+}
+
+// Fenêtre d'incitation à l'abonnement
+function showPremiumGate(featureName, benefits) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#161b26' : '#fff';
+  const txt  = isDark ? '#f0f0f0' : '#09090b';
+  const sub  = isDark ? '#8b95a5' : '#71717a';
+  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
+
+  document.getElementById('premium-gate')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'premium-gate';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:10004;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:${surf};border-radius:22px;max-width:420px;width:100%;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#0d1526,#1a2744);padding:26px 26px 22px;text-align:center">
+        <div style="font-size:32px;margin-bottom:8px">✨</div>
+        <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.03em">${featureName}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:5px">Fonctionnalité Premium</div>
+      </div>
+      <div style="padding:22px 26px 24px">
+        <div style="display:flex;flex-direction:column;gap:11px;margin-bottom:20px">
+          ${(benefits||[]).map(b => `
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <span style="color:#16a34a;font-weight:900;font-size:13px;flex-shrink:0">✓</span>
+            <span style="font-size:13px;color:${txt};line-height:1.45">${b}</span>
+          </div>`).join('')}
+        </div>
+        <button onclick="document.getElementById('premium-gate').remove();nav('settings');setTimeout(()=>showToast('💎 Passe à Premium depuis tes paramètres'),300)" style="width:100%;padding:14px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;border-radius:14px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:9px">
+          Passer à Premium — 5 €/mois
+        </button>
+        <button onclick="document.getElementById('premium-gate').remove()" style="width:100%;padding:11px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Plus tard</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+// Rafraîchit toutes les vues qui dépendent des positions (après ajout/suppression/import)
+function refreshPortfolioUI() {
+  try { renderPortfolio(); } catch(e) { console.warn('renderPortfolio:', e); }
+  try { renderPortfolioChart(); } catch(e) {}
+  try { if (typeof renderTransactions === 'function') renderTransactions(); } catch(e) {}
+  try { if (typeof showValidatedChart === 'function') showValidatedChart(); } catch(e) {}
+}
+
 let selectMode = false;
 
 function toggleSelectMode(force) {
+  // Fonctionnalité Premium — le paywall s'ouvre si l'utilisateur n'est pas abonné
+  if (force !== false && !selectMode && !isPremiumUser()) {
+    showPremiumGate('Sélection multiple', [
+      'Sélectionne plusieurs positions d\'un coup',
+      'Supprime en lot au lieu de ligne par ligne',
+      'Envoie plusieurs actifs à l\'Agent IA pour une analyse croisée',
+      'Gagne du temps sur les portefeuilles de 20+ lignes',
+    ]);
+    return;
+  }
   selectMode = (force === undefined) ? !selectMode : force;
   const bar = document.getElementById('bulk-bar');
   const btn = document.getElementById('btn-select-mode');
@@ -9220,7 +9287,7 @@ async function bulkDelete() {
   }
   positions = positions.filter(p => !ids.includes(String(p.id)));
   toggleSelectMode(false);
-  renderAll();
+  refreshPortfolioUI();
   showToast(`✓ ${ids.length} position${ids.length>1?'s':''} supprimée${ids.length>1?'s':''}`);
 }
 
@@ -9289,7 +9356,7 @@ async function deletePosConfirm(id) {
     try { await sb.from('positions').delete().eq('id', id); } catch(e) { showToast('Erreur: ' + e.message); return; }
   }
   positions = positions.filter(x => String(x.id) !== String(id));
-  renderAll();
+  refreshPortfolioUI();
   showToast(`✓ ${displayName(p.name)} supprimée`);
 }
 
