@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260728100746">
+  <link rel="stylesheet" href="style.css?v=20260728101343">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1499,17 +1499,20 @@ window.addEventListener('load', function() {
           <div class="form-grid three">
             <div class="field">
               <label>Quantité *</label>
-              <input type="number" id="f-qty" step="0.01" placeholder="10">
+              <input type="number" id="f-qty" step="0.01" placeholder="10" oninput="updateAddPreview()">
             </div>
             <div class="field">
               <label>PRU (€) * <span class="tooltip-icon" data-tip="Prix moyen auquel tu as acheté">?</span></label>
-              <input type="number" id="f-pru" step="0.01" placeholder="150.00">
+              <input type="number" id="f-pru" step="0.01" placeholder="150.00" oninput="updateAddPreview()">
             </div>
             <div class="field">
               <label>Prix actuel (€) <span class="ac-live-badge" id="ac-live-label" style="display:none">⚡ live</span></label>
-              <input type="number" id="f-price" step="0.01" placeholder="165.00">
+              <input type="number" id="f-price" step="0.01" placeholder="165.00" oninput="updateAddPreview()">
             </div>
           </div>
+
+          <!-- APERÇU LIVE -->
+          <div id="f-preview" style="display:none;background:var(--color-bg-subtle,#f9fafb);border:1px solid var(--color-border,#e4e4e7);border-radius:12px;padding:12px 14px;margin-bottom:14px"></div>
           <div class="form-grid">
             <div class="field"><label>Secteur</label><input type="text" id="f-sector" placeholder="Tech, Monde..."></div>
             <div class="field"><label>Plateforme</label><select id="f-platform" onchange="updateAddButtons()"><option>XTB</option><option>Trade Republic</option><option>Autre</option></select></div>
@@ -1708,7 +1711,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260728100746"></script>
+<script src="app.js?v=20260728101343"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
