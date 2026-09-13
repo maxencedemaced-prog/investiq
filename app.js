@@ -9193,18 +9193,18 @@ const LEGAL_DOCS = {
     title: 'Mentions légales',
     icon: '📋',
     content: `
-<h3>Éditeur du service</h3>
+<h3>Article 1 — Éditeur du service</h3>
 <p>Le service InvestIQ est édité par [[NOM / RAISON SOCIALE]], [[FORME JURIDIQUE — ex: micro-entreprise, SASU]], immatriculée sous le numéro SIREN [[SIREN]], dont le siège est situé [[ADRESSE COMPLÈTE]].</p>
 <p>Directeur de la publication : [[PRÉNOM NOM]]<br>Contact : [[EMAIL DE CONTACT]]</p>
 
-<h3>Hébergement</h3>
+<h3>Article 2 — Hébergement</h3>
 <p>Le site est hébergé par Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis.</p>
 <p>Les données des utilisateurs sont stockées par Supabase Inc. sur des serveurs situés dans l'Union européenne.</p>
 
-<h3>Propriété intellectuelle</h3>
+<h3>Article 3 — Propriété intellectuelle</h3>
 <p>L'ensemble des éléments composant InvestIQ (marque, interface, textes, code) est protégé par le droit de la propriété intellectuelle et demeure la propriété exclusive de l'éditeur. Toute reproduction ou exploitation non autorisée est interdite.</p>
 
-<h3>Statut réglementaire</h3>
+<h3>Article 4 — Statut réglementaire</h3>
 <p><strong>InvestIQ n'est pas un prestataire de services d'investissement.</strong> Le service ne dispose pas du statut de Conseiller en Investissements Financiers (CIF) et n'est enregistré ni auprès de l'ORIAS, ni agréé par l'Autorité des Marchés Financiers (AMF).</p>
 <p>InvestIQ est un <strong>outil pédagogique d'aide à la décision</strong>. Les analyses, scores et suggestions générés — y compris par intelligence artificielle — constituent des informations à caractère général et non des recommandations personnalisées au sens de l'article D. 321-1 du Code monétaire et financier.</p>
 `
@@ -9216,12 +9216,12 @@ const LEGAL_DOCS = {
     content: `
 <p class="legal-date">Dernière mise à jour : [[DATE]]</p>
 
-<h3>1. Objet</h3>
+<h3>Article 1 — Objet</h3>
 <p>Les présentes conditions régissent l'accès et l'utilisation d'InvestIQ, application de suivi de portefeuille et d'aide à la décision d'investissement. La création d'un compte vaut acceptation pleine et entière des présentes conditions.</p>
 
-<h3>2. Nature du service — avertissement essentiel</h3>
+<h3>Article 2 — Nature du service et avertissement</h3>
 <p><strong>InvestIQ ne fournit aucun conseil en investissement personnalisé.</strong> L'application propose des analyses automatisées et des contenus générés par intelligence artificielle à visée informative et pédagogique.</p>
-<p>L'utilisateur reconnaît expressément que :</p>
+<p>L'utilisateur reconnaît expressément ce qui suit :</p>
 <ul>
 <li>toute décision d'investissement relève de sa seule responsabilité ;</li>
 <li>les analyses de l'IA peuvent comporter des erreurs, des omissions ou des informations obsolètes ;</li>
@@ -9230,25 +9230,25 @@ const LEGAL_DOCS = {
 <li>il lui appartient de consulter un professionnel agréé avant toute décision engageante.</li>
 </ul>
 
-<h3>3. Accès au service</h3>
+<h3>Article 3 — Accès au service</h3>
 <p>L'accès nécessite la création d'un compte avec une adresse email valide. L'utilisateur doit être majeur et juridiquement capable. Il est responsable de la confidentialité de ses identifiants.</p>
 
-<h3>4. Offre Premium — abonnement</h3>
+<h3>Article 4 — Offre Premium et abonnement</h3>
 <p>L'offre Premium est proposée au tarif de [[PRIX]] € TTC par mois, sans engagement de durée. Le paiement s'effectue par carte bancaire via notre prestataire Stripe.</p>
 <p><strong>Reconduction :</strong> l'abonnement est reconduit tacitement chaque mois jusqu'à résiliation. Celle-ci peut intervenir à tout moment depuis les paramètres du compte et prend effet à la fin de la période en cours.</p>
 <p><strong>Droit de rétractation :</strong> conformément aux articles L. 221-18 et suivants du Code de la consommation, l'utilisateur dispose d'un délai de quatorze (14) jours pour se rétracter. En demandant l'accès immédiat au service, il accepte de commencer à en bénéficier avant la fin de ce délai ; il reste redevable du montant correspondant à la période consommée.</p>
 
-<h3>5. Données de marché</h3>
+<h3>Article 5 — Données de marché</h3>
 <p>Les cours affichés proviennent de fournisseurs tiers, peuvent être différés et sont communiqués à titre indicatif. L'éditeur ne garantit ni leur exactitude, ni leur exhaustivité, ni leur disponibilité continue.</p>
 
-<h3>6. Responsabilité</h3>
+<h3>Article 6 — Limitation de responsabilité</h3>
 <p>Le service est fourni « en l'état ». L'éditeur ne saurait être tenu responsable des pertes financières, manques à gagner ou dommages indirects résultant de l'utilisation du service ou d'une décision prise sur la base des informations qu'il délivre.</p>
 <p>L'éditeur ne garantit pas une disponibilité ininterrompue et pourra suspendre le service pour maintenance.</p>
 
-<h3>7. Résiliation</h3>
+<h3>Article 7 — Résiliation</h3>
 <p>L'utilisateur peut supprimer son compte à tout moment depuis ses paramètres. L'éditeur se réserve le droit de suspendre un compte en cas de manquement aux présentes conditions.</p>
 
-<h3>8. Droit applicable</h3>
+<h3>Article 8 — Droit applicable et litiges</h3>
 <p>Les présentes sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité. À défaut, les tribunaux français seront compétents. L'utilisateur peut recourir gratuitement à un médiateur de la consommation.</p>
 `
   },
@@ -9259,10 +9259,10 @@ const LEGAL_DOCS = {
     content: `
 <p class="legal-date">Dernière mise à jour : [[DATE]]</p>
 
-<h3>Responsable du traitement</h3>
+<h3>Article 1 — Responsable du traitement</h3>
 <p>[[NOM / RAISON SOCIALE]], [[ADRESSE]]. Contact : [[EMAIL]]</p>
 
-<h3>Données collectées</h3>
+<h3>Article 2 — Données collectées</h3>
 <ul>
 <li><strong>Compte :</strong> adresse email, mot de passe chiffré.</li>
 <li><strong>Profil d'investisseur :</strong> capital disponible, horizon, tolérance au risque, objectifs.</li>
@@ -9271,7 +9271,7 @@ const LEGAL_DOCS = {
 <li><strong>Paiement :</strong> traité exclusivement par Stripe — aucune donnée bancaire n'est stockée par InvestIQ.</li>
 </ul>
 
-<h3>Finalités et bases légales</h3>
+<h3>Article 3 — Finalités et bases légales</h3>
 <ul>
 <li>Fourniture du service et personnalisation des analyses — <em>exécution du contrat</em>.</li>
 <li>Gestion de l'abonnement et facturation — <em>exécution du contrat</em>.</li>
@@ -9279,18 +9279,18 @@ const LEGAL_DOCS = {
 <li>Amélioration du service et sécurité — <em>intérêt légitime</em>.</li>
 </ul>
 
-<h3>Sous-traitants</h3>
+<h3>Article 4 — Destinataires et sous-traitants</h3>
 <p>Supabase (hébergement des données, Union européenne) · Vercel (hébergement applicatif) · Anthropic (traitement des requêtes IA) · Stripe (paiements) · Finnhub (données de marché).</p>
 <p>Certains transferts hors Union européenne sont encadrés par les clauses contractuelles types de la Commission européenne.</p>
 
-<h3>Durée de conservation</h3>
+<h3>Article 5 — Durée de conservation</h3>
 <p>Les données sont conservées pendant la durée de vie du compte, puis supprimées sous trente (30) jours après sa fermeture. Les factures sont conservées dix (10) ans conformément aux obligations comptables.</p>
 
-<h3>Vos droits</h3>
+<h3>Article 6 — Droits des personnes concernées</h3>
 <p>Conformément au RGPD, vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité. L'export et la suppression de vos données sont accessibles directement depuis vos paramètres, ou sur demande à [[EMAIL]].</p>
 <p>Vous pouvez introduire une réclamation auprès de la CNIL (www.cnil.fr).</p>
 
-<h3>Cookies</h3>
+<h3>Article 7 — Cookies et traceurs</h3>
 <p>InvestIQ n'utilise <strong>aucun cookie publicitaire ni traceur tiers</strong>. Seul le stockage local strictement nécessaire au fonctionnement (session, préférences d'affichage, cache) est utilisé — il ne requiert pas de consentement préalable.</p>
 `
   },
@@ -9300,21 +9300,21 @@ const LEGAL_DOCS = {
     icon: '⚠️',
     content: `
 <div class="legal-warning">
-<p><strong>Investir comporte un risque de perte en capital.</strong> Ce message n'est pas une formalité : il décrit une réalité que tout investisseur doit intégrer avant d'engager son argent.</p>
+<p><strong>Tout investissement en instruments financiers comporte un risque de perte en capital.</strong> Le présent avertissement n'est pas une clause de style : il expose des risques matériels que l'utilisateur est tenu d'avoir compris avant d'engager des fonds.</p>
 </div>
 
-<h3>Ce que tu dois savoir</h3>
+<h3>Article 1 — Nature des risques</h3>
 <ul>
-<li><strong>Ton capital n'est pas garanti.</strong> La valeur d'un investissement peut baisser comme monter. Tu peux récupérer moins que ce que tu as investi, voire tout perdre sur certains actifs.</li>
-<li><strong>Le passé ne prédit pas l'avenir.</strong> Les rendements historiques et les projections affichées dans l'application sont des illustrations, pas des promesses.</li>
-<li><strong>Les projections sont des hypothèses.</strong> Le simulateur applique un taux constant ; les marchés réels ne fonctionnent jamais ainsi.</li>
-<li><strong>L'IA peut se tromper.</strong> Les analyses sont générées automatiquement à partir de données parfois incomplètes ou différées. Elles ne remplacent ni ton jugement, ni l'avis d'un professionnel agréé.</li>
-<li><strong>La concentration amplifie le risque.</strong> Un portefeuille peu diversifié subit des variations bien plus fortes.</li>
-<li><strong>N'investis que ce que tu peux immobiliser.</strong> Garde une épargne de précaution accessible avant d'investir.</li>
+<li><strong>Le capital investi n'est pas garanti.</strong> La valeur d'un instrument financier peut varier à la hausse comme à la baisse. L'utilisateur est susceptible de récupérer un montant inférieur à sa mise initiale, voire de perdre la totalité des sommes engagées.</li>
+<li><strong>Les performances passées ne préjugent pas des performances futures.</strong> Les rendements historiques et projections figurant dans l'application constituent des illustrations à caractère pédagogique et ne sauraient être interprétés comme un engagement de résultat.</li>
+<li><strong>Les projections reposent sur des hypothèses simplificatrices.</strong> Le simulateur applique un taux de rendement constant, alors que les marchés financiers connaissent des variations irrégulières.</li>
+<li><strong>Les analyses automatisées sont faillibles.</strong> Elles sont produites par intelligence artificielle à partir de données pouvant être incomplètes, différées ou erronées. Elles ne se substituent ni au jugement de l'utilisateur, ni à l'avis d'un professionnel agréé.</li>
+<li><strong>La concentration accroît l'exposition au risque.</strong> Un portefeuille insuffisamment diversifié subit des variations d'une amplitude nettement supérieure.</li>
+<li><strong>N'investir que des sommes pouvant être immobilisées.</strong> Il est recommandé de constituer une épargne de précaution disponible avant toute opération d'investissement.</li>
 </ul>
 
-<h3>Avant de décider</h3>
-<p>Pour une recommandation adaptée à ta situation personnelle, patrimoniale et fiscale, consulte un Conseiller en Investissements Financiers enregistré à l'ORIAS. InvestIQ t'aide à comprendre et à organiser — la décision, elle, t'appartient.</p>
+<h3>Article 2 — Recommandation préalable</h3>
+<p>Pour toute recommandation tenant compte de sa situation personnelle, patrimoniale et fiscale, l'utilisateur est invité à consulter un Conseiller en Investissements Financiers enregistré auprès de l'ORIAS. InvestIQ constitue un outil de compréhension et d'organisation ; la décision d'investissement demeure celle de l'utilisateur.</p>
 `
   },
 };
@@ -9323,25 +9323,25 @@ const LEGAL_DOCS = {
 function openLegalDoc(key) {
   const doc = LEGAL_DOCS[key];
   if (!doc) return;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const surf = isDark ? '#161b26' : '#fff';
-  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
-  const txt  = isDark ? '#e6edf3' : '#09090b';
-  const sub  = isDark ? '#8b95a5' : '#52525b';
 
   document.getElementById('legal-modal')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'legal-modal';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:10005;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10010;display:flex;align-items:center;justify-content:center;padding:20px';
+  // Document juridique : toujours noir sur blanc, indépendamment du thème de l'app
   overlay.innerHTML = `
-    <div style="background:${surf};border-radius:20px;max-width:680px;width:100%;max-height:86vh;display:flex;flex-direction:column">
-      <div style="padding:20px 24px;border-bottom:1px solid ${bord};display:flex;align-items:center;justify-content:space-between;gap:12px">
-        <div style="font-size:17px;font-weight:800;color:${txt}">${doc.icon} ${doc.title}</div>
-        <button onclick="document.getElementById('legal-modal').remove()" style="background:none;border:none;font-size:22px;color:${sub};cursor:pointer;line-height:1;padding:0 4px">×</button>
+    <div class="legal-doc" style="max-width:740px;width:100%;max-height:90vh;display:flex;flex-direction:column;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,0.45)">
+      <div class="legal-doc-head">
+        <div>
+          <div class="legal-doc-brand">InvestIQ</div>
+          <div class="legal-doc-title">${doc.title}</div>
+        </div>
+        <button onclick="document.getElementById('legal-modal').remove()" class="legal-doc-close" aria-label="Fermer">×</button>
       </div>
-      <div class="legal-body" style="padding:20px 24px;overflow-y:auto;color:${sub};font-size:13.5px;line-height:1.65">${doc.content}</div>
-      <div style="padding:14px 24px;border-top:1px solid ${bord}">
-        <button onclick="document.getElementById('legal-modal').remove()" style="width:100%;padding:12px;background:var(--color-primary,#16a34a);border:none;border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">Fermer</button>
+      <div class="legal-doc-body">${doc.content}</div>
+      <div class="legal-doc-foot">
+        <span>Document contractuel — InvestIQ</span>
+        <button onclick="document.getElementById('legal-modal').remove()">Fermer</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
