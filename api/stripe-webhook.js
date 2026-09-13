@@ -1,118 +1,167 @@
+// api/stripe-webhook.js — CYCLE DE VIE COMPLET DE L'ABONNEMENT
+// Gère : souscription, renouvellement, échec de paiement, résiliation.
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// ⚠️ IMPORTANT : Vercel doit recevoir le raw body pour valider la signature Stripe
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Vercel doit fournir le corps brut pour valider la signature Stripe
+export const config = { api: { bodyParser: false } };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY // service_role pour bypasser RLS
+  process.env.SUPABASE_SERVICE_KEY // service_role : contourne RLS
 );
 
-// Helper pour lire le raw body
 async function getRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('data', (c) => chunks.push(c));
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
 }
 
+// Retrouve l'utilisateur : d'abord par metadata, sinon par customer Stripe
+async function findUserId(subscriptionOrSession) {
+  const meta = subscriptionOrSession.metadata?.user_id
+            || subscriptionOrSession.client_reference_id;
+  if (meta) return meta;
+
+  const customerId = subscriptionOrSession.customer;
+  if (!customerId) return null;
+  const { data } = await supabase
+    .from('profiles').select('id').eq('stripe_customer_id', customerId).maybeSingle();
+  return data?.id || null;
+}
+
+// Met à jour le statut premium d'un utilisateur
+async function setPremium(userId, { active, until, customerId, subscriptionId, status }) {
+  const payload = {
+    is_premium: active,
+    premium_until: until || null,
+    subscription_status: status || null,
+  };
+  if (customerId) payload.stripe_customer_id = customerId;
+  if (subscriptionId) payload.stripe_subscription_id = subscriptionId;
+
+  const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
+  if (error) console.error('[webhook] Supabase:', error.message);
+  else console.log(`[webhook] ${userId} → premium=${active} (${status})`);
+  return !error;
+}
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   let event;
-  const rawBody = await getRawBody(req);
-  const signature = req.headers['stripe-signature'];
-
   try {
+    const rawBody = await getRawBody(req);
     event = stripe.webhooks.constructEvent(
       rawBody,
-      signature,
+      req.headers['stripe-signature'],
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error('❌ Webhook signature error:', err.message);
+    console.error('[webhook] Signature invalide:', err.message);
     return res.status(400).json({ error: `Webhook Error: ${err.message}` });
   }
 
-  console.log('✅ Webhook reçu :', event.type);
+  console.log('[webhook] Événement:', event.type);
 
-  // ✅ Événement principal : paiement réussi
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+  try {
+    switch (event.type) {
 
-    console.log('Session data:', {
-      customer_email: session.customer_email,
-      metadata: session.metadata,
-      payment_status: session.payment_status,
-    });
+      // ── Souscription initiale confirmée ──
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        if (session.mode !== 'subscription') break;
+        const userId = await findUserId(session);
+        if (!userId) { console.error('[webhook] Utilisateur introuvable'); break; }
 
-    // Récupérer l'user_id depuis les metadata (envoyé lors de la création du checkout)
-    const userId = session.metadata?.user_id;
-    const customerEmail = session.customer_email || session.customer_details?.email;
+        // Récupère la période payée depuis l'abonnement
+        let until = null, subId = session.subscription || null, status = 'active';
+        if (subId) {
+          const sub = await stripe.subscriptions.retrieve(subId);
+          until = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+          status = sub.status;
+        }
+        await setPremium(userId, {
+          active: true, until, status,
+          customerId: session.customer, subscriptionId: subId,
+        });
+        break;
+      }
 
-    if (!userId && !customerEmail) {
-      console.error('❌ Aucun user_id ni email dans la session');
-      return res.status(400).json({ error: 'No user identifier found' });
+      // ── Renouvellement mensuel réussi : on prolonge la période ──
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object;
+        if (!invoice.subscription) break;
+        const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+        const userId = await findUserId(sub);
+        if (!userId) break;
+        await setPremium(userId, {
+          active: true,
+          until: new Date(sub.current_period_end * 1000).toISOString(),
+          status: sub.status,
+          customerId: sub.customer, subscriptionId: sub.id,
+        });
+        break;
+      }
+
+      // ── Échec de paiement : on garde l'accès jusqu'à la fin de période payée ──
+      // (Stripe relance automatiquement ; la résiliation viendra si l'échec persiste)
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        if (!invoice.subscription) break;
+        const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+        const userId = await findUserId(sub);
+        if (!userId) break;
+        await setPremium(userId, {
+          active: true, // accès maintenu jusqu'à expiration de la période
+          until: new Date(sub.current_period_end * 1000).toISOString(),
+          status: 'past_due',
+          customerId: sub.customer, subscriptionId: sub.id,
+        });
+        console.warn('[webhook] Paiement échoué pour', userId);
+        break;
+      }
+
+      // ── Changement d'état (résiliation programmée, réactivation, impayé) ──
+      case 'customer.subscription.updated': {
+        const sub = event.data.object;
+        const userId = await findUserId(sub);
+        if (!userId) break;
+        // active / trialing / past_due → accès maintenu ; canceled / unpaid → coupé
+        const stillActive = ['active', 'trialing', 'past_due'].includes(sub.status);
+        await setPremium(userId, {
+          active: stillActive,
+          until: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+          status: sub.cancel_at_period_end ? 'cancel_at_period_end' : sub.status,
+          customerId: sub.customer, subscriptionId: sub.id,
+        });
+        break;
+      }
+
+      // ── Abonnement définitivement terminé ──
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object;
+        const userId = await findUserId(sub);
+        if (!userId) break;
+        await setPremium(userId, {
+          active: false, until: null, status: 'canceled',
+          customerId: sub.customer, subscriptionId: sub.id,
+        });
+        break;
+      }
+
+      default:
+        // Les autres événements sont ignorés volontairement
+        break;
     }
-
-    let updateResult;
-
-    if (userId) {
-      // Mise à jour par user_id (recommandé)
-      console.log('🔄 Mise à jour is_premium pour userId:', userId);
-      updateResult = await supabase
-        .from('profiles')
-        .update({
-          is_premium: true,
-          premium_since: new Date().toISOString(),
-          stripe_customer_id: session.customer,
-        })
-        .eq('id', userId);
-    } else {
-      // Fallback : mise à jour par email
-      console.log('🔄 Mise à jour is_premium pour email:', customerEmail);
-      updateResult = await supabase
-        .from('profiles')
-        .update({
-          is_premium: true,
-          premium_since: new Date().toISOString(),
-          stripe_customer_id: session.customer,
-        })
-        .eq('email', customerEmail);
-    }
-
-    if (updateResult.error) {
-      console.error('❌ Supabase update error:', updateResult.error);
-      return res.status(500).json({ error: 'Database update failed', details: updateResult.error });
-    }
-
-    console.log('✅ is_premium mis à jour avec succès !', updateResult.data);
-  }
-
-  // Gérer l'annulation d'abonnement
-  if (event.type === 'customer.subscription.deleted') {
-    const subscription = event.data.object;
-    const customerId = subscription.customer;
-
-    console.log('🔄 Annulation abonnement pour customer:', customerId);
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_premium: false })
-      .eq('stripe_customer_id', customerId);
-
-    if (error) console.error('❌ Erreur annulation:', error);
-    else console.log('✅ Premium désactivé après annulation');
+  } catch (err) {
+    console.error('[webhook] Traitement:', err.message);
+    // On renvoie 200 : Stripe ne doit pas rejouer indéfiniment une erreur applicative
+    return res.status(200).json({ received: true, warning: err.message });
   }
 
   return res.status(200).json({ received: true });
