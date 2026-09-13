@@ -4287,6 +4287,8 @@ async function initApp(user) {
   try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory:', e); }
   // Acceptation des conditions obligatoire à la première utilisation
   try { showLegalAcceptance(); } catch(e) { console.warn('legal:', e); }
+  // Retour depuis Stripe après paiement
+  try { handleStripeReturn(); } catch(e) { console.warn('stripe:', e); }
   // Restaure la page où l'utilisateur était (si l'onglet a été rechargé par Chrome)
   let lastPage = 'home';
   try { lastPage = sessionStorage.getItem('iq_last_page') || 'home'; } catch {}
@@ -4410,7 +4412,9 @@ async function loadProfile() {
   if (data) {
     profile = { bankroll: data.bankroll||5000, horizon: data.horizon||'moyen', risk: data.risk||'faible', notif: data.notif||'daily',
                 is_premium: data.is_premium || data.premium || false,
-                premium_until: data.premium_until || data.subscription_end || null };
+                premium_until: data.premium_until || data.subscription_end || null,
+                subscription_status: data.subscription_status || null,
+                stripe_customer_id: data.stripe_customer_id || null };
     document.getElementById('s-bankroll').value = profile.bankroll;
     document.getElementById('s-horizon').value = profile.horizon;
     document.getElementById('s-risk').value = profile.risk;
@@ -6068,7 +6072,7 @@ function nav(page) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} },
+}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
   if (renders[page]) renders[page]();
 }
@@ -9183,6 +9187,170 @@ async function confirmCSVImport() {
 //  ☑️ SÉLECTION MULTIPLE + MENU CONTEXTUEL DES POSITIONS
 // ═══════════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════════════════════════
+//  💳 ABONNEMENT PREMIUM — souscription et gestion
+// ═══════════════════════════════════════════════════════════
+
+const PREMIUM_PRICE = '5 €';
+
+// Lance le paiement Stripe
+async function startCheckout(btn) {
+  if (isDemo || !currentUser) {
+    showToast('🔒 Crée un compte pour t\'abonner');
+    return;
+  }
+  const originalLabel = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Redirection...'; btn.style.opacity = '0.6'; }
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) throw new Error('Session expirée, reconnecte-toi');
+
+    const res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    });
+    const out = await res.json();
+    if (!res.ok || !out.url) throw new Error(out.error || 'Erreur inconnue');
+    window.location.href = out.url;
+  } catch (e) {
+    showToast('⚠️ ' + e.message);
+    if (btn && originalLabel) { btn.disabled = false; btn.innerHTML = originalLabel; btn.style.opacity = '1'; }
+  }
+}
+
+// Ouvre le portail Stripe (facturation, moyen de paiement, résiliation)
+async function openBillingPortal(btn) {
+  const originalLabel = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Ouverture...'; }
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) throw new Error('Session expirée');
+
+    const res = await fetch('/api/create-portal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    });
+    const out = await res.json();
+    if (!res.ok || !out.url) throw new Error(out.error || 'Erreur inconnue');
+    window.location.href = out.url;
+  } catch (e) {
+    showToast('⚠️ ' + e.message);
+    if (btn && originalLabel) { btn.disabled = false; btn.innerHTML = originalLabel; }
+  }
+}
+
+// Carte d'abonnement dans les Paramètres — s'adapte au statut
+function renderSubscriptionCard() {
+  const el = document.getElementById('sub-card');
+  if (!el) return;
+  const premium = isPremiumUser();
+  const status = profile?.subscription_status;
+  const until = profile?.premium_until
+    ? new Date(profile.premium_until).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })
+    : null;
+
+  if (!premium) {
+    el.innerHTML = `
+      <div style="background:linear-gradient(135deg,#0d1526,#1a2744);border-radius:16px;padding:20px;color:#fff">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,0.12);letter-spacing:0.06em">FORMULE GRATUITE</span>
+        </div>
+        <div style="font-size:16px;font-weight:800;margin-bottom:12px;letter-spacing:-0.02em">Passe à Premium</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          ${['Analyses IA illimitées','Sélection multiple et actions groupées','Bilan patrimonial complet','Alertes et briefing personnalisés']
+            .map(b => `<div style="display:flex;gap:9px;font-size:12.5px;color:rgba(255,255,255,0.75)"><span style="color:#4ade80;font-weight:800">✓</span>${b}</div>`).join('')}
+        </div>
+        <button onclick="startCheckout(this)" style="width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">
+          S'abonner — ${PREMIUM_PRICE}/mois
+        </button>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.4);text-align:center;margin-top:9px">Sans engagement · Résiliable à tout moment</div>
+      </div>`;
+    return;
+  }
+
+  // Abonné
+  const canceling = status === 'cancel_at_period_end';
+  const pastDue = status === 'past_due';
+  el.innerHTML = `
+    <div style="background:linear-gradient(135deg,#0d2818,#14532d);border-radius:16px;padding:20px;color:#fff">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:rgba(74,222,128,0.2);color:#4ade80;letter-spacing:0.06em">✨ PREMIUM ACTIF</span>
+        <span style="font-size:11px;color:rgba(255,255,255,0.5)">${PREMIUM_PRICE}/mois</span>
+      </div>
+      ${pastDue ? `
+        <div style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#fcd34d">
+          ⚠️ Dernier paiement refusé. Mets à jour ta carte pour ne pas perdre l'accès${until ? ` après le ${until}` : ''}.
+        </div>` : canceling ? `
+        <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:rgba(255,255,255,0.75)">
+          Ton abonnement prendra fin le ${until}. Tu gardes l'accès jusque-là.
+        </div>` : `
+        <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-bottom:14px">
+          ${until ? `Prochain renouvellement le ${until}` : 'Abonnement actif'}
+        </div>`}
+      <button onclick="openBillingPortal(this)" style="width:100%;padding:12px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">
+        Gérer mon abonnement
+      </button>
+      <div style="font-size:10.5px;color:rgba(255,255,255,0.4);text-align:center;margin-top:9px">Factures, moyen de paiement et résiliation</div>
+    </div>`;
+}
+
+// Retour depuis Stripe : confirme et rafraîchit le statut
+async function handleStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const premium = params.get('premium');
+  if (!premium) return;
+
+  // Nettoie l'URL pour ne pas rejouer au rechargement
+  window.history.replaceState({}, '', window.location.pathname);
+
+  if (premium === 'cancel') {
+    showToast('Paiement annulé — tu peux réessayer quand tu veux');
+    return;
+  }
+  if (premium !== 'success') return;
+
+  // Le webhook peut mettre quelques secondes : on interroge le profil jusqu'à 5 fois
+  showToast('⏳ Activation de ton abonnement...');
+  for (let i = 0; i < 5; i++) {
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+      if (data?.is_premium) {
+        profile.is_premium = true;
+        profile.premium_until = data.premium_until;
+        profile.subscription_status = data.subscription_status;
+        renderSubscriptionCard();
+        showPremiumWelcome();
+        return;
+      }
+    } catch(e) {}
+  }
+  showToast('✓ Paiement reçu — ton accès s\'activera d\'ici une minute');
+}
+
+function showPremiumWelcome() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10007;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:22px;max-width:400px;width:100%;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#0d2818,#16a34a);padding:30px 24px;text-align:center">
+        <div style="font-size:38px;margin-bottom:8px">✨</div>
+        <div style="font-size:21px;font-weight:900;color:#fff;letter-spacing:-0.03em">Bienvenue dans Premium</div>
+      </div>
+      <div style="padding:22px 24px">
+        <div style="font-size:13.5px;color:#52525b;line-height:1.6;margin-bottom:18px">
+          Ton abonnement est actif. Toutes les fonctionnalités avancées sont débloquées — analyses illimitées, sélection multiple, bilan complet.
+        </div>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">Commencer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+
 // ═══════════════════════════════════════════════════════════
 //  ⚖️ CONTENUS LÉGAUX — BROUILLONS À FAIRE VALIDER PAR UN AVOCAT
 //  Les champs entre [[CROCHETS]] doivent être complétés.
@@ -9508,8 +9676,8 @@ function showPremiumGate(featureName, benefits) {
             <span style="font-size:13px;color:${txt};line-height:1.45">${b}</span>
           </div>`).join('')}
         </div>
-        <button onclick="document.getElementById('premium-gate').remove();nav('settings');setTimeout(()=>showToast('💎 Passe à Premium depuis tes paramètres'),300)" style="width:100%;padding:14px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;border-radius:14px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:9px">
-          Passer à Premium — 5 €/mois
+        <button onclick="startCheckout(this)" style="width:100%;padding:14px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;border-radius:14px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:9px">
+          Passer à Premium — ${PREMIUM_PRICE}/mois
         </button>
         <button onclick="document.getElementById('premium-gate').remove()" style="width:100%;padding:11px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Plus tard</button>
       </div>
