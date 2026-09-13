@@ -9188,11 +9188,23 @@ async function confirmCSVImport() {
 //  Les champs entre [[CROCHETS]] doivent être complétés.
 // ═══════════════════════════════════════════════════════════
 
+// Date de dernière révision des documents contractuels.
+// À METTRE À JOUR à chaque modification substantielle des textes.
+const LEGAL_LAST_UPDATE = '2026-09-13';
+
+function legalDateFR() {
+  try {
+    return new Date(LEGAL_LAST_UPDATE).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch { return LEGAL_LAST_UPDATE; }
+}
+
 const LEGAL_DOCS = {
   mentions: {
     title: 'Mentions légales',
     icon: '📋',
     content: `
+<p class="legal-date">Dernière mise à jour : {{LEGAL_DATE}}</p>
+
 <h3>Article 1 — Éditeur du service</h3>
 <p>Le service InvestIQ est édité par [[NOM / RAISON SOCIALE]], [[FORME JURIDIQUE — ex: micro-entreprise, SASU]], immatriculée sous le numéro SIREN [[SIREN]], dont le siège est situé [[ADRESSE COMPLÈTE]].</p>
 <p>Directeur de la publication : [[PRÉNOM NOM]]<br>Contact : [[EMAIL DE CONTACT]]</p>
@@ -9214,7 +9226,7 @@ const LEGAL_DOCS = {
     title: "Conditions Générales d'Utilisation et de Vente",
     icon: '📜',
     content: `
-<p class="legal-date">Dernière mise à jour : [[DATE]]</p>
+<p class="legal-date">Dernière mise à jour : {{LEGAL_DATE}}</p>
 
 <h3>Article 1 — Objet</h3>
 <p>Les présentes conditions régissent l'accès et l'utilisation d'InvestIQ, application de suivi de portefeuille et d'aide à la décision d'investissement. La création d'un compte vaut acceptation pleine et entière des présentes conditions.</p>
@@ -9257,7 +9269,7 @@ const LEGAL_DOCS = {
     title: 'Politique de confidentialité',
     icon: '🔒',
     content: `
-<p class="legal-date">Dernière mise à jour : [[DATE]]</p>
+<p class="legal-date">Dernière mise à jour : {{LEGAL_DATE}}</p>
 
 <h3>Article 1 — Responsable du traitement</h3>
 <p>[[NOM / RAISON SOCIALE]], [[ADRESSE]]. Contact : [[EMAIL]]</p>
@@ -9299,6 +9311,8 @@ const LEGAL_DOCS = {
     title: 'Avertissement sur les risques',
     icon: '⚠️',
     content: `
+<p class="legal-date">Dernière mise à jour : {{LEGAL_DATE}}</p>
+
 <div class="legal-warning">
 <p><strong>Tout investissement en instruments financiers comporte un risque de perte en capital.</strong> Le présent avertissement n'est pas une clause de style : il expose des risques matériels que l'utilisateur est tenu d'avoir compris avant d'engager des fonds.</p>
 </div>
@@ -9338,7 +9352,7 @@ function openLegalDoc(key) {
         </div>
         <button onclick="document.getElementById('legal-modal').remove()" class="legal-doc-close" aria-label="Fermer">×</button>
       </div>
-      <div class="legal-doc-body">${doc.content}</div>
+      <div class="legal-doc-body">${doc.content.replace(/\{\{LEGAL_DATE\}\}/g, legalDateFR())}</div>
       <div class="legal-doc-foot">
         <span>Document contractuel — InvestIQ</span>
         <button onclick="document.getElementById('legal-modal').remove()">Fermer</button>
