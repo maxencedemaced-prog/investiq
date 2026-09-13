@@ -21,6 +21,14 @@ async function getRawBody(req) {
   });
 }
 
+// Fin de la période payée.
+// Depuis les versions récentes de l'API, current_period_end est porté par les
+// lignes de l'abonnement et non plus par l'abonnement lui-même.
+function periodEndISO(sub) {
+  const ts = sub?.items?.data?.[0]?.current_period_end ?? sub?.current_period_end;
+  return ts ? new Date(ts * 1000).toISOString() : null;
+}
+
 // Retrouve l'utilisateur : d'abord par metadata, sinon par customer Stripe
 async function findUserId(subscriptionOrSession) {
   const meta = subscriptionOrSession.metadata?.user_id
@@ -82,7 +90,7 @@ export default async function handler(req, res) {
         let until = null, subId = session.subscription || null, status = 'active';
         if (subId) {
           const sub = await stripe.subscriptions.retrieve(subId);
-          until = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+          until = periodEndISO(sub);
           status = sub.status;
         }
         await setPremium(userId, {
@@ -101,7 +109,7 @@ export default async function handler(req, res) {
         if (!userId) break;
         await setPremium(userId, {
           active: true,
-          until: new Date(sub.current_period_end * 1000).toISOString(),
+          until: periodEndISO(sub),
           status: sub.status,
           customerId: sub.customer, subscriptionId: sub.id,
         });
@@ -118,7 +126,7 @@ export default async function handler(req, res) {
         if (!userId) break;
         await setPremium(userId, {
           active: true, // accès maintenu jusqu'à expiration de la période
-          until: new Date(sub.current_period_end * 1000).toISOString(),
+          until: periodEndISO(sub),
           status: 'past_due',
           customerId: sub.customer, subscriptionId: sub.id,
         });
@@ -135,7 +143,7 @@ export default async function handler(req, res) {
         const stillActive = ['active', 'trialing', 'past_due'].includes(sub.status);
         await setPremium(userId, {
           active: stillActive,
-          until: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+          until: periodEndISO(sub),
           status: sub.cancel_at_period_end ? 'cancel_at_period_end' : sub.status,
           customerId: sub.customer, subscriptionId: sub.id,
         });
