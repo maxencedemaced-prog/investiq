@@ -8557,6 +8557,15 @@ async function callClaude(prompt,sys){
       body:JSON.stringify({prompt,system})
     });
     const d=await res.json();
+    if (!res.ok) {
+      console.error('[callClaude] HTTP', res.status, d?.error);
+      // Une seule alerte visible par minute pour ne pas spammer
+      if (!window._aiErrShown || Date.now() - window._aiErrShown > 60000) {
+        window._aiErrShown = Date.now();
+        showToast('⚠️ ' + (d?.error || 'IA indisponible (HTTP ' + res.status + ')'));
+      }
+      throw new Error(d?.error || 'HTTP ' + res.status);
+    }
     return d.text||d.error||'Aucune réponse.';
   }catch{return'Erreur de connexion.';}
 }
