@@ -4285,6 +4285,8 @@ async function initApp(user) {
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
   await loadProfile(); await loadPositions(); await loadObjective();
   try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory:', e); }
+  // Acceptation des conditions obligatoire à la première utilisation
+  try { showLegalAcceptance(); } catch(e) { console.warn('legal:', e); }
   // Restaure la page où l'utilisateur était (si l'onglet a été rechargé par Chrome)
   let lastPage = 'home';
   try { lastPage = sessionStorage.getItem('iq_last_page') || 'home'; } catch {}
@@ -9180,6 +9182,279 @@ async function confirmCSVImport() {
 // ═══════════════════════════════════════════════════════════
 //  ☑️ SÉLECTION MULTIPLE + MENU CONTEXTUEL DES POSITIONS
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+//  ⚖️ CONTENUS LÉGAUX — BROUILLONS À FAIRE VALIDER PAR UN AVOCAT
+//  Les champs entre [[CROCHETS]] doivent être complétés.
+// ═══════════════════════════════════════════════════════════
+
+const LEGAL_DOCS = {
+  mentions: {
+    title: 'Mentions légales',
+    icon: '📋',
+    content: `
+<h3>Éditeur du service</h3>
+<p>Le service InvestIQ est édité par [[NOM / RAISON SOCIALE]], [[FORME JURIDIQUE — ex: micro-entreprise, SASU]], immatriculée sous le numéro SIREN [[SIREN]], dont le siège est situé [[ADRESSE COMPLÈTE]].</p>
+<p>Directeur de la publication : [[PRÉNOM NOM]]<br>Contact : [[EMAIL DE CONTACT]]</p>
+
+<h3>Hébergement</h3>
+<p>Le site est hébergé par Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis.</p>
+<p>Les données des utilisateurs sont stockées par Supabase Inc. sur des serveurs situés dans l'Union européenne.</p>
+
+<h3>Propriété intellectuelle</h3>
+<p>L'ensemble des éléments composant InvestIQ (marque, interface, textes, code) est protégé par le droit de la propriété intellectuelle et demeure la propriété exclusive de l'éditeur. Toute reproduction ou exploitation non autorisée est interdite.</p>
+
+<h3>Statut réglementaire</h3>
+<p><strong>InvestIQ n'est pas un prestataire de services d'investissement.</strong> Le service ne dispose pas du statut de Conseiller en Investissements Financiers (CIF) et n'est enregistré ni auprès de l'ORIAS, ni agréé par l'Autorité des Marchés Financiers (AMF).</p>
+<p>InvestIQ est un <strong>outil pédagogique d'aide à la décision</strong>. Les analyses, scores et suggestions générés — y compris par intelligence artificielle — constituent des informations à caractère général et non des recommandations personnalisées au sens de l'article D. 321-1 du Code monétaire et financier.</p>
+`
+  },
+
+  cgu: {
+    title: "Conditions Générales d'Utilisation et de Vente",
+    icon: '📜',
+    content: `
+<p class="legal-date">Dernière mise à jour : [[DATE]]</p>
+
+<h3>1. Objet</h3>
+<p>Les présentes conditions régissent l'accès et l'utilisation d'InvestIQ, application de suivi de portefeuille et d'aide à la décision d'investissement. La création d'un compte vaut acceptation pleine et entière des présentes conditions.</p>
+
+<h3>2. Nature du service — avertissement essentiel</h3>
+<p><strong>InvestIQ ne fournit aucun conseil en investissement personnalisé.</strong> L'application propose des analyses automatisées et des contenus générés par intelligence artificielle à visée informative et pédagogique.</p>
+<p>L'utilisateur reconnaît expressément que :</p>
+<ul>
+<li>toute décision d'investissement relève de sa seule responsabilité ;</li>
+<li>les analyses de l'IA peuvent comporter des erreurs, des omissions ou des informations obsolètes ;</li>
+<li>les performances passées ne préjugent en rien des performances futures ;</li>
+<li>tout investissement en instruments financiers comporte un <strong>risque de perte partielle ou totale du capital</strong> ;</li>
+<li>il lui appartient de consulter un professionnel agréé avant toute décision engageante.</li>
+</ul>
+
+<h3>3. Accès au service</h3>
+<p>L'accès nécessite la création d'un compte avec une adresse email valide. L'utilisateur doit être majeur et juridiquement capable. Il est responsable de la confidentialité de ses identifiants.</p>
+
+<h3>4. Offre Premium — abonnement</h3>
+<p>L'offre Premium est proposée au tarif de [[PRIX]] € TTC par mois, sans engagement de durée. Le paiement s'effectue par carte bancaire via notre prestataire Stripe.</p>
+<p><strong>Reconduction :</strong> l'abonnement est reconduit tacitement chaque mois jusqu'à résiliation. Celle-ci peut intervenir à tout moment depuis les paramètres du compte et prend effet à la fin de la période en cours.</p>
+<p><strong>Droit de rétractation :</strong> conformément aux articles L. 221-18 et suivants du Code de la consommation, l'utilisateur dispose d'un délai de quatorze (14) jours pour se rétracter. En demandant l'accès immédiat au service, il accepte de commencer à en bénéficier avant la fin de ce délai ; il reste redevable du montant correspondant à la période consommée.</p>
+
+<h3>5. Données de marché</h3>
+<p>Les cours affichés proviennent de fournisseurs tiers, peuvent être différés et sont communiqués à titre indicatif. L'éditeur ne garantit ni leur exactitude, ni leur exhaustivité, ni leur disponibilité continue.</p>
+
+<h3>6. Responsabilité</h3>
+<p>Le service est fourni « en l'état ». L'éditeur ne saurait être tenu responsable des pertes financières, manques à gagner ou dommages indirects résultant de l'utilisation du service ou d'une décision prise sur la base des informations qu'il délivre.</p>
+<p>L'éditeur ne garantit pas une disponibilité ininterrompue et pourra suspendre le service pour maintenance.</p>
+
+<h3>7. Résiliation</h3>
+<p>L'utilisateur peut supprimer son compte à tout moment depuis ses paramètres. L'éditeur se réserve le droit de suspendre un compte en cas de manquement aux présentes conditions.</p>
+
+<h3>8. Droit applicable</h3>
+<p>Les présentes sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité. À défaut, les tribunaux français seront compétents. L'utilisateur peut recourir gratuitement à un médiateur de la consommation.</p>
+`
+  },
+
+  privacy: {
+    title: 'Politique de confidentialité',
+    icon: '🔒',
+    content: `
+<p class="legal-date">Dernière mise à jour : [[DATE]]</p>
+
+<h3>Responsable du traitement</h3>
+<p>[[NOM / RAISON SOCIALE]], [[ADRESSE]]. Contact : [[EMAIL]]</p>
+
+<h3>Données collectées</h3>
+<ul>
+<li><strong>Compte :</strong> adresse email, mot de passe chiffré.</li>
+<li><strong>Profil d'investisseur :</strong> capital disponible, horizon, tolérance au risque, objectifs.</li>
+<li><strong>Portefeuille :</strong> actifs détenus, quantités, prix d'achat, plateformes.</li>
+<li><strong>Usage :</strong> conversations avec l'assistant IA, recommandations générées et leur suivi.</li>
+<li><strong>Paiement :</strong> traité exclusivement par Stripe — aucune donnée bancaire n'est stockée par InvestIQ.</li>
+</ul>
+
+<h3>Finalités et bases légales</h3>
+<ul>
+<li>Fourniture du service et personnalisation des analyses — <em>exécution du contrat</em>.</li>
+<li>Gestion de l'abonnement et facturation — <em>exécution du contrat</em>.</li>
+<li>Envoi de notifications (briefing, alertes) — <em>consentement</em>, révocable à tout moment.</li>
+<li>Amélioration du service et sécurité — <em>intérêt légitime</em>.</li>
+</ul>
+
+<h3>Sous-traitants</h3>
+<p>Supabase (hébergement des données, Union européenne) · Vercel (hébergement applicatif) · Anthropic (traitement des requêtes IA) · Stripe (paiements) · Finnhub (données de marché).</p>
+<p>Certains transferts hors Union européenne sont encadrés par les clauses contractuelles types de la Commission européenne.</p>
+
+<h3>Durée de conservation</h3>
+<p>Les données sont conservées pendant la durée de vie du compte, puis supprimées sous trente (30) jours après sa fermeture. Les factures sont conservées dix (10) ans conformément aux obligations comptables.</p>
+
+<h3>Vos droits</h3>
+<p>Conformément au RGPD, vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité. L'export et la suppression de vos données sont accessibles directement depuis vos paramètres, ou sur demande à [[EMAIL]].</p>
+<p>Vous pouvez introduire une réclamation auprès de la CNIL (www.cnil.fr).</p>
+
+<h3>Cookies</h3>
+<p>InvestIQ n'utilise <strong>aucun cookie publicitaire ni traceur tiers</strong>. Seul le stockage local strictement nécessaire au fonctionnement (session, préférences d'affichage, cache) est utilisé — il ne requiert pas de consentement préalable.</p>
+`
+  },
+
+  risk: {
+    title: 'Avertissement sur les risques',
+    icon: '⚠️',
+    content: `
+<div class="legal-warning">
+<p><strong>Investir comporte un risque de perte en capital.</strong> Ce message n'est pas une formalité : il décrit une réalité que tout investisseur doit intégrer avant d'engager son argent.</p>
+</div>
+
+<h3>Ce que tu dois savoir</h3>
+<ul>
+<li><strong>Ton capital n'est pas garanti.</strong> La valeur d'un investissement peut baisser comme monter. Tu peux récupérer moins que ce que tu as investi, voire tout perdre sur certains actifs.</li>
+<li><strong>Le passé ne prédit pas l'avenir.</strong> Les rendements historiques et les projections affichées dans l'application sont des illustrations, pas des promesses.</li>
+<li><strong>Les projections sont des hypothèses.</strong> Le simulateur applique un taux constant ; les marchés réels ne fonctionnent jamais ainsi.</li>
+<li><strong>L'IA peut se tromper.</strong> Les analyses sont générées automatiquement à partir de données parfois incomplètes ou différées. Elles ne remplacent ni ton jugement, ni l'avis d'un professionnel agréé.</li>
+<li><strong>La concentration amplifie le risque.</strong> Un portefeuille peu diversifié subit des variations bien plus fortes.</li>
+<li><strong>N'investis que ce que tu peux immobiliser.</strong> Garde une épargne de précaution accessible avant d'investir.</li>
+</ul>
+
+<h3>Avant de décider</h3>
+<p>Pour une recommandation adaptée à ta situation personnelle, patrimoniale et fiscale, consulte un Conseiller en Investissements Financiers enregistré à l'ORIAS. InvestIQ t'aide à comprendre et à organiser — la décision, elle, t'appartient.</p>
+`
+  },
+};
+
+// ═══ AFFICHAGE DES DOCUMENTS LÉGAUX ═══
+function openLegalDoc(key) {
+  const doc = LEGAL_DOCS[key];
+  if (!doc) return;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#161b26' : '#fff';
+  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
+  const txt  = isDark ? '#e6edf3' : '#09090b';
+  const sub  = isDark ? '#8b95a5' : '#52525b';
+
+  document.getElementById('legal-modal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'legal-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:10005;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:${surf};border-radius:20px;max-width:680px;width:100%;max-height:86vh;display:flex;flex-direction:column">
+      <div style="padding:20px 24px;border-bottom:1px solid ${bord};display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="font-size:17px;font-weight:800;color:${txt}">${doc.icon} ${doc.title}</div>
+        <button onclick="document.getElementById('legal-modal').remove()" style="background:none;border:none;font-size:22px;color:${sub};cursor:pointer;line-height:1;padding:0 4px">×</button>
+      </div>
+      <div class="legal-body" style="padding:20px 24px;overflow-y:auto;color:${sub};font-size:13.5px;line-height:1.65">${doc.content}</div>
+      <div style="padding:14px 24px;border-top:1px solid ${bord}">
+        <button onclick="document.getElementById('legal-modal').remove()" style="width:100%;padding:12px;background:var(--color-primary,#16a34a);border:none;border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">Fermer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+// ═══ ACCEPTATION OBLIGATOIRE À LA PREMIÈRE UTILISATION ═══
+const LEGAL_ACCEPT_KEY = 'iq_legal_accepted_v1';
+
+function needsLegalAcceptance() {
+  try { return localStorage.getItem(LEGAL_ACCEPT_KEY) !== '1'; } catch { return false; }
+}
+
+function showLegalAcceptance() {
+  if (!needsLegalAcceptance()) return;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = isDark ? '#161b26' : '#fff';
+  const txt  = isDark ? '#e6edf3' : '#09090b';
+  const sub  = isDark ? '#8b95a5' : '#52525b';
+  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
+
+  document.getElementById('legal-accept')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'legal-accept';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10006;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:${surf};border-radius:22px;max-width:480px;width:100%;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#0d1526,#1a2744);padding:24px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">⚠️</div>
+        <div style="font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.02em">Avant de commencer</div>
+      </div>
+      <div style="padding:22px 24px">
+        <div style="font-size:13.5px;color:${sub};line-height:1.6;margin-bottom:18px">
+          InvestIQ est un <strong style="color:${txt}">outil d'aide à la décision</strong>, pas un conseiller financier agréé. Les analyses générées par l'IA sont informatives et peuvent comporter des erreurs.
+          <br><br>
+          <strong style="color:${txt}">Investir comporte un risque de perte en capital.</strong> Chaque décision relève de ta seule responsabilité.
+        </div>
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:${isDark?'rgba(255,255,255,0.03)':'#f9fafb'};border:1px solid ${bord};border-radius:12px;cursor:pointer;margin-bottom:14px">
+          <input type="checkbox" id="legal-cb" onchange="document.getElementById('legal-ok').disabled=!this.checked;document.getElementById('legal-ok').style.opacity=this.checked?'1':'0.45'" style="width:17px;height:17px;accent-color:#16a34a;flex-shrink:0;margin-top:1px">
+          <span style="font-size:12.5px;color:${txt};line-height:1.5">J'ai lu et j'accepte les
+            <a onclick="event.preventDefault();openLegalDoc('cgu')" style="color:#16a34a;cursor:pointer;text-decoration:underline">conditions d'utilisation</a>,
+            la <a onclick="event.preventDefault();openLegalDoc('privacy')" style="color:#16a34a;cursor:pointer;text-decoration:underline">politique de confidentialité</a>
+            et l'<a onclick="event.preventDefault();openLegalDoc('risk')" style="color:#16a34a;cursor:pointer;text-decoration:underline">avertissement sur les risques</a>.
+          </span>
+        </label>
+        <button id="legal-ok" disabled onclick="acceptLegal()" style="width:100%;padding:14px;background:var(--color-primary,#16a34a);border:none;border-radius:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;opacity:0.45">Continuer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function acceptLegal() {
+  try { localStorage.setItem(LEGAL_ACCEPT_KEY, '1'); } catch {}
+  // Trace l'acceptation en base (preuve de consentement)
+  if (!isDemo && currentUser) {
+    try {
+      await sb.from('profiles').update({
+        legal_accepted_at: new Date().toISOString(),
+        legal_version: 'v1'
+      }).eq('id', currentUser.id);
+    } catch(e) { console.warn('legal accept:', e); }
+  }
+  document.getElementById('legal-accept')?.remove();
+}
+
+// ═══ EXPORT ET SUPPRESSION DES DONNÉES (RGPD) ═══
+async function exportMyData() {
+  try {
+    const payload = {
+      exporte_le: new Date().toISOString(),
+      compte: { email: currentUser?.email || 'démo' },
+      profil: profile,
+      objectifs: allObjectives,
+      positions: positions.map(p => ({ actif: p.name, quantite: p.qty, pru: p.pru, prix: p.price, plateforme: p.platform, alerte: p.alert_price })),
+    };
+    if (!isDemo && currentUser) {
+      try {
+        const { data: recos } = await sb.from('ai_recommendations').select('*').eq('user_id', currentUser.id);
+        payload.recommandations_ia = recos || [];
+      } catch(e) {}
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `investiq-mes-donnees-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✓ Tes données ont été exportées');
+  } catch(e) {
+    showToast('⚠️ Export impossible : ' + e.message);
+  }
+}
+
+async function deleteMyAccount() {
+  if (isDemo) { showToast('Indisponible en mode démo'); return; }
+  if (!confirm("Supprimer définitivement ton compte ?\n\nToutes tes données (portefeuille, objectifs, historique IA) seront effacées. Cette action est irréversible.")) return;
+  if (!confirm("Dernière confirmation : es-tu certain de vouloir supprimer ton compte ?")) return;
+  try {
+    const uid = currentUser.id;
+    await sb.from('ai_recommendations').delete().eq('user_id', uid);
+    await sb.from('positions').delete().eq('user_id', uid);
+    await sb.from('objectives').delete().eq('user_id', uid);
+    await sb.from('push_subscriptions').delete().eq('user_id', uid);
+    await sb.from('profiles').delete().eq('id', uid);
+    try { localStorage.clear(); } catch {}
+    await sb.auth.signOut();
+    alert("Ton compte et tes données ont été supprimés.\n\nSi un abonnement était actif, résilie-le également depuis le lien reçu par email lors du paiement.");
+    location.reload();
+  } catch(e) {
+    showToast('⚠️ Erreur : ' + e.message + ' — contacte le support');
+  }
+}
+
 
 // ═══ STATUT PREMIUM ═══
 function isPremiumUser() {
