@@ -66,6 +66,10 @@ export default async function handler(req, res) {
     }
 
     // ── 4. APPEL ANTHROPIC ──
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('[api/claude] ANTHROPIC_API_KEY manquante dans les variables d\'environnement Vercel');
+      return res.status(500).json({ error: 'Configuration serveur : clé API manquante' });
+    }
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -74,7 +78,7 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6', // Sonnet : ~5x moins cher qu'Opus, largement suffisant ici
+        model: 'claude-sonnet-5', // modèle Sonnet actuel
         max_tokens: 1024,
         system: system || 'Tu es le copilote financier IA d\'InvestIQ. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.',
         messages: [{ role: 'user', content: prompt }]
@@ -82,7 +86,12 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    if (data.error) return res.status(500).json({ error: data.error.message });
+    if (!response.ok || data.error) {
+      const msg = data?.error?.message || `Anthropic HTTP ${response.status}`;
+      console.error('[api/claude] Anthropic error:', response.status, msg);
+      // On renvoie le vrai message pour pouvoir diagnostiquer côté client
+      return res.status(502).json({ error: 'IA indisponible : ' + msg });
+    }
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
     res.status(200).json({ text: text || 'Aucune réponse.' });
   } catch (error) {
