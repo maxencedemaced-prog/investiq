@@ -9641,12 +9641,14 @@ async function deleteMyAccount() {
 // ═══ STATUT PREMIUM ═══
 function isPremiumUser() {
   if (isDemo) return false;
-  if (profile?.is_premium === true) return true;
-  // Abonnement avec date de fin
+  // Un statut explicitement terminé coupe l'accès, même si is_premium n'a pas été remis à false
+  if (profile?.subscription_status === 'canceled' || profile?.subscription_status === 'unpaid') return false;
+  // Si une date de fin est connue, elle fait foi
   if (profile?.premium_until) {
-    try { return new Date(profile.premium_until).getTime() > Date.now(); } catch { return false; }
+    try { return new Date(profile.premium_until).getTime() > Date.now(); } catch {}
   }
-  return false;
+  // Sinon on se fie au drapeau
+  return profile?.is_premium === true;
 }
 
 // Fenêtre d'incitation à l'abonnement
