@@ -39,10 +39,11 @@ export default async function handler(req, res) {
     }
     const user = userData.user;
 
-    // ── 2. TARIF CÔTÉ SERVEUR (le client ne peut pas choisir son prix) ──
-    const priceId = process.env.STRIPE_PRICE_ID;
+    // ── 2. TARIF CÔTÉ SERVEUR (le client choisit la formule, jamais le prix) ──
+    const plan = req.body?.plan === 'annual' ? 'annual' : 'monthly';
+    const priceId = plan === 'annual' ? process.env.STRIPE_PRICE_ID_ANNUAL : process.env.STRIPE_PRICE_ID;
     if (!priceId) {
-      console.error('[create-checkout] STRIPE_PRICE_ID manquant dans les variables Vercel');
+      console.error(`[create-checkout] ${plan === 'annual' ? 'STRIPE_PRICE_ID_ANNUAL' : 'STRIPE_PRICE_ID'} manquant dans les variables Vercel`);
       return res.status(500).json({ error: 'Configuration serveur incomplète.' });
     }
 
@@ -75,8 +76,8 @@ export default async function handler(req, res) {
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       client_reference_id: user.id,
-      metadata: { user_id: user.id },
-      subscription_data: { metadata: { user_id: user.id } },
+      metadata: { user_id: user.id, plan },
+      subscription_data: { metadata: { user_id: user.id, plan } },
       allow_promotion_codes: true,
       locale: 'fr',
       success_url: `${APP_URL}?premium=success`,
