@@ -4415,6 +4415,7 @@ async function loadProfile() {
                 is_premium: data.is_premium || data.premium || false,
                 premium_until: data.premium_until || data.subscription_end || null,
                 subscription_status: data.subscription_status || null,
+                subscription_plan: data.subscription_plan || null,
                 stripe_customer_id: data.stripe_customer_id || null };
     document.getElementById('s-bankroll').value = profile.bankroll;
     document.getElementById('s-horizon').value = profile.horizon;
@@ -9194,9 +9195,11 @@ async function confirmCSVImport() {
 // ═══════════════════════════════════════════════════════════
 
 const PREMIUM_PRICE = '9,99 €';
+const PREMIUM_PRICE_ANNUAL = '79,99 €';
+const PREMIUM_ANNUAL_SAVINGS_PCT = 33; // (9,99×12 − 79,99) ⁄ (9,99×12) ≈ 33 %
 
 // Lance le paiement Stripe
-async function startCheckout(btn) {
+async function startCheckout(btn, plan) {
   if (isDemo || !currentUser) {
     showToast('🔒 Crée un compte pour t\'abonner');
     return;
@@ -9211,6 +9214,7 @@ async function startCheckout(btn) {
     const res = await fetch('/api/create-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ plan: plan === 'annual' ? 'annual' : 'monthly' }),
     });
     const out = await res.json();
     if (!res.ok || !out.url) throw new Error(out.error || 'Erreur inconnue');
@@ -9269,8 +9273,12 @@ function renderSubscriptionCard() {
           ${['Analyses IA illimitées','Sélection multiple et actions groupées','Bilan patrimonial complet','Alertes et briefing personnalisés']
             .map(b => `<div style="display:flex;gap:9px;font-size:12.5px;color:rgba(255,255,255,0.75)"><span style="color:#4ade80;font-weight:800">✓</span>${b}</div>`).join('')}
         </div>
-        <button onclick="startCheckout(this)" style="width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">
-          ${lapsed ? `Reprendre l'abonnement — ${PREMIUM_PRICE}/mois` : `S'abonner — ${PREMIUM_PRICE}/mois`}
+        <button onclick="startCheckout(this,'annual')" style="width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;position:relative">
+          ${lapsed ? 'Reprendre' : "S'abonner"} — ${PREMIUM_PRICE_ANNUAL}/an
+          <span style="position:absolute;top:-9px;right:10px;background:#facc15;color:#1a1a1a;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:6px">-${PREMIUM_ANNUAL_SAVINGS_PCT}%</span>
+        </button>
+        <button onclick="startCheckout(this,'monthly')" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.18);border-radius:12px;font-size:12.5px;font-weight:700;color:rgba(255,255,255,0.75);cursor:pointer;margin-top:8px">
+          ou ${PREMIUM_PRICE}/mois
         </button>
         <div style="font-size:10.5px;color:rgba(255,255,255,0.4);text-align:center;margin-top:9px">Sans engagement · Résiliable à tout moment</div>
       </div>`;
@@ -9280,11 +9288,12 @@ function renderSubscriptionCard() {
   // Abonné
   const canceling = status === 'cancel_at_period_end';
   const pastDue = status === 'past_due';
+  const planLabel = profile?.subscription_plan === 'annual' ? `${PREMIUM_PRICE_ANNUAL}/an` : `${PREMIUM_PRICE}/mois`;
   el.innerHTML = `
     <div style="background:linear-gradient(135deg,#0d2818,#14532d);border-radius:16px;padding:20px;color:#fff">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
         <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:rgba(74,222,128,0.2);color:#4ade80;letter-spacing:0.06em">✨ PREMIUM ACTIF</span>
-        <span style="font-size:11px;color:rgba(255,255,255,0.5)">${PREMIUM_PRICE}/mois</span>
+        <span style="font-size:11px;color:rgba(255,255,255,0.5)">${planLabel}</span>
       </div>
       ${pastDue ? `
         <div style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#fcd34d">
@@ -9337,6 +9346,7 @@ async function handleStripeReturn() {
         profile.is_premium = true;
         profile.premium_until = data.premium_until;
         profile.subscription_status = data.subscription_status;
+        profile.subscription_plan = data.subscription_plan;
         renderSubscriptionCard();
         showPremiumWelcome();
         return;
