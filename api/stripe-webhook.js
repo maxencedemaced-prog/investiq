@@ -29,6 +29,16 @@ function periodEndISO(sub) {
   return ts ? new Date(ts * 1000).toISOString() : null;
 }
 
+// Identifie la formule (mensuel/annuel) depuis le Price Stripe réellement utilisé —
+// pour que la carte Paramètres affiche le bon tarif, peu importe lequel a été choisi.
+function planFromSub(sub) {
+  const priceId = sub?.items?.data?.[0]?.price?.id;
+  if (!priceId) return null;
+  if (priceId === process.env.STRIPE_PRICE_ID_ANNUAL) return 'annual';
+  if (priceId === process.env.STRIPE_PRICE_ID) return 'monthly';
+  return null; // prix inconnu (changé manuellement dans Stripe, etc.) : on ne devine pas
+}
+
 // Retrouve l'utilisateur : d'abord par metadata, sinon par customer Stripe
 async function findUserId(subscriptionOrSession) {
   const meta = subscriptionOrSession.metadata?.user_id
@@ -43,7 +53,7 @@ async function findUserId(subscriptionOrSession) {
 }
 
 // Met à jour le statut premium d'un utilisateur
-async function setPremium(userId, { active, until, customerId, subscriptionId, status }) {
+async function setPremium(userId, { active, until, customerId, subscriptionId, status, plan }) {
   const payload = {
     is_premium: active,
     premium_until: until || null,
@@ -51,6 +61,7 @@ async function setPremium(userId, { active, until, customerId, subscriptionId, s
   };
   if (customerId) payload.stripe_customer_id = customerId;
   if (subscriptionId) payload.stripe_subscription_id = subscriptionId;
+  if (plan) payload.subscription_plan = plan;
 
   const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
   if (error) console.error('[webhook] Supabase:', error.message);
@@ -87,14 +98,15 @@ export default async function handler(req, res) {
         if (!userId) { console.error('[webhook] Utilisateur introuvable'); break; }
 
         // Récupère la période payée depuis l'abonnement
-        let until = null, subId = session.subscription || null, status = 'active';
+        let until = null, subId = session.subscription || null, status = 'active', plan = null;
         if (subId) {
           const sub = await stripe.subscriptions.retrieve(subId);
           until = periodEndISO(sub);
           status = sub.status;
+          plan = planFromSub(sub);
         }
         await setPremium(userId, {
-          active: true, until, status,
+          active: true, until, status, plan,
           customerId: session.customer, subscriptionId: subId,
         });
         break;
@@ -110,7 +122,7 @@ export default async function handler(req, res) {
         await setPremium(userId, {
           active: true,
           until: periodEndISO(sub),
-          status: sub.status,
+          status: sub.status, plan: planFromSub(sub),
           customerId: sub.customer, subscriptionId: sub.id,
         });
         break;
@@ -127,7 +139,7 @@ export default async function handler(req, res) {
         await setPremium(userId, {
           active: true, // accès maintenu jusqu'à expiration de la période
           until: periodEndISO(sub),
-          status: 'past_due',
+          status: 'past_due', plan: planFromSub(sub),
           customerId: sub.customer, subscriptionId: sub.id,
         });
         console.warn('[webhook] Paiement échoué pour', userId);
@@ -145,6 +157,7 @@ export default async function handler(req, res) {
           active: stillActive,
           until: periodEndISO(sub),
           status: sub.cancel_at_period_end ? 'cancel_at_period_end' : sub.status,
+          plan: planFromSub(sub),
           customerId: sub.customer, subscriptionId: sub.id,
         });
         break;
