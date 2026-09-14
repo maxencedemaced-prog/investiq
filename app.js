@@ -4284,6 +4284,7 @@ async function initApp(user) {
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
   await loadProfile(); await loadPositions(); await loadObjective();
+  try { updateSidebarPremiumCard(); } catch(e) { console.warn('sidebar-premium:', e); }
   try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory:', e); }
   // Acceptation des conditions obligatoire à la première utilisation
   try { showLegalAcceptance(); } catch(e) { console.warn('legal:', e); }
@@ -9244,6 +9245,7 @@ async function openBillingPortal(btn) {
 
 // Carte d'abonnement dans les Paramètres — s'adapte au statut
 function renderSubscriptionCard() {
+  updateSidebarPremiumCard();
   const el = document.getElementById('sub-card');
   if (!el) return;
   const premium = isPremiumUser();
@@ -9299,6 +9301,15 @@ function renderSubscriptionCard() {
       </button>
       <div style="font-size:10.5px;color:rgba(255,255,255,0.4);text-align:center;margin-top:9px">Factures, moyen de paiement et résiliation</div>
     </div>`;
+}
+
+// Pastille "Passez à Premium" de la sidebar — visible sur toutes les pages,
+// donc pilotée indépendamment de renderSubscriptionCard() (qui ne tourne que
+// sur la page Paramètres). Masquée dès que le compte est réellement premium.
+function updateSidebarPremiumCard() {
+  const el = document.getElementById('sidebar-premium-card');
+  if (!el) return;
+  el.style.display = isPremiumUser() ? 'none' : '';
 }
 
 // Retour depuis Stripe : confirme et rafraîchit le statut
