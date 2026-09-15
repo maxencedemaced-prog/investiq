@@ -3714,17 +3714,17 @@ function searchEntreprise(query) {
     try {
       const res = await fetch('/api/search?q=' + encodeURIComponent(query));
       const data = await res.json();
-      const results = (data.quotes || []).slice(0, 6);
+      const results = (data.results || []).slice(0, 6);
       if (!results.length) { drop.style.display = 'none'; return; }
       drop.style.display = 'block';
       drop.innerHTML = results.map(r => `
-        <div onclick="searchEntrepriseNews('${r.symbol}','${(r.shortname||r.longname||r.symbol).replace(/'/g,'\\')}');document.getElementById('ent-search-results').style.display='none';document.getElementById('ent-search').value='${(r.shortname||r.symbol).replace(/'/g,'\\')}'"
+        <div onclick="searchEntrepriseNews('${r.ticker}','${(r.name||r.ticker).replace(/'/g,'\\')}');document.getElementById('ent-search-results').style.display='none';document.getElementById('ent-search').value='${(r.name||r.ticker).replace(/'/g,'\\')}'"
              style="padding:12px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0"
              onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='#fff'">
-          <div style="font-size:13px;font-weight:700;color:#1c1c1e">${r.shortname || r.symbol}</div>
-          <div style="font-size:12px;color:#8e8e93">${r.symbol} · ${r.exchDisp || r.exchange || ''}</div>
+          <div style="font-size:13px;font-weight:700;color:#1c1c1e">${r.name || r.ticker}</div>
+          <div style="font-size:12px;color:#8e8e93">${r.ticker} · ${r.exchange || ''}</div>
         </div>`).join('');
-    } catch(e) { drop.style.display = 'none'; }
+    } catch(e) { console.error('[searchEntreprise] échec :', e.message); drop.style.display = 'none'; }
   }, 400);
 }
 
