@@ -3602,19 +3602,15 @@ async function loadEntrepriseNews(companies) {
   if (!newsEl) return;
 
   try {
-    // Récupère les news via l'API existante
-    const tickers = companies.map(c => c.ticker).join(',');
-    const res = await fetch('/api/search?q=' + encodeURIComponent(companies.map(c=>c.name).join(' OR ')));
-    
-    // Génère un résumé des actualités importantes via l'IA
-    const date = new Date().toLocaleDateString('fr-FR');
+    // Génère un résumé du contexte connu sur ces entreprises via l'IA
     const companiesList = companies.map(c=>c.name).join(', ');
-    const prompt = `Journaliste financier, le ${date}. Donne 6 actualités importantes récentes pour ces entreprises : ${companiesList}.
+    const prompt = `Analyste financier. Résume ce que tu sais de fiable sur ces entreprises : ${companiesList}.
 Réponds UNIQUEMENT en JSON valide, sans markdown :
-[{"ticker":"AAPL","entreprise":"Apple","titre":"Titre court","resume":"2 phrases max","impact":"positif","categorie":"Résultats","date":"Cette semaine"}]
-impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/Réglementation.`;
+[{"ticker":"AAPL","entreprise":"Apple","titre":"Titre court","resume":"2 phrases max","impact":"positif","categorie":"Résultats"}]
+impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/Réglementation.
+Ne réponds que pour les entreprises sur lesquelles tu as une information fiable ; ignore les autres plutôt que d'inventer.`;
 
-    const raw = await callClaude(prompt, 'Tu es journaliste financier. Réponds UNIQUEMENT en JSON valide.');
+    const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne réponds qu'à partir de ce que tu sais réellement — jamais en inventant des faits ou des évènements récents que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`);
     const clean = raw.replace(/```json|```/g,'').trim();
     const s = clean.indexOf('['), e = clean.lastIndexOf(']');
     const articles = JSON.parse(clean.slice(s, e+1));
@@ -3659,7 +3655,6 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
               </div>
               <div style="display:flex;gap:6px;align-items:center">
                 <span style="background:${ib};color:${ic};font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px">${a.categorie}</span>
-                <span style="font-size:11px;color:${sub2}">${a.date}</span>
               </div>
             </div>
           </div>
@@ -4072,9 +4067,9 @@ async function openCompany(ticker, name, sector) {
 
     <!-- COMPANY NEWS -->
     <div class="card">
-      <div class="card-head"><div class="card-title"><div class="card-icon dark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/></svg>Actualités récentes — ${name}</div></div>
+      <div class="card-head"><div class="card-title"><div class="card-icon dark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/></svg>Contexte — ${name}</div></div>
       <div id="co-news" style="font-size:14px;color:#8e8e93">
-        <div style="display:flex;align-items:center;gap:10px;color:#8e8e93"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Chargement des actualités...</div>
+        <div style="display:flex;align-items:center;gap:10px;color:#8e8e93"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Chargement...</div>
       </div>
     </div>
   `;
@@ -4143,22 +4138,26 @@ Sois pédagogue, concis et direct. Utilise des termes simples.`;
 }
 
 async function fetchCompanyNews(ticker, name) {
-  const prompt = `Recherche les 5 actualités les plus récentes et importantes sur ${name} (ticker: ${ticker}).
-Pour chaque actualité retourne UNIQUEMENT un JSON (sans backticks) : [{"titre":"...","resume":"1-2 phrases","impact":"positif|négatif|neutre","heure":"..."}]
-UNIQUEMENT le JSON.`;
-  const raw = await callClaude(prompt, 'Tu es journaliste financier. Retourne uniquement du JSON valide.');
+  const prompt = `Résume ce que tu connais sur ${name} (ticker: ${ticker}) : stratégie, résultats marquants, évènements notables.
+Pour chaque point retourne UNIQUEMENT un JSON (sans backticks) : [{"titre":"...","resume":"1-2 phrases","impact":"positif|négatif|neutre"}]
+UNIQUEMENT le JSON, 3 à 5 points. Si tu n'as pas d'information fiable sur ce ticker précis, retourne [].`;
+  const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne réponds qu'à partir de ce que tu sais réellement — jamais en inventant des faits, des chiffres ou des évènements récents que tu ne connais pas avec certitude. Retourne uniquement du JSON valide.`);
   try {
     const s = raw.replace(/```json|```/g, '').trim();
     const items = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1));
     const el = document.getElementById('co-news');
     if (el) {
-      el.innerHTML = items.map(item => {
+      if (!items.length) {
+        el.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Pas de contexte fiable disponible pour ce ticker.</p>';
+        return;
+      }
+      const disclaimer = `<div style="font-size:11px;color:#a0a0a5;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f0f0">ⓘ Contexte général tiré des connaissances de l'IA — pas un flux d'actualité en temps réel, peut être incomplet ou daté.</div>`;
+      el.innerHTML = disclaimer + items.map(item => {
         const color = item.impact === 'positif' ? '#1a7f5a' : item.impact === 'négatif' ? '#cc2f26' : '#8e8e93';
         const bg = item.impact === 'positif' ? '#e8f8f0' : item.impact === 'négatif' ? '#fff0f0' : '#f5f5f5';
         return `<div style="padding:12px 0;border-bottom:1px solid #f5f5f5">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
             <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;background:${bg};color:${color}">${item.impact}</span>
-            <span style="font-size:11px;color:#c7c7cc;font-weight:500">${item.heure}</span>
           </div>
           <div style="font-size:14px;font-weight:700;color:#1c1c1e;margin-bottom:3px">${item.titre}</div>
           <div style="font-size:13px;color:#8e8e93;line-height:1.4">${item.resume}</div>
@@ -4167,7 +4166,7 @@ UNIQUEMENT le JSON.`;
     }
   } catch {
     const el = document.getElementById('co-news');
-    if (el) el.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Actualités non disponibles pour ce ticker.</p>';
+    if (el) el.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Contexte non disponible pour ce ticker.</p>';
   }
 }
 
@@ -7900,15 +7899,14 @@ async function loadNews(force=false) {
       <div class="skeleton" style="height:14px;border-radius:6px;width:65%"></div>
     </div>`).join('');
 
-  const today = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   const myAssets = positions.map(p => p.name).join(', ') || 'IWDA, VWCE';
-  const prompt = `Tu es analyste financier senior. Nous sommes le ${today}.
-Génère 8 actualités économiques et financières importantes et récentes, diversifiées (macro, banques centrales, marchés, géopolitique, secteurs).
-Mets en priorité les actus pertinentes pour ces actifs : ${myAssets}.
+  const prompt = `Tu es analyste financier senior.
+Développe 8 thèmes économiques et financiers structurants et durables (macro, banques centrales, marchés, géopolitique, secteurs) qui éclairent la situation actuelle des marchés — pas des évènements ponctuels datés que tu ne peux pas vérifier en temps réel.
+Mets en priorité les thèmes pertinents pour ces actifs : ${myAssets}.
 Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
-[{"titre":"Titre accrocheur max 10 mots","resume":"2 phrases concrètes et précises","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","heure":"Il y a 2h|Ce matin|Hier soir|Cette semaine","signal":"acheter|attendre|éviter|neutre","reco_texte":"Conseil actionnable en 2-3 phrases pour débutant, adapté au signal","actifs_cibles":["TICKER1","TICKER2"]}]`;
+[{"titre":"Titre accrocheur max 10 mots","resume":"2 phrases concrètes et précises","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","signal":"acheter|attendre|éviter|neutre","reco_texte":"Conseil actionnable en 2-3 phrases pour débutant, adapté au signal","actifs_cibles":["TICKER1","TICKER2"]}]`;
 
-  const raw = await callClaude(prompt, 'Tu es analyste financier. Retourne uniquement du JSON valide sans texte autour ni backticks.');
+  const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n'as pas vérifié — tu t'appuies sur des dynamiques de marché connues et durables, jamais sur des faits inventés. Retourne uniquement du JSON valide sans texte autour ni backticks.`);
   try {
     const s = raw.replace(/```json|```/g, '').trim();
     newsData = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1));
@@ -7923,22 +7921,17 @@ Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
 
 function addNewsNotifications() {
   newsData.filter(n => n.impact === 'élevé').forEach(n => {
-    notifications.unshift({ titre: n.titre, texte: n.resume, action: n.reco_texte, impact: 'high', heure: n.heure });
+    notifications.unshift({ titre: n.titre, texte: n.resume, action: n.reco_texte, impact: 'high', heure: '' });
   });
   if (notifications.length) { renderNotifications(); document.getElementById('notif-dot').classList.add('show'); }
 }
 
 function fallbackNews() {
-  return [
-    { titre:"BCE : taux inchangés à 2,5%", resume:"La BCE maintient ses taux directeurs lors de sa réunion de mai. Christine Lagarde signale une vigilance persistante sur l'inflation.", categorie:"banque", impact:"élevé", heure:"Ce matin", signal:"attendre", reco_texte:"Continue ton DCA normalement. Pas de changement de cap à prévoir pour les ETF obligataires.", actifs_cibles:["IWDA","VWCE"] },
-    { titre:"Inflation zone euro : 2,2% en avril", resume:"L'inflation ralentit légèrement en zone euro, proche de la cible des 2% de la BCE. Les données de mai seront décisives.", categorie:"macro", impact:"moyen", heure:"Hier", signal:"acheter", reco_texte:"Bon signal pour renforcer les ETF monde. L'environnement macro est favorable aux actions.", actifs_cibles:["IWDA","VWCE"] },
-    { titre:"S&P 500 : nouveau record historique", resume:"L'indice américain franchit un nouveau sommet porté par les valeurs technologiques. NVIDIA et Microsoft tirent la hausse.", categorie:"marche", impact:"moyen", heure:"Hier soir", signal:"neutre", reco_texte:"Pas d'action urgente. Si tu as déjà des ETF monde, tu profites de la hausse automatiquement.", actifs_cibles:["IWDA","NVDA","MSFT"] },
-    { titre:"Tensions commerciales USA-Chine relancées", resume:"Washington annonce de nouveaux droits de douane sur les semi-conducteurs chinois. Pékin menace de représailles.", categorie:"geo", impact:"élevé", heure:"Ce matin", signal:"éviter", reco_texte:"Évite les ETF exposés à la Chine à court terme. Diversifie sur des ETF monde pour limiter le risque géopolitique.", actifs_cibles:["IWDA"] },
-    { titre:"LVMH : résultats T1 inférieurs aux attentes", resume:"Le chiffre d'affaires de LVMH recule de 3% en Asie. Le titre chute de 4% à l'ouverture de Paris.", categorie:"secteur", impact:"moyen", heure:"Ce matin", signal:"attendre", reco_texte:"Si tu détiens LVMH, garde et surveille. Le luxe reste solide long terme malgré la faiblesse asiatique.", actifs_cibles:["MC.PA"] },
-    { titre:"Fed : Powell exclut une baisse des taux avant l'automne", resume:"Jerome Powell réaffirme la prudence de la Fed face à une inflation américaine encore trop haute. Taux maintenus à 4,25-4,5%.", categorie:"banque", impact:"élevé", heure:"Hier soir", signal:"attendre", reco_texte:"L'environnement de taux élevés favorise les obligations court terme. Pour tes ETF actions, reste en DCA.", actifs_cibles:["IWDA","VWCE"] },
-    { titre:"TotalEnergies : dividende relevé de 7%", resume:"Le géant pétrolier annonce une hausse de son dividende et un programme de rachat d'actions de 2 milliards d'euros.", categorie:"secteur", impact:"moyen", heure:"Ce matin", signal:"acheter", reco_texte:"Signal positif pour les actionnaires. TotalEnergies offre un rendement dividende attractif en période de volatilité.", actifs_cibles:["TTE.PA"] },
-    { titre:"Emploi US : 180 000 créations en avril", resume:"Le marché du travail américain reste solide avec 180 000 créations d'emplois. Le taux de chômage stable à 4,1%.", categorie:"macro", impact:"faible", heure:"Vendredi dernier", signal:"neutre", reco_texte:"Un marché du travail solide soutient la consommation et donc les bénéfices des entreprises. Pas d'action immédiate.", actifs_cibles:["IWDA","VWCE"] },
-  ];
+  // Volontairement vide : l'ancien filet de secours contenait des actualités
+  // entièrement inventées (chiffres, citations attribuées à de vraies personnes)
+  // figées à une date de rédaction passée — pire que pas de contenu du tout.
+  // renderNewsList() affiche déjà un état "Aucune actualité" propre pour [].
+  return [];
 }
 
 function filterNews(cat, el) {
@@ -8083,8 +8076,6 @@ function renderNewsList() {
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
             <span style="font-size:11px;font-weight:600;color:${sub2}">${tagLbl[n.categorie]||n.categorie}</span>
-            <span style="color:${sub2};font-size:10px">·</span>
-            <span style="font-size:11px;color:${sub2}">${n.heure}</span>
             ${n.impact==='élevé'?`<span style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:#f87171;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px">Impact élevé</span>`:''}
             ${inMyPortfolio?`<span style="background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.25);color:#3fb950;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px">Mon portef.</span>`:''}
           </div>
