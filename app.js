@@ -8819,21 +8819,21 @@ async function generateInvestIQVerdict(force = false) {
 ${lines.map(l => `- ${l.name} (${l.ticker}, ${l.type||'?'}) : ${l.weightPct.toFixed(0)}% du portefeuille, P&L ${l.pnlPct>=0?'+':''}${l.pnlPct.toFixed(1)}%`).join('\n')}
 ${objChartTarget > 0 ? `Objectif : ${fmtK(objChartTarget)} — ${Math.min(tv/objChartTarget*100,100).toFixed(0)}% atteint.` : ''}
 
-EXERCICE "QUE FERAIT INVESTIQ ?" : si ce portefeuille était le tien, que ferais-tu AUJOURD'HUI ? Prends position clairement sur chaque ligne. Sois sélectif : la plupart des lignes méritent "conserver" — ne recommande renforcer/reduire/vendre que si c'est vraiment justifié.
+EXERCICE "QUE FERAIT INVESTIQ ?" : à titre pédagogique, pour chaque ligne, identifie le critère objectif le plus pertinent (concentration, valorisation, poids dans l'objectif...) et le signal qu'il indique généralement — sans jamais formuler d'instruction destinée à l'utilisateur. Distingue toujours le constat chiffré de l'hypothèse d'école. Sois sélectif : la plupart des lignes n'appellent aucun signal fort — ne signale renforcer/reduire/vendre que si le critère le justifie clairement.
 
 Réponds UNIQUEMENT en JSON valide, sans backticks :
 {
-  "synthese": "1-2 phrases au ton chaleureux et direct (tutoiement) résumant ta lecture du portefeuille",
+  "synthese": "1-2 phrases au ton chaleureux et direct (tutoiement) expliquant la lecture d'ensemble, sans instruction personnelle",
   "decisions": [
-    {"ticker":"IWDA.L","name":"IWDA","action":"conserver|renforcer|reduire|vendre","raison":"max 10 mots, concret et chiffré"}
+    {"ticker":"IWDA.L","name":"IWDA","action":"conserver|renforcer|reduire|vendre","raison":"max 10 mots, le critère chiffré qui justifie ce signal"}
   ],
-  "achat_semaine": "phrase courte : achèterais-tu quelque chose cette semaine ? quoi et pourquoi, ou pourquoi rien",
+  "achat_semaine": "phrase courte, à titre d'exemple pédagogique : quel type d'arbitrage un profil comme celui-ci pourrait envisager cette semaine, et pourquoi — ou pourquoi aucun ne se justifie",
   "impacts": {"risque": -4, "diversification": 6, "score": 5}
 }
-Les impacts sont tes estimations en points de % si l'utilisateur suivait toutes tes décisions (risque négatif = risque réduit).`;
+Les impacts sont des estimations en points de % si l'ensemble de ces signaux était suivi (risque négatif = risque réduit).`;
 
   try {
-    const raw = await callClaude(prompt, `Tu es InvestIQ, copilote financier IA. Tu assumes des positions claires — c'est ta signature.\n${AI_PERSONA}\nRéponds UNIQUEMENT en JSON valide sans backticks ni texte autour.`);
+    const raw = await callClaude(prompt, `Tu es InvestIQ, copilote financier IA à visée pédagogique. Tu es direct et tu assumes des signaux clairs — c'est ta signature — mais tu les formules toujours comme l'explication d'un critère objectif, jamais comme une instruction personnelle à suivre ("je vendrais" devient "signal de vente : concentration à 28%").\n${AI_PERSONA}\nRéponds UNIQUEMENT en JSON valide sans backticks ni texte autour.`);
     const clean = raw.replace(/```json|```/g,'').trim();
     const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
     if (!data.decisions?.length) throw new Error('empty');
@@ -8890,10 +8890,10 @@ function renderVerdict(data, ts) {
   const el = document.getElementById('agent-verdict');
   if (!el) return;
   const ACTIONS = {
-    conserver: { icon:'✔', color:'#4ade80', label:'Je conserverais' },
-    renforcer: { icon:'▲', color:'#22d3ee', label:'Je renforcerais' },
-    reduire:   { icon:'◆', color:'#fbbf24', label:'Je réduirais' },
-    vendre:    { icon:'✘', color:'#f87171', label:'Je vendrais' },
+    conserver: { icon:'✔', color:'#4ade80', label:'Signal : conserver' },
+    renforcer: { icon:'▲', color:'#22d3ee', label:'Signal : renforcer' },
+    reduire:   { icon:'◆', color:'#fbbf24', label:'Signal : réduire' },
+    vendre:    { icon:'✘', color:'#f87171', label:'Signal : vendre' },
   };
   const when = new Date(ts).toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) + ' ' +
                new Date(ts).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
@@ -8948,7 +8948,7 @@ function renderVerdict(data, ts) {
       ${impChip('Score', imp.score, false)}
     </div>
 
-    <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:10px;position:relative">Opinion de l'IA suivie et évaluée à J+7 dans l'historique — pas un conseil financier réglementé.</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);position:relative">ⓘ Signaux éducatifs suivis et évalués à J+7 dans l'historique — pas un conseil en investissement personnalisé. Toute décision t'appartient.</div>
   </div>`;
 }
 
@@ -9391,6 +9391,10 @@ function legalDateFR() {
   } catch { return LEGAL_LAST_UPDATE; }
 }
 
+// ⚠️ À COMPLÉTER avant tout encaissement réel (bloqué sur la création de la société/EI) :
+// les champs [[...]] ci-dessous (raison sociale, SIREN, adresse, contact) dans "mentions"
+// et "privacy". Tant qu'ils restent entre crochets, l'app n'est pas publiable en Live —
+// les mentions légales réelles sont une obligation (LCEN art. 6-III), pas un détail cosmétique.
 const LEGAL_DOCS = {
   mentions: {
     title: 'Mentions légales',
