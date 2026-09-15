@@ -95,13 +95,18 @@ export default async function handler(req, res) {
     }
 
     // ── 3. LIMITES DE TAILLE : éviter les prompts géants ──
-    const { prompt, system } = req.body || {};
+    const { prompt, system, max_tokens } = req.body || {};
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'Prompt manquant.' });
     }
     if (prompt.length > 20_000 || (system && system.length > 10_000)) {
       return res.status(400).json({ error: 'Prompt trop long.' });
     }
+    // Plafond réglable par appel (ex: le fil d'actualités a besoin de plus de place
+    // qu'une réponse JSON compacte) mais toujours borné côté serveur, jamais laissé
+    // au client sans limite.
+    const requestedTokens = Number.isFinite(max_tokens) ? Math.trunc(max_tokens) : 2048;
+    const finalMaxTokens = Math.min(Math.max(requestedTokens, 256), 4096);
 
     // ── 4. APPEL ANTHROPIC ──
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -117,7 +122,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5', // modèle Sonnet actuel
-        max_tokens: 2048, // 1024 coupait les réponses détaillées du copilot (chat) en plein milieu
+        max_tokens: finalMaxTokens,
         system: system || 'Tu es le copilote financier IA d\'InvestIQ. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.',
         messages: [{ role: 'user', content: prompt }]
       })
