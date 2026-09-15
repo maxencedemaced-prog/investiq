@@ -3530,7 +3530,7 @@ Sois très concret (ex: "Les actions tech montent", "L'euro baisse"). Max 4 lign
 // ===== ONGLET ENTREPRISES =====
 let entrepriseSearchTimeout = null;
 
-function renderFavorisActus() {
+async function renderFavorisActus() {
   const list = document.getElementById('news-list');
   if (!list) return;
 
@@ -3545,7 +3545,7 @@ function renderFavorisActus() {
   list.innerHTML = '<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⭐ Actus de tes ' + watchlist.length + ' entreprise' + (watchlist.length>1?'s suivies':' suivie') + '</div>'
     + '<div id="fav-actus-content" style="text-align:center;padding:24px;color:#8e8e93"><div style="font-size:24px;margin-bottom:8px">🧠</div><div>Chargement...</div></div>';
 
-  loadEntrepriseNews(companies);
+  await loadEntrepriseNews(companies, 'fav-actus-content');
 }
 
 async function renderEntreprises() {
@@ -3593,12 +3593,12 @@ async function renderEntreprises() {
     </div>`;
 
   // Charge les actualités
-  await loadEntrepriseNews(allCompanies);
+  await loadEntrepriseNews(allCompanies, 'ent-news-list');
   saveToCache('entreprises');
 }
 
-async function loadEntrepriseNews(companies) {
-  const newsEl = document.getElementById('fav-actus-content') || document.getElementById('ent-news-list');
+async function loadEntrepriseNews(companies, targetId = 'ent-news-list') {
+  const newsEl = document.getElementById(targetId);
   if (!newsEl) return;
 
   const capped = companies.slice(0, 8); // au-delà, le JSON devient trop long pour tenir dans max_tokens
@@ -3743,7 +3743,7 @@ async function searchEntrepriseNews(ticker, name) {
   const newsEl = document.getElementById('ent-news-list');
   if (!newsEl) return;
   newsEl.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93"><div style="font-size:20px;margin-bottom:6px">🧠</div><div>Recherche des actualités de ${name}...</div></div>`;
-  await loadEntrepriseNews([{ ticker, name }]);
+  await loadEntrepriseNews([{ ticker, name }], 'ent-news-list');
 }
 
 function addToWatchlistBtn(ticker, name) {
