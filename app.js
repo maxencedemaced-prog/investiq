@@ -3056,7 +3056,7 @@ function buildBloombergTicker(allTracked) {
     tickerEl.setAttribute('style', 'display:inline-flex;align-items:center;gap:6px;padding:0 18px;height:42px;cursor:pointer;flex-shrink:0');
     tickerEl.setAttribute('onmouseover', "this.style.background='rgba(255,255,255,0.07)'");
     tickerEl.setAttribute('onmouseout', "this.style.background='transparent'");
-    tickerEl.setAttribute('onclick', "setNewsFilter('entreprises',document.getElementById('news-fil-entreprises'));setTimeout(function(){showEntrepriseDetail('" + c.ticker + "','" + (c.name||c.ticker) + "')},100)");
+    tickerEl.setAttribute('onclick', "setNewsFilter('entreprises',document.getElementById('news-fil-entreprises'));setTimeout(function(){openCompany('" + c.ticker + "','" + (c.name||c.ticker) + "','')},100)");
     const innerHtml = '<span style="font-size:12px;font-weight:800;color:#fff;letter-spacing:0.4px">' + c.ticker + '</span>'
       + (priceStr ? '<span style="font-size:12px;color:rgba(255,255,255,0.4)">' + priceStr + '</span>' : '')
       + (chgStr
@@ -3685,7 +3685,7 @@ Ne réponds que pour les entreprises sur lesquelles tu as une information fiable
             style="flex:1;background:${isDark2?'rgba(255,255,255,0.06)':'#f4f4f5'};color:${sub2};border:1px solid ${bord2};border-radius:10px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;text-align:center;display:block">
             🔗 Voir les articles
           </a>
-          <button onclick="showEntrepriseDetail('${a.ticker}','${a.entreprise}')"
+          <button onclick="openCompany('${a.ticker}','${a.entreprise}','')"
             style="flex:1;background:${isDark2?'var(--color-text)':'#09090b'};color:${isDark2?'var(--color-bg)':'#fff'};border:none;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer">
             📊 Voir la fiche
           </button>
