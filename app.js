@@ -7878,6 +7878,30 @@ async function saveSettings() {
 }
 
 // ===== NEWS =====
+// Parse un tableau JSON en tolérant une réponse tronquée en plein milieu de la
+// génération (max_tokens atteint) : récupère chaque objet top-level complet
+// plutôt que de tout perdre à cause du seul dernier élément incomplet.
+function parseJSONArrayLenient(raw) {
+  const s = (raw || '').replace(/```json|```/g, '').trim();
+  try {
+    const full = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1));
+    if (Array.isArray(full)) return full;
+  } catch {}
+  const items = [];
+  let depth = 0, start = -1;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '{') { if (depth === 0) start = i; depth++; }
+    else if (s[i] === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        try { items.push(JSON.parse(s.slice(start, i + 1))); } catch {}
+        start = -1;
+      }
+    }
+  }
+  return items;
+}
+
 async function loadNews(force=false) {
   if (!force && loadNewsCache()) { renderNewsList(); return; }
   const ico = document.getElementById('news-ico');
@@ -7901,7 +7925,7 @@ async function loadNews(force=false) {
 
   const myAssets = positions.map(p => p.name).join(', ') || 'IWDA, VWCE';
   const prompt = `Tu es analyste financier senior.
-Développe 8 thèmes économiques et financiers structurants et durables (macro, banques centrales, marchés, géopolitique, secteurs) qui éclairent la situation actuelle des marchés — pas des évènements ponctuels datés que tu ne peux pas vérifier en temps réel.
+Développe 5 thèmes économiques et financiers structurants et durables (macro, banques centrales, marchés, géopolitique, secteurs) qui éclairent la situation actuelle des marchés — pas des évènements ponctuels datés que tu ne peux pas vérifier en temps réel.
 Mets en priorité les thèmes pertinents pour ces actifs : ${myAssets}.
 Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
 [{"titre":"Titre accrocheur max 10 mots","resume":"2 phrases concrètes et précises","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","signal":"acheter|attendre|éviter|neutre","reco_texte":"Conseil actionnable en 2-3 phrases pour débutant, adapté au signal","actifs_cibles":["TICKER1","TICKER2"]}]`;
@@ -7912,11 +7936,11 @@ Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
     console.error('[loadNews] callClaude a échoué :', raw);
     newsData = null; // échec réel, distinct d'une liste vide légitime
   } else {
-    try {
-      const s = raw.replace(/```json|```/g, '').trim();
-      newsData = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1));
-    } catch (e) {
-      console.error('[loadNews] JSON invalide :', e.message, '| début de la réponse :', (raw || '').slice(0, 200));
+    const items = parseJSONArrayLenient(raw);
+    if (items.length) {
+      newsData = items;
+    } else {
+      console.error('[loadNews] Aucun item récupérable | début de la réponse :', (raw || '').slice(0, 200));
       newsData = null;
     }
   }
