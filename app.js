@@ -7906,7 +7906,7 @@ Mets en priorité les thèmes pertinents pour ces actifs : ${myAssets}.
 Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
 [{"titre":"Titre accrocheur max 10 mots","resume":"2 phrases concrètes et précises","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","signal":"acheter|attendre|éviter|neutre","reco_texte":"Conseil actionnable en 2-3 phrases pour débutant, adapté au signal","actifs_cibles":["TICKER1","TICKER2"]}]`;
 
-  const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n'as pas vérifié — tu t'appuies sur des dynamiques de marché connues et durables, jamais sur des faits inventés. Retourne uniquement du JSON valide sans texte autour ni backticks.`);
+  const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n'as pas vérifié — tu t'appuies sur des dynamiques de marché connues et durables, jamais sur des faits inventés. Retourne uniquement du JSON valide sans texte autour ni backticks.`, 4096);
   const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
   if (KNOWN_CALLCLAUDE_FAILURES.includes(raw) || (raw || '').startsWith('🔒')) {
     console.error('[loadNews] callClaude a échoué :', raw);
@@ -8551,7 +8551,7 @@ function displayName(ticker) {
   return COMPANY_NAMES[ticker] || COMPANY_NAMES[(ticker+'').toUpperCase()] || ticker;
 }
 
-async function callClaude(prompt,sys){
+async function callClaude(prompt,sys,maxTokens){
   const system=sys||('Tu es le copilote financier IA d\'InvestIQ, pour investisseurs particuliers francophones.\n'+AI_PERSONA);
   try{
     // Récupère le token de session Supabase (requis par l'API sécurisée)
@@ -8563,10 +8563,12 @@ async function callClaude(prompt,sys){
     if (!token) {
       return "🔒 Connecte-toi pour utiliser l'assistant IA. L'accès à l'IA est réservé aux comptes InvestIQ.";
     }
+    const body = { prompt, system };
+    if (maxTokens) body.max_tokens = maxTokens;
     const res=await fetch('/api/claude',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify({prompt,system})
+      body:JSON.stringify(body)
     });
     const d=await res.json();
     if (!res.ok) {
