@@ -8063,10 +8063,15 @@ function renderNewsList() {
     const sub2 = isDark ? 'var(--color-text-secondary)' : '#71717a';
     const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
 
-    // Impact sur portefeuille simulé
-    const hasPortPos = (n.actifs_cibles||[]).some(a => positions.find(p=>p.name===a));
-    const impactPct = hasPortPos ? ((Math.random()-0.4)*3).toFixed(2) : null;
-    const impactColor = impactPct >= 0 ? '#3fb950' : '#f87171';
+    // Exposition réelle du portefeuille aux actifs mentionnés — un fait calculé
+    // sur les vraies positions, pas une prédiction d'impact (rien ne peut
+    // honnêtement prédire l'effet d'une actu sur un cours).
+    const exposedTickers = (n.actifs_cibles||[]).filter(a => positions.find(p=>p.name===a));
+    const exposureValue = exposedTickers.reduce((sum, a) =>
+      sum + positions.filter(p=>p.name===a).reduce((s,p)=>s+p.qty*p.price, 0), 0);
+    const totalPortfolioValue = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+    const exposurePct = totalPortfolioValue > 0 ? (exposureValue/totalPortfolioValue*100) : 0;
+    const hasExposure = exposedTickers.length > 0 && exposureValue > 0;
 
     // Logo company (initiales colorées)
     const logoColors = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
@@ -8119,12 +8124,12 @@ function renderNewsList() {
             ${(n.actifs_cibles||[]).slice(0,3).map(a=>`<span style="background:${isDark?'rgba(255,255,255,0.07)':'#f4f4f5'};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:${sub2}">${a}</span>`).join('')}
           </div>`:''}
         </div>
-        <!-- Impact portef -->
-        ${impactPct ? `
+        <!-- Exposition réelle -->
+        ${hasExposure ? `
         <div style="flex-shrink:0;text-align:center;min-width:80px">
-          <div style="font-size:10px;font-weight:600;color:${sub2};margin-bottom:4px;white-space:nowrap">Impact portef.</div>
-          <div style="font-size:18px;font-weight:800;color:${impactColor};letter-spacing:-0.03em">${impactPct>=0?'+':''}${impactPct}%</div>
-          <div style="font-size:10px;color:${sub2};margin-top:2px">≈ ${fmtK(Math.abs(impactPct/100 * positions.reduce((a,p)=>a+p.qty*p.price,0)))}</div>
+          <div style="font-size:10px;font-weight:600;color:${sub2};margin-bottom:4px;white-space:nowrap">Exposition</div>
+          <div style="font-size:18px;font-weight:800;color:${txt};letter-spacing:-0.03em">${exposurePct.toFixed(1)}%</div>
+          <div style="font-size:10px;color:${sub2};margin-top:2px">≈ ${fmtK(exposureValue)}</div>
         </div>` : ''}
         <!-- Recommandation IA -->
         <div style="flex-shrink:0;min-width:120px;border-left:1px solid ${bord};padding-left:14px">
