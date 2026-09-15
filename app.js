@@ -9439,8 +9439,8 @@ const LEGAL_DOCS = {
 <p>L'accès nécessite la création d'un compte avec une adresse email valide. L'utilisateur doit être majeur et juridiquement capable. Il est responsable de la confidentialité de ses identifiants.</p>
 
 <h3>Article 4 — Offre Premium et abonnement</h3>
-<p>L'offre Premium est proposée au tarif de 9,99 € TTC par mois, sans engagement de durée. Le paiement s'effectue par carte bancaire via notre prestataire Stripe.</p>
-<p><strong>Reconduction :</strong> l'abonnement est reconduit tacitement chaque mois jusqu'à résiliation. Celle-ci peut intervenir à tout moment depuis les paramètres du compte et prend effet à la fin de la période en cours.</p>
+<p>L'offre Premium est proposée selon deux formules au choix : 9,99 € TTC par mois, ou 79,99 € TTC par an, sans engagement de durée. Le paiement s'effectue par carte bancaire via notre prestataire Stripe. L'utilisateur peut changer de formule à tout moment depuis les paramètres du compte.</p>
+<p><strong>Reconduction :</strong> l'abonnement est reconduit tacitement à l'identique (mensuellement ou annuellement selon la formule choisie) jusqu'à résiliation. Celle-ci peut intervenir à tout moment depuis les paramètres du compte et prend effet à la fin de la période en cours.</p>
 <p><strong>Droit de rétractation :</strong> conformément aux articles L. 221-18 et suivants du Code de la consommation, l'utilisateur dispose d'un délai de quatorze (14) jours pour se rétracter. En demandant l'accès immédiat au service, il accepte de commencer à en bénéficier avant la fin de ce délai ; il reste redevable du montant correspondant à la période consommée.</p>
 
 <h3>Article 5 — Données de marché</h3>
