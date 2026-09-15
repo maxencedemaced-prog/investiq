@@ -7907,10 +7907,19 @@ Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
 [{"titre":"Titre accrocheur max 10 mots","resume":"2 phrases concrètes et précises","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","signal":"acheter|attendre|éviter|neutre","reco_texte":"Conseil actionnable en 2-3 phrases pour débutant, adapté au signal","actifs_cibles":["TICKER1","TICKER2"]}]`;
 
   const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n'as pas vérifié — tu t'appuies sur des dynamiques de marché connues et durables, jamais sur des faits inventés. Retourne uniquement du JSON valide sans texte autour ni backticks.`);
-  try {
-    const s = raw.replace(/```json|```/g, '').trim();
-    newsData = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1));
-  } catch { newsData = fallbackNews(); }
+  const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
+  if (KNOWN_CALLCLAUDE_FAILURES.includes(raw) || (raw || '').startsWith('🔒')) {
+    console.error('[loadNews] callClaude a échoué :', raw);
+    newsData = null; // échec réel, distinct d'une liste vide légitime
+  } else {
+    try {
+      const s = raw.replace(/```json|```/g, '').trim();
+      newsData = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1));
+    } catch (e) {
+      console.error('[loadNews] JSON invalide :', e.message, '| début de la réponse :', (raw || '').slice(0, 200));
+      newsData = null;
+    }
+  }
 
   saveNewsCache();
   if (ico) ico.classList.remove('spinning');
@@ -7920,18 +7929,10 @@ Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
 }
 
 function addNewsNotifications() {
-  newsData.filter(n => n.impact === 'élevé').forEach(n => {
+  (newsData || []).filter(n => n.impact === 'élevé').forEach(n => {
     notifications.unshift({ titre: n.titre, texte: n.resume, action: n.reco_texte, impact: 'high', heure: '' });
   });
   if (notifications.length) { renderNotifications(); document.getElementById('notif-dot').classList.add('show'); }
-}
-
-function fallbackNews() {
-  // Volontairement vide : l'ancien filet de secours contenait des actualités
-  // entièrement inventées (chiffres, citations attribuées à de vraies personnes)
-  // figées à une date de rédaction passée — pire que pas de contenu du tout.
-  // renderNewsList() affiche déjà un état "Aucune actualité" propre pour [].
-  return [];
 }
 
 function filterNews(cat, el) {
@@ -7959,6 +7960,15 @@ function renderNewsList() {
   if (newsFilter === 'signaux') { if (isCacheValid('signaux')) { restoreFromCache('signaux'); } else { renderSignaux(); } return; }
   if (newsFilter === 'entreprises') { if (isCacheValid('entreprises')) { restoreFromCache('entreprises'); } else { renderEntreprises(); } return; }
   if (newsFilter === 'agenda') { if (isCacheValid('agenda')) { restoreFromCache('agenda'); } else { renderAgenda(); } return; }
+
+  if (newsData === null) {
+    list.innerHTML = `<div style="text-align:center;padding:40px;color:#8e8e93">
+      <div style="font-size:32px;margin-bottom:10px">⚠️</div>
+      <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Échec du chargement</div>
+      <div style="font-size:13px">L'IA n'a pas répondu correctement. Réessaie dans quelques secondes.</div>
+    </div>`;
+    return;
+  }
 
   // Filtrage "Toutes" ou par catégorie
   let filtered = newsFilter === 'tous' ? newsData : newsData.filter(n => n.categorie === newsFilter);
