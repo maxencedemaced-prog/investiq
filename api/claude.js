@@ -1,6 +1,8 @@
 // api/claude.js — SÉCURISÉ
 // Exige un utilisateur Supabase authentifié + limites anti-abus
 
+import { createClient } from '@supabase/supabase-js';
+
 const ALLOWED_ORIGINS = [
   'https://investiq-kappa.vercel.app',
   'http://localhost:3000',
@@ -9,6 +11,42 @@ const ALLOWED_ORIGINS = [
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.supabase.co';
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || 'sb_publishable_3_8eb6YbCfJ04Qihdy9ivw_NsQ4H_cu';
+
+// ── Mesure de la consommation API : client service_role (contourne RLS) ──
+// Réutilise SUPABASE_SERVICE_KEY, déjà configurée sur Vercel pour api/stripe-webhook.js
+const supabaseAdmin = process.env.SUPABASE_SERVICE_KEY
+  ? createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  : null;
+
+// Tarifs Claude Sonnet 5, en USD par million de tokens — à ajuster si Anthropic change ses prix
+const PRICE_PER_M_INPUT_USD = 2.0;
+const PRICE_PER_M_OUTPUT_USD = 10.0;
+
+// Enregistre la consommation réelle d'un appel. Ne bloque et ne casse jamais la réponse utilisateur.
+async function logUsage({ userId, model, usage, system }) {
+  if (!usage) return;
+  if (!supabaseAdmin) {
+    console.error('[api/claude] SUPABASE_SERVICE_KEY manquante : usage non enregistré');
+    return;
+  }
+  try {
+    const inputTokens = usage.input_tokens || 0;
+    const outputTokens = usage.output_tokens || 0;
+    const costUsd = (inputTokens / 1_000_000) * PRICE_PER_M_INPUT_USD
+                  + (outputTokens / 1_000_000) * PRICE_PER_M_OUTPUT_USD;
+    const { error } = await supabaseAdmin.from('ai_usage_log').insert({
+      user_id: userId,
+      model,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      cost_usd: costUsd,
+      call_label: (system || '').slice(0, 80), // préfixe du system prompt → regroupement approximatif par fonctionnalité
+    });
+    if (error) console.error('[api/claude] insert ai_usage_log:', error.message);
+  } catch (e) {
+    console.error('[api/claude] logUsage failed:', e.message);
+  }
+}
 
 // Rate limit simple en mémoire (par instance serverless — limite les bursts)
 const hits = new Map();
@@ -79,7 +117,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5', // modèle Sonnet actuel
-        max_tokens: 1024,
+        max_tokens: 2048, // 1024 coupait les réponses détaillées du copilot (chat) en plein milieu
         system: system || 'Tu es le copilote financier IA d\'InvestIQ. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.',
         messages: [{ role: 'user', content: prompt }]
       })
@@ -93,6 +131,7 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'IA indisponible : ' + msg });
     }
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+    await logUsage({ userId: user.id, model: 'claude-sonnet-5', usage: data.usage, system });
     res.status(200).json({ text: text || 'Aucune réponse.' });
   } catch (error) {
     res.status(500).json({ error: 'Erreur serveur: ' + error.message });
