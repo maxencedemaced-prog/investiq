@@ -3715,7 +3715,18 @@ function searchEntreprise(query) {
       const res = await fetch('/api/search?q=' + encodeURIComponent(query));
       const data = await res.json();
       const results = (data.results || []).slice(0, 6);
-      if (!results.length) { drop.style.display = 'none'; return; }
+      const safeQuery = query.replace(/'/g,'\\');
+      if (!results.length) {
+        drop.style.display = 'block';
+        drop.innerHTML = `
+          <div style="padding:12px 14px;font-size:12px;color:#8e8e93">Aucune entreprise cotée trouvée pour "${query}".</div>
+          <div onclick="searchEntrepriseNews('${safeQuery}','${safeQuery}');document.getElementById('ent-search-results').style.display='none'"
+               style="padding:12px 14px;cursor:pointer;border-top:1px solid #f0f0f0;color:#1c1c1e;font-weight:600;font-size:13px"
+               onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='#fff'">
+            🔍 Chercher "${query}" quand même →
+          </div>`;
+        return;
+      }
       drop.style.display = 'block';
       drop.innerHTML = results.map(r => `
         <div onclick="searchEntrepriseNews('${r.ticker}','${(r.name||r.ticker).replace(/'/g,'\\')}');document.getElementById('ent-search-results').style.display='none';document.getElementById('ent-search').value='${(r.name||r.ticker).replace(/'/g,'\\')}'"
