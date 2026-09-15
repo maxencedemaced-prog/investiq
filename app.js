@@ -4654,15 +4654,18 @@ function clearChat() {
 }
 
 // ===== SIGNALS CACHE =====
+const SIGNALS_CACHE_DAYS = 4; // un signal conserver/renforcer/réduire/vendre ne change pas d'un jour à l'autre
 function loadSignalsCache() {
   try {
     const cached = JSON.parse(localStorage.getItem(CACHE_SIGNALS)||'{}');
-    const today = new Date().toDateString();
-    if (cached.date === today) posSignals = cached.signals||{};
+    if (cached.date) {
+      const ageDays = (Date.now() - new Date(cached.date).getTime()) / 86400000;
+      if (ageDays < SIGNALS_CACHE_DAYS) posSignals = cached.signals||{};
+    }
   } catch {}
 }
 function saveSignalsCache() {
-  try { localStorage.setItem(CACHE_SIGNALS, JSON.stringify({ date: new Date().toDateString(), signals: posSignals })); } catch {}
+  try { localStorage.setItem(CACHE_SIGNALS, JSON.stringify({ date: new Date().toISOString(), signals: posSignals })); } catch {}
 }
 
 // ===== NEWS CACHE =====
