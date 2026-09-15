@@ -3601,19 +3601,27 @@ async function loadEntrepriseNews(companies) {
   const newsEl = document.getElementById('fav-actus-content') || document.getElementById('ent-news-list');
   if (!newsEl) return;
 
+  const capped = companies.slice(0, 8); // au-delà, le JSON devient trop long pour tenir dans max_tokens
+
   try {
     // Génère un résumé du contexte connu sur ces entreprises via l'IA
-    const companiesList = companies.map(c=>c.name).join(', ');
+    const companiesList = capped.map(c=>c.name).join(', ');
     const prompt = `Analyste financier. Résume ce que tu sais de fiable sur ces entreprises : ${companiesList}.
 Réponds UNIQUEMENT en JSON valide, sans markdown :
 [{"ticker":"AAPL","entreprise":"Apple","titre":"Titre court","resume":"2 phrases max","impact":"positif","categorie":"Résultats"}]
 impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/Réglementation.
 Ne réponds que pour les entreprises sur lesquelles tu as une information fiable ; ignore les autres plutôt que d'inventer.`;
 
-    const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne réponds qu'à partir de ce que tu sais réellement — jamais en inventant des faits ou des évènements récents que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`);
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const s = clean.indexOf('['), e = clean.lastIndexOf(']');
-    const articles = JSON.parse(clean.slice(s, e+1));
+    const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne réponds qu'à partir de ce que tu sais réellement — jamais en inventant des faits ou des évènements récents que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`, 4096);
+    const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
+    if (KNOWN_CALLCLAUDE_FAILURES.includes(raw) || (raw || '').startsWith('🔒')) {
+      throw new Error('callClaude a échoué : ' + raw);
+    }
+    const articles = parseJSONArrayLenient(raw);
+    if (!articles.length) {
+      newsEl.innerHTML = '<p style="color:#c7c7cc;font-size:13px;text-align:center;padding:20px">Pas d\'information fiable disponible pour l\'instant.</p>';
+      return;
+    }
 
     const impactColor = { positif:'#1a7f5a', negatif:'#cc2f26', neutre:'#8e8e93' };
     const impactBg    = { positif:'#e8f8f0', negatif:'#fff0f0', neutre:'#f5f5f5' };
@@ -3689,6 +3697,7 @@ Ne réponds que pour les entreprises sur lesquelles tu as une information fiable
     </div>`;
 
   } catch(e) {
+    console.error('[loadEntrepriseNews] échec :', e.message);
     newsEl.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
       <div style="font-size:20px;margin-bottom:8px">⚠️</div>
       <div style="font-size:13px">Impossible de charger les actualités.<br>Réessaie dans quelques secondes.</div>
