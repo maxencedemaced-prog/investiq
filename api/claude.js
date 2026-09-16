@@ -18,9 +18,12 @@ const supabaseAdmin = process.env.SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
   : null;
 
-// Tarifs Claude Sonnet 5, en USD par million de tokens — à ajuster si Anthropic change ses prix
-const PRICE_PER_M_INPUT_USD = 2.0;
-const PRICE_PER_M_OUTPUT_USD = 10.0;
+// Tarifs en USD par million de tokens — à ajuster si Anthropic change ses prix
+const MODEL_PRICING = {
+  'claude-sonnet-5':          { in: 2.0, out: 10.0 },
+  'claude-haiku-4-5-20251001': { in: 1.0, out: 5.0 },
+};
+const DEFAULT_MODEL = 'claude-sonnet-5';
 
 // Enregistre la consommation réelle d'un appel. Ne bloque et ne casse jamais la réponse utilisateur.
 async function logUsage({ userId, model, usage, system }) {
@@ -32,8 +35,9 @@ async function logUsage({ userId, model, usage, system }) {
   try {
     const inputTokens = usage.input_tokens || 0;
     const outputTokens = usage.output_tokens || 0;
-    const costUsd = (inputTokens / 1_000_000) * PRICE_PER_M_INPUT_USD
-                  + (outputTokens / 1_000_000) * PRICE_PER_M_OUTPUT_USD;
+    const pricing = MODEL_PRICING[model] || MODEL_PRICING[DEFAULT_MODEL];
+    const costUsd = (inputTokens / 1_000_000) * pricing.in
+                  + (outputTokens / 1_000_000) * pricing.out;
     const { error } = await supabaseAdmin.from('ai_usage_log').insert({
       user_id: userId,
       model,
@@ -95,7 +99,7 @@ export default async function handler(req, res) {
     }
 
     // ── 3. LIMITES DE TAILLE : éviter les prompts géants ──
-    const { prompt, system, max_tokens } = req.body || {};
+    const { prompt, system, max_tokens, model } = req.body || {};
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'Prompt manquant.' });
     }
@@ -107,6 +111,9 @@ export default async function handler(req, res) {
     // au client sans limite.
     const requestedTokens = Number.isFinite(max_tokens) ? Math.trunc(max_tokens) : 2048;
     const finalMaxTokens = Math.min(Math.max(requestedTokens, 256), 4096);
+    // Modèle choisi par l'appelant parmi une liste blanche fixe — jamais une chaîne
+    // arbitraire envoyée telle quelle à Anthropic.
+    const finalModel = MODEL_PRICING[model] ? model : DEFAULT_MODEL;
 
     // ── 4. APPEL ANTHROPIC ──
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -121,7 +128,7 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5', // modèle Sonnet actuel
+        model: finalModel,
         max_tokens: finalMaxTokens,
         system: system || 'Tu es le copilote financier IA d\'InvestIQ. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.',
         messages: [{ role: 'user', content: prompt }]
@@ -136,7 +143,7 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'IA indisponible : ' + msg });
     }
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
-    await logUsage({ userId: user.id, model: 'claude-sonnet-5', usage: data.usage, system });
+    await logUsage({ userId: user.id, model: finalModel, usage: data.usage, system });
     res.status(200).json({ text: text || 'Aucune réponse.' });
   } catch (error) {
     res.status(500).json({ error: 'Erreur serveur: ' + error.message });
