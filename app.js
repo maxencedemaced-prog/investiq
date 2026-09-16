@@ -3605,7 +3605,7 @@ async function loadEntrepriseNews(companies, targetId = 'ent-news-list') {
   const newsEl = document.getElementById(targetId);
   if (!newsEl) return;
 
-  const capped = companies.slice(0, 8); // au-delà, le JSON devient trop long pour tenir dans max_tokens
+  const capped = companies.slice(0, 12); // aligné sur ce que renderEntreprises() prépare déjà en amont
 
   try {
     // Génère un résumé du contexte connu sur ces entreprises via l'IA
