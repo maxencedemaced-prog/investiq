@@ -3643,6 +3643,7 @@ Ne réponds que pour les entreprises sur lesquelles tu as une information fiable
 
     newsEl.innerHTML = articles.map(a => {
       const myPos = positions.find(p => p.name === a.ticker);
+      const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
       const searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(a.entreprise + ' actualité bourse 2026');
       const logoColor = LCOLORS2[(a.ticker||'').charCodeAt(0) % LCOLORS2.length];
       const logoText = (a.ticker||'XX').slice(0,2).toUpperCase();
@@ -3663,7 +3664,7 @@ Ne réponds que pour les entreprises sur lesquelles tu as une information fiable
               <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px">
                 <span style="font-size:13px;font-weight:700;color:${txt2}">${a.entreprise}</span>
                 <span style="font-size:11px;color:${sub2};background:${isDark2?'rgba(255,255,255,0.08)':'#f4f4f5'};padding:1px 7px;border-radius:4px">${a.ticker}</span>
-                ${myPos ? `<span style="background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.25);color:#3fb950;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px">📦 Portef.</span>` : ''}
+                ${myPos ? `<span style="background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.25);color:#3fb950;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px">📦 ${myPnl>=0?'+':''}${myPnl}% · ${fmt(myPos.qty*myPos.price)}€</span>` : ''}
               </div>
               <div style="display:flex;gap:6px;align-items:center">
                 <span style="background:${ib};color:${ic};font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px">${a.categorie}</span>
@@ -4019,42 +4020,7 @@ function setNewsFilter(filter, el) {
   }
 }
 
-function renderFavorisNews() {
-  const list = document.getElementById('news-list');
-  if (!list) return;
 
-  if (watchlist.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:40px;color:#8e8e93"><div style="font-size:40px;margin-bottom:12px">⭐</div><div style="font-size:16px;font-weight:700;color:#1c1c1e;margin-bottom:8px">Aucune entreprise suivie</div><div style="font-size:13px">Va dans Signaux ou Entreprises et clique sur Suivre</div></div>';
-    return;
-  }
-
-  list.innerHTML = '<div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px">⭐ ' + watchlist.length + ' entreprise' + (watchlist.length>1?'s':'') + ' suivie' + (watchlist.length>1?'s':'') + '</div>'
-    + watchlist.map(w => {
-      const pos = positions.find(p => p.name === w.ticker);
-      const pnl = pos ? ((pos.price - pos.pru) / pos.pru * 100).toFixed(1) : null;
-      const safeName = (w.name||w.ticker).replace(/'/g,"\\'");
-      return '<div onclick="openCompany(\'' + w.ticker + '\',\'' + safeName + '\',\'\')" style="cursor:pointer;background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center"'
-        + ' onmouseover="this.style.borderColor=\'#e5e5ea\'" onmouseout="this.style.borderColor=\'#f0f0f0\'">'
-        + '<div>'
-        + '<div style="font-size:15px;font-weight:800;color:#1c1c1e">' + (w.name||w.ticker) + ' <span style="font-size:12px;color:#8e8e93;font-weight:500">' + w.ticker + '</span></div>'
-        + (pos ? '<div style="font-size:13px;color:' + (parseFloat(pnl)>=0?'#1a7f5a':'#cc2f26') + ';font-weight:700;margin-top:2px">' + (parseFloat(pnl)>=0?'+':'') + pnl + '% · ' + fmt(pos.qty*pos.price) + '€</div>' : '<div style="font-size:12px;color:#8e8e93;margin-top:2px">Pas en portefeuille</div>')
-        + '</div>'
-        + '<button onclick="event.stopPropagation();unfollowCompany(\'' + w.ticker + '\',\'' + (w.name||w.ticker).replace(/\'/g,"") + '\')" style="background:#fff0f0;color:#cc2f26;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Retirer</button>'
-        + '</div>';
-    }).join('');
-}
-
-
-function unfollowCompany(ticker, name) {
-  // Retire de la watchlist
-  favToggleSync(ticker, name);
-  showToast('Ne plus suivre ' + name);
-  updateFavPill();
-  // Rafraîchit l'affichage
-  renderFavorisNews();
-  // Met à jour les étoiles dans les autres onglets
-  refreshAllStars();
-}
 
 
 // ===== COMPANY DETAIL PAGE =====
@@ -8024,7 +7990,7 @@ function renderNewsList() {
   if (!list) return;
 
   // Si on est sur un sous-filtre géré ailleurs → déléguer
-  if (newsFilter === 'favoris') { renderFavorisNews(); return; }
+  if (newsFilter === 'favoris') { renderFavorisActus(); return; }
   if (newsFilter === 'signaux') { if (isCacheValid('signaux')) { restoreFromCache('signaux'); } else { renderSignaux(); } return; }
   if (newsFilter === 'entreprises') { if (isCacheValid('entreprises')) { restoreFromCache('entreprises'); } else { renderEntreprises(); } return; }
   if (newsFilter === 'agenda') { if (isCacheValid('agenda')) { restoreFromCache('agenda'); } else { renderAgenda(); } return; }
