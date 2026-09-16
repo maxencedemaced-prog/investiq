@@ -4032,12 +4032,14 @@ function renderFavorisNews() {
     + watchlist.map(w => {
       const pos = positions.find(p => p.name === w.ticker);
       const pnl = pos ? ((pos.price - pos.pru) / pos.pru * 100).toFixed(1) : null;
-      return '<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center">'
+      const safeName = (w.name||w.ticker).replace(/'/g,"\\'");
+      return '<div onclick="openCompany(\'' + w.ticker + '\',\'' + safeName + '\',\'\')" style="cursor:pointer;background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:2px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center"'
+        + ' onmouseover="this.style.borderColor=\'#e5e5ea\'" onmouseout="this.style.borderColor=\'#f0f0f0\'">'
         + '<div>'
         + '<div style="font-size:15px;font-weight:800;color:#1c1c1e">' + (w.name||w.ticker) + ' <span style="font-size:12px;color:#8e8e93;font-weight:500">' + w.ticker + '</span></div>'
         + (pos ? '<div style="font-size:13px;color:' + (parseFloat(pnl)>=0?'#1a7f5a':'#cc2f26') + ';font-weight:700;margin-top:2px">' + (parseFloat(pnl)>=0?'+':'') + pnl + '% · ' + fmt(pos.qty*pos.price) + '€</div>' : '<div style="font-size:12px;color:#8e8e93;margin-top:2px">Pas en portefeuille</div>')
         + '</div>'
-        + '<button onclick="unfollowCompany(\'' + w.ticker + '\',\'' + (w.name||w.ticker).replace(/\'/g,"") + '\')" style="background:#fff0f0;color:#cc2f26;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Retirer</button>'
+        + '<button onclick="event.stopPropagation();unfollowCompany(\'' + w.ticker + '\',\'' + (w.name||w.ticker).replace(/\'/g,"") + '\')" style="background:#fff0f0;color:#cc2f26;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Retirer</button>'
         + '</div>';
     }).join('');
 }
