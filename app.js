@@ -11,6 +11,10 @@ Tu es le copilote financier personnel de l'utilisateur — comme un ami compéte
 - Exemple du ton attendu — au lieu de "Concentration élevée sur IWDA", dis : "Ton portefeuille tient bien la route. Un point d'attention : IWDA commence à peser lourd (30%). En réduire un peu améliorerait ta diversification sans sacrifier ta performance."
 Tu ne fournis pas de conseil financier réglementé et tu le rappelles avec légèreté quand c'est pertinent.`;
 
+// Modèle plus léger pour les tâches de mise en forme (actualités) qui ne demandent
+// pas le raisonnement de Sonnet — jamais pour l'analyse de portefeuille ou le chat.
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+
 
 // ===== VALIDATE & PERSIST OBJECTIF =====
 const OBJ_STORAGE = 'iq_validated_objective';
@@ -3612,7 +3616,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown :
 impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/Réglementation.
 Ne réponds que pour les entreprises sur lesquelles tu as une information fiable ; ignore les autres plutôt que d'inventer.`;
 
-    const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne réponds qu'à partir de ce que tu sais réellement — jamais en inventant des faits ou des évènements récents que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`, 4096);
+    const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne réponds qu'à partir de ce que tu sais réellement — jamais en inventant des faits ou des évènements récents que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`, 4096, HAIKU_MODEL);
     const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
     if (KNOWN_CALLCLAUDE_FAILURES.includes(raw) || (raw || '').startsWith('🔒')) {
       throw new Error('callClaude a échoué : ' + raw);
@@ -4096,8 +4100,7 @@ async function openCompany(ticker, name, sector) {
 
   // Fetch price and analysis in parallel
   fetchCompanyPrice(ticker);
-  generateCompanyAnalysis(ticker, name, sector);
-  fetchCompanyNews(ticker, name);
+  loadCompanyDetail(ticker, name, sector);
 }
 
 function updateFavBtn(ticker) {
@@ -4123,56 +4126,78 @@ async function fetchCompanyPrice(ticker) {
   } catch { /* skip */ }
 }
 
-async function generateCompanyAnalysis(ticker, name, sector) {
+async function loadCompanyDetail(ticker, name, sector) {
   const inPortfolio = positions.find(p => p.name === ticker);
   const portfolioCtx = inPortfolio ? `Je détiens ${inPortfolio.qty} parts à PRU ${inPortfolio.pru}€, prix actuel ${inPortfolio.price}€.` : '';
-  const prompt = `Génère une analyse complète et détaillée de ${name} (${ticker}) pour un investisseur débutant prudent.
+  const prompt = `Analyse ${name} (${ticker}) pour un investisseur débutant prudent.
 Profil : ${HL[profile.horizon]}, risque ${RL[profile.risk]}. ${portfolioCtx}
-Structure ton analyse en sections claires :
-1. **Présentation** — ce que fait l'entreprise en 2-3 phrases simples
-2. **Points forts** — 3 raisons d'investir
-3. **Points de risque** — 3 risques principaux
-4. **Signal** — Acheter / Garder / Éviter avec explication
-5. **Verdict** — recommandation finale adaptée au profil débutant prudent
+
+Réponds UNIQUEMENT en JSON valide, sans backticks :
+{
+  "presentation": "ce que fait l'entreprise, 2-3 phrases simples",
+  "points_forts": ["raison 1", "raison 2", "raison 3"],
+  "points_risque": ["risque 1", "risque 2", "risque 3"],
+  "signal": "acheter|garder|eviter",
+  "verdict": "recommandation finale adaptée au profil débutant prudent, 2-3 phrases",
+  "contexte": [{"titre":"...","resume":"1-2 phrases","impact":"positif|négatif|neutre"}]
+}
+contexte : 3 à 5 points sur ce que tu sais de fiable sur l'entreprise (stratégie, résultats, évènements marquants) — n'invente jamais un fait ou un évènement récent que tu ne connais pas avec certitude ; si tu n'as rien de fiable, retourne un tableau vide.
 Sois pédagogue, concis et direct. Utilise des termes simples.`;
 
-  const r = await callClaude(prompt);
-  const el = document.getElementById('co-analysis');
-  if (el) {
-    // Format the response nicely
-    const formatted = formatMD(r);
-    el.innerHTML = `<div style="font-size:13px;color:#3c3c43;line-height:1.7;font-weight:500"><p>${formatted}</p></div>
+  const raw = await callClaude(prompt, `Tu es analyste financier pédagogue. Tu ne réponds qu'à partir de ce que tu sais réellement — jamais en inventant des faits, des chiffres ou des évènements récents que tu ne connais pas avec certitude. Retourne uniquement du JSON valide.`, 3072);
+
+  let data = null;
+  try {
+    const s = raw.replace(/```json|```/g, '').trim();
+    data = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1));
+  } catch (e) {
+    console.error('[loadCompanyDetail] JSON invalide :', e.message, '| début de la réponse :', (raw || '').slice(0, 200));
+  }
+
+  const analysisEl = document.getElementById('co-analysis');
+  const newsEl = document.getElementById('co-news');
+  const signalEl = document.getElementById('co-signal');
+
+  if (!data) {
+    if (analysisEl) analysisEl.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Analyse indisponible. Réessaie dans quelques secondes.</p>';
+    if (newsEl) newsEl.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Contexte indisponible.</p>';
+    return;
+  }
+
+  // Analyse
+  if (analysisEl) {
+    const bullets = (arr) => (arr||[]).map(x => `<li style="margin-bottom:4px">${x}</li>`).join('');
+    analysisEl.innerHTML = `
+      <div style="font-size:13px;color:#3c3c43;line-height:1.7;font-weight:500">
+        <p style="margin-bottom:12px">${data.presentation || ''}</p>
+        <p style="font-weight:700;color:#1c1c1e;margin-bottom:6px">Points forts</p>
+        <ul style="margin:0 0 12px 18px;padding:0">${bullets(data.points_forts)}</ul>
+        <p style="font-weight:700;color:#1c1c1e;margin-bottom:6px">Points de risque</p>
+        <ul style="margin:0 0 12px 18px;padding:0">${bullets(data.points_risque)}</ul>
+        <p style="font-weight:700;color:#1c1c1e;margin-bottom:6px">Verdict</p>
+        <p>${data.verdict || ''}</p>
+      </div>
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-primary" style="font-size:13px;padding:10px 16px" onclick="openDecision('${ticker}','acheter')">Analyser pour investir →</button>
         <button class="btn-secondary" style="font-size:13px;padding:10px 16px" onclick="toggleFavorite('${ticker}','${activeCompany?.name||ticker}','${activeCompany?.sector||''}');updateFavBtn('${ticker}')">${isFavorite(ticker)?'★ Suivi':'☆ Suivre'}</button>
       </div>`;
-    // Update signal
-    const signalEl = document.getElementById('co-signal');
-    if (signalEl) {
-      const txt = r.toLowerCase();
-      if (txt.includes('acheter') || txt.includes('opportunité')) { signalEl.textContent = '↑ Acheter'; signalEl.className = 'metric-val green'; }
-      else if (txt.includes('éviter') || txt.includes('vendre')) { signalEl.textContent = '↓ Éviter'; signalEl.className = 'metric-val red'; }
-      else { signalEl.textContent = '→ Garder'; signalEl.className = 'metric-val'; }
-    }
   }
-}
 
-async function fetchCompanyNews(ticker, name) {
-  const prompt = `Résume ce que tu connais sur ${name} (ticker: ${ticker}) : stratégie, résultats marquants, évènements notables.
-Pour chaque point retourne UNIQUEMENT un JSON (sans backticks) : [{"titre":"...","resume":"1-2 phrases","impact":"positif|négatif|neutre"}]
-UNIQUEMENT le JSON, 3 à 5 points. Si tu n'as pas d'information fiable sur ce ticker précis, retourne [].`;
-  const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne réponds qu'à partir de ce que tu sais réellement — jamais en inventant des faits, des chiffres ou des évènements récents que tu ne connais pas avec certitude. Retourne uniquement du JSON valide.`);
-  try {
-    const s = raw.replace(/```json|```/g, '').trim();
-    const items = JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1));
-    const el = document.getElementById('co-news');
-    if (el) {
-      if (!items.length) {
-        el.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Pas de contexte fiable disponible pour ce ticker.</p>';
-        return;
-      }
+  // Signal — lu directement dans le JSON, plus de détection par mots-clés dans du texte libre
+  if (signalEl) {
+    if (data.signal === 'acheter') { signalEl.textContent = '↑ Acheter'; signalEl.className = 'metric-val green'; }
+    else if (data.signal === 'eviter') { signalEl.textContent = '↓ Éviter'; signalEl.className = 'metric-val red'; }
+    else { signalEl.textContent = '→ Garder'; signalEl.className = 'metric-val'; }
+  }
+
+  // Contexte (ex-fetchCompanyNews, même rendu qu'avant)
+  if (newsEl) {
+    const items = data.contexte || [];
+    if (!items.length) {
+      newsEl.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Pas de contexte fiable disponible pour ce ticker.</p>';
+    } else {
       const disclaimer = `<div style="font-size:11px;color:#a0a0a5;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f0f0">ⓘ Contexte général tiré des connaissances de l'IA — pas un flux d'actualité en temps réel, peut être incomplet ou daté.</div>`;
-      el.innerHTML = disclaimer + items.map(item => {
+      newsEl.innerHTML = disclaimer + items.map(item => {
         const color = item.impact === 'positif' ? '#1a7f5a' : item.impact === 'négatif' ? '#cc2f26' : '#8e8e93';
         const bg = item.impact === 'positif' ? '#e8f8f0' : item.impact === 'négatif' ? '#fff0f0' : '#f5f5f5';
         return `<div style="padding:12px 0;border-bottom:1px solid #f5f5f5">
@@ -4184,9 +4209,6 @@ UNIQUEMENT le JSON, 3 à 5 points. Si tu n'as pas d'information fiable sur ce ti
         </div>`;
       }).join('');
     }
-  } catch {
-    const el = document.getElementById('co-news');
-    if (el) el.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Contexte non disponible pour ce ticker.</p>';
   }
 }
 
@@ -7950,7 +7972,7 @@ Mets en priorité les thèmes pertinents pour ces actifs : ${myAssets}.
 Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
 [{"titre":"Titre accrocheur max 10 mots","resume":"2 phrases concrètes et précises","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","signal":"acheter|attendre|éviter|neutre","reco_texte":"Conseil actionnable en 2-3 phrases pour débutant, adapté au signal","actifs_cibles":["TICKER1","TICKER2"]}]`;
 
-  const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n'as pas vérifié — tu t'appuies sur des dynamiques de marché connues et durables, jamais sur des faits inventés. Retourne uniquement du JSON valide sans texte autour ni backticks.`, 4096);
+  const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n'as pas vérifié — tu t'appuies sur des dynamiques de marché connues et durables, jamais sur des faits inventés. Retourne uniquement du JSON valide sans texte autour ni backticks.`, 4096, HAIKU_MODEL);
   const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
   if (KNOWN_CALLCLAUDE_FAILURES.includes(raw) || (raw || '').startsWith('🔒')) {
     console.error('[loadNews] callClaude a échoué :', raw);
@@ -8600,7 +8622,7 @@ function displayName(ticker) {
   return COMPANY_NAMES[ticker] || COMPANY_NAMES[(ticker+'').toUpperCase()] || ticker;
 }
 
-async function callClaude(prompt,sys,maxTokens){
+async function callClaude(prompt,sys,maxTokens,model){
   const system=sys||('Tu es le copilote financier IA d\'InvestIQ, pour investisseurs particuliers francophones.\n'+AI_PERSONA);
   try{
     // Récupère le token de session Supabase (requis par l'API sécurisée)
@@ -8614,6 +8636,7 @@ async function callClaude(prompt,sys,maxTokens){
     }
     const body = { prompt, system };
     if (maxTokens) body.max_tokens = maxTokens;
+    if (model) body.model = model;
     const res=await fetch('/api/claude',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
