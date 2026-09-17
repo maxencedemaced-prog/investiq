@@ -6589,10 +6589,13 @@ function calcScore() {
   const maxW = Math.max(...positions.map(p=>p.qty*p.price/tv*100));
   const etfPct = positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/tv*100;
   const pnl = positions.reduce((a,p)=>a+(p.qty*p.price-p.qty*p.pru),0);
+  // Seuils alignés sur les repères déjà affichés ailleurs dans la page Santé
+  // (Min conseillé : 8 positions · Concentration max idéale : 25% · Part ETF idéale : 60%+)
+  // pour qu'un score "Excellent" corresponde vraiment à un portefeuille qui respecte ces repères.
   const items=[
-    {label:'Diversification',score:Math.min(10,positions.length*2.5),tip:positions.length<4?`${positions.length} positions — vise 4+`:''},
-    {label:'Concentration max',score:maxW>50?2:maxW>35?5:maxW>25?7:10,tip:maxW>35?`Position dominante ${maxW.toFixed(0)}%`:''},
-    {label:'Part ETF',score:etfPct>=60?10:etfPct>=40?8:etfPct>=20?5:3,tip:etfPct<40?`ETF = ${etfPct.toFixed(0)}% — vise 60%+`:''},
+    {label:'Diversification',score:Math.min(10,positions.length*1.25),tip:positions.length<8?`${positions.length} positions — vise 8+`:''},
+    {label:'Concentration max',score:maxW>50?1:maxW>40?3:maxW>25?5:maxW>15?8:10,tip:maxW>25?`Position dominante ${maxW.toFixed(0)}% — vise <25%`:''},
+    {label:'Part ETF',score:etfPct>=70?10:etfPct>=60?9:etfPct>=45?6:etfPct>=25?4:2,tip:etfPct<60?`ETF = ${etfPct.toFixed(0)}% — vise 60%+`:''},
     {label:'Performance',score:pnl>=0?8:pnl>-tv*0.1?6:4,tip:''},
   ];
   const finalScore = Math.round(items.reduce((a,i)=>a+i.score,0)/items.length*10)/10;
