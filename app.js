@@ -5119,6 +5119,15 @@ const BILAN_STEPS = [
 ];
 
 function openBilan() {
+  if (!isPremiumUser()) {
+    showPremiumGate('Bilan patrimonial complet', [
+      'Analyse IA complète de ta situation financière',
+      'Recommandations personnalisées sur ton épargne et tes investissements',
+      'Export PDF de ton bilan',
+      'Mis à jour à chaque fois que tu le relances',
+    ]);
+    return;
+  }
   bilanData = {};
   bilanStep = 0;
   document.getElementById('bilan-modal').style.display = 'flex';

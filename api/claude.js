@@ -63,6 +63,46 @@ function rateLimited(userId, max = 20, windowMs = 60_000) {
   return entry.count > max;
 }
 
+// ── Quota IA gratuit : les comptes Premium ont un accès illimité (toujours
+// borné par le rate-limit anti-abus ci-dessus) ; les comptes gratuits sont
+// plafonnés par jour pour que "IA illimitée" reste un vrai avantage Premium.
+const FREE_DAILY_AI_LIMIT = 15;
+
+function isPremiumProfile(profile) {
+  if (!profile) return false;
+  if (profile.subscription_status === 'canceled' || profile.subscription_status === 'unpaid') return false;
+  if (profile.premium_until) {
+    const t = new Date(profile.premium_until).getTime();
+    if (!Number.isNaN(t)) return t > Date.now();
+  }
+  return profile.is_premium === true;
+}
+
+// Ne bloque jamais par excès de prudence : si la vérification échoue (clé
+// service_role absente, erreur réseau...) on laisse passer plutôt que de
+// casser l'IA pour tout le monde.
+async function checkFreeQuota(userId) {
+  if (!supabaseAdmin) return false;
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles').select('is_premium, subscription_status, premium_until').eq('id', userId).single();
+    if (isPremiumProfile(profile)) return false;
+
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const { count, error } = await supabaseAdmin
+      .from('ai_usage_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', startOfDay.toISOString());
+    if (error) { console.error('[api/claude] checkFreeQuota:', error.message); return false; }
+    return (count || 0) >= FREE_DAILY_AI_LIMIT;
+  } catch (e) {
+    console.error('[api/claude] checkFreeQuota failed:', e.message);
+    return false;
+  }
+}
+
 export default async function handler(req, res) {
   // CORS restreint au domaine de l'app
   const origin = req.headers.origin || '';
@@ -96,6 +136,11 @@ export default async function handler(req, res) {
     // ── 2. RATE LIMIT : max 20 requêtes / minute / utilisateur ──
     if (rateLimited(user.id)) {
       return res.status(429).json({ error: 'Trop de requêtes. Patiente une minute.' });
+    }
+
+    // ── 2bis. QUOTA GRATUIT : accès IA illimité réservé à Premium ──
+    if (await checkFreeQuota(user.id)) {
+      return res.status(429).json({ error: `Limite IA quotidienne atteinte (${FREE_DAILY_AI_LIMIT}/jour en gratuit). Passe à Premium pour un accès illimité.` });
     }
 
     // ── 3. LIMITES DE TAILLE : éviter les prompts géants ──
