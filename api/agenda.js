@@ -4,6 +4,13 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:5500',
 ];
 
+// FMP renvoie des codes pays bruts — on les aligne sur ce que le front sait afficher
+// (drapeaux définis dans app.js). Les zones euro sont regroupées sous "EU".
+const COUNTRY_MAP = {
+  US: 'US', FR: 'FR', DE: 'DE', GB: 'UK', UK: 'UK', JP: 'JP', CN: 'CN',
+  EA: 'EU', EMU: 'EU', EU: 'EU', ITA: 'EU', ESP: 'EU', IT: 'EU', ES: 'EU',
+};
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || '';
   if (ALLOWED_ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
@@ -11,38 +18,47 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    // Récupère le calendrier économique via Finnhub
-    const apiKey = process.env.FINNHUB_API_KEY;
+    // Récupère le calendrier économique via Financial Modeling Prep
+    const apiKey = process.env.FMP_API_KEY;
+    if (!apiKey) throw new Error('FMP_API_KEY manquante');
+
     const now = new Date();
     const from = now.toISOString().split('T')[0];
     const to = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    // Finnhub economic calendar
-    const url = `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${apiKey}`;
+    const url = `https://financialmodelingprep.com/stable/economic-calendar?from=${from}&to=${to}&apikey=${apiKey}`;
     const resp = await fetch(url);
     const data = await resp.json();
 
-    if (!resp.ok || !Array.isArray(data.economicCalendar)) {
-      console.error('[api/agenda] Finnhub error:', resp.status, data?.error || JSON.stringify(data).slice(0, 200));
-      throw new Error('Finnhub indisponible');
+    if (!resp.ok || !Array.isArray(data)) {
+      console.error('[api/agenda] FMP error:', resp.status, JSON.stringify(data).slice(0, 200));
+      throw new Error('FMP indisponible');
     }
 
-    const events = data.economicCalendar.map(e => ({
-      id: `${e.event}-${e.time}`,
-      date: e.time?.split(' ')[0] || e.time,
-      heure: e.time?.split(' ')[1]?.slice(0,5) || '00:00',
-      titre: e.event || 'Événement économique',
-      pays: e.country || 'US',
-      impact: e.impact || 'low', // low, medium, high
-      precedent: e.prev || null,
-      prevision: e.estimate || null,
-      actual: e.actual || null,
-      unite: e.unit || '',
-    }));
+    const events = data
+      .filter(e => {
+        const impact = (e.impact || '').toLowerCase();
+        return (impact === 'high' || impact === 'medium') && COUNTRY_MAP[e.country];
+      })
+      .map(e => ({
+        id: `${e.event}-${e.date}`,
+        date: e.date?.split(' ')[0] || e.date,
+        heure: e.date?.split(' ')[1]?.slice(0, 5) || '00:00',
+        titre: e.event || 'Événement économique',
+        pays: COUNTRY_MAP[e.country] || e.country,
+        impact: (e.impact || 'low').toLowerCase(),
+        precedent: e.previous ?? null,
+        prevision: e.estimate ?? null,
+        actual: e.actual ?? null,
+        unite: e.unit || '',
+      }))
+      .sort((a, b) => (a.date + a.heure).localeCompare(b.date + b.heure))
+      .slice(0, 60);
 
     return res.status(200).json({ events });
 
   } catch (err) {
+    console.error('[api/agenda]', err.message);
     // Fallback : données statiques pour la démo
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
