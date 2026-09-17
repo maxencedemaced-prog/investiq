@@ -489,6 +489,9 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 .d-intent-btn{padding:10px 16px;border-radius:12px;border:2px solid #e5e5ea;background:#fff;font-size:13px;font-weight:600;color:#3c3c43;cursor:pointer;transition:all 0.2s}
 .d-intent-btn:hover{border-color:#1c1c1e}
 .d-intent-btn.active{background:#1c1c1e;border-color:#1c1c1e;color:#fff}
+.d-intent-icon{transition:stroke 0.2s ease,opacity 0.2s ease;opacity:0.85}
+.d-intent-btn:hover .d-intent-icon{opacity:1}
+.d-intent-btn.active .d-intent-icon{stroke:#fff !important;opacity:1}
 .ob-prog-bar{flex:1;height:4px;border-radius:2px;background:#e5e5ea;transition:background 0.3s}
 .ob-prog-bar.active{background:#1c1c1e}
 .ob-goal-card,.ob-risk-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:2px solid #e5e5ea;background:#fff;cursor:pointer;transition:all 0.2s}
