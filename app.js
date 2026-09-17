@@ -3072,7 +3072,7 @@ function buildBloombergTicker(allTracked) {
   }).join('');
 }
 
-function renderNewsPage() {
+function renderNewsPage(auto=false) {
   loadWatchlist().then(() => setTimeout(refreshAllStars, 100));
   const container = document.getElementById('news-page-content');
   if (!container) return;
@@ -3165,9 +3165,22 @@ function renderNewsPage() {
     <div id="news-list"></div>
   `;
 
-  // Load news
-  if (!loadNewsCache()) loadNews(false);
-  else renderNewsList();
+  // Load news — évite un appel IA silencieux quand la page se restaure toute seule
+  // (ex: rechargement de l'onglet par Chrome) : on ne consomme des tokens que si
+  // l'utilisateur clique réellement sur "Actualités" ou sur "Charger".
+  if (loadNewsCache()) renderNewsList();
+  else if (auto) renderNewsLoadPrompt();
+  else loadNews(false);
+}
+
+function renderNewsLoadPrompt() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+  list.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#8e8e93">
+    <div style="font-size:28px;margin-bottom:8px">📰</div>
+    <div style="font-size:13px;margin-bottom:14px">Actualités pas encore chargées pour aujourd'hui</div>
+    <button onclick="loadNews(false)" style="background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">Charger les actualités</button>
+  </div>`;
 }
 
 // ===== ONGLET AGENDA =====
@@ -4302,7 +4315,7 @@ async function initApp(user) {
   // Restaure la page où l'utilisateur était (si l'onglet a été rechargé par Chrome)
   let lastPage = 'home';
   try { lastPage = sessionStorage.getItem('iq_last_page') || 'home'; } catch {}
-  nav(lastPage);
+  nav(lastPage, true);
   // Si objectif chargé depuis Supabase, prêt à afficher au clic sur Objectif
   if (objChartCapital && objChartTarget) {
     try { localStorage.setItem('iq_validated_objective', JSON.stringify({
@@ -6054,7 +6067,7 @@ async function exportBilanPDF() {
 }
 
 // ===== NAV =====
-function nav(page) {
+function nav(page, auto=false) {
   // Mémorise la page pour la restaurer si Chrome recharge l'onglet (Memory Saver)
   try { sessionStorage.setItem('iq_last_page', page); } catch {}
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
@@ -6087,7 +6100,7 @@ function nav(page) {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
 }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} },
-    ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage();}else{if(!loadNewsCache())loadNews(false);else renderNewsList();} } };
+    ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
