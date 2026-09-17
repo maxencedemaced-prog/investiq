@@ -1,3 +1,4 @@
+// Redéploiement forcé pour prendre en compte FMP_API_KEY
 const ALLOWED_ORIGINS = [
   'https://investiq-kappa.vercel.app',
   'http://localhost:3000',
