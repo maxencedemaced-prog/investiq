@@ -3617,6 +3617,7 @@ async function renderEntreprises() {
 async function loadEntrepriseNews(companies, targetId = 'ent-news-list') {
   const newsEl = document.getElementById(targetId);
   if (!newsEl) return;
+  if (!currentUser) { newsEl.innerHTML = aiLockedStateHTML("Connecte-toi pour voir les actualités IA par entreprise."); return; }
 
   const capped = companies.slice(0, 12); // aligné sur ce que renderEntreprises() prépare déjà en amont
 
@@ -3777,6 +3778,7 @@ function removeFromWatchlist(ticker, name) {
 async function renderSignaux() {
   const list = document.getElementById('news-list');
   if (!list) return;
+  if (!currentUser) { list.innerHTML = aiLockedStateHTML("Connecte-toi pour débloquer les signaux IA sur tes positions et les opportunités du marché."); return; }
 
   // Constants
   const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#8e8e93' };
@@ -7941,13 +7943,14 @@ function parseJSONArrayLenient(raw) {
 
 async function loadNews(force=false) {
   if (!force && loadNewsCache()) { renderNewsList(); return; }
+  const list = document.getElementById('news-list');
+  if (!currentUser) { if (list) list.innerHTML = aiLockedStateHTML("Connecte-toi pour voir les actualités générées par l'IA."); return; }
   const ico = document.getElementById('news-ico');
   const btn = document.getElementById('news-refresh-btn');
   if (ico) ico.classList.add('spinning');
   if (btn) btn.disabled = true;
 
   // Skeleton loader
-  const list = document.getElementById('news-list');
   if (list) list.innerHTML = [1,2,3,4,5,6,7,8].map(() => `
     <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:10px;border:1.5px solid #f0f0f0;overflow:hidden">
       <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -8619,6 +8622,17 @@ function displayName(ticker) {
 // Réponses de repli renvoyées par callClaude() en cas d'échec réseau/API — jamais du vrai contenu IA
 const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
 function callClaudeFailed(text) { return KNOWN_CALLCLAUDE_FAILURES.includes(text) || (text || '').startsWith('🔒'); }
+
+// État "verrouillé" affiché à la place d'un contenu IA quand personne n'est connecté
+// (mode démo notamment) — évite un appel IA voué à l'échec et un message d'erreur trompeur.
+function aiLockedStateHTML(text) {
+  return `<div style="text-align:center;padding:40px 20px;color:#8e8e93">
+    <div style="font-size:32px;margin-bottom:10px">🔒</div>
+    <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Réservé aux comptes InvestIQ</div>
+    <div style="font-size:13px;margin-bottom:16px">${text || "Connecte-toi pour accéder à l'analyse IA."}</div>
+    <button onclick="showAuthScreen('signup')" style="background:#1a7f5a;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">✨ Créer un compte gratuit</button>
+  </div>`;
+}
 
 async function callClaude(prompt,sys,maxTokens,model){
   const system=sys||('Tu es le copilote financier IA d\'InvestIQ, pour investisseurs particuliers francophones.\n'+AI_PERSONA);
