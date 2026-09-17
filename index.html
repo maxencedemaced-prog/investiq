@@ -1534,8 +1534,47 @@ window.addEventListener('load', function() {
         <div id="f-empty-state" style="text-align:center;padding:20px 0;color:#8e8e93">
           <div style="font-size:32px;margin-bottom:8px">🔍</div>
           <div style="font-size:14px;font-weight:600">Recherche une action ou un ETF ci-dessus</div>
-          <div style="font-size:13px;color:#c7c7cc;margin-top:4px">Le prix et le secteur se rempliront automatiquement</div>
-          <div class="btn-row" style="justify-content:center;margin-top:16px">
+          <div style="font-size:13px;color:#c7c7cc;margin-top:4px">Le prix et le secteur se rempliront automatiquement — par nom ou par code (ex: AAPL, MC.PA, IWDA.L)</div>
+
+          <div style="margin-top:26px">
+            <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Ou choisis parmi les plus suivis</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;text-align:left">
+              <div onclick='acSelect({"ticker":"IWDA.L","name":"iShares Core MSCI World","type":"ETF","sector":"Monde"})' class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">
+                <div style="width:26px;height:26px;border-radius:7px;background:#2563eb;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">IW</div>
+                <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">MSCI World</div><div style="font-size:10px;color:#8e8e93">IWDA.L · ETF</div></div>
+              </div>
+              <div onclick='acSelect({"ticker":"VWCE.DE","name":"Vanguard FTSE All-World","type":"ETF","sector":"Monde"})' class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">
+                <div style="width:26px;height:26px;border-radius:7px;background:#2563eb;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">VW</div>
+                <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">All-World</div><div style="font-size:10px;color:#8e8e93">VWCE.DE · ETF</div></div>
+              </div>
+              <div onclick='acSelect({"ticker":"AAPL","name":"Apple","type":"Action","sector":"Tech"})' class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">
+                <div style="width:26px;height:26px;border-radius:7px;background:#1c1c1e;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">AA</div>
+                <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Apple</div><div style="font-size:10px;color:#8e8e93">AAPL · Action</div></div>
+              </div>
+              <div onclick='acSelect({"ticker":"MSFT","name":"Microsoft","type":"Action","sector":"Tech"})' class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">
+                <div style="width:26px;height:26px;border-radius:7px;background:#1c1c1e;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">MS</div>
+                <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Microsoft</div><div style="font-size:10px;color:#8e8e93">MSFT · Action</div></div>
+              </div>
+              <div onclick='acSelect({"ticker":"NVDA","name":"NVIDIA","type":"Action","sector":"Tech"})' class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">
+                <div style="width:26px;height:26px;border-radius:7px;background:#1c1c1e;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">NV</div>
+                <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">NVIDIA</div><div style="font-size:10px;color:#8e8e93">NVDA · Action</div></div>
+              </div>
+              <div onclick='acSelect({"ticker":"MC.PA","name":"LVMH","type":"Action","sector":"Luxe"})' class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">
+                <div style="width:26px;height:26px;border-radius:7px;background:#1c1c1e;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">LV</div>
+                <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">LVMH</div><div style="font-size:10px;color:#8e8e93">MC.PA · Action</div></div>
+              </div>
+              <div onclick='acSelect({"ticker":"TSLA","name":"Tesla","type":"Action","sector":"Auto"})' class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">
+                <div style="width:26px;height:26px;border-radius:7px;background:#1c1c1e;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">TS</div>
+                <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Tesla</div><div style="font-size:10px;color:#8e8e93">TSLA · Action</div></div>
+              </div>
+              <div onclick='acSelect({"ticker":"AI.PA","name":"Air Liquide","type":"Action","sector":"Industrie"})' class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">
+                <div style="width:26px;height:26px;border-radius:7px;background:#1c1c1e;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">AI</div>
+                <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Air Liquide</div><div style="font-size:10px;color:#8e8e93">AI.PA · Action</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="btn-row" style="justify-content:center;margin-top:20px">
             <button class="btn-secondary" onclick="loadDemo()">Charger un exemple</button>
           </div>
         </div>
