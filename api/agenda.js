@@ -12,16 +12,31 @@ const COUNTRY_MAP = {
   EA: 'EU', EMU: 'EU', EU: 'EU', ITA: 'EU', ESP: 'EU', IT: 'EU', ES: 'EU',
 };
 
+// Rate limit simple en mémoire par IP — évite d'épuiser le quota FMP payant en cas d'abus
+const hits = new Map();
+function rateLimited(key, max = 30, windowMs = 60_000) {
+  const now = Date.now();
+  const entry = hits.get(key) || { count: 0, start: now };
+  if (now - entry.start > windowMs) { entry.count = 0; entry.start = now; }
+  entry.count++;
+  hits.set(key, entry);
+  return entry.count > max;
+}
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || '';
   if (ALLOWED_ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
+
   try {
     // Récupère le calendrier économique via Financial Modeling Prep
     const apiKey = process.env.FMP_API_KEY;
     if (!apiKey) throw new Error('FMP_API_KEY manquante');
+    // Au-delà du quota, on ne tape pas FMP — on sert directement le fallback ci-dessous
+    if (rateLimited(ip)) throw new Error('rate-limit local atteint');
 
     const now = new Date();
     const from = now.toISOString().split('T')[0];

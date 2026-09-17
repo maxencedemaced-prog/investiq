@@ -4,17 +4,32 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:5500',
 ];
 
+// Rate limit simple en mémoire par IP — limite les bursts/scraping sur une clé Finnhub payante
+const hits = new Map();
+function rateLimited(key, max = 60, windowMs = 60_000) {
+  const now = Date.now();
+  const entry = hits.get(key) || { count: 0, start: now };
+  if (now - entry.start > windowMs) { entry.count = 0; entry.start = now; }
+  entry.count++;
+  hits.set(key, entry);
+  return entry.count > max;
+}
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || '';
   if (ALLOWED_ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
+  if (rateLimited(ip)) return res.status(429).json({ error: 'Trop de requêtes.', quotes: [] });
+
   const { symbols } = req.query;
   if (!symbols) return res.status(400).json({ quotes: [] });
 
-  const symbolList = symbols.split(',').map(s => s.trim()).filter(Boolean);
+  const symbolList = symbols.split(',').map(s => s.trim()).filter(Boolean).slice(0, 50);
   const apiKey = process.env.FINNHUB_API_KEY;
+  if (!apiKey) console.error('[api/prices] FINNHUB_API_KEY manquante — repli Yahoo uniquement');
 
   const results = await Promise.allSettled(
     symbolList.map(async (symbol) => {

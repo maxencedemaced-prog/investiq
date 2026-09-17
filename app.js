@@ -3630,8 +3630,7 @@ impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/
 Si tu n'as pas d'actualité récente et datée fiable sur une entreprise, utilise categorie "Profil" et fais un résumé général et intemporel (activité, position sur son marché) — mais n'invente jamais un évènement précis, un chiffre ou une date récente dont tu n'es pas sûr.`;
 
     const raw = await callClaude(prompt, `Tu es analyste financier. Tu réponds pour chaque entreprise demandée. Tu peux donner un profil général quand tu n'as pas d'actualité datée fiable, mais tu n'inventes jamais un fait précis, un chiffre ou une date récente que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`, 4096, HAIKU_MODEL);
-    const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
-    if (KNOWN_CALLCLAUDE_FAILURES.includes(raw) || (raw || '').startsWith('🔒')) {
+    if (callClaudeFailed(raw)) {
       throw new Error('callClaude a échoué : ' + raw);
     }
     const articles = parseJSONArrayLenient(raw);
@@ -4308,6 +4307,8 @@ async function initApp(user) {
   await loadProfile(); await loadPositions(); await loadObjective();
   try { updateSidebarPremiumCard(); } catch(e) { console.warn('sidebar-premium:', e); }
   try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory:', e); }
+  // Charge les signaux déjà générés (< 4 jours) pour éviter de relancer une rafale IA à chaque session
+  try { loadSignalsCache(); } catch(e) { console.warn('loadSignalsCache:', e); }
   // Acceptation des conditions obligatoire à la première utilisation
   try { showLegalAcceptance(); } catch(e) { console.warn('legal:', e); }
   // Retour depuis Stripe après paiement
@@ -6081,7 +6082,7 @@ function nav(page, auto=false) {
   const bnavBtn = document.getElementById('bnav-'+page);
   if (bnavBtn) bnavBtn.classList.add('active');
   closeSidebar();
-  const renders = { home:renderHome, portfolio:renderPortfolio, sante:renderSante, objectif: async () => {
+  const renders = { home:renderHome, portfolio:()=>renderPortfolio(auto), sante:renderSante, objectif: async () => {
   // Essaie d'abord de recharger depuis Supabase
   if (!isDemo && currentUser && allObjectives.length === 0) {
     await loadObjective();
@@ -6100,7 +6101,7 @@ function nav(page, auto=false) {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
 }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} },
-    ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
+    ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(auto); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
 }
 function toggleSidebar() {
@@ -6625,7 +6626,7 @@ function buildAlerts() {
 }
 
 // ===== PORTFOLIO =====
-function renderPortfolio() {
+function renderPortfolio(auto=false) {
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
   const tpnl = tv - ti;
@@ -6864,9 +6865,14 @@ function renderPortfolio() {
     });
   }, 50);
 
-  // Générer signaux en lot — max 6, espacés de 800ms pour éviter les 500
-  const needSignal = positions.filter(p => !posSignals[p.id]).slice(0, 6);
-  needSignal.forEach((p, i) => setTimeout(() => generatePosSignal(p), i * 800));
+  // Générer signaux en lot — max 6, espacés de 800ms pour éviter les 500.
+  // Sauté si la page se restaure toute seule (auto===true) : évite une rafale IA
+  // silencieuse à chaque ouverture d'app. Ils se génèreront au prochain vrai clic
+  // sur "Portefeuille" (nav() sans auto).
+  if (!auto) {
+    const needSignal = positions.filter(p => !posSignals[p.id]).slice(0, 6);
+    needSignal.forEach((p, i) => setTimeout(() => generatePosSignal(p), i * 800));
+  }
 }
 
 
@@ -6884,6 +6890,7 @@ PRU : ${p.pru}€ | Prix actuel : ${p.price}€ | Performance : ${pnl.toFixed(1)
 Quantité : ${p.qty} parts | Valeur totale : ${fmt(p.qty * p.price)}€
 
 ${isAction ? `C'est une action individuelle — donne un signal court terme précis avec timing.` : `C'est un ETF — signal long terme, pas de timing court terme.`}
+Pour les catalyseurs/risques, appuie-toi sur des dynamiques connues et durables (secteur, valorisation, macro) — n'invente jamais un évènement précis et daté que tu ne connais pas avec certitude.
 
 Réponds UNIQUEMENT en JSON valide sans markdown :
 {
@@ -6904,7 +6911,8 @@ Réponds UNIQUEMENT en JSON valide sans markdown :
 }`;
 
   try {
-    const raw = await callClaude(prompt, 'Tu es un analyste financier. Réponds UNIQUEMENT en JSON valide.');
+    const raw = await callClaude(prompt, 'Tu es un analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n\'as pas vérifié. Réponds UNIQUEMENT en JSON valide.');
+    if (callClaudeFailed(raw)) throw new Error('callClaude a échoué : ' + raw);
     const s = raw.replace(/```json|```/g,'').trim();
     const parsed = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}')+1));
     posSignals[p.id] = parsed;
@@ -7596,10 +7604,13 @@ Répartition exacte avec montants
 Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${years} ans. Sois ULTRA concret, donne les vrais noms et montants.`;
   
   const simpleR = await callClaude(simplePrompt);
-  
+  const simpleFailed = callClaudeFailed(simpleR);
+
   // Build nice cards for the recommendation
   document.getElementById('obj-ai-simple').innerHTML = `
-    <div style="font-size:14px;color:#1c1c1e;line-height:1.8">${formatMD(simpleR)}</div>
+    <div style="font-size:14px;color:#1c1c1e;line-height:1.8">${simpleFailed
+      ? `<div style="background:#fff0f0;border-radius:12px;padding:14px;color:#cc2f26;font-weight:600">⚠ ${simpleR} <button onclick="generateObjPlan()" style="margin-left:8px;background:none;border:1px solid #cc2f26;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#cc2f26;cursor:pointer">Réessayer</button></div>`
+      : formatMD(simpleR)}</div>
     ${!onTrack ? `
     <div style="margin-top:16px;background:#fff5e0;border-radius:14px;padding:16px;border-left:4px solid #f59e0b">
       <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:8px">⚠ Ajustement conseillé</div>
@@ -7625,7 +7636,10 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
   // Full analysis in background
   callClaude(prompt).then(r => {
     const el = document.getElementById('obj-ai-plan');
-    if (el) el.innerHTML = `<div style="font-size:14px;color:#3c3c43;line-height:1.7;font-weight:500">${formatMD(r)}</div>`;
+    if (!el) return;
+    el.innerHTML = callClaudeFailed(r)
+      ? `<div style="background:#fff0f0;border-radius:12px;padding:14px;color:#cc2f26;font-weight:600">⚠ ${r}</div>`
+      : `<div style="font-size:14px;color:#3c3c43;line-height:1.7;font-weight:500">${formatMD(r)}</div>`;
   });
 
   // Build interactive chart
@@ -7954,8 +7968,7 @@ Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
 [{"titre":"Titre accrocheur max 10 mots","resume":"2 phrases concrètes et précises","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","signal":"acheter|attendre|éviter|neutre","reco_texte":"Conseil actionnable en 2-3 phrases pour débutant, adapté au signal","actifs_cibles":["TICKER1","TICKER2"]}]`;
 
   const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n'as pas vérifié — tu t'appuies sur des dynamiques de marché connues et durables, jamais sur des faits inventés. Retourne uniquement du JSON valide sans texte autour ni backticks.`, 4096, HAIKU_MODEL);
-  const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
-  if (KNOWN_CALLCLAUDE_FAILURES.includes(raw) || (raw || '').startsWith('🔒')) {
+  if (callClaudeFailed(raw)) {
     console.error('[loadNews] callClaude a échoué :', raw);
     newsData = null; // échec réel, distinct d'une liste vide légitime
   } else {
@@ -8602,6 +8615,10 @@ function displayName(ticker) {
   if (!ticker) return '';
   return COMPANY_NAMES[ticker] || COMPANY_NAMES[(ticker+'').toUpperCase()] || ticker;
 }
+
+// Réponses de repli renvoyées par callClaude() en cas d'échec réseau/API — jamais du vrai contenu IA
+const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
+function callClaudeFailed(text) { return KNOWN_CALLCLAUDE_FAILURES.includes(text) || (text || '').startsWith('🔒'); }
 
 async function callClaude(prompt,sys,maxTokens,model){
   const system=sys||('Tu es le copilote financier IA d\'InvestIQ, pour investisseurs particuliers francophones.\n'+AI_PERSONA);
@@ -10283,7 +10300,7 @@ function executeAgentAction(action) {
   }
 }
 
-function initAgent() {
+function initAgent(auto=false) {
   // Dashboard d'abord (priorité visuelle), chaque bloc isolé en try/catch
   try { renderAgentDashboard(); } catch(e) { console.error('renderAgentDashboard:', e); }
   // Historique IA : évalue les recos à maturité puis affiche les stats réelles
@@ -10294,8 +10311,10 @@ function initAgent() {
       renderRecoHistory();
     } catch(e) { console.warn('recoHistory:', e); }
   })();
-  // ⭐ Verdict signature "Que ferait InvestIQ ?" (cache 24h)
-  try { generateInvestIQVerdict(); } catch(e) { console.warn('verdict:', e); }
+  // ⭐ Verdict signature "Que ferait InvestIQ ?" (cache 24h) — sauté si restauration silencieuse et cache absent
+  if (!auto || getCachedVerdict()) {
+    try { generateInvestIQVerdict(); } catch(e) { console.warn('verdict:', e); }
+  }
   try { buildAgentContext(); } catch(e) { console.error('buildAgentContext:', e); }
   try { buildAgentSuggestions(); } catch(e) { console.error('buildAgentSuggestions:', e); }
 
@@ -10316,7 +10335,7 @@ function initAgent() {
   const cached = (() => { try { const c = JSON.parse(localStorage.getItem(BRIEF_KEY)||'null'); return c && Date.now()-c.ts < 6*3600000 ? c : null; } catch { return null; } })();
   if (cached) {
     renderDailyBrief(cached.items);
-  } else {
+  } else if (!auto) {
     generateDailyBrief();
   }
 

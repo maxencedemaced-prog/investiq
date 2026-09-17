@@ -4,11 +4,25 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:5500',
 ];
 
+// Rate limit simple en mémoire par IP — évite que ce endpoint serve de proxy de scraping vers Yahoo
+const hits = new Map();
+function rateLimited(key, max = 40, windowMs = 60_000) {
+  const now = Date.now();
+  const entry = hits.get(key) || { count: 0, start: now };
+  if (now - entry.start > windowMs) { entry.count = 0; entry.start = now; }
+  entry.count++;
+  hits.set(key, entry);
+  return entry.count > max;
+}
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || '';
   if (ALLOWED_ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
+  if (rateLimited(ip)) return res.status(429).json({ error: 'Trop de requêtes.', results: [] });
 
   const { q } = req.query;
   if (!q || q.length < 2) return res.status(400).json({ results: [] });

@@ -18,6 +18,12 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY
 );
 
+const ALLOWED_ORIGINS = [
+  'https://investiq-kappa.vercel.app',
+  'http://localhost:3000',
+  'http://127.0.0.1:5500',
+];
+
 const fmtK = (n) => n >= 1000 ? (n/1000).toFixed(1).replace('.', ',') + ' k€' : Math.round(n) + ' €';
 
 // Prix live Finnhub (pour le mode alerts)
@@ -37,18 +43,20 @@ async function sendPush(subscriptionRaw, payload) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || '';
+  if (ALLOWED_ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Auth requise dans tous les cas (y compris le mode test) — ce endpoint peut
+  // déclencher l'envoi d'une notification push à n'importe quel user_id, il ne
+  // doit jamais être atteignable sans le secret du cron.
+  const authHeader = req.headers['authorization'];
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   const isTest = req.query && req.query.test === '1';
   const mode = (req.query && req.query.mode) || 'briefing';
-
-  if (!isTest) {
-    const authHeader = req.headers['authorization'];
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-  }
 
   // ── MODE TEST ──
   if (isTest) {
@@ -73,7 +81,11 @@ module.exports = async function handler(req, res) {
 
   const { data: subs, error } = await supabase
     .from('push_subscriptions').select('user_id, subscription');
-  if (error || !subs?.length) return res.status(200).json({ sent: 0, error: error?.message });
+  if (error) {
+    console.error('[api/push-send] lecture push_subscriptions:', error.message);
+    return res.status(500).json({ sent: 0, error: error.message });
+  }
+  if (!subs?.length) return res.status(200).json({ sent: 0 });
 
   let sent = 0, failed = 0;
 
@@ -103,6 +115,7 @@ module.exports = async function handler(req, res) {
       } catch (err) {
         failed++;
         if (err.statusCode === 410) await supabase.from('push_subscriptions').delete().eq('user_id', sub.user_id);
+        else console.error('[api/push-send] briefing échoué pour', sub.user_id, ':', err.message);
       }
     }
     return res.status(200).json({ mode, sent, failed });
@@ -149,6 +162,7 @@ module.exports = async function handler(req, res) {
       } catch (err) {
         failed++;
         if (err.statusCode === 410) await supabase.from('push_subscriptions').delete().eq('user_id', sub.user_id);
+        else console.error('[api/push-send] alerte échouée pour', sub.user_id, ':', err.message);
       }
     }
     return res.status(200).json({ mode, sent, failed });
