@@ -29,10 +29,15 @@ export default async function handler(req, res) {
 
     const url = `https://financialmodelingprep.com/stable/economic-calendar?from=${from}&to=${to}&apikey=${apiKey}`;
     const resp = await fetch(url);
-    const data = await resp.json();
+    const raw = await resp.text();
+    let data;
+    try { data = JSON.parse(raw); } catch {
+      console.error('[api/agenda] FMP non-JSON:', resp.status, raw.slice(0, 300));
+      throw new Error('FMP indisponible (réponse non-JSON)');
+    }
 
     if (!resp.ok || !Array.isArray(data)) {
-      console.error('[api/agenda] FMP error:', resp.status, JSON.stringify(data).slice(0, 200));
+      console.error('[api/agenda] FMP error:', resp.status, JSON.stringify(data).slice(0, 300));
       throw new Error('FMP indisponible');
     }
 
