@@ -3623,13 +3623,13 @@ async function loadEntrepriseNews(companies, targetId = 'ent-news-list') {
   try {
     // Génère un résumé du contexte connu sur ces entreprises via l'IA
     const companiesList = capped.map(c=>c.name).join(', ');
-    const prompt = `Analyste financier. Résume ce que tu sais de fiable sur ces entreprises : ${companiesList}.
-Réponds UNIQUEMENT en JSON valide, sans markdown :
+    const prompt = `Analyste financier. Pour CHACUNE de ces entreprises, réponds avec une entrée : ${companiesList}.
+Réponds UNIQUEMENT en JSON valide, sans markdown, avec une entrée PAR entreprise listée (ne saute aucune entreprise) :
 [{"ticker":"AAPL","entreprise":"Apple","titre":"Titre court","resume":"2 phrases max","impact":"positif","categorie":"Résultats"}]
-impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/Réglementation.
-Ne réponds que pour les entreprises sur lesquelles tu as une information fiable ; ignore les autres plutôt que d'inventer.`;
+impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/Réglementation/Profil.
+Si tu n'as pas d'actualité récente et datée fiable sur une entreprise, utilise categorie "Profil" et fais un résumé général et intemporel (activité, position sur son marché) — mais n'invente jamais un évènement précis, un chiffre ou une date récente dont tu n'es pas sûr.`;
 
-    const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne réponds qu'à partir de ce que tu sais réellement — jamais en inventant des faits ou des évènements récents que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`, 4096, HAIKU_MODEL);
+    const raw = await callClaude(prompt, `Tu es analyste financier. Tu réponds pour chaque entreprise demandée. Tu peux donner un profil général quand tu n'as pas d'actualité datée fiable, mais tu n'inventes jamais un fait précis, un chiffre ou une date récente que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`, 4096, HAIKU_MODEL);
     const KNOWN_CALLCLAUDE_FAILURES = ['Erreur de connexion.', 'Aucune réponse.'];
     if (KNOWN_CALLCLAUDE_FAILURES.includes(raw) || (raw || '').startsWith('🔒')) {
       throw new Error('callClaude a échoué : ' + raw);
