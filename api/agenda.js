@@ -22,7 +22,12 @@ export default async function handler(req, res) {
     const resp = await fetch(url);
     const data = await resp.json();
 
-    const events = (data.economicCalendar || []).map(e => ({
+    if (!resp.ok || !Array.isArray(data.economicCalendar)) {
+      console.error('[api/agenda] Finnhub error:', resp.status, data?.error || JSON.stringify(data).slice(0, 200));
+      throw new Error('Finnhub indisponible');
+    }
+
+    const events = data.economicCalendar.map(e => ({
       id: `${e.event}-${e.time}`,
       date: e.time?.split(' ')[0] || e.time,
       heure: e.time?.split(' ')[1]?.slice(0,5) || '00:00',
