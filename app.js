@@ -6283,7 +6283,7 @@ async function renderHome() {
   const tpnl = tv - ti;
   const tpct = ti ? tpnl/ti*100 : 0;
   const avgChange = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
-  const {score} = calcScore();
+  const {score, items: scoreItems} = calcScore();
   const scoreColor = score>=7?'#1a7f5a':score>=5?'#f59e0b':'#cc2f26';
   const targetVal = objChartTarget > 1000 ? objChartTarget : (objective.target || 0);
   const pctObj = targetVal > 0 ? Math.min(tv/targetVal*100, 100) : 0;
@@ -6376,8 +6376,58 @@ async function renderHome() {
       </div>
     </div>`;
 
-  // ── MÉTRIQUES SECONDAIRES ──
+  // ── STRUCTURE EN 3 NIVEAUX ──
+  // 1) Hero (déjà injecté ci-dessus) + actions rapides : ce qu'un débutant doit voir/faire.
+  // 2) Bande compacte santé + insight : signal technique glanceable, sans noyer.
+  // 3) "Voir plus d'analyses" : détail replié pour qui veut creuser (répartition...).
   let html = '';
+
+  // Actions rapides — remontées juste après le hero : "que faire maintenant ?"
+  const actions = [
+    { icon:'＋', label:'Ajouter une position', sub:'Ajoutez une action, ETF...', page:'ajouter', color:'#6366f1' },
+    { icon:'🤔', label:'Aide à la décision', sub:'Analyse et recommandations', page:'decision', color:'#f59e0b' },
+    { icon:'🤖', label:'Agent IA', sub:'Discutez avec votre assistant', page:'ai', color:'#16a34a' },
+  ];
+  html += `
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+    ${actions.map(a => `
+    <div onclick="nav('${a.page}')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:14px;padding:14px;transition:all 0.2s" class="home-hover-card">
+      <div style="font-size:22px;margin-bottom:8px">${a.icon}</div>
+      <div style="font-size:13px;font-weight:700;color:#09090b;margin-bottom:3px;letter-spacing:-0.02em">${a.label}</div>
+      <div style="font-size:11px;color:var(--color-text-tertiary)">${a.sub}</div>
+    </div>`).join('')}
+  </div>`;
+
+  // Bande compacte : score + mini-barres techniques + 1 ligne d'insight IA.
+  // Fusionne les anciennes cartes "Santé" et "Insight IA" en un seul bloc resserré :
+  // montre qu'il y a une vraie analyse derrière (crédibilité) sans occuper tout l'écran.
+  const shortLabel = { 'Diversification':'Diversif.', 'Concentration max':'Concentr.', 'Part ETF':'ETF', 'Performance':'Perf.' };
+  html += `
+  <div onclick="nav('sante')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:14px 16px;margin-bottom:10px;transition:all 0.2s" class="home-hover-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <div style="font-size:22px;font-weight:900;color:${scoreColor};letter-spacing:-0.04em;line-height:1">${score.toFixed(1)}<span style="font-size:12px;color:var(--color-text-tertiary)">/10</span></div>
+        <div style="font-size:12px;font-weight:700;color:${scoreColor}">${score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️'}</div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--color-text-secondary)">Santé détaillée →</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+      ${scoreItems.map(it => `
+      <div>
+        <div style="font-size:8px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortLabel[it.label]||it.label}</div>
+        <div style="background:#f0f0f2;border-radius:99px;height:4px;overflow:hidden">
+          <div style="height:100%;width:${it.score*10}%;border-radius:99px;background:${it.score>=7?'#16a34a':it.score>=5?'#f59e0b':'#dc2626'}"></div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--color-border)">
+      <div style="width:6px;height:6px;background:#16a34a;border-radius:50%;flex-shrink:0;animation:pulse-dot 2s infinite"></div>
+      <div id="home-ai-insight" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;flex:1">
+        ${positions.length > 0 ? `${avgChange>=0?'Portef. en hausse de':'Portef. en baisse de'} <strong style="color:${chgColor}">${avgChange>=0?'+':''}${avgChange.toFixed(1)}%</strong> aujourd'hui.` : 'Ajoute des positions pour recevoir des insights personnalisés.'}
+      </div>
+      <div onclick="event.stopPropagation();nav('ai')" style="font-size:11px;font-weight:600;color:#16a34a;flex-shrink:0;cursor:pointer">Agent IA →</div>
+    </div>
+  </div>`;
 
   // Meilleure + pire performance avec sparkline
   if (best && worst && best !== worst) {
@@ -6400,39 +6450,11 @@ async function renderHome() {
     </div>`;
   }
 
-  // Santé + Insight IA côte à côte
+  // Répartition par plateforme — repliée derrière "Voir plus d'analyses" (niveau 3)
   const platforms = {};
   positions.forEach(p=>{ const v=p.qty*p.price; platforms[p.platform||'Autre']=(platforms[p.platform||'Autre']||0)+v; });
   const platformEntries = Object.entries(platforms);
 
-  html += `
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-    <!-- Santé -->
-    <div onclick="nav('sante')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;transition:all 0.2s" onmouseover="this.style.borderColor='${scoreColor}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.transform='translateY(0)'">
-      <div>
-        <div style="font-size:9px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Santé du portefeuille</div>
-        <div style="font-size:32px;font-weight:900;color:${scoreColor};letter-spacing:-0.05em;line-height:1">${score.toFixed(1)}<span style="font-size:16px;color:var(--color-text-tertiary)">/10</span></div>
-        <div style="font-size:13px;font-weight:600;color:${scoreColor};margin-top:4px">${score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️'}</div>
-      </div>
-      <div style="width:56px;height:56px;border-radius:50%;background:${score>=7?'#f0fdf4':score>=5?'#fffbeb':'#fef2f2'};border:3px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">
-        ${score>=7?'💚':score>=5?'🟡':'🔴'}
-      </div>
-    </div>
-    <!-- Insight IA -->
-    <div onclick="nav('ai')" style="cursor:pointer;background:linear-gradient(135deg,#0d0d12,#141420);border:1px solid rgba(22,163,74,0.2);border-radius:16px;padding:16px;position:relative;overflow:hidden;transition:all 0.2s" class="home-hover-card">
-      <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(22,163,74,0.2),transparent);pointer-events:none"></div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
-        <div style="width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse-dot 2s infinite"></div>
-        <div style="font-size:9px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:0.08em">✦ Insight IA</div>
-      </div>
-      <div id="home-ai-insight" style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.55;font-weight:400">
-        ${positions.length > 0 ? `Ton portef. ${avgChange>=0?'progresse de':'recule de'} <strong style="color:${chgColor}">${avgChange>=0?'+':''}${avgChange.toFixed(1)}%</strong> aujourd'hui. ${score>=7?'Score santé excellent.':'Analyse disponible.'}` : 'Ajoute des positions pour recevoir des insights personnalisés.'}
-      </div>
-      <div style="margin-top:10px;font-size:12px;font-weight:600;color:#4ade80">Voir l'analyse complète →</div>
-    </div>
-  </div>`;
-
-  // Répartition par plateforme
   if (platformEntries.length > 0) {
     const colors = ['#16a34a','#6366f1','#f59e0b','#ec4899','#06b6d4'];
     // Donut SVG
@@ -6459,45 +6481,34 @@ async function renderHome() {
     }
 
     html += `
-    <div style="background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em">Répartition par plateforme</div>
-        <button onclick="nav('portfolio')" style="font-size:11px;font-weight:600;color:var(--color-text-secondary);background:none;border:none;cursor:pointer">Détails →</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:20px">
-        ${donutSVG(platformEntries, tv)}
-        <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-          ${platformEntries.map(([name,val],i) => `
-          <div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px">
-              <span style="color:#09090b">${name}</span>
-              <span style="color:#09090b">${fmtK(val)} <span style="color:var(--color-text-tertiary)">${(val/tv*100).toFixed(1)}%</span></span>
+    <div style="margin-bottom:4px">
+      <button onclick="const el=document.getElementById('home-more');const open=el.style.display==='block';el.style.display=open?'none':'block';this.querySelector('span').textContent=open?'Voir plus d\\'analyses  ▾':'Voir moins  ▴'" style="width:100%;padding:10px;background:none;border:1px dashed var(--color-border);border-radius:12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer"><span>Voir plus d'analyses  ▾</span></button>
+      <div id="home-more" style="display:none;margin-top:10px">
+        <div style="background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em">Répartition par plateforme</div>
+            <button onclick="nav('portfolio')" style="font-size:11px;font-weight:600;color:var(--color-text-secondary);background:none;border:none;cursor:pointer">Détails →</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:20px">
+            ${donutSVG(platformEntries, tv)}
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+              ${platformEntries.map(([name,val],i) => `
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px">
+                  <span style="color:#09090b">${name}</span>
+                  <span style="color:#09090b">${fmtK(val)} <span style="color:var(--color-text-tertiary)">${(val/tv*100).toFixed(1)}%</span></span>
+                </div>
+                <div style="background:#f0f0f2;border-radius:99px;height:4px;overflow:hidden">
+                  <div style="height:100%;background:${colors[i%colors.length]};width:${(val/tv*100)}%;border-radius:99px;transition:width 1s cubic-bezier(0.16,1,0.3,1)"></div>
+                </div>
+              </div>`).join('')}
             </div>
-            <div style="background:#f0f0f2;border-radius:99px;height:4px;overflow:hidden">
-              <div style="height:100%;background:${colors[i%colors.length]};width:${(val/tv*100)}%;border-radius:99px;transition:width 1s cubic-bezier(0.16,1,0.3,1)"></div>
-            </div>
-          </div>`).join('')}
+          </div>
+          <div style="margin-top:12px;font-size:11px;color:var(--color-text-tertiary)">${platformEntries.length} plateforme${platformEntries.length>1?'s':''} connectée${platformEntries.length>1?'s':''}</div>
         </div>
       </div>
-      <div style="margin-top:12px;font-size:11px;color:var(--color-text-tertiary)">${platformEntries.length} plateforme${platformEntries.length>1?'s':''} connectée${platformEntries.length>1?'s':''}</div>
     </div>`;
   }
-
-  // Actions rapides
-  const actions = [
-    { icon:'＋', label:'Ajouter une position', sub:'Ajoutez une action, ETF...', page:'ajouter', color:'#6366f1' },
-    { icon:'🤔', label:'Aide à la décision', sub:'Analyse et recommandations', page:'decision', color:'#f59e0b' },
-    { icon:'🤖', label:'Agent IA', sub:'Discutez avec votre assistant', page:'ai', color:'#16a34a' },
-  ];
-  html += `
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px">
-    ${actions.map(a => `
-    <div onclick="nav('${a.page}')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:14px;padding:14px;transition:all 0.2s" class="home-hover-card">
-      <div style="font-size:22px;margin-bottom:8px">${a.icon}</div>
-      <div style="font-size:13px;font-weight:700;color:#09090b;margin-bottom:3px;letter-spacing:-0.02em">${a.label}</div>
-      <div style="font-size:11px;color:var(--color-text-tertiary)">${a.sub}</div>
-    </div>`).join('')}
-  </div>`;
 
   document.getElementById('home-score').innerHTML = html;
   document.getElementById('home-alerts').innerHTML = '';
