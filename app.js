@@ -6810,7 +6810,7 @@ function renderPortfolio(auto=false) {
           </div>`).join('')}
         </div>
       </div>
-      <button onclick="nav('sante')" style="width:100%;margin-top:14px;padding:8px;background:none;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor=textCol" onmouseout="this.style.borderColor=borderCol">Voir la répartition détaillée →</button>
+      <button onclick="nav('sante')" style="width:100%;margin-top:14px;padding:8px;background:none;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='${textCol}'" onmouseout="this.style.borderColor='${borderCol}'">Voir la répartition détaillée →</button>
     </div>
     <!-- Insight IA -->
     <div style="background:${isDark?'linear-gradient(135deg,#080c10,#0d1520)':'linear-gradient(135deg,#f0fdf4,#ecfdf5)'};border:1px solid ${isDark?'rgba(63,185,80,0.15)':'rgba(22,163,74,0.2)'};border-radius:16px;padding:20px;position:relative;overflow:hidden">
