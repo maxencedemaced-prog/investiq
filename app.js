@@ -3779,6 +3779,7 @@ async function renderSignaux() {
   const list = document.getElementById('news-list');
   if (!list) return;
   if (!currentUser) { list.innerHTML = aiLockedStateHTML("Connecte-toi pour débloquer les signaux IA sur tes positions et les opportunités du marché."); return; }
+  if (!isPremiumUser()) { list.innerHTML = premiumLockedStateHTML('Signaux IA', "Signal acheter/garder/vendre sur tes positions + les meilleures opportunités du marché détectées chaque jour par l'IA."); return; }
 
   // Constants
   const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#8e8e93' };
@@ -8657,6 +8658,17 @@ function aiLockedStateHTML(text) {
   </div>`;
 }
 
+// Même principe pour un contenu réservé à Premium (utilisateur connecté mais pas abonné) —
+// bandeau inline, pas de popup intrusive, cohérent avec aiLockedStateHTML ci-dessus.
+function premiumLockedStateHTML(featureName, text) {
+  return `<div style="text-align:center;padding:40px 20px;color:#8e8e93">
+    <div style="font-size:32px;margin-bottom:10px">✨</div>
+    <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">${featureName} — Fonctionnalité Premium</div>
+    <div style="font-size:13px;margin-bottom:16px">${text}</div>
+    <button onclick="startCheckout(this)" style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">Passer à Premium — ${PREMIUM_PRICE}/mois</button>
+  </div>`;
+}
+
 async function callClaude(prompt,sys,maxTokens,model){
   const system=sys||('Tu es le copilote financier IA d\'InvestIQ, pour investisseurs particuliers francophones.\n'+AI_PERSONA);
   try{
@@ -9383,7 +9395,7 @@ function renderSubscriptionCard() {
         </div>
         <div style="font-size:16px;font-weight:800;margin-bottom:12px;letter-spacing:-0.02em">${lapsed ? 'Reprends Premium' : 'Passe à Premium'}</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-          ${['Analyses IA illimitées','Sélection multiple et actions groupées','Bilan patrimonial complet','Alertes et briefing personnalisés']
+          ${['Signaux IA sur tes positions et le marché','Analyses IA illimitées','Sélection multiple et actions groupées','Bilan patrimonial complet']
             .map(b => `<div style="display:flex;gap:9px;font-size:12.5px;color:rgba(255,255,255,0.75)"><span style="color:#4ade80;font-weight:800">✓</span>${b}</div>`).join('')}
         </div>
         <button onclick="startCheckout(this,'annual')" style="width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;position:relative">
