@@ -11133,7 +11133,7 @@ function renderAgentSample() {
   </div>`;
 
   AGENT_SAMPLE_IDS.forEach(id => document.getElementById(id)?.classList.add('agent-sample'));
-  const banner = document.getElementById('agent-verdict');
+  const banner = document.getElementById('agent-sample-banner');
   if (banner) banner.innerHTML = `
   <div data-agent-sample style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:14px;padding:12px 16px;margin-bottom:12px">
     <div>
@@ -11154,7 +11154,7 @@ function renderAgentDashboard() {
     const sa = document.getElementById('agent-smart-alerts');
     if (sa && sa.classList.contains('agent-sample')) sa.innerHTML = '';
     AGENT_SAMPLE_IDS.forEach(id => document.getElementById(id)?.classList.remove('agent-sample'));
-    if (document.querySelector('#agent-verdict [data-agent-sample]')) document.getElementById('agent-verdict').innerHTML = '';
+    const sb = document.getElementById('agent-sample-banner'); if (sb) sb.innerHTML = '';
   }
   const name = isDemo ? 'Toi' : (currentUser?.email||'').split('@')[0];
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
