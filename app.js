@@ -2360,8 +2360,9 @@ function obKey() { return OB_KEY + (currentUser?.id ? '_' + currentUser.id : '')
 function showOnboarding(force) {
   if (!force) {
     if (localStorage.getItem(obKey())) return;
-    // Compte existant qui a déjà des données (antérieur à ce changement) : pas de questionnaire
-    if (!isDemo && (positions.length > 0 || (typeof allObjectives !== 'undefined' && allObjectives.length > 0))) return;
+    // Compte existant qui a déjà des positions (antérieur à ce changement) : pas de questionnaire.
+    // On ne regarde PAS les objectifs : la base crée un objectif par défaut à l'inscription.
+    if (!isDemo && positions.length > 0) return;
   }
   obGoals = { long: false, court: false, retraite: false, projet: false };
   obNext(1);
