@@ -250,6 +250,8 @@ function showValidatedChart() {
   const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
   const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
   const color = active ? active.color : '#1a7f5a';
+  // 1er mois = mois de validation de l'objectif (sans date connue, on ne réordonne pas)
+  const objFirstMonth = !!(active && active.validated_at && String(active.validated_at).slice(0,7) === currentMonthId());
 
   setTimeout(() => {
     if (allObjectives.length > 0) {
@@ -271,16 +273,22 @@ function showValidatedChart() {
         </div>
       </div>
 
-      <!-- 📅 PLAN DU MOIS -->
-      <div id="obj-monthly-plan"></div>
+      <!-- Le 1er mois (mois de création de l'objectif), l'investissement de départ passe en
+           premier ; ensuite c'est le plan du mois qui est mis en avant. -->
+      <div style="display:flex;flex-direction:column">
+        <!-- 📅 PLAN DU MOIS -->
+        <div id="obj-monthly-plan" style="order:${objFirstMonth ? 2 : 1}"></div>
 
-      <!-- Répartition de référence -->
-      <div style="font-size:12px;font-weight:700;color:var(--color-text,#1c1c1e);margin-bottom:4px">🎯 Ta répartition cible (vue d'ensemble)</div>
-      <div style="font-size:11px;color:var(--color-text-secondary,#71717a);margin-bottom:10px">${objStockPct}% actions · ${100-objStockPct}% ETF — la structure visée sur le long terme. Le plan du mois ci-dessus te dit quoi acheter maintenant.</div>
-      <div id="obj-etf-plan" style="margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:8px;padding:14px;color:#8e8e93;background:#f9f9f9;border-radius:12px">
-          <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          <span style="font-size:13px;font-weight:500">Génération du plan personnalisé...</span>
+        <div style="order:${objFirstMonth ? 1 : 2}">
+          <!-- Répartition de référence -->
+          <div style="font-size:12px;font-weight:700;color:var(--color-text,#1c1c1e);margin-bottom:4px">${objFirstMonth && objChartCapital > 0 ? `🚀 Ton investissement de départ (${fmtK(objChartCapital)})` : '🎯 Ta répartition cible (vue d\'ensemble)'}</div>
+          <div style="font-size:11px;color:var(--color-text-secondary,#71717a);margin-bottom:10px">${objStockPct}% actions · ${100-objStockPct}% ETF — ${objFirstMonth ? `voici comment répartir ton capital de départ. Ton plan du mois (dessous) prend le relais pour tes versements de ${objChartMonthly}€/mois.` : 'la structure visée sur le long terme. Le plan du mois ci-dessus te dit quoi acheter maintenant.'}</div>
+          <div id="obj-etf-plan" style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:8px;padding:14px;color:#8e8e93;background:#f9f9f9;border-radius:12px">
+              <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              <span style="font-size:13px;font-weight:500">Génération du plan personnalisé...</span>
+            </div>
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:8px">
@@ -411,6 +419,7 @@ async function generateMonthlyPlan(force = false) {
   const budget = objChartMonthly || 200;
   const cached = getCachedMonthlyPlan();
   if (cached && !force) { renderMonthlyPlan(cached, false); return; }
+  const prevPlan = force ? cached : null; // sert à détecter un changement de plan en cours de mois
   if (_monthlyPlanBusy) return; // génération déjà en cours
   // Cooldown 5 min après un échec (évite les rafales d'appels API)
   if (!force) {
@@ -474,6 +483,27 @@ La somme des montants doit faire exactement ${budget}.`;
     });
 
     const plan = { month: currentMonthId(), objId: activeObjId, stockPct: objStockPct, budget, data, ts: Date.now() };
+
+    // Le plan reste figé tout le mois. S'il est régénéré et diffère du précédent, on prévient :
+    // lignes retirées / ajoutées + raison, en bandeau sur le plan et dans les notifications.
+    if (prevPlan && prevPlan.data?.lignes) {
+      const prevT = new Set(prevPlan.data.lignes.map(l => l.ticker));
+      const newT  = new Set(data.lignes.map(l => l.ticker));
+      const removed = prevPlan.data.lignes.filter(l => !newT.has(l.ticker)).map(l => ({ ticker:l.ticker, name:l.name }));
+      const added   = data.lignes.filter(l => !prevT.has(l.ticker)).map(l => ({ ticker:l.ticker, name:l.name, raison:l.raison }));
+      if (removed.length || added.length) {
+        plan.changes = { removed, added, ts: Date.now() };
+        const txt = [
+          removed.length ? `Retire : ${removed.map(r => displayName(r.name||r.ticker)).join(', ')}` : '',
+          added.length ? `Ajoute : ${added.map(a => displayName(a.name||a.ticker) + (a.raison ? ' (' + a.raison + ')' : '')).join(', ')}` : ''
+        ].filter(Boolean).join(' · ');
+        try {
+          notifications.unshift({ titre:'📅 Ton plan du mois a changé', texte: txt, action:'Voir Objectif', impact:'high', heure:"À l'instant", type:'plan' });
+          renderNotifications();
+          document.getElementById('notif-dot')?.classList.add('show');
+        } catch {}
+      }
+    }
     try { localStorage.setItem(MONTHLY_PLAN_KEY, JSON.stringify(plan)); } catch {}
 
     // Enregistrer dans le tracking (chaque ligne = un "renforcer" évalué à J+7)
@@ -516,6 +546,16 @@ function renderMonthlyPlan(plan, isNew) {
       </div>
       <button onclick="generateMonthlyPlan(true)" title="Régénérer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button>
     </div>
+
+    ${plan.changes ? `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:10px;margin-bottom:12px;position:relative">
+      <span style="font-size:14px">⚠️</span>
+      <div style="font-size:11.5px;color:rgba(255,255,255,0.85);line-height:1.55">
+        <strong style="color:#fbbf24">Plan mis à jour</strong> par rapport à celui du début de mois.
+        ${plan.changes.removed.length ? `<br>Retire : ${plan.changes.removed.map(r => `<strong>${displayName(r.name||r.ticker)}</strong>`).join(', ')}` : ''}
+        ${plan.changes.added.length ? `<br>À la place : ${plan.changes.added.map(a => `<strong>${displayName(a.name||a.ticker)}</strong>${a.raison ? ' — ' + a.raison : ''}`).join(' · ')}` : ''}
+      </div>
+    </div>` : ''}
 
     <div style="font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5;margin-bottom:14px;position:relative">${d.synthese||''}</div>
 
@@ -1087,6 +1127,11 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
     }
   });
 
+  renderObjChartLegend([
+    { label: 'Valeur projetée (avec intérêts)', color: '#fff', datasetIndexes: [0] },
+    { label: 'Argent investi (tes versements)', color: 'rgba(255,255,255,0.6)', dashed: true, datasetIndexes: [1] },
+  ]);
+
   // Init slider at max
   updateObjSlider(100);
 
@@ -1115,6 +1160,29 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
       badge.className = 'obj-track-badge off-track';
     }
   }
+}
+
+// Légende cliquable du graphique objectif : chaque entrée montre/masque sa courbe.
+// items = [{label, color, dashed, datasetIndexes:[…], hiddenByDefault}]
+function renderObjChartLegend(items) {
+  const el = document.getElementById('obj-chart-legend');
+  if (!el) return;
+  el.innerHTML = items.map((it, i) => {
+    const line = it.dashed
+      ? `<span style="display:inline-block;width:18px;height:0;border-top:2px dashed ${it.color}"></span>`
+      : `<span style="display:inline-block;width:18px;height:3px;border-radius:2px;background:${it.color}"></span>`;
+    return `<button type="button" data-leg="${i}" style="display:inline-flex;align-items:center;gap:7px;background:none;border:none;padding:2px 0;font:inherit;color:inherit;cursor:pointer;opacity:${it.hiddenByDefault?0.45:1}">${line}${it.label}</button>`;
+  }).join('');
+  el.querySelectorAll('button[data-leg]').forEach(btn => {
+    btn.onclick = () => {
+      const it = items[+btn.dataset.leg];
+      if (!objChartInstance) return;
+      const nowVisible = it.datasetIndexes.some(ix => objChartInstance.isDatasetVisible(ix));
+      it.datasetIndexes.forEach(ix => objChartInstance.setDatasetVisibility(ix, !nowVisible));
+      objChartInstance.update();
+      btn.style.opacity = nowVisible ? 0.45 : 1;
+    };
+  });
 }
 
 // ===== MULTI-OBJECTIFS CHART =====
@@ -1208,6 +1276,17 @@ function renderMultiObjChart() {
       interaction: { mode: 'index', intersect: false }
     }
   });
+
+  // Légende du graphique : une entrée par objectif (ligne pleine = valeur projetée)
+  // + un interrupteur "argent investi" pour afficher les lignes pointillées.
+  renderObjChartLegend([
+    ...allObjectives.map((obj, i) => ({
+      label: allObjectives.length > 1 ? `${obj.label} — valeur projetée` : 'Valeur projetée (avec intérêts)',
+      color: obj.color, datasetIndexes: [i * 2]
+    })),
+    { label: 'Argent investi (versements)', color: 'rgba(255,255,255,0.6)', dashed: true,
+      datasetIndexes: allObjectives.map((_, i) => i * 2 + 1), hiddenByDefault: true },
+  ]);
 
   // Légende + gestion des objectifs
   renderObjLegend(tv);
