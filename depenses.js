@@ -26,13 +26,14 @@ const DEP_CATS = {
   shopping:     { label: 'Achats en ligne & shopping', tier: 'nonvital', ic: '🛍️' },
   tabac:        { label: 'Tabac',                    tier: 'nonvital',  ic: '🚬' },
   credit:       { label: 'Crédits & prêts',          tier: 'essentiel', ic: '🏦' },
+  frais:        { label: 'Frais bancaires',          tier: 'confort',   ic: '🏦' },
   voyage:       { label: 'Voyages & hôtels',         tier: 'confort',   ic: '✈️' },
   loisirs:      { label: 'Sorties & loisirs',        tier: 'confort',   ic: '🎟️' },
   autre:        { label: 'Autres dépenses',          tier: 'autre',     ic: '•' },
   epargne:      { label: 'Épargne (virements)',      tier: 'excl',      ic: '🏦' },
   virement:     { label: 'Virements & retraits',     tier: 'excl',      ic: '↔️' },
 };
-const DEP_SUBSCRIPTION_CATS = ['streaming', 'musique', 'apps', 'presse', 'sport', 'jeux_video', 'telecom'];
+const DEP_SUBSCRIPTION_CATS = ['streaming', 'musique', 'apps', 'presse', 'sport', 'jeux_video', 'telecom', 'frais'];
 
 // Règles de reconnaissance (le premier motif qui correspond gagne — du plus précis au plus général)
 const DEP_RULES = [
@@ -40,7 +41,7 @@ const DEP_RULES = [
   [/PRET PERSONNEL|PRET ETUDIANT|PRET AUTO|ECHEANCE PRET|REMBOURSEMENT (DE )?PRET|CETELEM|COFIDIS|FRANFINANCE|SOFINCO|CREDIT CONSO|CREDIT AUTO|\bPRET\b/, 'credit'],
   [/LIVRET|EPARGNE|\bPEA\b|\bCTO\b|ASSURANCE VIE|TRADE REPUBLIC|BOURSORAMA INVEST|DEGIRO|SCALABLE|BITPANDA|BINANCE|COINBASE|KRAKEN/, 'epargne'],
   [/CASINO (SHOP|PROXI|VIVAL|SPAR|SUPERMARCHE)|GEANT CASINO|CARREFOUR|LECLERC|AUCHAN|LIDL|ALDI|INTERMARCHE|MONOPRIX|FRANPRIX|PICARD|BIOCOOP|NATURALIA|SUPER U|HYPER U|U EXPRESS|COURSES U|DIA FRANCE|COCCIMARKET|\bMARCHE\b/, 'alimentation'],
-  [/UBER ?EATS|DELIVEROO|JUST ?EAT|DOMINO/, 'livraison'],
+  [/UBER[ *.]*EATS|DELIVEROO|JUST[ *]*EAT|DOMINO/, 'livraison'],
   [/FDJ|FRANCAISE DES JEUX|PARIONS|WINAMAX|BETCLIC|UNIBET|\bPMU\b|ZEBET|POKERSTARS|PARTYPOKER|BWIN|BETWAY|VBET|GENYBET|BETSSON|NETBET|TIERCE|EUROMILLIONS|\bLOTO\b|BARRIERE|PARTOUCHE|CASINO DE|CASINO JEUX/, 'jeux_argent'],
   [/AMAZON PRIME|PRIME VIDEO|AMZN PRIME|NETFLIX|DISNEY|CANAL ?\+|CANAL PLUS|MYCANAL|APPLE TV|PARAMOUNT|\bOCS\b|CRUNCHYROLL|HBO|\bMAX\b|SALTO|YOUTUBE PREMIUM|GOOGLE YOUTUBE|WAKANIM|ADN ANIME|MOLOTOV|RAKUTEN TV/, 'streaming'],
   [/SPOTIFY|DEEZER|APPLE MUSIC|TIDAL|YOUTUBE MUSIC|AMAZON MUSIC|QOBUZ|NAPSTER/, 'musique'],
@@ -54,11 +55,12 @@ const DEP_RULES = [
   [/NAVIGO|RATP|SNCF|OUIGO|TRAINLINE|BLABLACAR|AUTOROUTE|VINCI AUTOROUTE|SANEF|APRR|TOTAL ACCESS|\bESSO\b|\bSHELL\b|\bBP\b|STATION|CARBURANT|PEAGE|VELIB|\bLIME\b|\bDOTT\b|\bTIER\b|\bBOLT\b|UBER|\bG7\b|\bTAXI|PARKING|INDIGO|EASYPARK|FLOWBIRD/, 'transport'],
   [/PHARMACIE|DOCTOLIB|MEDECIN|DENTISTE|OPTIQUE|OPTICIEN|LABORATOIRE|KINE|HOPITAL|CLINIQUE|AMELI|CPAM|LUNETTES/, 'sante'],
   [/DGFIP|IMPOT|TRESOR PUBLIC|DIRECTION GENERALE DES FINANCES|TAXE|AMENDE|ANTAI/, 'impots'],
-  [/MCDO|MC DONALD|MCDONALD|BURGER KING|\bKFC\b|\bQUICK\b|STARBUCKS|SUBWAY|\bPAUL\b|BRIOCHE DOREE|FIVE GUYS|O TACOS|RESTAURANT|RESTO|BRASSERIE|CAFE |BOULANGERIE|PIZZ|SUSHI|KEBAB|BAR |\bPUB\b|TAVERNE|BISTRO|TRATTORIA|CREPERIE|GRILL|SNACK|BURGER|TACOS|\bWOK\b|RAMEN|THAI|BUBBLE|GLACIER|PATISSERIE|TRAITEUR|CANTINE|CROUS|FOODTRUCK|COMPTOIR|AUBERGE|ROTISSERIE|COFFEE|SALON DE THE|LOUNGE|CABARET/, 'restauration'],
+  [/MCDO|MC DONALD|MCDONALD|BURGER KING|\bKFC\b|\bQUICK\b|STARBUCKS|SUBWAY|\bPAUL\b|BRIOCHE DOREE|FIVE GUYS|O TACOS|RESTAURANT|RESTO|BRASSERIE|CAFE |BOULANGERIE|PIZZ|SUSHI|KEBAB|BAR |\bPUB\b|TAVERNE|BISTRO|TRATTORIA|CREPERIE|GRILL|SNACK|BURGER|TACOS|\bWOK\b|RAMEN|THAI|BUBBLE|GLACIER|PATISSERIE|TRAITEUR|CANTINE|CROUS|SERVICEDISTR|DISTRIBUTEUR AUTO|VENDING|FOODTRUCK|COMPTOIR|AUBERGE|ROTISSERIE|COFFEE|SALON DE THE|LOUNGE|CABARET/, 'restauration'],
   [/AIRBNB|BOOKING|RYANAIR|EASYJET|AIR FRANCE|\bHOTEL\b|EXPEDIA|VOLOTEA|TRANSAVIA|LUFTHANSA|VUELING|CAMPING|GITES? DE FRANCE|ABRITEL|HOSTEL/, 'voyage'],
   [/CINEMA|\bUGC\b|PATHE|GAUMONT|\bMK2\b|BOWLING|LASER GAME|THEATRE|CONCERT|TICKETMASTER|BILLETTERIE|KARAOKE|ESCAPE GAME|MUSEE|PARC (ASTERIX|DISNEY)|FUTUROSCOPE|DISCOTHEQUE|NIGHT CLUB|BILLARD/, 'loisirs'],
   [/AMAZON|AMZN|ZALANDO|SHEIN|TEMU|ALIEXPRESS|VINTED|CDISCOUNT|FNAC|DARTY|BOULANGER|ASOS|H ?& ?M\b|ZARA|KIABI|IKEA|LEROY MERLIN|CASTORAMA|WISH|VEEPEE|BACK ?MARKET|EBAY/, 'shopping'],
   [/TABAC|BURALISTE|CIGARETTE|VAPE|E-CIG/, 'tabac'],
+  [/COTISATION MENSUELLE|COTISATION CARTE|COTIS CARTE|FRAIS (DE )?(TENUE|COMPTE|BANC)|AGIOS|COMMISSION/, 'frais'],
   [/^(VIR|VIREMENT)\b|RETRAIT|\bDAB\b|CHEQUE|\bCHQ\b|REMISE/, 'virement'],
 ];
 
@@ -128,7 +130,7 @@ function depMatch(rawNorm) {
 }
 function depCategorize(rawNorm) { return depMatch(rawNorm)[0]; }
 // Types d'éléments qu'on arrête ou garde (abonnements) — les autres se diminuent avec un curseur
-const DEP_BINARY_CATS = ['streaming', 'musique', 'apps', 'presse', 'jeux_video', 'sport', 'telecom'];
+const DEP_BINARY_CATS = ['streaming', 'musique', 'apps', 'presse', 'jeux_video', 'sport', 'telecom', 'frais'];
 const depIsBinary = i => DEP_BINARY_CATS.includes(i.cat) || i.sub === true;
 
 // ── Lecture du CSV ──
@@ -382,7 +384,7 @@ function depParsePdfLines(lines) {
   const yMatch = head.match(/\b(20\d{2})\b/);
   const defYear = yMatch ? +yMatch[1] : new Date().getFullYear();
   let cols = null;                 // positions des colonnes Débit / Crédit / Solde / Montant
-  const expenses = []; let guessed = 0, last = null;
+  const expenses = []; let guessed = 0, last = null, stated = null;
   const center = it => it.x + it.w / 2;
   lines.forEach(l => {
     const up = depNormalize(l.text);
@@ -399,6 +401,17 @@ function depParsePdfLines(lines) {
 
     const dm = l.text.match(DEP_DATE_START);
     if (!dm) {
+      // « Total des débits / mouvements » annoncé par le relevé : sert de contrôle de lecture
+      if (stated == null && /TOTAL/.test(up) && /DEBIT|MOUVEMENT|OPERATION/.test(up) && !(/CREDIT/.test(up) && !/DEBIT/.test(up))) {
+        const ns = l.items.filter(i => DEP_AMT.test(i.str));
+        if (ns.length) {
+          let pick = ns[0];
+          if (cols && cols.debit != null) pick = ns.slice().sort((p, q) => Math.abs(center(p) - cols.debit) - Math.abs(center(q) - cols.debit))[0];
+          const v = Math.abs(depNum(pick.str.replace('−', '-')));
+          if (v > 0) stated = v;
+        }
+        return;
+      }
       // suite de libellé sur la ligne suivante (sans date ni montant)
       if (last && !l.items.some(i => DEP_AMT.test(i.str)) && !/TOTAL|SOLDE|PAGE|RELEVE|IBAN|BIC|DATE|NOUVEAU|ANCIEN|CREDIT|DEBIT/.test(up) && last.label.length < 80) last.label += ' ' + l.text;
       return;
@@ -434,7 +447,8 @@ function depParsePdfLines(lines) {
     if (isExpense) { last = { date, label, amount }; expenses.push(last); }
   });
   const warn = expenses.length ? (guessed ? "Lecture d'un PDF : je n'ai pas pu distinguer tous les débits des crédits, vérifie les totaux." : "Lecture d'un PDF : vérifie que les totaux te semblent justes.") : '';
-  return { tx: expenses, warn };
+  const read = Math.round(expenses.reduce((t, e) => t + e.amount, 0) * 100) / 100;
+  return { tx: expenses, warn, check: stated != null ? { stated, read } : null };
 }
 
 // Point d'entrée : reconnaît le format d'après le contenu (et l'extension)
@@ -462,14 +476,15 @@ async function depOnFile(input) {
   say(files.some(f => /\.(pdf|xlsx?|ods)$/i.test(f.name)) ? 'Chargement du lecteur, lecture du fichier…' : 'Lecture du fichier…');
   const useAi = !!document.getElementById('dep-ai-opt')?.checked && !isDemo;
   try {
-    let allTx = [], warn = '';
+    let allTx = [], warn = '', check = null;
     for (const f of files) {
       const r = await depReadAny(f);
       allTx = allTx.concat(r.tx); warn = warn || r.warn;
+      if (files.length === 1 && r.check) check = r.check;
     }
     if (!allTx.length) { say("Je n'ai trouvé aucune dépense dans ce fichier. Il faut au minimum une date, un libellé et un montant. Essaie l'export CSV ou Excel de ta banque.", true); return; }
     const { months, items, txs } = depBuildItems(allTx);
-    depState = { ts: Date.now(), months, items, txs, cut: {}, gcut: {}, source: 'csv', warn, nTx: allTx.length };
+    depState = { ts: Date.now(), months, items, txs, cut: {}, gcut: {}, source: 'csv', warn, nTx: allTx.length, check };
     depSave(); depRender();
     if (useAi && items.some(i => i.cat === 'autre')) depAiClassify(true);   // classe tout d'un coup, sans clic supplémentaire
   } catch (e) {
@@ -501,7 +516,7 @@ const DEP_GROUPS = [
   { id: 'courses',     label: 'Courses',               cats: ['alimentation'],                      color: '#16a34a' },
   { id: 'resto',       label: 'Restaurants & cafés',   cats: ['restauration'],                      color: '#f59e0b', reducible: 30, hint: 'Passer un repas sur trois à la maison, ou un resto de moins par semaine.' },
   { id: 'livraison',   label: 'Livraison de repas',    cats: ['livraison'],                         color: '#fb923c', reducible: 50, hint: 'Les frais de livraison et de service coûtent souvent 30 % de plus.' },
-  { id: 'abos',        label: 'Abonnements',           cats: ['streaming', 'musique', 'apps', 'presse', 'sport', 'jeux_video', 'telecom'], color: '#0ea5e9', subs: true },
+  { id: 'abos',        label: 'Abonnements',           cats: ['streaming', 'musique', 'apps', 'presse', 'sport', 'jeux_video', 'telecom', 'frais'], color: '#0ea5e9', subs: true },
   { id: 'jeux_argent', label: "Jeux d'argent",         cats: ['jeux_argent'],                       color: '#dc2626', reducible: 100 },
   { id: 'shopping',    label: 'Shopping & achats',     cats: ['shopping'],                          color: '#ec4899', reducible: 30, hint: 'Attendre 48 h avant chaque achat non prévu.' },
   { id: 'sorties',     label: 'Sorties & voyages',     cats: ['loisirs', 'voyage'],                 color: '#14b8a6', reducible: 20 },
@@ -690,6 +705,7 @@ const DEP_SUB_QUESTIONS = {
   presse:     "Tu lis vraiment tous les articles ? Sinon, un seul média suffit.",
   sport:      "Tu y vas au moins une fois par semaine ? Sinon, chaque séance te coûte très cher.",
   telecom:    "Tu paies peut-être trop cher : les forfaits comparables se trouvent souvent 30 à 50 % moins chers.",
+  frais:      "Beaucoup de banques en ligne offrent la carte et la tenue de compte gratuitement : ça vaut le coup de comparer.",
 };
 const DEP_SUB_DEFAULT = "Tu en as encore vraiment besoin ? Si tu hésites, arrête-le : tu pourras le reprendre.";
 
@@ -743,7 +759,7 @@ function depRenderResults() {
       <div><div style="font-size:15px;font-weight:800;color:var(--color-text)">❓ Lignes non reconnues</div><div style="font-size:12px;${DEP_MUTED};margin-top:2px">${unknown.length} commerçant${unknown.length > 1 ? 's' : ''} à classer. L'IA les range d'un coup dans les catégories ci-dessous.</div></div>
       ${depState.source === 'csv' ? `<button id="dep-ai-btn" onclick="depAiClassify()" style="background:#16a34a;color:#fff;border:none;font:inherit;font-size:12px;font-weight:800;padding:9px 13px;border-radius:10px;cursor:pointer">✨ Classer avec l'IA</button>` : ''}
     </div>
-    ${unknown.slice(0, 12).map(i => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border)"><span style="flex:1;font-size:13px;font-weight:700;color:var(--color-text)">${_escHtml(i.label)}</span><span style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}</span></div>`).join('')}
+    ${unknown.slice(0, 12).map(i => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border)"><span style="flex:1;font-size:13px;font-weight:700;color:var(--color-text)">${_escHtml(i.label)}</span>${depCatSelect(i.key, i.cat)}<span style="font-size:13px;font-weight:800;color:var(--color-text);width:70px;text-align:right">${depFmt(i.monthly)}</span></div>`).join('')}
     ${unknown.length > 12 ? `<div style="font-size:11.5px;${DEP_MUTED};padding-top:8px">… et ${unknown.length - 12} autres plus petits.</div>` : ''}
     <div id="dep-ai-note" style="font-size:11px;${DEP_MUTED};margin-top:8px">L'IA reçoit uniquement les noms des commerçants, sans montants ni dates, et compte pour 1 ou 2 analyses de ton quota.</div>
   </div>` : '';
@@ -843,6 +859,18 @@ function depRenderResults() {
       ${a.autre ? `<span><span style="color:#9ca3af">●</span> À classer <strong>${depFmt0(a.autre)}</strong></span>` : ''}
     </div>
     ${depState.warn ? `<div style="font-size:11.5px;color:#d97706;margin-top:10px">⚠️ ${_escHtml(depState.warn)}</div>` : ''}
+    ${(() => {
+      const c = depState.check; if (!c) return '';
+      const ok = Math.abs(c.stated - c.read) <= Math.max(1, c.stated * 0.01);
+      return ok
+        ? `<div style="font-size:11.5px;color:#16a34a;margin-top:8px">✓ Contrôle : le relevé annonce ${depFmt(c.stated)} de débits, j'en ai lu ${depFmt(c.read)}.</div>`
+        : `<div style="font-size:11.5px;color:#dc2626;margin-top:8px">⚠️ Écart : le relevé annonce ${depFmt(c.stated)} de débits, j'en ai lu ${depFmt(c.read)}. Il manque ou il y a peut-être des lignes en trop : vérifie dans « Toutes tes opérations ».</div>`;
+    })()}
+    ${(() => {
+      const ex = depState.items.filter(i => (DEP_CATS[i.cat] || {}).tier === 'excl');
+      const t = ex.reduce((s, i) => s + i.monthly, 0);
+      return t > 0 ? `<div style="font-size:11.5px;${DEP_MUTED};margin-top:8px">Non comptés dans l'analyse : ${depFmt0(t)}/mois de virements, retraits ou épargne (${ex.length} ligne${ex.length > 1 ? 's' : ''}). Un virement qui est en fait un loyer ou une dépense ? Change sa catégorie dans « Tout afficher ».</div>` : '';
+    })()}
   </div>
 
   ${listCard}
@@ -898,8 +926,8 @@ function depRefreshRow() { depRender(); }
 let _depFullMode = 'cat';
 function depFullData() {
   const byKey = new Map(depState.items.map(i => [i.key, i]));
-  if ((depState.txs || []).length) return depState.txs.map(t => ({ d: t.d, l: t.l, a: t.a, cat: (byKey.get(t.k) || {}).cat || 'autre', monthly: false }));
-  return depState.items.map(i => ({ d: '', l: i.label, a: i.monthly, cat: i.cat, monthly: true }));
+  if ((depState.txs || []).length) return depState.txs.map(t => ({ d: t.d, l: t.l, a: t.a, k: t.k, cat: (byKey.get(t.k) || {}).cat || 'autre', monthly: false }));
+  return depState.items.map(i => ({ d: '', l: i.label, a: i.monthly, k: i.key, cat: i.cat, monthly: true }));
 }
 function depOpenFullList(mode) {
   if (!depState) return;
@@ -909,7 +937,7 @@ function depOpenFullList(mode) {
   const q = (document.getElementById('dep-full-q')?.value || '').toLowerCase().trim();
   const rows = depFullData().filter(r => !q || r.l.toLowerCase().includes(q) || (DEP_CATS[r.cat] || DEP_CATS.autre).label.toLowerCase().includes(q));
   const fmtDay = d => { const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
-  const row = r => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border);font-size:13px"><span style="width:82px;flex-shrink:0;font-size:12px;${DEP_MUTED}">${fmtDay(r.d)}</span><span style="flex:1;min-width:0;color:var(--color-text);overflow:hidden;text-overflow:ellipsis">${_escHtml(r.l)}</span>${_depFullMode === 'date' ? `<span style="font-size:11px;${DEP_MUTED};white-space:nowrap">${(DEP_CATS[r.cat] || DEP_CATS.autre).ic} ${(DEP_CATS[r.cat] || DEP_CATS.autre).label}</span>` : ''}<strong style="width:${r.monthly ? 92 : 70}px;flex-shrink:0;text-align:right;color:var(--color-text)">${depFmt(r.a)}${r.monthly ? '/mois' : ''}</strong></div>`;
+  const row = r => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border);font-size:13px"><span style="width:82px;flex-shrink:0;font-size:12px;${DEP_MUTED}">${fmtDay(r.d)}</span><span style="flex:1;min-width:0;color:var(--color-text);overflow:hidden;text-overflow:ellipsis">${_escHtml(r.l)}</span>${depCatSelect(r.k, r.cat)}<strong style="width:${r.monthly ? 92 : 70}px;flex-shrink:0;text-align:right;color:var(--color-text)">${depFmt(r.a)}${r.monthly ? '/mois' : ''}</strong></div>`;
   let body = '';
   if (_depFullMode === 'date') body = rows.slice().sort((x, y) => x.d < y.d ? 1 : -1).map(row).join('');
   else {
@@ -942,4 +970,21 @@ function depExportCsv() {
   const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mes-depenses.csv';
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+// ── Correction manuelle de catégorie : s'applique à toutes les lignes du même commerçant ──
+function depCatSelect(key, cat) {
+  const opts = Object.entries(DEP_CATS).map(([k, c]) => `<option value="${k}"${k === cat ? ' selected' : ''}>${c.ic} ${c.label}</option>`).join('');
+  return `<select onchange="depSetCat(${_escHtml(JSON.stringify(key))}, this.value)" title="Changer la catégorie" style="max-width:150px;padding:3px 4px;border:1px solid var(--color-border);border-radius:7px;background:var(--color-bg);color:var(--color-text);font:inherit;font-size:11px;cursor:pointer">${opts}</select>`;
+}
+function depSetCat(key, cat) {
+  const it = depState.items.find(i => i.key === key);
+  if (!it || !DEP_CATS[cat]) return;
+  it.cat = cat; it.manual = true;
+  if (!DEP_BINARY_CATS.includes(cat)) delete it.sub;
+  depSave();
+  const full = document.getElementById('dep-full');
+  depRender();
+  if (full) depOpenFullList();
+  if (typeof showToast === 'function') showToast('✓ Catégorie modifiée pour ' + it.label);
 }
