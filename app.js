@@ -2353,8 +2353,16 @@ function obSelectProfile(level) {
   // (le profil est désormais choisi via le curseur actions/ETF à l'étape 3)
 }
 
+// Le drapeau "questionnaire fait" est propre à chaque compte : avant, une clé unique par
+// navigateur faisait sauter le questionnaire à tout nouveau compte créé au même endroit.
+function obKey() { return OB_KEY + (currentUser?.id ? '_' + currentUser.id : ''); }
+
 function showOnboarding(force) {
-  if (!force && localStorage.getItem(OB_KEY)) return;
+  if (!force) {
+    if (localStorage.getItem(obKey())) return;
+    // Compte existant qui a déjà des données (antérieur à ce changement) : pas de questionnaire
+    if (!isDemo && (positions.length > 0 || (typeof allObjectives !== 'undefined' && allObjectives.length > 0))) return;
+  }
   obGoals = { long: false, court: false, retraite: false, projet: false };
   obNext(1);
   const skipBtn = document.getElementById('ob-btn-skip');
@@ -2507,7 +2515,7 @@ function obSelectRisk(risk) {
 async function obOpenAction(ticker, name, amount) {
   // Ferme l'onboarding et sauvegarde
   document.getElementById('onboarding-modal').style.display = 'none';
-  localStorage.setItem(OB_KEY, '1');
+  localStorage.setItem(obKey(), '1');
   await obFinishSilent();
 
   // Ouvre aide décision avec tout pré-rempli
@@ -2657,7 +2665,7 @@ En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de j
 }
 
 async function obFinish(action) {
-  localStorage.setItem(OB_KEY, '1');
+  localStorage.setItem(obKey(), '1');
   try { localStorage.removeItem('iq_ob_goals'); } catch {}
   document.getElementById('onboarding-modal').style.display = 'none';
 
@@ -6359,23 +6367,9 @@ async function renderHome() {
   const subEl = document.getElementById('home-date');
   if (subEl) subEl.textContent = 'Voici la santé de votre portefeuille aujourd\'hui.';
 
-  if (!positions.length) {
-    document.getElementById('home-metrics').innerHTML = '';
-    document.getElementById('home-score').innerHTML = `
-      <div style="background:#0f0f14;border-radius:20px;padding:40px;text-align:center;margin-bottom:12px">
-        <div style="font-size:48px;margin-bottom:16px">📈</div>
-        <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:-0.04em">Commence ton investissement</div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:28px;max-width:320px;margin-left:auto;margin-right:auto">Suis ton portefeuille, reçois des signaux IA et atteins tes objectifs</div>
-        <div style="display:flex;flex-direction:column;gap:10px;max-width:280px;margin:0 auto">
-          <button onclick="nav('ajouter')" style="padding:14px;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(22,163,74,0.35)">➕ Ajouter ma première position</button>
-          <button onclick="nav('objectif')" style="padding:13px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);border-radius:14px;font-size:14px;font-weight:600;cursor:pointer">🎯 Définir mon objectif</button>
-        </div>
-      </div>`;
-    document.getElementById('home-alerts').innerHTML = '';
-    document.getElementById('home-obj').innerHTML = '';
-    renderPlatforms();
-    return;
-  }
+  // Portefeuille vierge : on garde le tableau de bord complet (tout à zéro) et on
+  // ajoute l'invitation "Commence ton investissement" EN DESSOUS.
+  const isEmpty = !positions.length;
 
   // Générer sparkline SVG
   function sparkline(data, color, width=120, height=40, fill=true) {
@@ -6408,7 +6402,12 @@ async function renderHome() {
   const pnlColor = tpnl >= 0 ? '#4ade80' : '#f87171';
   const pnlBg = tpnl >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)';
   const chgColor = avgChange >= 0 ? '#4ade80' : '#f87171';
-  const mainSparkData = genSparkData(avgChange > 0 ? 1 : -1, 30);
+  const mainSparkData = isEmpty ? Array(30).fill(50) : genSparkData(avgChange > 0 ? 1 : -1, 30);
+  const scoreTxt = isEmpty ? '—' : score.toFixed(1);
+  const scoreShownColor = isEmpty ? '#8e8e93' : scoreColor;
+  const stripItems = (isEmpty || !scoreItems.length)
+    ? ['Diversification','Concentration max','Part ETF','Performance'].map(label => ({label, score:0}))
+    : scoreItems;
 
   // ── HERO CARD ──
   document.getElementById('home-metrics').innerHTML = `
@@ -6427,7 +6426,7 @@ async function renderHome() {
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${chgColor}">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1)}% aujourd'hui</div>
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.6)">${positions.length} positions</div>
-          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${scoreColor}">${score.toFixed(1)}/10 santé</div>
+          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${scoreShownColor}">${scoreTxt}/10 santé</div>
           ${targetVal > 0 ? `<div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#a5b4fc">${pctObj.toFixed(0)}% objectif</div>` : ''}
         </div>
         ${targetVal > 0 ? `
@@ -6470,13 +6469,13 @@ async function renderHome() {
   <div onclick="nav('sante')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:14px 16px;margin-bottom:10px;transition:all 0.2s" class="home-hover-card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div style="display:flex;align-items:baseline;gap:8px">
-        <div style="font-size:22px;font-weight:900;color:${scoreColor};letter-spacing:-0.04em;line-height:1">${score.toFixed(1)}<span style="font-size:12px;color:var(--color-text-tertiary)">/10</span></div>
-        <div style="font-size:12px;font-weight:700;color:${scoreColor}">${score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️'}</div>
+        <div style="font-size:22px;font-weight:900;color:${scoreShownColor};letter-spacing:-0.04em;line-height:1">${scoreTxt}<span style="font-size:12px;color:var(--color-text-tertiary)">/10</span></div>
+        <div style="font-size:12px;font-weight:700;color:${scoreShownColor}">${isEmpty?'Pas encore de données':score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️'}</div>
       </div>
       <div style="font-size:11px;font-weight:600;color:var(--color-text-secondary)">Santé détaillée →</div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
-      ${scoreItems.map(it => `
+      ${stripItems.map(it => `
       <div>
         <div style="font-size:8px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortLabel[it.label]||it.label}</div>
         <div style="background:#f0f0f2;border-radius:99px;height:4px;overflow:hidden">
@@ -6570,6 +6569,19 @@ async function renderHome() {
           </div>
           <div style="margin-top:12px;font-size:11px;color:var(--color-text-tertiary)">${platformEntries.length} plateforme${platformEntries.length>1?'s':''} connectée${platformEntries.length>1?'s':''}</div>
         </div>
+      </div>
+    </div>`;
+  }
+
+  if (isEmpty) {
+    html += `
+    <div style="background:#0f0f14;border-radius:20px;padding:32px 24px;text-align:center;margin-top:10px">
+      <div style="font-size:40px;margin-bottom:12px">📈</div>
+      <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:-0.04em">Commence ton investissement</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:22px;max-width:320px;margin-left:auto;margin-right:auto">Suis ton portefeuille, reçois des signaux IA et atteins tes objectifs</div>
+      <div style="display:flex;flex-direction:column;gap:10px;max-width:280px;margin:0 auto">
+        <button onclick="nav('ajouter')" style="padding:13px;background:linear-gradient(135deg,#16a34a,#059669);color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(22,163,74,0.35)">➕ Ajouter ma première position</button>
+        <button onclick="showOnboarding(true)" style="padding:12px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.75);border-radius:14px;font-size:13px;font-weight:600;cursor:pointer">🎯 Créer mon premier objectif</button>
       </div>
     </div>`;
   }
