@@ -4465,9 +4465,31 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
+// ── Caches du navigateur : rattachés à UN compte ──
+// Briefing, verdict, signaux, plan… sont stockés en localStorage. Sans nettoyage, ils passaient
+// d'un compte (ou du mode démo) à l'autre et affichaient le portefeuille de quelqu'un d'autre.
+const KEEP_CACHE = /^(iq_theme|iq_logo_domains|iq_last_page|iq_legal_accepted|iq_onboarded|iq_cache_uid)/;
+function clearUserCaches() {
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('iq_') && !KEEP_CACHE.test(k))
+      .forEach(k => localStorage.removeItem(k));
+  } catch {}
+}
+// À appeler à chaque entrée dans l'app : purge si le propriétaire des caches n'est pas l'utilisateur courant
+function claimCaches(ownerId) {
+  try {
+    if (localStorage.getItem('iq_cache_uid') !== ownerId) {
+      clearUserCaches();
+      localStorage.setItem('iq_cache_uid', ownerId);
+    }
+  } catch {}
+}
+
 async function initApp(user) {
   try {
   currentUser = user; isDemo = false;
+  claimCaches(user.id);
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('demo-banner').style.display = 'none';
@@ -4508,6 +4530,7 @@ async function initApp(user) {
 
 function enterDemo() {
   isDemo = true;
+  claimCaches('demo');
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('demo-banner').style.display = 'block';
@@ -4649,6 +4672,7 @@ function backToLoginAfterSignup(email) {
 }
 async function logout() {
   if (!isDemo) await sb.auth.signOut();
+  clearUserCaches(); try { localStorage.removeItem('iq_cache_uid'); } catch {}
   showAuthScreen();
   closeSidebar();
 }
