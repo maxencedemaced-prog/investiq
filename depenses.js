@@ -727,7 +727,14 @@ function depRenderResults() {
       </div>
     </div>
     <div style="max-height:340px;overflow-y:auto;border-top:1px solid var(--color-border)">${listRows}</div>
-  </div>` : '';
+    <button onclick="depOpenFullList()" style="margin-top:10px;width:100%;padding:10px;background:transparent;border:1px solid var(--color-border);border-radius:10px;color:var(--color-text);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">⤢ Tout afficher en grand · trier par catégorie · exporter</button>
+  </div>` : `
+  <div style="${DEP_CARD}">
+    <div style="font-size:15px;font-weight:800;color:var(--color-text)">🧾 Toutes tes dépenses</div>
+    <div style="font-size:12px;${DEP_MUTED};margin:2px 0 10px">${depState.source === 'csv' ? 'Cette analyse a été faite avant l\'ajout de la liste détaillée : clique sur « Refaire » et réimporte ton relevé pour voir chaque opération. Voici déjà tous les postes :' : 'Voici tout ce que tu as indiqué :'}</div>
+    <div style="max-height:300px;overflow-y:auto;border-top:1px solid var(--color-border)">${a.items.slice().sort((x, y) => y.monthly - x.monthly).map(i => `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--color-border);font-size:12px"><span style="flex:1;color:var(--color-text)">${_escHtml(i.label)}</span><span style="${DEP_MUTED}">${(DEP_CATS[i.cat] || DEP_CATS.autre).label}</span><strong style="width:80px;text-align:right;color:var(--color-text)">${depFmt(i.monthly)}/mois</strong></div>`).join('')}</div>
+    <button onclick="depOpenFullList()" style="margin-top:10px;width:100%;padding:10px;background:transparent;border:1px solid var(--color-border);border-radius:10px;color:var(--color-text);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">⤢ Tout afficher en grand · exporter</button>
+  </div>`;
 
   // 2) Lignes non reconnues → IA
   const unkCard = unknown.length ? `
@@ -886,3 +893,53 @@ function depRender() {
 }
 function renderDepenses() { depState = depLoad(); depRender(); }
 function depRefreshRow() { depRender(); }
+
+// ── Vue « tout afficher » : plein écran, par catégorie ou par date, avec recherche et export CSV ──
+let _depFullMode = 'cat';
+function depFullData() {
+  const byKey = new Map(depState.items.map(i => [i.key, i]));
+  if ((depState.txs || []).length) return depState.txs.map(t => ({ d: t.d, l: t.l, a: t.a, cat: (byKey.get(t.k) || {}).cat || 'autre', monthly: false }));
+  return depState.items.map(i => ({ d: '', l: i.label, a: i.monthly, cat: i.cat, monthly: true }));
+}
+function depOpenFullList(mode) {
+  if (!depState) return;
+  if (mode) _depFullMode = mode;
+  let o = document.getElementById('dep-full');
+  if (!o) { o = document.createElement('div'); o.id = 'dep-full'; o.style.cssText = 'position:fixed;inset:0;z-index:10010;background:var(--color-bg);overflow-y:auto'; document.body.appendChild(o); document.body.style.overflow = 'hidden'; }
+  const q = (document.getElementById('dep-full-q')?.value || '').toLowerCase().trim();
+  const rows = depFullData().filter(r => !q || r.l.toLowerCase().includes(q) || (DEP_CATS[r.cat] || DEP_CATS.autre).label.toLowerCase().includes(q));
+  const fmtDay = d => { const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
+  const row = r => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border);font-size:13px"><span style="width:82px;flex-shrink:0;font-size:12px;${DEP_MUTED}">${fmtDay(r.d)}</span><span style="flex:1;min-width:0;color:var(--color-text);overflow:hidden;text-overflow:ellipsis">${_escHtml(r.l)}</span>${_depFullMode === 'date' ? `<span style="font-size:11px;${DEP_MUTED};white-space:nowrap">${(DEP_CATS[r.cat] || DEP_CATS.autre).ic} ${(DEP_CATS[r.cat] || DEP_CATS.autre).label}</span>` : ''}<strong style="width:${r.monthly ? 92 : 70}px;flex-shrink:0;text-align:right;color:var(--color-text)">${depFmt(r.a)}${r.monthly ? '/mois' : ''}</strong></div>`;
+  let body = '';
+  if (_depFullMode === 'date') body = rows.slice().sort((x, y) => x.d < y.d ? 1 : -1).map(row).join('');
+  else {
+    const groups = {};
+    rows.forEach(r => { (groups[r.cat] = groups[r.cat] || []).push(r); });
+    body = Object.entries(groups).map(([cat, list]) => ({ cat, list, total: list.reduce((t, r) => t + r.a, 0) })).sort((x, y) => y.total - x.total).map(g => {
+      const c = DEP_CATS[g.cat] || DEP_CATS.autre;
+      return `<div style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;font-size:13px;font-weight:800;color:var(--color-text)"><span>${c.ic} ${c.label} <span style="font-weight:600;${DEP_MUTED}">· ${g.list.length}</span></span><span>${depFmt(g.total)}</span></div>${g.list.sort((x, y) => y.a - x.a).map(row).join('')}</div>`;
+    }).join('');
+  }
+  const total = rows.reduce((t, r) => t + r.a, 0);
+  const tab = (m, l) => `<button onclick="depOpenFullList('${m}')" style="padding:7px 13px;border-radius:99px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid ${_depFullMode === m ? '#16a34a' : 'var(--color-border)'};background:${_depFullMode === m ? '#16a34a' : 'transparent'};color:${_depFullMode === m ? '#fff' : 'var(--color-text-secondary)'}">${l}</button>`;
+  o.innerHTML = `
+    <div style="max-width:860px;margin:0 auto;padding:18px 16px 40px">
+      <div style="position:sticky;top:0;background:var(--color-bg);padding-bottom:10px;z-index:1">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px"><div style="font-size:20px;font-weight:900;color:var(--color-text)">🧾 Tout ce que tu as dépensé</div><button onclick="depCloseFullList()" style="background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-text);width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer">✕</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${tab('cat', 'Par catégorie')}${tab('date', 'Par date')}
+          <input id="dep-full-q" type="search" value="${_escHtml(q)}" placeholder="Rechercher…" oninput="depOpenFullList();document.getElementById('dep-full-q').focus()" style="flex:1;min-width:130px;padding:8px 11px;border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);color:var(--color-text);font:inherit;font-size:13px">
+          <button onclick="depExportCsv()" style="padding:8px 12px;border:1px solid var(--color-border);border-radius:9px;background:transparent;color:var(--color-text);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">⬇ Exporter (CSV)</button></div>
+        <div style="font-size:12px;${DEP_MUTED};margin-top:8px">${rows.length} ligne${rows.length > 1 ? 's' : ''} · total ${depFmt(total)}${rows.some(r => r.monthly) ? ' par mois' : ''}</div>
+      </div>
+      ${body || `<div style="padding:30px 0;text-align:center;${DEP_MUTED}">Aucun résultat.</div>`}
+    </div>`;
+}
+function depCloseFullList() { document.getElementById('dep-full')?.remove(); document.body.style.overflow = ''; }
+// Export local du classement (téléchargé sur l'appareil, rien n'est envoyé)
+function depExportCsv() {
+  const q = s => '"' + String(s).replace(/"/g, '""') + '"';
+  const lines = ['Date;Libellé;Catégorie;Montant'].concat(depFullData().map(r => [r.d, q(r.l), q((DEP_CATS[r.cat] || DEP_CATS.autre).label), String(r.a).replace('.', ',')].join(';')));
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mes-depenses.csv';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
