@@ -10013,6 +10013,7 @@ const PLAN_COMMON = [
 ];
 const PLAN_FREE_IA = `${AI_FREE_WELCOME} analyses IA offertes, puis ${AI_FREE_DAILY} par jour`;
 const PLAN_PREMIUM_ONLY = [
+  'Analyses IA <strong style="color:#4ade80">illimitées</strong> (plus aucun plafond)',
   'Signaux IA sur tes positions et les opportunités du marché',
   'Bilan patrimonial complet + export PDF',
   'Conseils IA sur tes alertes : que faire et par quoi remplacer',
@@ -10039,21 +10040,23 @@ function plansComparisonHTML(lapsed) {
   const check = c => `<span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:${c};display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#0b1220;margin-top:1px">✓</span>`;
   const row = (t, c, strong) => `<div style="display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.45;color:${strong ? '#fff' : 'rgba(255,255,255,0.78)'};${strong ? 'font-weight:700;' : ''}">${check(c)}<span>${t}</span></div>`;
   return `
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;align-items:stretch">
+  <div class="plans-grid">
     <!-- GRATUIT -->
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:20px;display:flex;flex-direction:column">
-      <div style="font-size:13px;font-weight:800;color:rgba(255,255,255,0.6);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Gratuit</div>
+    <div class="plan-card plan-free" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:18px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div style="font-size:13px;font-weight:800;color:rgba(255,255,255,0.6);letter-spacing:.06em;text-transform:uppercase">Gratuit</div>
+        ${isPremiumUser() ? '' : '<span style="font-size:10px;font-weight:800;color:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.2);border-radius:99px;padding:2px 8px">Ton offre</span>'}
+      </div>
       <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.04em;margin-bottom:2px">0 €</div>
-      <div style="font-size:11.5px;color:rgba(255,255,255,0.45);margin-bottom:16px">Pour découvrir et suivre tes investissements</div>
-      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:18px;flex:1">
+      <div style="font-size:11.5px;color:rgba(255,255,255,0.45);margin-bottom:14px">Pour découvrir et suivre tes investissements</div>
+      <div style="display:flex;flex-direction:column;gap:8px;flex:1">
         ${PLAN_COMMON.map(t => row(t, 'rgba(255,255,255,0.55)')).join('')}
         ${row(PLAN_FREE_IA, 'rgba(255,255,255,0.55)')}
       </div>
-      <div style="text-align:center;padding:11px;border:1px solid rgba(255,255,255,0.15);border-radius:12px;font-size:12.5px;font-weight:700;color:rgba(255,255,255,0.55)">${isPremiumUser() ? 'Inclus dans ton offre' : 'Ton offre actuelle'}</div>
     </div>
 
     <!-- PREMIUM -->
-    <div style="background:linear-gradient(160deg,#0f2a1c,#0c1f2e);border:1.5px solid #22c55e;border-radius:18px;padding:20px;display:flex;flex-direction:column;position:relative;box-shadow:0 10px 40px rgba(34,197,94,0.15)">
+    <div class="plan-card plan-premium" style="background:linear-gradient(160deg,#0f2a1c,#0c1f2e);border:1.5px solid #22c55e;border-radius:18px;padding:18px;display:flex;flex-direction:column;position:relative;box-shadow:0 10px 40px rgba(34,197,94,0.15)">
       <div style="font-size:13px;font-weight:800;color:#4ade80;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">✦ Premium</div>
       <div style="display:flex;gap:4px;background:rgba(255,255,255,0.08);border-radius:12px;padding:4px;margin-bottom:14px">
         ${segBtn('monthly', 'Mensuel')}
@@ -10065,13 +10068,11 @@ function plansComparisonHTML(lapsed) {
            <div style="display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:rgba(74,222,128,0.14);border:1px solid rgba(74,222,128,0.35);color:#4ade80;font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:10px;margin-bottom:14px">💰 Tu économises ${_eur(yearSaving)} par an</div>`
         : `<div style="font-size:11.5px;color:rgba(255,255,255,0.55);margin-bottom:6px">facturé chaque mois · sans engagement</div>
            <div style="font-size:11.5px;color:#facc15;font-weight:700;margin-bottom:14px;cursor:pointer" onclick="setPlansBilling('annual')">Passe à l'annuel et économise ${_eur(yearSaving)} par an →</div>`}
-      <div style="display:flex;flex-direction:column;gap:9px;flex:1">
-        ${PLAN_COMMON.map(t => row(t, '#4ade80')).join('')}
-        ${row('Analyses IA <strong style="color:#4ade80">illimitées</strong>', '#4ade80', true)}
-        <div style="font-size:10.5px;font-weight:800;color:#4ade80;letter-spacing:.08em;text-transform:uppercase;margin:6px 0 1px">En plus</div>
+      <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.7);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1)">✓ Tout ce qui est dans Gratuit, et en plus :</div>
         ${PLAN_PREMIUM_ONLY.map(t => row(t, '#4ade80', true)).join('')}
       </div>
-      <button onclick="startCheckout(this,plansBilling)" style="margin-top:18px;width:100%;padding:14px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : PREMIUM_PRICE + '/mois'}</button>
+      <button onclick="startCheckout(this,plansBilling)" style="margin-top:16px;width:100%;padding:14px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : PREMIUM_PRICE + '/mois'}</button>
       <div style="font-size:10.5px;color:rgba(255,255,255,0.4);text-align:center;margin-top:9px">Résiliable à tout moment</div>
     </div>
   </div>`;
@@ -10089,16 +10090,16 @@ function showPlansModal(opts) {
   o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10005;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto';
   o.onclick = e => { if (e.target === o) o.remove(); };
   const ctx = opts && opts.feature ? `
-      <div style="background:rgba(250,204,21,0.1);border:1px solid rgba(250,204,21,0.35);border-radius:14px;padding:12px 14px;margin-bottom:16px">
-        <div style="font-size:13.5px;font-weight:800;color:#facc15">✨ ${_escHtml(opts.feature)}${opts.subtitle ? ` <span style="font-weight:600;color:rgba(255,255,255,0.55)">· ${_escHtml(opts.subtitle)}</span>` : ''}</div>
-        ${(opts.benefits || []).length ? `<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">${opts.benefits.map(b => `<div style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.5">• ${_escHtml(b)}</div>`).join('')}</div>` : ''}
+      <div style="background:rgba(250,204,21,0.1);border:1px solid rgba(250,204,21,0.35);border-radius:12px;padding:9px 12px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:800;color:#facc15">✨ ${_escHtml(opts.feature)}${opts.subtitle ? ` <span style="font-weight:600;color:rgba(255,255,255,0.55)">· ${_escHtml(opts.subtitle)}</span>` : ''}</div>
+        ${(opts.benefits || []).length ? `<div style="margin-top:4px;display:flex;flex-direction:column;gap:2px">${opts.benefits.slice(0, 2).map(b => `<div style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.5">• ${_escHtml(b)}</div>`).join('')}</div>` : ''}
       </div>` : '';
   o.innerHTML = `
-    <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:24px;max-width:720px;width:100%;padding:26px 22px 22px;margin:auto">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
+    <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:24px;max-width:720px;width:100%;padding:20px 18px 18px;margin:auto">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
         <div>
-          <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.03em">Choisis ton offre</div>
-          <div style="font-size:12.5px;color:rgba(255,255,255,0.5);margin-top:4px">Le gratuit reste utilisable sans limite de durée. Premium enlève les plafonds IA et débloque les outils avancés.</div>
+          <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.03em">Choisis ton offre</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:3px">Le gratuit reste gratuit à vie. Premium enlève les plafonds IA.</div>
         </div>
         <button onclick="document.getElementById('plans-modal').remove()" style="background:rgba(255,255,255,0.08);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
       </div>
