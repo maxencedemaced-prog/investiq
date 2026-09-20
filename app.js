@@ -1328,6 +1328,9 @@ function renderMultiObjChart() {
     if (valEl) valEl.textContent = fmtK(tv);
     if (targetEl) targetEl.textContent = fmtK(active.target);
   }
+
+  // Explication de faisabilité + badge (remplace le "Calcul..." qui restait affiché)
+  renderObjFeasibilityPanel();
 }
 
 function renderObjLegend(tv) {
@@ -7624,6 +7627,7 @@ async function renderSante() {
 let objPlan = null;
 
 function objGo(step) {
+  if (step > 1) setTimeout(objFeasPreview, 0);
   [1,2,3].forEach(i => {
     const s = document.getElementById('obj-s'+i);
     if (s) s.style.display = i===step ? 'block' : 'none';
@@ -7666,6 +7670,7 @@ function selectRisk(risk) {
   objRisk = risk;
   document.querySelectorAll('.risk-card').forEach(c => c.classList.remove('active'));
   document.getElementById('risk-' + risk)?.classList.add('active');
+  objFeasPreview();
 }
 
 function toggleObjDetail() {
@@ -7764,6 +7769,18 @@ async function generateObjPlan() {
       if (resultsEl) resultsEl.insertBefore(banner, resultsEl.firstChild);
     }
     return;
+  }
+
+  // Objectif très éloigné : on prévient avant de l'enregistrer
+  {
+    const c = parseFloat(document.getElementById('obj-capital')?.value) || 0;
+    const m = parseFloat(document.getElementById('obj-monthly')?.value) || 0;
+    const t = parseFloat(document.getElementById('obj-target')?.value) || 0;
+    const y = parseInt(document.getElementById('obj-years')?.value) || 0;
+    if (t > 0 && y > 0) {
+      const f = objFeasibility(c, m, t, y, OBJ_RISK_RATES[objRisk] || 7);
+      if (f.level === 'unrealistic' && !confirm(`Cet objectif est très éloigné : à ce rythme tu atteindrais environ ${Math.round(f.ratio * 100)}% de ${fmtK(t)} (${fmtK(f.fv)}).\n\nLe plan te montrera comment l'ajuster. Créer l'objectif quand même ?`)) return;
+    }
   }
 
   // ── Feedback visuel immédiat ──
@@ -7986,6 +8003,106 @@ function calcNeededYears(capital, monthly, target, annualRate) {
     if (fv >= target) return y;
   }
   return null; // not reachable in 60 years
+}
+
+// ═══════════════════════════════════════════════════════════
+//  🎯 FAISABILITÉ D'UN OBJECTIF
+//  Calcul + explication claire : combien on atteint, ce qui manque, et
+//  les 3 leviers (épargne, durée, rendement). Utilisé pendant la saisie
+//  (aperçu live) et sur la page Objectif une fois l'objectif créé.
+// ═══════════════════════════════════════════════════════════
+const OBJ_RISK_RATES = { prudent: 4.5, equilibre: 7, agressif: 11 };
+
+function objFeasibility(capital, monthly, target, years, ratePct) {
+  const r = ratePct / 100 / 12, n = years * 12;
+  const grow = Math.pow(1 + r, n);
+  const fv = capital * grow + (r > 0 ? monthly * ((grow - 1) / r) : monthly * n);
+  const ratio = target > 0 ? fv / target : 1;
+  const monthlyNeeded = Math.max(0, r > 0 ? (target - capital * grow) * r / (grow - 1) : (target - capital) / n);
+  const yearsNeeded = ratio >= 1 ? years : calcNeededYears(capital, monthly, target, ratePct);
+  const rateNeeded = ratio >= 1 ? ratePct : calcNeededRate(capital, monthly, target, years);
+  const level = ratio >= 1 ? 'ok' : ratio >= 0.75 ? 'tight' : ratio >= 0.4 ? 'hard' : 'unrealistic';
+  return { fv, ratio, gap: Math.max(0, target - fv), invested: capital + monthly * n, monthlyNeeded, yearsNeeded, rateNeeded, level };
+}
+
+const OBJ_FEAS_STYLE = {
+  ok:          { color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0', label:'✓ Objectif atteignable',   badge:'✓ Objectif atteignable' },
+  tight:       { color:'#65a30d', bg:'#f7fee7', border:'#d9f99d', label:'≈ Presque atteignable',    badge:'≈ Presque atteignable' },
+  hard:        { color:'#d97706', bg:'#fffbeb', border:'#fde68a', label:'⚠ Ambitieux',              badge:'⚠ Ambitieux' },
+  unrealistic: { color:'#dc2626', bg:'#fef2f2', border:'#fecaca', label:'⛔ Hors de portée en l\'état', badge:'⛔ Hors de portée' },
+};
+
+function objFeasibilityHTML(capital, monthly, target, years, ratePct) {
+  if (!(target > 0) || !(years > 0)) return '';
+  const f = objFeasibility(capital || 0, monthly || 0, target, years, ratePct);
+  const st = OBJ_FEAS_STYLE[f.level];
+  const pct = Math.min(100, Math.round(f.ratio * 100));
+  const gains = Math.max(0, f.fv - f.invested);
+  const yrsTxt = f.yearsNeeded ? `${f.yearsNeeded} an${f.yearsNeeded > 1 ? 's' : ''}` : 'plus de 60 ans';
+  const rateUnreal = f.rateNeeded > 12;
+  const explain = `Avec <strong>${fmtK(capital || 0)}</strong> de départ et <strong>${fmtI(monthly || 0)} €/mois</strong> à <strong>${ratePct}%/an</strong> pendant ${years} an${years > 1 ? 's' : ''}, tu verses ${fmtK(f.invested)} au total et les intérêts composés en ajoutent ${fmtK(gains)} : soit <strong>${fmtK(f.fv)}</strong>.`;
+  const verdict = {
+    ok: `C'est au-dessus de ta cible de ${fmtK(target)} : à ce rythme, tu y arrives.`,
+    tight: `Il manque ${fmtK(f.gap)} pour atteindre ${fmtK(target)}. Un petit ajustement suffit.`,
+    hard: `Il manque ${fmtK(f.gap)} pour atteindre ${fmtK(target)}. C'est ambitieux : il faudra augmenter l'effort ou le temps.`,
+    unrealistic: `Tu n'atteindrais que ${pct}% de ta cible de ${fmtK(target)} (il manque ${fmtK(f.gap)}). Aucun rendement de marché raisonnable ne comble cet écart : il faut revoir le montant visé, la durée ou l'épargne mensuelle.`,
+  }[f.level];
+  return `
+  <div style="background:${st.bg};border:1.5px solid ${st.border};border-radius:16px;padding:16px 18px;margin-top:18px;text-align:left">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:800;color:${st.color}">${st.label}</span>
+      <span style="font-size:12px;font-weight:700;color:#3c3c43">${fmtK(f.fv)} <span style="color:#8e8e93;font-weight:600">projetés sur ${fmtK(target)}</span></span>
+    </div>
+    <div style="background:rgba(0,0,0,0.07);border-radius:99px;height:8px;overflow:hidden;margin-bottom:12px">
+      <div style="height:100%;width:${Math.max(pct, 2)}%;background:${st.color};border-radius:99px;transition:width .4s"></div>
+    </div>
+    <div style="font-size:12.5px;color:#3c3c43;line-height:1.6;margin-bottom:${f.level === 'ok' ? 0 : 14}px">${explain}<br><span style="color:${st.color};font-weight:700">${verdict}</span></div>
+    ${f.level === 'ok' ? '' : `
+    <div style="font-size:10.5px;font-weight:800;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Comment y arriver</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+      <div style="background:#fff;border:1px solid ${st.border};border-radius:12px;padding:10px 12px">
+        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">ÉPARGNER PLUS</div>
+        <div style="font-size:15px;font-weight:900;color:#1c1c1e">${fmtI(f.monthlyNeeded)} €/mois</div>
+        <div style="font-size:10.5px;color:#8e8e93">au lieu de ${fmtI(monthly || 0)} €</div>
+      </div>
+      <div style="background:#fff;border:1px solid ${st.border};border-radius:12px;padding:10px 12px">
+        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">PRENDRE PLUS DE TEMPS</div>
+        <div style="font-size:15px;font-weight:900;color:#1c1c1e">${yrsTxt}</div>
+        <div style="font-size:10.5px;color:#8e8e93">au lieu de ${years} an${years > 1 ? 's' : ''}</div>
+      </div>
+      <div style="background:#fff;border:1px solid ${st.border};border-radius:12px;padding:10px 12px">
+        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">VISER PLUS DE RENDEMENT</div>
+        <div style="font-size:15px;font-weight:900;color:${rateUnreal ? '#dc2626' : '#1c1c1e'}">${f.rateNeeded >= 30 ? '30%+' : f.rateNeeded + '%'}/an</div>
+        <div style="font-size:10.5px;color:${rateUnreal ? '#dc2626' : '#8e8e93'}">${rateUnreal ? 'irréaliste à long terme' : 'profil plus risqué'}</div>
+      </div>
+    </div>`}
+  </div>`;
+}
+
+// Aperçu live pendant la saisie du wizard (étapes 2 et 3)
+function objFeasPreview() {
+  const capital = parseFloat(document.getElementById('obj-capital')?.value) || 0;
+  const monthly = parseFloat(document.getElementById('obj-monthly')?.value) || 0;
+  const target  = parseFloat(document.getElementById('obj-target')?.value) || 0;
+  const years   = parseInt(document.getElementById('obj-years')?.value) || 0;
+  const html = objFeasibilityHTML(capital, monthly, target, years, OBJ_RISK_RATES[objRisk] || 7);
+  ['obj-feas-2', 'obj-feas-3'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
+}
+
+// Panneau d'explication sur la page Objectif (objectif actif)
+function renderObjFeasibilityPanel() {
+  const el = document.getElementById('obj-feasibility');
+  if (!el) return;
+  const a = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
+  if (!a) { el.innerHTML = ''; return; }
+  const html = objFeasibilityHTML(a.capital, a.monthly, a.target, a.years, a.rate);
+  const f = objFeasibility(a.capital, a.monthly, a.target, a.years, a.rate);
+  el.innerHTML = f.level === 'ok' ? '' : `<div style="margin-bottom:14px">${html.replace('margin-top:18px', 'margin-top:0')}</div>`;
+  const badge = document.getElementById('obj-track-badge');
+  if (badge) {
+    badge.textContent = OBJ_FEAS_STYLE[f.level].badge;
+    badge.className = 'obj-track-badge ' + (f.level === 'ok' || f.level === 'tight' ? 'on-track' : 'off-track');
+  }
 }
 
 function renderProjectionTable(capital, monthly, target, years, annualRate) {

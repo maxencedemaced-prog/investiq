@@ -1104,27 +1104,29 @@ window.addEventListener('load', function() {
         </div>
 
         <div class="obj-step-card" id="obj-s1">
-          <div class="obj-step-emoji">💰</div>
+          <div class="obj-step-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></div>
+          <div class="obj-step-kicker">Étape 1 sur 3</div>
           <h2 class="obj-step-h2">Ton capital de départ</h2>
           <p class="obj-step-p">Ce que tu peux investir maintenant et chaque mois</p>
           <div class="form-grid" style="margin-top:20px">
             <div class="field">
               <label>Capital de départ (€)</label>
-              <input type="number" id="obj-capital" placeholder="Ex: 1 000">
+              <input type="number" id="obj-capital" placeholder="Ex: 1 000" oninput="objFeasPreview()">
               <div id="obj-capital-hint" style="display:none;font-size:12px;color:#1a7f5a;margin-top:4px;font-weight:600"></div>
             </div>
-            <div class="field"><label>Versement mensuel (€)</label><input type="number" id="obj-monthly" placeholder="Ex: 200" value="200"></div>
+            <div class="field"><label>Versement mensuel (€)</label><input type="number" id="obj-monthly" placeholder="Ex: 200" value="200" oninput="objFeasPreview()"></div>
           </div>
           <button class="btn-obj-next" onclick="objGo(2)">Suivant →</button>
         </div>
 
         <div class="obj-step-card" id="obj-s2" style="display:none">
-          <div class="obj-step-emoji">🎯</div>
+          <div class="obj-step-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+          <div class="obj-step-kicker">Étape 2 sur 3</div>
           <h2 class="obj-step-h2">Ton objectif</h2>
           <p class="obj-step-p">Combien tu veux avoir et pourquoi</p>
           <div class="form-grid" style="margin-top:20px">
-            <div class="field"><label>Capital visé (€)</label><input type="number" id="obj-target" placeholder="Ex: 100 000" value="100000"></div>
-            <div class="field"><label>Dans combien d'années ?</label><input type="number" id="obj-years" placeholder="Ex: 10" value="10"></div>
+            <div class="field"><label>Capital visé (€)</label><input type="number" id="obj-target" placeholder="Ex: 100 000" value="100000" oninput="objFeasPreview()"></div>
+            <div class="field"><label>Dans combien d'années ?</label><input type="number" id="obj-years" placeholder="Ex: 10" value="10" oninput="objFeasPreview()"></div>
           </div>
           <div class="field">
             <label>Pour quel projet ?</label>
@@ -1136,6 +1138,7 @@ window.addEventListener('load', function() {
               <option value="autre">✨ Autre projet</option>
             </select>
           </div>
+          <div id="obj-feas-2"></div>
           <div class="obj-step-btns">
             <button class="btn-secondary" onclick="objGo(1)">← Retour</button>
             <button class="btn-obj-next" onclick="objGo(3)">Suivant →</button>
@@ -1143,29 +1146,31 @@ window.addEventListener('load', function() {
         </div>
 
         <div class="obj-step-card" id="obj-s3" style="display:none">
-          <div class="obj-step-emoji">⚖️</div>
+          <div class="obj-step-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div class="obj-step-kicker">Étape 3 sur 3</div>
           <h2 class="obj-step-h2">Ton profil de risque</h2>
           <p class="obj-step-p">Quel niveau de volatilité tu peux accepter ?</p>
           <div class="risk-cards" style="margin-top:20px">
             <div class="risk-card" id="risk-prudent" onclick="selectRisk('prudent')">
-              <div class="risk-card-icon">🛡️</div>
+              <div class="risk-card-icon" style="color:#16a34a;background:#f0fdf4"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
               <div class="risk-card-title">Prudent</div>
               <div class="risk-card-desc">~4-5%/an</div>
               <div class="risk-card-detail">Perte max -10%</div>
             </div>
             <div class="risk-card active" id="risk-equilibre" onclick="selectRisk('equilibre')">
-              <div class="risk-card-icon">⚖️</div>
+              <div class="risk-card-icon" style="color:#65a30d;background:#f7fee7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><path d="M5 7h14"/><path d="M5 7l-3 8a3 3 0 0 0 6 0z"/><path d="M19 7l-3 8a3 3 0 0 0 6 0z"/></svg></div>
               <div class="risk-card-title">Équilibré</div>
               <div class="risk-card-desc">~7-8%/an</div>
               <div class="risk-card-detail">Perte max -25%</div>
             </div>
             <div class="risk-card" id="risk-agressif" onclick="selectRisk('agressif')">
-              <div class="risk-card-icon">🚀</div>
+              <div class="risk-card-icon" style="color:#dc2626;background:#fef2f2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
               <div class="risk-card-title">Agressif</div>
               <div class="risk-card-desc">~10-12%/an</div>
               <div class="risk-card-detail">Perte max -40%</div>
             </div>
           </div>
+          <div id="obj-feas-3"></div>
           <div class="obj-step-btns" style="margin-top:24px">
             <button class="btn-secondary" onclick="objGo(2)">← Retour</button>
             <button class="btn-obj-generate" onclick="generateObjPlan()">🤖 Générer mon plan</button>
@@ -1218,6 +1223,9 @@ window.addEventListener('load', function() {
 
         <!-- ONGLETS OBJECTIFS -->
         <div id="obj-tabs" style="margin-bottom:4px"></div>
+
+        <!-- FAISABILITÉ : explique si l'objectif est atteignable et comment l'ajuster -->
+        <div id="obj-feasibility" style="margin-top:12px"></div>
 
         <!-- RECOMMANDATIONS -->
         <div class="card">
