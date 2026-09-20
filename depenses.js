@@ -130,13 +130,15 @@ function depParseCSV(text) {
   return rows.filter(r => r.some(x => String(x).trim() !== ''));
 }
 function depNum(s) {
-  if (s == null) return NaN;
+  if (s == null || s instanceof Date) return NaN;
+  if (typeof s === 'number') return s;
   let t = String(s).replace(/[€\s ]/g, '').replace(/[A-Za-z]/g, '');
   if (!t) return NaN;
   if (/,\d{1,2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.'); else t = t.replace(/,/g, '');
   return parseFloat(t);
 }
 function depDate(s) {
+  if (s instanceof Date) return isNaN(s) ? null : s;      // cellules de date d'un fichier Excel
   const t = String(s || '').trim();
   let m = t.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
   if (m) { const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; return new Date(y, +m[2] - 1, +m[1]); }
@@ -271,29 +273,183 @@ function depUseChargesInBilan(v) {
 }
 
 // ── Entrées utilisateur ──
+// ── Lecteurs de fichiers : CSV, Excel, PDF, OFX/QFX, QIF (tout est lu localement) ──
+const DEP_LIBS = {
+  xlsx:  { src: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', ready: () => window.XLSX },
+  pdfjs: { src: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', ready: () => window.pdfjsLib,
+           after: () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } },
+};
+// Bibliothèques chargées à la demande (uniquement pour lire un PDF ou un Excel)
+function depEnsureLib(name) {
+  const lib = DEP_LIBS[name];
+  if (lib.ready()) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = lib.src;
+    s.onload = () => { try { lib.after && lib.after(); } catch {} lib.ready() ? resolve() : reject(new Error('lecteur')); };
+    s.onerror = () => reject(new Error('Impossible de charger le lecteur (connexion ?)'));
+    document.head.appendChild(s);
+  });
+}
+const depIsCredit = label => /SALAIRE|PAIE\b|REMBOURSEMENT|VIREMENT RECU|VIR(EMENT)? (SEPA )?RECU|VIR INST RECU|DEPOT|REMISE CHEQUE|ALLOCATION|\bCAF\b|POLE EMPLOI|FRANCE TRAVAIL|CPAM|PENSION|RETRAITE|INTERETS|AVOIR/.test(depNormalize(label));
+
+// Excel / ODS → lignes (dates lues comme de vraies dates, montants comme nombres)
+async function depReadSheet(buf) {
+  await depEnsureLib('xlsx');
+  const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+  let best = { tx: [], warn: '' };
+  for (const name of wb.SheetNames) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: '' });
+    const r = depExtractExpenses(rows.filter(row => row.some(x => String(x).trim() !== '')));
+    if (r.tx.length > best.tx.length) best = r;
+  }
+  return best;
+}
+
+// OFX / QFX (export « comptable » de nombreuses banques)
+function depReadOFX(text) {
+  const tx = [];
+  text.split(/<STMTTRN>/i).slice(1).forEach(b => {
+    const get = tag => { const m = b.match(new RegExp('<' + tag + '>([^<\\r\\n]*)', 'i')); return m ? m[1].trim() : ''; };
+    const dt = get('DTPOSTED').match(/^(\d{4})(\d{2})(\d{2})/);
+    const amt = parseFloat(get('TRNAMT').replace(',', '.'));
+    const label = [get('NAME'), get('MEMO')].filter(Boolean).join(' ');
+    if (dt && !isNaN(amt) && amt < 0 && label) tx.push({ date: new Date(+dt[1], +dt[2] - 1, +dt[3]), label, amount: -amt });
+  });
+  return { tx, warn: '' };
+}
+// QIF
+function depReadQIF(text) {
+  const tx = []; let cur = {};
+  text.split(/\r?\n/).forEach(l => {
+    const c = l[0], v = l.slice(1).trim();
+    if (c === 'D') cur.date = depDate(v.replace(/'/g, '/20'));
+    else if (c === 'T' || c === 'U') cur.amt = depNum(v);
+    else if (c === 'P' || c === 'M') cur.label = cur.label || v;
+    else if (c === '^') { if (cur.date && cur.amt < 0 && cur.label) tx.push({ date: cur.date, label: cur.label, amount: -cur.amt }); cur = {}; }
+  });
+  return { tx, warn: '' };
+}
+
+// PDF : on reconstitue les lignes du relevé à partir de la position du texte, puis on lit date / libellé / montant
+async function depReadPdf(buf) {
+  await depEnsureLib('pdfjs');
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const lines = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const content = await (await pdf.getPage(p)).getTextContent();
+    const items = content.items.filter(i => String(i.str).trim() !== '')
+      .map(i => ({ str: String(i.str).trim(), x: i.transform[4], y: i.transform[5], w: i.width || 0 }))
+      .sort((a, b) => b.y - a.y || a.x - b.x);
+    let cur = null;
+    items.forEach(it => {
+      if (!cur || Math.abs(it.y - cur.y) > 3) { cur = { y: it.y, items: [] }; lines.push(cur); }
+      cur.items.push(it);
+    });
+  }
+  lines.forEach(l => { l.items.sort((a, b) => a.x - b.x); l.text = l.items.map(i => i.str).join(' '); });
+  return depParsePdfLines(lines);
+}
+const DEP_AMT = /^[-+−]?\s?\d{1,3}(?:[  .]\d{3})*,\d{2}\s?€?$|^[-+−]?\d+,\d{2}\s?€?$/;
+const DEP_DATE_START = /^(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?(?=\s|$)/;
+function depParsePdfLines(lines) {
+  const head = lines.slice(0, 60).map(l => l.text).join(' ');
+  const yMatch = head.match(/\b(20\d{2})\b/);
+  const defYear = yMatch ? +yMatch[1] : new Date().getFullYear();
+  let cols = null;                 // positions des colonnes Débit / Crédit / Solde / Montant
+  const expenses = []; let guessed = 0, last = null;
+  const center = it => it.x + it.w / 2;
+  lines.forEach(l => {
+    const up = depNormalize(l.text);
+    // en-tête de tableau
+    const hdr = {};
+    l.items.forEach(it => {
+      const t = depNormalize(it.str);
+      if (/^DEBIT/.test(t)) hdr.debit = center(it);
+      else if (/^CREDIT/.test(t)) hdr.credit = center(it);
+      else if (/^SOLDE/.test(t)) hdr.solde = center(it);
+      else if (/^MONTANT/.test(t)) hdr.montant = center(it);
+    });
+    if ((hdr.debit != null && hdr.credit != null) || hdr.montant != null) { cols = hdr; last = null; return; }
+
+    const dm = l.text.match(DEP_DATE_START);
+    if (!dm) {
+      // suite de libellé sur la ligne suivante (sans date ni montant)
+      if (last && !l.items.some(i => DEP_AMT.test(i.str)) && !/TOTAL|SOLDE|PAGE|RELEVE|IBAN|BIC|DATE|NOUVEAU|ANCIEN|CREDIT|DEBIT/.test(up) && last.label.length < 80) last.label += ' ' + l.text;
+      return;
+    }
+    last = null;
+    const year = dm[3] ? (+dm[3] < 100 ? 2000 + +dm[3] : +dm[3]) : defYear;
+    if (+dm[2] > 12 || +dm[1] > 31) return;
+    const date = new Date(year, +dm[2] - 1, +dm[1]);
+    // montants de la ligne
+    const nums = l.items.filter(i => DEP_AMT.test(i.str));
+    if (!nums.length) return;
+    const label = l.items.filter(i => !DEP_AMT.test(i.str)).map(i => i.str).join(' ').replace(/^(\d{1,2}[\/.]\d{1,2}([\/.]\d{2,4})?\s*){1,2}/, '').trim();
+    if (!label) return;
+    let value = null, kind = 'unknown';
+    if (cols) {
+      let best = null;
+      nums.forEach(n => {
+        let bd = Infinity, bk = null;
+        Object.entries(cols).forEach(([k, x]) => { const d = Math.abs(center(n) - x); if (d < bd) { bd = d; bk = k; } });
+        if (bk && bk !== 'solde' && (!best || bd < best.d)) best = { n, k: bk, d: bd };
+      });
+      if (best) { value = best.n; kind = best.k; }
+    }
+    if (!value) value = nums[0];
+    const amount = Math.abs(depNum(value.str.replace('−', '-')));
+    if (!amount) return;
+    let isExpense;
+    if (kind === 'debit') isExpense = true;
+    else if (kind === 'credit') isExpense = false;
+    else if (/^[-−]/.test(value.str)) isExpense = true;
+    else if (/^\+/.test(value.str)) isExpense = false;
+    else { isExpense = !depIsCredit(label); guessed++; }
+    if (isExpense) { last = { date, label, amount }; expenses.push(last); }
+  });
+  const warn = expenses.length ? (guessed ? "Lecture d'un PDF : je n'ai pas pu distinguer tous les débits des crédits, vérifie les totaux." : "Lecture d'un PDF : vérifie que les totaux te semblent justes.") : '';
+  return { tx: expenses, warn };
+}
+
+// Point d'entrée : reconnaît le format d'après le contenu (et l'extension)
+async function depReadAny(file) {
+  const buf = await file.arrayBuffer();
+  const head = new Uint8Array(buf.slice(0, 8));
+  const isPdf = head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46;             // %PDF
+  const isZip = head[0] === 0x50 && head[1] === 0x4B;                                                       // xlsx / ods
+  const isOle = head[0] === 0xD0 && head[1] === 0xCF;                                                       // xls
+  if (isPdf || /\.pdf$/i.test(file.name)) return depReadPdf(buf);
+  if (isZip || isOle || /\.(xlsx?|ods)$/i.test(file.name)) return depReadSheet(buf);
+  if (/\.(png|jpe?g|heic|webp|gif)$/i.test(file.name) || String(file.type).startsWith('image/')) throw new Error('image');
+  let text; try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { text = new TextDecoder('windows-1252').decode(buf); }
+  if (/<OFX>|OFXHEADER|<STMTTRN>/i.test(text.slice(0, 4000)) || /\.(ofx|qfx)$/i.test(file.name)) return depReadOFX(text);
+  if (/^!Type:/m.test(text.slice(0, 500)) || /\.qif$/i.test(file.name)) return depReadQIF(text);
+  return depExtractExpenses(depParseCSV(text));
+}
+
 async function depOnFile(input) {
   const files = [...(input.files || [])];
   input.value = '';
   if (!files.length) return;
   const msg = document.getElementById('dep-import-msg');
   const say = (t, err) => { if (msg) { msg.style.color = err ? '#dc2626' : 'var(--color-text-secondary)'; msg.textContent = t; } };
-  say('Lecture du fichier…');
+  say(files.some(f => /\.(pdf|xlsx?|ods)$/i.test(f.name)) ? 'Chargement du lecteur, lecture du fichier…' : 'Lecture du fichier…');
   try {
     let allTx = [], warn = '';
     for (const f of files) {
-      if (/\.pdf$/i.test(f.name)) { say("Les PDF ne sont pas encore pris en charge : télécharge l'export CSV (ou Excel enregistré en CSV) depuis ton espace bancaire.", true); return; }
-      if (/\.xlsx?$/i.test(f.name)) { say("Enregistre d'abord le fichier au format CSV (Excel : Fichier > Enregistrer sous > CSV), puis réimporte-le.", true); return; }
-      const buf = await f.arrayBuffer();
-      let text; try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { text = new TextDecoder('windows-1252').decode(buf); }
-      const r = depExtractExpenses(depParseCSV(text));
-      if (r.warn && !r.tx.length) { say("Format de fichier non reconnu. Il faut au minimum une date, un libellé et un montant. Essaie l'export CSV de ta banque.", true); return; }
+      const r = await depReadAny(f);
       allTx = allTx.concat(r.tx); warn = warn || r.warn;
     }
-    if (!allTx.length) { say("Aucune dépense trouvée dans ce fichier.", true); return; }
+    if (!allTx.length) { say("Je n'ai trouvé aucune dépense dans ce fichier. Il faut au minimum une date, un libellé et un montant. Essaie l'export CSV ou Excel de ta banque.", true); return; }
     const { months, items } = depBuildItems(allTx);
     depState = { ts: Date.now(), months, items, off: [], source: 'csv', warn, nTx: allTx.length };
     depSave(); depRender();
-  } catch (e) { console.warn('depOnFile:', e); say("Impossible de lire ce fichier. Essaie l'export CSV de ta banque.", true); }
+  } catch (e) {
+    console.warn('depOnFile:', e);
+    if (e && e.message === 'image') say("Les photos et scans ne sont pas lus (pour ta confidentialité, rien n'est envoyé nulle part). Utilise le PDF, l'Excel ou le CSV de ta banque.", true);
+    else say(e && /lecteur/.test(e.message) ? e.message : "Impossible de lire ce fichier. Essaie l'export CSV ou Excel de ta banque.", true);
+  }
 }
 function depManualAnalyze() {
   const items = [];
@@ -395,13 +551,14 @@ function depRenderImport() {
   return `
   <div style="${DEP_CARD}">
     <div style="font-size:15px;font-weight:800;color:var(--color-text);margin-bottom:4px">📂 Importer un relevé de compte</div>
-    <div style="font-size:12.5px;${DEP_MUTED};line-height:1.55;margin-bottom:12px">Télécharge l'export <strong>CSV</strong> de ton compte (1 mois, ou plusieurs pour repérer les prélèvements récurrents) depuis ton espace bancaire. Le site retrouve tes abonnements et classe tes dépenses.</div>
+    <div style="font-size:12.5px;${DEP_MUTED};line-height:1.55;margin-bottom:12px">Télécharge ton relevé depuis ton espace bancaire, en <strong>PDF, Excel, CSV ou OFX</strong> (1 mois, ou plusieurs pour repérer les prélèvements récurrents). Le site retrouve tes abonnements et classe tes dépenses. Les photos et scans ne sont pas lus.</div>
     <div style="display:flex;gap:8px;align-items:flex-start;background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.25);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--color-text);line-height:1.5;margin-bottom:12px">
       <span>🔒</span><span><strong>Ton fichier reste dans ton navigateur.</strong> Il n'est ni envoyé ni enregistré. Seul le résultat de l'analyse est mémorisé sur cet appareil. L'IA, si tu la lances, ne voit que des noms de commerçants, jamais les montants.</span>
     </div>
     <label style="display:block;text-align:center;padding:16px;border:2px dashed var(--color-border);border-radius:14px;cursor:pointer;font-size:13px;font-weight:700;color:var(--color-text)">
-      Choisir un ou plusieurs fichiers CSV
-      <input type="file" accept=".csv,.txt,text/csv,.pdf,.xls,.xlsx" multiple style="display:none" onchange="depOnFile(this)">
+      Choisir un ou plusieurs fichiers
+      <div style="font-size:11.5px;font-weight:500;${DEP_MUTED};margin-top:3px">PDF · Excel · CSV · OFX/QFX</div>
+      <input type="file" accept=".csv,.txt,.tsv,.pdf,.xls,.xlsx,.ods,.ofx,.qfx,.qif,text/csv,application/pdf" multiple style="display:none" onchange="depOnFile(this)">
     </label>
     <div id="dep-import-msg" style="font-size:12px;margin-top:8px;${DEP_MUTED}"></div>
   </div>
