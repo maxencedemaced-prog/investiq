@@ -464,6 +464,8 @@ EXERCICE "PLAN DU MOIS" : répartis ses ${budget}€ de ce mois pour RESPECTER s
 RÈGLES STRICTES SUR LA RÉPARTITION :
 ${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (ou quasi tout) en ACTIONS individuelles. NE propose AUCUN ETF (ou 1 seul minoritaire si ${objStockPct}<100).` : objStockPct <= 10 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (ou quasi tout) en ETF. NE propose quasiment AUCUNE action individuelle.` : `- Respecte le ratio ${objStockPct}% actions / ${100-objStockPct}% ETF dans la répartition des montants.`}
 - Rééquilibrage par apports : regarde ce qu'il détient DÉJÀ et oriente le budget vers ce qui est sous-pondéré vs sa cible, sans vendre.
+- DIVERSIFICATION QUI DÉPEND DU BUDGET : ${(() => { const s = planSizing(0, budget, objStockPct); const nbMois = s.nbStocks > 0 ? Math.max(1, Math.min(s.nbStocks, Math.round(s.stockMonthly / 40) || 1)) : 0; return nbMois > 0 ? `sur la part actions (~${Math.round(s.stockMonthly)}€ ce mois-ci) propose ${nbMois} action${nbMois > 1 ? 's' : ''} DIFFÉRENTE${nbMois > 1 ? 'S' : ''}, de secteurs différents, aucune au-dessus de 40% du montant actions, ~20€ minimum par ligne. Plus le budget est élevé, plus il faut d'actions distinctes (jamais tout sur une seule).` : 'aucune action individuelle ce mois-ci.'; })()}
+- Évite de racheter ce qui pèse déjà plus de 25% de son portefeuille.
 - La somme des montants "actions" doit représenter ~${objStockPct}% du budget, et les ETF ~${100-objStockPct}%.
 ${objStockPct < 100 ? 'Dans la poche ETF, privilégie un socle Monde (MSCI World / All-World).' : ''}
 
