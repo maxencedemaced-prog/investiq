@@ -4892,7 +4892,8 @@ function loadChatHistory() {
   try { chatHistory = JSON.parse(localStorage.getItem(CACHE_CHAT)||'[]'); } catch { chatHistory = []; }
   const chat = document.getElementById('ai-chat');
   if (chat && chatHistory.length > 0) {
-    chat.innerHTML = chatHistory.map(m => `<div class="bubble ${m.role==='user'?'user':'bot'}">${m.role==='user' ? m.content : formatMD(m.content)}</div>`).join('');
+    // Les [ACTION:{...}] sont des commandes internes : jamais affichées à l'utilisateur
+    chat.innerHTML = chatHistory.map(m => `<div class="bubble ${m.role==='user'?'user':'bot'}">${m.role==='user' ? _escHtml(m.content) : formatMD(String(m.content).replace(/\[ACTION:[\s\S]*?\}\s*\]/g, '').trim())}</div>`).join('');
     const qbtns = document.getElementById('qbtns');
     if (qbtns) qbtns.style.display = 'none';
     chat.scrollTop = chat.scrollHeight;
@@ -10915,7 +10916,7 @@ async function sendAI() {
   if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.4'; }
 
   chatHistory.push({ role: 'user', content: q });
-  chat.innerHTML += `<div class="bubble user">${q}</div><div class="bubble bot" id="ai-loading" style="display:flex;align-items:center;gap:8px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="color:#8e8e93">Réflexion...</span></div>`;
+  chat.innerHTML += `<div class="bubble user">${_escHtml(q)}</div><div class="bubble bot" id="ai-loading" style="display:flex;align-items:center;gap:8px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="color:#8e8e93">Réflexion...</span></div>`;
   chat.scrollTop = chat.scrollHeight;
 
   const intent = detectIntent(q);
@@ -10941,8 +10942,8 @@ RÈGLES TECHNIQUES :
     saveChatHistory();
 
     // Détecte et parse les actions
-    const actionMatch = r.match(/\[ACTION:(.*?)\]/s);
-    let displayR = r.replace(/\[ACTION:.*?\]/s, '').trim();
+    const actionMatch = r.match(/\[ACTION:\s*(\{[\s\S]*?\})\s*\]/);
+    let displayR = r.replace(/\[ACTION:[\s\S]*?\}\s*\]/g, '').trim();
 
     const loadingEl = document.getElementById('ai-loading');
     if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot">${formatMD(displayR)}</div>`;
@@ -11078,14 +11079,17 @@ function initAgent(auto=false) {
     generateDailyBrief();
   }
 
-  // Responsive
+  applyAgentGrid();
+}
+
+// Colonnes de l'Agent IA : les colonnes latérales n'existent que si le portefeuille a des positions
+// (sinon elles sont vides et écrasent le chat dans un coin).
+function applyAgentGrid() {
   const layout = document.getElementById('agent-layout');
   const bottom = document.getElementById('agent-bottom');
-  const applyResp = () => {
-    if (layout) layout.style.gridTemplateColumns = window.innerWidth < 980 ? '1fr' : '1fr 300px';
-    if (bottom) bottom.style.gridTemplateColumns = window.innerWidth < 720 ? '1fr' : '240px 1fr';
-  };
-  applyResp();
+  const has = positions.length > 0;
+  if (layout) layout.style.gridTemplateColumns = (has && window.innerWidth >= 980) ? '1fr 300px' : '1fr';
+  if (bottom) bottom.style.gridTemplateColumns = (has && window.innerWidth >= 720) ? '240px 1fr' : '1fr';
 }
 
 // ═══════════════════════════════════════════════
@@ -11182,6 +11186,7 @@ function renderAgentDashboard() {
       const el = document.getElementById(id);
       if (el) el.innerHTML = '';
     });
+    applyAgentGrid();
     return;
   }
 
