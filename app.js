@@ -9180,12 +9180,15 @@ function aiLockedStateHTML(text) {
 }
 
 // ── Quota IA gratuit : messages clairs + mise en avant de Premium ──
-const AI_FREE_LIMIT_DEFAULT = 15;
-let aiQuotaState = null; // { used, limit } renvoyé par le serveur (comptes gratuits)
+// Comptes gratuits : AI_FREE_WELCOME analyses offertes, puis AI_FREE_DAILY par jour.
+// (valeurs affichées ; la règle réelle est appliquée par le serveur, api/claude.js)
+const AI_FREE_WELCOME = 15;
+const AI_FREE_DAILY = 3;
+let aiQuotaState = null; // { mode:'welcome'|'daily', used, limit, welcome } renvoyé par le serveur
 
 function aiQuotaMessage() {
-  const l = aiQuotaState?.limit || AI_FREE_LIMIT_DEFAULT;
-  return `🔒 Limite du jour atteinte : tu as utilisé tes ${l} analyses IA gratuites aujourd'hui. Elles reviennent demain — ou passe à Premium pour un accès illimité.`;
+  const d = aiQuotaState?.limit || AI_FREE_DAILY;
+  return `🔒 Limite du jour atteinte : tes ${AI_FREE_WELCOME} analyses offertes sont utilisées et tu as consommé tes ${d} analyses gratuites d'aujourd'hui. 3 nouvelles reviennent demain — ou passe à Premium pour un accès illimité.`;
 }
 // Vrai si le dernier appel IA vient d'être refusé pour cause de quota (utile dans les catch génériques)
 function aiJustHitQuota() { return Date.now() - (window._aiQuotaHitAt || 0) < 8000; }
@@ -9196,15 +9199,17 @@ function updateAIQuotaBadge() {
   const el = document.getElementById('sidebar-quota-text');
   if (!el || !aiQuotaState) return;
   const left = Math.max(0, aiQuotaState.limit - aiQuotaState.used);
-  el.textContent = left > 0 ? `IA gratuite : ${left}/${aiQuotaState.limit} analyses restantes aujourd'hui` : `IA gratuite : limite du jour atteinte`;
+  const welcome = aiQuotaState.mode === 'welcome';
+  el.textContent = welcome
+    ? `🎁 ${left}/${aiQuotaState.limit} analyses IA offertes restantes`
+    : (left > 0 ? `IA gratuite : ${left}/${aiQuotaState.limit} analyses restantes aujourd'hui` : 'IA gratuite : limite du jour atteinte');
   el.style.color = left === 0 ? '#fbbf24' : left <= 3 ? '#fcd34d' : '';
   el.style.fontWeight = left <= 3 ? '700' : '';
 }
 
 function showAIQuotaModal() {
-  const l = aiQuotaState?.limit || AI_FREE_LIMIT_DEFAULT;
-  showPremiumGate('Limite du jour atteinte', [
-    `Tu as utilisé tes ${l} analyses IA gratuites d'aujourd'hui — ce n'est pas un bug, elles se rechargent demain.`,
+  showPremiumGate('Limite gratuite atteinte', [
+    `Tes ${AI_FREE_WELCOME} analyses offertes sont utilisées et tu as consommé tes ${AI_FREE_DAILY} analyses du jour — ce n'est pas un bug : ${AI_FREE_DAILY} nouvelles reviennent demain.`,
     'Avec Premium : analyses IA illimitées, sans attendre',
     'Signaux IA sur tes positions et les opportunités du marché',
     'Bilan patrimonial complet et alertes IA sur ton portefeuille',
@@ -9215,8 +9220,8 @@ function showAIQuotaModal() {
 function aiFailureHTML(text, retryJs) {
   if (isAIQuotaMessage(text)) {
     return `<div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.35);border-radius:14px;padding:16px 18px;color:#fff">
-      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">⏳ Limite gratuite du jour atteinte</div>
-      <div style="font-size:12.5px;color:rgba(255,255,255,0.75);line-height:1.6;margin-bottom:12px">Tu as utilisé tes ${aiQuotaState?.limit || AI_FREE_LIMIT_DEFAULT} analyses IA gratuites aujourd'hui. Ce n'est pas un bug : elles reviennent demain. Avec Premium, plus aucune limite.</div>
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">⏳ Limite gratuite atteinte</div>
+      <div style="font-size:12.5px;color:rgba(255,255,255,0.75);line-height:1.6;margin-bottom:12px">Tes ${AI_FREE_WELCOME} analyses offertes sont utilisées et tu as consommé tes ${AI_FREE_DAILY} analyses du jour. Ce n'est pas un bug : ${AI_FREE_DAILY} nouvelles reviennent demain. Avec Premium, plus aucune limite.</div>
       <button onclick="startCheckout(this,'annual')" style="background:linear-gradient(135deg,#16a34a,#15803d);border:none;color:#fff;font-size:12.5px;font-weight:800;padding:10px 16px;border-radius:10px;cursor:pointer">Passer à Premium — illimité</button>
     </div>`;
   }
@@ -9258,7 +9263,7 @@ async function callClaude(prompt,sys,maxTokens,model){
     if (!res.ok && d?.code === 'quota_exceeded') {
       // Quota gratuit du jour épuré : on l'explique clairement (et on met Premium en avant)
       // au lieu d'un "Erreur de connexion" qui ferait croire à un bug.
-      aiQuotaState = d.quota || { used: AI_FREE_LIMIT_DEFAULT, limit: AI_FREE_LIMIT_DEFAULT };
+      aiQuotaState = d.quota || { mode: 'daily', used: AI_FREE_DAILY, limit: AI_FREE_DAILY, welcome: AI_FREE_WELCOME };
       window._aiQuotaHitAt = Date.now();
       updateAIQuotaBadge();
       if (!window._aiQuotaModalAt || Date.now() - window._aiQuotaModalAt > 30 * 60000) {

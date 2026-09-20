@@ -66,7 +66,10 @@ function rateLimited(userId, max = 20, windowMs = 60_000) {
 // ── Quota IA gratuit : les comptes Premium ont un accès illimité (toujours
 // borné par le rate-limit anti-abus ci-dessus) ; les comptes gratuits sont
 // plafonnés par jour pour que "IA illimitée" reste un vrai avantage Premium.
-const FREE_DAILY_AI_LIMIT = 15;
+// Comptes gratuits : WELCOME analyses offertes une fois pour toutes à l'inscription,
+// puis DAILY par jour quand elles sont épuisées. Valeurs ajustables avec le temps.
+const FREE_WELCOME_CREDITS = 15;
+const FREE_DAILY_AFTER_WELCOME = 3;
 
 function isPremiumProfile(profile) {
   if (!profile) return false;
@@ -81,25 +84,33 @@ function isPremiumProfile(profile) {
 // Ne bloque jamais par excès de prudence : si la vérification échoue (clé
 // service_role absente, erreur réseau...) on laisse passer plutôt que de
 // casser l'IA pour tout le monde.
-// Retourne { blocked, premium, used } — used = appels déjà consommés aujourd'hui (comptes gratuits).
+// Retourne { blocked, premium, quota } où quota décrit l'état AVANT l'appel en cours :
+//   mode 'welcome' : il reste des analyses offertes (used/limit = total consommé / offert)
+//   mode 'daily'   : offertes épuisées, on compte le jour (used/limit = aujourd'hui / par jour)
 async function checkFreeQuota(userId) {
-  const open = { blocked: false, premium: false, used: null };
+  const open = { blocked: false, premium: false, quota: null };
   if (!supabaseAdmin) return open;
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('is_premium, subscription_status, premium_until').eq('id', userId).single();
-    if (isPremiumProfile(profile)) return { blocked: false, premium: true, used: null };
+    if (isPremiumProfile(profile)) return { blocked: false, premium: true, quota: null };
 
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
-    const { count, error } = await supabaseAdmin
-      .from('ai_usage_log')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('created_at', startOfDay.toISOString());
-    if (error) { console.error('[api/claude] checkFreeQuota:', error.message); return open; }
-    const used = count || 0;
-    return { blocked: used >= FREE_DAILY_AI_LIMIT, premium: false, used };
+    const [total, today] = await Promise.all([
+      supabaseAdmin.from('ai_usage_log').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+      supabaseAdmin.from('ai_usage_log').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', startOfDay.toISOString()),
+    ]);
+    if (total.error || today.error) { console.error('[api/claude] checkFreeQuota:', (total.error || today.error).message); return open; }
+    const usedTotal = total.count || 0, usedToday = today.count || 0;
+
+    if (usedTotal < FREE_WELCOME_CREDITS) {
+      return { blocked: false, premium: false, quota: { mode: 'welcome', used: usedTotal, limit: FREE_WELCOME_CREDITS } };
+    }
+    return {
+      blocked: usedToday >= FREE_DAILY_AFTER_WELCOME, premium: false,
+      quota: { mode: 'daily', used: usedToday, limit: FREE_DAILY_AFTER_WELCOME, welcome: FREE_WELCOME_CREDITS }
+    };
   } catch (e) {
     console.error('[api/claude] checkFreeQuota failed:', e.message);
     return open;
@@ -146,8 +157,8 @@ export default async function handler(req, res) {
     if (quota.blocked) {
       return res.status(429).json({
         code: 'quota_exceeded',
-        quota: { used: quota.used, limit: FREE_DAILY_AI_LIMIT },
-        error: `Limite IA quotidienne atteinte (${FREE_DAILY_AI_LIMIT}/jour en gratuit). Passe à Premium pour un accès illimité.`
+        quota: quota.quota,
+        error: `Limite IA atteinte : tes ${FREE_WELCOME_CREDITS} analyses offertes sont épuisées et tu as utilisé tes ${FREE_DAILY_AFTER_WELCOME} analyses gratuites du jour. Passe à Premium pour un accès illimité.`
       });
     }
 
@@ -200,7 +211,14 @@ export default async function handler(req, res) {
     res.status(200).json({
       text: text || 'Aucune réponse.',
       // Compteur du jour pour l'affichage côté client (comptes gratuits uniquement)
-      quota: quota.premium || quota.used === null ? null : { used: quota.used + 1, limit: FREE_DAILY_AI_LIMIT }
+      quota: (() => {
+        const q = quota.quota;
+        if (quota.premium || !q) return null;
+        const used = q.used + 1; // cet appel vient d'être consommé
+        // Si cet appel épuise les offertes, on bascule l'affichage sur le quota du jour
+        if (q.mode === 'welcome' && used >= q.limit) return { mode: 'daily', used: 0, limit: FREE_DAILY_AFTER_WELCOME, welcome: FREE_WELCOME_CREDITS };
+        return { ...q, used };
+      })()
     });
   } catch (error) {
     res.status(500).json({ error: 'Erreur serveur: ' + error.message });
