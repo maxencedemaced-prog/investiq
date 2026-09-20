@@ -4433,7 +4433,15 @@ async function signup() {
   if (pass.length<6) { setAuthMsg('Mot de passe trop court.'); return; }
   setAuthMsg('Création...', true);
   const { data, error } = await sb.auth.signUp({ email, password: pass });
-  if (error) { setAuthMsg(error.message); return; }
+  if (error) {
+    const m = (error.message || '').toLowerCase();
+    if (m.includes('rate limit')) setAuthMsg("Trop d'emails envoyés récemment. Réessaie dans environ 1 heure.");
+    else if (m.includes('already') || m.includes('registered')) setAuthMsg('Un compte existe déjà avec cet email — connecte-toi.');
+    else if (m.includes('invalid') && m.includes('email')) setAuthMsg('Adresse email invalide.');
+    else if (m.includes('password')) setAuthMsg('Mot de passe refusé : utilise au moins 6 caractères.');
+    else setAuthMsg(error.message);
+    return;
+  }
   // Supabase renvoie un "succès" sans identité si l'email existe déjà (anti-énumération)
   if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
     setAuthMsg('Un compte existe déjà avec cet email — connecte-toi.');
