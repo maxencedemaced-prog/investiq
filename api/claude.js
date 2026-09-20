@@ -81,12 +81,14 @@ function isPremiumProfile(profile) {
 // Ne bloque jamais par excès de prudence : si la vérification échoue (clé
 // service_role absente, erreur réseau...) on laisse passer plutôt que de
 // casser l'IA pour tout le monde.
+// Retourne { blocked, premium, used } — used = appels déjà consommés aujourd'hui (comptes gratuits).
 async function checkFreeQuota(userId) {
-  if (!supabaseAdmin) return false;
+  const open = { blocked: false, premium: false, used: null };
+  if (!supabaseAdmin) return open;
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('is_premium, subscription_status, premium_until').eq('id', userId).single();
-    if (isPremiumProfile(profile)) return false;
+    if (isPremiumProfile(profile)) return { blocked: false, premium: true, used: null };
 
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
@@ -95,11 +97,12 @@ async function checkFreeQuota(userId) {
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .gte('created_at', startOfDay.toISOString());
-    if (error) { console.error('[api/claude] checkFreeQuota:', error.message); return false; }
-    return (count || 0) >= FREE_DAILY_AI_LIMIT;
+    if (error) { console.error('[api/claude] checkFreeQuota:', error.message); return open; }
+    const used = count || 0;
+    return { blocked: used >= FREE_DAILY_AI_LIMIT, premium: false, used };
   } catch (e) {
     console.error('[api/claude] checkFreeQuota failed:', e.message);
-    return false;
+    return open;
   }
 }
 
@@ -139,8 +142,13 @@ export default async function handler(req, res) {
     }
 
     // ── 2bis. QUOTA GRATUIT : accès IA illimité réservé à Premium ──
-    if (await checkFreeQuota(user.id)) {
-      return res.status(429).json({ error: `Limite IA quotidienne atteinte (${FREE_DAILY_AI_LIMIT}/jour en gratuit). Passe à Premium pour un accès illimité.` });
+    const quota = await checkFreeQuota(user.id);
+    if (quota.blocked) {
+      return res.status(429).json({
+        code: 'quota_exceeded',
+        quota: { used: quota.used, limit: FREE_DAILY_AI_LIMIT },
+        error: `Limite IA quotidienne atteinte (${FREE_DAILY_AI_LIMIT}/jour en gratuit). Passe à Premium pour un accès illimité.`
+      });
     }
 
     // ── 3. LIMITES DE TAILLE : éviter les prompts géants ──
@@ -189,7 +197,11 @@ export default async function handler(req, res) {
     }
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
     await logUsage({ userId: user.id, model: finalModel, usage: data.usage, system });
-    res.status(200).json({ text: text || 'Aucune réponse.' });
+    res.status(200).json({
+      text: text || 'Aucune réponse.',
+      // Compteur du jour pour l'affichage côté client (comptes gratuits uniquement)
+      quota: quota.premium || quota.used === null ? null : { used: quota.used + 1, limit: FREE_DAILY_AI_LIMIT }
+    });
   } catch (error) {
     res.status(500).json({ error: 'Erreur serveur: ' + error.message });
   }

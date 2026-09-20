@@ -527,6 +527,7 @@ La somme des montants doit faire exactement ${budget}.`;
     renderMonthlyPlan(plan, false);
   } catch(e) {
     _monthlyPlanBusy = false;
+    if (aiJustHitQuota()) { el.innerHTML = `<div style="margin-bottom:14px">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
     try { localStorage.setItem(MONTHLY_PLAN_KEY + '_cooldown', Date.now()); } catch {}
     console.warn('monthlyPlan:', e);
     el.innerHTML = `
@@ -3881,6 +3882,7 @@ Si tu n'as pas d'actualité récente et datée fiable sur une entreprise, utilis
 
   } catch(e) {
     console.error('[loadEntrepriseNews] échec :', e.message);
+    if (aiJustHitQuota()) { newsEl.innerHTML = `<div style="padding:8px 0">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
     newsEl.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
       <div style="font-size:20px;margin-bottom:8px">⚠️</div>
       <div style="font-size:13px">Impossible de charger les actualités.<br>Réessaie dans quelques secondes.</div>
@@ -8033,7 +8035,7 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
   // Build nice cards for the recommendation
   document.getElementById('obj-ai-simple').innerHTML = `
     <div style="font-size:14px;color:#1c1c1e;line-height:1.8">${simpleFailed
-      ? `<div style="background:#fff0f0;border-radius:12px;padding:14px;color:#cc2f26;font-weight:600">⚠ ${simpleR} <button onclick="generateObjPlan()" style="margin-left:8px;background:none;border:1px solid #cc2f26;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#cc2f26;cursor:pointer">Réessayer</button></div>`
+      ? aiFailureHTML(simpleR, 'generateObjPlan()')
       : formatMD(simpleR)}</div>
     ${!onTrack ? `
     <div style="margin-top:16px;background:#fff5e0;border-radius:14px;padding:16px;border-left:4px solid #f59e0b">
@@ -8062,7 +8064,7 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
     const el = document.getElementById('obj-ai-plan');
     if (!el) return;
     el.innerHTML = callClaudeFailed(r)
-      ? `<div style="background:#fff0f0;border-radius:12px;padding:14px;color:#cc2f26;font-weight:600">⚠ ${r}</div>`
+      ? aiFailureHTML(r)
       : `<div style="font-size:14px;color:#3c3c43;line-height:1.7;font-weight:500">${formatMD(r)}</div>`;
   });
 
@@ -8567,6 +8569,7 @@ function renderNewsList() {
   if (newsFilter === 'agenda') { if (isCacheValid('agenda')) { restoreFromCache('agenda'); } else { renderAgenda(); } return; }
 
   if (newsData === null) {
+    if (aiJustHitQuota()) { list.innerHTML = `<div style="padding:8px 0">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
     list.innerHTML = `<div style="text-align:center;padding:40px;color:#8e8e93">
       <div style="font-size:32px;margin-bottom:10px">⚠️</div>
       <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Échec du chargement</div>
@@ -9176,6 +9179,50 @@ function aiLockedStateHTML(text) {
   </div>`;
 }
 
+// ── Quota IA gratuit : messages clairs + mise en avant de Premium ──
+const AI_FREE_LIMIT_DEFAULT = 15;
+let aiQuotaState = null; // { used, limit } renvoyé par le serveur (comptes gratuits)
+
+function aiQuotaMessage() {
+  const l = aiQuotaState?.limit || AI_FREE_LIMIT_DEFAULT;
+  return `🔒 Limite du jour atteinte : tu as utilisé tes ${l} analyses IA gratuites aujourd'hui. Elles reviennent demain — ou passe à Premium pour un accès illimité.`;
+}
+// Vrai si le dernier appel IA vient d'être refusé pour cause de quota (utile dans les catch génériques)
+function aiJustHitQuota() { return Date.now() - (window._aiQuotaHitAt || 0) < 8000; }
+function isAIQuotaMessage(t) { return typeof t === 'string' && t.startsWith('🔒 Limite du jour atteinte'); }
+
+// Compteur affiché dans la carte Premium de la sidebar
+function updateAIQuotaBadge() {
+  const el = document.getElementById('sidebar-quota-text');
+  if (!el || !aiQuotaState) return;
+  const left = Math.max(0, aiQuotaState.limit - aiQuotaState.used);
+  el.textContent = left > 0 ? `IA gratuite : ${left}/${aiQuotaState.limit} analyses restantes aujourd'hui` : `IA gratuite : limite du jour atteinte`;
+  el.style.color = left === 0 ? '#fbbf24' : left <= 3 ? '#fcd34d' : '';
+  el.style.fontWeight = left <= 3 ? '700' : '';
+}
+
+function showAIQuotaModal() {
+  const l = aiQuotaState?.limit || AI_FREE_LIMIT_DEFAULT;
+  showPremiumGate('Limite du jour atteinte', [
+    `Tu as utilisé tes ${l} analyses IA gratuites d'aujourd'hui — ce n'est pas un bug, elles se rechargent demain.`,
+    'Avec Premium : analyses IA illimitées, sans attendre',
+    'Signaux IA sur tes positions et les opportunités du marché',
+    'Bilan patrimonial complet et alertes IA sur ton portefeuille',
+  ], 'Quota gratuit atteint');
+}
+
+// Bloc d'erreur IA : explique le quota (avec bouton Premium) sinon erreur classique + réessayer
+function aiFailureHTML(text, retryJs) {
+  if (isAIQuotaMessage(text)) {
+    return `<div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.35);border-radius:14px;padding:16px 18px;color:#fff">
+      <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">⏳ Limite gratuite du jour atteinte</div>
+      <div style="font-size:12.5px;color:rgba(255,255,255,0.75);line-height:1.6;margin-bottom:12px">Tu as utilisé tes ${aiQuotaState?.limit || AI_FREE_LIMIT_DEFAULT} analyses IA gratuites aujourd'hui. Ce n'est pas un bug : elles reviennent demain. Avec Premium, plus aucune limite.</div>
+      <button onclick="startCheckout(this,'annual')" style="background:linear-gradient(135deg,#16a34a,#15803d);border:none;color:#fff;font-size:12.5px;font-weight:800;padding:10px 16px;border-radius:10px;cursor:pointer">Passer à Premium — illimité</button>
+    </div>`;
+  }
+  return `<div style="background:#fff0f0;border-radius:12px;padding:14px;color:#cc2f26;font-weight:600">⚠ ${_escHtml(text)}${retryJs ? ` <button onclick="${retryJs}" style="margin-left:8px;background:none;border:1px solid #cc2f26;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#cc2f26;cursor:pointer">Réessayer</button>` : ''}</div>`;
+}
+
 // Même principe pour un contenu réservé à Premium (utilisateur connecté mais pas abonné) —
 // bandeau inline, pas de popup intrusive, cohérent avec aiLockedStateHTML ci-dessus.
 function premiumLockedStateHTML(featureName, text) {
@@ -9208,6 +9255,19 @@ async function callClaude(prompt,sys,maxTokens,model){
       body:JSON.stringify(body)
     });
     const d=await res.json();
+    if (!res.ok && d?.code === 'quota_exceeded') {
+      // Quota gratuit du jour épuré : on l'explique clairement (et on met Premium en avant)
+      // au lieu d'un "Erreur de connexion" qui ferait croire à un bug.
+      aiQuotaState = d.quota || { used: AI_FREE_LIMIT_DEFAULT, limit: AI_FREE_LIMIT_DEFAULT };
+      window._aiQuotaHitAt = Date.now();
+      updateAIQuotaBadge();
+      if (!window._aiQuotaModalAt || Date.now() - window._aiQuotaModalAt > 30 * 60000) {
+        window._aiQuotaModalAt = Date.now();
+        showAIQuotaModal();
+      }
+      return aiQuotaMessage();
+    }
+    if (res.ok && d && d.quota) { aiQuotaState = d.quota; updateAIQuotaBadge(); }
     if (!res.ok) {
       console.error('[callClaude] HTTP', res.status, d?.error);
       // Une seule alerte visible par minute pour ne pas spammer
@@ -9522,6 +9582,7 @@ function renderVerdictLoading() {
 function renderVerdictError() {
   const el = document.getElementById('agent-verdict');
   if (!el) return;
+  if (aiJustHitQuota()) { el.innerHTML = `<div style="margin-bottom:10px">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
   el.innerHTML = `
   <div style="background:linear-gradient(135deg,#0c1220,#131a2e);border:1px solid rgba(99,102,241,0.25);border-radius:18px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px">
     <span style="font-size:12px;color:rgba(255,255,255,0.5)">Le verdict InvestIQ n'a pas pu être généré.</span>
@@ -10324,7 +10385,7 @@ function isPremiumUser() {
 }
 
 // Fenêtre d'incitation à l'abonnement
-function showPremiumGate(featureName, benefits) {
+function showPremiumGate(featureName, benefits, subtitle) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const surf = isDark ? '#161b26' : '#fff';
   const txt  = isDark ? '#f0f0f0' : '#09090b';
@@ -10340,7 +10401,7 @@ function showPremiumGate(featureName, benefits) {
       <div style="background:linear-gradient(135deg,#0d1526,#1a2744);padding:26px 26px 22px;text-align:center">
         <div style="font-size:32px;margin-bottom:8px">✨</div>
         <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.03em">${featureName}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:5px">Fonctionnalité Premium</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:5px">${subtitle || 'Fonctionnalité Premium'}</div>
       </div>
       <div style="padding:22px 26px 24px">
         <div style="display:flex;flex-direction:column;gap:11px;margin-bottom:20px">
