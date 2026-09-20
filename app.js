@@ -11112,6 +11112,25 @@ const AGENT_SAMPLE_BRIEF = [
 ];
 const AGENT_SAMPLE_IDS = ['agent-hero','agent-smart-alerts','agent-hier','agent-alertes','agent-recos','agent-banner','agent-priorites','agent-right','agent-footer-cards'];
 let _agentSampling = false;
+let agentView = 'mine';   // 'mine' = mon Agent (écran d'attente si vide) · 'sample' = exemple figé
+
+function setAgentView(v) { agentView = v; renderAgentDashboard(); }
+
+// Onglets « Mon Agent » / « Exemple » — uniquement tant que le portefeuille est vide
+function renderAgentTabs() {
+  const el = document.getElementById('agent-tabs');
+  if (!el) return;
+  if (positions.length && !_agentSampling) { el.innerHTML = ''; return; }
+  const tab = (key, label) => `<button type="button" onclick="setAgentView('${key}')" style="padding:8px 14px;border-radius:99px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid ${agentView === key ? '#16a34a' : 'var(--color-border)'};background:${agentView === key ? '#16a34a' : 'transparent'};color:${agentView === key ? '#fff' : 'var(--color-text-secondary)'}">${label}</button>`;
+  el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${tab('mine', 'Mon Agent')}${tab('sample', '✦ Voir un exemple · Premium')}</div>`;
+}
+
+function clearAgentSample() {
+  const sa = document.getElementById('agent-smart-alerts');
+  if (sa && sa.classList.contains('agent-sample')) sa.innerHTML = '';
+  AGENT_SAMPLE_IDS.forEach(id => document.getElementById(id)?.classList.remove('agent-sample'));
+  const sb = document.getElementById('agent-sample-banner'); if (sb) sb.innerHTML = '';
+}
 
 function renderAgentSample() {
   const real = positions;
@@ -11136,11 +11155,14 @@ function renderAgentSample() {
   const banner = document.getElementById('agent-sample-banner');
   if (banner) banner.innerHTML = `
   <div data-agent-sample style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:14px;padding:12px 16px;margin-bottom:12px">
-    <div>
-      <div style="font-size:13px;font-weight:800;color:var(--color-text)">👀 Exemple avec un portefeuille fictif</div>
-      <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Voilà ce que ton Agent IA te montre dès que tu as des positions.</div>
+    <div style="flex:1;min-width:220px">
+      <div style="font-size:13px;font-weight:800;color:var(--color-text)">🔒 Aperçu figé · portefeuille fictif</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px;line-height:1.5">Ces chiffres sont un exemple, rien n'est calculé sur tes données. Avec Premium, les conseils IA (✦) portent sur ton vrai portefeuille.</div>
     </div>
-    <button onclick="nav('ajouter')" style="padding:9px 16px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer">+ Ajouter ma première position</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="nav('ajouter')" style="padding:9px 14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer">+ Ajouter mes positions</button>
+      <button onclick="showPlansModal()" style="padding:9px 14px;background:transparent;color:var(--color-text);border:1px solid var(--color-border);border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer">Voir Premium</button>
+    </div>
   </div>`;
   applyAgentGrid();
 }
@@ -11149,12 +11171,10 @@ function renderAgentSample() {
 //  AGENT IA — DASHBOARD STYLE RÉFÉRENCE
 // ═══════════════════════════════════════════════
 function renderAgentDashboard() {
-  if (!positions.length && !_agentSampling) return renderAgentSample();
-  if (positions.length) {
-    const sa = document.getElementById('agent-smart-alerts');
-    if (sa && sa.classList.contains('agent-sample')) sa.innerHTML = '';
-    AGENT_SAMPLE_IDS.forEach(id => document.getElementById(id)?.classList.remove('agent-sample'));
-    const sb = document.getElementById('agent-sample-banner'); if (sb) sb.innerHTML = '';
+  if (!_agentSampling) {
+    renderAgentTabs();
+    if (!positions.length && agentView === 'sample') return renderAgentSample();
+    clearAgentSample();   // vue « Mon Agent » ou vraies positions : aucune trace de l'exemple
   }
   const name = isDemo ? 'Toi' : (currentUser?.email||'').split('@')[0];
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
@@ -11191,6 +11211,7 @@ function renderAgentDashboard() {
         <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:6px">Ton Agent IA t'attend</div>
         <div style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:18px">Ajoute des positions pour activer la surveillance intelligente</div>
         <button onclick="nav('ajouter')" style="padding:11px 22px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">+ Ajouter une position</button>
+        <div style="margin-top:12px"><button onclick="setAgentView('sample')" style="background:none;border:none;color:rgba(255,255,255,0.55);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline">Voir un exemple d'Agent IA</button></div>
       </div>`;
     } else {
       heroEl.innerHTML = `
