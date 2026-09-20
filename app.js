@@ -11130,6 +11130,7 @@ function clearAgentSample() {
   if (sa && sa.classList.contains('agent-sample')) sa.innerHTML = '';
   AGENT_SAMPLE_IDS.forEach(id => document.getElementById(id)?.classList.remove('agent-sample'));
   const sb = document.getElementById('agent-sample-banner'); if (sb) sb.innerHTML = '';
+  if (!positions.length) { const v = document.getElementById('agent-verdict'); if (v) v.innerHTML = ''; }   // pas de verdict d'un ancien portefeuille
 }
 
 function renderAgentSample() {
@@ -11138,6 +11139,7 @@ function renderAgentSample() {
   positions = AGENT_SAMPLE_POSITIONS.map(p => ({ ...p }));
   try { renderAgentDashboard(); } finally { positions = real; _agentSampling = false; }
   renderDailyBrief(AGENT_SAMPLE_BRIEF);
+  if (!real.length) { const v = document.getElementById('agent-verdict'); if (v) v.innerHTML = ''; }
 
   const alertEl = document.getElementById('agent-smart-alerts');
   if (alertEl) alertEl.innerHTML = `
