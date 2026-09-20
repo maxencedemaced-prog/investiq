@@ -1755,3 +1755,19 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
   .legal-doc-foot { padding: 13px 22px; }
   .legal-doc-title { font-size: 18px; }
 }
+
+/* Formulaires de connexion/inscription (fond sombre) : le style global input:focus
+   forçait un fond clair sous un texte blanc → saisie invisible. On garde le fond
+   sombre au focus et on neutralise le fond clair de l'autofill Chrome. */
+#auth-login input:focus, #auth-signup input:focus {
+  background: rgba(255,255,255,0.07) !important;
+  color: #fff !important;
+  border: 1.5px solid rgba(26,127,90,0.6) !important;
+}
+#auth-login input:-webkit-autofill,
+#auth-signup input:-webkit-autofill {
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #fff;
+  transition: background-color 9999s ease-out 0s;
+  box-shadow: 0 0 0 1000px #1c2320 inset !important;
+}
