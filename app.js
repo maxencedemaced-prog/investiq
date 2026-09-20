@@ -4468,7 +4468,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 // ── Caches du navigateur : rattachés à UN compte ──
 // Briefing, verdict, signaux, plan… sont stockés en localStorage. Sans nettoyage, ils passaient
 // d'un compte (ou du mode démo) à l'autre et affichaient le portefeuille de quelqu'un d'autre.
-const KEEP_CACHE = /^(iq_theme|iq_logo_domains|iq_last_page|iq_legal_accepted|iq_onboarded|iq_cache_uid)/;
+const KEEP_CACHE = /^(iq_theme|iq_logo_domains|iq_last_page|iq_legal_accepted|iq_onboarded|iq_cache_uid|iq_seen_)/;
 function clearUserCaches() {
   try {
     Object.keys(localStorage)
@@ -11075,7 +11075,7 @@ function initAgent(auto=false) {
   })();
   // ⭐ Verdict signature "Que ferait InvestIQ ?" (cache 24h) — sauté si restauration silencieuse et cache absent
   // Portefeuille vide : on affiche l'exemple fictif, aucun appel IA ni rendu concurrent
-  const hasReal = positions.length > 0;
+  const hasReal = positions.length > 0 && isPremiumUser();   // IA automatique : Premium uniquement
   if (hasReal && (!auto || getCachedVerdict())) {
     try { generateInvestIQVerdict(); } catch(e) { console.warn('verdict:', e); }
   }
@@ -11115,7 +11115,7 @@ function initAgent(auto=false) {
 function applyAgentGrid() {
   const layout = document.getElementById('agent-layout');
   const bottom = document.getElementById('agent-bottom');
-  const has = positions.length > 0 || !!document.querySelector('#agent-right.agent-sample');
+  const has = !!document.querySelector('#agent-right.agent-sample') || (isPremiumUser() && positions.length > 0);
   if (layout) layout.style.gridTemplateColumns = (has && window.innerWidth >= 980) ? '1fr 300px' : '1fr';
   if (bottom) bottom.style.gridTemplateColumns = (has && window.innerWidth >= 720) ? '240px 1fr' : '1fr';
 }
@@ -11136,17 +11136,66 @@ const AGENT_SAMPLE_BRIEF = [
 ];
 const AGENT_SAMPLE_IDS = ['agent-hero','agent-smart-alerts','agent-hier','agent-alertes','agent-recos','agent-banner','agent-priorites','agent-right','agent-footer-cards'];
 let _agentSampling = false;
-let agentView = 'mine';   // 'mine' = mon Agent (écran d'attente si vide) · 'sample' = exemple figé
+let agentView = 'mine';   // 'mine' = vue simple (compte gratuit) · 'sample' = exemple Premium figé
 
-function setAgentView(v) { agentView = v; renderAgentDashboard(); }
+// Point rouge « nouveau » sur l'onglet exemple, jusqu'au premier clic (mémorisé par compte)
+const agentSampleSeenKey = () => 'iq_seen_agent_sample_' + (currentUser?.id || 'demo');
+function agentSampleSeen() { try { return !!localStorage.getItem(agentSampleSeenKey()); } catch { return false; } }
 
-// Onglets « Mon Agent » / « Exemple » — uniquement tant que le portefeuille est vide
+function setAgentView(v) {
+  agentView = v;
+  if (v === 'sample') { try { localStorage.setItem(agentSampleSeenKey(), '1'); } catch {} }
+  renderAgentDashboard();
+}
+
+// Onglets « Mon Agent » / « Exemple Premium » — uniquement pour les comptes gratuits
 function renderAgentTabs() {
   const el = document.getElementById('agent-tabs');
   if (!el) return;
-  if (positions.length && !_agentSampling) { el.innerHTML = ''; return; }
-  const tab = (key, label) => `<button type="button" onclick="setAgentView('${key}')" style="padding:8px 14px;border-radius:99px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid ${agentView === key ? '#16a34a' : 'var(--color-border)'};background:${agentView === key ? '#16a34a' : 'transparent'};color:${agentView === key ? '#fff' : 'var(--color-text-secondary)'}">${label}</button>`;
-  el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${tab('mine', 'Mon Agent')}${tab('sample', '✦ Voir un exemple · Premium')}</div>`;
+  if (isPremiumUser()) { el.innerHTML = ''; return; }
+  const dot = agentSampleSeen() ? '' : '<span style="position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#ef4444;border:2px solid var(--color-bg,#fff)"></span>';
+  const tab = (key, label, extra) => `<button type="button" onclick="setAgentView('${key}')" style="position:relative;padding:8px 14px;border-radius:99px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid ${agentView === key ? '#16a34a' : 'var(--color-border)'};background:${agentView === key ? '#16a34a' : 'transparent'};color:${agentView === key ? '#fff' : 'var(--color-text-secondary)'}">${label}${extra || ''}</button>`;
+  el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${tab('mine', 'Mon Agent')}${tab('sample', '✦ Exemple Premium', dot)}</div>`;
+}
+
+// Écran d'attente (aucune position)
+function agentEmptyHeroHTML(showSample) {
+  return `<div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:30px;text-align:center;margin-bottom:10px">
+    <div style="font-size:36px;margin-bottom:10px">🤖</div>
+    <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:6px">Ton Agent IA t'attend</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:18px">Ajoute des positions pour activer la surveillance intelligente</div>
+    <button onclick="nav('ajouter')" style="padding:11px 22px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">+ Ajouter une position</button>
+    ${showSample ? `<div style="margin-top:12px"><button onclick="setAgentView('sample')" style="background:none;border:none;color:rgba(255,255,255,0.55);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline">Voir ce que donne Premium</button></div>` : ''}
+  </div>`;
+}
+
+// Vue simple (compte gratuit) : bandeau + tchat. Aucun appel IA automatique.
+function renderAgentSimple() {
+  clearAgentSample();
+  ['agent-verdict','agent-smart-alerts','agent-hier','agent-alertes','agent-recos','agent-banner','agent-priorites','agent-right','agent-footer-cards'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+  const heroEl = document.getElementById('agent-hero');
+  if (heroEl) {
+    if (!positions.length) heroEl.innerHTML = agentEmptyHeroHTML(true);
+    else {
+      const tv = positions.reduce((a, p) => a + p.qty * p.price, 0);
+      const pnl = tv - positions.reduce((a, p) => a + p.qty * p.pru, 0);
+      const name = isDemo ? 'Toi' : (currentUser?.email || '').split('@')[0];
+      heroEl.innerHTML = `<div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:22px 24px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="font-size:34px">🤖</div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:16px;font-weight:900;color:#fff">Bonjour ${_escHtml(name)}</div>
+          <div style="font-size:12.5px;color:rgba(255,255,255,0.55);margin-top:3px;line-height:1.5">${positions.length} position${positions.length > 1 ? 's' : ''} · ${fmtK(tv)} · <span style="color:${pnl >= 0 ? '#4ade80' : '#f87171'}">${pnl >= 0 ? '+' : ''}${fmtK(pnl)}</span>. Pose-moi une question ci-dessous. Le tableau de bord complet (score, alertes, analyse IA) est inclus avec Premium.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="setAgentView('sample')" style="padding:9px 14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer">✦ Voir l'exemple</button>
+          <button onclick="showPlansModal()" style="padding:9px 14px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer">Voir Premium</button>
+        </div>
+      </div>`;
+    }
+  }
+  applyAgentGrid();
 }
 
 function clearAgentSample() {
@@ -11163,7 +11212,7 @@ function renderAgentSample() {
   positions = AGENT_SAMPLE_POSITIONS.map(p => ({ ...p }));
   try { renderAgentDashboard(); } finally { positions = real; _agentSampling = false; }
   renderDailyBrief(AGENT_SAMPLE_BRIEF);
-  if (!real.length) { const v = document.getElementById('agent-verdict'); if (v) v.innerHTML = ''; }
+  { const v = document.getElementById('agent-verdict'); if (v) v.innerHTML = ''; }
 
   const alertEl = document.getElementById('agent-smart-alerts');
   if (alertEl) alertEl.innerHTML = `
@@ -11199,8 +11248,8 @@ function renderAgentSample() {
 function renderAgentDashboard() {
   if (!_agentSampling) {
     renderAgentTabs();
-    if (!positions.length && agentView === 'sample') return renderAgentSample();
-    clearAgentSample();   // vue « Mon Agent » ou vraies positions : aucune trace de l'exemple
+    if (!isPremiumUser()) return agentView === 'sample' ? renderAgentSample() : renderAgentSimple();   // compte gratuit : vue simple ou exemple figé
+    clearAgentSample();   // Premium : dashboard complet, aucune trace de l'exemple
   }
   const name = isDemo ? 'Toi' : (currentUser?.email||'').split('@')[0];
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
@@ -11232,13 +11281,7 @@ function renderAgentDashboard() {
   const heroEl = document.getElementById('agent-hero');
   if (heroEl) {
     if (!positions.length) {
-      heroEl.innerHTML = `<div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:30px;text-align:center;margin-bottom:10px">
-        <div style="font-size:36px;margin-bottom:10px">🤖</div>
-        <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:6px">Ton Agent IA t'attend</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:18px">Ajoute des positions pour activer la surveillance intelligente</div>
-        <button onclick="nav('ajouter')" style="padding:11px 22px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">+ Ajouter une position</button>
-        <div style="margin-top:12px"><button onclick="setAgentView('sample')" style="background:none;border:none;color:rgba(255,255,255,0.55);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline">Voir un exemple d'Agent IA</button></div>
-      </div>`;
+      heroEl.innerHTML = agentEmptyHeroHTML(false);
     } else {
       heroEl.innerHTML = `
       <div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:20px 22px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
