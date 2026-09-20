@@ -4476,6 +4476,7 @@ async function initApp(user) {
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
   await loadProfile(); await loadPositions(); await loadObjective();
   try { updateSidebarPremiumCard(); } catch(e) { console.warn('sidebar-premium:', e); }
+  try { refreshAIQuota(); } catch(e) { console.warn('refreshAIQuota:', e); }
   try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory:', e); }
   // Charge les signaux déjà générés (< 4 jours) pour éviter de relancer une rafale IA à chaque session
   try { loadSignalsCache(); } catch(e) { console.warn('loadSignalsCache:', e); }
@@ -9194,17 +9195,62 @@ function aiQuotaMessage() {
 function aiJustHitQuota() { return Date.now() - (window._aiQuotaHitAt || 0) < 8000; }
 function isAIQuotaMessage(t) { return typeof t === 'string' && t.startsWith('🔒 Limite du jour atteinte'); }
 
-// Compteur affiché dans la carte Premium de la sidebar
+// Compteur : pastille dans la barre du haut (visible partout) + jauge dans la carte Premium.
 function updateAIQuotaBadge() {
-  const el = document.getElementById('sidebar-quota-text');
-  if (!el || !aiQuotaState) return;
-  const left = Math.max(0, aiQuotaState.limit - aiQuotaState.used);
-  const welcome = aiQuotaState.mode === 'welcome';
-  el.textContent = welcome
-    ? `🎁 ${left}/${aiQuotaState.limit} analyses IA offertes restantes`
-    : (left > 0 ? `IA gratuite : ${left}/${aiQuotaState.limit} analyses restantes aujourd'hui` : 'IA gratuite : limite du jour atteinte');
-  el.style.color = left === 0 ? '#fbbf24' : left <= 3 ? '#fcd34d' : '';
-  el.style.fontWeight = left <= 3 ? '700' : '';
+  const pill = document.getElementById('ai-quota-pill');
+  const hide = () => { if (pill) pill.style.display = 'none'; const w = document.getElementById('sidebar-quota-bar-wrap'); if (w) w.style.display = 'none'; };
+  if (!aiQuotaState || isDemo) return hide();
+  const q = aiQuotaState;
+  const left = Math.max(0, q.limit - q.used);
+  const welcome = q.mode === 'welcome';
+  const pct = Math.round(left / q.limit * 100);
+  const color = left === 0 ? '#dc2626' : left <= Math.ceil(q.limit / 4) ? '#f59e0b' : '#16a34a';
+
+  const txt = document.getElementById('sidebar-quota-text');
+  if (txt) {
+    txt.textContent = welcome
+      ? `🎁 ${left}/${q.limit} analyses IA offertes restantes`
+      : (left > 0 ? `IA gratuite : ${left}/${q.limit} restantes aujourd'hui` : 'IA gratuite : limite du jour atteinte');
+    txt.style.color = left === 0 ? '#fbbf24' : left <= Math.ceil(q.limit / 4) ? '#fcd34d' : 'rgba(255,255,255,0.65)';
+    txt.style.fontWeight = '700';
+  }
+  const wrap = document.getElementById('sidebar-quota-bar-wrap'), bar = document.getElementById('sidebar-quota-bar');
+  if (wrap && bar) { wrap.style.display = 'block'; bar.style.width = pct + '%'; bar.style.background = color; }
+
+  if (pill) {
+    pill.style.display = 'inline-flex';
+    document.getElementById('ai-quota-pill-text').textContent = welcome ? `${left}/${q.limit} offertes` : `${left}/${q.limit} aujourd'hui`;
+    const pb = document.getElementById('ai-quota-pill-bar'); if (pb) { pb.style.width = pct + '%'; pb.style.background = color; }
+    pill.style.borderColor = left === 0 ? '#dc2626' : '';
+  }
+}
+
+// Lit le compteur sans consommer d'analyse (au démarrage de l'app pour un vrai compte)
+async function refreshAIQuota() {
+  if (isDemo || !currentUser) return;
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return;
+    const r = await fetch('/api/claude', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ action: 'quota' }) });
+    if (!r.ok) return;
+    const d = await r.json();
+    aiQuotaState = d.premium ? null : (d.quota || null);
+    updateAIQuotaBadge();
+  } catch (e) { console.warn('refreshAIQuota:', e); }
+}
+
+// Clic sur la pastille : où j'en suis + règle
+function showAIQuotaInfo() {
+  const q = aiQuotaState;
+  if (!q) return;
+  const left = Math.max(0, q.limit - q.used);
+  showPremiumGate(q.mode === 'welcome' ? `${left} analyses IA offertes restantes` : `${left}/${q.limit} analyses IA restantes aujourd'hui`, [
+    `Compte gratuit : ${AI_FREE_WELCOME} analyses IA offertes à l'inscription, puis ${AI_FREE_DAILY} par jour.`,
+    q.mode === 'welcome' ? `Tu as utilisé ${q.used}/${q.limit} de tes analyses offertes.` : `Tes analyses offertes sont utilisées ; ${AI_FREE_DAILY} se rechargent chaque jour.`,
+    'Une analyse = un appel à l\'IA (plan, verdict, actualités, question à l\'agent…).',
+    'Avec Premium : analyses IA illimitées, Signaux IA, bilan patrimonial complet.',
+  ], 'Ton compteur IA — compte gratuit');
 }
 
 function showAIQuotaModal() {

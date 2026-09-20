@@ -147,6 +147,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Session invalide.' });
     }
 
+    // ── 1bis. Consultation du compteur (aucun appel IA, ne consomme rien) ──
+    if (req.body && req.body.action === 'quota') {
+      const q = await checkFreeQuota(user.id);
+      return res.status(200).json({ premium: q.premium, quota: q.quota });
+    }
+
     // ── 2. RATE LIMIT : max 20 requêtes / minute / utilisateur ──
     if (rateLimited(user.id)) {
       return res.status(429).json({ error: 'Trop de requêtes. Patiente une minute.' });
