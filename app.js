@@ -251,7 +251,11 @@ function showValidatedChart() {
   const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
   const color = active ? active.color : '#1a7f5a';
   // 1er mois = mois de validation de l'objectif (sans date connue, on ne réordonne pas)
-  const objFirstMonth = !!(active && active.validated_at && String(active.validated_at).slice(0,7) === currentMonthId());
+  let objStartMonth = active && active.validated_at ? String(active.validated_at).slice(0,7) : null;
+  try { objStartMonth = objStartMonth || (active ? localStorage.getItem('iq_obj_start_' + active.id) : null); } catch {}
+  // Dernier recours : date de dernière écriture de l'objectif en base
+  if (!objStartMonth && active && active.updated_at) objStartMonth = String(active.updated_at).slice(0,7);
+  const objFirstMonth = !!(objStartMonth && objStartMonth === currentMonthId());
 
   setTimeout(() => {
     if (allObjectives.length > 0) {
@@ -594,7 +598,7 @@ function renderMonthlyPlan(plan, isNew) {
 }
 
 
-const CACHE_ETF_PLAN = 'iq_etf_plan_v2'; // v2 : structure socle/satellites
+const CACHE_ETF_PLAN = 'iq_etf_plan_v3'; // v3 : poche ETF + poche actions diversifiée
 const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // 24h
 
 let _etfPlanBusy = false; // verrou anti-boucle
@@ -617,11 +621,15 @@ async function generateETFPlan(objId) {
   const effectiveId = objId || activeObjId;
   const cacheKey = effectiveId ? CACHE_ETF_PLAN + '_' + effectiveId : CACHE_ETF_PLAN;
 
+  // Signature du contexte : le nombre d'actions proposées dépend du capital et du versement
+  const sizing = planSizing(objChartCapital, objChartMonthly, objStockPct);
+  const sig = [objChartCapital, objChartMonthly, sizing.nbStocks].join('|');
+
   // Vérifie le cache — d'abord par ID, puis global
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || localStorage.getItem(CACHE_ETF_PLAN) || 'null');
-    if (cached && cached.etfs && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk && cached.stockPct === objStockPct) {
-      renderETFCards(cached.etfs, el);
+    if (cached && cached.etfs && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk && cached.stockPct === objStockPct && cached.sig === sig) {
+      renderETFCards(cached.etfs, el, cached.actions || []);
       return;
     }
   } catch {}
@@ -629,32 +637,40 @@ async function generateETFPlan(objId) {
   const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
 
   const socleMin = objRisk === 'agressif' ? 55 : objRisk === 'equilibre' ? 70 : 60;
-  const prompt = `Conseiller financier long terme. Propose exactement ${objStockPct >= 85 ? '1 à 2' : '3'} ETF pour un profil ${riskLabel}. L'utilisateur vise ${objStockPct}% actions / ${100-objStockPct}% ETF, donc ces ETF ne sont que sa POCHE ETF ; les pct_capital/pct_mensuel sont relatifs à cette poche (ils somment à 100 entre eux).
-Capital de départ : ${objChartCapital}€ · Versement mensuel : ${objChartMonthly}€ · Durée : ${objChartYears} ans.
-RÈGLE ABSOLUE : le 1er ETF est TOUJOURS un socle Monde diversifié (MSCI World ou FTSE All-World) avec au minimum ${socleMin}% du capital ET du mensuel. Les 2 autres sont des satellites adaptés au profil (émergents, small caps, secteur, ou obligations pour prudent). Le champ "role" vaut "socle" pour le 1er, "satellite" pour les autres.
-Réponds UNIQUEMENT en JSON valide sans markdown :
-[
-  {
-    "ticker": "IWDA.L",
-    "name": "iShares Core MSCI World",
-    "desc": "1600+ entreprises mondiales diversifiées",
-    "pct_capital": 70,
-    "pct_mensuel": 70,
-    "role": "socle",
-    "color": "#1a7f5a",
-    "pourquoi": "Cœur du portefeuille — diversification maximale"
-  }
-]
-Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, adapté au profil ${riskLabel}.`;
+  const wantStocks = sizing.nbStocks > 0;
+  const prompt = `Conseiller financier long terme. L'utilisateur vise ${objStockPct}% actions / ${100-objStockPct}% ETF sur ${objChartYears} ans, profil ${riskLabel}. Capital de départ : ${objChartCapital}€ · Versement mensuel : ${objChartMonthly}€.
+
+1) POCHE ETF (${100-objStockPct}% du total) — propose exactement ${objStockPct >= 85 ? '1 à 2' : '3'} ETF. Les pct_capital/pct_mensuel sont relatifs à cette poche (somme = 100). RÈGLE ABSOLUE : le 1er ETF est TOUJOURS un socle Monde diversifié (MSCI World ou FTSE All-World) avec au minimum ${socleMin}% de la poche. Les autres sont des satellites adaptés (émergents, small caps, obligations pour prudent). "role" = "socle" pour le 1er, "satellite" pour les autres.
+${wantStocks ? `
+2) POCHE ACTIONS (${objStockPct}% du total, soit ~${fmtI(sizing.stockCap)}€ au départ et ~${fmtI(sizing.stockMonthly)}€/mois) — propose EXACTEMENT ${sizing.nbStocks} actions individuelles DIFFÉRENTES. Les pct_capital/pct_mensuel sont relatifs à cette poche (somme = 100).
+RÈGLES DE DIVERSIFICATION : secteurs tous différents (tech, santé, luxe, énergie, finance, industrie, consommation...), zones variées (US + Europe), grandes capitalisations stables uniquement (pas de micro-cap, pas de spéculatif), aucune action au-dessus de ${sizing.maxWeight}% de la poche, montant minimum ~${sizing.minTicket}€ par ligne. Plus la somme investie est élevée, plus il faut de lignes : c'est pour ça que tu dois en proposer ${sizing.nbStocks}.` : ''}
+
+Réponds UNIQUEMENT en JSON valide sans markdown, sous cette forme exacte :
+{
+  "etfs": [
+    {"ticker":"IWDA.L","name":"iShares Core MSCI World","desc":"1600+ entreprises mondiales","pct_capital":70,"pct_mensuel":70,"role":"socle","color":"#1a7f5a","pourquoi":"Cœur du portefeuille — diversification maximale"}
+  ],
+  "actions": [
+    ${wantStocks ? '{"ticker":"MC.PA","name":"LVMH","desc":"Leader mondial du luxe","secteur":"Luxe","pct_capital":25,"pct_mensuel":25,"color":"#8b5cf6","pourquoi":"max 12 mots, concret"}' : ''}
+  ]
+}
+Tickers réels (LSE/XETRA pour les ETF, Euronext/NASDAQ/NYSE pour les actions). Couleurs hex variées.`;
 
   _etfPlanBusy = true;
   try {
-    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.');
+    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.', 2000);
     const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
-    const etfs = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']') + 1));
+    let etfs, actions = [];
+    if (clean.indexOf('{') !== -1 && clean.indexOf('{') < (clean.indexOf('[') === -1 ? 1e9 : clean.indexOf('['))) {
+      const obj = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
+      etfs = obj.etfs; actions = Array.isArray(obj.actions) ? obj.actions.filter(a => a && a.ticker) : [];
+    } else {
+      etfs = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']') + 1));
+    }
     if (Array.isArray(etfs) && etfs.length > 0) {
+      actions = actions.slice(0, sizing.nbStocks);
       try {
-        const cacheData = JSON.stringify({ etfs, risk: objRisk, stockPct: objStockPct, ts: Date.now() });
+        const cacheData = JSON.stringify({ etfs, actions, sig, risk: objRisk, stockPct: objStockPct, ts: Date.now() });
         localStorage.setItem(cacheKey, cacheData);
         localStorage.setItem(CACHE_ETF_PLAN, cacheData);
         // Sauvegarde aussi avec l'activeObjId si différent
@@ -663,14 +679,14 @@ Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, a
         }
       } catch {}
       _etfPlanBusy = false;
-      renderETFCards(etfs, el);
+      renderETFCards(etfs, el, actions);
       return;
     }
   } catch(e) {}
   _etfPlanBusy = false;
   // Échec → on met le fallback EN CACHE aussi, sinon on re-appelle l'IA à chaque rendu
   try {
-    localStorage.setItem(cacheKey, JSON.stringify({ etfs: null, risk: objRisk, stockPct: objStockPct, ts: Date.now() - CACHE_ETF_TTL + 300000 }));
+    localStorage.setItem(cacheKey, JSON.stringify({ etfs: null, sig, risk: objRisk, stockPct: objStockPct, ts: Date.now() - CACHE_ETF_TTL + 300000 }));
   } catch {}
 
   // Fallback
@@ -690,12 +706,47 @@ Règles : tickers réels LSE/XETRA, max 3 ETF, répartition en % qui fait 100, a
         { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Diversification maximale' },
         { ticker:'AGGH.L',  name:'iShares Global Aggregate',   desc:'Obligations mondiales stables',      role:'satellite', type:'ETF Obligations', pct_capital:40, pct_mensuel:40, color:'#0ea5e9', pourquoi:'Stabilité et protection du capital' },
       ];
-  renderETFCards(fallback, el);
+  renderETFCards(fallback, el, fallbackStocks(sizing.nbStocks));
 }
 
-function renderETFCards(etfs, containerEl) {
+// Combien d'actions différentes proposer : plus on investit en actions, plus on diversifie.
+// Base = argent réellement placé en actions la 1re année (capital + 12 versements).
+function planSizing(capital, monthly, stockPct) {
+  const stockCap = (capital || 0) * stockPct / 100;
+  const stockMonthly = (monthly || 0) * stockPct / 100;
+  if (stockPct <= 0) return { nbStocks: 0, stockCap, stockMonthly, maxWeight: 100, minTicket: 0 };
+  const eff = stockCap + stockMonthly * 12;
+  let n = eff < 250 ? 1 : eff < 600 ? 2 : eff < 1500 ? 3 : eff < 3500 ? 4 : eff < 8000 ? 5 : eff < 20000 ? 6 : 8;
+  if (stockPct >= 85) n = Math.max(n, 5); // quasi 100% actions : jamais concentré
+  const maxWeight = n <= 1 ? 100 : n === 2 ? 60 : n === 3 ? 40 : n === 4 ? 35 : 25;
+  return { nbStocks: n, stockCap, stockMonthly, maxWeight, minTicket: eff < 600 ? 50 : 100 };
+}
+
+// Actions de repli (IA indisponible) : secteurs et zones variés, grandes capitalisations
+function fallbackStocks(n) {
+  const pool = [
+    { ticker:'MC.PA',  name:'LVMH',          secteur:'Luxe',      desc:'Leader mondial du luxe',          color:'#8b5cf6', pourquoi:'Marque premium, forte rentabilité' },
+    { ticker:'AAPL',   name:'Apple',         secteur:'Tech',      desc:'Écosystème produits + services',  color:'#0ea5e9', pourquoi:'Cash-flows solides, base clients fidèle' },
+    { ticker:'SAN.PA', name:'Sanofi',        secteur:'Santé',     desc:'Pharma européen défensif',        color:'#10b981', pourquoi:'Secteur défensif, dividende' },
+    { ticker:'TTE.PA', name:'TotalEnergies', secteur:'Énergie',   desc:'Énergéticien intégré',            color:'#f59e0b', pourquoi:'Dividende élevé, diversifie le risque tech' },
+    { ticker:'BNP.PA', name:'BNP Paribas',   secteur:'Finance',   desc:'Première banque de la zone euro', color:'#ec4899', pourquoi:'Exposition finance/taux' },
+    { ticker:'AI.PA',  name:'Air Liquide',   secteur:'Industrie', desc:'Gaz industriels et médicaux',     color:'#06b6d4', pourquoi:'Croissance régulière, peu cyclique' },
+    { ticker:'MSFT',   name:'Microsoft',     secteur:'Tech',      desc:'Cloud et logiciels',              color:'#6366f1', pourquoi:'Croissance du cloud et de l\'IA' },
+    { ticker:'OR.PA',  name:"L'Oréal",       secteur:'Consommation', desc:'Leader mondial des cosmétiques', color:'#f97316', pourquoi:'Consommation résiliente' },
+  ];
+  const picks = pool.slice(0, Math.max(0, n));
+  if (!picks.length) return [];
+  const base = Math.floor(100 / picks.length);
+  return picks.map((p, i) => ({ ...p, pct_capital: base + (i === 0 ? 100 - base * picks.length : 0), pct_mensuel: base + (i === 0 ? 100 - base * picks.length : 0) }));
+}
+
+function renderETFCards(etfs, containerEl, actions = []) {
   const montantCapital = objChartCapital || 0;
   const montantMensuel = objChartMonthly || 200;
+  // Les % renvoyés sont relatifs à chaque poche : on les ramène au total (poche ETF + poche actions)
+  const etfShare = (100 - objStockPct) / 100;
+  const stockShare = objStockPct / 100;
+  const hasActions = actions.length > 0;
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const surface = isDark ? 'var(--color-surface-raised)' : '#fff';
   const border = isDark ? 'var(--color-border)' : '#e4e4e7';
@@ -713,14 +764,22 @@ function renderETFCards(etfs, containerEl) {
     </div>
   </div>
 
-  <!-- UNE CARTE PAR ETF (montant initial + mensuel réunis) -->
-  ${etfs.map((e,i) => {
-    const pctC = e.pct_capital || Math.round(100/etfs.length);
-    const pctM = e.pct_mensuel || pctC;
-    const mCap = Math.round(montantCapital * pctC / 100);
-    const mMens = Math.round(montantMensuel * pctM / 100);
-    const isSocle = e.role === 'socle' || i === 0;
-    return `
+  ${hasActions ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:2px 0 8px">🏛️ Poche ETF · ${100 - objStockPct}% du capital</div>` : ''}
+  ${[...etfs.map(e => ({ e, kind: 'etf', share: etfShare })), ...actions.map(e => ({ e, kind: 'action', share: stockShare }))].map(({ e, kind, share }, i, all) => {
+    const isAction = kind === 'action';
+    const pool = isAction ? actions : etfs;
+    const idxInPool = pool.indexOf(e);
+    const pctC0 = e.pct_capital || Math.round(100 / pool.length);
+    const pctM0 = e.pct_mensuel || pctC0;
+    // % du TOTAL investi (pas seulement de la poche)
+    const pctC = Math.round(pctC0 * share);
+    const pctM = Math.round(pctM0 * share);
+    const mCap = Math.round(montantCapital * pctC0 / 100 * share);
+    const mMens = Math.round(montantMensuel * pctM0 / 100 * share);
+    const isSocle = !isAction && (e.role === 'socle' || idxInPool === 0);
+    const sectionHeader = (isAction && idxInPool === 0)
+      ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">📈 Poche actions · ${objStockPct}% du capital · ${actions.length} lignes pour diversifier</div>` : '';
+    return sectionHeader + `
     <div onclick="openActionFromObjectif('${e.ticker}','${(e.name||'').replace(/'/g,"\\'")}',${mCap||mMens})" style="background:${surface};border:1px solid ${border};border-radius:14px;padding:14px 16px;margin-bottom:9px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden"
       onmouseover="this.style.borderColor='${e.color}'" onmouseout="this.style.borderColor='${border}'">
       <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${e.color}"></div>
@@ -730,7 +789,7 @@ function renderETFCards(etfs, containerEl) {
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
             <span style="font-size:13px;font-weight:800;color:${text}">${e.name}</span>
             <span style="font-size:9px;color:${sub};background:${trackBg};padding:1px 6px;border-radius:4px;font-weight:600">${e.ticker||''}</span>
-            <span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:5px;background:${isSocle?'rgba(26,127,90,0.12)':'rgba(99,102,241,0.12)'};color:${isSocle?'#1a7f5a':'#6366f1'}">${isSocle?'🏛️ SOCLE':'🛰️ SATELLITE'}</span>
+            <span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:5px;background:${isAction?'rgba(245,158,11,0.14)':isSocle?'rgba(26,127,90,0.12)':'rgba(99,102,241,0.12)'};color:${isAction?'#b45309':isSocle?'#1a7f5a':'#6366f1'}">${isAction?('📈 ACTION' + (e.secteur ? ' · ' + String(e.secteur).toUpperCase() : '')):isSocle?'🏛️ SOCLE':'🛰️ SATELLITE'}</span>
           </div>
           <div style="font-size:11px;color:${sub};margin-top:3px">${e.desc||''}</div>
           <div style="font-size:11px;color:${sub};margin-top:2px;font-style:italic">${e.pourquoi||''}</div>
@@ -747,6 +806,8 @@ function renderETFCards(etfs, containerEl) {
       </div>
     </div>`;
   }).join('')}
+
+  ${(objStockPct > 0 && !hasActions) ? `<div style="font-size:11.5px;color:${sub};background:${trackBg};border-radius:10px;padding:9px 12px;margin-bottom:9px">📈 Les ${objStockPct}% d'actions de ta cible ne sont pas détaillés ici : ton plan du mois te dit lesquelles acheter.</div>` : ''}
 
   <!-- CTA + disclaimer -->
   <div style="background:${isDark?'rgba(63,185,80,0.08)':'#f0fdf4'};border:1px solid ${isDark?'rgba(63,185,80,0.2)':'rgba(22,163,74,0.2)'};border-radius:11px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
@@ -4644,7 +4705,8 @@ async function loadObjective() {
         stock_pct: (d.stock_pct !== null && d.stock_pct !== undefined) ? d.stock_pct : (d.risk==='agressif'?60:d.risk==='prudent'?15:30),
         glide: d.glide || false,
         color: OBJ_COLORS[i % OBJ_COLORS.length],
-        validated_at: d.validated_at
+        validated_at: d.validated_at,
+        updated_at: d.updated_at || d.created_at || null
       }));
       activeObjId = allObjectives[0].id;
       applyObjData(allObjectives[0]);
@@ -7869,7 +7931,11 @@ async function generateObjPlan() {
           rate: riskRates[objRisk], risk: objRisk
         }).select().single();
         if (ie) console.warn('[generateObjPlan] insert error:', ie.message);
-        else console.log('[generateObjPlan] insert OK:', ins?.id);
+        else {
+          console.log('[generateObjPlan] insert OK:', ins?.id);
+          // Mémorise le mois de création : sert à mettre l'investissement de départ en tête ce mois-là
+          try { if (ins?.id) localStorage.setItem('iq_obj_start_' + ins.id, currentMonthId()); } catch {}
+        }
       }
       // Recharge les objectifs pour mettre à jour allObjectives + onglets
       setProgress('Chargement du plan...');
