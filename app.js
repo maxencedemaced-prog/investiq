@@ -10002,6 +10002,82 @@ async function openBillingPortal(btn) {
   }
 }
 
+// ── Comparatif des offres : Gratuit à gauche, Premium à droite (mêmes lignes + le plus) ──
+const PLAN_COMMON = [
+  'Suivi du portefeuille avec prix en direct',
+  'Score de santé et analyse de la répartition',
+  'Objectifs avec faisabilité et leviers d\'ajustement',
+  'Simulateur DCA et scénarios de crise',
+  'Alertes chiffrées (concentration, grosses pertes)',
+  'Agenda économique',
+];
+const PLAN_FREE_IA = `${AI_FREE_WELCOME} analyses IA offertes, puis ${AI_FREE_DAILY} par jour`;
+const PLAN_PREMIUM_ONLY = [
+  'Signaux IA sur tes positions et les opportunités du marché',
+  'Bilan patrimonial complet + export PDF',
+  'Conseils IA sur tes alertes : que faire et par quoi remplacer',
+  'Sélection multiple et actions groupées',
+];
+
+function plansComparisonHTML(lapsed) {
+  const check = c => `<span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:${c};display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#0b1220;margin-top:1px">✓</span>`;
+  const row = (t, c, strong) => `<div style="display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.45;color:${strong ? '#fff' : 'rgba(255,255,255,0.78)'};${strong ? 'font-weight:700;' : ''}">${check(c)}<span>${t}</span></div>`;
+  return `
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;align-items:stretch">
+    <!-- GRATUIT -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:20px;display:flex;flex-direction:column">
+      <div style="font-size:13px;font-weight:800;color:rgba(255,255,255,0.6);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Gratuit</div>
+      <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.04em;margin-bottom:2px">0 €</div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,0.45);margin-bottom:16px">Pour découvrir et suivre tes investissements</div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:18px;flex:1">
+        ${PLAN_COMMON.map(t => row(t, 'rgba(255,255,255,0.55)')).join('')}
+        ${row(PLAN_FREE_IA, 'rgba(255,255,255,0.55)')}
+      </div>
+      <div style="text-align:center;padding:11px;border:1px solid rgba(255,255,255,0.15);border-radius:12px;font-size:12.5px;font-weight:700;color:rgba(255,255,255,0.55)">${isPremiumUser() ? 'Inclus dans ton offre' : 'Ton offre actuelle'}</div>
+    </div>
+
+    <!-- PREMIUM -->
+    <div style="background:linear-gradient(160deg,#0f2a1c,#0c1f2e);border:1.5px solid #22c55e;border-radius:18px;padding:20px;display:flex;flex-direction:column;position:relative;box-shadow:0 10px 40px rgba(34,197,94,0.15)">
+      <span style="position:absolute;top:-11px;right:16px;background:#facc15;color:#1a1a1a;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px">-${PREMIUM_ANNUAL_SAVINGS_PCT}% en annuel</span>
+      <div style="font-size:13px;font-weight:800;color:#4ade80;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">✦ Premium</div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px"><span style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.04em">${PREMIUM_PRICE_ANNUAL}</span><span style="font-size:12px;color:rgba(255,255,255,0.5)">/an</span></div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,0.5);margin-bottom:16px">ou ${PREMIUM_PRICE}/mois · sans engagement</div>
+      <div style="display:flex;flex-direction:column;gap:9px;flex:1">
+        ${PLAN_COMMON.map(t => row(t, '#4ade80')).join('')}
+        ${row('Analyses IA <strong style="color:#4ade80">illimitées</strong>', '#4ade80', true)}
+        <div style="font-size:10.5px;font-weight:800;color:#4ade80;letter-spacing:.08em;text-transform:uppercase;margin:6px 0 1px">En plus</div>
+        ${PLAN_PREMIUM_ONLY.map(t => row(t, '#4ade80', true)).join('')}
+      </div>
+      <button onclick="startCheckout(this,'annual')" style="margin-top:18px;width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">${lapsed ? 'Reprendre' : "S'abonner"} — ${PREMIUM_PRICE_ANNUAL}/an</button>
+      <button onclick="startCheckout(this,'monthly')" style="margin-top:8px;width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.2);border-radius:12px;font-size:12.5px;font-weight:700;color:rgba(255,255,255,0.8);cursor:pointer">ou ${PREMIUM_PRICE}/mois</button>
+      <div style="font-size:10.5px;color:rgba(255,255,255,0.4);text-align:center;margin-top:9px">Résiliable à tout moment</div>
+    </div>
+  </div>`;
+}
+
+// Fenêtre "Comparer les offres" (ouverte depuis la sidebar, le compteur IA ou un paywall)
+function showPlansModal() {
+  document.getElementById('premium-gate')?.remove();
+  document.getElementById('plans-modal')?.remove();
+  const lapsed = profile?.subscription_status === 'canceled' || profile?.subscription_status === 'unpaid';
+  const o = document.createElement('div');
+  o.id = 'plans-modal';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10005;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto';
+  o.onclick = e => { if (e.target === o) o.remove(); };
+  o.innerHTML = `
+    <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:24px;max-width:720px;width:100%;padding:26px 22px 22px;margin:auto">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px">
+        <div>
+          <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.03em">Choisis ton offre</div>
+          <div style="font-size:12.5px;color:rgba(255,255,255,0.5);margin-top:4px">Le gratuit reste utilisable sans limite de durée. Premium enlève les plafonds IA et débloque les outils avancés.</div>
+        </div>
+        <button onclick="document.getElementById('plans-modal').remove()" style="background:rgba(255,255,255,0.08);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
+      </div>
+      ${plansComparisonHTML(lapsed)}
+    </div>`;
+  document.body.appendChild(o);
+}
+
 // Carte d'abonnement dans les Paramètres — s'adapte au statut
 function renderSubscriptionCard() {
   updateSidebarPremiumCard();
@@ -10019,23 +10095,10 @@ function renderSubscriptionCard() {
     // un ancien abonné d'une personne qui n'a jamais souscrit.
     const lapsed = status === 'canceled' || status === 'unpaid';
     el.innerHTML = `
-      <div style="background:linear-gradient(135deg,#0d1526,#1a2744);border-radius:16px;padding:20px;color:#fff">
-        <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
-          <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,0.12);letter-spacing:0.06em">FORMULE GRATUITE</span>
-        </div>
-        <div style="font-size:16px;font-weight:800;margin-bottom:12px;letter-spacing:-0.02em">${lapsed ? 'Reprends Premium' : 'Passe à Premium'}</div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-          ${['Signaux IA sur tes positions et le marché','Analyses IA illimitées','Sélection multiple et actions groupées','Bilan patrimonial complet']
-            .map(b => `<div style="display:flex;gap:9px;font-size:12.5px;color:rgba(255,255,255,0.75)"><span style="color:#4ade80;font-weight:800">✓</span>${b}</div>`).join('')}
-        </div>
-        <button onclick="startCheckout(this,'annual')" style="width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;position:relative">
-          ${lapsed ? 'Reprendre' : "S'abonner"} — ${PREMIUM_PRICE_ANNUAL}/an
-          <span style="position:absolute;top:-9px;right:10px;background:#facc15;color:#1a1a1a;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:6px">-${PREMIUM_ANNUAL_SAVINGS_PCT}%</span>
-        </button>
-        <button onclick="startCheckout(this,'monthly')" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.18);border-radius:12px;font-size:12.5px;font-weight:700;color:rgba(255,255,255,0.75);cursor:pointer;margin-top:8px">
-          ou ${PREMIUM_PRICE}/mois
-        </button>
-        <div style="font-size:10.5px;color:rgba(255,255,255,0.4);text-align:center;margin-top:9px">Sans engagement · Résiliable à tout moment</div>
+      <div style="background:linear-gradient(135deg,#0b1220,#111c33);border-radius:18px;padding:20px 18px;color:#fff">
+        <div style="font-size:17px;font-weight:900;letter-spacing:-0.02em;margin-bottom:4px">${lapsed ? 'Reprends Premium' : 'Ton offre'}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">${lapsed ? 'Ton abonnement est terminé : retrouve tous les outils.' : 'Tu es sur l\'offre gratuite. Compare avec Premium :'}</div>
+        ${plansComparisonHTML(lapsed)}
       </div>`;
     return;
   }
@@ -10465,6 +10528,7 @@ function showPremiumGate(featureName, benefits, subtitle) {
         <button onclick="startCheckout(this)" style="width:100%;padding:14px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;border-radius:14px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:9px">
           Passer à Premium — ${PREMIUM_PRICE}/mois
         </button>
+        <button onclick="showPlansModal()" style="width:100%;padding:10px;background:transparent;border:none;font-size:12.5px;font-weight:700;color:#16a34a;cursor:pointer;margin-bottom:2px">Comparer Gratuit et Premium →</button>
         <button onclick="document.getElementById('premium-gate').remove()" style="width:100%;padding:11px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Plus tard</button>
       </div>
     </div>`;
