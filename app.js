@@ -4396,6 +4396,8 @@ async function resetPassword() {
 }
 
 function switchAuth(m) {
+  const confirmBox = document.getElementById('auth-confirm');
+  if (confirmBox) confirmBox.style.display = 'none';
   document.getElementById('auth-login').style.display = m==='login'?'block':'none';
   document.getElementById('auth-signup').style.display = m==='signup'?'block':'none';
   document.getElementById('tab-login').classList.toggle('active', m==='login');
@@ -4422,9 +4424,60 @@ async function signup() {
   if (pass!==pass2) { setAuthMsg('Mots de passe différents.'); return; }
   if (pass.length<6) { setAuthMsg('Mot de passe trop court.'); return; }
   setAuthMsg('Création...', true);
-  const { error } = await sb.auth.signUp({ email, password: pass });
-  if (error) setAuthMsg(error.message);
-  else setAuthMsg('Compte créé ! Vérifie ton email.', true);
+  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  if (error) { setAuthMsg(error.message); return; }
+  // Supabase renvoie un "succès" sans identité si l'email existe déjà (anti-énumération)
+  if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    setAuthMsg('Un compte existe déjà avec cet email — connecte-toi.');
+    return;
+  }
+  // Session immédiate = confirmation email désactivée : l'appli s'ouvre toute seule
+  if (data?.session) return;
+  setAuthMsg('');
+  showSignupConfirmation(email);
+}
+
+function showSignupConfirmation(email) {
+  let box = document.getElementById('auth-confirm');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'auth-confirm';
+    document.getElementById('auth-signup').after(box);
+  }
+  const safe = email.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  box.innerHTML = `
+    <div style="text-align:center;padding:8px 0 4px">
+      <div style="font-size:40px;margin-bottom:10px">📬</div>
+      <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-0.02em">Vérifie ta boîte mail</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:16px">
+        On vient d'envoyer un lien de confirmation à<br><strong style="color:#fff">${safe}</strong>.<br>
+        Clique dessus pour activer ton compte, puis reviens te connecter ici.
+      </div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,0.4);margin-bottom:18px">Rien reçu ? Regarde dans les spams / courriers indésirables.</div>
+      <button id="auth-resend-btn" onclick="resendConfirmation('${safe}')" style="width:100%;padding:12px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.15);border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;margin-bottom:8px">Renvoyer l'email</button>
+      <button onclick="backToLoginAfterSignup('${safe}')" style="width:100%;padding:13px;background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer">J'ai confirmé → Me connecter</button>
+    </div>`;
+  document.getElementById('auth-signup').style.display = 'none';
+  box.style.display = 'block';
+}
+
+async function resendConfirmation(email) {
+  const btn = document.getElementById('auth-resend-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Envoi...'; }
+  const { error } = await sb.auth.resend({ type: 'signup', email });
+  if (btn) {
+    btn.textContent = error ? 'Échec — réessaie dans 1 min' : '✓ Email renvoyé';
+    setTimeout(() => { btn.disabled = false; btn.textContent = "Renvoyer l'email"; }, 30000);
+  }
+}
+
+function backToLoginAfterSignup(email) {
+  const box = document.getElementById('auth-confirm');
+  if (box) box.style.display = 'none';
+  switchAuth('login');
+  const el = document.getElementById('login-email');
+  if (el) el.value = email;
+  document.getElementById('login-pass')?.focus();
 }
 async function logout() {
   if (!isDemo) await sb.auth.signOut();
