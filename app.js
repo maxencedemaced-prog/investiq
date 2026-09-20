@@ -10039,6 +10039,7 @@ const PLAN_COMMON = [
 const PLAN_FREE_IA = `${AI_FREE_WELCOME} analyses IA offertes, puis ${AI_FREE_DAILY} par jour`;
 const PLAN_PREMIUM_ONLY = [
   'Analyses IA <strong style="color:#4ade80">illimitées</strong> (plus aucun plafond)',
+  'Agent IA complet : score, alertes et analyse de tout ton portefeuille',
   'Signaux IA sur tes positions et les opportunités du marché',
   'Bilan patrimonial complet + export PDF',
   'Conseils IA sur tes alertes : que faire et par quoi remplacer',
