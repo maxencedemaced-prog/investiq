@@ -4468,7 +4468,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 // ── Caches du navigateur : rattachés à UN compte ──
 // Briefing, verdict, signaux, plan… sont stockés en localStorage. Sans nettoyage, ils passaient
 // d'un compte (ou du mode démo) à l'autre et affichaient le portefeuille de quelqu'un d'autre.
-const KEEP_CACHE = /^(iq_theme|iq_logo_domains|iq_last_page|iq_legal_accepted|iq_onboarded|iq_cache_uid|iq_seen_)/;
+const KEEP_CACHE = /^(iq_theme|iq_logo_domains|iq_last_page|iq_legal_accepted|iq_onboarded|iq_cache_uid|iq_seen_|iq_bilan_)/;
 function clearUserCaches() {
   try {
     Object.keys(localStorage)
@@ -5379,17 +5379,25 @@ const BILAN_STEPS = [
 function openBilan() {
   if (!isPremiumUser()) {
     showPremiumGate('Bilan patrimonial complet', [
-      'Analyse IA complète de ta situation financière',
-      'Recommandations personnalisées sur ton épargne et tes investissements',
+      'Analyse toute ta situation : revenus, épargne, PEA, assurance-vie… pas seulement ton portefeuille',
+      'Mensualité recommandée, allocation cible et projections à 5, 10 et 20 ans',
       'Export PDF de ton bilan',
-      'Mis à jour à chaque fois que tu le relances',
+      'Retrouvable à tout moment, à refaire quand ta situation change',
     ]);
+    return;
+  }
+  document.getElementById('bilan-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  // Un bilan déjà fait : on le rouvre (avec « Refaire mon bilan ») au lieu de repartir de zéro
+  const saved = loadSavedBilan();
+  if (saved) {
+    bilanData = saved.data || {};
+    window._lastBilanResult = saved.result;
+    renderBilanResult(saved.result, saved.ts);
     return;
   }
   bilanData = {};
   bilanStep = 0;
-  document.getElementById('bilan-modal').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
   renderBilanStep(0);
 }
 
@@ -5841,9 +5849,6 @@ Génère un rapport structuré en JSON :
     {"type": "Actions", "pct": 20, "color": "#f59e0b", "explication": "court"}
   ],
   "objectif_principal": "description courte",
-  "projection_5ans": 45000,
-  "projection_10ans": 95000,
-  "projection_20ans": 280000,
   "actions_prioritaires": [
     {"priorite": "urgent", "action": "action 1", "impact": "impact"},
     {"priorite": "important", "action": "action 2", "impact": "impact"},
@@ -5857,8 +5862,10 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
     const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide, sans backticks.');
     const clean = raw.replace(/```json|```/g,'').trim();
     const result = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
+    finalizeBilanResult(result, bilanCapital || tv);   // projections calculées, pas inventées par l'IA
     window._lastBilanResult = result;
-    renderBilanResult(result);
+    saveBilan(result);
+    renderBilanResult(result, Date.now());
   } catch(e) {
     console.error('Bilan IA error:', e);
     const _fallbackResult = {
@@ -5874,18 +5881,63 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
       mensualite_explication: 'Basé sur ta capacité d\'épargne',
       allocation_cible: [{type:'ETF Monde',pct:70,color:'#3fb950',explication:'Base solide'},{type:'Obligations',pct:20,color:'#6366f1',explication:'Stabilité'},{type:'Actions',pct:10,color:'#f59e0b',explication:'Performance'}],
       objectif_principal: bilanData.objectifs?.[0] || 'Capital long terme',
-      projection_5ans: Math.round(bilanCapital + capacite*0.4*60*(1.07**5)),
-      projection_10ans: Math.round(bilanCapital + capacite*0.4*120*(1.07**10)),
-      projection_20ans: Math.round(bilanCapital + capacite*0.4*240*(1.07**20)),
       actions_prioritaires: [{priorite:'urgent',action:'Définir une mensualité fixe',impact:'Régularité = performance'},{priorite:'important',action:'Renforcer la diversification',impact:'Réduire le risque'},{priorite:'conseil',action:'Ouvrir un PEA si pas encore fait',impact:'Avantage fiscal'}],
       verdict: 'Tu es sur la bonne voie. Avec de la régularité, tes objectifs sont atteignables !'
     };
+    finalizeBilanResult(_fallbackResult, bilanCapital || tv);
     window._lastBilanResult = _fallbackResult;
-    renderBilanResult(_fallbackResult);
+    renderBilanResult(_fallbackResult);   // résultat local de secours : non sauvegardé
   }
 }
 
-function renderBilanResult(r) {
+// ── Bilan : projections CALCULÉES (l'IA ne fait que recommander la mensualité et l'allocation) ──
+// Rendement moyen déduit de l'allocation cible ; capitalisation mensuelle ; avant frais et impôts.
+function bilanExpectedRate(alloc) {
+  const list = (alloc || []).filter(a => a && a.pct > 0);
+  if (!list.length) return 6;
+  let tot = 0, acc = 0;
+  list.forEach(a => {
+    const t = String(a.type || '').toLowerCase();
+    let rate = 7;                                                      // ETF diversifié par défaut
+    if (/livret|cash|liquid|mon[ée]taire/.test(t)) rate = 2.5;
+    else if (/oblig/.test(t)) rate = 3;
+    else if (/immo|scpi/.test(t)) rate = 4.5;
+    else if (/\bor\b|m[ée]taux/.test(t)) rate = 4;
+    else if (/action/.test(t)) rate = 8;
+    tot += a.pct; acc += a.pct * rate;
+  });
+  return Math.round(acc / tot * 10) / 10;
+}
+function bilanProject(capital, monthly, ratePct, years) {
+  const r = ratePct / 100, i = Math.pow(1 + r, 1 / 12) - 1, n = years * 12;
+  return Math.round(capital * Math.pow(1 + r, years) + (i > 0 ? monthly * ((Math.pow(1 + i, n) - 1) / i) : monthly * n));
+}
+function finalizeBilanResult(result, capital) {
+  const cap = Math.max(0, Number(capital) || 0);
+  const monthly = Math.max(0, Number(result.mensualite_recommandee) || 0);
+  result.projection_rate = bilanExpectedRate(result.allocation_cible);
+  result.projection_capital = Math.round(cap);
+  [5, 10, 20].forEach(y => { result['projection_' + y + 'ans'] = bilanProject(cap, monthly, result.projection_rate, y); });
+  return result;
+}
+
+// ── Bilan : dernier bilan mémorisé (par compte, sur cet appareil) pour pouvoir le retrouver ──
+const bilanKey = () => 'iq_bilan_' + (currentUser?.id || 'demo');
+function loadSavedBilan() {
+  try { const s = JSON.parse(localStorage.getItem(bilanKey()) || 'null'); return s && s.result ? s : null; } catch { return null; }
+}
+function saveBilan(result) {
+  try { localStorage.setItem(bilanKey(), JSON.stringify({ ts: Date.now(), result, data: bilanData })); } catch {}
+}
+function restartBilan() {
+  bilanData = {}; bilanStep = 0;
+  renderBilanStep(0);
+}
+function bilanDateLabel(ts) {
+  return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function renderBilanResult(r, ts) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const surf = isDark ? 'var(--color-surface-raised)' : '#f9fafb';
   const bord = isDark ? 'var(--color-border)' : '#e4e4e7';
@@ -5895,6 +5947,10 @@ function renderBilanResult(r) {
   const prio = {urgent:'#f87171', important:'#f59e0b', conseil:'#3fb950'};
 
   const html = `
+  ${ts ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:${surf};border:1px solid ${bord};border-radius:12px">
+    <div style="font-size:12px;color:${sub}">📅 Bilan du <strong style="color:${txt}">${bilanDateLabel(ts)}</strong></div>
+    <button onclick="restartBilan()" style="background:transparent;border:1px solid ${bord};color:${txt};font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer">🔄 Refaire mon bilan</button>
+  </div>` : ''}
   <!-- SCORE -->
   <div style="text-align:center;margin-bottom:24px">
     <div style="width:80px;height:80px;border-radius:50%;background:${r.score_color}20;border:3px solid ${r.score_color};display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 12px">
@@ -5927,6 +5983,7 @@ function renderBilanResult(r) {
         <div style="font-size:17px;font-weight:800;color:${r.score_color};letter-spacing:-0.03em">${fmtK(p.val)}</div>
       </div>`).join('')}
     </div>
+    <div style="font-size:11px;color:${sub};margin-top:12px;line-height:1.5">Simulation calculée avec un rendement moyen de <strong>${r.projection_rate ?? 7} %/an</strong> (selon l'allocation cible), un capital de départ de <strong>${fmtI(r.projection_capital ?? 0)} €</strong> et ${r.mensualite_recommandee?.toLocaleString('fr-FR')} €/mois versés, avant frais et impôts. Ce n'est pas une garantie.</div>
   </div>
 
   <!-- ALLOCATION CIBLE -->
@@ -6006,7 +6063,7 @@ function createObjectifFromBilan() {
   const monthly = r.mensualite_recommandee || 200;
   const target = r.projection_10ans || 50000;
   const years = 10;
-  const rate = 7;
+  const rate = r.projection_rate || 7;   // même hypothèse que les projections du bilan
 
   // Si 3 objectifs déjà, proposer de remplacer
   if (allObjectives.length >= 3) {
@@ -6036,7 +6093,7 @@ function createObjectifFromBilan() {
     document.body.appendChild(overlay);
 
     // Store pending bilan data for replaceBilanObjectif
-    window._pendingBilanObjectif = { monthly, target, years, rate };
+    window._pendingBilanObjectif = { monthly, target, years, rate, capital: r.projection_capital };
     return;
   }
 
@@ -6045,7 +6102,7 @@ function createObjectifFromBilan() {
   objChartTarget = target;
   objChartYears = years;
   objChartRate = rate;
-  objChartCapital = parseFloat(bilanData.bourse) || parseFloat(bilanData.pea) || 0;
+  objChartCapital = r.projection_capital ?? (parseFloat(bilanData.bourse) || parseFloat(bilanData.pea) || 0);
 
   closeBilan();
   nav('objectif');
@@ -6090,7 +6147,7 @@ async function replaceBilanObjectif(idToReplace) {
   objChartTarget = pending.target;
   objChartYears = pending.years;
   objChartRate = pending.rate;
-  objChartCapital = parseFloat(bilanData.bourse) || parseFloat(bilanData.pea) || 0;
+  objChartCapital = pending.capital ?? (parseFloat(bilanData.bourse) || parseFloat(bilanData.pea) || 0);
 
   closeBilan();
   nav('objectif');
@@ -11462,13 +11519,14 @@ function renderAgentDashboard() {
   // ── BANNIÈRE ──
   const bannerEl = document.getElementById('agent-banner');
   if (bannerEl) {
+    const savedBilan = loadSavedBilan();
     bannerEl.innerHTML = `
     <div onclick="openBilan()" style="cursor:pointer;background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px">
       <div>
-        <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:3px">💡 Et si ton portefeuille était optimisé au max ?</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.45)">Lance ton Bilan Premium : l'IA analyse tout et te dit où tu perds de l'argent.</div>
+        <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:3px">${savedBilan ? '📄 Ton bilan patrimonial' : '💡 Et si ton portefeuille était optimisé au max ?'}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.45)">${savedBilan ? `Fait le ${bilanDateLabel(savedBilan.ts)} · retrouve-le ici, ou refais-le quand ta situation change.` : "Lance ton Bilan Premium : l'IA analyse tout et te dit où tu perds de l'argent."}</div>
       </div>
-      <button style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer;flex-shrink:0">Lancer le Bilan →</button>
+      <button style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer;flex-shrink:0">${savedBilan ? 'Voir mon bilan →' : 'Lancer le Bilan →'}</button>
     </div>`;
   }
 
