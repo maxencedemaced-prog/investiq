@@ -4499,6 +4499,12 @@ async function initApp(user) {
   await loadProfile(); await loadPositions(); await loadObjective();
   try { updateSidebarPremiumCard(); } catch(e) { console.warn('sidebar-premium:', e); }
   try { refreshAIQuota(); } catch(e) { console.warn('refreshAIQuota:', e); }
+  // Dernier bilan du compte (autre appareil ?) — met à jour la bannière si l'Agent est déjà affiché
+  try {
+    syncBilanFromCloud().then(changed => {
+      if (changed && document.getElementById('sec-ai')?.classList.contains('active')) { try { renderAgentDashboard(); } catch {} }
+    });
+  } catch(e) { console.warn('syncBilan:', e); }
   try { loadChatHistory(); } catch(e) { console.warn('loadChatHistory:', e); }
   // Charge les signaux déjà générés (< 4 jours) pour éviter de relancer une rafale IA à chaque session
   try { loadSignalsCache(); } catch(e) { console.warn('loadSignalsCache:', e); }
@@ -5376,7 +5382,7 @@ const BILAN_STEPS = [
   { title: 'Analyse IA', icon: '🤖' },
 ];
 
-function openBilan() {
+async function openBilan() {
   if (!isPremiumUser()) {
     showPremiumGate('Bilan patrimonial complet', [
       'Analyse toute ta situation : revenus, épargne, PEA, assurance-vie… pas seulement ton portefeuille',
@@ -5389,7 +5395,14 @@ function openBilan() {
   document.getElementById('bilan-modal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   // Un bilan déjà fait : on le rouvre (avec « Refaire mon bilan ») au lieu de repartir de zéro
-  const saved = loadSavedBilan();
+  let saved = loadSavedBilan();
+  if (!saved && !isDemo) {
+    // Rien sur cet appareil : on cherche dans le compte (autre appareil, données du navigateur vidées)
+    const el = document.getElementById('bilan-content');
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px 0;font-size:13px;opacity:.6">Chargement…</div>';
+    await syncBilanFromCloud();
+    saved = loadSavedBilan();
+  }
   if (saved) {
     bilanData = saved.data || {};
     window._lastBilanResult = saved.result;
@@ -5928,6 +5941,26 @@ function loadSavedBilan() {
 }
 function saveBilan(result) {
   try { localStorage.setItem(bilanKey(), JSON.stringify({ ts: Date.now(), result, data: bilanData })); } catch {}
+  // Copie dans le compte (table « bilans », voir SUPABASE_BILANS.sql) : retrouvable sur tous les appareils.
+  // Silencieux si la table n'existe pas encore : la copie locale reste utilisée.
+  if (!isDemo && currentUser) {
+    sb.from('bilans').insert({ user_id: currentUser.id, result, data: bilanData })
+      .then(({ error }) => { if (error) console.warn('bilan cloud:', error.message); }, e => console.warn('bilan cloud:', e));
+  }
+}
+// Rapatrie le dernier bilan du compte s'il est plus récent que la copie locale. true = copie locale mise à jour.
+async function syncBilanFromCloud() {
+  if (isDemo || !currentUser || !isPremiumUser()) return false;
+  try {
+    const { data, error } = await sb.from('bilans').select('result, data, created_at')
+      .eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(1);
+    if (error || !data || !data.length) return false;
+    const ts = new Date(data[0].created_at).getTime();
+    const local = loadSavedBilan();
+    if (local && local.ts >= ts) return false;
+    localStorage.setItem(bilanKey(), JSON.stringify({ ts, result: data[0].result, data: data[0].data || {} }));
+    return true;
+  } catch (e) { console.warn('bilan sync:', e); return false; }
 }
 function restartBilan() {
   bilanData = {}; bilanStep = 0;
@@ -6139,7 +6172,7 @@ async function replaceBilanObjectif(idToReplace) {
 
   // Supprimer en base si connecté
   if (!isDemo && currentUser) {
-    try { await supabase.from('objectives').delete().eq('id', idToReplace); } catch(e) {}
+    try { await sb.from('objectives').delete().eq('id', idToReplace); } catch(e) {}
   }
 
   // Pré-remplir
