@@ -295,7 +295,7 @@ function showValidatedChart() {
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary" onclick="openAllocModal()" style="font-size:13px;padding:9px 16px;flex:1">🎚️ Ajuster actions/ETF</button>
-        <button class="btn-secondary" onclick="resetObj()" style="font-size:13px;padding:9px 16px;flex:1">✏ Modifier</button>
+        <button class="btn-secondary" onclick="resetObj('edit')" style="font-size:13px;padding:9px 16px;flex:1">✏ Modifier</button>
         <button class="btn-secondary" onclick="nav('ai')" style="font-size:13px;padding:9px 16px;flex:1">🤖 Analyse IA →</button>
       </div>`;
     generateETFPlan(activeObjId);
@@ -7734,7 +7734,25 @@ async function saveAllocEdit() {
   try { if (typeof renderMultiObjChart==='function') renderMultiObjChart(); } catch(e) {}
 }
 
-function resetObj() {
+let objEditId = null; // objectif en cours de modification (null = création d'un nouvel objectif)
+
+// mode 'edit' : rouvre l'objectif actif prérempli et le met à jour à la validation.
+// sinon : création d'un nouvel objectif.
+function resetObj(mode) {
+  objEditId = null;
+  const note = document.getElementById('obj-edit-note');
+  if (note) note.innerHTML = '';
+  if (mode === 'edit') {
+    const a = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
+    if (a) {
+      objEditId = a.id;
+      const setv = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+      setv('obj-capital', a.capital); setv('obj-monthly', a.monthly);
+      setv('obj-target', a.target);   setv('obj-years', a.years);
+      selectRisk(OBJ_RISK_RATES[a.risk] ? a.risk : 'equilibre');
+      if (note) note.innerHTML = `<div style="background:#eef2ff;border:1px solid #c7d2fe;color:#4338ca;border-radius:12px;padding:9px 14px;font-size:12px;font-weight:700;margin-bottom:12px">✏ Tu modifies « ${_escHtml(a.label)} » — les changements remplaceront l'objectif actuel.</div>`;
+    }
+  }
   // Reset les variables pour forcer le wizard
   objChartTarget = 0;
   objChartCapital = 0;
@@ -7748,8 +7766,8 @@ function resetObj() {
 }
 
 async function generateObjPlan() {
-  // Limite max objectifs
-  if (allObjectives.length >= 3) {
+  // Limite max objectifs (ne s'applique pas à la modification d'un objectif existant)
+  if (allObjectives.length >= 3 && !objEditId) {
     // Affiche le message dans le wizard lui-même
     document.getElementById('obj-wizard').style.display = 'none';
     document.getElementById('obj-results').style.display = 'block';
@@ -7836,7 +7854,9 @@ async function generateObjPlan() {
   if (!isDemo && currentUser) {
     try {
       // Cherche si un objectif identique existe déjà
-      const existing = allObjectives.find(o => o.target === target && o.monthly === monthly);
+      const existing = objEditId
+        ? allObjectives.find(o => o.id === objEditId)
+        : allObjectives.find(o => o.target === target && o.monthly === monthly);
       if (existing) {
         const { error: ue } = await sb.from('objectives').update({
           capital, monthly, target, years,
@@ -7854,6 +7874,12 @@ async function generateObjPlan() {
       // Recharge les objectifs pour mettre à jour allObjectives + onglets
       setProgress('Chargement du plan...');
       await loadObjective();
+      // loadObjective() remet l'objectif n°1 en actif : on garde celui qu'on vient de modifier
+      if (objEditId && allObjectives.find(o => o.id === objEditId)) {
+        activeObjId = objEditId;
+        applyObjData(allObjectives.find(o => o.id === objEditId));
+      }
+      objEditId = null;
     } catch(e) { console.warn('[generateObjPlan] save error:', e); }
   }
 
@@ -8057,26 +8083,46 @@ function objFeasibilityHTML(capital, monthly, target, years, ratePct) {
       <div style="height:100%;width:${Math.max(pct, 2)}%;background:${st.color};border-radius:99px;transition:width .4s"></div>
     </div>
     <div style="font-size:12.5px;color:#3c3c43;line-height:1.6;margin-bottom:${f.level === 'ok' ? 0 : 14}px">${explain}<br><span style="color:${st.color};font-weight:700">${verdict}</span></div>
-    ${f.level === 'ok' ? '' : `
-    <div style="font-size:10.5px;font-weight:800;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Comment y arriver</div>
+    ${f.level === 'ok' ? '' : (() => {
+      const monthlyRounded = Math.ceil(f.monthlyNeeded / 10) * 10;
+      const stepT = f.fv < 10000 ? 100 : 1000;
+      const targetNice = Math.max(stepT, Math.floor(f.fv / stepT) * stepT);
+      const canYears = !!f.yearsNeeded;
+      const riskNext = f.rateNeeded > 7 ? 'agressif' : 'equilibre';
+      const canRisk = !rateUnreal && (OBJ_RISK_RATES[objRisk] || 7) < f.rateNeeded && (OBJ_RISK_RATES[riskNext] || 0) > (OBJ_RISK_RATES[objRisk] || 7);
+      const card = (kind, val, title, big, sub, enabled, subColor) => `
+        <button type="button" ${enabled ? `onclick="objApplyLever('${kind}', ${typeof val === 'number' ? val : `'${val}'`})"` : 'disabled'} style="text-align:left;font:inherit;cursor:${enabled ? 'pointer' : 'not-allowed'};opacity:${enabled ? 1 : 0.55};background:#fff;border:1px solid ${st.border};border-radius:12px;padding:10px 12px;transition:all .15s" ${enabled ? `onmouseover="this.style.borderColor='${st.color}';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='${st.border}';this.style.transform='none'"` : ''}>
+          <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">${title}</div>
+          <div style="font-size:15px;font-weight:900;color:${subColor === '#dc2626' ? '#dc2626' : '#1c1c1e'}">${big}</div>
+          <div style="font-size:10.5px;color:${subColor || '#8e8e93'}">${sub}</div>
+          ${enabled ? `<div style="font-size:10.5px;font-weight:800;color:${st.color};margin-top:5px">Appliquer →</div>` : ''}
+        </button>`;
+      return `
+    <div style="font-size:10.5px;font-weight:800;color:#8e8e93;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Comment y arriver — clique pour appliquer</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
-      <div style="background:#fff;border:1px solid ${st.border};border-radius:12px;padding:10px 12px">
-        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">ÉPARGNER PLUS</div>
-        <div style="font-size:15px;font-weight:900;color:#1c1c1e">${fmtI(f.monthlyNeeded)} €/mois</div>
-        <div style="font-size:10.5px;color:#8e8e93">au lieu de ${fmtI(monthly || 0)} €</div>
-      </div>
-      <div style="background:#fff;border:1px solid ${st.border};border-radius:12px;padding:10px 12px">
-        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">PRENDRE PLUS DE TEMPS</div>
-        <div style="font-size:15px;font-weight:900;color:#1c1c1e">${yrsTxt}</div>
-        <div style="font-size:10.5px;color:#8e8e93">au lieu de ${years} an${years > 1 ? 's' : ''}</div>
-      </div>
-      <div style="background:#fff;border:1px solid ${st.border};border-radius:12px;padding:10px 12px">
-        <div style="font-size:10px;color:#8e8e93;font-weight:700;margin-bottom:3px">VISER PLUS DE RENDEMENT</div>
-        <div style="font-size:15px;font-weight:900;color:${rateUnreal ? '#dc2626' : '#1c1c1e'}">${f.rateNeeded >= 30 ? '30%+' : f.rateNeeded + '%'}/an</div>
-        <div style="font-size:10.5px;color:${rateUnreal ? '#dc2626' : '#8e8e93'}">${rateUnreal ? 'irréaliste à long terme' : 'profil plus risqué'}</div>
-      </div>
-    </div>`}
+      ${card('monthly', monthlyRounded, 'ÉPARGNER PLUS', fmtI(monthlyRounded) + ' €/mois', 'au lieu de ' + fmtI(monthly || 0) + ' €', true)}
+      ${card('years', f.yearsNeeded || 0, 'PRENDRE PLUS DE TEMPS', yrsTxt, 'au lieu de ' + years + ' an' + (years > 1 ? 's' : ''), canYears)}
+      ${card('risk', riskNext, 'VISER PLUS DE RENDEMENT', (f.rateNeeded >= 30 ? '30%+' : f.rateNeeded + '%') + '/an', rateUnreal ? 'irréaliste à long terme' : (canRisk ? 'passer en profil ' + (riskNext === 'agressif' ? 'Agressif' : 'Équilibré') : 'profil plus risqué'), canRisk, rateUnreal ? '#dc2626' : null)}
+      ${card('target', targetNice, 'VISER PLUS BAS', fmtK(targetNice), 'ce que tu atteins à ce rythme', true)}
+    </div>`;
+    })()}
   </div>`;
+}
+
+// Applique un levier de la carte de faisabilité (dans le wizard, ou depuis la page Objectif
+// en rouvrant l'objectif actif en mode modification avec la valeur déjà ajustée).
+function objApplyLever(kind, value) {
+  const wizardHidden = document.getElementById('obj-wizard').style.display === 'none';
+  if (wizardHidden) resetObj('edit');
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+  let msg = '';
+  if (kind === 'monthly') { set('obj-monthly', value); msg = `Versement mensuel passé à ${fmtI(value)} €`; }
+  if (kind === 'years')   { set('obj-years', value);   msg = `Durée passée à ${value} ans`; }
+  if (kind === 'target')  { set('obj-target', value);  msg = `Objectif ramené à ${fmtK(value)}`; }
+  if (kind === 'risk')    { selectRisk(value);         msg = `Profil ${value === 'agressif' ? 'Agressif' : 'Équilibré'} sélectionné`; }
+  objFeasPreview();
+  if (wizardHidden) objGo(3);
+  showToast('✓ ' + msg + (wizardHidden ? ' — vérifie puis clique sur « Générer mon plan »' : ''));
 }
 
 // Aperçu live pendant la saisie du wizard (étapes 2 et 3)
