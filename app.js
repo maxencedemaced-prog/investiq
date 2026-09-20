@@ -275,6 +275,8 @@ function showValidatedChart() {
 
       <!-- Le 1er mois (mois de création de l'objectif), l'investissement de départ passe en
            premier ; ensuite c'est le plan du mois qui est mis en avant. -->
+      <div id="obj-smart-alerts"></div>
+
       <div style="display:flex;flex-direction:column">
         <!-- 📅 PLAN DU MOIS -->
         <div id="obj-monthly-plan" style="order:${objFirstMonth ? 2 : 1}"></div>
@@ -297,6 +299,7 @@ function showValidatedChart() {
         <button class="btn-secondary" onclick="nav('ai')" style="font-size:13px;padding:9px 16px;flex:1">🤖 Analyse IA →</button>
       </div>`;
     generateETFPlan(activeObjId);
+    try { renderSmartAlerts('obj-smart-alerts'); } catch(e) { console.warn('smartAlerts:', e); }
     // Plan du mois : auto si nouveau mois (pas encore de plan ce mois-ci), sinon affiche le cache
     try { generateMonthlyPlan(false); } catch(e) { console.warn('monthlyPlan:', e); }
   }
@@ -6378,7 +6381,7 @@ async function checkAndGenerateNotifications() {
 
   // Remplace complètement les notifications générées — pas d'accumulation
   // On conserve uniquement les notifs "agenda" déjà présentes (car chargées séparément)
-  const agendaNotifs = notifications.filter(n => n.type === 'agenda');
+  const agendaNotifs = notifications.filter(n => n.type === 'agenda' || n.type === 'smart' || n.type === 'plan');
   const merged = [...deduped, ...agendaNotifs];
   // Déduplication finale par titre+texte
   const finalSeen = new Set();
@@ -6785,6 +6788,127 @@ function calcScore() {
   const finalScore = Math.round(items.reduce((a,i)=>a+i.score,0)/items.length*10)/10;
   return { score:finalScore, items, details:{ diversity:items[0].score, concentration:items[1].score, etfRatio:items[2].score, performance:items[3].score } };
 }
+// ═══════════════════════════════════════════════════════════
+//  ⚠️ ALERTES INTELLIGENTES
+//  1) Des règles chiffrées (gratuites, instantanées) repèrent ce qui mérite
+//     attention : position trop lourde, grosse perte.
+//  2) L'IA n'intervient QUE quand une règle se déclenche, pour expliquer et
+//     proposer un remplacement — réservé Premium, mis en cache 7 jours.
+//  Évaluées à l'ouverture de l'app (rien ne tourne en arrière-plan).
+// ═══════════════════════════════════════════════════════════
+const SMART_CONC_MAX = 25;   // % max conseillé pour une action individuelle
+const SMART_LOSS_MAX = -20;  // % de perte vs PRU à partir duquel on alerte
+
+function _escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function computeRuleAlerts() {
+  if (!positions.length) return [];
+  const grouped = {};
+  positions.forEach(p => {
+    const g = grouped[p.name] || (grouped[p.name] = { name: p.name, type: p.type, val: 0, cost: 0 });
+    g.val += p.qty * p.price; g.cost += p.qty * p.pru;
+  });
+  const list = Object.values(grouped);
+  const tv = list.reduce((a, g) => a + g.val, 0);
+  if (!tv) return [];
+  const out = [];
+  list.forEach(g => {
+    const pct = g.val / tv * 100;
+    const perf = g.cost > 0 ? (g.val - g.cost) / g.cost * 100 : 0;
+    // Un ETF large qui pèse lourd n'est pas un risque de concentration
+    if (g.type !== 'ETF' && pct > SMART_CONC_MAX && list.length > 2)
+      out.push({ key: 'conc:' + g.name, kind: 'concentration', ticker: g.name, name: displayName(g.name), pct, perf, severity: pct > 40 ? 3 : 2 });
+    if (perf < SMART_LOSS_MAX)
+      out.push({ key: 'loss:' + g.name, kind: 'loss', ticker: g.name, name: displayName(g.name), pct, perf, severity: perf < -35 ? 3 : 2 });
+  });
+  return out.sort((a, b) => b.severity - a.severity).slice(0, 3);
+}
+
+async function getSmartAdvice(a) {
+  const week = Math.floor(Date.now() / (7 * 86400000));
+  const cacheKey = 'iq_smart_' + (currentUser?.id || 'x') + '_' + a.key + '_' + week + '_' + Math.round(a.pct / 5) + '_' + Math.round(a.perf / 5);
+  try { const c = JSON.parse(localStorage.getItem(cacheKey) || 'null'); if (c) return c; } catch {}
+
+  const tv = positions.reduce((s, p) => s + p.qty * p.price, 0);
+  const held = [...new Set(positions.map(p => p.name))].slice(0, 15).join(', ');
+  const facts = a.kind === 'concentration'
+    ? `${a.name} (${a.ticker}) représente ${a.pct.toFixed(0)}% du portefeuille (seuil conseillé : ${SMART_CONC_MAX}%).`
+    : `${a.name} (${a.ticker}) est à ${a.perf.toFixed(0)}% par rapport à ton prix de revient et pèse ${a.pct.toFixed(0)}% du portefeuille.`;
+  const prompt = `Portefeuille de ${fmtK(tv)} — lignes : ${held}.
+Profil ${objRisk || profile.risk || 'équilibré'}, répartition cible ${objStockPct}% actions / ${100 - objStockPct}% ETF.
+CONSTAT (calculé, factuel) : ${facts}
+
+Donne un avis prudent et concret. N'invente AUCUNE actualité ni évènement : appuie-toi uniquement sur le constat et des principes connus (diversification, discipline).
+Réponds UNIQUEMENT en JSON valide sans backticks :
+{"verdict":"alléger|vendre|garder","raison":"1 à 2 phrases chiffrées, tutoiement","remplacement":{"ticker":"IWDA.L","name":"iShares Core MSCI World","raison":"max 12 mots"}}
+Pour "remplacement", propose un actif plus diversifié cohérent avec sa cible (souvent un ETF monde) ; si verdict "garder", mets remplacement à null.`;
+  try {
+    const raw = await callClaude(prompt, "Tu es InvestIQ, copilote financier prudent. Tu ne fournis pas de conseil réglementé. Réponds UNIQUEMENT en JSON valide.", 600, HAIKU_MODEL);
+    if (callClaudeFailed(raw)) return null;
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
+    if (!data.verdict || !data.raison) return null;
+    try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
+    return data;
+  } catch (e) { console.warn('smartAdvice:', e); return null; }
+}
+
+async function renderSmartAlerts(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const alerts = computeRuleAlerts();
+  if (!alerts.length) { el.innerHTML = ''; return; }
+  const premium = isPremiumUser();
+  const kindTxt = a => a.kind === 'concentration'
+    ? `pèse <strong>${a.pct.toFixed(0)}%</strong> de ton portefeuille (conseillé : moins de ${SMART_CONC_MAX}%)`
+    : `est à <strong>${a.perf.toFixed(0)}%</strong> par rapport à ton prix d'achat`;
+
+  el.innerHTML = `
+  <div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.3);border-radius:16px;padding:16px 18px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <span style="font-size:15px">⚠️</span>
+      <span style="font-size:13px;font-weight:900;color:#fbbf24">À surveiller dans ton portefeuille</span>
+    </div>
+    ${alerts.map((a, i) => `
+    <div style="padding:11px 0;${i ? 'border-top:1px solid rgba(255,255,255,0.08)' : ''}">
+      <div style="font-size:12.5px;color:rgba(255,255,255,0.85);line-height:1.5"><strong style="color:#fff">${_escHtml(a.name)}</strong> ${kindTxt(a)}.</div>
+      <div id="${containerId}-adv-${i}" style="margin-top:8px">
+        ${premium
+          ? `<div style="font-size:11px;color:rgba(255,255,255,0.4)">Analyse en cours…</div>`
+          : `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,0.5)"><span>🔒 Conseil IA (que faire + par quoi le remplacer) — Premium</span><button onclick="startCheckout(this)" style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer">Débloquer</button></div>`}
+      </div>
+    </div>`).join('')}
+  </div>`;
+
+  // Une notification par alerte et par jour
+  const today = new Date().toISOString().slice(0, 10);
+  alerts.forEach(a => {
+    const nk = 'iq_smart_notif_' + (currentUser?.id || 'x') + '_' + a.key;
+    try {
+      if (localStorage.getItem(nk) === today) return;
+      localStorage.setItem(nk, today);
+      notifications.unshift({ titre: `⚠️ ${a.name} à surveiller`, texte: `${a.name} ${a.kind === 'concentration' ? `pèse ${a.pct.toFixed(0)}% de ton portefeuille` : `est à ${a.perf.toFixed(0)}% vs ton prix d'achat`}.`, action: 'Voir Objectif', impact: 'high', heure: "Aujourd'hui", type: 'smart' });
+      renderNotifications();
+      document.getElementById('notif-dot')?.classList.add('show');
+    } catch {}
+  });
+
+  if (!premium) return;
+  for (let i = 0; i < alerts.length; i++) {
+    const advEl = document.getElementById(`${containerId}-adv-${i}`);
+    const adv = await getSmartAdvice(alerts[i]);
+    if (!advEl || !document.getElementById(containerId)) return;
+    if (!adv) { advEl.innerHTML = `<div style="font-size:11px;color:rgba(255,255,255,0.4)">Conseil indisponible pour le moment.</div>`; continue; }
+    const vColor = adv.verdict === 'vendre' ? '#f87171' : adv.verdict === 'alléger' ? '#fbbf24' : '#4ade80';
+    advEl.innerHTML = `
+      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px">
+        <div style="font-size:11px;font-weight:800;color:${vColor};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conseil IA : ${_escHtml(adv.verdict)}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.5">${_escHtml(adv.raison)}</div>
+        ${adv.remplacement && adv.remplacement.ticker ? `<div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ À la place : <strong style="color:#fff">${_escHtml(adv.remplacement.name || adv.remplacement.ticker)}</strong> <span style="opacity:.6">${_escHtml(adv.remplacement.ticker)}</span> — ${_escHtml(adv.remplacement.raison || '')}</div>` : ''}
+      </div>`;
+  }
+}
+
 function buildScore() {
   const {score,items}=calcScore();
   const color=score>=7?'#1a7f5a':score>=5?'#ff9500':'#ff3b30';
@@ -10527,6 +10651,8 @@ function initAgent(auto=false) {
   if (!auto || getCachedVerdict()) {
     try { generateInvestIQVerdict(); } catch(e) { console.warn('verdict:', e); }
   }
+  // Alertes intelligentes : règles chiffrées + conseil IA (Premium, en cache 7 jours)
+  if (!auto) { try { renderSmartAlerts('agent-smart-alerts'); } catch(e) { console.warn('smartAlerts:', e); } }
   try { buildAgentContext(); } catch(e) { console.error('buildAgentContext:', e); }
   try { buildAgentSuggestions(); } catch(e) { console.error('buildAgentSuggestions:', e); }
 
