@@ -6945,7 +6945,7 @@ async function renderSmartAlerts(containerId) {
       <div id="${containerId}-adv-${i}" style="margin-top:8px">
         ${premium
           ? `<div style="font-size:11px;color:rgba(255,255,255,0.4)">Analyse en cours…</div>`
-          : `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,0.5)"><span>🔒 Conseil IA (que faire + par quoi le remplacer) — Premium</span><button onclick="startCheckout(this)" style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer">Débloquer</button></div>`}
+          : `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,0.5)"><span>🔒 Conseil IA (que faire + par quoi le remplacer) — Premium</span><button onclick="showPlansModal()" style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer">Débloquer</button></div>`}
       </div>
     </div>`).join('')}
   </div>`;
@@ -9268,7 +9268,7 @@ function aiFailureHTML(text, retryJs) {
     return `<div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.35);border-radius:14px;padding:16px 18px;color:#fff">
       <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">⏳ Limite gratuite atteinte</div>
       <div style="font-size:12.5px;color:rgba(255,255,255,0.75);line-height:1.6;margin-bottom:12px">Tes ${AI_FREE_WELCOME} analyses offertes sont utilisées et tu as consommé tes ${AI_FREE_DAILY} analyses du jour. Ce n'est pas un bug : ${AI_FREE_DAILY} nouvelles reviennent demain. Avec Premium, plus aucune limite.</div>
-      <button onclick="startCheckout(this,'annual')" style="background:linear-gradient(135deg,#16a34a,#15803d);border:none;color:#fff;font-size:12.5px;font-weight:800;padding:10px 16px;border-radius:10px;cursor:pointer">Passer à Premium — illimité</button>
+      <button onclick="showPlansModal()" style="background:linear-gradient(135deg,#16a34a,#15803d);border:none;color:#fff;font-size:12.5px;font-weight:800;padding:10px 16px;border-radius:10px;cursor:pointer">Passer à Premium — illimité</button>
     </div>`;
   }
   return `<div style="background:#fff0f0;border-radius:12px;padding:14px;color:#cc2f26;font-weight:600">⚠ ${_escHtml(text)}${retryJs ? ` <button onclick="${retryJs}" style="margin-left:8px;background:none;border:1px solid #cc2f26;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#cc2f26;cursor:pointer">Réessayer</button>` : ''}</div>`;
@@ -9281,7 +9281,7 @@ function premiumLockedStateHTML(featureName, text) {
     <div style="font-size:32px;margin-bottom:10px">✨</div>
     <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">${featureName} — Fonctionnalité Premium</div>
     <div style="font-size:13px;margin-bottom:16px">${text}</div>
-    <button onclick="startCheckout(this)" style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">Passer à Premium — ${PREMIUM_PRICE}/mois</button>
+    <button onclick="showPlansModal()" style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">Passer à Premium — ${PREMIUM_PRICE}/mois</button>
   </div>`;
 }
 
@@ -10019,7 +10019,23 @@ const PLAN_PREMIUM_ONLY = [
   'Sélection multiple et actions groupées',
 ];
 
+// Choix de facturation (annuel par défaut) — partagé par la fenêtre et les Paramètres
+let plansBilling = 'annual';
+const PRICE_MONTHLY_NUM = 9.99, PRICE_ANNUAL_NUM = 79.99;
+const _eur = n => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+function setPlansBilling(b) {
+  plansBilling = b;
+  document.querySelectorAll('[data-plans-root]').forEach(root => {
+    const lapsed = root.dataset.lapsed === '1';
+    root.innerHTML = plansComparisonHTML(lapsed);
+  });
+}
+
 function plansComparisonHTML(lapsed) {
+  const annual = plansBilling === 'annual';
+  const yearSaving = PRICE_MONTHLY_NUM * 12 - PRICE_ANNUAL_NUM;      // 39,89 €
+  const segBtn = (key, label, extra) => `<button type="button" onclick="setPlansBilling('${key}')" style="flex:1;padding:8px 6px;border:none;border-radius:9px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;background:${plansBilling === key ? '#16a34a' : 'transparent'};color:${plansBilling === key ? '#fff' : 'rgba(255,255,255,0.6)'};transition:all .15s">${label}${extra || ''}</button>`;
   const check = c => `<span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:${c};display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#0b1220;margin-top:1px">✓</span>`;
   const row = (t, c, strong) => `<div style="display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.45;color:${strong ? '#fff' : 'rgba(255,255,255,0.78)'};${strong ? 'font-weight:700;' : ''}">${check(c)}<span>${t}</span></div>`;
   return `
@@ -10038,25 +10054,33 @@ function plansComparisonHTML(lapsed) {
 
     <!-- PREMIUM -->
     <div style="background:linear-gradient(160deg,#0f2a1c,#0c1f2e);border:1.5px solid #22c55e;border-radius:18px;padding:20px;display:flex;flex-direction:column;position:relative;box-shadow:0 10px 40px rgba(34,197,94,0.15)">
-      <span style="position:absolute;top:-11px;right:16px;background:#facc15;color:#1a1a1a;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px">-${PREMIUM_ANNUAL_SAVINGS_PCT}% en annuel</span>
-      <div style="font-size:13px;font-weight:800;color:#4ade80;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">✦ Premium</div>
-      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px"><span style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.04em">${PREMIUM_PRICE_ANNUAL}</span><span style="font-size:12px;color:rgba(255,255,255,0.5)">/an</span></div>
-      <div style="font-size:11.5px;color:rgba(255,255,255,0.5);margin-bottom:16px">ou ${PREMIUM_PRICE}/mois · sans engagement</div>
+      <div style="font-size:13px;font-weight:800;color:#4ade80;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">✦ Premium</div>
+      <div style="display:flex;gap:4px;background:rgba(255,255,255,0.08);border-radius:12px;padding:4px;margin-bottom:14px">
+        ${segBtn('monthly', 'Mensuel')}
+        ${segBtn('annual', 'Annuel', ` <span style="background:#facc15;color:#1a1a1a;font-size:9.5px;padding:2px 6px;border-radius:99px;margin-left:3px">-${PREMIUM_ANNUAL_SAVINGS_PCT}%</span>`)}
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px"><span style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.04em">${annual ? PREMIUM_PRICE_ANNUAL : PREMIUM_PRICE}</span><span style="font-size:12px;color:rgba(255,255,255,0.5)">${annual ? '/an' : '/mois'}</span></div>
+      ${annual
+        ? `<div style="font-size:11.5px;color:rgba(255,255,255,0.55);margin-bottom:6px">soit ${_eur(PRICE_ANNUAL_NUM / 12)}/mois · sans engagement</div>
+           <div style="display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:rgba(74,222,128,0.14);border:1px solid rgba(74,222,128,0.35);color:#4ade80;font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:10px;margin-bottom:14px">💰 Tu économises ${_eur(yearSaving)} par an</div>`
+        : `<div style="font-size:11.5px;color:rgba(255,255,255,0.55);margin-bottom:6px">facturé chaque mois · sans engagement</div>
+           <div style="font-size:11.5px;color:#facc15;font-weight:700;margin-bottom:14px;cursor:pointer" onclick="setPlansBilling('annual')">Passe à l'annuel et économise ${_eur(yearSaving)} par an →</div>`}
       <div style="display:flex;flex-direction:column;gap:9px;flex:1">
         ${PLAN_COMMON.map(t => row(t, '#4ade80')).join('')}
         ${row('Analyses IA <strong style="color:#4ade80">illimitées</strong>', '#4ade80', true)}
         <div style="font-size:10.5px;font-weight:800;color:#4ade80;letter-spacing:.08em;text-transform:uppercase;margin:6px 0 1px">En plus</div>
         ${PLAN_PREMIUM_ONLY.map(t => row(t, '#4ade80', true)).join('')}
       </div>
-      <button onclick="startCheckout(this,'annual')" style="margin-top:18px;width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">${lapsed ? 'Reprendre' : "S'abonner"} — ${PREMIUM_PRICE_ANNUAL}/an</button>
-      <button onclick="startCheckout(this,'monthly')" style="margin-top:8px;width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.2);border-radius:12px;font-size:12.5px;font-weight:700;color:rgba(255,255,255,0.8);cursor:pointer">ou ${PREMIUM_PRICE}/mois</button>
+      <button onclick="startCheckout(this,plansBilling)" style="margin-top:18px;width:100%;padding:14px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : PREMIUM_PRICE + '/mois'}</button>
       <div style="font-size:10.5px;color:rgba(255,255,255,0.4);text-align:center;margin-top:9px">Résiliable à tout moment</div>
     </div>
   </div>`;
 }
 
 // Fenêtre "Comparer les offres" (ouverte depuis la sidebar, le compteur IA ou un paywall)
-function showPlansModal() {
+// opts (facultatif) : { feature, subtitle, benefits } → bandeau de contexte quand la fenêtre
+// s'ouvre parce qu'une fonctionnalité est réservée à Premium (ou que le quota IA est atteint).
+function showPlansModal(opts) {
   document.getElementById('premium-gate')?.remove();
   document.getElementById('plans-modal')?.remove();
   const lapsed = profile?.subscription_status === 'canceled' || profile?.subscription_status === 'unpaid';
@@ -10064,16 +10088,22 @@ function showPlansModal() {
   o.id = 'plans-modal';
   o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10005;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto';
   o.onclick = e => { if (e.target === o) o.remove(); };
+  const ctx = opts && opts.feature ? `
+      <div style="background:rgba(250,204,21,0.1);border:1px solid rgba(250,204,21,0.35);border-radius:14px;padding:12px 14px;margin-bottom:16px">
+        <div style="font-size:13.5px;font-weight:800;color:#facc15">✨ ${_escHtml(opts.feature)}${opts.subtitle ? ` <span style="font-weight:600;color:rgba(255,255,255,0.55)">· ${_escHtml(opts.subtitle)}</span>` : ''}</div>
+        ${(opts.benefits || []).length ? `<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">${opts.benefits.map(b => `<div style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.5">• ${_escHtml(b)}</div>`).join('')}</div>` : ''}
+      </div>` : '';
   o.innerHTML = `
     <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:24px;max-width:720px;width:100%;padding:26px 22px 22px;margin:auto">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
         <div>
           <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.03em">Choisis ton offre</div>
           <div style="font-size:12.5px;color:rgba(255,255,255,0.5);margin-top:4px">Le gratuit reste utilisable sans limite de durée. Premium enlève les plafonds IA et débloque les outils avancés.</div>
         </div>
         <button onclick="document.getElementById('plans-modal').remove()" style="background:rgba(255,255,255,0.08);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
       </div>
-      ${plansComparisonHTML(lapsed)}
+      ${ctx}
+      <div data-plans-root data-lapsed="${lapsed ? 1 : 0}">${plansComparisonHTML(lapsed)}</div>
     </div>`;
   document.body.appendChild(o);
 }
@@ -10098,7 +10128,7 @@ function renderSubscriptionCard() {
       <div style="background:linear-gradient(135deg,#0b1220,#111c33);border-radius:18px;padding:20px 18px;color:#fff">
         <div style="font-size:17px;font-weight:900;letter-spacing:-0.02em;margin-bottom:4px">${lapsed ? 'Reprends Premium' : 'Ton offre'}</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">${lapsed ? 'Ton abonnement est terminé : retrouve tous les outils.' : 'Tu es sur l\'offre gratuite. Compare avec Premium :'}</div>
-        ${plansComparisonHTML(lapsed)}
+        <div data-plans-root data-lapsed="${lapsed ? 1 : 0}">${plansComparisonHTML(lapsed)}</div>
       </div>`;
     return;
   }
@@ -10498,42 +10528,6 @@ function isPremiumUser() {
   return profile?.is_premium === true;
 }
 
-// Fenêtre d'incitation à l'abonnement
-function showPremiumGate(featureName, benefits, subtitle) {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const surf = isDark ? '#161b26' : '#fff';
-  const txt  = isDark ? '#f0f0f0' : '#09090b';
-  const sub  = isDark ? '#8b95a5' : '#71717a';
-  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
-
-  document.getElementById('premium-gate')?.remove();
-  const overlay = document.createElement('div');
-  overlay.id = 'premium-gate';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:10004;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.innerHTML = `
-    <div style="background:${surf};border-radius:22px;max-width:420px;width:100%;overflow:hidden">
-      <div style="background:linear-gradient(135deg,#0d1526,#1a2744);padding:26px 26px 22px;text-align:center">
-        <div style="font-size:32px;margin-bottom:8px">✨</div>
-        <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.03em">${featureName}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:5px">${subtitle || 'Fonctionnalité Premium'}</div>
-      </div>
-      <div style="padding:22px 26px 24px">
-        <div style="display:flex;flex-direction:column;gap:11px;margin-bottom:20px">
-          ${(benefits||[]).map(b => `
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#16a34a;font-weight:900;font-size:13px;flex-shrink:0">✓</span>
-            <span style="font-size:13px;color:${txt};line-height:1.45">${b}</span>
-          </div>`).join('')}
-        </div>
-        <button onclick="startCheckout(this)" style="width:100%;padding:14px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;border-radius:14px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;margin-bottom:9px">
-          Passer à Premium — ${PREMIUM_PRICE}/mois
-        </button>
-        <button onclick="showPlansModal()" style="width:100%;padding:10px;background:transparent;border:none;font-size:12.5px;font-weight:700;color:#16a34a;cursor:pointer;margin-bottom:2px">Comparer Gratuit et Premium →</button>
-        <button onclick="document.getElementById('premium-gate').remove()" style="width:100%;padding:11px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Plus tard</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-}
 
 // Rafraîchit toutes les vues qui dépendent des positions (après ajout/suppression/import)
 function refreshPortfolioUI() {
@@ -11531,4 +11525,10 @@ function renderDailyBrief(items) {
         → Détails
       </button>
     </div>`).join('');
+}
+
+// Toute incitation à l'abonnement ouvre le comparatif Gratuit / Premium, avec un bandeau
+// rappelant la fonctionnalité concernée (ou le quota atteint).
+function showPremiumGate(featureName, benefits, subtitle) {
+  showPlansModal({ feature: featureName, subtitle: subtitle || 'Fonctionnalité Premium', benefits });
 }
