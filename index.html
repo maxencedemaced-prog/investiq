@@ -807,7 +807,7 @@ window.addEventListener('load', function() {
 
         <input type="hidden" id="ob-profile-level" value="">
         <div style="display:flex;gap:8px">
-          <button class="btn-secondary" onclick="obFinish('demo')" style="flex:1;font-size:13px">Démo</button>
+          <button class="btn-secondary" id="ob-btn-skip" onclick="obFinish(isDemo ? 'demo' : 'skip')" style="flex:1;font-size:13px">Passer</button>
           <button class="btn-primary" onclick="obNext(2)" style="flex:2" id="ob-btn-1" disabled>Suivant →</button>
         </div>
       </div>

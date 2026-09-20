@@ -2357,6 +2357,8 @@ function showOnboarding(force) {
   if (!force && localStorage.getItem(OB_KEY)) return;
   obGoals = { long: false, court: false, retraite: false, projet: false };
   obNext(1);
+  const skipBtn = document.getElementById('ob-btn-skip');
+  if (skipBtn) skipBtn.textContent = isDemo ? 'Démo' : 'Passer';
   document.getElementById('onboarding-modal').style.display = 'flex';
 }
 
@@ -2662,6 +2664,12 @@ async function obFinish(action) {
   // Si "Voir un exemple" → pas de sauvegarde, juste charger la démo
   if (action === 'demo') {
     await loadDemo();
+    return;
+  }
+
+  // "Passer" : vrai compte, portefeuille vierge, aucune donnée fictive injectée
+  if (action === 'skip') {
+    nav('home');
     return;
   }
 
@@ -4355,6 +4363,8 @@ function enterDemo() {
   // Reset et affiche l'onboarding depuis l'étape 1
   obGoals = { long: false, court: false };
   obNext(1);
+  const skipBtn = document.getElementById('ob-btn-skip');
+  if (skipBtn) skipBtn.textContent = 'Démo';
   document.getElementById('onboarding-modal').style.display = 'flex';
 }
 
