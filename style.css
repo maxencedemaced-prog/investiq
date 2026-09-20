@@ -1812,3 +1812,6 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
   .plan-premium .plan-list{display:block}
   #plans-modal{padding:10px 8px !important}
 }
+
+/* Agent IA : aperçu d'exemple (portefeuille fictif) — lisible mais non interactif */
+.agent-sample{pointer-events:none;user-select:none;-webkit-user-select:none}

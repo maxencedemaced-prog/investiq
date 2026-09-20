@@ -11050,11 +11050,13 @@ function initAgent(auto=false) {
     } catch(e) { console.warn('recoHistory:', e); }
   })();
   // ⭐ Verdict signature "Que ferait InvestIQ ?" (cache 24h) — sauté si restauration silencieuse et cache absent
-  if (!auto || getCachedVerdict()) {
+  // Portefeuille vide : on affiche l'exemple fictif, aucun appel IA ni rendu concurrent
+  const hasReal = positions.length > 0;
+  if (hasReal && (!auto || getCachedVerdict())) {
     try { generateInvestIQVerdict(); } catch(e) { console.warn('verdict:', e); }
   }
   // Alertes intelligentes : règles chiffrées + conseil IA (Premium, en cache 7 jours)
-  if (!auto) { try { renderSmartAlerts('agent-smart-alerts'); } catch(e) { console.warn('smartAlerts:', e); } }
+  if (hasReal && !auto) { try { renderSmartAlerts('agent-smart-alerts'); } catch(e) { console.warn('smartAlerts:', e); } }
   try { buildAgentContext(); } catch(e) { console.error('buildAgentContext:', e); }
   try { buildAgentSuggestions(); } catch(e) { console.error('buildAgentSuggestions:', e); }
 
@@ -11073,7 +11075,9 @@ function initAgent(auto=false) {
   // Génère le briefing IA pour la hero card (avec cache 6h)
   const BRIEF_KEY = 'iq_daily_brief';
   const cached = (() => { try { const c = JSON.parse(localStorage.getItem(BRIEF_KEY)||'null'); return c && Date.now()-c.ts < 6*3600000 ? c : null; } catch { return null; } })();
-  if (cached) {
+  if (!hasReal) {
+    // exemple déjà affiché
+  } else if (cached) {
     renderDailyBrief(cached.items);
   } else if (!auto) {
     generateDailyBrief();
@@ -11087,15 +11091,71 @@ function initAgent(auto=false) {
 function applyAgentGrid() {
   const layout = document.getElementById('agent-layout');
   const bottom = document.getElementById('agent-bottom');
-  const has = positions.length > 0;
+  const has = positions.length > 0 || !!document.querySelector('#agent-right.agent-sample');
   if (layout) layout.style.gridTemplateColumns = (has && window.innerWidth >= 980) ? '1fr 300px' : '1fr';
   if (bottom) bottom.style.gridTemplateColumns = (has && window.innerWidth >= 720) ? '240px 1fr' : '1fr';
+}
+
+// ── Aperçu « exemple » de l'Agent IA quand le portefeuille est vide ──
+// On rend le vrai dashboard avec un portefeuille fictif (aucun appel IA, rien n'est enregistré),
+// clairement étiqueté et non cliquable, pour que l'utilisateur voie ce que donne l'Agent.
+const AGENT_SAMPLE_POSITIONS = [
+  {id:'s1',name:'IWDA.L',qty:15,pru:87.5,price:94.2,change_pct:0.6,type:'ETF',sector:'Monde',platform:'',alert_price:null},
+  {id:'s2',name:'VWCE.DE',qty:8,pru:110,price:118.5,change_pct:0.4,type:'ETF',sector:'Monde',platform:'',alert_price:null},
+  {id:'s3',name:'LVMH',qty:2,pru:730,price:685,change_pct:-1.1,type:'Action',sector:'Luxe',platform:'',alert_price:null},
+  {id:'s4',name:'Air Liquide',qty:5,pru:162,price:179,change_pct:0.9,type:'Action',sector:'Industrie',platform:'',alert_price:null},
+];
+const AGENT_SAMPLE_BRIEF = [
+  { icon:'📈', text:'Portefeuille en hausse de 0,3 % aujourd\'hui', color:'#4ade80', type:'perf' },
+  { icon:'⚡', text:'LVMH pèse 30 % de ton portefeuille', color:'#fbbf24', type:'alert' },
+  { icon:'💡', text:'Un versement mensuel régulier ferait progresser ton objectif', color:'#a5b4fc', type:'tip' },
+];
+const AGENT_SAMPLE_IDS = ['agent-hero','agent-smart-alerts','agent-hier','agent-alertes','agent-recos','agent-banner','agent-priorites','agent-right','agent-footer-cards'];
+let _agentSampling = false;
+
+function renderAgentSample() {
+  const real = positions;
+  _agentSampling = true;
+  positions = AGENT_SAMPLE_POSITIONS.map(p => ({ ...p }));
+  try { renderAgentDashboard(); } finally { positions = real; _agentSampling = false; }
+  renderDailyBrief(AGENT_SAMPLE_BRIEF);
+
+  const alertEl = document.getElementById('agent-smart-alerts');
+  if (alertEl) alertEl.innerHTML = `
+  <div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.3);border-radius:16px;padding:16px 18px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:15px">⚠️</span><span style="font-size:13px;font-weight:900;color:#fbbf24">À surveiller dans ton portefeuille</span></div>
+    <div style="font-size:12.5px;color:rgba(255,255,255,0.85);line-height:1.5"><strong style="color:#fff">LVMH</strong> pèse <strong>30%</strong> de ton portefeuille (conseillé : moins de 25%).</div>
+    <div style="margin-top:8px;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px">
+      <div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conseil IA : alléger <span style="color:#4ade80">· ✦ Premium</span></div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.5">Une seule action pèse près d'un tiers de ton portefeuille : une mauvaise séance sur le luxe te coûterait cher. Alléger de 10 points te ramène sous le seuil.</div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ À la place : <strong style="color:#fff">iShares Core MSCI World</strong> <span style="opacity:.6">IWDA.L</span> — diversifié sur 1 500 entreprises</div>
+    </div>
+  </div>`;
+
+  AGENT_SAMPLE_IDS.forEach(id => document.getElementById(id)?.classList.add('agent-sample'));
+  const banner = document.getElementById('agent-verdict');
+  if (banner) banner.innerHTML = `
+  <div data-agent-sample style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:14px;padding:12px 16px;margin-bottom:12px">
+    <div>
+      <div style="font-size:13px;font-weight:800;color:var(--color-text)">👀 Exemple avec un portefeuille fictif</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Voilà ce que ton Agent IA te montre dès que tu as des positions.</div>
+    </div>
+    <button onclick="nav('ajouter')" style="padding:9px 16px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer">+ Ajouter ma première position</button>
+  </div>`;
+  applyAgentGrid();
 }
 
 // ═══════════════════════════════════════════════
 //  AGENT IA — DASHBOARD STYLE RÉFÉRENCE
 // ═══════════════════════════════════════════════
 function renderAgentDashboard() {
+  if (!positions.length && !_agentSampling) return renderAgentSample();
+  if (positions.length) {
+    const sa = document.getElementById('agent-smart-alerts');
+    if (sa && sa.classList.contains('agent-sample')) sa.innerHTML = '';
+    AGENT_SAMPLE_IDS.forEach(id => document.getElementById(id)?.classList.remove('agent-sample'));
+    if (document.querySelector('#agent-verdict [data-agent-sample]')) document.getElementById('agent-verdict').innerHTML = '';
+  }
   const name = isDemo ? 'Toi' : (currentUser?.email||'').split('@')[0];
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
