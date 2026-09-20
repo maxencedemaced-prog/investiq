@@ -228,7 +228,7 @@ function depBuildItems(tx) {
   const times = tx.map(t => t.date.getTime());
   const spanDays = (Math.max(...times) - Math.min(...times)) / 86400000 + 1;
   const months = Math.max(1, Math.round(spanDays / 30.4));
-  const groups = new Map();
+  const groups = new Map(), txs = [];
   tx.forEach(t => {
     const raw = depNormalize(t.label);
     const clean = depClean(t.label);
@@ -239,8 +239,10 @@ function depBuildItems(tx) {
     if (!g) { g = { key, label: depTitle(depGroupKey(clean)), cat, total: 0, count: 0, first: t.date.getTime(), last: t.date.getTime(), amounts: [] }; groups.set(key, g); }
     g.total += t.amount; g.count++; g.amounts.push(t.amount);
     g.first = Math.min(g.first, t.date.getTime()); g.last = Math.max(g.last, t.date.getTime());
+    const dd = t.date;
+    txs.push({ d: `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`, l: String(t.label).replace(/\s+/g, ' ').slice(0, 90), a: Math.round(t.amount * 100) / 100, k: key });
   });
-  return { months, items: [...groups.values()].map(g => {
+  return { months, txs, items: [...groups.values()].map(g => {
     const avg = g.total / g.count;
     const stable = g.amounts.every(a => Math.abs(a - avg) <= avg * 0.12);
     const recurring = g.count >= 2 && (g.last - g.first) / 86400000 >= 25 && stable;
@@ -466,8 +468,8 @@ async function depOnFile(input) {
       allTx = allTx.concat(r.tx); warn = warn || r.warn;
     }
     if (!allTx.length) { say("Je n'ai trouvé aucune dépense dans ce fichier. Il faut au minimum une date, un libellé et un montant. Essaie l'export CSV ou Excel de ta banque.", true); return; }
-    const { months, items } = depBuildItems(allTx);
-    depState = { ts: Date.now(), months, items, cut: {}, source: 'csv', warn, nTx: allTx.length };
+    const { months, items, txs } = depBuildItems(allTx);
+    depState = { ts: Date.now(), months, items, txs, cut: {}, gcut: {}, source: 'csv', warn, nTx: allTx.length };
     depSave(); depRender();
     if (useAi && items.some(i => i.cat === 'autre')) depAiClassify(true);   // classe tout d'un coup, sans clic supplémentaire
   } catch (e) {
@@ -491,22 +493,61 @@ function depReset() {
   try { localStorage.removeItem(depKeyStore()); } catch {}
   depState = null; depRender();
 }
-// Réduction (0 à 100 %) appliquée à un poste : abonnement = 0 ou 100, dépense courante = curseur
+// ── Groupes de dépenses (camembert + curseurs « diminuer ») ──
+// Les dépenses du quotidien se réduisent PAR GROUPE (tous les restos ensemble), les abonnements un par un.
+const DEP_GROUPS = [
+  { id: 'logement',    label: 'Logement',              cats: ['logement'],                          color: '#6366f1' },
+  { id: 'credit',      label: 'Crédits & prêts',       cats: ['credit'],                            color: '#8b5cf6' },
+  { id: 'courses',     label: 'Courses',               cats: ['alimentation'],                      color: '#16a34a' },
+  { id: 'resto',       label: 'Restaurants & cafés',   cats: ['restauration'],                      color: '#f59e0b', reducible: 30, hint: 'Passer un repas sur trois à la maison, ou un resto de moins par semaine.' },
+  { id: 'livraison',   label: 'Livraison de repas',    cats: ['livraison'],                         color: '#fb923c', reducible: 50, hint: 'Les frais de livraison et de service coûtent souvent 30 % de plus.' },
+  { id: 'abos',        label: 'Abonnements',           cats: ['streaming', 'musique', 'apps', 'presse', 'sport', 'jeux_video', 'telecom'], color: '#0ea5e9', subs: true },
+  { id: 'jeux_argent', label: "Jeux d'argent",         cats: ['jeux_argent'],                       color: '#dc2626', reducible: 100 },
+  { id: 'shopping',    label: 'Shopping & achats',     cats: ['shopping'],                          color: '#ec4899', reducible: 30, hint: 'Attendre 48 h avant chaque achat non prévu.' },
+  { id: 'sorties',     label: 'Sorties & voyages',     cats: ['loisirs', 'voyage'],                 color: '#14b8a6', reducible: 20 },
+  { id: 'tabac',       label: 'Tabac',                 cats: ['tabac'],                             color: '#78716c', reducible: 50 },
+  { id: 'transport',   label: 'Transport',             cats: ['transport'],                         color: '#64748b' },
+  { id: 'factures',    label: 'Factures & assurances', cats: ['energie', 'assurance', 'impots'],    color: '#3b82f6' },
+  { id: 'sante',       label: 'Santé',                 cats: ['sante'],                             color: '#22c55e' },
+  { id: 'autre',       label: 'Autres',                cats: ['autre'],                             color: '#9ca3af' },
+];
+function depGroupOf(item) {
+  if (item.sub === true && !['jeux_argent'].includes(item.cat)) return DEP_GROUPS.find(g => g.id === 'abos');
+  return DEP_GROUPS.find(g => g.cats.includes(item.cat)) || DEP_GROUPS[DEP_GROUPS.length - 1];
+}
+function depGroupTotals(items) {
+  return DEP_GROUPS.map(g => {
+    const its = items.filter(i => depGroupOf(i).id === g.id);
+    return { g, items: its, total: its.reduce((a, i) => a + i.monthly, 0) };
+  }).filter(x => x.items.length);
+}
+
+// Un abonnement : 0 (je garde) ou 100 (j'arrête)
 function depSetCut(key, pct) {
-  pct = Math.max(0, Math.min(100, Math.round(+pct || 0)));
+  pct = pct ? 100 : 0;
   depState.cut = depState.cut || {};
   if (pct) depState.cut[key] = pct; else delete depState.cut[key];
+  depSave(); depRender();
+}
+// Un groupe de dépenses : curseur 0 à 100 %
+function depSetGCut(id, pct) {
+  pct = Math.max(0, Math.min(100, Math.round(+pct || 0)));
+  depState.gcut = depState.gcut || {};
+  if (pct) depState.gcut[id] = pct; else delete depState.gcut[id];
   depSave();
-  const it = depState.items.find(i => i.key === key);
-  const lbl = document.querySelector(`[data-dep-lbl="${CSS.escape(key)}"]`);
-  if (lbl && it) lbl.textContent = pct ? `−${pct} % · économise ${depFmt(it.monthly * pct / 100)}/mois` : 'Je garde tel quel';
+  const a = depAnalyze(), gt = depGroupTotals(a.items).find(x => x.g.id === id);
+  const lbl = document.querySelector(`[data-dep-glbl="${id}"]`);
+  if (lbl && gt) lbl.textContent = pct ? `−${pct} % · économise ${depFmt(gt.total * pct / 100)}/mois` : 'Je garde tel quel';
   depRenderSavings();
 }
-// Suggestions : abonnements non vitaux et jeux d'argent → arrêter ; autres dépenses → −30 %
+// Suggestions : abonnements non vitaux → arrêter ; groupes → réduction recommandée
 function depApplySuggestions(on) {
-  const a = depAnalyze();
-  depState.cut = {};
-  if (on) a.questionable.forEach(i => { depState.cut[i.key] = (depIsBinary(i) || i.cat === 'jeux_argent') ? 100 : 30; });
+  depState.cut = {}; depState.gcut = {};
+  if (on) {
+    const a = depAnalyze();
+    a.items.forEach(i => { if (a.tiers.get(i.key) === 'nonvital' && depGroupOf(i).id === 'abos') depState.cut[i.key] = 100; });
+    DEP_GROUPS.forEach(g => { if (g.reducible) depState.gcut[g.id] = g.reducible; });
+  }
   depSave(); depRender();
 }
 function depInvestDca(m) {
@@ -582,17 +623,22 @@ function depTierBadge(t) {
   const m = { essentiel: ['#16a34a', 'Essentiel'], confort: ['#d97706', 'Confort'], nonvital: ['#dc2626', 'Non vital'], autre: ['#6b7280', 'À classer'] }[t] || ['#6b7280', ''];
   return `<span style="font-size:10px;font-weight:800;color:${m[0]};background:${m[0]}1f;padding:2px 8px;border-radius:99px;white-space:nowrap">${m[1]}</span>`;
 }
+function depSavingsMonthly() {
+  const a = depAnalyze(), cut = depState.cut || {}, gcut = depState.gcut || {};
+  let m = 0, n = 0;
+  a.items.forEach(i => { if (cut[i.key] > 0 && depGroupOf(i).id === 'abos') { m += i.monthly; n++; } });
+  depGroupTotals(a.items).forEach(x => { if (x.g.reducible != null && gcut[x.g.id] > 0) { m += x.total * gcut[x.g.id] / 100; n++; } });
+  return { m, n };
+}
 function depRenderSavings() {
   const el = document.getElementById('dep-savings'); if (!el || !depState) return;
-  const a = depAnalyze(), cut = depState.cut || {};
-  const picked = a.questionable.filter(i => cut[i.key] > 0);
-  const m = picked.reduce((t, i) => t + i.monthly * cut[i.key] / 100, 0);
-  if (!picked.length) {
-    el.innerHTML = `<div style="font-size:13px;${DEP_MUTED}">Arrête un abonnement ou diminue une dépense avec les curseurs ci-dessus pour voir ce que tu économiserais.</div>`;
+  const { m, n: picked } = depSavingsMonthly();
+  if (!picked) {
+    el.innerHTML = `<div style="font-size:13px;${DEP_MUTED}">Diminue une catégorie avec les curseurs ou arrête un abonnement pour voir ce que tu économiserais.</div>`;
     return;
   }
   el.innerHTML = `
-    <div style="font-size:12px;${DEP_MUTED};margin-bottom:6px">En agissant sur ${picked.length} poste${picked.length > 1 ? 's' : ''} :</div>
+    <div style="font-size:12px;${DEP_MUTED};margin-bottom:6px">En agissant sur ${picked} poste${picked > 1 ? 's' : ''} :</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <div style="flex:1;min-width:110px;background:var(--color-bg);border-radius:12px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--color-text)">${depFmt(m)}</div><div style="font-size:11px;${DEP_MUTED}">par mois</div></div>
       <div style="flex:1;min-width:110px;background:var(--color-bg);border-radius:12px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:900;color:#16a34a">${depFmt0(m * 12)}</div><div style="font-size:11px;${DEP_MUTED}">économisés par an</div></div>
@@ -614,7 +660,7 @@ function depRenderImport() {
     <div style="font-size:15px;font-weight:800;color:var(--color-text);margin-bottom:4px">📂 Importer un relevé de compte</div>
     <div style="font-size:12.5px;${DEP_MUTED};line-height:1.55;margin-bottom:12px">Télécharge ton relevé depuis ton espace bancaire, en <strong>PDF, Excel, CSV ou OFX</strong> (1 mois, ou plusieurs pour repérer les prélèvements récurrents). Le site retrouve tes abonnements et classe tes dépenses. Les photos et scans ne sont pas lus.</div>
     <div style="display:flex;gap:8px;align-items:flex-start;background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.25);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--color-text);line-height:1.5;margin-bottom:12px">
-      <span>🔒</span><span><strong>Ton fichier reste dans ton navigateur.</strong> Il n'est ni envoyé ni enregistré. Seul le résultat de l'analyse est mémorisé sur cet appareil. L'IA, si tu la laisses faire, ne voit que les noms des commerçants non reconnus, jamais les montants ni les dates.</span>
+      <span>🔒</span><span><strong>Ton fichier reste dans ton navigateur.</strong> Il n'est ni envoyé ni enregistré. Seuls tes opérations et leur classement sont mémorisés, sur cet appareil uniquement. L'IA, si tu la laisses faire, ne voit que les noms des commerçants non reconnus, jamais les montants ni les dates.</span>
     </div>
     <label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--color-text);line-height:1.45;margin-bottom:12px;cursor:pointer">
       <input type="checkbox" id="dep-ai-opt" checked style="width:17px;height:17px;flex-shrink:0;margin-top:1px;accent-color:#16a34a">
@@ -635,44 +681,140 @@ function depRenderImport() {
   </div>`;
 }
 
+// Questions posées pour chaque type d'abonnement (on veut que l'utilisateur se demande s'il en a vraiment besoin)
+const DEP_SUB_QUESTIONS = {
+  streaming:  "Tu le regardes encore chaque semaine ? Un seul abonnement vidéo suffit largement.",
+  musique:    "Une seule appli de musique suffit : tu utilises vraiment celle-ci ?",
+  apps:       "Tu t'en sers encore ? Beaucoup d'abonnements logiciels ou cloud dorment sans qu'on s'en rende compte.",
+  jeux_video: "Tu y as joué ce mois-ci ? Sinon, tu peux le suspendre et le reprendre quand tu veux.",
+  presse:     "Tu lis vraiment tous les articles ? Sinon, un seul média suffit.",
+  sport:      "Tu y vas au moins une fois par semaine ? Sinon, chaque séance te coûte très cher.",
+  telecom:    "Tu paies peut-être trop cher : les forfaits comparables se trouvent souvent 30 à 50 % moins chers.",
+};
+const DEP_SUB_DEFAULT = "Tu en as encore vraiment besoin ? Si tu hésites, arrête-le : tu pourras le reprendre.";
+
 function depRenderResults() {
-  const a = depAnalyze();
+  const a = depAnalyze(), cut = depState.cut || {}, gcut = depState.gcut || {};
   const pct = v => a.total ? Math.round(v / a.total * 100) : 0;
-  const subs = a.items.filter(i => DEP_SUBSCRIPTION_CATS.includes(i.cat) || i.sub === true || (i.recurring && i.cat === 'autre')).sort((x, y) => y.monthly - x.monthly);
-  const subsTotal = subs.reduce((t, i) => t + i.monthly, 0);
+  const itemByKey = new Map(depState.items.map(i => [i.key, i]));
+  const txs = depState.txs || [];
   const unknown = a.items.filter(i => i.cat === 'autre').sort((x, y) => y.monthly - x.monthly);
-  const gambling = a.items.filter(i => i.cat === 'jeux_argent').reduce((t, i) => t + i.monthly, 0);
-  const line = (i, right) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border)">
-      <span style="font-size:16px;width:22px;text-align:center">${(DEP_CATS[i.cat] || DEP_CATS.autre).ic}</span>
-      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(i.label)}</div><div style="font-size:11px;${DEP_MUTED}">${(DEP_CATS[i.cat] || DEP_CATS.autre).label}${i.recurring ? ' · récurrent' : ''}</div></div>
-      ${right}
+  const totals = depGroupTotals(a.items).sort((x, y) => y.total - x.total);
+  const subsItems = a.items.filter(i => depGroupOf(i).id === 'abos').sort((x, y) => y.monthly - x.monthly);
+  const subsTotal = subsItems.reduce((t, i) => t + i.monthly, 0);
+  const reducibles = totals.filter(x => x.g.reducible != null);
+  const gambling = totals.find(x => x.g.id === 'jeux_argent');
+  const fmtDay = d => { const m = String(d).match(/^\d{4}-(\d{2})-(\d{2})/); return m ? `${m[2]}/${m[1]}` : ''; };
+
+  // 1) Toutes les opérations
+  const listRows = txs.slice().sort((x, y) => x.d < y.d ? -1 : 1).map(t => {
+    const it = itemByKey.get(t.k), cat = it ? (DEP_CATS[it.cat] || DEP_CATS.autre) : DEP_CATS.autre;
+    const unk = !it || it.cat === 'autre', excl = cat.tier === 'excl';
+    return `<div class="dep-tx" data-u="${unk ? 1 : 0}" data-t="${_escHtml(String(t.l).toLowerCase())}" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--color-border);font-size:12px${excl ? ';opacity:.55' : ''}">
+      <span style="width:38px;flex-shrink:0;${DEP_MUTED}">${fmtDay(t.d)}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--color-text)">${_escHtml(t.l)}</span>
+      <span style="flex-shrink:0;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:99px;${unk ? 'background:rgba(217,119,6,0.15);color:#d97706' : 'background:var(--color-bg);' + DEP_MUTED}">${unk ? 'Non reconnu' : cat.ic + ' ' + cat.label}</span>
+      <span style="width:66px;flex-shrink:0;text-align:right;font-weight:700;color:var(--color-text)">${depFmt(t.a)}</span>
     </div>`;
-  // Ligne « à remettre en question » : abonnement = Garder / Arrêter ; dépense courante = curseur « Diminuer »
-  const cutMap = depState.cut || {};
-  const qRow = i => {
-    const c = cutMap[i.key] || 0, binary = depIsBinary(i), kAttr = _escHtml(JSON.stringify(i.key));
-    const cat = DEP_CATS[i.cat] || DEP_CATS.autre;
-    const ctrl = binary
-      ? `<div style="display:flex;gap:6px;margin-top:8px">
-           <button onclick="depSetCut(${kAttr}, 0);depRefreshRow(this)" style="flex:1;padding:8px;border-radius:9px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${c ? 'var(--color-border)' : '#16a34a'};background:${c ? 'transparent' : 'rgba(22,163,74,0.12)'};color:var(--color-text)">Je garde</button>
-           <button onclick="depSetCut(${kAttr}, 100);depRefreshRow(this)" style="flex:1;padding:8px;border-radius:9px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${c ? '#dc2626' : 'var(--color-border)'};background:${c ? 'rgba(220,38,38,0.12)' : 'transparent'};color:var(--color-text)">J'arrête${c ? ' ✓' : ''}</button>
-         </div>`
-      : `<div style="margin-top:8px">
-           <input type="range" min="0" max="100" step="10" value="${c}" oninput="depSetCut(${kAttr}, this.value)" style="width:100%;accent-color:#16a34a">
-           <div style="display:flex;justify-content:space-between;font-size:10.5px;${DEP_MUTED}"><span>Je garde</span><span data-dep-lbl="${_escHtml(i.key)}" style="font-weight:700;color:var(--color-text)">${c ? `−${c} % · économise ${depFmt(i.monthly * c / 100)}/mois` : 'Je garde tel quel'}</span><span>J'arrête</span></div>
-         </div>`;
-    return `
-    <div style="padding:11px 0;border-bottom:1px solid var(--color-border)">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:16px;width:22px;text-align:center">${cat.ic}</span>
-        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(i.label)}</div><div style="font-size:11px;${DEP_MUTED}">${cat.label}${i.recurring ? ' · récurrent' : ''}</div></div>
-        <div style="text-align:right"><div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}<span style="font-size:10px;${DEP_MUTED}">/mois</span></div><div style="font-size:10.5px;${DEP_MUTED}">${depFmt0(i.monthly * 12)}/an</div></div>
+  }).join('');
+  const listCard = txs.length ? `
+  <div style="${DEP_CARD}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <div><div style="font-size:15px;font-weight:800;color:var(--color-text)">🧾 Toutes tes opérations</div><div style="font-size:12px;${DEP_MUTED};margin-top:2px">${txs.length} dépenses lues dans ton relevé</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="dep-q" type="search" placeholder="Rechercher…" oninput="depFilterList()" style="padding:7px 10px;border:1px solid var(--color-border);border-radius:9px;background:var(--color-bg);color:var(--color-text);font:inherit;font-size:12.5px;width:150px">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--color-text);cursor:pointer"><input id="dep-uonly" type="checkbox" onchange="depFilterList()" style="accent-color:#d97706">Non reconnus</label>
       </div>
-      ${ctrl}
+    </div>
+    <div style="max-height:340px;overflow-y:auto;border-top:1px solid var(--color-border)">${listRows}</div>
+  </div>` : '';
+
+  // 2) Lignes non reconnues → IA
+  const unkCard = unknown.length ? `
+  <div style="${DEP_CARD}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+      <div><div style="font-size:15px;font-weight:800;color:var(--color-text)">❓ Lignes non reconnues</div><div style="font-size:12px;${DEP_MUTED};margin-top:2px">${unknown.length} commerçant${unknown.length > 1 ? 's' : ''} à classer. L'IA les range d'un coup dans les catégories ci-dessous.</div></div>
+      ${depState.source === 'csv' ? `<button id="dep-ai-btn" onclick="depAiClassify()" style="background:#16a34a;color:#fff;border:none;font:inherit;font-size:12px;font-weight:800;padding:9px 13px;border-radius:10px;cursor:pointer">✨ Classer avec l'IA</button>` : ''}
+    </div>
+    ${unknown.slice(0, 12).map(i => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border)"><span style="flex:1;font-size:13px;font-weight:700;color:var(--color-text)">${_escHtml(i.label)}</span><span style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}</span></div>`).join('')}
+    ${unknown.length > 12 ? `<div style="font-size:11.5px;${DEP_MUTED};padding-top:8px">… et ${unknown.length - 12} autres plus petits.</div>` : ''}
+    <div id="dep-ai-note" style="font-size:11px;${DEP_MUTED};margin-top:8px">L'IA reçoit uniquement les noms des commerçants, sans montants ni dates, et compte pour 1 ou 2 analyses de ton quota.</div>
+  </div>` : '';
+
+  // 3) Camembert
+  const pieCard = `
+  <div style="${DEP_CARD}">
+    <div style="font-size:15px;font-weight:800;color:var(--color-text);margin-bottom:12px">🥧 Où part ton argent</div>
+    <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+      <div style="position:relative;width:210px;height:210px;flex-shrink:0;margin:0 auto"><canvas id="dep-pie" width="210" height="210"></canvas></div>
+      <div style="flex:1;min-width:220px">
+        ${totals.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.5px;color:var(--color-text)">
+          <span style="width:10px;height:10px;border-radius:3px;background:${x.g.color};flex-shrink:0"></span>
+          <span style="flex:1">${x.g.label}</span>
+          <span style="${DEP_MUTED};width:34px;text-align:right">${pct(x.total)} %</span>
+          <strong style="width:74px;text-align:right">${depFmt0(x.total)}</strong>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+
+  // 4) Dépenses du quotidien : une réduction par catégorie (tous les restos ensemble)
+  const reduceRows = reducibles.map(x => {
+    const c = gcut[x.g.id] || 0;
+    return `
+    <div style="padding:12px 0;border-bottom:1px solid var(--color-border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:10px;height:10px;border-radius:3px;background:${x.g.color};flex-shrink:0"></span>
+        <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800;color:var(--color-text)">${x.g.label}</div><div style="font-size:11px;${DEP_MUTED}">${x.items.length} commerçant${x.items.length > 1 ? 's' : ''}${x.g.hint ? ' · ' + x.g.hint : ''}</div></div>
+        <div style="text-align:right"><div style="font-size:14px;font-weight:900;color:var(--color-text)">${depFmt0(x.total)}<span style="font-size:10px;${DEP_MUTED}">/mois</span></div><div style="font-size:10.5px;${DEP_MUTED}">${depFmt0(x.total * 12)}/an</div></div>
+      </div>
+      <input type="range" min="0" max="100" step="10" value="${c}" oninput="depSetGCut('${x.g.id}', this.value)" style="width:100%;accent-color:${x.g.color};margin-top:8px">
+      <div style="display:flex;justify-content:space-between;font-size:10.5px;${DEP_MUTED}"><span>Je garde</span><span data-dep-glbl="${x.g.id}" style="font-weight:700;color:var(--color-text)">${c ? `−${c} % · économise ${depFmt(x.total * c / 100)}/mois` : 'Je garde tel quel'}</span><span>Je supprime</span></div>
+      <details style="margin-top:6px"><summary style="cursor:pointer;font-size:11.5px;${DEP_MUTED}">Voir le détail</summary>
+        ${x.items.sort((p, q) => q.monthly - p.monthly).map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;color:var(--color-text)"><span>${_escHtml(i.label)}</span><strong>${depFmt(i.monthly)}</strong></div>`).join('')}
+      </details>
     </div>`;
-  };
-  const q = a.questionable.map(qRow).join('');
+  }).join('');
+  const reduceCard = reducibles.length ? `
+  <div style="${DEP_CARD}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+      <div><div style="font-size:15px;font-weight:800;color:var(--color-text)">📉 Dépenses du quotidien : à diminuer</div><div style="font-size:12px;${DEP_MUTED};margin-top:2px">On ne supprime pas tous les restos : on réduit la catégorie entière avec le curseur.</div></div>
+      <span style="display:flex;gap:6px"><button onclick="depApplySuggestions(true)" style="background:transparent;border:1px solid var(--color-border);color:var(--color-text);font:inherit;font-size:11.5px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer">Appliquer mes suggestions</button><button onclick="depApplySuggestions(false)" style="background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);font:inherit;font-size:11.5px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer">Remettre à zéro</button></span>
+    </div>
+    ${reduceRows}
+    ${gambling ? `<div style="font-size:12px;color:var(--color-text);background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);border-radius:12px;padding:10px 12px;margin-top:12px;line-height:1.55">🎲 <strong>${depFmt(gambling.total)}/mois</strong> en jeux d'argent (${depFmt0(gambling.total * 12)} par an). Si tu sens que c'est difficile à contrôler, des services d'aide gratuits et confidentiels existent, comme Joueurs Info Service.</div>` : ''}
+  </div>` : '';
+
+  // 5) Abonnements : un par un, avec une vraie question
+  const dupStream = a.streamCount > 1;
+  const subRows = subsItems.map(i => {
+    const c = cut[i.key] || 0, cat = DEP_CATS[i.cat] || DEP_CATS.autre, kAttr = _escHtml(JSON.stringify(i.key));
+    const tier = a.tiers.get(i.key);
+    const q = DEP_SUB_QUESTIONS[i.cat] || DEP_SUB_DEFAULT;
+    const tag = i.cat === 'streaming' && dupStream ? (i.key === a.keepStreamKey ? '<span style="font-size:10px;font-weight:800;color:#16a34a;background:#16a34a1f;padding:2px 8px;border-radius:99px">à garder (le moins cher)</span>' : '<span style="font-size:10px;font-weight:800;color:#dc2626;background:#dc26261f;padding:2px 8px;border-radius:99px">en double</span>') : depTierBadge(tier);
+    return `
+    <div style="padding:12px 0;border-bottom:1px solid var(--color-border);${c ? 'background:rgba(220,38,38,0.04)' : ''}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px;width:24px;text-align:center">${cat.ic}</span>
+        <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(i.label)}</div><div style="font-size:11px;${DEP_MUTED}">${cat.label}${i.recurring ? ' · prélèvement récurrent' : ''}</div></div>
+        <div style="text-align:right"><div style="font-size:14px;font-weight:900;color:var(--color-text)">${depFmt(i.monthly)}<span style="font-size:10px;${DEP_MUTED}">/mois</span></div><div style="font-size:10.5px;${DEP_MUTED}">${depFmt0(i.monthly * 12)}/an</div></div>
+      </div>
+      <div style="margin:7px 0 0 34px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${tag}<span style="font-size:11.5px;${DEP_MUTED};line-height:1.45;flex:1;min-width:180px">${q}</span></div>
+      <div style="display:flex;gap:6px;margin:9px 0 0 34px">
+        <button onclick="depSetCut(${kAttr}, 0)" style="flex:1;padding:8px;border-radius:9px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${c ? 'var(--color-border)' : '#16a34a'};background:${c ? 'transparent' : 'rgba(22,163,74,0.12)'};color:var(--color-text)">Je garde</button>
+        <button onclick="depSetCut(${kAttr}, 1)" style="flex:1;padding:8px;border-radius:9px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${c ? '#dc2626' : 'var(--color-border)'};background:${c ? 'rgba(220,38,38,0.12)' : 'transparent'};color:var(--color-text)">${c ? '✓ Je résilie' : 'Je résilie'}</button>
+      </div>
+    </div>`;
+  }).join('');
+  const subsCard = `
+  <div style="${DEP_CARD}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+      <div><div style="font-size:15px;font-weight:800;color:var(--color-text)">🔁 Tes abonnements : lesquels résilier ?</div><div style="font-size:12px;${DEP_MUTED};margin-top:2px">Pour chacun, décide : je garde ou je résilie.</div></div>
+      <div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(subsTotal)}<span style="font-size:11px;${DEP_MUTED}"> /mois · ${depFmt0(subsTotal * 12)}/an</span></div>
+    </div>
+    ${subsItems.length ? subRows : `<div style="font-size:13px;${DEP_MUTED};padding:12px 0">Aucun abonnement reconnu.${depState.months < 2 ? ' Importe 2 mois de relevé pour repérer les prélèvements récurrents.' : ''}</div>`}
+    ${dupStream ? `<div style="font-size:11.5px;${DEP_MUTED};margin-top:10px;line-height:1.5">🎬 Tu as ${a.streamCount} abonnements de streaming vidéo : n'en garde qu'un, celui que tu regardes le plus.</div>` : ''}
+  </div>`;
 
   return `
   <div style="${DEP_CARD}">
@@ -680,7 +822,7 @@ function depRenderResults() {
       <div>
         <div style="font-size:11px;font-weight:700;${DEP_MUTED};text-transform:uppercase;letter-spacing:.06em">Tes dépenses analysées</div>
         <div style="font-size:34px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em;line-height:1.1">${depFmt0(a.total)}<span style="font-size:14px;font-weight:600;${DEP_MUTED}"> /mois</span></div>
-        <div style="font-size:11.5px;${DEP_MUTED};margin-top:2px">${depState.source === 'csv' ? `d'après ${depState.nTx || ''} opérations sur ${depState.months} mois` : 'd\'après tes abonnements cochés'} · hors virements et épargne</div>
+        <div style="font-size:11.5px;${DEP_MUTED};margin-top:2px">${depState.source === 'csv' ? `d'après ${depState.nTx || ''} opérations sur ${depState.months} mois` : "d'après tes abonnements cochés"} · hors virements et épargne</div>
       </div>
       <button onclick="depReset()" style="background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);font:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer">🔄 Refaire</button>
     </div>
@@ -696,48 +838,51 @@ function depRenderResults() {
     ${depState.warn ? `<div style="font-size:11.5px;color:#d97706;margin-top:10px">⚠️ ${_escHtml(depState.warn)}</div>` : ''}
   </div>
 
-  <div style="${DEP_CARD}">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
-      <div style="font-size:15px;font-weight:800;color:var(--color-text)">🔁 Tes abonnements</div>
-      <div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(subsTotal)}<span style="font-size:11px;${DEP_MUTED}"> /mois · ${depFmt0(subsTotal * 12)}/an</span></div>
-    </div>
-    ${subs.length ? subs.map(i => line(i, `<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}</div><div style="margin-top:3px">${depTierBadge(a.tiers.get(i.key))}</div></div>`)).join('') : `<div style="font-size:13px;${DEP_MUTED};padding:10px 0">Aucun abonnement reconnu.${depState.months < 2 ? ' Importe 2 mois de relevé pour repérer les prélèvements récurrents.' : ''}</div>`}
-    ${a.streamCount > 1 ? `<div style="font-size:11.5px;${DEP_MUTED};margin-top:10px;line-height:1.5">🎬 Tu as ${a.streamCount} abonnements de streaming vidéo. On en garde un seul comme essentiel (le moins cher) ; garde plutôt celui que tu regardes vraiment le plus.</div>` : ''}
-  </div>
+  ${listCard}
+  ${unkCard}
+  ${pieCard}
+  ${reduceCard}
+  ${subsCard}
 
   <div style="${DEP_CARD}">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-      <div><div style="font-size:15px;font-weight:800;color:var(--color-text)">🤔 À remettre en question</div><div style="font-size:12px;${DEP_MUTED};margin-top:2px">Abonnements : garde ou arrête. Dépenses du quotidien (restos, courses plaisir…) : diminue avec le curseur.</div></div>
-      ${a.questionable.length ? `<span style="display:flex;gap:6px"><button onclick="depApplySuggestions(true)" style="background:transparent;border:1px solid var(--color-border);color:var(--color-text);font:inherit;font-size:11.5px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer">Appliquer mes suggestions</button><button onclick="depApplySuggestions(false)" style="background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);font:inherit;font-size:11.5px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer">Remettre à zéro</button></span>` : ''}
-    </div>
-    ${a.questionable.length ? q : `<div style="font-size:13px;${DEP_MUTED};padding:12px 0">Rien à signaler : tout ce que j'ai reconnu est essentiel. 👏</div>`}
-    ${gambling > 0 ? `<div style="font-size:12px;color:var(--color-text);background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);border-radius:12px;padding:10px 12px;margin-top:12px;line-height:1.55">🎲 <strong>${depFmt(gambling)}/mois</strong> en jeux d'argent (${depFmt0(gambling * 12)} par an). Si tu sens que c'est difficile à contrôler, des services d'aide gratuits et confidentiels existent, comme Joueurs Info Service.</div>` : ''}
-    <div id="dep-savings" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--color-border)"></div>
+    <div style="font-size:15px;font-weight:800;color:var(--color-text);margin-bottom:10px">💰 Ce que tu pourrais économiser</div>
+    <div id="dep-savings"></div>
   </div>
-
-  ${unknown.length ? `
-  <div style="${DEP_CARD}">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-      <div><div style="font-size:15px;font-weight:800;color:var(--color-text)">❓ Lignes non reconnues</div><div style="font-size:12px;${DEP_MUTED};margin-top:2px">${unknown.length} commerçant${unknown.length > 1 ? 's' : ''} à classer.</div></div>
-      ${depState.source === 'csv' ? `<button id="dep-ai-btn" onclick="depAiClassify()" style="background:#16a34a;color:#fff;border:none;font:inherit;font-size:12px;font-weight:800;padding:9px 13px;border-radius:10px;cursor:pointer">✨ Classer avec l'IA</button>` : ''}
-    </div>
-    ${unknown.slice(0, 8).map(i => line(i, `<div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}</div>`)).join('')}
-    ${unknown.length > 8 ? `<div style="font-size:11.5px;${DEP_MUTED};padding-top:8px">… et ${unknown.length - 8} autres plus petits.</div>` : ''}
-    <div id="dep-ai-note" style="font-size:11px;${DEP_MUTED};margin-top:8px">L'IA classe toutes ces lignes d'un coup. Elle reçoit uniquement les noms des commerçants, sans montants ni dates, et compte pour 1 ou 2 analyses de ton quota.</div>
-  </div>` : ''}
 
   <details style="${DEP_CARD}">
     <summary style="cursor:pointer;font-size:14px;font-weight:800;color:var(--color-text)">✅ Ce qui est vital (${depFmt0(a.essentiel)}/mois)</summary>
-    <div style="margin-top:8px">${a.items.filter(i => a.tiers.get(i.key) === 'essentiel').sort((x, y) => y.monthly - x.monthly).map(i => line(i, `<div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}</div>`)).join('') || `<div style="font-size:13px;${DEP_MUTED}">—</div>`}</div>
+    <div style="margin-top:8px">${a.items.filter(i => a.tiers.get(i.key) === 'essentiel').sort((x, y) => y.monthly - x.monthly).map(i => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border)"><span style="font-size:15px;width:22px;text-align:center">${(DEP_CATS[i.cat] || DEP_CATS.autre).ic}</span><span style="flex:1;font-size:13px;font-weight:700;color:var(--color-text)">${_escHtml(i.label)}</span><span style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}</span></div>`).join('') || `<div style="font-size:13px;${DEP_MUTED}">—</div>`}</div>
   </details>
-  <div style="font-size:11px;${DEP_MUTED};line-height:1.55;padding:2px 4px 16px">Classement indicatif fait par des règles simples : à toi de décider ce qui compte pour toi. Ce ne sont pas des conseils financiers personnalisés.</div>`;
+  <div style="font-size:11px;${DEP_MUTED};line-height:1.55;padding:2px 4px 16px">Classement indicatif fait par des règles simples et l'IA : à toi de décider ce qui compte pour toi. Ce ne sont pas des conseils financiers personnalisés. Tes opérations restent sur cet appareil.</div>`;
+}
+
+function depFilterList() {
+  const q = (document.getElementById('dep-q')?.value || '').toLowerCase().trim();
+  const u = !!document.getElementById('dep-uonly')?.checked;
+  document.querySelectorAll('.dep-tx').forEach(r => {
+    r.style.display = ((!q || r.dataset.t.includes(q)) && (!u || r.dataset.u === '1')) ? 'flex' : 'none';
+  });
+}
+
+// Camembert (Chart.js déjà présent dans l'app)
+function depDrawChart() {
+  const cv = document.getElementById('dep-pie');
+  if (!cv || typeof Chart === 'undefined' || !depState) return;
+  try { if (window._depChart) window._depChart.destroy(); } catch {}
+  const totals = depGroupTotals(depAnalyze().items).sort((x, y) => y.total - x.total);
+  window._depChart = new Chart(cv, {
+    type: 'doughnut',
+    data: { labels: totals.map(x => x.g.label), datasets: [{ data: totals.map(x => Math.round(x.total * 100) / 100), backgroundColor: totals.map(x => x.g.color), borderWidth: 2, borderColor: 'transparent' }] },
+    options: { responsive: false, cutout: '58%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label} : ${depFmt0(c.parsed)}/mois` } } } },
+  });
 }
 
 function depRender() {
   const root = document.getElementById('dep-root'); if (!root) return;
   if (!depState) depState = depLoad();
+  const y = window.scrollY;
   root.innerHTML = depState ? depRenderResults() : depRenderImport();
-  if (depState) depRenderSavings();
+  if (depState) { depRenderSavings(); depDrawChart(); window.scrollTo(0, y); }
 }
 function renderDepenses() { depState = depLoad(); depRender(); }
 function depRefreshRow() { depRender(); }
