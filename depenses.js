@@ -1,0 +1,498 @@
+// depenses.js — « Mes dépenses » : audit des abonnements et dépenses à partir d'un relevé (CSV) ou d'une saisie rapide.
+// Le fichier est lu et analysé DANS LE NAVIGATEUR : il n'est jamais envoyé ni enregistré. Seul le résultat (libellés
+// regroupés + montants mensuels) est mémorisé sur l'appareil. L'IA (facultative) ne reçoit que des libellés de
+// commerçants inconnus, sans aucun montant.
+// Dépend d'app.js : currentUser, isDemo, callClaude, callClaudeFailed, HAIKU_MODEL, showToast, fmtI, _escHtml, nav.
+
+// ── Catégories : tier = essentiel (vital) · confort (optimisable) · nonvital · excl (hors analyse) ──
+const DEP_CATS = {
+  logement:     { label: 'Logement',                 tier: 'essentiel', ic: '🏠' },
+  energie:      { label: 'Énergie & eau',            tier: 'essentiel', ic: '💡' },
+  assurance:    { label: 'Assurances & mutuelle',    tier: 'essentiel', ic: '🛡️' },
+  telecom:      { label: 'Téléphone & internet',     tier: 'essentiel', ic: '📱' },
+  transport:    { label: 'Transport',                tier: 'essentiel', ic: '🚆' },
+  alimentation: { label: 'Courses alimentaires',     tier: 'essentiel', ic: '🛒' },
+  sante:        { label: 'Santé',                    tier: 'essentiel', ic: '⚕️' },
+  impots:       { label: 'Impôts & taxes',           tier: 'essentiel', ic: '🏛️' },
+  sport:        { label: 'Salle de sport',           tier: 'essentiel', ic: '🏋️' },
+  streaming:    { label: 'Streaming vidéo',          tier: 'streaming', ic: '🎬' },
+  musique:      { label: 'Musique',                  tier: 'confort',   ic: '🎧' },
+  apps:         { label: 'Applications & cloud',     tier: 'confort',   ic: '☁️' },
+  presse:       { label: 'Presse & médias',          tier: 'confort',   ic: '📰' },
+  restauration: { label: 'Restaurants & cafés',      tier: 'confort',   ic: '🍽️' },
+  livraison:    { label: 'Livraison de repas',       tier: 'nonvital',  ic: '🛵' },
+  jeux_video:   { label: 'Jeux vidéo',               tier: 'nonvital',  ic: '🎮' },
+  jeux_argent:  { label: "Jeux d'argent & paris",    tier: 'nonvital',  ic: '🎲' },
+  shopping:     { label: 'Achats en ligne & shopping', tier: 'nonvital', ic: '🛍️' },
+  tabac:        { label: 'Tabac',                    tier: 'nonvital',  ic: '🚬' },
+  autre:        { label: 'Autres dépenses',          tier: 'autre',     ic: '•' },
+  epargne:      { label: 'Épargne (virements)',      tier: 'excl',      ic: '🏦' },
+  virement:     { label: 'Virements & retraits',     tier: 'excl',      ic: '↔️' },
+};
+const DEP_SUBSCRIPTION_CATS = ['streaming', 'musique', 'apps', 'presse', 'sport', 'jeux_video', 'telecom'];
+
+// Règles de reconnaissance (le premier motif qui correspond gagne — du plus précis au plus général)
+const DEP_RULES = [
+  [/LOYER|FONCIA|NEXITY|CREDIT IMMO|PRET IMMO|SYNDIC|COPROPRIETE|COPRO\b/, 'logement'],
+  [/LIVRET|EPARGNE|\bPEA\b|\bCTO\b|ASSURANCE VIE|TRADE REPUBLIC|BOURSORAMA INVEST|DEGIRO|SCALABLE|BITPANDA|BINANCE|COINBASE|KRAKEN/, 'epargne'],
+  [/CASINO (SHOP|PROXI|VIVAL|SPAR|SUPERMARCHE)|GEANT CASINO|CARREFOUR|LECLERC|AUCHAN|LIDL|ALDI|INTERMARCHE|MONOPRIX|FRANPRIX|PICARD|BIOCOOP|NATURALIA|SUPER U|HYPER U|U EXPRESS|COURSES U|DIA FRANCE|COCCIMARKET|\bMARCHE\b/, 'alimentation'],
+  [/UBER ?EATS|DELIVEROO|JUST ?EAT|DOMINO/, 'livraison'],
+  [/FDJ|FRANCAISE DES JEUX|PARIONS|WINAMAX|BETCLIC|UNIBET|\bPMU\b|ZEBET|POKERSTARS|PARTYPOKER|BWIN|BETWAY|VBET|GENYBET|BETSSON|NETBET|TIERCE|EUROMILLIONS|\bLOTO\b|BARRIERE|PARTOUCHE|CASINO DE|CASINO JEUX/, 'jeux_argent'],
+  [/AMAZON PRIME|PRIME VIDEO|AMZN PRIME|NETFLIX|DISNEY|CANAL ?\+|CANAL PLUS|MYCANAL|APPLE TV|PARAMOUNT|\bOCS\b|CRUNCHYROLL|HBO|\bMAX\b|SALTO|YOUTUBE PREMIUM|GOOGLE YOUTUBE|WAKANIM|ADN ANIME|MOLOTOV|RAKUTEN TV/, 'streaming'],
+  [/SPOTIFY|DEEZER|APPLE MUSIC|TIDAL|YOUTUBE MUSIC|AMAZON MUSIC|QOBUZ|NAPSTER/, 'musique'],
+  [/\bSTEAM\b|PLAYSTATION|\bPSN\b|SONY INTERACTIVE|XBOX|NINTENDO|EPIC GAMES|BLIZZARD|RIOT GAMES|UBISOFT|\bEA \*|GAME PASS|TWITCH|SUPERCELL|KING\.COM/, 'jeux_video'],
+  [/ICLOUD|GOOGLE ONE|GOOGLE STORAGE|DROPBOX|MICROSOFT|OFFICE 365|ADOBE|OPENAI|CHATGPT|ANTHROPIC|NOTION|CANVA|NORDVPN|EXPRESSVPN|PROTON|1PASSWORD|LASTPASS|GITHUB|APPLE\.COM\/BILL|GOOGLE \*/, 'apps'],
+  [/LE MONDE|LE FIGARO|MEDIAPART|LIBERATION|LES ECHOS|L EQUIPE|OUEST FRANCE|COURRIER INTERNATIONAL|PRESSE|ABONNEMENT MAGAZINE|KIOSQUE|CAIRN|BLINKIST/, 'presse'],
+  [/BASIC[- ]?FIT|FITNESS|NEONESS|KEEP COOL|ORANGE BLEUE|CMG SPORTS|ON AIR|MOVIDA|SALLE DE SPORT|GYM|CROSSFIT|DECATHLON PASS/, 'sport'],
+  [/ORANGE|\bSFR\b|BOUYGUES|BOUYGTEL|FREE MOBILE|\bFREE\b|FREEBOX|SOSH|RED BY SFR|B&YOU|B AND YOU|LA POSTE MOBILE|PRIXTEL|NRJ MOBILE|COUCOU|LEBARA|LYCAMOBILE|CDISCOUNT MOBILE/, 'telecom'],
+  [/EDF|ENGIE|TOTALENERGIES|TOTAL ENERGIES|\bENI\b|VATTENFALL|OHM ENERGIE|MINT ENERGIE|VEOLIA|SUEZ|EAU DE|SAUR|ILEK|PLANETE OUI|ENERCOOP/, 'energie'],
+  [/MAIF|MACIF|\bMMA\b|\bAXA\b|GROUPAMA|MATMUT|ALLIANZ|GENERALI|DIRECT ASSURANCE|LEMONADE|ASSURANCE|MUTUELLE|\bALAN\b|HARMONIE|MGEN|MAAF|GMF|\bAPRIL\b|SWISS ?LIFE|HISCOX|ASSUR/, 'assurance'],
+  [/NAVIGO|RATP|SNCF|OUIGO|TRAINLINE|BLABLACAR|AUTOROUTE|VINCI AUTOROUTE|SANEF|APRR|TOTAL ACCESS|\bESSO\b|\bSHELL\b|\bBP\b|STATION|CARBURANT|PEAGE|VELIB|\bLIME\b|\bDOTT\b|\bTIER\b|\bBOLT\b|UBER|\bG7\b|\bTAXI|PARKING|INDIGO|EASYPARK|FLOWBIRD/, 'transport'],
+  [/PHARMACIE|DOCTOLIB|MEDECIN|DENTISTE|OPTIQUE|OPTICIEN|LABORATOIRE|KINE|HOPITAL|CLINIQUE|AMELI|CPAM|LUNETTES/, 'sante'],
+  [/DGFIP|IMPOT|TRESOR PUBLIC|DIRECTION GENERALE DES FINANCES|TAXE|AMENDE|ANTAI/, 'impots'],
+  [/MCDO|MC DONALD|MCDONALD|BURGER KING|\bKFC\b|\bQUICK\b|STARBUCKS|SUBWAY|\bPAUL\b|BRIOCHE DOREE|FIVE GUYS|O TACOS|RESTAURANT|RESTO|BRASSERIE|CAFE |BOULANGERIE|PIZZ|SUSHI|KEBAB|BAR /, 'restauration'],
+  [/AMAZON|AMZN|ZALANDO|SHEIN|TEMU|ALIEXPRESS|VINTED|CDISCOUNT|FNAC|DARTY|BOULANGER|ASOS|H ?& ?M\b|ZARA|KIABI|IKEA|LEROY MERLIN|CASTORAMA|WISH|VEEPEE|BACK ?MARKET|EBAY/, 'shopping'],
+  [/TABAC|BURALISTE|CIGARETTE|VAPE|E-CIG/, 'tabac'],
+  [/^(VIR|VIREMENT)\b|RETRAIT|\bDAB\b|CHEQUE|\bCHQ\b|REMISE/, 'virement'],
+];
+
+// Abonnements courants pour la saisie rapide (prix indicatifs, à corriger par l'utilisateur)
+const DEP_PRESETS = [
+  { key: 'netflix',  label: 'Netflix',                 cat: 'streaming',   price: 13.49 },
+  { key: 'disney',   label: 'Disney+',                 cat: 'streaming',   price: 9.99 },
+  { key: 'prime',    label: 'Amazon Prime / Prime Video', cat: 'streaming', price: 6.99 },
+  { key: 'canal',    label: 'Canal+ / OCS / autre TV', cat: 'streaming',   price: 20 },
+  { key: 'spotify',  label: 'Spotify / Deezer / Apple Music', cat: 'musique', price: 11.99 },
+  { key: 'youtube',  label: 'YouTube Premium',         cat: 'streaming',   price: 12.99 },
+  { key: 'sport',    label: 'Salle de sport',          cat: 'sport',       price: 30 },
+  { key: 'gaming',   label: 'Abonnement jeux (Game Pass, PS Plus…)', cat: 'jeux_video', price: 12 },
+  { key: 'cloud',    label: 'Cloud / applications (iCloud, ChatGPT…)', cat: 'apps', price: 5 },
+  { key: 'presse',   label: 'Presse / médias en ligne', cat: 'presse',     price: 10 },
+  { key: 'delivery', label: 'Livraison de repas (Uber Eats…)', cat: 'livraison', price: 40 },
+  { key: 'paris',    label: "Jeux d'argent / paris",   cat: 'jeux_argent', price: 30 },
+  { key: 'tabac',    label: 'Tabac',                   cat: 'tabac',       price: 100 },
+];
+
+const DEP_INVEST_RATE = 7;      // % par an, hypothèse de simulation
+const DEP_INVEST_YEARS = 10;
+let depState = null;            // { ts, months, items:[{key,label,cat,monthly,recurring}], off:[keys], source, warn }
+
+// ── Utilitaires ──
+const depKeyStore = () => 'iq_depenses_' + (currentUser?.id || 'demo');
+function depLoad() {
+  try { const s = JSON.parse(localStorage.getItem(depKeyStore()) || 'null'); if (s && Array.isArray(s.items)) return s; } catch {}
+  return null;
+}
+function depSave() { try { if (depState) localStorage.setItem(depKeyStore(), JSON.stringify(depState)); } catch {} }
+const depFmt = n => (Math.round(n * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }) + ' €';
+const depFmt0 = n => Math.round(n).toLocaleString('fr-FR') + ' €';
+function depProject(monthly, years, ratePct) {
+  if (typeof bilanProject === 'function') return bilanProject(0, monthly, ratePct, years);
+  const i = Math.pow(1 + ratePct / 100, 1 / 12) - 1, n = years * 12;
+  return Math.round(monthly * ((Math.pow(1 + i, n) - 1) / i));
+}
+const depNormalize = s => String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+
+// Libellé propre + clé de regroupement (« CARTE 12/09 NETFLIX.COM 1234 » → « NETFLIX.COM »)
+function depClean(raw) {
+  let s = depNormalize(raw);
+  s = s.replace(/\b(CARTE|CB|PAIEMENT|PAIEMT|PRLV|PRELEVEMENT|SEPA|VIR|VIREMENT|ACHAT|FACTURE|FACT|REF|MANDAT|ECH|ECHEANCE|TPE|PAYPAL|SUMUP|X\d{3,4})\b/g, ' ')
+       .replace(/\b\d{1,2}[\/.]\d{1,2}([\/.]\d{2,4})?\b/g, ' ')
+       .replace(/[*#]/g, ' ')
+       .replace(/\b\d{4,}\b/g, ' ')
+       .replace(/\s+/g, ' ').trim();
+  return s || depNormalize(raw);
+}
+const depGroupKey = clean => clean.split(' ').slice(0, 3).join(' ');
+const depTitle = s => s.toLowerCase().replace(/(^|[\s\-'.])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).slice(0, 34);
+
+function depCategorize(rawNorm) {
+  for (const [re, cat] of DEP_RULES) if (re.test(rawNorm)) return cat;
+  return 'autre';
+}
+
+// ── Lecture du CSV ──
+function depParseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const head = text.split(/\r?\n/).slice(0, 15).join('\n');
+  const count = d => (head.match(new RegExp(d === '\t' ? '\t' : '\\' + d, 'g')) || []).length;
+  const delim = [';', '\t', ','].map(d => [d, count(d)]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let cur = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { cur.push(f); f = ''; }
+    else if (c === '\n') { cur.push(f); rows.push(cur); cur = []; f = ''; }
+    else if (c !== '\r') f += c;
+  }
+  if (f.length || cur.length) { cur.push(f); rows.push(cur); }
+  return rows.filter(r => r.some(x => String(x).trim() !== ''));
+}
+function depNum(s) {
+  if (s == null) return NaN;
+  let t = String(s).replace(/[€\s ]/g, '').replace(/[A-Za-z]/g, '');
+  if (!t) return NaN;
+  if (/,\d{1,2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.'); else t = t.replace(/,/g, '');
+  return parseFloat(t);
+}
+function depDate(s) {
+  const t = String(s || '').trim();
+  let m = t.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
+  if (m) { const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; return new Date(y, +m[2] - 1, +m[1]); }
+  m = t.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  return null;
+}
+function depMapColumns(rows) {
+  const n = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  for (let i = 0; i < Math.min(rows.length, 25); i++) {
+    const h = rows[i].map(n);
+    const di = h.findIndex(x => /^date/.test(x));
+    const li = h.findIndex(x => /libelle|label|intitule|description|detail|objet/.test(x));
+    const ai = h.findIndex(x => /^(montant|amount|somme)/.test(x));
+    const dbi = h.findIndex(x => /debit/.test(x));
+    const cri = h.findIndex(x => /credit/.test(x));
+    if (di >= 0 && li >= 0 && (ai >= 0 || dbi >= 0)) return { start: i + 1, di, li, ai, dbi, cri };
+  }
+  // Repli : on devine les colonnes d'après le contenu (fichier sans en-tête reconnu)
+  const sample = rows.slice(0, 40), w = Math.max(...sample.map(r => r.length));
+  let di = -1, ai = -1, li = -1, bestText = 0;
+  for (let c = 0; c < w; c++) {
+    const vals = sample.map(r => r[c]).filter(v => v != null && String(v).trim() !== '');
+    if (!vals.length) continue;
+    if (di < 0 && vals.filter(v => depDate(v)).length >= vals.length * 0.6) { di = c; continue; }
+    const nums = vals.filter(v => !isNaN(depNum(v)) && /\d/.test(v)).length;
+    if (ai < 0 && nums >= vals.length * 0.6 && c !== di) { ai = c; continue; }
+    const avg = vals.reduce((a, v) => a + String(v).length, 0) / vals.length;
+    if (avg > bestText && c !== di && c !== ai) { bestText = avg; li = c; }
+  }
+  if (di >= 0 && ai >= 0 && li >= 0) {
+    const first = rows.findIndex(r => depDate(r[di]));
+    return { start: Math.max(0, first), di, li, ai, dbi: -1, cri: -1 };
+  }
+  return null;
+}
+
+// rows → { tx:[{date,label,amount}], warn }
+function depExtractExpenses(rows) {
+  const map = depMapColumns(rows);
+  if (!map) return { tx: [], warn: 'Format non reconnu' };
+  const tx = []; let hasNeg = false, hasPos = false;
+  for (let i = map.start; i < rows.length; i++) {
+    const r = rows[i];
+    const date = depDate(r[map.di]);
+    if (!date) continue;
+    const label = String(r[map.li] || '').trim();
+    let amount = NaN;
+    if (map.dbi >= 0 || map.cri >= 0) {
+      const d = depNum(r[map.dbi]), c = depNum(r[map.cri]);
+      if (!isNaN(d) && d !== 0) amount = -Math.abs(d);
+      else if (!isNaN(c) && c !== 0) amount = Math.abs(c);
+    } else amount = depNum(r[map.ai]);
+    if (isNaN(amount) || !label) continue;
+    if (amount < 0) hasNeg = true; else if (amount > 0) hasPos = true;
+    tx.push({ date, label, amount });
+  }
+  let warn = '';
+  let expenses;
+  if (hasNeg) expenses = tx.filter(t => t.amount < 0).map(t => ({ ...t, amount: -t.amount }));
+  else { expenses = tx.filter(t => t.amount > 0); if (hasPos) warn = "Je n'ai pas pu distinguer les débits des crédits : tout a été compté comme dépense."; }
+  return { tx: expenses, warn };
+}
+
+// Transactions → postes regroupés avec montant mensuel moyen
+function depBuildItems(tx) {
+  const times = tx.map(t => t.date.getTime());
+  const spanDays = (Math.max(...times) - Math.min(...times)) / 86400000 + 1;
+  const months = Math.max(1, Math.round(spanDays / 30.4));
+  const groups = new Map();
+  tx.forEach(t => {
+    const raw = depNormalize(t.label);
+    const clean = depClean(t.label), key = depGroupKey(clean);
+    let g = groups.get(key);
+    if (!g) { g = { key, label: depTitle(key), cat: depCategorize(raw), total: 0, count: 0, first: t.date.getTime(), last: t.date.getTime(), amounts: [] }; groups.set(key, g); }
+    g.total += t.amount; g.count++; g.amounts.push(t.amount);
+    g.first = Math.min(g.first, t.date.getTime()); g.last = Math.max(g.last, t.date.getTime());
+  });
+  return { months, items: [...groups.values()].map(g => {
+    const avg = g.total / g.count;
+    const stable = g.amounts.every(a => Math.abs(a - avg) <= avg * 0.12);
+    const recurring = g.count >= 2 && (g.last - g.first) / 86400000 >= 25 && stable;
+    return { key: g.key, label: g.label, cat: g.cat, monthly: Math.round(g.total / months * 100) / 100, recurring };
+  }).filter(i => i.monthly > 0) };
+}
+
+// ── Niveaux : essentiel / confort / non vital (1 seul streaming vidéo conservé) ──
+function depTiers(items) {
+  const streams = items.filter(i => i.cat === 'streaming').sort((a, b) => a.monthly - b.monthly);
+  const keepKey = streams.length ? streams[0].key : null;
+  const out = new Map();
+  items.forEach(i => {
+    const c = DEP_CATS[i.cat] || DEP_CATS.autre;
+    let tier = c.tier;
+    if (tier === 'streaming') tier = i.key === keepKey ? 'essentiel' : 'nonvital';
+    out.set(i.key, tier);
+  });
+  return { tiers: out, keepStreamKey: keepKey, streamCount: streams.length };
+}
+function depAnalyze() {
+  const items = depState.items.filter(i => (DEP_CATS[i.cat] || {}).tier !== 'excl');
+  const { tiers, keepStreamKey, streamCount } = depTiers(items);
+  const sum = t => items.filter(i => tiers.get(i.key) === t).reduce((a, i) => a + i.monthly, 0);
+  const total = items.reduce((a, i) => a + i.monthly, 0);
+  const questionable = items.filter(i => ['confort', 'nonvital'].includes(tiers.get(i.key))).sort((a, b) => b.monthly - a.monthly);
+  return { items, tiers, keepStreamKey, streamCount, total, essentiel: sum('essentiel'), confort: sum('confort'), nonvital: sum('nonvital'), autre: sum('autre'), questionable };
+}
+
+// Charges fixes estimées (pour le Bilan) : abonnements, énergie, assurances, transport… hors logement, courses et loisirs ponctuels
+function depChargesFixes() {
+  const s = depState || depLoad(); if (!s) return null;
+  const keep = ['energie', 'assurance', 'telecom', 'transport', 'sport', 'impots', 'streaming', 'musique', 'apps', 'presse', 'jeux_video'];
+  const off = new Set(s.off || []);
+  const tmp = { ...s }; const prev = depState; depState = tmp;
+  const a = depAnalyze(); depState = prev;
+  const v = a.items.filter(i => keep.includes(i.cat) && !off.has(i.key) && (a.tiers.get(i.key) !== 'nonvital' || i.cat === 'jeux_video' || i.cat === 'streaming'))
+    .reduce((t, i) => t + i.monthly, 0);
+  return Math.round(v);
+}
+function depChargesHint() {
+  if (!(depState || depLoad())) return '';
+  const v = depChargesFixes();
+  if (!v) return '';
+  return `<button type="button" onclick="depUseChargesInBilan(${v})" style="margin-top:7px;background:none;border:none;color:#16a34a;font-size:11.5px;font-weight:700;cursor:pointer;padding:0;text-align:left">📊 Utiliser mes dépenses analysées : ≈ ${v.toLocaleString('fr-FR')} €/mois (abonnements, énergie, assurances…)</button>`;
+}
+function depUseChargesInBilan(v) {
+  const el = document.getElementById('b-charges');
+  if (!el) return;
+  el.value = v;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  if (typeof showToast === 'function') showToast('✓ Charges fixes remplies depuis tes dépenses');
+}
+
+// ── Entrées utilisateur ──
+async function depOnFile(input) {
+  const files = [...(input.files || [])];
+  input.value = '';
+  if (!files.length) return;
+  const msg = document.getElementById('dep-import-msg');
+  const say = (t, err) => { if (msg) { msg.style.color = err ? '#dc2626' : 'var(--color-text-secondary)'; msg.textContent = t; } };
+  say('Lecture du fichier…');
+  try {
+    let allTx = [], warn = '';
+    for (const f of files) {
+      if (/\.pdf$/i.test(f.name)) { say("Les PDF ne sont pas encore pris en charge : télécharge l'export CSV (ou Excel enregistré en CSV) depuis ton espace bancaire.", true); return; }
+      if (/\.xlsx?$/i.test(f.name)) { say("Enregistre d'abord le fichier au format CSV (Excel : Fichier > Enregistrer sous > CSV), puis réimporte-le.", true); return; }
+      const buf = await f.arrayBuffer();
+      let text; try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { text = new TextDecoder('windows-1252').decode(buf); }
+      const r = depExtractExpenses(depParseCSV(text));
+      if (r.warn && !r.tx.length) { say("Format de fichier non reconnu. Il faut au minimum une date, un libellé et un montant. Essaie l'export CSV de ta banque.", true); return; }
+      allTx = allTx.concat(r.tx); warn = warn || r.warn;
+    }
+    if (!allTx.length) { say("Aucune dépense trouvée dans ce fichier.", true); return; }
+    const { months, items } = depBuildItems(allTx);
+    depState = { ts: Date.now(), months, items, off: [], source: 'csv', warn, nTx: allTx.length };
+    depSave(); depRender();
+  } catch (e) { console.warn('depOnFile:', e); say("Impossible de lire ce fichier. Essaie l'export CSV de ta banque.", true); }
+}
+function depManualAnalyze() {
+  const items = [];
+  DEP_PRESETS.forEach(p => {
+    const cb = document.getElementById('dep-p-' + p.key), inp = document.getElementById('dep-pv-' + p.key);
+    if (cb && cb.checked) { const v = parseFloat(String(inp.value).replace(',', '.')); if (v > 0) items.push({ key: p.key.toUpperCase(), label: p.label, cat: p.cat, monthly: v, recurring: true }); }
+  });
+  if (!items.length) { if (typeof showToast === 'function') showToast('Coche au moins un abonnement'); return; }
+  depState = { ts: Date.now(), months: 1, items, off: [], source: 'manual', warn: '' };
+  depSave(); depRender();
+}
+function depReset() {
+  if (!confirm('Effacer cette analyse de dépenses ?')) return;
+  try { localStorage.removeItem(depKeyStore()); } catch {}
+  depState = null; depRender();
+}
+function depSetOff(key, on) {
+  const s = new Set(depState.off || []);
+  on ? s.add(key) : s.delete(key);
+  depState.off = [...s]; depSave(); depRenderSavings();
+}
+function depToggleAll(on) {
+  const a = depAnalyze();
+  depState.off = on ? a.questionable.map(i => i.key) : [];
+  depSave();
+  document.querySelectorAll('[data-dep-off]').forEach(cb => { cb.checked = on; });
+  depRenderSavings();
+}
+function depInvestDca(m) {
+  nav('dca');
+  setTimeout(() => {
+    const el = document.getElementById('dca-m');
+    if (el) { const max = parseFloat(el.max) || m; el.value = Math.max(parseFloat(el.min) || 0, Math.min(Math.round(m), max)); try { updateDCA(); } catch {} }
+  }, 250);
+}
+
+// Classement des lignes inconnues par l'IA (libellés seuls, sans montant ; 1 appel)
+async function depAiClassify() {
+  const a = depAnalyze();
+  const unknown = a.items.filter(i => i.cat === 'autre').sort((x, y) => y.monthly - x.monthly).slice(0, 40);
+  if (!unknown.length) return;
+  const btn = document.getElementById('dep-ai-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Analyse en cours…'; }
+  const cats = Object.keys(DEP_CATS).filter(k => !['autre', 'virement', 'epargne'].includes(k));
+  const prompt = `Voici des libellés de commerçants extraits d'un relevé bancaire français (sans montants).
+Classe chacun dans UNE catégorie parmi : ${cats.join(', ')}, ou "autre" si tu ne sais pas.
+Ne devine pas : en cas de doute, mets "autre".
+Réponds UNIQUEMENT en JSON valide : {"LIBELLÉ": "catégorie", ...}
+Libellés :
+${unknown.map(u => '- ' + u.key).join('\n')}`;
+  try {
+    const raw = await callClaude(prompt, 'Tu classes des commerçants. Réponds UNIQUEMENT en JSON valide, sans backticks.', 1200, typeof HAIKU_MODEL !== 'undefined' ? HAIKU_MODEL : undefined);
+    if (typeof callClaudeFailed === 'function' && callClaudeFailed(raw)) { if (typeof showToast === 'function') showToast(String(raw).replace(/^🔒\s*/, '').slice(0, 140)); return; }
+    const clean = String(raw).replace(/```json|```/g, '').trim();
+    const map = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
+    let n = 0;
+    depState.items.forEach(i => { const c = map[i.key]; if (i.cat === 'autre' && c && DEP_CATS[c] && c !== 'autre') { i.cat = c; n++; } });
+    depSave(); depRender();
+    if (typeof showToast === 'function') showToast(n ? `✓ ${n} ligne${n > 1 ? 's' : ''} classée${n > 1 ? 's' : ''}` : "L'IA n'a rien pu classer de plus");
+  } catch (e) { console.warn('depAi:', e); if (typeof showToast === 'function') showToast('⚠️ Classement impossible pour le moment'); }
+  finally { if (btn) { btn.disabled = false; } }
+}
+
+// ── Affichage ──
+const DEP_CARD = 'background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:18px;margin-bottom:12px';
+const DEP_MUTED = 'color:var(--color-text-secondary)';
+
+function depTierBadge(t) {
+  const m = { essentiel: ['#16a34a', 'Essentiel'], confort: ['#d97706', 'Confort'], nonvital: ['#dc2626', 'Non vital'], autre: ['#6b7280', 'À classer'] }[t] || ['#6b7280', ''];
+  return `<span style="font-size:10px;font-weight:800;color:${m[0]};background:${m[0]}1f;padding:2px 8px;border-radius:99px;white-space:nowrap">${m[1]}</span>`;
+}
+function depRenderSavings() {
+  const el = document.getElementById('dep-savings'); if (!el || !depState) return;
+  const a = depAnalyze(), off = new Set(depState.off || []);
+  const picked = a.questionable.filter(i => off.has(i.key));
+  const m = picked.reduce((t, i) => t + i.monthly, 0);
+  if (!picked.length) {
+    el.innerHTML = `<div style="font-size:13px;${DEP_MUTED}">Coche « J'arrête » sur les lignes ci-dessus pour voir ce que tu économiserais.</div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div style="font-size:12px;${DEP_MUTED};margin-bottom:6px">En arrêtant ${picked.length} poste${picked.length > 1 ? 's' : ''} :</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div style="flex:1;min-width:110px;background:var(--color-bg);border-radius:12px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--color-text)">${depFmt(m)}</div><div style="font-size:11px;${DEP_MUTED}">par mois</div></div>
+      <div style="flex:1;min-width:110px;background:var(--color-bg);border-radius:12px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:900;color:#16a34a">${depFmt0(m * 12)}</div><div style="font-size:11px;${DEP_MUTED}">économisés par an</div></div>
+      <div style="flex:1;min-width:110px;background:var(--color-bg);border-radius:12px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:900;color:#16a34a">${depFmt0(depProject(m, DEP_INVEST_YEARS, DEP_INVEST_RATE))}</div><div style="font-size:11px;${DEP_MUTED}">si investis ${DEP_INVEST_YEARS} ans</div></div>
+    </div>
+    <div style="font-size:10.5px;${DEP_MUTED};margin-top:8px;line-height:1.5">Simulation à ${DEP_INVEST_RATE} %/an, versements mensuels, avant frais et impôts. Ce n'est pas une garantie.</div>
+    <button onclick="depInvestDca(${Math.round(m)})" style="margin-top:12px;width:100%;padding:12px;background:#16a34a;color:#fff;border:none;border-radius:12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer">📈 Voir ce que ça donne dans le simulateur DCA</button>`;
+}
+
+function depRenderImport() {
+  const rows = DEP_PRESETS.map(p => `
+    <label style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border);cursor:pointer">
+      <input type="checkbox" id="dep-p-${p.key}" style="width:18px;height:18px;flex-shrink:0;accent-color:#16a34a">
+      <span style="flex:1;font-size:13px;color:var(--color-text)">${DEP_CATS[p.cat].ic} ${_escHtml(p.label)}</span>
+      <span style="display:flex;align-items:center;gap:4px"><input type="number" id="dep-pv-${p.key}" value="${p.price}" min="0" step="0.01" style="width:78px;padding:6px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font:inherit;font-size:13px;text-align:right" onclick="event.stopPropagation()"><span style="font-size:12px;${DEP_MUTED}">€/mois</span></span>
+    </label>`).join('');
+  return `
+  <div style="${DEP_CARD}">
+    <div style="font-size:15px;font-weight:800;color:var(--color-text);margin-bottom:4px">📂 Importer un relevé de compte</div>
+    <div style="font-size:12.5px;${DEP_MUTED};line-height:1.55;margin-bottom:12px">Télécharge l'export <strong>CSV</strong> de ton compte (1 mois, ou plusieurs pour repérer les prélèvements récurrents) depuis ton espace bancaire. Le site retrouve tes abonnements et classe tes dépenses.</div>
+    <div style="display:flex;gap:8px;align-items:flex-start;background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.25);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--color-text);line-height:1.5;margin-bottom:12px">
+      <span>🔒</span><span><strong>Ton fichier reste dans ton navigateur.</strong> Il n'est ni envoyé ni enregistré. Seul le résultat de l'analyse est mémorisé sur cet appareil. L'IA, si tu la lances, ne voit que des noms de commerçants, jamais les montants.</span>
+    </div>
+    <label style="display:block;text-align:center;padding:16px;border:2px dashed var(--color-border);border-radius:14px;cursor:pointer;font-size:13px;font-weight:700;color:var(--color-text)">
+      Choisir un ou plusieurs fichiers CSV
+      <input type="file" accept=".csv,.txt,text/csv,.pdf,.xls,.xlsx" multiple style="display:none" onchange="depOnFile(this)">
+    </label>
+    <div id="dep-import-msg" style="font-size:12px;margin-top:8px;${DEP_MUTED}"></div>
+  </div>
+  <div style="${DEP_CARD}">
+    <div style="font-size:15px;font-weight:800;color:var(--color-text);margin-bottom:4px">✅ Ou coche tes abonnements</div>
+    <div style="font-size:12.5px;${DEP_MUTED};margin-bottom:8px">Pas de fichier sous la main ? Coche ce que tu paies et corrige les montants (les prix affichés sont indicatifs).</div>
+    ${rows}
+    <button onclick="depManualAnalyze()" style="margin-top:14px;width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:12px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer">Analyser mes abonnements</button>
+  </div>`;
+}
+
+function depRenderResults() {
+  const a = depAnalyze(), off = new Set(depState.off || []);
+  const pct = v => a.total ? Math.round(v / a.total * 100) : 0;
+  const subs = a.items.filter(i => DEP_SUBSCRIPTION_CATS.includes(i.cat) || (i.recurring && i.cat === 'autre')).sort((x, y) => y.monthly - x.monthly);
+  const subsTotal = subs.reduce((t, i) => t + i.monthly, 0);
+  const unknown = a.items.filter(i => i.cat === 'autre').sort((x, y) => y.monthly - x.monthly);
+  const gambling = a.items.filter(i => i.cat === 'jeux_argent').reduce((t, i) => t + i.monthly, 0);
+  const line = (i, right) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border)">
+      <span style="font-size:16px;width:22px;text-align:center">${(DEP_CATS[i.cat] || DEP_CATS.autre).ic}</span>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(i.label)}</div><div style="font-size:11px;${DEP_MUTED}">${(DEP_CATS[i.cat] || DEP_CATS.autre).label}${i.recurring ? ' · récurrent' : ''}</div></div>
+      ${right}
+    </div>`;
+  const q = a.questionable.map(i => line(i, `
+      <div style="text-align:right;margin-right:6px"><div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}<span style="font-size:10px;${DEP_MUTED}">/mois</span></div><div style="font-size:10.5px;${DEP_MUTED}">${depFmt0(i.monthly * 12)}/an</div></div>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--color-text);cursor:pointer;white-space:nowrap"><input type="checkbox" data-dep-off ${off.has(i.key) ? 'checked' : ''} onchange="depSetOff(${JSON.stringify(i.key).replace(/"/g, '&quot;')}, this.checked)" style="width:17px;height:17px;accent-color:#dc2626">J'arrête</label>`)).join('');
+
+  return `
+  <div style="${DEP_CARD}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;font-weight:700;${DEP_MUTED};text-transform:uppercase;letter-spacing:.06em">Tes dépenses analysées</div>
+        <div style="font-size:34px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em;line-height:1.1">${depFmt0(a.total)}<span style="font-size:14px;font-weight:600;${DEP_MUTED}"> /mois</span></div>
+        <div style="font-size:11.5px;${DEP_MUTED};margin-top:2px">${depState.source === 'csv' ? `d'après ${depState.nTx || ''} opérations sur ${depState.months} mois` : 'd\'après tes abonnements cochés'} · hors virements et épargne</div>
+      </div>
+      <button onclick="depReset()" style="background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);font:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer">🔄 Refaire</button>
+    </div>
+    <div style="display:flex;height:10px;border-radius:99px;overflow:hidden;margin:14px 0 8px;background:var(--color-border)">
+      <div style="width:${pct(a.essentiel)}%;background:#16a34a"></div><div style="width:${pct(a.confort)}%;background:#f59e0b"></div><div style="width:${pct(a.nonvital)}%;background:#dc2626"></div><div style="width:${pct(a.autre)}%;background:#9ca3af"></div>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--color-text)">
+      <span><span style="color:#16a34a">●</span> Essentiel <strong>${depFmt0(a.essentiel)}</strong></span>
+      <span><span style="color:#f59e0b">●</span> Confort <strong>${depFmt0(a.confort)}</strong></span>
+      <span><span style="color:#dc2626">●</span> Non vital <strong>${depFmt0(a.nonvital)}</strong></span>
+      ${a.autre ? `<span><span style="color:#9ca3af">●</span> À classer <strong>${depFmt0(a.autre)}</strong></span>` : ''}
+    </div>
+    ${depState.warn ? `<div style="font-size:11.5px;color:#d97706;margin-top:10px">⚠️ ${_escHtml(depState.warn)}</div>` : ''}
+  </div>
+
+  <div style="${DEP_CARD}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
+      <div style="font-size:15px;font-weight:800;color:var(--color-text)">🔁 Tes abonnements</div>
+      <div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(subsTotal)}<span style="font-size:11px;${DEP_MUTED}"> /mois · ${depFmt0(subsTotal * 12)}/an</span></div>
+    </div>
+    ${subs.length ? subs.map(i => line(i, `<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}</div><div style="margin-top:3px">${depTierBadge(a.tiers.get(i.key))}</div></div>`)).join('') : `<div style="font-size:13px;${DEP_MUTED};padding:10px 0">Aucun abonnement reconnu.${depState.months < 2 ? ' Importe 2 mois de relevé pour repérer les prélèvements récurrents.' : ''}</div>`}
+    ${a.streamCount > 1 ? `<div style="font-size:11.5px;${DEP_MUTED};margin-top:10px;line-height:1.5">🎬 Tu as ${a.streamCount} abonnements de streaming vidéo. On en garde un seul comme essentiel (le moins cher) ; garde plutôt celui que tu regardes vraiment le plus.</div>` : ''}
+  </div>
+
+  <div style="${DEP_CARD}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+      <div><div style="font-size:15px;font-weight:800;color:var(--color-text)">🤔 À remettre en question</div><div style="font-size:12px;${DEP_MUTED};margin-top:2px">Ce qui n'est pas vital : coche ce que tu es prêt à arrêter.</div></div>
+      ${a.questionable.length ? `<span style="display:flex;gap:6px"><button onclick="depToggleAll(true)" style="background:transparent;border:1px solid var(--color-border);color:var(--color-text);font:inherit;font-size:11.5px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer">Tout cocher</button><button onclick="depToggleAll(false)" style="background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);font:inherit;font-size:11.5px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer">Décocher</button></span>` : ''}
+    </div>
+    ${a.questionable.length ? q : `<div style="font-size:13px;${DEP_MUTED};padding:12px 0">Rien à signaler : tout ce que j'ai reconnu est essentiel. 👏</div>`}
+    ${gambling > 0 ? `<div style="font-size:12px;color:var(--color-text);background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);border-radius:12px;padding:10px 12px;margin-top:12px;line-height:1.55">🎲 <strong>${depFmt(gambling)}/mois</strong> en jeux d'argent (${depFmt0(gambling * 12)} par an). Si tu sens que c'est difficile à contrôler, des services d'aide gratuits et confidentiels existent, comme Joueurs Info Service.</div>` : ''}
+    <div id="dep-savings" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--color-border)"></div>
+  </div>
+
+  ${unknown.length ? `
+  <div style="${DEP_CARD}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+      <div><div style="font-size:15px;font-weight:800;color:var(--color-text)">❓ Lignes non reconnues</div><div style="font-size:12px;${DEP_MUTED};margin-top:2px">${unknown.length} commerçant${unknown.length > 1 ? 's' : ''} à classer.</div></div>
+      ${depState.source === 'csv' ? `<button id="dep-ai-btn" onclick="depAiClassify()" style="background:#16a34a;color:#fff;border:none;font:inherit;font-size:12px;font-weight:800;padding:9px 13px;border-radius:10px;cursor:pointer">✨ Classer avec l'IA</button>` : ''}
+    </div>
+    ${unknown.slice(0, 8).map(i => line(i, `<div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}</div>`)).join('')}
+    ${unknown.length > 8 ? `<div style="font-size:11.5px;${DEP_MUTED};padding-top:8px">… et ${unknown.length - 8} autres plus petits.</div>` : ''}
+    <div style="font-size:11px;${DEP_MUTED};margin-top:8px">L'IA reçoit uniquement les noms des commerçants, sans montants. Elle compte pour 1 analyse de ton quota.</div>
+  </div>` : ''}
+
+  <details style="${DEP_CARD}">
+    <summary style="cursor:pointer;font-size:14px;font-weight:800;color:var(--color-text)">✅ Ce qui est vital (${depFmt0(a.essentiel)}/mois)</summary>
+    <div style="margin-top:8px">${a.items.filter(i => a.tiers.get(i.key) === 'essentiel').sort((x, y) => y.monthly - x.monthly).map(i => line(i, `<div style="font-size:13px;font-weight:800;color:var(--color-text)">${depFmt(i.monthly)}</div>`)).join('') || `<div style="font-size:13px;${DEP_MUTED}">—</div>`}</div>
+  </details>
+  <div style="font-size:11px;${DEP_MUTED};line-height:1.55;padding:2px 4px 16px">Classement indicatif fait par des règles simples : à toi de décider ce qui compte pour toi. Ce ne sont pas des conseils financiers personnalisés.</div>`;
+}
+
+function depRender() {
+  const root = document.getElementById('dep-root'); if (!root) return;
+  if (!depState) depState = depLoad();
+  root.innerHTML = depState ? depRenderResults() : depRenderImport();
+  if (depState) depRenderSavings();
+}
+function renderDepenses() { depState = depLoad(); depRender(); }

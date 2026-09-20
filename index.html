@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260921003440">
+  <link rel="stylesheet" href="style.css?v=20260921004925">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1006,6 +1006,7 @@ window.addEventListener('load', function() {
     <button class="nav-btn" id="nav-news" onclick="nav('news')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg><span>Actualités</span></button>
     <button class="nav-btn" id="nav-decision" onclick="nav('decision')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Aide décision</span></button>
     <button class="nav-btn" id="nav-dca" onclick="nav('dca')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Simulateur DCA</span></button>
+    <button class="nav-btn" id="nav-depenses" onclick="nav('depenses')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg><span>Mes dépenses</span></button>
     <button class="nav-btn" id="nav-ai" onclick="nav('ai')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/><circle cx="9" cy="11" r="1"/><circle cx="15" cy="11" r="1"/></svg><span>Agent IA</span></button>
     <button class="nav-btn" id="nav-bilan" onclick="openBilan();closeSidebar()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>Mon bilan</span></button>
     <div class="nav-sep"></div>
@@ -1358,6 +1359,17 @@ window.addEventListener('load', function() {
 </section>
 
     <!-- DCA -->
+    <!-- MES DÉPENSES -->
+    <section id="sec-depenses" class="sec">
+      <div class="page-header">
+        <div>
+          <h1>Mes dépenses</h1>
+          <p class="page-sub">Vois ce que tu paies vraiment chaque mois, repère ce qui n'est pas vital et découvre ce que ça donnerait investi.</p>
+        </div>
+      </div>
+      <div id="dep-root"></div>
+    </section>
+
     <section id="sec-dca" class="sec">
       <div class="page-header">
         <div>
@@ -1808,7 +1820,8 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260921003440"></script>
+<script src="app.js?v=20260921004925"></script>
+<script src="depenses.js?v=20260921004925"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->

@@ -4468,7 +4468,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 // ── Caches du navigateur : rattachés à UN compte ──
 // Briefing, verdict, signaux, plan… sont stockés en localStorage. Sans nettoyage, ils passaient
 // d'un compte (ou du mode démo) à l'autre et affichaient le portefeuille de quelqu'un d'autre.
-const KEEP_CACHE = /^(iq_theme|iq_logo_domains|iq_last_page|iq_legal_accepted|iq_onboarded|iq_cache_uid|iq_seen_|iq_bilan_)/;
+const KEEP_CACHE = /^(iq_theme|iq_logo_domains|iq_last_page|iq_legal_accepted|iq_onboarded|iq_cache_uid|iq_seen_|iq_bilan_|iq_depenses_)/;
 function clearUserCaches() {
   try {
     Object.keys(localStorage)
@@ -5531,6 +5531,8 @@ function renderBilanStep(step) {
         <div>
           <label style="${labelStyle}">Charges fixes estimées (€/mois)</label>
           <input type="number" id="b-charges" placeholder="Ex: 800" style="${fieldStyle}" value="${bilanData.charges||''}">
+          ${typeof depChargesHint === 'function' ? depChargesHint() : ''}
+          <button type="button" onclick="closeBilan();nav('depenses')" style="margin-top:6px;background:none;border:none;color:${sub};font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;text-align:left">Pas sûr ? Analyse tes vraies dépenses →</button>
         </div>
         <div>
           <label style="${labelStyle}">Épargne actuelle (€/mois)</label>
@@ -6459,7 +6461,7 @@ function nav(page, auto=false) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} },
+}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(auto); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
 }
