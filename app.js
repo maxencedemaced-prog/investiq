@@ -5786,6 +5786,7 @@ function renderBilanStep(step) {
   // Une saisie est en cours alors qu'un bilan existe déjà : accès direct au dernier bilan
   if (step <= 7) {
     const sv = loadSavedBilan();
+    if (!sv && step === 0) el.insertAdjacentHTML('afterbegin', `<div style="margin-bottom:16px;padding:10px 14px;background:${surf};border:1px solid ${bord};border-radius:12px;font-size:12px;color:${sub};line-height:1.5">Aucun bilan enregistré pour l'instant. Celui que tu vas faire sera enregistré automatiquement, et tu pourras le retrouver ici.</div>`);
     if (sv) el.insertAdjacentHTML('afterbegin', `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:${surf};border:1px solid ${bord};border-radius:12px"><span style="font-size:12px;color:${sub}">Tu as déjà un bilan du <strong style="color:${txt}">${bilanDateLabel(sv.ts)}</strong></span><button type="button" onclick="bilanShowLast()" style="background:transparent;border:1px solid ${bord};color:${txt};font:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer">Voir mon dernier bilan</button></div>`);
   }
 
@@ -6050,9 +6051,24 @@ function saveBilan(result, localOnly) {
   // Copie dans le compte (table « bilans », voir SUPABASE_BILANS.sql) : retrouvable sur tous les appareils.
   // Silencieux si la table n'existe pas encore : la copie locale reste utilisée.
   if (!localOnly && !isDemo && currentUser) {
+    bilanSetSaveStatus('pending');
     sb.from('bilans').insert({ user_id: currentUser.id, result, data: bilanData })
-      .then(({ error }) => { if (error) console.warn('bilan cloud:', error.message); }, e => console.warn('bilan cloud:', e));
-  }
+      .then(({ error }) => { if (error) console.warn('bilan cloud:', error.message); bilanSetSaveStatus(error ? 'error:' + error.message : 'ok'); },
+            e => { console.warn('bilan cloud:', e); bilanSetSaveStatus('error:' + (e && e.message || e)); });
+  } else bilanSetSaveStatus('local');
+}
+// Retour visible sur l'enregistrement (au lieu d'un échec silencieux)
+function bilanSaveStatusHTML(s) {
+  if (s === 'ok') return '<span style="color:#16a34a">✓ Enregistré dans ton compte</span>';
+  if (s === 'local') return '<span>Enregistré sur cet appareil</span>';
+  if (s === 'pending') return '<span>Enregistrement…</span>';
+  if (String(s).startsWith('error')) return `<span style="color:#d97706" title="${_escHtml(String(s).slice(6))}">Enregistré sur cet appareil seulement : ton compte n'a pas répondu</span>`;
+  return '';
+}
+function bilanSetSaveStatus(s) {
+  window._bilanSaveStatus = s;
+  const el = document.getElementById('bilan-save-status');
+  if (el) el.innerHTML = bilanSaveStatusHTML(s);
 }
 // Rapatrie le dernier bilan du compte s'il est plus récent que la copie locale. true = copie locale mise à jour.
 async function syncBilanFromCloud() {
@@ -6111,7 +6127,7 @@ function renderBilanResult(r, ts) {
     <button onclick="renderBilanStep(8)" style="background:#16a34a;color:#fff;border:none;border-radius:9px;padding:9px 14px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">Relancer l'analyse</button>
   </div>` : ''}
   ${ts ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:${surf};border:1px solid ${bord};border-radius:12px">
-    <div style="font-size:12px;color:${sub}">📅 Bilan du <strong style="color:${txt}">${bilanDateLabel(ts)}</strong></div>
+    <div style="font-size:12px;color:${sub}">📅 Bilan du <strong style="color:${txt}">${bilanDateLabel(ts)}</strong><span id="bilan-save-status" style="margin-left:10px;font-size:11.5px">${window._bilanSaveStatus && Date.now() - ts < 60000 ? bilanSaveStatusHTML(window._bilanSaveStatus) : ''}</span></div>
     <button onclick="restartBilan()" style="background:transparent;border:1px solid ${bord};color:${txt};font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer">🔄 Refaire mon bilan</button>
   </div>` : ''}
   <!-- SCORE -->
