@@ -6349,10 +6349,10 @@ async function bilanCreateObjectif(p) {
     if (p.risk) objRisk = p.risk;
     if (p.stockPct != null) objStockPct = p.stockPct;
     buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
-    const before = allObjectives.length;
+    const idsBefore = new Set(allObjectives.map(o => o.id));
     await validateObjectif('Objectif Bilan', true);
     showValidatedChart();
-    const created = allObjectives.length > before || allObjectives.some(o => o.label === 'Objectif Bilan');
+    const created = allObjectives.some(o => !idsBefore.has(o.id));
     bilanShowBanner(created ? `✅ Objectif créé depuis ton bilan : ${Math.round(p.monthly).toLocaleString('fr-FR')} €/mois, cible ${Math.round(p.target / 1000)} k€ en ${p.years} ans` : 'Objectif mis à jour depuis ton bilan');
   } catch (e) {
     console.warn('bilanCreateObjectif:', e);
