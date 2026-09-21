@@ -69,6 +69,14 @@ function tabHintsOff() {
   document.getElementById('tab-hint')?.remove();
 }
 
+// Paramètres : remet tous les points rouges et les explications
+function tabHintsReset() {
+  try { localStorage.removeItem(tabSeenKey()); } catch {}
+  updateNavDots();
+  const b = document.getElementById('tab-hints-reset');
+  if (b) { b.textContent = '✓ Explications réactivées : clique sur un onglet'; setTimeout(() => { b.textContent = '🔴 Réafficher les explications des onglets'; }, 3500); }
+}
+
 // Premier clic sur un onglet : le point disparaît et la fenêtre d'explication s'ouvre
 document.addEventListener('click', e => {
   const b = e.target && e.target.closest ? e.target.closest('.nav-btn, .bnav-btn') : null;
