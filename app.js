@@ -5940,24 +5940,36 @@ Génère un rapport structuré en JSON :
 }
 Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais chiffres.`;
 
-  // L'IA écrit un rapport long : on lui laisse la place (le plafond par défaut de 2048 tokens tronquait la réponse → JSON illisible
-  // → rapport de secours affiché SANS prévenir). Deux tentatives, et un message clair si ça échoue.
-  let result = null, reason = '';
-  for (let attempt = 0; attempt < 2 && !result; attempt++) {
-    try {
-      const raw = await callClaude(
-        prompt + (attempt ? '\n\nIMPORTANT : sois PLUS BREF (phrases courtes, 3 points forts, 3 points d\'attention, 3 actions).' : ''),
-        'Réponds UNIQUEMENT en JSON valide, sans backticks.', 4000);
-      if (callClaudeFailed(raw) || raw === 'Erreur de connexion.') { reason = String(raw).replace(/^🔒\s*/, '').slice(0, 200); break; }   // quota / connexion : inutile de réessayer
-      const clean = raw.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
-      if (!parsed.resume_executif || !parsed.mensualite_recommandee) throw new Error('réponse incomplète');
-      result = parsed;
-    } catch (e) {
-      console.error('Bilan IA error (tentative ' + (attempt + 1) + ') :', e);
-      reason = 'La réponse de l\'IA était incomplète.';
+  // Le rapport est long : on le génère en DEUX appels en parallèle, chacun de taille raisonnable
+  //   A = analyse (score, résumé, mensualité, allocation, actions, verdict)
+  //   B = approfondissement (objectif par objectif, plan 90 jours, enveloppes, risques)
+  // Chaque appel a assez de place pour ne pas être tronqué et reste sous la durée maximale d'une fonction serveur.
+  // Si A échoue → version simplifiée clairement signalée ; si seul B échoue → rapport complet sans l'approfondissement, avec un bouton pour le relancer.
+  const SYS_JSON = 'Réponds UNIQUEMENT en JSON valide, sans backticks.';
+  const askJSON = async (p, valid) => {
+    let reason = '';
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const raw = await callClaude(p, SYS_JSON, 3500);
+        if (callClaudeFailed(raw) || raw === 'Erreur de connexion.') return { fail: String(raw).replace(/^🔒\s*/, '').slice(0, 200) };   // quota / connexion : inutile de réessayer
+        const clean = raw.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
+        if (!valid(parsed)) throw new Error('réponse incomplète');
+        return { data: parsed };
+      } catch (e) {
+        console.error('Bilan IA error (tentative ' + (attempt + 1) + ') :', e);
+        reason = 'La réponse de l\'IA était incomplète.';
+      }
     }
-  }
+    return { fail: reason };
+  };
+  const promptB = typeof bilanDeepPrompt === 'function' ? bilanDeepPrompt() : '';
+  const [resA, resB] = await Promise.all([
+    askJSON(prompt, r => r.resume_executif && r.mensualite_recommandee),
+    promptB ? askJSON(promptB, r => Array.isArray(r.plan_90_jours) && r.plan_90_jours.length) : Promise.resolve({ data: null }),
+  ]);
+  const result = resA.data, reason = resA.fail || '';
+  if (result) { if (resB.data) result.deep = resB.data; else if (promptB) result._deepFailed = true; }
   if (result) {
     finalizeBilanResult(result, bilanCapital || tv);   // projections calculées, pas inventées par l'IA
     window._lastBilanResult = result;

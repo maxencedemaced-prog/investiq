@@ -114,7 +114,7 @@ function bilanExtraHTML(r, T) {
     <div style="font-size:10.5px;color:${sub};margin-top:10px;line-height:1.5">Simulation avant frais et impôts, rendement non garanti. La rente théorique retire 4 % du capital par an (règle courante, sans épuiser le capital sur une longue période). Elle s'ajoute à ta pension de retraite légale, qui n'est pas calculée ici.</div>
   </div>` : '';
 
-  return diag + bxObjectivesHTML(M, r) + bxPlanHTML(M, r) + loan + retire;
+  return diag + bxObjectivesHTML(M, r) + bxPlanHTML(M, r) + bilanDeepHTML(r, _bxT) + loan + retire;
 }
 
 function bxLoanCompute() {
@@ -218,6 +218,7 @@ function bilanPdfExtra(doc, y, margin, colW, r) {
     line(plain(`A ${depart} ans (dans ${years} ans), avec ${bxE(r.mensualite_recommandee || 0)}/mois a ${r.projection_rate || 6} %/an : capital estime ${bxE(capital)}, soit une rente theorique d'environ ${bxE(capital * 0.04 / 12)}/mois (regle des 4 %), en plus de la pension de retraite.`));
     y += 3;
   }
+  y = bilanPdfDeep(doc, y, margin, colW, r);
   doc.setFontSize(7.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(120, 120, 120);
   const disc = doc.splitTextToSize('Estimations indicatives calculees a partir de tes reponses, avant frais et impots. Elles ne constituent ni un conseil en investissement, ni une offre de credit.', colW);
   need(disc.length * 3.5 + 2); doc.text(disc, margin, y); y += disc.length * 3.5 + 6;
@@ -490,4 +491,106 @@ function bxPlanHTML(M, r) {
     <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:14px">Ton plan d'action chiffré</div>${html}
     <div style="font-size:10.5px;color:${sub};line-height:1.5">Le budget est la mensualité recommandée du bilan. Le matelas de sécurité est financé en premier, puis les objectifs que ton budget permet de tenir entièrement (du plus proche au plus lointain), et le reliquat va sur le suivant. C'est une répartition par défaut : à toi de choisir tes priorités.</div>
   </div>`;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  APPROFONDISSEMENT PAR L'IA (2e appel) : objectif par objectif, plan 90 jours, enveloppes, risques
+// ═══════════════════════════════════════════════════════════════
+function bilanDeepPrompt() {
+  const M = bilanMetrics(), d = bilanData || {};
+  const objs = (d.objectifs || []).map(o => (BX_Q[o] || {}).title).filter(Boolean);
+  const e = n => Math.round(n) + ' €';
+  return `Tu es le copilote financier IA d'InvestIQ. Tu écris la partie APPROFONDIE d'un bilan patrimonial : elle doit être explicite, concrète et complète, pas générique.
+TON : tutoiement, chaleureux et direct, comme un ami compétent en finance. Commence par le positif, jamais alarmiste. Tu ne fournis pas de conseil réglementé.
+RÈGLES STRICTES :
+- N'invente AUCUN chiffre : utilise uniquement ceux fournis ci-dessous. Ne calcule pas de mensualités ni de projections (elles sont calculées ailleurs dans le rapport).
+- Ne cite AUCUN taux, plafond ni règle fiscale chiffrée (ils changent) : dis plutôt « vérifie les plafonds et les taux en vigueur ».
+- Chaque conseil doit être actionnable et adapté à CE profil (pas de généralités).
+
+PROFIL :
+- ${d.age || '?'} ans, ${d.famille || '?'}, ${d.enfants || 0} enfant(s), statut ${d.statut || '?'}
+- Revenu net ${e(M.revenu)}/mois ; loyer/remboursement ${e(M.loyer)} ; autres crédits ${e(M.credits)} ; charges fixes ${e(M.charges)} ; épargne actuelle ${e(M.epargne)}/mois
+- Patrimoine : livrets ${e(M.livret)}, assurance vie ${e(M.av)}, PEA ${e(M.pea)}, bourse/CTO ${e(M.bourse)}, immobilier ${e(M.immo)}, autres ${e(M.autres)} (total ${e(M.patrimoine)})
+- Expérience : ${d.experience || '?'} ; réaction à une baisse de 20 % : ${d.reaction || '?'} ; perte maximale acceptée : ${d.perteMax || '?'} % ; horizon : ${d.horizon || '?'}
+- Objectifs : ${objs.length ? objs.join(', ') : 'non précisés'}
+${bilanPrecisionsText()}
+${d.commentaires ? 'NOTES : ' + d.commentaires : ''}
+
+Réponds UNIQUEMENT avec ce JSON :
+{
+  "analyse_objectifs": [ {"objectif": "nom exact d'un objectif ci-dessus", "verdict": "réaliste | ambitieux | à revoir", "analyse": "4 à 5 phrases : est-ce cohérent avec le revenu, le patrimoine et les précisions ? quels arbitrages ?", "conseils": ["conseil concret 1", "conseil concret 2", "conseil concret 3"]} ],
+  "plan_90_jours": [ {"periode": "Semaine 1", "action": "action précise", "pourquoi": "pourquoi maintenant, en une phrase"} ],
+  "enveloppes": [ {"enveloppe": "ex. Livret A / LDDS, PEA, assurance vie, PER…", "role": "à quoi elle sert pour CE profil", "conseil": "comment l'utiliser concrètement"} ],
+  "risques": [ {"risque": "risque réel de CE profil", "comment_reduire": "action concrète"} ],
+  "erreurs_a_eviter": ["erreur fréquente adaptée à ce profil"],
+  "questions": ["question à te poser ou à poser à un conseiller / une banque"]
+}
+Contraintes de taille : un élément d'analyse_objectifs par objectif (max 6) ; plan_90_jours = 6 étapes ; enveloppes = 4 ; risques = 4 ; erreurs_a_eviter = 4 ; questions = 3.`;
+}
+
+function bilanDeepHTML(r, T) {
+  const { surf, bord, txt, sub } = T || _bxT;
+  const D = r && r.deep;
+  const card = `background:${surf};border:1px solid ${bord};border-radius:16px;padding:18px;margin-bottom:16px`;
+  const h = t => `<div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:12px">${t}</div>`;
+  const x = s => _escHtml(s == null ? '' : s);
+  if (!D) {
+    return r && r._deepFailed ? `<div style="${card};display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="font-size:12.5px;color:${txt};line-height:1.5;flex:1;min-width:200px"><strong>L'analyse approfondie n'a pas pu être générée</strong> (analyse par objectif, plan des 90 jours, enveloppes, risques). Le reste du bilan est complet.</div>
+      <button onclick="renderBilanStep(8)" style="background:#16a34a;color:#fff;border:none;border-radius:9px;padding:9px 14px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">Relancer l'analyse</button></div>` : '';
+  }
+  const vcol = v => /r[ée]aliste/i.test(v) ? bxGood : /ambitieux/i.test(v) ? bxWarn : bxBad;
+  const objs = (D.analyse_objectifs || []).length ? `<div style="${card}">${h('Analyse de tes objectifs')}
+    ${D.analyse_objectifs.map(o => `<div style="border:1px solid ${bord};border-radius:12px;padding:13px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:14px;font-weight:800;color:${txt}">${x(o.objectif)}</span><span style="font-size:10px;font-weight:800;color:${vcol(o.verdict)};background:${vcol(o.verdict)}20;padding:2px 9px;border-radius:99px;white-space:nowrap">${x(o.verdict)}</span></div>
+      <div style="font-size:12.5px;color:${txt};line-height:1.6;margin-bottom:8px">${x(o.analyse)}</div>
+      ${(o.conseils || []).map(c => `<div style="display:flex;gap:8px;font-size:12.5px;color:${sub};line-height:1.55;margin-bottom:3px"><span style="color:${bxGood};flex-shrink:0">●</span><span>${x(c)}</span></div>`).join('')}
+    </div>`).join('')}</div>` : '';
+  const plan = (D.plan_90_jours || []).length ? `<div style="${card}">${h('Ton plan des 90 prochains jours')}
+    ${D.plan_90_jours.map((s, i) => `<div style="display:flex;gap:12px;margin-bottom:12px"><span style="width:26px;height:26px;border-radius:50%;background:${bxGood};color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i + 1}</span>
+      <div style="min-width:0"><div style="font-size:11px;font-weight:700;color:${bxGood};text-transform:uppercase;letter-spacing:.05em">${x(s.periode)}</div><div style="font-size:13.5px;font-weight:800;color:${txt};margin-top:1px">${x(s.action)}</div><div style="font-size:12px;color:${sub};line-height:1.5;margin-top:2px">${x(s.pourquoi)}</div></div></div>`).join('')}</div>` : '';
+  const env = (D.enveloppes || []).length ? `<div style="${card}">${h('Quelles enveloppes utiliser')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px">${D.enveloppes.map(v => `<div style="border:1px solid ${bord};border-radius:12px;padding:12px"><div style="font-size:13px;font-weight:800;color:${txt};margin-bottom:4px">${x(v.enveloppe)}</div><div style="font-size:12px;color:${sub};line-height:1.5;margin-bottom:6px">${x(v.role)}</div><div style="font-size:12px;color:${txt};line-height:1.5">${x(v.conseil)}</div></div>`).join('')}</div>
+    <div style="font-size:10.5px;color:${sub};margin-top:10px;line-height:1.5">Vérifie les plafonds, les taux et la fiscalité en vigueur avant toute décision : ils changent régulièrement.</div></div>` : '';
+  const risks = ((D.risques || []).length || (D.erreurs_a_eviter || []).length) ? `<div style="${card}">${h('Risques et erreurs à éviter')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">
+      <div>${(D.risques || []).map(k => `<div style="border-left:3px solid ${bxWarn};padding:2px 0 2px 10px;margin-bottom:10px"><div style="font-size:12.5px;font-weight:800;color:${txt}">${x(k.risque)}</div><div style="font-size:12px;color:${sub};line-height:1.5;margin-top:2px">${x(k.comment_reduire)}</div></div>`).join('')}</div>
+      <div>${(D.erreurs_a_eviter || []).map(k => `<div style="display:flex;gap:8px;font-size:12.5px;color:${txt};line-height:1.55;margin-bottom:7px"><span style="color:${bxBad};flex-shrink:0">✕</span><span>${x(k)}</span></div>`).join('')}</div>
+    </div></div>` : '';
+  const qs = (D.questions || []).length ? `<div style="${card}">${h('Les questions à te poser (ou à poser à un conseiller)')}
+    ${D.questions.map(k => `<div style="display:flex;gap:8px;font-size:12.5px;color:${txt};line-height:1.55;margin-bottom:6px"><span style="color:${bxGood};flex-shrink:0">?</span><span>${x(k)}</span></div>`).join('')}</div>` : '';
+  return objs + plan + env + risks + qs;
+}
+
+// Section PDF de l'approfondissement IA
+function bilanPdfDeep(doc, y, margin, colW, r) {
+  const D = r && r.deep; if (!D) return y;
+  const plain = s => String(s == null ? '' : s).replace(/[  ]/g, ' ').replace(/[’‘]/g, "'").replace(/[«»“”]/g, '"').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/œ/g, 'oe').replace(/Œ/g, 'Oe').replace(/→/g, '->').replace(/[^\x20-\x7EÀ-ÿ€]/g, '');
+  const need = h => { if (y + h > 280) { doc.addPage(); y = 16; } };
+  const title = t => { need(14); y += 2; doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20); doc.text(plain(t), margin, y); y += 6; };
+  const line = (t, bold) => { const ls = doc.splitTextToSize(plain(t), colW); need(ls.length * 4.2 + 2); doc.setFontSize(9); doc.setFont('helvetica', bold ? 'bold' : 'normal'); const c = bold ? 20 : 70; doc.setTextColor(c, c, c); doc.text(ls, margin, y); y += ls.length * 4.2 + 1.5; };
+  if ((D.analyse_objectifs || []).length) {
+    title('Analyse de tes objectifs');
+    D.analyse_objectifs.forEach(o => { line(`${o.objectif} (${o.verdict})`, true); line(o.analyse); (o.conseils || []).forEach(c => line('- ' + c)); y += 2; });
+  }
+  if ((D.plan_90_jours || []).length) {
+    title('Ton plan des 90 prochains jours');
+    D.plan_90_jours.forEach(s => { line(`${s.periode} : ${s.action}`, true); line(s.pourquoi); });
+    y += 2;
+  }
+  if ((D.enveloppes || []).length) {
+    title('Quelles enveloppes utiliser');
+    D.enveloppes.forEach(v => { line(v.enveloppe, true); line(`${v.role} ${v.conseil}`); });
+    line('Verifie les plafonds, les taux et la fiscalite en vigueur avant toute decision.');
+    y += 2;
+  }
+  if ((D.risques || []).length || (D.erreurs_a_eviter || []).length) {
+    title('Risques et erreurs a eviter');
+    (D.risques || []).forEach(k => line(`${k.risque} - ${k.comment_reduire}`));
+    (D.erreurs_a_eviter || []).forEach(k => line('A eviter : ' + k));
+    y += 2;
+  }
+  if ((D.questions || []).length) { title('Questions a te poser'); D.questions.forEach(k => line('- ' + k)); y += 2; }
+  return y;
 }

@@ -10,6 +10,9 @@
       ]
     }
   ],
+  "functions": {
+    "api/claude.js": { "maxDuration": 60 }
+  },
   "crons": [
     {
       "path": "/api/push-send?mode=briefing",
