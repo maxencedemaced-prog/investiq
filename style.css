@@ -1819,3 +1819,9 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
 
 /* Cases à cocher et boutons radio : la règle globale « input{width:100%} » ne doit pas les étirer */
 input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; background: none; border-radius: 0; }
+
+/* Première visite : point rouge « nouveau » sur les onglets pas encore ouverts */
+.nav-btn, .bnav-btn { position: relative; }
+.nav-dot { position: absolute; top: 50%; right: 9px; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 0 2px var(--color-surface, #fff); animation: navDotPulse 1.8s ease-in-out infinite; pointer-events: none; }
+.bnav-btn .nav-dot { top: 6px; right: calc(50% - 17px); margin-top: 0; }
+@keyframes navDotPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }

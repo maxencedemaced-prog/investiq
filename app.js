@@ -4503,6 +4503,7 @@ async function initApp(user) {
   try {
   currentUser = user; isDemo = false;
   claimCaches(user.id);
+  try { updateNavDots(); } catch(e) {}
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('demo-banner').style.display = 'none';
@@ -4550,6 +4551,7 @@ async function initApp(user) {
 function enterDemo() {
   isDemo = true;
   claimCaches('demo');
+  try { updateNavDots(); } catch(e) {}
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('demo-banner').style.display = 'block';
