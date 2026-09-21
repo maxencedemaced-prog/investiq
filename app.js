@@ -479,7 +479,7 @@ ${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (o
 - DIVERSIFICATION QUI DÉPEND DU BUDGET : ${(() => { const s = planSizing(0, budget, objStockPct); const nbMois = s.nbStocks > 0 ? Math.max(1, Math.min(s.nbStocks, Math.round(s.stockMonthly / 40) || 1)) : 0; return nbMois > 0 ? `sur la part actions (~${Math.round(s.stockMonthly)}€ ce mois-ci) propose ${nbMois} action${nbMois > 1 ? 's' : ''} DIFFÉRENTE${nbMois > 1 ? 'S' : ''}, de secteurs différents, aucune au-dessus de 40% du montant actions, ~20€ minimum par ligne. Plus le budget est élevé, plus il faut d'actions distinctes (jamais tout sur une seule).` : 'aucune action individuelle ce mois-ci.'; })()}
 - Évite de racheter ce qui pèse déjà plus de 25% de son portefeuille.
 - La somme des montants "actions" doit représenter ~${objStockPct}% du budget, et les ETF ~${100-objStockPct}%.
-${objStockPct < 100 ? 'Dans la poche ETF, privilégie un socle Monde (MSCI World / All-World).' : ''}
+${objStockPct < 100 ? `POCHE ETF : UN SEUL ETF actions monde (MSCI World OU All-World, jamais les deux : ils se recoupent presque totalement). ${objRisk === 'agressif' ? '' : objRisk === 'equilibre' ? 'Ajoute un ETF obligataire pour environ 20 % de la poche ETF.' : 'Profil PRUDENT : ajoute un ETF obligataire (type Global Aggregate) pour environ 30 à 40 % de la poche ETF, comme dans son plan de départ.'} Aucune ligne inférieure à 20 €.` : ''}
 
 Réponds UNIQUEMENT en JSON valide sans backticks :
 {
@@ -487,7 +487,7 @@ Réponds UNIQUEMENT en JSON valide sans backticks :
   "lignes": [
     {"ticker":"IWDA.L","name":"iShares Core MSCI World","montant":120,"pct":60,"role":"socle","raison":"max 10 mots, concret"}
   ],
-  "note_marche": "1 phrase sur le contexte de marché du mois, factuelle et prudente"
+  "note_marche": "1 phrase de discipline d'investisseur (régularité, lissage du prix d'entrée, patience), SANS aucune affirmation sur l'état actuel des marchés (niveaux, valorisations, taux, actualité) : tu n'as aucune donnée de marché"
 }
 La somme des montants doit faire exactement ${budget}.`;
 
@@ -6387,7 +6387,9 @@ function bilanObjectiveExtras(r) {
   try {
     const P = typeof bilanRiskProfile === 'function' ? bilanRiskProfile() : null;
     if (P) out.risk = P.level <= 1 ? 'prudent' : P.level === 2 ? 'equilibre' : 'agressif';
-    if (r && Array.isArray(r.allocation_cible) && typeof bxEquityShare === 'function') out.stockPct = Math.round(bxEquityShare(r.allocation_cible));
+    // Sur la page Objectif, « actions » = ACTIONS INDIVIDUELLES (le reste = ETF, obligataires compris) : on reprend donc la part
+    // d'actions individuelles de l'allocation du bilan, pas la part d'actions au sens large (qui compte aussi les ETF actions)
+    if (r && Array.isArray(r.allocation_cible)) out.stockPct = Math.round(r.allocation_cible.reduce((t, x) => t + (/action/i.test(String(x.type || '')) && !/etf|fonds|tracker|indic|oblig/i.test(String(x.type || '')) ? (Number(x.pct) || 0) : 0), 0));
   } catch {}
   return out;
 }
