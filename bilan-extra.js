@@ -190,6 +190,7 @@ function bilanPdfExtra(doc, y, margin, colW, r) {
     const share = bxEquityShare(r && r.allocation_cible), base = bilanRiskBase();
     title('Profil de risque');
     line(plain(`${RP.label} - part d'actions recommandee : ${RP.min} a ${RP.max} %.${RP.contradiction ? ' Tes reponses ne vont pas dans le meme sens : on retient la plus prudente.' : ''}${RP.capped ? ' Horizon court : niveau de risque limite.' : ''}`));
+    if (r && r.allocation_ajustee) line(plain(`Allocation ajustee pour respecter ton profil : ${r.allocation_ajustee.de} % -> ${r.allocation_ajustee.vers} % d'actions.`));
     if (share) line(plain(`Allocation cible : ${Math.round(share)} % d'actions (${share >= RP.min - 2 && share <= RP.max + 2 ? 'dans la fourchette de ton profil' : share > RP.max ? 'AU-DESSUS de ton profil' : 'en dessous de ton profil'}). Si les marches actions baissaient de 30 %, perte estimee : environ ${bxE(base * share / 100 * 0.3)} (${(share * 0.3).toFixed(0)} % de ton patrimoine investi).`));
     y += 3;
   }
@@ -213,7 +214,7 @@ function bilanPdfExtra(doc, y, margin, colW, r) {
     if (plan.steps.length || plan.rows.length) {
       title('Plan d\'action chiffre');
       plan.steps.forEach(s => line(plain(s.t + ' : ' + s.d)));
-      plan.rows.forEach(x => line(plain(`${x.o.label} : il faudrait ${bxE(x.o.monthly)}/mois pour ${bxYrs(x.o.horizon)} - ${x.full ? 'finance avec ton budget' : x.alloc > 0 ? 'avec ton budget : atteint en ' + bxYrs(x.years) : 'pas de budget disponible'}`)));
+      plan.rows.forEach(x => line(plain(`${x.o.label} : il faudrait ${bxE(x.o.monthly)}/mois pour ${bxYrs(x.o.horizon)} - ${x.full ? (x.o.status === 'bad' ? 'epargne financee mais objectif difficile' : 'finance avec ton budget') : x.alloc > 0 ? 'avec ton budget : atteint en ' + bxYrs(x.years) : 'pas de budget disponible'}`)));
       if (plan.rows.length) line(plain(`Total ${bxE(plan.total)}/mois${plan.secMonthly ? ' (matelas inclus)' : ''} pour un budget d'epargne de ${bxE(plan.budget)}/mois${plan.gap > 0 ? ` : il manque ${bxE(plan.gap)}/mois. Concentre-toi sur 2 ou 3 priorites, repousse ou reduis les autres.` : '.'}`), true);
       y += 3;
     }
@@ -440,7 +441,7 @@ function bxActionPlan(M, r) {
   const gap3 = M.essentiel ? M.manqueSecurite : 0;
   const needSecurite = sec ? Math.max(0, (parseFloat(((bilanData.precisions || {}).securite || {}).mois) || 6) * M.essentiel - M.livret) : gap3;
   const alloc = Math.max(50, Math.min(budget || 200, M.epargne || budget || 200));
-  if (needSecurite > 0) steps.push({ t: 'Sécuriser ton matelas', d: `Il te manque ${bxE(needSecurite)} sur tes livrets. En y consacrant ${bxE(alloc)}/mois, c'est fait en ${Math.ceil(needSecurite / alloc)} mois. Tant que ce n'est pas fait, ne prends pas de risque avec le reste.` });
+  if (needSecurite > 0) steps.push({ t: 'Sécuriser ton matelas', d: `Il te manque ${bxE(needSecurite)} sur tes livrets. Pour le combler en 12 mois, mets ${bxE(needSecurite / 12)}/mois de côté (c'est ce que retient le tableau ci-dessous) ; à ton rythme d'épargne actuel de ${bxE(alloc)}/mois, ce serait fait en ${Math.ceil(needSecurite / alloc)} mois. Tant que ce n'est pas fait, ne prends pas de risque avec le reste.` });
   const sorted = res.slice().sort((a, b) => (a.horizon || 99) - (b.horizon || 99));
   const secMonthly = sec && sec.monthly > 0 ? sec.monthly : 0;
   const total = sorted.reduce((t, o) => t + o.monthly, 0) + secMonthly;
@@ -450,7 +451,9 @@ function bxActionPlan(M, r) {
   let remaining = Math.max(0, budget - Math.min(secMonthly, budget));
   const given = new Map();
   sorted.forEach(o => { if (o.monthly <= remaining + 0.5) { given.set(o, o.monthly); remaining -= o.monthly; } });
-  sorted.forEach(o => { if (!given.has(o) && remaining > 0) { const a = Math.min(o.monthly, remaining); given.set(o, a); remaining -= a; } });
+  // le reliquat va à l'objectif le PLUS PROCHE d'être financé (et non au premier de la liste : un objectif à 985 €/mois ne sera jamais sauvé par 11 €)
+  sorted.filter(o => !given.has(o)).sort((a, b) => (a.monthly - remaining) - (b.monthly - remaining))
+    .forEach(o => { if (remaining > 0) { const a = Math.min(o.monthly, remaining); given.set(o, a); remaining -= a; } });
   const rows = sorted.map(o => {
     const a = given.get(o) || 0, full = a >= o.monthly - 0.5;
     return { o, alloc: a, full, years: full ? o.horizon : bxYearsToReach(o.target, o.cap0, o.rate, a) };
@@ -486,7 +489,7 @@ function bxPlanHTML(M, r) {
   let i = 1, html = '';
   p.steps.forEach(s => { html += num(i++, s.t, s.d); });
   if (p.rows.length) {
-    const cell = x => x.full ? `<span style="color:${bxGood};font-weight:700">Financé</span>` : x.alloc > 0 ? `<span style="color:${bxWarn};font-weight:700">Atteint en ${bxYrs(x.years)}</span> <span style="color:${sub}">au lieu de ${when(x.o.horizon)}</span>` : `<span style="color:${bxBad};font-weight:700">Pas de budget</span>`;
+    const cell = x => x.full ? (x.o.status === 'bad' ? `<span style="color:${bxWarn};font-weight:700">Épargne financée</span> <span style="color:${sub}">mais objectif difficile (voir plus haut)</span>` : `<span style="color:${bxGood};font-weight:700">Financé</span>`) : x.alloc > 0 ? `<span style="color:${bxWarn};font-weight:700">Atteint en ${bxYrs(x.years)}</span> <span style="color:${sub}">au lieu de ${when(x.o.horizon)}</span>` : `<span style="color:${bxBad};font-weight:700">Pas de budget</span>`;
     html += num(i++, 'Répartir ton budget entre tes objectifs', `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;color:${txt};min-width:440px"><thead><tr style="color:${sub};font-size:10.5px;text-align:left"><th style="padding-bottom:4px">Objectif</th><th style="text-align:right">Échéance visée</th><th style="text-align:right">Il faudrait</th><th style="text-align:right">Avec ton budget</th></tr></thead><tbody>${p.rows.map(x => `<tr style="border-top:1px solid ${bord}"><td style="padding:7px 0">${x.o.label}</td><td style="text-align:right">${when(x.o.horizon)}</td><td style="text-align:right;font-weight:700">${bxE(x.o.monthly)}/mois</td><td style="text-align:right">${cell(x)}</td></tr>`).join('')}<tr style="border-top:2px solid ${bord};font-weight:800"><td style="padding:7px 0">Total${p.secMonthly ? ' (matelas inclus)' : ''}</td><td></td><td style="text-align:right">${bxE(p.total)}/mois</td><td style="text-align:right;color:${sub};font-weight:600">budget ${bxE(p.budget)}/mois</td></tr></tbody></table></div>`);
     const first = p.rows.filter(x => x.full).map(x => x.o.label.toLowerCase());
     const late = p.rows.filter(x => !x.full);
@@ -524,6 +527,7 @@ PROFIL :
 - Objectifs : ${objs.length ? objs.join(', ') : 'non précisés'}
 ${bilanPrecisionsText()}
 ${bilanRiskText()}
+${bilanFactsText()}
 ${d.commentaires ? 'NOTES : ' + d.commentaires : ''}
 
 ${part === 2 ? `Réponds UNIQUEMENT avec ce JSON :
@@ -675,4 +679,46 @@ function bxRiskHTML(r, T) {
       <br>Si les marchés actions baissaient de 30 %, tu perdrais environ <strong>${bxE(loss30)}</strong> (${lossPct.toFixed(0)} % de ton patrimoine investi de ${bxE(base)})${limit ? (lossPct > limit ? ` : <span style="color:${bxBad};font-weight:700">plus que ta limite de ${limit} %.</span>` : ` : <span style="color:${bxGood};font-weight:700">dans ta limite de ${limit} %.</span>`) : '.'}
     </div>` : ''}
   </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  COHÉRENCE : l'IA reçoit les chiffres vérifiés, et l'allocation est ramenée dans la fourchette du profil de risque
+// ═══════════════════════════════════════════════════════════════
+// Chiffres calculés par l'application, fournis à l'IA pour qu'elle ne les recalcule (ni ne les confonde) pas
+function bilanFactsText() {
+  const M = bilanMetrics(); if (!M.revenu && !M.patrimoine) return '';
+  const e = n => Math.round(n) + ' €';
+  const inv = M.bourse + M.pea + M.av, capa = M.revenu - M.loyer - M.credits - M.charges;
+  const pos = typeof positions !== 'undefined' ? positions : [], pv = pos.reduce((a, p) => a + p.qty * p.price, 0);
+  return `CHIFFRES VÉRIFIÉS (calculés par l'application : utilise-les tels quels, ne fais AUCUNE somme toi-même et n'invente aucun autre chiffre) :
+- Taux d'épargne RÉEL : ${M.tauxEpargne != null ? M.tauxEpargne.toFixed(0) : '?'} % (${e(M.epargne)}/mois sur ${e(M.revenu)} de revenu). N'emploie l'expression « taux d'épargne » que pour cette valeur.
+- Capacité d'épargne théorique (revenu - loyer - crédits - charges fixes) : ${e(capa)}/mois${M.revenu ? ' (' + Math.round(capa / M.revenu * 100) + ' % du revenu, avant courses et sorties)' : ''}. Ce n'est PAS le taux d'épargne.
+- Poids logement + crédits : ${M.effort != null ? M.effort.toFixed(0) : '?'} % du revenu
+- Épargne de précaution : ${M.moisSecurite != null ? M.moisSecurite.toFixed(1) : '?'} mois de charges (livrets ${e(M.livret)})
+- Patrimoine total ${e(M.patrimoine)} : livrets ${e(M.livret)}, assurance vie ${e(M.av)}, PEA ${e(M.pea)}, bourse/CTO ${e(M.bourse)}, immobilier ${e(M.immo)}, autres ${e(M.autres)}
+- Patrimoine financier INVESTI (bourse + PEA + assurance vie) : ${e(inv)}. Ne dis jamais que le patrimoine total est « investi en bourse ».
+- Positions suivies dans l'application : ${pos.length} ligne(s), valeur ${e(pv)}`;
+}
+// Si l'allocation proposée sort de la fourchette d'actions du profil de risque, on la ramène dedans (le reste va vers la poche prudente)
+function bilanEnforceRisk(result) {
+  const P = bilanRiskProfile();
+  if (!P || !result || !Array.isArray(result.allocation_cible) || !result.allocation_cible.length) return;
+  const alloc = result.allocation_cible, share = bxEquityShare(alloc);
+  if (share >= P.min - 2 && share <= P.max + 2) return;
+  const isEq = x => !/oblig|livret|mon[ée]taire|cash|fonds euro|\bor\b|immo|scpi/i.test(String(x.type || ''));
+  const eq = alloc.filter(isEq), other = alloc.filter(x => !isEq(x));
+  const target = share > P.max ? P.max : P.min;
+  if (!eq.length) return;
+  const factor = share > 0 ? target / share : 1;
+  eq.forEach(x => { x.pct = Math.round((Number(x.pct) || 0) * factor); });
+  let diff = 100 - alloc.reduce((t, x) => t + (Number(x.pct) || 0), 0);
+  if (diff > 0) {                                       // trop d'actions retirées : la différence va en poche prudente
+    let bond = other.find(x => /oblig/i.test(x.type)) || other[0];
+    if (!bond) { bond = { type: 'Obligations / fonds euros', pct: 0, color: '#6366f1', explication: 'Poche prudente ajoutée pour respecter ton profil de risque' }; alloc.push(bond); }
+    bond.pct = (Number(bond.pct) || 0) + diff;
+  } else if (diff < 0) {                                // on a monté les actions : on retire la différence de la poche prudente
+    other.sort((a, b) => (b.pct || 0) - (a.pct || 0)).forEach(x => { if (diff < 0) { const t = Math.min(x.pct || 0, -diff); x.pct -= t; diff += t; } });
+  }
+  result.allocation_cible = alloc.filter(x => (Number(x.pct) || 0) > 0);
+  result.allocation_ajustee = { de: Math.round(share), vers: Math.round(bxEquityShare(result.allocation_cible)), profil: P.label };
 }

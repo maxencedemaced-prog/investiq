@@ -5979,6 +5979,7 @@ EXPÉRIENCE : ${bilanData.experience} | Problème principal : ${bilanData.proble
 ÉVÉNEMENT PRÉVU : ${bilanData.evenement}
 ${typeof bilanPrecisionsText === 'function' ? bilanPrecisionsText() : ''}
 ${typeof bilanRiskText === 'function' ? bilanRiskText() : ''}
+${typeof bilanFactsText === 'function' ? bilanFactsText() : ''}
 ${bilanData.commentaires ? 'NOTES : ' + bilanData.commentaires : ''}
 
 PORTEFEUILLE ACTUEL :
@@ -6029,6 +6030,7 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
     if ((pB1 && !resB1.data) || (pB2 && !resB2.data)) result._deepFailed = true;
   }
   if (result) {
+    if (typeof bilanEnforceRisk === 'function') bilanEnforceRisk(result);   // allocation ramenée dans la fourchette du profil de risque
     finalizeBilanResult(result, bilanCapital || tv);   // projections calculées, pas inventées par l'IA
     window._lastBilanResult = result;
     saveBilan(result);
@@ -6217,7 +6219,8 @@ function renderBilanResult(r, ts) {
 
   <!-- ALLOCATION CIBLE -->
   <div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:18px;margin-bottom:16px">
-    <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:14px">🎯 Allocation cible recommandée</div>
+    <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:14px">Allocation cible recommandée</div>
+    ${r.allocation_ajustee ? `<div style="font-size:11.5px;color:${sub};margin:-6px 0 12px;line-height:1.5">Ajustée pour respecter ton profil « ${_escHtml(r.allocation_ajustee.profil)} » : ${r.allocation_ajustee.de} % → ${r.allocation_ajustee.vers} % d'actions.</div>` : ''}
     ${(r.allocation_cible||[]).map(a=>`
     <div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px">
