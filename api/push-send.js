@@ -205,7 +205,7 @@ module.exports = async function handler(req, res) {
         }
         if (inLoss) body += `\n${inLoss} position${inLoss > 1 ? 's' : ''} à plus de 10 % sous ton prix d'achat`;
 
-        if (await notifyUser(u, { title: '☀️ Ton briefing InvestIQ', body, tag: 'investiq-daily' })) sent++;
+        if (await notifyUser(u, { title: '☀️ Ton briefing Kapitaro', body, tag: 'investiq-daily' })) sent++;
       }
       return res.status(200).json({ mode, users: targets.length, sent, skipped });
     }

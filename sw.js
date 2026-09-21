@@ -1,5 +1,5 @@
-// ===== InvestIQ Service Worker =====
-const CACHE_NAME = 'investiq-v2'; // incrémenté pour forcer la mise à jour
+// ===== Kapitaro Service Worker =====
+const CACHE_NAME = 'kapitaro-v1'; // incrémenté pour forcer la mise à jour
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -31,7 +31,7 @@ self.addEventListener('push', e => {
 
   let data;
   try { data = e.data.json(); }
-  catch { data = { title: 'InvestIQ', body: e.data.text(), icon: '/icons/icon-192.png' }; }
+  catch { data = { title: 'Kapitaro', body: e.data.text(), icon: '/icons/icon-192.png' }; }
 
   const options = {
     body:    data.body  || 'Nouvelle notification',
@@ -45,7 +45,7 @@ self.addEventListener('push', e => {
   };
 
   e.waitUntil(
-    self.registration.showNotification(data.title || 'InvestIQ', options)
+    self.registration.showNotification(data.title || 'Kapitaro', options)
   );
 });
 

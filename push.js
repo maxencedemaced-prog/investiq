@@ -128,7 +128,7 @@ async function renderPushCard() {
   const st = await pushState();
   const msg = {
     unsupported: 'Ce navigateur ne gère pas les notifications. Essaie Chrome, Edge, Firefox ou Safari récent.',
-    install: 'Sur iPhone, ajoute d\'abord InvestIQ à l\'écran d\'accueil : bouton Partager, puis « Sur l\'écran d\'accueil ». Ouvre ensuite l\'app depuis cette icône et reviens ici.',
+    install: 'Sur iPhone, ajoute d\'abord Kapitaro à l\'écran d\'accueil : bouton Partager, puis « Sur l\'écran d\'accueil ». Ouvre ensuite l\'app depuis cette icône et reviens ici.',
     denied: 'Les notifications sont bloquées pour ce site. Autorise-les dans les réglages du navigateur (cadenas à côté de l\'adresse), puis recharge la page.',
     on: '✓ Actives sur cet appareil.',
     off: 'Désactivées sur cet appareil.',

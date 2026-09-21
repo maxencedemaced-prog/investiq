@@ -6,7 +6,7 @@ function pushReady() {
   if (ready) return true;
   const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
   if (!pub || !priv) return false;
-  webpush.setVapidDetails('mailto:contact@investiq.fr', pub, priv);
+  webpush.setVapidDetails('mailto:contact@kapitaro.fr', pub, priv);
   ready = true;
   return true;
 }

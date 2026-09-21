@@ -513,7 +513,7 @@ function bilanDeepPrompt(part) {
   const M = bilanMetrics(), d = bilanData || {};
   const objs = (d.objectifs || []).map(o => (BX_Q[o] || {}).title).filter(Boolean);
   const e = n => Math.round(n) + ' €';
-  return `Tu es le copilote financier IA d'InvestIQ. Tu écris la partie APPROFONDIE d'un bilan patrimonial : elle doit être explicite, concrète et complète, pas générique.
+  return `Tu es le copilote financier IA de Kapitaro. Tu écris la partie APPROFONDIE d'un bilan patrimonial : elle doit être explicite, concrète et complète, pas générique.
 TON : tutoiement, chaleureux et direct, comme un ami compétent en finance. Commence par le positif, jamais alarmiste. Tu ne fournis pas de conseil réglementé.
 RÈGLES STRICTES :
 - N'invente AUCUN chiffre : utilise uniquement ceux fournis ci-dessous. Ne calcule pas de mensualités ni de projections (elles sont calculées ailleurs dans le rapport).

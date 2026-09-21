@@ -11,7 +11,7 @@ const TAB_HINTS = {
   news:      { title: 'Actualités', text: 'Les actualités qui concernent tes positions et les entreprises que tu suis. Elles ne se chargent que quand tu ouvres cette page.' },
   decision:  { title: 'Aide à la décision', text: 'Tu hésites à acheter ou à vendre ? Décris ton idée : l\'IA te donne un avis clair et chiffré.' },
   dca:       { title: 'Simulateur DCA', text: 'Vois ce que la régularité et les intérêts composés font de ton épargne sur la durée, selon ce que tu investis chaque mois.' },
-  depenses:  { title: 'Mes dépenses', premium: true, text: 'Importe ton relevé de compte : InvestIQ retrouve tes abonnements, classe tes dépenses et te montre ce que tu économiserais en l\'investissant.' },
+  depenses:  { title: 'Mes dépenses', premium: true, text: 'Importe ton relevé de compte : Kapitaro retrouve tes abonnements, classe tes dépenses et te montre ce que tu économiserais en l\'investissant.' },
   ai:        { title: 'Agent IA', text: 'Ton copilote financier : pose-lui des questions sur ton portefeuille, demande-lui un avis, ou faites ensemble un ordre comme ajouter une position ou une alerte.' },
   bilan:     { title: 'Mon bilan', premium: true, text: 'Le bilan patrimonial complet : ta situation, tes objectifs, un plan d\'action chiffré et un PDF à garder. Tu le retrouves ici à tout moment.' },
   settings:  { title: 'Paramètres', text: 'Ton compte, ton abonnement, tes notifications et l\'apparence de l\'application (thème clair ou sombre).' },

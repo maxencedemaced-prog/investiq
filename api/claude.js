@@ -4,6 +4,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 const ALLOWED_ORIGINS = [
+  'https://kapitaro.fr',
+  'https://www.kapitaro.fr',
   'https://investiq-kappa.vercel.app',
   'http://localhost:3000',
   'http://127.0.0.1:5500',
@@ -201,7 +203,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           model: finalModel,
           max_tokens: finalMaxTokens,
-          system: system || 'Tu es le copilote financier IA d\'InvestIQ. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.',
+          system: system || 'Tu es le copilote financier IA de Kapitaro. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.',
           messages: [{ role: 'user', content: prompt }],
           ...extra
         })

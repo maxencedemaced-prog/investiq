@@ -7,12 +7,14 @@ import { createClient } from '@supabase/supabase-js';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const ALLOWED_ORIGINS = [
+  'https://kapitaro.fr',
+  'https://www.kapitaro.fr',
   'https://investiq-kappa.vercel.app',
   'http://localhost:3000',
   'http://127.0.0.1:5500',
 ];
 
-const APP_URL = process.env.APP_URL || 'https://investiq-kappa.vercel.app';
+const APP_URL = process.env.APP_URL || 'https://kapitaro.fr';
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,

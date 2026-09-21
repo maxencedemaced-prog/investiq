@@ -1,6 +1,6 @@
 
 
-// ═══ PERSONNALITÉ DE L'IA INVESTIQ — charte de ton partagée par tous les prompts ═══
+// ═══ PERSONNALITÉ DE L'IA KAPITARO — charte de ton partagée par tous les prompts ═══
 const AI_PERSONA = `PERSONNALITÉ ET TON :
 Tu es le copilote financier personnel de l'utilisateur — comme un ami compétent qui travaille en finance, pas un robot ni un banquier guindé.
 - Tutoie toujours. Parle naturellement, phrases courtes.
@@ -454,7 +454,7 @@ async function generateMonthlyPlan(force = false) {
   <div style="background:linear-gradient(135deg,#0a0f1e,#111827);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:16px 18px;margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:10px">
       <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-      <span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:600">InvestIQ prépare ton plan de ${monthLabel()}...</span>
+      <span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:600">Kapitaro prépare ton plan de ${monthLabel()}...</span>
     </div>
   </div>`;
 
@@ -492,7 +492,7 @@ Réponds UNIQUEMENT en JSON valide sans backticks :
 La somme des montants doit faire exactement ${budget}.`;
 
   try {
-    const raw = await callClaude(prompt, `Tu es InvestIQ, copilote financier. ${typeof AI_PERSONA!=='undefined'?AI_PERSONA:''}\nRéponds UNIQUEMENT en JSON valide.`);
+    const raw = await callClaude(prompt, `Tu es Kapitaro, copilote financier. ${typeof AI_PERSONA!=='undefined'?AI_PERSONA:''}\nRéponds UNIQUEMENT en JSON valide.`);
     const clean = raw.replace(/```json|```/g,'').trim();
     const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
     if (!data.lignes?.length) throw new Error('empty');
@@ -1723,7 +1723,7 @@ async function checkAgendaUpdates() {
         document.getElementById('notif-dot').classList.add('show');
         // Notification push
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('InvestIQ — Agenda', { body: notif.texte, icon: '/icons/icon-192.png' });
+          new Notification('Kapitaro — Agenda', { body: notif.texte, icon: '/icons/icon-192.png' });
         }
       }
     }
@@ -2224,9 +2224,9 @@ function sharePortfolio() {
   const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
   const tpnl = tv-ti, tpct = ti?tpnl/ti*100:0;
-  const text = `Mon portefeuille InvestIQ 📊\n\nValeur : ${fmtK(tv)}\nPlus-value : ${tpnl>=0?'+':''}${fmtK(tpnl)} (${tpnl>=0?'+':''}${tpct.toFixed(1)}%)\n\nPositions : ${positions.map(p=>p.name).join(', ')}\n\n🔗 investiq-kappa.vercel.app`;
+  const text = `Mon portefeuille Kapitaro 📊\n\nValeur : ${fmtK(tv)}\nPlus-value : ${tpnl>=0?'+':''}${fmtK(tpnl)} (${tpnl>=0?'+':''}${tpct.toFixed(1)}%)\n\nPositions : ${positions.map(p=>p.name).join(', ')}\n\n🔗 kapitaro.fr`;
   if (navigator.share) {
-    navigator.share({ title: 'Mon portefeuille InvestIQ', text, url: 'https://investiq-kappa.vercel.app' })
+    navigator.share({ title: 'Mon portefeuille Kapitaro', text, url: 'https://kapitaro.fr' })
       .catch(() => copyToClipboard(text));
   } else {
     copyToClipboard(text);
@@ -4590,7 +4590,7 @@ async function resetPassword() {
   }
   try {
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://investiq-kappa.vercel.app'
+      redirectTo: 'https://kapitaro.fr'
     });
     if (error) throw error;
     setAuthMsg('📧 Email de réinitialisation envoyé !', true);
@@ -4929,7 +4929,7 @@ function checkPriceAlerts() {
       };
       notifications.unshift(notif);
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(`InvestIQ — Alerte ${g.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
+        new Notification(`Kapitaro — Alerte ${g.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
       }
     }
   });
@@ -5976,7 +5976,7 @@ async function generateBilanIA() {
   const bilanCapital = parseFloat(bilanData.bourse||0) + parseFloat(bilanData.pea||0) + parseFloat(bilanData.assurance||0);
   const patrimoine = bilanData.patrimoineTotal || bilanCapital || tv;
 
-  const prompt = `Tu es le copilote financier IA d'InvestIQ. Génère un bilan financier complet et personnalisé.
+  const prompt = `Tu es le copilote financier IA de Kapitaro. Génère un bilan financier complet et personnalisé.
 TON : tutoiement, chaleureux et direct, comme un ami compétent qui travaille en finance. Commence par le positif, sois concret et chiffré, jamais alarmiste. Exemple : au lieu de "Épargne de précaution insuffisante", écris "Bonne nouvelle : tu investis déjà régulièrement. Prochain chantier : ton matelas de sécurité, encore un peu léger pour dormir tranquille.".
 
 PROFIL CLIENT :
@@ -6465,7 +6465,7 @@ async function exportBilanPDF() {
 
     // Logo texte
     doc.setFontSize(22); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
-    doc.text('InvestIQ', margin, 18);
+    doc.text('Kapitaro', margin, 18);
     doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(120,180,120);
     doc.text('Bilan Financier Premium', margin, 26);
 
@@ -6622,12 +6622,12 @@ async function exportBilanPDF() {
       doc.setFillColor(240,240,240);
       doc.rect(0, 287, 210, 10, 'F');
       doc.setFontSize(7.5); doc.setTextColor(130,130,130); doc.setFont('helvetica','normal');
-      doc.text('InvestIQ — Bilan Financier Premium — Confidentiel', margin, 293);
+      doc.text('Kapitaro — Bilan Financier Premium — Confidentiel', margin, 293);
       doc.text(`Page ${i}/${totalPages}`, pageW - margin, 293, {align:'right'});
     }
 
     // ── Sauvegarde ──
-    const filename = `InvestIQ_Bilan_${now.toLocaleDateString('fr-FR').replace(/\//g,'-')}.pdf`;
+    const filename = `Kapitaro_Bilan_${now.toLocaleDateString('fr-FR').replace(/\//g,'-')}.pdf`;
     doc.save(filename);
 
   } catch(err) {
@@ -6793,7 +6793,7 @@ async function checkAndGenerateNotifications() {
   const hasHigh = notifications.find(n=>n.impact==='high');
   if (notifications.length > 0) document.getElementById('notif-dot').classList.add('show');
   if (hasHigh && 'Notification' in window && Notification.permission==='granted') {
-    new Notification('InvestIQ — Alerte importante', { body: hasHigh.texte, icon:'/icons/icon-192.png' });
+    new Notification('Kapitaro — Alerte importante', { body: hasHigh.texte, icon:'/icons/icon-192.png' });
   }
 }
 const NOTIF_NAV = {
@@ -7248,7 +7248,7 @@ Réponds UNIQUEMENT en JSON valide sans backticks :
 {"verdict":"alléger|vendre|garder","raison":"1 à 2 phrases chiffrées, tutoiement","remplacement":{"ticker":"IWDA.L","name":"iShares Core MSCI World","raison":"max 12 mots"}}
 Pour "remplacement", propose un actif plus diversifié cohérent avec sa cible (souvent un ETF monde) ; si verdict "garder", mets remplacement à null.`;
   try {
-    const raw = await callClaude(prompt, "Tu es InvestIQ, copilote financier prudent. Tu ne fournis pas de conseil réglementé. Réponds UNIQUEMENT en JSON valide.", 600, HAIKU_MODEL);
+    const raw = await callClaude(prompt, "Tu es Kapitaro, copilote financier prudent. Tu ne fournis pas de conseil réglementé. Réponds UNIQUEMENT en JSON valide.", 600, HAIKU_MODEL);
     if (callClaudeFailed(raw)) return null;
     const clean = raw.replace(/```json|```/g, '').trim();
     const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
@@ -7600,7 +7600,7 @@ async function generatePosSignal(p) {
   const pnl = (p.price - p.pru) / p.pru * 100;
   const isAction = p.type === 'Action' || p.type === 'action';
 
-  const prompt = `Tu es le copilote financier IA d'InvestIQ. Analyse cette position pour un investisseur ${RL[profile.risk]}, horizon ${HL[profile.horizon]}.
+  const prompt = `Tu es le copilote financier IA de Kapitaro. Analyse cette position pour un investisseur ${RL[profile.risk]}, horizon ${HL[profile.horizon]}.
 TON : tutoiement, direct et chaleureux, concret et chiffré, jamais alarmiste. Assume tes conclusions ("À ta place, je...").
 
 Position : ${p.name} (${p.type})
@@ -7805,7 +7805,7 @@ function exportPDF() {
   const ti=positions.reduce((a,p)=>a+p.qty*p.pru,0);
   const tpnl=tv-ti, tpct=ti?tpnl/ti*100:0;
   const rows=positions.map(p=>{const val=p.qty*p.price,pnl=val-p.qty*p.pru,pct=p.qty*p.pru?pnl/(p.qty*p.pru)*100:0;return`<tr><td>${p.name}</td><td>${p.type}</td><td>${p.qty}</td><td>${fmt(p.pru)}€</td><td>${fmt(p.price)}€</td><td>${fmt(val)}€</td><td style="color:${pnl>=0?'#1a7f5a':'#ff3b30'}">${pnl>=0?'+':''}${pct.toFixed(1)}%</td></tr>`;}).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>InvestIQ — Rapport</title><style>body{font-family:-apple-system,sans-serif;padding:40px;color:#1c1c1e}h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px}p{color:#8e8e93}table{width:100%;border-collapse:collapse;margin-top:24px}th{text-align:left;padding:10px;background:#f2f2f7;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#8e8e93}td{padding:12px 10px;border-bottom:1px solid #f2f2f7;font-size:14px}.summary{display:flex;gap:24px;margin:24px 0}.metric{background:#f2f2f7;border-radius:14px;padding:16px;min-width:140px}.metric-label{font-size:11px;color:#8e8e93;text-transform:uppercase;font-weight:700;margin-bottom:6px}.metric-val{font-size:22px;font-weight:800}</style></head><body><h1>InvestIQ</h1><p>Rapport du ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</p><div class="summary"><div class="metric"><div class="metric-label">Valeur totale</div><div class="metric-val">${fmtK(tv)}</div></div><div class="metric"><div class="metric-label">Total investi</div><div class="metric-val">${fmtK(ti)}</div></div><div class="metric"><div class="metric-label">Plus-value</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div></div><div class="metric"><div class="metric-label">Performance</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${tpct.toFixed(2)}%</div></div></div><table><thead><tr><th>Actif</th><th>Type</th><th>Qté</th><th>PRU</th><th>Prix actuel</th><th>Valeur</th><th>+/-</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kapitaro — Rapport</title><style>body{font-family:-apple-system,sans-serif;padding:40px;color:#1c1c1e}h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px}p{color:#8e8e93}table{width:100%;border-collapse:collapse;margin-top:24px}th{text-align:left;padding:10px;background:#f2f2f7;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#8e8e93}td{padding:12px 10px;border-bottom:1px solid #f2f2f7;font-size:14px}.summary{display:flex;gap:24px;margin:24px 0}.metric{background:#f2f2f7;border-radius:14px;padding:16px;min-width:140px}.metric-label{font-size:11px;color:#8e8e93;text-transform:uppercase;font-weight:700;margin-bottom:6px}.metric-val{font-size:22px;font-weight:800}</style></head><body><h1>Kapitaro</h1><p>Rapport du ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</p><div class="summary"><div class="metric"><div class="metric-label">Valeur totale</div><div class="metric-val">${fmtK(tv)}</div></div><div class="metric"><div class="metric-label">Total investi</div><div class="metric-val">${fmtK(ti)}</div></div><div class="metric"><div class="metric-label">Plus-value</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div></div><div class="metric"><div class="metric-label">Performance</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${tpct.toFixed(2)}%</div></div></div><table><thead><tr><th>Actif</th><th>Type</th><th>Qté</th><th>PRU</th><th>Prix actuel</th><th>Valeur</th><th>+/-</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
   const win=window.open('','_blank');
   win.document.write(html);
   win.document.close();
@@ -8321,7 +8321,7 @@ async function generateObjPlan() {
     </div>`;
 
   const portfolioCtx = positions.length ? `Portefeuille actuel : ${positions.map(p=>`${p.name}(${p.type},${p.qty}parts,PRU ${p.pru}€)`).join(', ')}.` : 'Pas encore de positions.';
-  const prompt = `Tu es le copilote financier IA d'InvestIQ (tutoiement, ton chaleureux et concret). Génère un plan d'investissement ultra-personnalisé, formulé comme un ami compétent qui explique simplement.
+  const prompt = `Tu es le copilote financier IA de Kapitaro (tutoiement, ton chaleureux et concret). Génère un plan d'investissement ultra-personnalisé, formulé comme un ami compétent qui explique simplement.
 
 PROFIL :
 - Capital de départ : ${fmtK(capital)}
@@ -9115,7 +9115,7 @@ async function analyseDecision() {
   const intent = decisionIntention || 'garder';
   const intentTxt = { acheter: 'acheter ou renforcer', vendre: 'vendre ou réduire', garder: 'savoir quoi faire' }[intent];
 
-  const prompt = `Tu es le copilote financier IA d'InvestIQ, chaleureux et direct (tutoiement). L'utilisateur veut ${intentTxt} ${name}.
+  const prompt = `Tu es le copilote financier IA de Kapitaro, chaleureux et direct (tutoiement). L'utilisateur veut ${intentTxt} ${name}.
 Commence par reconnaître ce qui est sensé dans son idée, puis donne ton avis franc, concret et chiffré — comme un ami compétent, jamais alarmiste.
 ${posCtx}
 Montant envisagé : ${amt}€ (${pct}% de sa bankroll de ${profile.bankroll}€).
@@ -9509,7 +9509,7 @@ function callClaudeFailed(text) { return KNOWN_CALLCLAUDE_FAILURES.includes(text
 function aiLockedStateHTML(text) {
   return `<div style="text-align:center;padding:40px 20px;color:#8e8e93">
     <div style="font-size:32px;margin-bottom:10px">🔒</div>
-    <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Réservé aux comptes InvestIQ</div>
+    <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Réservé aux comptes Kapitaro</div>
     <div style="font-size:13px;margin-bottom:16px">${text || "Connecte-toi pour accéder à l'analyse IA."}</div>
     <button onclick="showAuthScreen('signup')" style="background:#1a7f5a;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">✨ Créer un compte gratuit</button>
   </div>`;
@@ -9621,7 +9621,7 @@ function premiumLockedStateHTML(featureName, text) {
 }
 
 async function callClaude(prompt,sys,maxTokens,model,opts){
-  const system=sys||('Tu es le copilote financier IA d\'InvestIQ, pour investisseurs particuliers francophones.\n'+AI_PERSONA);
+  const system=sys||('Tu es le copilote financier IA de Kapitaro, pour investisseurs particuliers francophones.\n'+AI_PERSONA);
   try{
     // Récupère le token de session Supabase (requis par l'API sécurisée)
     let token = null;
@@ -9630,7 +9630,7 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
       token = data?.session?.access_token || null;
     } catch {}
     if (!token) {
-      return "🔒 Connecte-toi pour utiliser l'assistant IA. L'accès à l'IA est réservé aux comptes InvestIQ.";
+      return "🔒 Connecte-toi pour utiliser l'assistant IA. L'accès à l'IA est réservé aux comptes Kapitaro.";
     }
     const body = { prompt, system };
     if (maxTokens) body.max_tokens = maxTokens;
@@ -9862,7 +9862,7 @@ function renderRecoHistory() {
 
 
 // ═══════════════════════════════════════════════════════════
-//  ⭐ QUE FERAIT INVESTIQ ? — Fonctionnalité signature
+//  ⭐ QUE FERAIT KAPITARO ? — Fonctionnalité signature
 //  L'IA prend position sur chaque ligne du portefeuille.
 //  Généré par Claude (pas des règles), cache 24h, décisions
 //  enregistrées dans le tracking de fiabilité (J+7).
@@ -9878,7 +9878,7 @@ function getCachedVerdict() {
   } catch { return null; }
 }
 
-async function generateInvestIQVerdict(force = false) {
+async function generateKapitaroVerdict(force = false) {
   const el = document.getElementById('agent-verdict');
   if (!el || !positions.length) { if (el) el.innerHTML = ''; return; }
 
@@ -9911,7 +9911,7 @@ async function generateInvestIQVerdict(force = false) {
 ${lines.map(l => `- ${l.name} (${l.ticker}, ${l.type||'?'}) : ${l.weightPct.toFixed(0)}% du portefeuille, P&L ${l.pnlPct>=0?'+':''}${l.pnlPct.toFixed(1)}%`).join('\n')}
 ${objChartTarget > 0 ? `Objectif : ${fmtK(objChartTarget)} — ${Math.min(tv/objChartTarget*100,100).toFixed(0)}% atteint.` : ''}
 
-EXERCICE "QUE FERAIT INVESTIQ ?" : à titre pédagogique, pour chaque ligne, identifie le critère objectif le plus pertinent (concentration, valorisation, poids dans l'objectif...) et le signal qu'il indique généralement — sans jamais formuler d'instruction destinée à l'utilisateur. Distingue toujours le constat chiffré de l'hypothèse d'école. Sois sélectif : la plupart des lignes n'appellent aucun signal fort — ne signale renforcer/reduire/vendre que si le critère le justifie clairement.
+EXERCICE "QUE FERAIT KAPITARO ?" : à titre pédagogique, pour chaque ligne, identifie le critère objectif le plus pertinent (concentration, valorisation, poids dans l'objectif...) et le signal qu'il indique généralement — sans jamais formuler d'instruction destinée à l'utilisateur. Distingue toujours le constat chiffré de l'hypothèse d'école. Sois sélectif : la plupart des lignes n'appellent aucun signal fort — ne signale renforcer/reduire/vendre que si le critère le justifie clairement.
 
 Réponds UNIQUEMENT en JSON valide, sans backticks :
 {
@@ -9925,7 +9925,7 @@ Réponds UNIQUEMENT en JSON valide, sans backticks :
 Les impacts sont des estimations en points de % si l'ensemble de ces signaux était suivi (risque négatif = risque réduit).`;
 
   try {
-    const raw = await callClaude(prompt, `Tu es InvestIQ, copilote financier IA à visée pédagogique. Tu es direct et tu assumes des signaux clairs — c'est ta signature — mais tu les formules toujours comme l'explication d'un critère objectif, jamais comme une instruction personnelle à suivre ("je vendrais" devient "signal de vente : concentration à 28%").\n${AI_PERSONA}\nRéponds UNIQUEMENT en JSON valide sans backticks ni texte autour.`);
+    const raw = await callClaude(prompt, `Tu es Kapitaro, copilote financier IA à visée pédagogique. Tu es direct et tu assumes des signaux clairs — c'est ta signature — mais tu les formules toujours comme l'explication d'un critère objectif, jamais comme une instruction personnelle à suivre ("je vendrais" devient "signal de vente : concentration à 28%").\n${AI_PERSONA}\nRéponds UNIQUEMENT en JSON valide sans backticks ni texte autour.`);
     const clean = raw.replace(/```json|```/g,'').trim();
     const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
     if (!data.decisions?.length) throw new Error('empty');
@@ -9963,7 +9963,7 @@ function renderVerdictLoading() {
   <div style="background:linear-gradient(135deg,#0c1220,#131a2e);border:1px solid rgba(99,102,241,0.25);border-radius:18px;padding:18px 20px;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:10px">
       <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-      <span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:600">InvestIQ analyse ton portefeuille et prend position...</span>
+      <span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:600">Kapitaro analyse ton portefeuille et prend position...</span>
     </div>
   </div>`;
 }
@@ -9974,8 +9974,8 @@ function renderVerdictError() {
   if (aiJustHitQuota()) { el.innerHTML = `<div style="margin-bottom:10px">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
   el.innerHTML = `
   <div style="background:linear-gradient(135deg,#0c1220,#131a2e);border:1px solid rgba(99,102,241,0.25);border-radius:18px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px">
-    <span style="font-size:12px;color:rgba(255,255,255,0.5)">Le verdict InvestIQ n'a pas pu être généré.</span>
-    <button onclick="generateInvestIQVerdict(true)" style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;font-size:11px;font-weight:700;padding:7px 13px;border-radius:9px;cursor:pointer">Réessayer</button>
+    <span style="font-size:12px;color:rgba(255,255,255,0.5)">Le verdict Kapitaro n'a pas pu être généré.</span>
+    <button onclick="generateKapitaroVerdict(true)" style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;font-size:11px;font-weight:700;padding:7px 13px;border-radius:9px;cursor:pointer">Réessayer</button>
   </div>`;
 }
 
@@ -10008,11 +10008,11 @@ function renderVerdict(data, ts) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:relative">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:7px;letter-spacing:0.03em">⭐ SIGNATURE</span>
-        <span style="font-size:14px;font-weight:900;color:#fff">Que ferait InvestIQ ?</span>
+        <span style="font-size:14px;font-weight:900;color:#fff">Que ferait Kapitaro ?</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:9px;color:rgba(255,255,255,0.3)">${when}</span>
-        <button onclick="generateInvestIQVerdict(true)" title="Actualiser" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button>
+        <button onclick="generateKapitaroVerdict(true)" title="Actualiser" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button>
       </div>
     </div>
 
@@ -10068,7 +10068,7 @@ function showCSVHelp() {
   overlay.innerHTML = `
     <div style="background:${surf};border-radius:20px;padding:24px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto">
       <div style="font-size:19px;font-weight:800;color:${txt};margin-bottom:5px">📥 Importer tes positions</div>
-      <div style="font-size:13px;color:${sub};line-height:1.55;margin-bottom:18px">Au lieu de saisir chaque ligne à la main, importe le fichier d'export de ton courtier : InvestIQ ajoutera automatiquement toutes tes positions avec leurs quantités et prix d'achat.</div>
+      <div style="font-size:13px;color:${sub};line-height:1.55;margin-bottom:18px">Au lieu de saisir chaque ligne à la main, importe le fichier d'export de ton courtier : Kapitaro ajoutera automatiquement toutes tes positions avec leurs quantités et prix d'achat.</div>
 
       <!-- Trade Republic -->
       <div style="background:${bg};border:1px solid ${bord};border-radius:14px;padding:14px 16px;margin-bottom:10px">
@@ -10096,7 +10096,7 @@ function showCSVHelp() {
       </div>
 
       <div style="font-size:11px;color:${sub};background:${bg};border-radius:10px;padding:10px 13px;margin-bottom:16px;line-height:1.5">
-        💡 Formats acceptés : <strong style="color:${txt}">.csv</strong> de n'importe quel courtier. InvestIQ détecte tout seul les colonnes (nom, quantité, prix d'achat). Tu verras un aperçu et pourras décocher ce que tu ne veux pas avant de valider — rien n'est importé sans ton accord.
+        💡 Formats acceptés : <strong style="color:${txt}">.csv</strong> de n'importe quel courtier. Kapitaro détecte tout seul les colonnes (nom, quantité, prix d'achat). Tu verras un aperçu et pourras décocher ce que tu ne veux pas avant de valider — rien n'est importé sans ton accord.
       </div>
 
       <div style="display:flex;gap:10px">
@@ -10591,7 +10591,7 @@ const LEGAL_DOCS = {
 <p class="legal-date">Dernière mise à jour : {{LEGAL_DATE}}</p>
 
 <h3>Article 1 — Éditeur du service</h3>
-<p>Le service InvestIQ est édité par [[NOM / RAISON SOCIALE]], [[FORME JURIDIQUE — ex: micro-entreprise, SASU]], immatriculée sous le numéro SIREN [[SIREN]], dont le siège est situé [[ADRESSE COMPLÈTE]].</p>
+<p>Le service Kapitaro est édité par [[NOM / RAISON SOCIALE]], [[FORME JURIDIQUE — ex: micro-entreprise, SASU]], immatriculée sous le numéro SIREN [[SIREN]], dont le siège est situé [[ADRESSE COMPLÈTE]].</p>
 <p>Directeur de la publication : [[PRÉNOM NOM]]<br>Contact : [[EMAIL DE CONTACT]]</p>
 
 <h3>Article 2 — Hébergement</h3>
@@ -10599,11 +10599,11 @@ const LEGAL_DOCS = {
 <p>Les données des utilisateurs sont stockées par Supabase Inc. sur des serveurs situés dans l'Union européenne.</p>
 
 <h3>Article 3 — Propriété intellectuelle</h3>
-<p>L'ensemble des éléments composant InvestIQ (marque, interface, textes, code) est protégé par le droit de la propriété intellectuelle et demeure la propriété exclusive de l'éditeur. Toute reproduction ou exploitation non autorisée est interdite.</p>
+<p>L'ensemble des éléments composant Kapitaro (marque, interface, textes, code) est protégé par le droit de la propriété intellectuelle et demeure la propriété exclusive de l'éditeur. Toute reproduction ou exploitation non autorisée est interdite.</p>
 
 <h3>Article 4 — Statut réglementaire</h3>
-<p><strong>InvestIQ n'est pas un prestataire de services d'investissement.</strong> Le service ne dispose pas du statut de Conseiller en Investissements Financiers (CIF) et n'est enregistré ni auprès de l'ORIAS, ni agréé par l'Autorité des Marchés Financiers (AMF).</p>
-<p>InvestIQ est un <strong>outil pédagogique d'aide à la décision</strong>. Les analyses, scores et suggestions générés — y compris par intelligence artificielle — constituent des informations à caractère général et non des recommandations personnalisées au sens de l'article D. 321-1 du Code monétaire et financier.</p>
+<p><strong>Kapitaro n'est pas un prestataire de services d'investissement.</strong> Le service ne dispose pas du statut de Conseiller en Investissements Financiers (CIF) et n'est enregistré ni auprès de l'ORIAS, ni agréé par l'Autorité des Marchés Financiers (AMF).</p>
+<p>Kapitaro est un <strong>outil pédagogique d'aide à la décision</strong>. Les analyses, scores et suggestions générés — y compris par intelligence artificielle — constituent des informations à caractère général et non des recommandations personnalisées au sens de l'article D. 321-1 du Code monétaire et financier.</p>
 `
   },
 
@@ -10614,10 +10614,10 @@ const LEGAL_DOCS = {
 <p class="legal-date">Dernière mise à jour : {{LEGAL_DATE}}</p>
 
 <h3>Article 1 — Objet</h3>
-<p>Les présentes conditions régissent l'accès et l'utilisation d'InvestIQ, application de suivi de portefeuille et d'aide à la décision d'investissement. La création d'un compte vaut acceptation pleine et entière des présentes conditions.</p>
+<p>Les présentes conditions régissent l'accès et l'utilisation de Kapitaro, application de suivi de portefeuille et d'aide à la décision d'investissement. La création d'un compte vaut acceptation pleine et entière des présentes conditions.</p>
 
 <h3>Article 2 — Nature du service et avertissement</h3>
-<p><strong>InvestIQ ne fournit aucun conseil en investissement personnalisé.</strong> L'application propose des analyses automatisées et des contenus générés par intelligence artificielle à visée informative et pédagogique.</p>
+<p><strong>Kapitaro ne fournit aucun conseil en investissement personnalisé.</strong> L'application propose des analyses automatisées et des contenus générés par intelligence artificielle à visée informative et pédagogique.</p>
 <p>L'utilisateur reconnaît expressément ce qui suit :</p>
 <ul>
 <li>toute décision d'investissement relève de sa seule responsabilité ;</li>
@@ -10665,7 +10665,7 @@ const LEGAL_DOCS = {
 <li><strong>Profil d'investisseur :</strong> capital disponible, horizon, tolérance au risque, objectifs.</li>
 <li><strong>Portefeuille :</strong> actifs détenus, quantités, prix d'achat, plateformes.</li>
 <li><strong>Usage :</strong> conversations avec l'assistant IA, recommandations générées et leur suivi.</li>
-<li><strong>Paiement :</strong> traité exclusivement par Stripe — aucune donnée bancaire n'est stockée par InvestIQ.</li>
+<li><strong>Paiement :</strong> traité exclusivement par Stripe — aucune donnée bancaire n'est stockée par Kapitaro.</li>
 </ul>
 
 <h3>Article 3 — Finalités et bases légales</h3>
@@ -10688,7 +10688,7 @@ const LEGAL_DOCS = {
 <p>Vous pouvez introduire une réclamation auprès de la CNIL (www.cnil.fr).</p>
 
 <h3>Article 7 — Cookies et traceurs</h3>
-<p>InvestIQ n'utilise <strong>aucun cookie publicitaire ni traceur tiers</strong>. Seul le stockage local strictement nécessaire au fonctionnement (session, préférences d'affichage, cache) est utilisé — il ne requiert pas de consentement préalable.</p>
+<p>Kapitaro n'utilise <strong>aucun cookie publicitaire ni traceur tiers</strong>. Seul le stockage local strictement nécessaire au fonctionnement (session, préférences d'affichage, cache) est utilisé — il ne requiert pas de consentement préalable.</p>
 `
   },
 
@@ -10713,7 +10713,7 @@ const LEGAL_DOCS = {
 </ul>
 
 <h3>Article 2 — Recommandation préalable</h3>
-<p>Pour toute recommandation tenant compte de sa situation personnelle, patrimoniale et fiscale, l'utilisateur est invité à consulter un Conseiller en Investissements Financiers enregistré auprès de l'ORIAS. InvestIQ constitue un outil de compréhension et d'organisation ; la décision d'investissement demeure celle de l'utilisateur.</p>
+<p>Pour toute recommandation tenant compte de sa situation personnelle, patrimoniale et fiscale, l'utilisateur est invité à consulter un Conseiller en Investissements Financiers enregistré auprès de l'ORIAS. Kapitaro constitue un outil de compréhension et d'organisation ; la décision d'investissement demeure celle de l'utilisateur.</p>
 `
   },
 };
@@ -10732,14 +10732,14 @@ function openLegalDoc(key) {
     <div class="legal-doc" style="max-width:740px;width:100%;max-height:90vh;display:flex;flex-direction:column;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,0.45)">
       <div class="legal-doc-head">
         <div>
-          <div class="legal-doc-brand">InvestIQ</div>
+          <div class="legal-doc-brand">Kapitaro</div>
           <div class="legal-doc-title">${doc.title}</div>
         </div>
         <button onclick="document.getElementById('legal-modal').remove()" class="legal-doc-close" aria-label="Fermer">×</button>
       </div>
       <div class="legal-doc-body">${doc.content.replace(/\{\{LEGAL_DATE\}\}/g, legalDateFR())}</div>
       <div class="legal-doc-foot">
-        <span>Document contractuel — InvestIQ</span>
+        <span>Document contractuel — Kapitaro</span>
         <button onclick="document.getElementById('legal-modal').remove()">Fermer</button>
       </div>
     </div>`;
@@ -10773,7 +10773,7 @@ function showLegalAcceptance() {
       </div>
       <div style="padding:22px 24px">
         <div style="font-size:13.5px;color:${sub};line-height:1.6;margin-bottom:18px">
-          InvestIQ est un <strong style="color:${txt}">outil d'aide à la décision</strong>, pas un conseiller financier agréé. Les analyses générées par l'IA sont informatives et peuvent comporter des erreurs.
+          Kapitaro est un <strong style="color:${txt}">outil d'aide à la décision</strong>, pas un conseiller financier agréé. Les analyses générées par l'IA sont informatives et peuvent comporter des erreurs.
           <br><br>
           <strong style="color:${txt}">Investir comporte un risque de perte en capital.</strong> Chaque décision relève de ta seule responsabilité.
         </div>
@@ -10825,7 +10825,7 @@ async function exportMyData() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `investiq-mes-donnees-${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `kapitaro-mes-donnees-${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('✓ Tes données ont été exportées');
@@ -11264,7 +11264,7 @@ async function sendAI() {
   const ctx = getFullContext();
   const histCtx = chatHistory.slice(-8).map(m => `${m.role==='user'?'Utilisateur':'Assistant'}: ${m.content}`).join('\n');
 
-  let systemPrompt = `Tu es l'Agent IA d'InvestIQ, le copilote financier personnel de cet utilisateur. Tu connais son portefeuille, ses objectifs, son profil et, s'il existe, son DERNIER BILAN PATRIMONIAL complet (contexte ci-dessous : utilise-le pour le résumer, l'expliquer ou ajuster son plan, sans jamais inventer un élément qui n'y figure pas) — appuie-toi dessus pour personnaliser chaque réponse.
+  let systemPrompt = `Tu es l'Agent IA de Kapitaro, le copilote financier personnel de cet utilisateur. Tu connais son portefeuille, ses objectifs, son profil et, s'il existe, son DERNIER BILAN PATRIMONIAL complet (contexte ci-dessous : utilise-le pour le résumer, l'expliquer ou ajuster son plan, sans jamais inventer un élément qui n'y figure pas) — appuie-toi dessus pour personnaliser chaque réponse.
 
 ${AI_PERSONA}
 
@@ -11392,11 +11392,11 @@ function initAgent(auto=false) {
       renderRecoHistory();
     } catch(e) { console.warn('recoHistory:', e); }
   })();
-  // ⭐ Verdict signature "Que ferait InvestIQ ?" (cache 24h) — sauté si restauration silencieuse et cache absent
+  // ⭐ Verdict signature "Que ferait Kapitaro ?" (cache 24h) — sauté si restauration silencieuse et cache absent
   // Portefeuille vide : on affiche l'exemple fictif, aucun appel IA ni rendu concurrent
   const hasReal = positions.length > 0 && isPremiumUser();   // IA automatique : Premium uniquement
   if (hasReal && (!auto || getCachedVerdict())) {
-    try { generateInvestIQVerdict(); } catch(e) { console.warn('verdict:', e); }
+    try { generateKapitaroVerdict(); } catch(e) { console.warn('verdict:', e); }
   }
   // Alertes intelligentes : règles chiffrées + conseil IA (Premium, en cache 7 jours)
   if (hasReal && !auto) { try { renderSmartAlerts('agent-smart-alerts'); } catch(e) { console.warn('smartAlerts:', e); } }
@@ -12044,7 +12044,7 @@ function renderNextPlanCard(offerNow) {
     <span style="width:38px;height:38px;border-radius:11px;background:rgba(99,102,241,0.12);color:#6366f1;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
     <div style="flex:1;min-width:220px">
       <div style="font-size:13.5px;font-weight:800;color:var(--color-text,#1c1c1e)">Ton prochain plan mensuel : ${nextLabel} <span style="font-weight:600;color:var(--color-text-secondary,#71717a)">(dans ${days} jour${days > 1 ? 's' : ''})</span></div>
-      <div style="font-size:12px;color:var(--color-text-secondary,#71717a);line-height:1.55;margin-top:3px">Chaque mois, InvestIQ prépare un nouveau plan : il répartit tes ${fmtI(budget)} € du mois entre actions et ETF, selon ta cible ${objStockPct} % / ${100 - objStockPct} % et ce que tu détiens déjà. Il t'attendra ici dès le ${nextLabel}.</div>
+      <div style="font-size:12px;color:var(--color-text-secondary,#71717a);line-height:1.55;margin-top:3px">Chaque mois, Kapitaro prépare un nouveau plan : il répartit tes ${fmtI(budget)} € du mois entre actions et ETF, selon ta cible ${objStockPct} % / ${100 - objStockPct} % et ce que tu détiens déjà. Il t'attendra ici dès le ${nextLabel}.</div>
       ${has ? `<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:8px">✓ Ton plan de ${monthLabel()} est affiché ci-dessus.</div>` : ''}
     </div>
     ${offerNow && !has ? `<button id="obj-plan-now-btn" onclick="requestMonthlyPlanNow()" style="background:#6366f1;color:#fff;border:none;border-radius:10px;padding:10px 14px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;align-self:center">Je veux aussi un plan pour ${monthLabel()}</button>` : ''}

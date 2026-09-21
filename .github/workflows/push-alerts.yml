@@ -2,7 +2,7 @@
 # (Sur l'offre gratuite de Vercel, un cron ne peut tourner qu'une fois par jour.)
 # À configurer une fois : GitHub > Settings > Secrets and variables > Actions > New repository secret
 #   CRON_SECRET  = la même valeur que la variable CRON_SECRET de Vercel   (obligatoire)
-#   APP_URL      = https://investiq-kappa.vercel.app                      (facultatif : c'est la valeur par défaut)
+#   APP_URL      = https://kapitaro.fr                                    (facultatif : c'est la valeur par défaut)
 name: Alertes de prix
 on:
   schedule:
@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Vérifier les seuils d'alerte
         run: |
-          APP_URL="$(echo "${APP_URL:-https://investiq-kappa.vercel.app}" | tr -d '[:space:]')"
+          APP_URL="$(echo "${APP_URL:-https://kapitaro.fr}" | tr -d '[:space:]')"
           APP_URL="${APP_URL%/}"
           if [ -z "$CRON_SECRET" ]; then
             echo "::error::Le secret CRON_SECRET est absent. GitHub > Settings > Secrets and variables > Actions > New repository secret."

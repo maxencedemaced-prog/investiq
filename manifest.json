@@ -1,6 +1,6 @@
 {
-  "name": "InvestIQ — Ton assistant investissement",
-  "short_name": "InvestIQ",
+  "name": "Kapitaro — Ton assistant investissement",
+  "short_name": "Kapitaro",
   "description": "Gère ton portefeuille, suis les actualités économiques et prends de meilleures décisions d'investissement.",
   "start_url": "/",
   "display": "standalone",
