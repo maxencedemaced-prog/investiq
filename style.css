@@ -1816,3 +1816,6 @@ body, .card, .metric-card, .pos-card, .news-item, .topbar, .sidebar,
 
 /* Agent IA : aperçu d'exemple (portefeuille fictif) — lisible mais non interactif */
 .agent-sample{pointer-events:none;user-select:none;-webkit-user-select:none}
+
+/* Cases à cocher et boutons radio : la règle globale « input{width:100%} » ne doit pas les étirer */
+input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; background: none; border-radius: 0; }

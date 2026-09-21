@@ -5451,6 +5451,37 @@ function bilanPrev(step) {
   if (step > 0) renderBilanStep(step - 1);
 }
 
+// ── Icônes du questionnaire Bilan (SVG, à la place des emojis) ──
+const BILAN_ICONS = {
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  card: '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
+  bank: '<path d="M3 21h18"/><path d="M5 21V10"/><path d="M9 21V10"/><path d="M15 21V10"/><path d="M19 21V10"/><path d="M12 3 2 9h20z"/>',
+  chart: '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>',
+  target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  scale: '<path d="M12 3v18"/><path d="M6 21h12"/><path d="M5 7h14"/><path d="M5 7l-3 7a3 3 0 0 0 6 0z"/><path d="M19 7l-3 7a3 3 0 0 0 6 0z"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  dollar: '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  up: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+  down: '<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>',
+  flag: '<path d="M4 22V4"/><path d="M4 4h13l-2 4 2 4H4"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  minus: '<circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>',
+  pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+};
+const bilanIco = (name, size = 20, color = 'currentColor') => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">${BILAN_ICONS[name] || ''}</svg>`;
+const bilanBadge = name => `<div style="width:44px;height:44px;border-radius:12px;background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.25);display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:#3fb950">${bilanIco(name, 22)}</div>`;
+// Réaction au scénario de perte : met à jour l'aspect des cartes au clic
+function bilanPickReaction(input) {
+  document.querySelectorAll('label[data-reaction]').forEach(l => {
+    const on = l.contains(input) && input.checked;
+    const c = l.dataset.color;
+    l.style.borderColor = on ? c : 'var(--color-border, rgba(128,128,128,0.3))';
+    l.style.background = on ? c + '1f' : 'transparent';
+  });
+}
+
 function renderBilanStep(step) {
   bilanStep = step;
   updateBilanProgress(step);
@@ -5477,7 +5508,7 @@ function renderBilanStep(step) {
 
   const steps = {
     0: `
-      <div style="font-size:22px;margin-bottom:6px">👤</div>
+      ${bilanBadge("user")}
       <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Ta situation personnelle</div>
       <div style="font-size:13px;color:${sub};margin-bottom:24px">Ces informations nous permettent de personnaliser ton plan.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
@@ -5519,7 +5550,7 @@ function renderBilanStep(step) {
       ${btnRow(0)}`,
 
     1: `
-      <div style="font-size:22px;margin-bottom:6px">💳</div>
+      ${bilanBadge("card")}
       <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Revenus & charges</div>
       <div style="font-size:13px;color:${sub};margin-bottom:24px">Pour calculer ta capacité d'épargne réelle.</div>
       <div style="${sectionStyle}">
@@ -5550,12 +5581,12 @@ function renderBilanStep(step) {
         <button type="button" onclick="bilanLeaveTo('depenses')" style="background:none;border:none;color:${sub};font:inherit;font-size:13px;text-decoration:underline;cursor:pointer;padding:0;text-align:left">Pas sûr ? Analyse tes vraies dépenses →</button>
       </div>
       <div id="b-capacite-calc" style="padding:14px;background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.2);border-radius:12px;font-size:13px;color:${txt}">
-        💡 Remplis les champs pour voir ta capacité d'épargne calculée
+        Remplis les champs pour voir ta capacité d'épargne calculée
       </div>
       ${btnRow(1)}`,
 
     2: `
-      <div style="font-size:22px;margin-bottom:6px">🏦</div>
+      ${bilanBadge("bank")}
       <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Patrimoine existant</div>
       <div style="font-size:13px;color:${sub};margin-bottom:24px">Fais un état des lieux de ce que tu possèdes déjà.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
@@ -5590,7 +5621,7 @@ function renderBilanStep(step) {
       ${btnRow(2)}`,
 
     3: `
-      <div style="font-size:22px;margin-bottom:6px">📊</div>
+      ${bilanBadge("chart")}
       <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Tes habitudes d'investissement</div>
       <div style="font-size:13px;color:${sub};margin-bottom:24px">Pour comprendre ton niveau et adapter les recommandations.</div>
       <div style="${sectionStyle}">
@@ -5629,22 +5660,22 @@ function renderBilanStep(step) {
       ${btnRow(3)}`,
 
     4: `
-      <div style="font-size:22px;margin-bottom:6px">🎯</div>
+      ${bilanBadge("target")}
       <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Tes objectifs de vie</div>
       <div style="font-size:13px;color:${sub};margin-bottom:24px">Sélectionne tout ce qui correspond à ta situation.</div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px" id="b-objectifs-list">
         ${[
-          {id:'immo', icon:'🏠', label:'Acheter un bien immobilier', sub:'Résidence principale ou investissement locatif'},
-          {id:'retraite', icon:'🌴', label:'Préparer ma retraite', sub:'Compléter ma pension, retraite anticipée (FIRE)'},
-          {id:'revenus', icon:'💸', label:'Générer des revenus passifs', sub:'Dividendes, loyers, rentes mensuelles'},
-          {id:'capital', icon:'📈', label:'Faire grossir mon capital', sub:'Patrimoine long terme, transmission'},
-          {id:'projet', icon:'✈️', label:'Financer un projet précis', sub:'Voyage, études, création d\'entreprise'},
-          {id:'securite', icon:'🛡️', label:'Sécuriser mon épargne', sub:'Protéger contre l\'inflation'},
+          {id:'immo', icon:'home', label:'Acheter un bien immobilier', sub:'Résidence principale ou investissement locatif'},
+          {id:'retraite', icon:'clock', label:'Préparer ma retraite', sub:'Compléter ma pension, retraite anticipée (FIRE)'},
+          {id:'revenus', icon:'dollar', label:'Générer des revenus passifs', sub:'Dividendes, loyers, rentes mensuelles'},
+          {id:'capital', icon:'up', label:'Faire grossir mon capital', sub:'Patrimoine long terme, transmission'},
+          {id:'projet', icon:'flag', label:'Financer un projet précis', sub:'Voyage, études, création d\'entreprise'},
+          {id:'securite', icon:'shield', label:'Sécuriser mon épargne', sub:'Protéger contre l\'inflation'},
         ].map(o => `
         <label style="display:flex;align-items:center;gap:12px;padding:14px;background:${surf};border:1.5px solid ${bilanData.objectifs?.includes(o.id)?'#3fb950':bord};border-radius:12px;cursor:pointer;transition:all 0.15s">
           <input type="checkbox" id="b-obj-${o.id}" value="${o.id}" ${bilanData.objectifs?.includes(o.id)?'checked':''} style="width:18px;height:18px;accent-color:#3fb950;flex-shrink:0"
             onchange="this.closest('label').style.borderColor=this.checked?'#3fb950':'${bord}'">
-          <span style="font-size:20px">${o.icon}</span>
+          <span style="width:36px;height:36px;border-radius:10px;background:rgba(63,185,80,0.12);color:#3fb950;display:flex;align-items:center;justify-content:center;flex-shrink:0">${bilanIco(o.icon, 18)}</span>
           <div>
             <div style="font-size:14px;font-weight:700;color:${txt}">${o.label}</div>
             <div style="font-size:12px;color:${sub}">${o.sub}</div>
@@ -5654,22 +5685,23 @@ function renderBilanStep(step) {
       ${btnRow(4)}`,
 
     5: `
-      <div style="font-size:22px;margin-bottom:6px">⚖️</div>
+      ${bilanBadge("scale")}
       <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Tolérance au risque réelle</div>
       <div style="font-size:13px;color:${sub};margin-bottom:24px">Des scénarios concrets pour évaluer ta vraie tolérance.</div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
-        <div style="padding:16px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:12px;margin-bottom:6px">
-          <div style="font-size:13px;font-weight:600;color:#f87171;margin-bottom:12px">📉 Ton portefeuille perd <strong>20% en 1 mois</strong> (soit ${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.2)}). Tu...</div>
+        <div style="padding:16px;background:${surf};border:1px solid ${bord};border-radius:14px;margin-bottom:6px">
+          <div style="display:flex;align-items:flex-start;gap:10px;font-size:13.5px;font-weight:600;color:${txt};margin-bottom:14px;line-height:1.5"><span style="color:#f87171;margin-top:1px">${bilanIco('down', 18)}</span><span>Ton portefeuille perd <strong style="color:#f87171">20 % en 1 mois</strong> (soit ${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.2)}). Tu…</span></div>
           ${[
-            {val:'vendre_tout', label:'🚨 Je vends tout immédiatement', color:'#f87171'},
-            {val:'vendre_partiel', label:'😰 Je vends une partie pour limiter', color:'#f97316'},
-            {val:'attendre', label:'😐 J\'attends sans rien faire', color:'#f59e0b'},
-            {val:'tenir', label:'💪 Je tiens et reste investi', color:'#3fb950'},
-            {val:'renforcer', label:'🚀 J\'en profite pour renforcer', color:'#22c55e'},
+            {val:'vendre_tout', icon:'down', label:'Je vends tout immédiatement', color:'#f87171'},
+            {val:'vendre_partiel', icon:'minus', label:'Je vends une partie pour limiter', color:'#f97316'},
+            {val:'attendre', icon:'pause', label:'J\'attends sans rien faire', color:'#f59e0b'},
+            {val:'tenir', icon:'shield', label:'Je tiens et reste investi', color:'#3fb950'},
+            {val:'renforcer', icon:'up', label:'J\'en profite pour renforcer', color:'#22c55e'},
           ].map(r => `
-          <label style="display:flex;align-items:center;justify-content:flex-start;gap:10px;padding:10px 12px;background:${bilanData.reaction===r.val?r.color+'20':'transparent'};border-radius:8px;cursor:pointer;margin-bottom:4px;width:100%;text-align:left;box-sizing:border-box">
-            <input type="radio" name="b-reaction" value="${r.val}" ${bilanData.reaction===r.val?'checked':''} style="accent-color:${r.color};flex-shrink:0;margin:0">
-            <span style="font-size:13px;font-weight:600;color:${txt};flex:1;text-align:left">${r.label}</span>
+          <label data-reaction data-color="${r.color}" style="position:relative;display:flex;align-items:center;gap:12px;padding:11px 13px;border:1.5px solid ${bilanData.reaction===r.val?r.color:bord};background:${bilanData.reaction===r.val?r.color+'1f':'transparent'};border-radius:11px;cursor:pointer;margin-bottom:8px;box-sizing:border-box;transition:all .15s">
+            <input type="radio" name="b-reaction" value="${r.val}" ${bilanData.reaction===r.val?'checked':''} onchange="bilanPickReaction(this)" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px">
+            <span style="width:34px;height:34px;border-radius:9px;background:${r.color}22;color:${r.color};display:flex;align-items:center;justify-content:center;flex-shrink:0">${bilanIco(r.icon, 18)}</span>
+            <span style="font-size:13.5px;font-weight:600;color:${txt};flex:1;text-align:left">${r.label}</span>
           </label>`).join('')}
         </div>
         <div style="${sectionStyle}">
@@ -5686,7 +5718,7 @@ function renderBilanStep(step) {
       ${btnRow(5)}`,
 
     6: `
-      <div style="font-size:22px;margin-bottom:6px">📅</div>
+      ${bilanBadge("calendar")}
       <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Horizon & contraintes</div>
       <div style="font-size:13px;color:${sub};margin-bottom:24px">Pour adapter la stratégie à ta situation temporelle.</div>
       <div style="${sectionStyle}">
@@ -5769,9 +5801,9 @@ function calcCapaciteEpargne() {
     <div>
       <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:3px">Capacité d'épargne estimée</div>
       <div style="font-size:22px;font-weight:800;color:${color}">${capacite.toLocaleString('fr-FR')} €/mois</div>
-      <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">${pct}% de tes revenus · ${capacite > 200 ? '✅ Bonne capacité' : capacite > 0 ? '⚠️ Marge limitée' : '🔴 Budget serré'}</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">${pct}% de tes revenus · ${capacite > 200 ? 'Bonne capacité' : capacite > 0 ? 'Marge limitée' : 'Budget serré'}</div>
     </div>
-    <div style="font-size:32px">${capacite > 500 ? '💪' : capacite > 0 ? '⚖️' : '⚠️'}</div>
+    <div style="width:44px;height:44px;border-radius:12px;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center">${bilanIco(capacite > 500 ? 'up' : capacite > 0 ? 'scale' : 'down', 22)}</div>
   </div>`;
   el.style.borderColor = color + '40';
 }
