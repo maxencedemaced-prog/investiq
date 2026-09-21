@@ -6137,7 +6137,8 @@ async function syncBilanFromCloud() {
   } catch (e) { console.warn('bilan sync:', e); return false; }
 }
 function restartBilan() {
-  bilanData = {}; bilanStep = 0; window._bilanDraft = null;
+  // On repart de l'étape 1 en GARDANT les réponses précédentes (les champs sont pré-remplis) : refaire = modifier, pas tout ressaisir
+  bilanData = { ...(bilanData || {}) }; delete bilanData.precisions_done; bilanStep = 0; window._bilanDraft = null;
   renderBilanStep(0);
 }
 // Depuis la saisie en cours : retourner voir le dernier bilan (la saisie est mise de côté, pas perdue)

@@ -114,7 +114,7 @@ function bilanExtraHTML(r, T) {
     <div style="font-size:10.5px;color:${sub};margin-top:10px;line-height:1.5">Simulation avant frais et impôts, rendement non garanti. La rente théorique retire 4 % du capital par an (règle courante, sans épuiser le capital sur une longue période). Elle s'ajoute à ta pension de retraite légale, qui n'est pas calculée ici.</div>
   </div>` : '';
 
-  return diag + bxRiskHTML(r, _bxT) + bxObjectivesHTML(M, r) + bxPlanHTML(M, r) + bilanDeepHTML(r, _bxT) + loan + retire;
+  return bxChecksHTML(_bxT) + diag + bxRiskHTML(r, _bxT) + bxObjectivesHTML(M, r) + bxPlanHTML(M, r) + bilanDeepHTML(r, _bxT) + loan + retire;
 }
 
 function bxLoanCompute() {
@@ -183,6 +183,7 @@ function bilanPdfExtra(doc, y, margin, colW, r) {
   const line = (t, bold) => { const ls = doc.splitTextToSize(t, colW); need(ls.length * 4.2 + 2); doc.setFontSize(9); doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setTextColor(bold ? 20 : 70, bold ? 20 : 70, bold ? 20 : 70); doc.text(ls, margin, y); y += ls.length * 4.2 + 1.5; };
   const plain = s => String(s).replace(/[  ]/g, ' ').replace(/→/g, '->').replace(/[^\x20-\x7EÀ-ÿ€]/g, '');
   title('Analyse detaillee');
+  bxInputChecks().forEach(t => line(plain('A verifier dans tes reponses : ' + t), true));
   bxIndicators(M).forEach(i => line(plain(`${i[0]} : ${i[1]} - ${i[3]}`)));
   y += 3;
   const RP = bilanRiskProfile();
@@ -692,7 +693,7 @@ function bilanFactsText() {
   const pos = typeof positions !== 'undefined' ? positions : [], pv = pos.reduce((a, p) => a + p.qty * p.price, 0);
   return `CHIFFRES VÉRIFIÉS (calculés par l'application : utilise-les tels quels, ne fais AUCUNE somme toi-même et n'invente aucun autre chiffre) :
 - Taux d'épargne RÉEL : ${M.tauxEpargne != null ? M.tauxEpargne.toFixed(0) : '?'} % (${e(M.epargne)}/mois sur ${e(M.revenu)} de revenu). N'emploie l'expression « taux d'épargne » que pour cette valeur.
-- Capacité d'épargne théorique (revenu - loyer - crédits - charges fixes) : ${e(capa)}/mois${M.revenu ? ' (' + Math.round(capa / M.revenu * 100) + ' % du revenu, avant courses et sorties)' : ''}. Ce n'est PAS le taux d'épargne.
+- Capacité d'épargne théorique (revenu - loyer - crédits - charges fixes) : ${e(capa)}/mois${M.revenu ? ' (' + Math.round(capa / M.revenu * 100) + ' % du revenu, avant courses et sorties)' : ''}. Ce n'est PAS le taux d'épargne : ne dis jamais que l'utilisateur « épargne déjà » ce montant, son épargne réelle est de ${e(M.epargne)}/mois.
 - Poids logement + crédits : ${M.effort != null ? M.effort.toFixed(0) : '?'} % du revenu
 - Épargne de précaution : ${M.moisSecurite != null ? M.moisSecurite.toFixed(1) : '?'} mois de charges (livrets ${e(M.livret)})
 - Patrimoine total ${e(M.patrimoine)} : livrets ${e(M.livret)}, assurance vie ${e(M.av)}, PEA ${e(M.pea)}, bourse/CTO ${e(M.bourse)}, immobilier ${e(M.immo)}, autres ${e(M.autres)}
@@ -721,4 +722,40 @@ function bilanEnforceRisk(result) {
   }
   result.allocation_cible = alloc.filter(x => (Number(x.pct) || 0) > 0);
   result.allocation_ajustee = { de: Math.round(share), vers: Math.round(bxEquityShare(result.allocation_cible)), profil: P.label };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  POINTS À VÉRIFIER DANS LES RÉPONSES (contradictions détectées par le code, pas par l'IA)
+// ═══════════════════════════════════════════════════════════════
+function bxInputChecks() {
+  const d = bilanData || {}, P = d.precisions || {}, M = bilanMetrics(), out = [];
+  const objs = d.objectifs || [], n = (g, k) => parseFloat((P[g] || {})[k]) || 0, age = bxN('age');
+  const capa = M.revenu - M.loyer - M.credits - M.charges;
+  // Horizon déclaré court alors que les objectifs sont à long terme (cas vu en pratique : bride le profil de risque sans que l'utilisateur le sache)
+  const longObjs = [];
+  if (objs.includes('retraite') && age && (n('retraite', 'age') || 64) - age > 7) longObjs.push('la retraite');
+  if (objs.includes('capital') && n('capital', 'horizon') >= 7) longObjs.push('ton capital visé');
+  if (objs.includes('revenus') && n('revenus', 'horizon') >= 7) longObjs.push('tes revenus passifs');
+  if ((d.horizon === 'court' || d.horizon === 'moyen') && longObjs.length)
+    out.push(`Tu as déclaré un horizon d'investissement ${d.horizon === 'court' ? 'de moins de 3 ans' : 'de 3 à 7 ans'}, mais ${longObjs.join(', ')} ${longObjs.length > 1 ? 'sont' : 'est'} à plus de 7 ans. Cette réponse limite ton niveau de risque : si tes objectifs longs sont ta priorité, révise-la (étape « Horizon & contraintes »).`);
+  if (M.revenu && M.epargne > capa + 1)
+    out.push(`Tu déclares épargner ${bxE(M.epargne)}/mois, mais il ne te reste que ${bxE(Math.max(0, capa))}/mois après loyer, crédits et charges fixes : vérifie ces montants.`);
+  if (objs.includes('immo') && n('immo', 'prix') > 0 && n('immo', 'apport') > n('immo', 'prix'))
+    out.push('Ton apport pour l\'achat immobilier est supérieur au prix visé : vérifie ces deux montants.');
+  if (objs.includes('retraite') && n('retraite', 'pension') > 0 && n('retraite', 'revenu') > 0 && n('retraite', 'pension') >= n('retraite', 'revenu'))
+    out.push('Ta pension estimée couvre déjà le revenu souhaité à la retraite : cet objectif n\'a pas besoin d\'épargne supplémentaire.');
+  if (P.credits && parseFloat(P.credits.capital) > 0 && M.credits <= 0)
+    out.push('Tu indiques un capital restant dû sur un crédit, mais aucune mensualité de crédit à l\'étape « Revenus & charges » : les calculs d\'endettement en tiennent compte.');
+  if (M.revenu && M.loyer + M.credits + M.charges > M.revenu)
+    out.push('Tes charges dépassent ton revenu : le bilan ne peut pas calculer de capacité d\'épargne fiable. Vérifie tes montants.');
+  return out;
+}
+function bxChecksHTML(T) {
+  const { bord, txt, sub } = T || _bxT, list = bxInputChecks();
+  if (!list.length) return '';
+  return `<div style="background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.4);border-radius:16px;padding:16px 18px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:8px">À vérifier dans tes réponses</div>
+    ${list.map(t => `<div style="display:flex;gap:8px;font-size:12.5px;color:${txt};line-height:1.55;margin-bottom:5px"><span style="color:${bxWarn};flex-shrink:0">●</span><span>${_escHtml(t)}</span></div>`).join('')}
+    <div style="font-size:11px;color:${sub};margin-top:6px">Corrige-les avec « Refaire mon bilan » : tes réponses sont pré-remplies, tu n'as qu'à modifier celles qui sont fausses.</div>
+  </div>`;
 }
