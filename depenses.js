@@ -769,7 +769,7 @@ function depRenderResults() {
   <div style="${DEP_CARD}">
     <div style="font-size:15px;font-weight:800;color:var(--color-text);margin-bottom:12px">🥧 Où part ton argent</div>
     <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
-      <div style="position:relative;width:210px;height:210px;flex-shrink:0;margin:0 auto"><canvas id="dep-pie" width="210" height="210"></canvas></div>
+      <div style="position:relative;width:210px;height:210px;flex-shrink:0;margin:0 auto"><canvas id="dep-pie" style="width:100%;height:100%"></canvas></div>
       <div style="flex:1;min-width:220px">
         ${totals.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.5px;color:var(--color-text)">
           <span style="width:10px;height:10px;border-radius:3px;background:${x.g.color};flex-shrink:0"></span>
@@ -908,7 +908,11 @@ function depDrawChart() {
   window._depChart = new Chart(cv, {
     type: 'doughnut',
     data: { labels: totals.map(x => x.g.label), datasets: [{ data: totals.map(x => Math.round(x.total * 100) / 100), backgroundColor: totals.map(x => x.g.color), borderWidth: 2, borderColor: 'transparent' }] },
-    options: { responsive: false, cutout: '58%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label} : ${depFmt0(c.parsed)}/mois` } } } },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false, cutout: '58%',
+      devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),     // rendu net sur écrans HD et pendant les zooms
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: () => '', label: c => ` ${c.label} : ${depFmt0(c.parsed)}/mois` } } },
+    },
   });
 }
 
