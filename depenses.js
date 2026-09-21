@@ -470,7 +470,7 @@ async function depReadAny(file) {
 async function depOnFile(input) {
   const files = [...(input.files || [])];
   input.value = '';
-  if (!files.length) return;
+  if (!files.length || !depRequirePremium()) return;
   const msg = document.getElementById('dep-import-msg');
   const say = (t, err) => { if (msg) { msg.style.color = err ? '#dc2626' : 'var(--color-text-secondary)'; msg.textContent = t; } };
   say(files.some(f => /\.(pdf|xlsx?|ods)$/i.test(f.name)) ? 'Chargement du lecteur, lecture du fichier…' : 'Lecture du fichier…');
@@ -495,6 +495,7 @@ async function depOnFile(input) {
   }
 }
 function depManualAnalyze() {
+  if (!depRequirePremium()) return;
   const items = [];
   DEP_PRESETS.forEach(p => {
     const cb = document.getElementById('dep-p-' + p.key), inp = document.getElementById('dep-pv-' + p.key);
@@ -933,7 +934,46 @@ function depRender() {
   root.innerHTML = depState ? depRenderResults() : depRenderImport();
   if (depState) { depRenderSavings(); depDrawChart(); window.scrollTo(0, y); }
 }
-function renderDepenses() { depState = depLoad(); depRender(); }
+// « Mes dépenses » est réservé à Premium. Les comptes gratuits (et la démo) voient un aperçu figé sur des données fictives.
+function depRequirePremium() {
+  if (isPremiumUser()) return true;
+  showPlansModal({
+    feature: 'Mes dépenses', subtitle: 'Fonctionnalité Premium',
+    benefits: ['Importe ton relevé (PDF, Excel, CSV) : le site retrouve tous tes abonnements', 'Vois ce qui est vital et ce qui ne l\'est pas, et ce que tu économiserais en l\'investissant'],
+  });
+  return false;
+}
+function depSampleState() {
+  const d = (day, l, a) => ({ date: new Date(new Date().getFullYear(), new Date().getMonth(), day), label: l, amount: a });
+  const { months, items, txs } = depBuildItems([
+    d(1, 'PRLV SEPA LOYER APPARTEMENT', 850), d(2, 'PRLV SEPA NETFLIX.COM', 13.49), d(2, 'PRLV SEPA DISNEY PLUS', 9.99), d(3, 'PRLV SEPA BASIC-FIT', 24.99),
+    d(3, 'PRLV SEPA SPOTIFY', 11.99), d(4, 'PRLV SEPA SFR MOBILE', 19.99), d(5, 'PRLV SEPA EDF', 62.4), d(5, 'PRLV SEPA MAIF ASSURANCE', 28.5),
+    d(6, 'CARTE 06/09 CARREFOUR MARKET', 92.3), d(9, 'CARTE 09/09 CARREFOUR MARKET', 71.6), d(7, 'CARTE 07/09 WINAMAX', 60), d(14, 'CARTE 14/09 WINAMAX', 45),
+    d(8, 'CARTE 08/09 UBER EATS', 27.8), d(15, 'CARTE 15/09 UBER EATS', 31.2), d(10, 'CARTE 10/09 RESTAURANT LE COMPTOIR', 54), d(12, 'CARTE 12/09 BRASSERIE DU PORT', 42.5),
+    d(17, 'CARTE 17/09 PIZZERIA ITALIA', 24), d(13, 'CARTE 13/09 AMAZON', 45.9), d(11, 'PRLV SEPA PRET PERSONNEL', 200), d(16, 'CARTE 16/09 TOTAL ACCESS', 58.2),
+  ]);
+  return { ts: Date.now(), months, items, txs, cut: { NETFLIX: 100 }, gcut: { resto: 30, jeux_argent: 100 }, source: 'csv', warn: '', nTx: txs.length };
+}
+function depRenderSample() {
+  const root = document.getElementById('dep-root'); if (!root) return;
+  const prev = depState;
+  depState = depSampleState();
+  const banner = `
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+    <div style="flex:1;min-width:220px">
+      <div style="font-size:14px;font-weight:800;color:var(--color-text)">🔒 Mes dépenses est réservé à Premium</div>
+      <div style="font-size:12px;${DEP_MUTED};margin-top:3px;line-height:1.5">Aperçu figé sur des données fictives : importe ton relevé, vois ce que tu paies vraiment, résilie ce qui ne sert à rien et découvre ce que ça donnerait investi.</div>
+    </div>
+    <button onclick="showPlansModal()" style="padding:11px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer">✦ Débloquer avec Premium</button>
+  </div>`;
+  root.innerHTML = banner + `<div class="agent-sample" style="opacity:.96">${depRenderResults()}</div>`;
+  depRenderSavings(); depDrawChart();
+  depState = prev;
+}
+function renderDepenses() {
+  if (!isPremiumUser()) { depState = null; depRenderSample(); return; }
+  depState = depLoad(); depRender();
+}
 function depRefreshRow() { depRender(); }
 
 // ── Vue « tout afficher » : plein écran, par catégorie ou par date, avec recherche et export CSV ──

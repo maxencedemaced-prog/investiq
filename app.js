@@ -10157,6 +10157,7 @@ const PLAN_PREMIUM_ONLY = [
   'Signaux IA sur tes positions et les opportunités du marché',
   'Bilan patrimonial complet + export PDF',
   'Conseils IA sur tes alertes : que faire et par quoi remplacer',
+  'Mes dépenses : analyse de ton relevé, abonnements à résilier, économies investies',
   'Sélection multiple et actions groupées',
 ];
 
