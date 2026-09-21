@@ -11455,7 +11455,11 @@ function agentSampleSeen() { try { return !!localStorage.getItem(agentSampleSeen
 
 function setAgentView(v) {
   agentView = v;
-  if (v === 'sample') { try { localStorage.setItem(agentSampleSeenKey(), '1'); } catch {} }
+  if (v === 'sample') {
+    try { localStorage.setItem(agentSampleSeenKey(), '1'); } catch {}
+    // Première ouverture de l'exemple : petite fenêtre qui explique que c'est un aperçu Premium figé
+    if (typeof tabSeenSet === 'function' && !tabSeenSet().has('agentSample')) { tabMarkSeen('agentSample'); setTimeout(() => showTabHint('agentSample'), 300); }
+  }
   renderAgentDashboard();
 }
 

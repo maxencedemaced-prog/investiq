@@ -15,6 +15,7 @@ const TAB_HINTS = {
   ai:        { title: 'Agent IA', text: 'Ton copilote financier : pose-lui des questions sur ton portefeuille, demande-lui un avis, ou faites ensemble un ordre comme ajouter une position ou une alerte.' },
   bilan:     { title: 'Mon bilan', premium: true, text: 'Le bilan patrimonial complet : ta situation, tes objectifs, un plan d\'action chiffré et un PDF à garder. Tu le retrouves ici à tout moment.' },
   settings:  { title: 'Paramètres', text: 'Ton compte, ton abonnement, tes notifications et l\'apparence de l\'application (thème clair ou sombre).' },
+  agentSample: { title: 'Exemple Premium', premium: true, emoji: '✦', note: "Aperçu figé : rien n'est calculé sur tes données. Avec Premium, tout porte sur ton vrai portefeuille.", text: "Voici ce que l'Agent IA te donne avec Premium : score, alertes, conseils chiffrés et analyse de ton portefeuille. Ici, ce sont des chiffres d'exemple." },
 };
 
 const tabSeenKey = () => 'iq_seen_tabs_' + (currentUser?.id || 'demo');
@@ -41,7 +42,7 @@ function updateNavDots() {
 function showTabHint(page) {
   const h = TAB_HINTS[page]; if (!h) return;
   document.getElementById('tab-hint')?.remove();
-  const icon = (document.getElementById('nav-' + page) || document.getElementById('bnav-' + page))?.querySelector('svg')?.outerHTML || '';
+  const icon = (document.getElementById('nav-' + page) || document.getElementById('bnav-' + page))?.querySelector('svg')?.outerHTML || (h.emoji ? `<span style="font-size:18px;line-height:20px">${h.emoji}</span>` : '');
   const el = document.createElement('div');
   el.id = 'tab-hint';
   el.style.cssText = 'position:fixed;inset:0;z-index:10004;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,0.28)';
@@ -53,7 +54,7 @@ function showTabHint(page) {
         <div style="min-width:0">
           <div style="font-size:15px;font-weight:800;letter-spacing:-0.02em">${h.title}${h.premium ? ' <span style="font-size:10px;font-weight:800;color:#16a34a;background:rgba(22,163,74,0.14);padding:2px 8px;border-radius:99px;vertical-align:2px;margin-left:4px">Premium</span>' : ''}</div>
           <div style="font-size:13px;line-height:1.55;color:var(--color-text-secondary,#71717a);margin-top:4px">${h.text}</div>
-          ${h.premium ? `<div style="display:flex;align-items:center;gap:7px;margin-top:10px;padding:8px 11px;border-radius:10px;background:rgba(22,163,74,0.1);color:#16a34a;font-size:12px;font-weight:700;line-height:1.4"><span>✨</span><span>${(typeof isPremiumUser === 'function' && isPremiumUser()) ? 'Outil inclus dans ton abonnement Premium.' : 'Outil réservé aux membres Premium.'}</span></div>` : ''}
+          ${h.premium ? `<div style="display:flex;align-items:center;gap:7px;margin-top:10px;padding:8px 11px;border-radius:10px;background:rgba(22,163,74,0.1);color:#16a34a;font-size:12px;font-weight:700;line-height:1.4"><span>✨</span><span>${(typeof isPremiumUser === 'function' && isPremiumUser()) ? 'Outil inclus dans ton abonnement Premium.' : (h.note || 'Outil réservé aux membres Premium.')}</span></div>` : ''}
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px">
