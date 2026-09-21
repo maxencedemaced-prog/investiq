@@ -49,7 +49,7 @@ const DEP_RULES = [
   [/ICLOUD|GOOGLE ONE|GOOGLE STORAGE|DROPBOX|MICROSOFT|OFFICE 365|ADOBE|OPENAI|CHATGPT|ANTHROPIC|NOTION|CANVA|NORDVPN|EXPRESSVPN|PROTON|1PASSWORD|LASTPASS|GITHUB|APPLE\.COM\/BILL|GOOGLE \*/, 'apps'],
   [/LE MONDE|LE FIGARO|MEDIAPART|LIBERATION|LES ECHOS|L EQUIPE|OUEST FRANCE|COURRIER INTERNATIONAL|PRESSE|ABONNEMENT MAGAZINE|KIOSQUE|CAIRN|BLINKIST/, 'presse'],
   [/BASIC[- ]?FIT|FITNESS|NEONESS|KEEP COOL|ORANGE BLEUE|CMG SPORTS|ON AIR|MOVIDA|SALLE DE SPORT|GYM|CROSSFIT|DECATHLON PASS/, 'sport'],
-  [/ORANGE|\bSFR\b|BOUYGUES|BOUYGTEL|FREE MOBILE|\bFREE\b|FREEBOX|SOSH|RED BY SFR|B&YOU|B AND YOU|LA POSTE MOBILE|PRIXTEL|NRJ MOBILE|COUCOU|LEBARA|LYCAMOBILE|CDISCOUNT MOBILE/, 'telecom'],
+  [/YOU ?PRICE|REGLO|SYMPA|AUCHAN TELECOM|CIC MOBILE|CREDIT MUTUEL MOBILE|BANQUE POSTALE MOBILE|JOE MOBILE|CORIOLIS|ORANGE|\bSFR\b|BOUYGUES|BOUYGTEL|FREE MOBILE|\bFREE\b|FREEBOX|SOSH|RED BY SFR|B&YOU|B AND YOU|LA POSTE MOBILE|PRIXTEL|NRJ MOBILE|COUCOU|LEBARA|LYCAMOBILE|CDISCOUNT MOBILE/, 'telecom'],
   [/EDF|ENGIE|TOTALENERGIES|TOTAL ENERGIES|\bENI\b|VATTENFALL|OHM ENERGIE|MINT ENERGIE|VEOLIA|SUEZ|EAU DE|SAUR|ILEK|PLANETE OUI|ENERCOOP/, 'energie'],
   [/MAIF|MACIF|\bMMA\b|\bAXA\b|GROUPAMA|MATMUT|ALLIANZ|GENERALI|DIRECT ASSURANCE|LEMONADE|ASSURANCE|MUTUELLE|\bALAN\b|HARMONIE|MGEN|MAAF|GMF|\bAPRIL\b|SWISS ?LIFE|HISCOX|ASSUR/, 'assurance'],
   [/NAVIGO|RATP|SNCF|OUIGO|TRAINLINE|BLABLACAR|AUTOROUTE|VINCI AUTOROUTE|SANEF|APRR|TOTAL ACCESS|\bESSO\b|\bSHELL\b|\bBP\b|STATION|CARBURANT|PEAGE|VELIB|\bLIME\b|\bDOTT\b|\bTIER\b|\bBOLT\b|UBER|\bG7\b|\bTAXI|PARKING|INDIGO|EASYPARK|FLOWBIRD/, 'transport'],
@@ -484,6 +484,7 @@ async function depOnFile(input) {
     }
     if (!allTx.length) { say("Je n'ai trouvé aucune dépense dans ce fichier. Il faut au minimum une date, un libellé et un montant. Essaie l'export CSV ou Excel de ta banque.", true); return; }
     const { months, items, txs } = depBuildItems(allTx);
+    depApplyManualMap(items);
     depState = { ts: Date.now(), months, items, txs, cut: {}, gcut: {}, source: 'csv', warn, nTx: allTx.length, check };
     depSave(); depRender();
     if (useAi && items.some(i => i.cat === 'autre')) depAiClassify(true);   // classe tout d'un coup, sans clic supplémentaire
@@ -579,7 +580,7 @@ let _depAiBusy = false;
 async function depAiClassify(auto) {
   if (_depAiBusy || !depState) return;
   const a = depAnalyze();
-  const unknown = a.items.filter(i => i.cat === 'autre').sort((x, y) => y.monthly - x.monthly).slice(0, 180);
+  const unknown = a.items.filter(i => i.cat === 'autre' && !i.manual).sort((x, y) => y.monthly - x.monthly).slice(0, 180);
   if (!unknown.length) return;
   _depAiBusy = true;
   const btn = document.getElementById('dep-ai-btn');
@@ -729,7 +730,7 @@ function depRenderResults() {
     return `<div class="dep-tx" data-u="${unk ? 1 : 0}" data-t="${_escHtml(String(t.l).toLowerCase())}" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--color-border);font-size:12px${excl ? ';opacity:.55' : ''}">
       <span style="width:38px;flex-shrink:0;${DEP_MUTED}">${fmtDay(t.d)}</span>
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--color-text)">${_escHtml(t.l)}</span>
-      <span style="flex-shrink:0;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:99px;${unk ? 'background:rgba(217,119,6,0.15);color:#d97706' : 'background:var(--color-bg);' + DEP_MUTED}">${unk ? 'Non reconnu' : cat.ic + ' ' + cat.label}</span>
+      <span style="flex-shrink:0;${unk ? 'outline:1.5px solid #d97706;border-radius:7px' : ''}">${depCatSelect(t.k, it ? it.cat : 'autre')}</span>
       <span style="width:66px;flex-shrink:0;text-align:right;font-weight:700;color:var(--color-text)">${depFmt(t.a)}</span>
     </div>`;
   }).join('');
@@ -794,7 +795,7 @@ function depRenderResults() {
       <input type="range" min="0" max="100" step="10" value="${c}" oninput="depSetGCut('${x.g.id}', this.value)" style="width:100%;accent-color:${x.g.color};margin-top:8px">
       <div style="display:flex;justify-content:space-between;font-size:10.5px;${DEP_MUTED}"><span>Je garde</span><span data-dep-glbl="${x.g.id}" style="font-weight:700;color:var(--color-text)">${c ? `−${c} % · économise ${depFmt(x.total * c / 100)}/mois` : 'Je garde tel quel'}</span><span>Je supprime</span></div>
       <details style="margin-top:6px"><summary style="cursor:pointer;font-size:11.5px;${DEP_MUTED}">Voir le détail</summary>
-        ${x.items.sort((p, q) => q.monthly - p.monthly).map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;color:var(--color-text)"><span>${_escHtml(i.label)}</span><strong>${depFmt(i.monthly)}</strong></div>`).join('')}
+        ${x.items.sort((p, q) => q.monthly - p.monthly).map(i => `<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;color:var(--color-text)"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${_escHtml(i.label)}</span>${depCatSelect(i.key, i.cat)}<strong style="width:64px;text-align:right">${depFmt(i.monthly)}</strong></div>`).join('')}
       </details>
     </div>`;
   }).join('');
@@ -822,7 +823,7 @@ function depRenderResults() {
         <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escHtml(i.label)}</div><div style="font-size:11px;${DEP_MUTED}">${cat.label}${i.recurring ? ' · prélèvement récurrent' : ''}</div></div>
         <div style="text-align:right"><div style="font-size:14px;font-weight:900;color:var(--color-text)">${depFmt(i.monthly)}<span style="font-size:10px;${DEP_MUTED}">/mois</span></div><div style="font-size:10.5px;${DEP_MUTED}">${depFmt0(i.monthly * 12)}/an</div></div>
       </div>
-      <div style="margin:7px 0 0 34px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${tag}<span style="font-size:11.5px;${DEP_MUTED};line-height:1.45;flex:1;min-width:180px">${q}</span></div>
+      <div style="margin:7px 0 0 34px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${tag}<span style="font-size:11.5px;${DEP_MUTED};line-height:1.45;flex:1;min-width:180px">${q}</span><span style="font-size:10.5px;${DEP_MUTED}">Ce n'est pas ça ?</span>${depCatSelect(i.key, i.cat)}</div>
       <div style="display:flex;gap:6px;margin:9px 0 0 34px">
         <button onclick="depSetCut(${kAttr}, 0)" style="flex:1;padding:8px;border-radius:9px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${c ? 'var(--color-border)' : '#16a34a'};background:${c ? 'transparent' : 'rgba(22,163,74,0.12)'};color:var(--color-text)">Je garde</button>
         <button onclick="depSetCut(${kAttr}, 1)" style="flex:1;padding:8px;border-radius:9px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${c ? '#dc2626' : 'var(--color-border)'};background:${c ? 'rgba(220,38,38,0.12)' : 'transparent'};color:var(--color-text)">${c ? '✓ Je résilie' : 'Je résilie'}</button>
@@ -987,8 +988,18 @@ function depSetCat(key, cat) {
   it.cat = cat; it.manual = true;
   if (!DEP_BINARY_CATS.includes(cat)) delete it.sub;
   depSave();
+  // On retient la correction : elle s'appliquera aussi aux prochains relevés (même commerçant)
+  try { const m = depManualMap(); m[key] = cat; localStorage.setItem(depMapKey(), JSON.stringify(m)); } catch {}
   const full = document.getElementById('dep-full');
   depRender();
   if (full) depOpenFullList();
   if (typeof showToast === 'function') showToast('✓ Catégorie modifiée pour ' + it.label);
+}
+
+// Corrections manuelles mémorisées par commerçant (par compte, sur cet appareil)
+const depMapKey = () => 'iq_depenses_map_' + (currentUser?.id || 'demo');
+function depManualMap() { try { return JSON.parse(localStorage.getItem(depMapKey()) || '{}') || {}; } catch { return {}; } }
+function depApplyManualMap(items) {
+  const m = depManualMap();
+  items.forEach(i => { if (m[i.key] && DEP_CATS[m[i.key]]) { i.cat = m[i.key]; i.manual = true; } });
 }
