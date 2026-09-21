@@ -1,8 +1,8 @@
 # Alertes de prix « en journée » gratuites : GitHub appelle l'API toutes les 30 minutes pendant les heures de marché.
 # (Sur l'offre gratuite de Vercel, un cron ne peut tourner qu'une fois par jour.)
 # À configurer une fois : GitHub > Settings > Secrets and variables > Actions > New repository secret
-#   APP_URL      = https://investiq-kappa.vercel.app
-#   CRON_SECRET  = la même valeur que la variable CRON_SECRET de Vercel
+#   CRON_SECRET  = la même valeur que la variable CRON_SECRET de Vercel   (obligatoire)
+#   APP_URL      = https://investiq-kappa.vercel.app                      (facultatif : c'est la valeur par défaut)
 name: Alertes de prix
 on:
   schedule:
@@ -11,9 +11,23 @@ on:
 jobs:
   alerts:
     runs-on: ubuntu-latest
+    env:
+      APP_URL: ${{ secrets.APP_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
       - name: Vérifier les seuils d'alerte
         run: |
-          curl --fail-with-body --silent --show-error --max-time 60 \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/push-send?mode=alerts"
+          APP_URL="$(echo "${APP_URL:-https://investiq-kappa.vercel.app}" | tr -d '[:space:]')"
+          APP_URL="${APP_URL%/}"
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Le secret CRON_SECRET est absent. GitHub > Settings > Secrets and variables > Actions > New repository secret."
+            exit 1
+          fi
+          echo "Appel de $APP_URL/api/push-send?mode=alerts"
+          code=$(curl --silent --show-error --max-time 60 -o response.json -w '%{http_code}' \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/push-send?mode=alerts")
+          echo "Statut HTTP : $code"
+          cat response.json; echo
+          if [ "$code" = "401" ]; then echo "::error::401 : CRON_SECRET différent de celui de Vercel (ou absent sur Vercel)."; fi
+          [ "$code" = "200" ]
