@@ -5385,6 +5385,7 @@ const BILAN_STEPS = [
   { title: 'Objectifs de vie', icon: '🎯' },
   { title: 'Tolérance au risque', icon: '⚖️' },
   { title: 'Horizon & contraintes', icon: '📅' },
+  { title: 'Précisions sur tes projets', icon: '🎯' },
   { title: 'Analyse IA', icon: '🤖' },
 ];
 
@@ -5441,7 +5442,9 @@ function updateBilanProgress(step) {
 
 function bilanNext(step, data) {
   Object.assign(bilanData, data);
-  const next = step + 1;
+  let next = step + 1;
+  // L'étape « Précisions » n'apparaît que s'il y a des objectifs à détailler (ou des crédits en cours)
+  if (next === 7 && !(typeof bilanNeedsPrecisions === 'function' && bilanNeedsPrecisions())) next = 8;
   if (next < BILAN_STEPS.length) {
     renderBilanStep(next);
   }
@@ -5498,7 +5501,7 @@ function renderBilanStep(step) {
     <div style="display:flex;gap:10px;margin-top:24px">
       ${step > 0 ? `<button onclick="bilanPrev(${step})" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:14px;font-weight:600;color:${sub};cursor:pointer">← Retour</button>` : ''}
       <button onclick="saveBilanStep(${step})" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:700;color:#fff;cursor:pointer">
-        ${step === BILAN_STEPS.length - 2 ? 'Générer mon analyse →' : 'Continuer →'}
+        ${(step === BILAN_STEPS.length - 2 || (step === 6 && !(typeof bilanNeedsPrecisions === 'function' && bilanNeedsPrecisions()))) ? 'Générer mon analyse →' : 'Continuer →'}
       </button>
     </div>`;
 
@@ -5756,6 +5759,13 @@ function renderBilanStep(step) {
       ${btnRow(6)}`,
 
     7: `
+      ${bilanBadge("target")}
+      <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Précisions sur tes projets</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:22px">Quelques questions ciblées sur ce que tu as coché, pour un bilan chiffré et un plan d'action précis. Tu peux laisser un champ vide.</div>
+      ${typeof bilanPrecisionsHTML === 'function' ? bilanPrecisionsHTML({ txt, sub, bord, surf }) : ''}
+      ${btnRow(7)}`,
+
+    8: `
       <div style="text-align:center;padding:20px 0">
         <div style="font-size:48px;margin-bottom:16px">🤖</div>
         <div style="font-size:20px;font-weight:800;color:${txt};margin-bottom:8px;letter-spacing:-0.04em">Génération de ton bilan...</div>
@@ -5773,8 +5783,8 @@ function renderBilanStep(step) {
   el.innerHTML = steps[step] || '';
 
   // Animation des étapes de chargement
-  if (step === 7) {
-    el.innerHTML = steps[7];
+  if (step === 8) {
+    el.innerHTML = steps[8];
     generateBilanIA();
   }
 
@@ -5811,7 +5821,7 @@ function calcCapaciteEpargne() {
 // Bilan en cours : des réponses ont été saisies mais le rapport n'est pas encore généré
 function bilanInProgress() {
   const hasData = Object.values(bilanData || {}).some(v => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length));
-  return hasData && bilanStep >= 0 && bilanStep <= 6;
+  return hasData && bilanStep >= 0 && bilanStep <= 7;
 }
 // Quitte le bilan (ex. pour analyser ses dépenses) sans perdre les réponses de l'étape en cours
 function bilanLeaveTo(page) {
@@ -5857,6 +5867,8 @@ function bilanCollect(step) {
     data.liquidite = document.getElementById('b-liquidite')?.value;
     data.evenement = document.getElementById('b-evenement')?.value;
     data.commentaires = document.getElementById('b-commentaires')?.value;
+  } else if (step === 7) {
+    if (typeof bilanPrecisionsCollect === 'function') data.precisions = bilanPrecisionsCollect();
   }
   return data;
 }
@@ -5895,6 +5907,7 @@ HORIZON : ${bilanData.horizon}
 TOLÉRANCE RISQUE : Perd max ${bilanData.perteMax}% | Réaction baisse : ${bilanData.reaction}
 EXPÉRIENCE : ${bilanData.experience} | Problème principal : ${bilanData.probleme}
 ÉVÉNEMENT PRÉVU : ${bilanData.evenement}
+${typeof bilanPrecisionsText === 'function' ? bilanPrecisionsText() : ''}
 ${bilanData.commentaires ? 'NOTES : ' + bilanData.commentaires : ''}
 
 PORTEFEUILLE ACTUEL :
@@ -6139,7 +6152,7 @@ function renderBilanResult(r, ts) {
   const el = document.getElementById('bilan-content');
   if (el) el.innerHTML = html;
   if (typeof bilanExtraInit === 'function') bilanExtraInit();
-  updateBilanProgress(7);
+  updateBilanProgress(BILAN_STEPS.length - 1);
 }
 
 
