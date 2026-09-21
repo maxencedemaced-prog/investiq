@@ -6116,6 +6116,8 @@ function renderBilanResult(r, ts) {
     </div>`).join('')}
   </div>
 
+  ${typeof bilanExtraHTML === 'function' ? bilanExtraHTML(r, { isDark, surf, bord, txt, sub }) : ''}
+
   <!-- VERDICT -->
   <div style="background:linear-gradient(135deg,#080c10,#0d1520);border:1px solid rgba(63,185,80,0.2);border-radius:16px;padding:20px;text-align:center;margin-bottom:20px">
     <div style="font-size:28px;margin-bottom:8px">🎯</div>
@@ -6136,6 +6138,7 @@ function renderBilanResult(r, ts) {
 
   const el = document.getElementById('bilan-content');
   if (el) el.innerHTML = html;
+  if (typeof bilanExtraInit === 'function') bilanExtraInit();
   updateBilanProgress(7);
 }
 
@@ -6447,6 +6450,9 @@ async function exportBilanPDF() {
       y += 14 + (impactLines.length > 1 ? (impactLines.length-1)*3 : 0);
     });
     y += 4;
+
+    // ── ANALYSE DÉTAILLÉE (calculée) ──
+    if (typeof bilanPdfExtra === 'function') { try { y = bilanPdfExtra(doc, y, margin, colW, r); } catch (e) { console.warn('pdf extra:', e); } }
 
     // ── VERDICT ──
     checkY(28);
