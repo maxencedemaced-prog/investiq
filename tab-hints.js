@@ -53,6 +53,7 @@ function showTabHint(page) {
         <div style="min-width:0">
           <div style="font-size:15px;font-weight:800;letter-spacing:-0.02em">${h.title}${h.premium ? ' <span style="font-size:10px;font-weight:800;color:#16a34a;background:rgba(22,163,74,0.14);padding:2px 8px;border-radius:99px;vertical-align:2px;margin-left:4px">Premium</span>' : ''}</div>
           <div style="font-size:13px;line-height:1.55;color:var(--color-text-secondary,#71717a);margin-top:4px">${h.text}</div>
+          ${h.premium ? `<div style="display:flex;align-items:center;gap:7px;margin-top:10px;padding:8px 11px;border-radius:10px;background:rgba(22,163,74,0.1);color:#16a34a;font-size:12px;font-weight:700;line-height:1.4"><span>✨</span><span>${(typeof isPremiumUser === 'function' && isPremiumUser()) ? 'Outil inclus dans ton abonnement Premium.' : 'Outil réservé aux membres Premium.'}</span></div>` : ''}
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px">
