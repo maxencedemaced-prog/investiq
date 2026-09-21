@@ -93,7 +93,7 @@ function bilanExtraHTML(r, T) {
       <label><span style="${lab}">Durée (ans)</span><select id="bx-years" onchange="bxLoanUpdate()" style="${inp}">${[10, 15, 20, 25].map(y => `<option value="${y}"${y === 20 ? ' selected' : ''}>${y} ans</option>`).join('')}</select></label>
       <label><span style="${lab}">Apport (€)</span><input id="bx-apport" type="number" step="1000" min="0" value="0" oninput="bxLoanUpdate()" style="${inp}"></label>
       <label><span style="${lab}">Crédits déjà en cours (€/mois)</span><input id="bx-exist" type="number" step="50" min="0" value="${Math.round(M.credits)}" oninput="bxLoanUpdate()" style="${inp}"></label>
-      <label><span style="${lab}">Type de bien</span><select id="bx-bien" onchange="bxLoanUpdate()" style="${inp}"><option value="ancien">Ancien (~7,5 % de frais)</option><option value="neuf">Neuf (~2,5 % de frais)</option></select></label>
+      <label><span style="${lab}">Frais de notaire</span><select id="bx-bien" onchange="bxLoanUpdate()" style="${inp}"><option value="ancien">Ancien (7,5 %)</option><option value="neuf">Neuf (2,5 %)</option></select></label>
     </div>
     ${M.livret + M.bourse > 0 ? `<button type="button" onclick="document.getElementById('bx-apport').value=${Math.round(M.livret)};bxLoanUpdate()" style="background:none;border:none;color:${sub};font:inherit;font-size:12px;text-decoration:underline;cursor:pointer;padding:0;margin-bottom:12px">Utiliser mon épargne disponible comme apport (${bxE(M.livret)})</button>` : ''}
     <div id="bx-loan-out"></div>
@@ -146,7 +146,7 @@ function bxLoanUpdate() {
       ${tile('Prix du bien visé', bxE(c.prix), bxGood)}
     </div>
     <div style="font-size:11.5px;color:${sub};margin-bottom:12px;line-height:1.5">Budget total ${bxE(c.budget)} (emprunt + apport), dont environ ${bxE(c.budget - c.prix)} de frais de notaire. Sur ${c.years} ans à ${c.taux.toFixed(1).replace('.', ',')} %, les intérêts coûteraient environ <strong style="color:${txt}">${bxE(c.interets)}</strong>.</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;font-size:12px;color:${txt}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;font-size:12px;color:${txt}"><style>#bx-loan-out td:not(:first-child),#bx-loan-out th:not(:first-child){padding-left:14px;white-space:nowrap}</style>
       <table style="width:100%;border-collapse:collapse"><thead><tr style="color:${sub};font-size:10.5px;text-align:right"><th style="text-align:left;padding-bottom:4px">Si le taux est de…</th><th>Emprunt</th><th>Prix du bien</th></tr></thead><tbody>${rows}</tbody></table>
       <table style="width:100%;border-collapse:collapse"><thead><tr style="color:${sub};font-size:10.5px;text-align:right"><th style="text-align:left;padding-bottom:4px">Selon la durée</th><th>Emprunt</th><th>Intérêts</th></tr></thead><tbody>${rowsY}</tbody></table>
     </div>`;
