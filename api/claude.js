@@ -211,8 +211,12 @@ export default async function handler(req, res) {
     // Sorties structurées longues (bilan) : le client demande de désactiver la réflexion étendue, qui peut consommer
     // tout le budget de tokens et ne laisser aucun texte (« Aucune réponse ») ou un JSON tronqué.
     // Si le modèle refuse ce paramètre, on refait l'appel sans.
-    let { response, data } = await callAnthropic(req.body.no_thinking === true ? { thinking: { type: 'disabled' } } : {});
-    if (!response.ok && req.body.no_thinking === true && /thinking/i.test(data?.error?.message || '')) {
+    // Par DÉFAUT la réflexion étendue est coupée pour tous les appels du site (verdict, plan mensuel, bilan, tchat…) : elle
+    // ralentissait fortement les réponses et pouvait consommer tout le budget de tokens, laissant un texte vide ou tronqué.
+    // Un appel peut la réactiver explicitement avec { thinking: true }.
+    const disableThinking = req.body.thinking !== true;
+    let { response, data } = await callAnthropic(disableThinking ? { thinking: { type: 'disabled' } } : {});
+    if (!response.ok && disableThinking && response.status === 400) {   // le modèle refuse ce paramètre : on refait l'appel sans
       ({ response, data } = await callAnthropic({}));
     }
     if (!response.ok || data.error) {
