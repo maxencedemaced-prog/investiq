@@ -289,7 +289,7 @@ function depChargesHint() {
   if (!(depState || depLoad())) return '';
   const v = depChargesFixes();
   if (!v) return '';
-  return `<button type="button" onclick="depUseChargesInBilan(${v})" style="width:100%;padding:12px 14px;background:#16a34a;border:none;border-radius:12px;color:#fff;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;text-align:left;line-height:1.4">✅ Utiliser mes dépenses analysées : ≈ ${v.toLocaleString('fr-FR')} €/mois<br><span style="font-weight:600;font-size:12px;opacity:.9">abonnements, énergie, assurances… (sans le loyer ni les courses)</span></button>`;
+  return `<button type="button" onclick="depUseChargesInBilan(${v})" style="background:none;border:none;color:#16a34a;font:inherit;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer;padding:0;text-align:left;line-height:1.4">📊 Utiliser mes dépenses analysées : ≈ ${v.toLocaleString('fr-FR')} €/mois (abonnements, énergie, assurances…)</button>`;
 }
 function depUseChargesInBilan(v) {
   const el = document.getElementById('b-charges');
