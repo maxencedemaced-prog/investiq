@@ -111,6 +111,7 @@ async function pushPrefChanged() {
 // Carte « Notifications » des Paramètres
 async function renderPushCard() {
   const box = document.getElementById('push-card-body'); if (!box) return;
+  if (isDemo) { box.innerHTML = '<div style="font-size:13px;line-height:1.55;color:var(--color-text-secondary)">Les notifications sont disponibles avec un compte : crée le tien pour les activer.</div>'; return; }
   const st = await pushState();
   const msg = {
     unsupported: 'Ce navigateur ne gère pas les notifications. Essaie Chrome, Edge, Firefox ou Safari récent.',
