@@ -4558,7 +4558,7 @@ function enterDemo() {
 }
 
 function showAuthScreen(tab) {
-  currentUser = null; isDemo = false; positions = []; posSignals = {}; chatHistory = [];
+  currentUser = null; isDemo = false; positions = []; posSignals = {}; chatHistory = []; bilanData = {}; bilanStep = 0;
   document.getElementById('auth-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
   document.getElementById('demo-banner').style.display = 'none';
@@ -5415,6 +5415,8 @@ async function openBilan() {
     renderBilanResult(saved.result, saved.ts);
     return;
   }
+  // Un bilan commencé (ex. parti analyser ses dépenses) : on reprend là où on s'était arrêté
+  if (bilanInProgress()) { renderBilanStep(bilanStep); return; }
   bilanData = {};
   bilanStep = 0;
   renderBilanStep(0);
@@ -5537,13 +5539,15 @@ function renderBilanStep(step) {
         <div>
           <label style="${labelStyle}">Charges fixes estimées (€/mois)</label>
           <input type="number" id="b-charges" placeholder="Ex: 800" style="${fieldStyle}" value="${bilanData.charges||''}">
-          ${typeof depChargesHint === 'function' ? depChargesHint() : ''}
-          <button type="button" onclick="closeBilan();nav('depenses')" style="margin-top:6px;background:none;border:none;color:${sub};font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;text-align:left">Pas sûr ? Analyse tes vraies dépenses →</button>
         </div>
         <div>
           <label style="${labelStyle}">Épargne actuelle (€/mois)</label>
           <input type="number" id="b-epargne-actuelle" placeholder="Ex: 200" style="${fieldStyle}" value="${bilanData.epargneMensuelle||''}">
         </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        ${typeof depChargesHint === 'function' ? depChargesHint() : ''}
+        <button type="button" onclick="bilanLeaveTo('depenses')" style="width:100%;padding:12px 14px;background:rgba(22,163,74,0.10);border:1.5px solid #16a34a;border-radius:12px;color:#16a34a;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;text-align:left;line-height:1.4">📊 Pas sûr de tes charges ?<br><span style="font-weight:600;font-size:12px">Analyse tes vraies dépenses avec ton relevé bancaire, puis reviens ici →</span></button>
       </div>
       <div id="b-capacite-calc" style="padding:14px;background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.2);border-radius:12px;font-size:13px;color:${txt}">
         💡 Remplis les champs pour voir ta capacité d'épargne calculée
@@ -5772,7 +5776,19 @@ function calcCapaciteEpargne() {
   el.style.borderColor = color + '40';
 }
 
-function saveBilanStep(step) {
+// Bilan en cours : des réponses ont été saisies mais le rapport n'est pas encore généré
+function bilanInProgress() {
+  const hasData = Object.values(bilanData || {}).some(v => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length));
+  return hasData && bilanStep >= 0 && bilanStep <= 6;
+}
+// Quitte le bilan (ex. pour analyser ses dépenses) sans perdre les réponses de l'étape en cours
+function bilanLeaveTo(page) {
+  try { Object.assign(bilanData, bilanCollect(bilanStep)); } catch {}
+  closeBilan();
+  nav(page);
+}
+function saveBilanStep(step) { bilanNext(step, bilanCollect(step)); }
+function bilanCollect(step) {
   const data = {};
   // Collecter les données selon l'étape
   if (step === 0) {
@@ -5810,7 +5826,7 @@ function saveBilanStep(step) {
     data.evenement = document.getElementById('b-evenement')?.value;
     data.commentaires = document.getElementById('b-commentaires')?.value;
   }
-  bilanNext(step, data);
+  return data;
 }
 
 async function generateBilanIA() {

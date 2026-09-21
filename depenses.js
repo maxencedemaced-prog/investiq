@@ -289,7 +289,7 @@ function depChargesHint() {
   if (!(depState || depLoad())) return '';
   const v = depChargesFixes();
   if (!v) return '';
-  return `<button type="button" onclick="depUseChargesInBilan(${v})" style="margin-top:7px;background:none;border:none;color:#16a34a;font-size:11.5px;font-weight:700;cursor:pointer;padding:0;text-align:left">📊 Utiliser mes dépenses analysées : ≈ ${v.toLocaleString('fr-FR')} €/mois (abonnements, énergie, assurances…)</button>`;
+  return `<button type="button" onclick="depUseChargesInBilan(${v})" style="width:100%;padding:12px 14px;background:#16a34a;border:none;border-radius:12px;color:#fff;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;text-align:left;line-height:1.4">✅ Utiliser mes dépenses analysées : ≈ ${v.toLocaleString('fr-FR')} €/mois<br><span style="font-weight:600;font-size:12px;opacity:.9">abonnements, énergie, assurances… (sans le loyer ni les courses)</span></button>`;
 }
 function depUseChargesInBilan(v) {
   const el = document.getElementById('b-charges');
@@ -883,6 +883,15 @@ function depRenderResults() {
   <div style="${DEP_CARD}">
     <div style="font-size:15px;font-weight:800;color:var(--color-text);margin-bottom:10px">💰 Ce que tu pourrais économiser</div>
     <div id="dep-savings"></div>
+    ${(() => {
+      const saved = typeof loadSavedBilan === 'function' && loadSavedBilan();
+      const going = typeof bilanInProgress === 'function' && bilanInProgress();
+      const resume = !!(saved || going);
+      return `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--color-border)">
+        <button onclick="openBilan()" style="width:100%;padding:13px 14px;background:transparent;border:1.5px solid #16a34a;border-radius:12px;color:#16a34a;font:inherit;font-size:14px;font-weight:800;cursor:pointer">📄 ${resume ? 'Reprendre mon bilan' : 'Faire mon bilan'}</button>
+        <div style="font-size:11.5px;${DEP_MUTED};margin-top:7px;text-align:center;line-height:1.45">${resume ? 'Retrouve ton bilan patrimonial ou continue-le avec ces dépenses.' : 'Le bilan patrimonial utilise tes dépenses réelles pour calculer ce que tu peux épargner.'}</div>
+      </div>`;
+    })()}
   </div>
 
   <details style="${DEP_CARD}">
