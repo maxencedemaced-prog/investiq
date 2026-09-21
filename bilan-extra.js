@@ -436,10 +436,14 @@ function bxActionPlan(M, r) {
   const secMonthly = sec && sec.monthly > 0 ? sec.monthly : 0;
   const total = sorted.reduce((t, o) => t + o.monthly, 0) + secMonthly;
   // Ce que le budget permet réellement : matelas d'abord, puis les objectifs du plus proche au plus lointain
+  // 1) on finance en entier tout ce que le budget permet de tenir (du plus proche au plus lointain),
+  // 2) puis le reliquat va sur le premier objectif qui n'a pas pu être financé en entier.
   let remaining = Math.max(0, budget - Math.min(secMonthly, budget));
+  const given = new Map();
+  sorted.forEach(o => { if (o.monthly <= remaining + 0.5) { given.set(o, o.monthly); remaining -= o.monthly; } });
+  sorted.forEach(o => { if (!given.has(o) && remaining > 0) { const a = Math.min(o.monthly, remaining); given.set(o, a); remaining -= a; } });
   const rows = sorted.map(o => {
-    const a = Math.min(o.monthly, remaining); remaining -= a;
-    const full = a >= o.monthly - 0.5;
+    const a = given.get(o) || 0, full = a >= o.monthly - 0.5;
     return { o, alloc: a, full, years: full ? o.horizon : bxYearsToReach(o.target, o.cap0, o.rate, a) };
   });
   return { steps, sorted, rows, secMonthly, total, budget, gap: Math.max(0, total - budget), needSecurite, alloc };
@@ -474,7 +478,7 @@ function bxPlanHTML(M, r) {
   p.steps.forEach(s => { html += num(i++, s.t, s.d); });
   if (p.rows.length) {
     const cell = x => x.full ? `<span style="color:${bxGood};font-weight:700">Financé</span>` : x.alloc > 0 ? `<span style="color:${bxWarn};font-weight:700">Atteint en ${bxYrs(x.years)}</span> <span style="color:${sub}">au lieu de ${when(x.o.horizon)}</span>` : `<span style="color:${bxBad};font-weight:700">Pas de budget</span>`;
-    html += num(i++, 'Financer tes objectifs, du plus proche au plus lointain', `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;color:${txt};min-width:440px"><thead><tr style="color:${sub};font-size:10.5px;text-align:left"><th style="padding-bottom:4px">Objectif</th><th style="text-align:right">Échéance visée</th><th style="text-align:right">Il faudrait</th><th style="text-align:right">Avec ton budget</th></tr></thead><tbody>${p.rows.map(x => `<tr style="border-top:1px solid ${bord}"><td style="padding:7px 0">${x.o.label}</td><td style="text-align:right">${when(x.o.horizon)}</td><td style="text-align:right;font-weight:700">${bxE(x.o.monthly)}/mois</td><td style="text-align:right">${cell(x)}</td></tr>`).join('')}<tr style="border-top:2px solid ${bord};font-weight:800"><td style="padding:7px 0">Total${p.secMonthly ? ' (matelas inclus)' : ''}</td><td></td><td style="text-align:right">${bxE(p.total)}/mois</td><td style="text-align:right;color:${sub};font-weight:600">budget ${bxE(p.budget)}/mois</td></tr></tbody></table></div>`);
+    html += num(i++, 'Répartir ton budget entre tes objectifs', `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;color:${txt};min-width:440px"><thead><tr style="color:${sub};font-size:10.5px;text-align:left"><th style="padding-bottom:4px">Objectif</th><th style="text-align:right">Échéance visée</th><th style="text-align:right">Il faudrait</th><th style="text-align:right">Avec ton budget</th></tr></thead><tbody>${p.rows.map(x => `<tr style="border-top:1px solid ${bord}"><td style="padding:7px 0">${x.o.label}</td><td style="text-align:right">${when(x.o.horizon)}</td><td style="text-align:right;font-weight:700">${bxE(x.o.monthly)}/mois</td><td style="text-align:right">${cell(x)}</td></tr>`).join('')}<tr style="border-top:2px solid ${bord};font-weight:800"><td style="padding:7px 0">Total${p.secMonthly ? ' (matelas inclus)' : ''}</td><td></td><td style="text-align:right">${bxE(p.total)}/mois</td><td style="text-align:right;color:${sub};font-weight:600">budget ${bxE(p.budget)}/mois</td></tr></tbody></table></div>`);
     const first = p.rows.filter(x => x.full).map(x => x.o.label.toLowerCase());
     const late = p.rows.filter(x => !x.full);
     html += num(i++, p.gap > 0 ? 'Ajuster : tes objectifs dépassent ton budget' : 'Ton budget suffit',
@@ -484,6 +488,6 @@ function bxPlanHTML(M, r) {
   }
   return `<div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:18px;margin-bottom:16px">
     <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:14px">Ton plan d'action chiffré</div>${html}
-    <div style="font-size:10.5px;color:${sub};line-height:1.5">Le budget est la mensualité recommandée du bilan. Le matelas de sécurité est financé en premier, puis les objectifs du plus proche au plus lointain.</div>
+    <div style="font-size:10.5px;color:${sub};line-height:1.5">Le budget est la mensualité recommandée du bilan. Le matelas de sécurité est financé en premier, puis les objectifs que ton budget permet de tenir entièrement (du plus proche au plus lointain), et le reliquat va sur le suivant. C'est une répartition par défaut : à toi de choisir tes priorités.</div>
   </div>`;
 }
