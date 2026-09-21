@@ -6004,7 +6004,9 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
   };
   finalizeBilanResult(_fallbackResult, bilanCapital || tv);
   window._lastBilanResult = _fallbackResult;
-  renderBilanResult(_fallbackResult);   // non sauvegardé
+  // Version simplifiée : mémorisée EN LOCAL seulement (pour pouvoir la retrouver), sans écraser un vrai bilan ni partir dans le compte
+  if (!loadSavedBilan()) saveBilan(_fallbackResult, true);
+  renderBilanResult(_fallbackResult, Date.now());
 }
 
 // ── Bilan : projections CALCULÉES (l'IA ne fait que recommander la mensualité et l'allocation) ──
@@ -6043,11 +6045,11 @@ const bilanKey = () => 'iq_bilan_' + (currentUser?.id || 'demo');
 function loadSavedBilan() {
   try { const s = JSON.parse(localStorage.getItem(bilanKey()) || 'null'); return s && s.result ? s : null; } catch { return null; }
 }
-function saveBilan(result) {
+function saveBilan(result, localOnly) {
   try { localStorage.setItem(bilanKey(), JSON.stringify({ ts: Date.now(), result, data: bilanData })); } catch {}
   // Copie dans le compte (table « bilans », voir SUPABASE_BILANS.sql) : retrouvable sur tous les appareils.
   // Silencieux si la table n'existe pas encore : la copie locale reste utilisée.
-  if (!isDemo && currentUser) {
+  if (!localOnly && !isDemo && currentUser) {
     sb.from('bilans').insert({ user_id: currentUser.id, result, data: bilanData })
       .then(({ error }) => { if (error) console.warn('bilan cloud:', error.message); }, e => console.warn('bilan cloud:', e));
   }
@@ -6061,7 +6063,7 @@ async function syncBilanFromCloud() {
     if (error || !data || !data.length) return false;
     const ts = new Date(data[0].created_at).getTime();
     const local = loadSavedBilan();
-    if (local && local.ts >= ts) return false;
+    if (local && local.ts >= ts && !(local.result && local.result._fallback)) return false;   // une version simplifiée locale ne masque pas un vrai bilan du compte
     localStorage.setItem(bilanKey(), JSON.stringify({ ts, result: data[0].result, data: data[0].data || {} }));
     return true;
   } catch (e) { console.warn('bilan sync:', e); return false; }
