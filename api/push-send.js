@@ -75,7 +75,27 @@ const MARKET_LIST = {
 };
 const sameSym = (a, b) => String(a).toUpperCase() === String(b).toUpperCase();
 
-async function sendMoves(users) {
+// Plafond : 2 alertes par jour et par utilisateur (prix + mouvements confondus). Le briefing du matin n'est pas compté.
+const MAX_ALERTS_PER_DAY = 2;
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+async function loadAlertCounts(users) {
+  const counts = new Map();
+  for (const part of chunk(users.map(u => u.userId), 100)) {
+    const { data, error } = await supabase.from('push_events').select('user_id').in('user_id', part).like('event_key', `push:${todayKey()}:%`);
+    if (error) { console.warn('[push-send] plafond non appliqué (push_events) :', error.message); continue; }
+    (data || []).forEach(e => counts.set(e.user_id, (counts.get(e.user_id) || 0) + 1));
+  }
+  return counts;
+}
+async function countAlert(userId, counts) {
+  const n = (counts.get(userId) || 0) + 1;
+  counts.set(userId, n);
+  await supabase.from('push_events').upsert({ user_id: userId, event_key: `push:${todayKey()}:${n}` }, { onConflict: 'user_id,event_key', ignoreDuplicates: true });
+}
+
+async function sendMoves(users, alertCount) {
+  users = users.filter(u => (alertCount.get(u.userId) || 0) < MAX_ALERTS_PER_DAY);   // plafond du jour atteint
   if (!users.length) return 0;
   const day = new Date().toISOString().slice(0, 10);
 
@@ -125,6 +145,7 @@ async function sendMoves(users) {
 
     if (await notifyUser(u, payload, d => d.moves !== false)) {
       sent++;
+      await countAlert(u.userId, alertCount);
       await supabase.from('push_events').upsert(picked.map(c => ({ user_id: u.userId, event_key: c.key })), { onConflict: 'user_id,event_key', ignoreDuplicates: true });
     }
   }
@@ -195,24 +216,27 @@ module.exports = async function handler(req, res) {
     const due = positions.filter(p => !p.alert_sent_at || new Date(p.alert_sent_at).getTime() < dayAgo);
     const quotes = await getQuotes(due.map(p => p.name));
     let sent = 0, triggeredCount = 0;
+    const alertCount = await loadAlertCounts(recipients);   // alertes déjà envoyées aujourd'hui, par utilisateur
 
     for (const u of recipients) {
       const hits = due.filter(p => p.user_id === u.userId && quotes[p.name] && quotes[p.name].price <= Number(p.alert_price));
       if (!hits.length) continue;
       triggeredCount += hits.length;
+      if ((alertCount.get(u.userId) || 0) >= MAX_ALERTS_PER_DAY) continue;   // plafond du jour atteint : pas marquée « alertée », elle repartira demain si le prix reste sous le seuil
       const first = hits[0], q = quotes[first.name];
       let body = `${first.name} est à ${q.price.toFixed(2).replace('.', ',')} € (ton seuil : ${Number(first.alert_price).toFixed(2).replace('.', ',')} €)`;
       if (hits.length > 1) body += ` · +${hits.length - 1} autre${hits.length > 2 ? 's' : ''} alerte${hits.length > 2 ? 's' : ''}`;
       const reached = await notifyUser(u, { title: `🔔 Alerte prix · ${first.name}`, body, tag: 'investiq-alert-' + first.id });
       if (reached) {
         sent++;
+        await countAlert(u.userId, alertCount);
         // On ne marque « alerté » que si la notification est réellement partie : sinon on réessaiera au prochain passage
         await supabase.from('positions').update({ alert_sent_at: new Date().toISOString() }).in('id', hits.map(p => p.id));
       }
     }
     // ── Gros mouvements : une action de ton portefeuille, de ta watchlist ou une grande valeur du marché ──
     let movesSent = 0;
-    try { movesSent = await sendMoves(recipients.filter(u => u.moves)); }
+    try { movesSent = await sendMoves(recipients.filter(u => u.moves), alertCount); }
     catch (err) { console.error('[push-send] mouvements :', err.message); }
 
     return res.status(200).json({ mode, users: recipients.length, checked: due.length, triggered: triggeredCount, sent, movesSent });
