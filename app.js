@@ -5524,25 +5524,25 @@ function renderBilanStep(step) {
       <div style="font-size:13px;color:${sub};margin-bottom:24px">Pour calculer ta capacité d'épargne réelle.</div>
       <div style="${sectionStyle}">
         <label style="${labelStyle}">Revenu net mensuel (€)</label>
-        <input type="number" id="b-revenu" placeholder="Ex: 2 800" style="${fieldStyle}" value="${bilanData.revenu||''}">
+        <input type="number" id="b-revenu" min="0" step="250" placeholder="Ex: 2 800" style="${fieldStyle}" value="${bilanData.revenu||''}">
         <div style="font-size:11px;color:${sub};margin-top:5px">Après impôts, avant charges</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div>
           <label style="${labelStyle}">Loyer / Remb. immo (€/mois)</label>
-          <input type="number" id="b-loyer" placeholder="Ex: 900" style="${fieldStyle}" value="${bilanData.loyer||''}">
+          <input type="number" id="b-loyer" min="0" step="100" placeholder="Ex: 900" style="${fieldStyle}" value="${bilanData.loyer||''}">
         </div>
         <div>
           <label style="${labelStyle}">Autres crédits (€/mois)</label>
-          <input type="number" id="b-credits" placeholder="Ex: 300" style="${fieldStyle}" value="${bilanData.credits||''}">
+          <input type="number" id="b-credits" min="0" step="50" placeholder="Ex: 300" style="${fieldStyle}" value="${bilanData.credits||''}">
         </div>
         <div>
           <label style="${labelStyle}">Charges fixes estimées (€/mois)</label>
-          <input type="number" id="b-charges" placeholder="Ex: 800" style="${fieldStyle}" value="${bilanData.charges||''}">
+          <input type="number" id="b-charges" min="0" step="50" placeholder="Ex: 800" style="${fieldStyle}" value="${bilanData.charges||''}">
         </div>
         <div>
           <label style="${labelStyle}">Épargne actuelle (€/mois)</label>
-          <input type="number" id="b-epargne-actuelle" placeholder="Ex: 200" style="${fieldStyle}" value="${bilanData.epargneMensuelle||''}">
+          <input type="number" id="b-epargne-actuelle" min="0" step="50" placeholder="Ex: 200" style="${fieldStyle}" value="${bilanData.epargneMensuelle||''}">
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
@@ -5561,30 +5561,30 @@ function renderBilanStep(step) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div>
           <label style="${labelStyle}">Livret A / LDDS (€)</label>
-          <input type="number" id="b-livret" placeholder="Ex: 5 000" style="${fieldStyle}" value="${bilanData.livret||''}">
+          <input type="number" id="b-livret" min="0" step="500" placeholder="Ex: 5 000" style="${fieldStyle}" value="${bilanData.livret||''}">
         </div>
         <div>
           <label style="${labelStyle}">Assurance vie (€)</label>
-          <input type="number" id="b-assurance" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.assurance||''}">
+          <input type="number" id="b-assurance" min="0" step="500" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.assurance||''}">
         </div>
         <div>
           <label style="${labelStyle}">PEA (€)</label>
-          <input type="number" id="b-pea" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.pea||''}">
+          <input type="number" id="b-pea" min="0" step="500" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.pea||''}">
         </div>
         <div>
           <label style="${labelStyle}">Bourse / CTO (€)</label>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="number" id="b-bourse" placeholder="Ex: 0" style="${fieldStyle};flex:1" value="${bilanData.bourse||''}">
+            <input type="number" id="b-bourse" min="0" step="500" placeholder="Ex: 0" style="${fieldStyle};flex:1" value="${bilanData.bourse||''}">
             ${objChartCapital > 0 ? `<button type="button" onclick="document.getElementById('b-bourse').value='${objChartCapital}';this.style.background='#16a34a';this.innerHTML='✓ Importé'" style="padding:8px 12px;background:#1d4ed8;border:none;border-radius:10px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">📥 Importer (${fmtI(objChartCapital)} €)</button>` : ''}
           </div>
         </div>
         <div>
           <label style="${labelStyle}">Immobilier (valeur estimée €)</label>
-          <input type="number" id="b-immo" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.immo||''}">
+          <input type="number" id="b-immo" min="0" step="5000" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.immo||''}">
         </div>
         <div>
           <label style="${labelStyle}">Autres actifs (€)</label>
-          <input type="number" id="b-autres-actifs" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.autresActifs||''}">
+          <input type="number" id="b-autres-actifs" min="0" step="500" placeholder="Ex: 0" style="${fieldStyle}" value="${bilanData.autresActifs||''}">
         </div>
       </div>
       ${btnRow(2)}`,

@@ -14,7 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260921100704">
+  <link rel="stylesheet" href="style.css?v=20260921100936">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -834,15 +834,15 @@ window.addEventListener('load', function() {
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
           <div class="field">
             <label>Capital disponible (€)</label>
-            <input type="number" id="ob-bankroll" placeholder="Ex: 1 000" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
+            <input type="number" id="ob-bankroll" step="500" placeholder="Ex: 1 000" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
           </div>
           <div class="field">
             <label>Versement mensuel (€)</label>
-            <input type="number" id="ob-monthly" placeholder="Ex: 200" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
+            <input type="number" id="ob-monthly" step="50" placeholder="Ex: 200" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
           </div>
           <div class="field">
             <label>Objectif à atteindre (€)</label>
-            <input type="number" id="ob-target" placeholder="Ex: 50 000" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
+            <input type="number" id="ob-target" step="5000" placeholder="Ex: 50 000" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
           </div>
           <div id="ob-budget-preview" style="display:none;background:#e8f8f0;border-radius:10px;padding:10px 14px;border-left:3px solid #1a7f5a">
             <div style="font-size:11px;font-weight:700;color:#1a7f5a;margin-bottom:3px">Projection à 7%/an</div>
@@ -1122,10 +1122,10 @@ window.addEventListener('load', function() {
           <div class="form-grid" style="margin-top:20px">
             <div class="field">
               <label>Capital de départ (€)</label>
-              <input type="number" id="obj-capital" placeholder="Ex: 1 000" oninput="objFeasPreview()">
+              <input type="number" id="obj-capital" min="0" step="500" placeholder="Ex: 1 000" oninput="objFeasPreview()">
               <div id="obj-capital-hint" style="display:none;font-size:12px;color:#1a7f5a;margin-top:4px;font-weight:600"></div>
             </div>
-            <div class="field"><label>Versement mensuel (€)</label><input type="number" id="obj-monthly" placeholder="Ex: 200" value="200" oninput="objFeasPreview()"></div>
+            <div class="field"><label>Versement mensuel (€)</label><input type="number" id="obj-monthly" min="0" step="50" placeholder="Ex: 200" value="200" oninput="objFeasPreview()"></div>
           </div>
           <button class="btn-obj-next" onclick="objGo(2)">Suivant →</button>
         </div>
@@ -1136,8 +1136,8 @@ window.addEventListener('load', function() {
           <h2 class="obj-step-h2">Ton objectif</h2>
           <p class="obj-step-p">Combien tu veux avoir et pourquoi</p>
           <div class="form-grid" style="margin-top:20px">
-            <div class="field"><label>Capital visé (€)</label><input type="number" id="obj-target" placeholder="Ex: 100 000" value="100000" oninput="objFeasPreview()"></div>
-            <div class="field"><label>Dans combien d'années ?</label><input type="number" id="obj-years" placeholder="Ex: 10" value="10" oninput="objFeasPreview()"></div>
+            <div class="field"><label>Capital visé (€)</label><input type="number" id="obj-target" min="0" step="5000" placeholder="Ex: 100 000" value="100000" oninput="objFeasPreview()"></div>
+            <div class="field"><label>Dans combien d'années ?</label><input type="number" id="obj-years" min="1" max="60" step="1" placeholder="Ex: 10" value="10" oninput="objFeasPreview()"></div>
           </div>
           <div class="field">
             <label>Pour quel projet ?</label>
@@ -1735,7 +1735,7 @@ window.addEventListener('load', function() {
       <div class="card">
         <div class="card-head"><div class="card-title"><span class="card-icon dark">$</span>Profil investisseur</div></div>
         <div class="form-grid">
-          <div class="field"><label>Bankroll (€)</label><input type="number" id="s-bankroll" value="5000" step="100"></div>
+          <div class="field"><label>Bankroll (€)</label><input type="number" id="s-bankroll" value="5000" step="500"></div>
           <div class="field"><label>Horizon</label><select id="s-horizon"><option value="court">Court (&lt;3 ans)</option><option value="moyen" selected>Moyen (3–7 ans)</option><option value="long">Long (&gt;7 ans)</option></select></div>
           <div class="field"><label>Tolérance au risque</label><select id="s-risk"><option value="faible" selected>Faible</option><option value="modere">Modérée</option><option value="eleve">Élevée</option></select></div>
           <div class="field"><label>Notifications</label><select id="s-notif"><option value="daily">Quotidiennes</option><option value="weekly">Hebdomadaires</option><option value="off">Désactivées</option></select></div>
@@ -1820,8 +1820,8 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260921100704"></script>
-<script src="depenses.js?v=20260921100704"></script>
+<script src="app.js?v=20260921100936"></script>
+<script src="depenses.js?v=20260921100936"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
