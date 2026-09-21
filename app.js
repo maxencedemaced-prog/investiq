@@ -296,6 +296,7 @@ function showValidatedChart() {
             </div>
           </div>
         </div>
+        <div id="obj-next-plan" style="order:3"></div>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary" onclick="openAllocModal()" style="font-size:13px;padding:9px 16px;flex:1">🎚️ Ajuster actions/ETF</button>
@@ -304,8 +305,19 @@ function showValidatedChart() {
       </div>`;
     generateETFPlan(activeObjId);
     try { renderSmartAlerts('obj-smart-alerts'); } catch(e) { console.warn('smartAlerts:', e); }
-    // Plan du mois : auto si nouveau mois (pas encore de plan ce mois-ci), sinon affiche le cache
-    try { generateMonthlyPlan(false); } catch(e) { console.warn('monthlyPlan:', e); }
+    // Plan du mois : auto si nouveau mois (pas encore de plan ce mois-ci), sinon affiche le cache.
+    // Le 1er mois, l'investissement de départ EST le plan de ce mois : on n'en génère pas un second d'office (économie d'IA
+    // et de lecture) ; on l'explique et on le propose sur demande.
+    try {
+      const firstMonthWithStart = objFirstMonth && objChartCapital > 0;
+      if (firstMonthWithStart && !getCachedMonthlyPlan()) {
+        const mp = document.getElementById('obj-monthly-plan'); if (mp) mp.innerHTML = '';
+        renderNextPlanCard(true);
+      } else {
+        generateMonthlyPlan(false);
+        renderNextPlanCard(false);
+      }
+    } catch(e) { console.warn('monthlyPlan:', e); }
   }
 }
 
@@ -11991,4 +12003,32 @@ function bilanDiscuss() {
     const i = document.getElementById('ai-in');
     if (i) { i.value = 'Résume mon dernier bilan et dis-moi par quoi commencer.'; i.focus(); }
   }, 350);
+}
+
+// ── « Ton prochain plan mensuel » : explique le rythme (un plan par mois) et propose le plan du mois en cours ──
+function renderNextPlanCard(offerNow) {
+  const el = document.getElementById('obj-next-plan');
+  if (!el) return;
+  const now = new Date(), next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const days = Math.max(1, Math.ceil((next - now) / 86400000));
+  const nextLabel = '1er ' + next.toLocaleDateString('fr-FR', { month: 'long' });
+  const has = !!getCachedMonthlyPlan();
+  const budget = objChartMonthly || 200;
+  el.innerHTML = `
+  <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;background:var(--color-surface,#fff);border:1px solid var(--color-border,#e4e4e7);border-radius:14px;padding:14px 16px;margin-bottom:14px">
+    <span style="width:38px;height:38px;border-radius:11px;background:rgba(99,102,241,0.12);color:#6366f1;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+    <div style="flex:1;min-width:220px">
+      <div style="font-size:13.5px;font-weight:800;color:var(--color-text,#1c1c1e)">Ton prochain plan mensuel : ${nextLabel} <span style="font-weight:600;color:var(--color-text-secondary,#71717a)">(dans ${days} jour${days > 1 ? 's' : ''})</span></div>
+      <div style="font-size:12px;color:var(--color-text-secondary,#71717a);line-height:1.55;margin-top:3px">Chaque mois, InvestIQ prépare un nouveau plan : il répartit tes ${fmtI(budget)} € du mois entre actions et ETF, selon ta cible ${objStockPct} % / ${100 - objStockPct} % et ce que tu détiens déjà. Il t'attendra ici dès le ${nextLabel}.</div>
+      ${has ? `<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:8px">✓ Ton plan de ${monthLabel()} est affiché ci-dessus.</div>` : ''}
+    </div>
+    ${offerNow && !has ? `<button id="obj-plan-now-btn" onclick="requestMonthlyPlanNow()" style="background:#6366f1;color:#fff;border:none;border-radius:10px;padding:10px 14px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;align-self:center">Je veux aussi un plan pour ${monthLabel()}</button>` : ''}
+  </div>`;
+}
+async function requestMonthlyPlanNow() {
+  const btn = document.getElementById('obj-plan-now-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Préparation du plan…'; }
+  try { await generateMonthlyPlan(true); } catch (e) { console.warn('requestMonthlyPlanNow:', e); }
+  try { renderNextPlanCard(false); } catch {}
+  document.getElementById('obj-monthly-plan')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
