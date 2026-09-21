@@ -759,3 +759,44 @@ function bxChecksHTML(T) {
     <div style="font-size:11px;color:${sub};margin-top:6px">Corrige-les avec « Refaire mon bilan » : tes réponses sont pré-remplies, tu n'as qu'à modifier celles qui sont fausses.</div>
   </div>`;
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  CONTEXTE POUR LE TCHAT : le dernier bilan enregistré, résumé, pour que l'Agent IA puisse l'expliquer / le résumer / le retravailler
+// ═══════════════════════════════════════════════════════════════
+function bilanContextText() {
+  const s = typeof loadSavedBilan === 'function' ? loadSavedBilan() : null;
+  if (!s || !s.result) return '';
+  const r = s.result, prev = bilanData;
+  bilanData = s.data || {};                       // les calculs lisent bilanData : on le pointe sur le bilan enregistré, puis on le restaure
+  try {
+    const M = bilanMetrics(), d = bilanData, e = n => Math.round(n) + ' €';
+    const L = [];
+    L.push(`=== DERNIER BILAN PATRIMONIAL DE L'UTILISATEUR (fait le ${typeof bilanDateLabel === 'function' ? bilanDateLabel(s.ts) : ''}${r._fallback ? ', version simplifiée : l\'analyse IA n\'avait pas abouti' : ''}) ===`);
+    L.push('Il peut te demander de l\'expliquer, le résumer, le comparer à son portefeuille ou d\'ajuster son plan. Appuie-toi UNIQUEMENT sur ce qui suit.');
+    L.push(`Profil : ${d.age || '?'} ans, ${d.famille || '?'}, ${d.enfants || 0} enfant(s), statut ${d.statut || '?'}. Revenu ${e(M.revenu)}/mois, loyer/remboursement ${e(M.loyer)}, autres crédits ${e(M.credits)}, charges fixes ${e(M.charges)}, épargne actuelle ${e(M.epargne)}/mois.`);
+    if (typeof bilanFactsText === 'function') L.push(bilanFactsText());
+    L.push(`Résultat : score ${r.score_global}/10 (${r.score_label}). ${r.resume_executif || ''}`);
+    L.push(`Mensualité recommandée : ${r.mensualite_recommandee} €/mois (min ${r.mensualite_min}, max ${r.mensualite_max}). ${r.mensualite_explication || ''}`);
+    if ((r.allocation_cible || []).length) L.push('Allocation cible : ' + r.allocation_cible.map(a => `${a.type} ${a.pct} %`).join(', ') + (r.allocation_ajustee ? ` (ajustée à ${r.allocation_ajustee.vers} % d'actions pour respecter le profil de risque)` : '') + '.');
+    const RP = typeof bilanRiskProfile === 'function' ? bilanRiskProfile() : null;
+    if (RP) L.push(`Profil de risque : ${RP.label}, part d'actions recommandée ${RP.min} à ${RP.max} %.`);
+    if ((r.points_forts || []).length) L.push('Points forts : ' + r.points_forts.join(' ; '));
+    if ((r.points_attention || []).length) L.push('À surveiller : ' + r.points_attention.join(' ; '));
+    if ((r.actions_prioritaires || []).length) L.push('Actions prioritaires : ' + r.actions_prioritaires.map(a => `[${a.priorite}] ${a.action}`).join(' ; '));
+    if (typeof bxObjectiveResults === 'function') {
+      const objs = bxObjectiveResults(M, r);
+      if (objs.length) L.push('Objectifs chiffrés : ' + objs.map(o => `${o.label} → ${o.lines.join(' / ')}`).join(' | '));
+      const plan = typeof bxActionPlan === 'function' ? bxActionPlan(M, r) : null;
+      if (plan && plan.rows.length) L.push('Plan d\'action chiffré (budget ' + e(plan.budget) + '/mois, total nécessaire ' + e(plan.total) + '/mois) : ' + plan.rows.map(x => `${x.o.label} ${e(x.o.monthly)}/mois → ${x.full ? 'financé' : x.alloc > 0 ? 'financé partiellement' : 'pas de budget'}`).join(' ; '));
+    }
+    const D = r.deep;
+    if (D) {
+      if ((D.plan_90_jours || []).length) L.push('Plan des 90 jours : ' + D.plan_90_jours.map(p => `${p.periode} : ${p.action}`).join(' ; '));
+      if ((D.risques || []).length) L.push('Risques : ' + D.risques.map(k => k.risque).join(' ; '));
+      if ((D.analyse_objectifs || []).length) L.push('Verdict par objectif : ' + D.analyse_objectifs.map(o => `${o.objectif} (${o.verdict})`).join(' ; '));
+    }
+    if (r.verdict) L.push('Verdict : ' + r.verdict);
+    return L.join('\n').slice(0, 7000) + '\n';
+  } catch (err) { console.warn('bilanContextText:', err); return ''; }
+  finally { bilanData = prev; }
+}

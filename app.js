@@ -83,10 +83,10 @@ async function confirmReplaceObjective(idToReplace) {
   try { renderMultiObjChart(); } catch(e) {}
 }
 
-async function validateObjectif(labelOverride) {
+async function validateObjectif(labelOverride, forceNew) {
   // Mise à jour UNIQUEMENT si on édite l'objectif actuellement actif (pas juste des valeurs proches)
   const activeObj = allObjectives.find(o => o.id === activeObjId);
-  const isUpdate = activeObj && activeObj.target === objChartTarget && activeObj.monthly === objChartMonthly;
+  const isUpdate = !forceNew && activeObj && activeObj.target === objChartTarget && activeObj.monthly === objChartMonthly;
   if (!isUpdate && allObjectives.length >= 3) {
     // Modal de remplacement au lieu du bandeau — on FIGE les valeurs courantes
     // (elles peuvent être écrasées par un chargement async pendant que la modal est ouverte)
@@ -6276,7 +6276,7 @@ function renderBilanResult(r, ts) {
     </div>
     <div style="display:flex;gap:10px">
       <button onclick="closeBilan()" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Fermer</button>
-      <button onclick="nav('ai');closeBilan()" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">🤖 Discuter avec l'IA →</button>
+      <button onclick="bilanDiscuss()" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">🤖 Discuter avec l'IA →</button>
     </div>
   </div>`;
 
@@ -6329,38 +6329,54 @@ function createObjectifFromBilan() {
     document.body.appendChild(overlay);
 
     // Store pending bilan data for replaceBilanObjectif
-    window._pendingBilanObjectif = { monthly, target, years, rate, capital: r.projection_capital };
+    window._pendingBilanObjectif = { monthly, target, years, rate, capital: r.projection_capital, ...bilanObjectiveExtras(r) };
     return;
   }
 
-  // Pré-remplir les variables globales du wizard objectif
-  objChartMonthly = monthly;
-  objChartTarget = target;
-  objChartYears = years;
-  objChartRate = rate;
-  objChartCapital = r.projection_capital ?? (parseFloat(bilanData.bourse) || parseFloat(bilanData.pea) || 0);
+  bilanCreateObjectif({ monthly, target, years, rate, capital: r.projection_capital, ...bilanObjectiveExtras(r) });
+}
 
+// Création réelle de l'objectif. Ordre IMPORTANT : on ouvre d'abord la page Objectif (qui recharge SON objectif actif et écrase les
+// variables du graphique), et on applique les valeurs du bilan APRÈS — sinon « créer » retombait sur une mise à jour de l'ancien objectif.
+async function bilanCreateObjectif(p) {
   closeBilan();
   nav('objectif');
-
-  // Petit délai pour laisser la page charger puis déclencher la validation
-  setTimeout(async () => {
-    // Construire le graphique et sauvegarder en base
+  await new Promise(r => setTimeout(r, 250));
+  try {
+    if (!isDemo && currentUser) await loadObjective();          // liste à jour (et évite qu'un chargement tardif écrase nos valeurs)
+    objChartMonthly = p.monthly; objChartTarget = p.target; objChartYears = p.years; objChartRate = p.rate;
+    objChartCapital = p.capital ?? (parseFloat(bilanData.bourse) || parseFloat(bilanData.pea) || 0);
+    if (p.risk) objRisk = p.risk;
+    if (p.stockPct != null) objStockPct = p.stockPct;
     buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
-    await validateObjectif('Objectif Bilan');
+    const before = allObjectives.length;
+    await validateObjectif('Objectif Bilan', true);
     showValidatedChart();
-
-    // Bannière de confirmation
-    const banner = document.createElement('div');
-    banner.id = 'bilan-import-banner';
-    banner.style.cssText = `position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;
-      background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:12px 20px;border-radius:14px;
-      font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(37,99,235,0.4);display:flex;align-items:center;gap:10px;max-width:380px`;
-    banner.innerHTML = `<span>Objectif Bilan créé — ${monthly.toLocaleString('fr-FR')} EUR/mois, cible ${(target/1000).toFixed(0)} k EUR</span>
-      <button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700">x</button>`;
-    document.body.appendChild(banner);
-    setTimeout(() => banner.remove(), 6000);
-  }, 400);
+    const created = allObjectives.length > before || allObjectives.some(o => o.label === 'Objectif Bilan');
+    bilanShowBanner(created ? `✅ Objectif créé depuis ton bilan : ${Math.round(p.monthly).toLocaleString('fr-FR')} €/mois, cible ${Math.round(p.target / 1000)} k€ en ${p.years} ans` : 'Objectif mis à jour depuis ton bilan');
+  } catch (e) {
+    console.warn('bilanCreateObjectif:', e);
+    bilanShowBanner('⚠️ Impossible de créer l\'objectif pour le moment. Réessaie depuis la page Objectif.');
+  }
+}
+function bilanShowBanner(text) {
+  document.getElementById('bilan-import-banner')?.remove();
+  const banner = document.createElement('div');
+  banner.id = 'bilan-import-banner';
+  banner.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:12px 20px;border-radius:14px;font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(37,99,235,0.4);display:flex;align-items:center;gap:10px;max-width:420px';
+  banner.innerHTML = `<span>${_escHtml(text)}</span><button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700">x</button>`;
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 7000);
+}
+// Profil de risque et part d'actions du bilan → paramètres de l'objectif (cohérence bilan ↔ objectif)
+function bilanObjectiveExtras(r) {
+  const out = {};
+  try {
+    const P = typeof bilanRiskProfile === 'function' ? bilanRiskProfile() : null;
+    if (P) out.risk = P.level <= 1 ? 'prudent' : P.level === 2 ? 'equilibre' : 'agressif';
+    if (r && Array.isArray(r.allocation_cible) && typeof bxEquityShare === 'function') out.stockPct = Math.round(bxEquityShare(r.allocation_cible));
+  } catch {}
+  return out;
 }
 
 // ===== BILAN — REMPLACER OBJECTIF =====
@@ -6378,34 +6394,7 @@ async function replaceBilanObjectif(idToReplace) {
     try { await sb.from('objectives').delete().eq('id', idToReplace); } catch(e) {}
   }
 
-  // Pré-remplir
-  objChartMonthly = pending.monthly;
-  objChartTarget = pending.target;
-  objChartYears = pending.years;
-  objChartRate = pending.rate;
-  objChartCapital = pending.capital ?? (parseFloat(bilanData.bourse) || parseFloat(bilanData.pea) || 0);
-
-  closeBilan();
-  nav('objectif');
-
-  setTimeout(async () => {
-    // Construire le graphique avec les nouvelles données
-    buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate);
-
-    // Sauvegarder le nouvel objectif en base (allObjectives a maintenant < 3 éléments)
-    await validateObjectif('Objectif Bilan');
-
-    showValidatedChart();
-
-    const banner = document.createElement('div');
-    banner.style.cssText = `position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;
-      background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:12px 20px;border-radius:14px;
-      font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(37,99,235,0.4);display:flex;align-items:center;gap:10px;max-width:380px`;
-    banner.innerHTML = `<span>✅ Objectif créé depuis le Bilan — ${pending.monthly.toLocaleString('fr-FR')} €/mois</span>
-      <button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700">×</button>`;
-    document.body.appendChild(banner);
-    setTimeout(() => banner.remove(), 5000);
-  }, 400);
+  await bilanCreateObjectif(pending);
 }
 
 // ===== BILAN — EXPORT PDF =====
@@ -11210,6 +11199,8 @@ Profil : horizon ${profile.horizon || 'moyen'} · risque ${profile.risk || 'faib
 `;
   }
 
+  // Dernier bilan patrimonial (s'il existe) : l'Agent peut l'expliquer, le résumer, le retravailler
+  try { if (typeof bilanContextText === 'function') ctx += '\n' + bilanContextText(); } catch (e) { console.warn('ctx bilan:', e); }
   return ctx;
 }
 
@@ -11248,7 +11239,7 @@ async function sendAI() {
   const ctx = getFullContext();
   const histCtx = chatHistory.slice(-8).map(m => `${m.role==='user'?'Utilisateur':'Assistant'}: ${m.content}`).join('\n');
 
-  let systemPrompt = `Tu es l'Agent IA d'InvestIQ, le copilote financier personnel de cet utilisateur. Tu connais son portefeuille, ses objectifs et son profil (contexte ci-dessous) — appuie-toi dessus pour personnaliser chaque réponse.
+  let systemPrompt = `Tu es l'Agent IA d'InvestIQ, le copilote financier personnel de cet utilisateur. Tu connais son portefeuille, ses objectifs, son profil et, s'il existe, son DERNIER BILAN PATRIMONIAL complet (contexte ci-dessous : utilise-le pour le résumer, l'expliquer ou ajuster son plan, sans jamais inventer un élément qui n'y figure pas) — appuie-toi dessus pour personnaliser chaque réponse.
 
 ${AI_PERSONA}
 
@@ -11364,6 +11355,8 @@ function executeAgentAction(action) {
 }
 
 function initAgent(auto=false) {
+  // Bouton « Résumer mon bilan » : visible seulement s'il existe un bilan enregistré
+  try { const qb = document.getElementById('agent-qa-bilan'); if (qb) qb.style.display = (typeof loadSavedBilan === 'function' && loadSavedBilan()) ? '' : 'none'; } catch {}
   // Dashboard d'abord (priorité visuelle), chaque bloc isolé en try/catch
   try { renderAgentDashboard(); } catch(e) { console.error('renderAgentDashboard:', e); }
   // Historique IA : évalue les recos à maturité puis affiche les stats réelles
@@ -11988,4 +11981,14 @@ function renderDailyBrief(items) {
 // rappelant la fonctionnalité concernée (ou le quota atteint).
 function showPremiumGate(featureName, benefits, subtitle) {
   showPlansModal({ feature: featureName, subtitle: subtitle || 'Fonctionnalité Premium', benefits });
+}
+
+// Bilan → tchat : ouvre l'Agent IA avec une question prête (l'utilisateur n'a plus qu'à envoyer)
+function bilanDiscuss() {
+  closeBilan();
+  nav('ai');
+  setTimeout(() => {
+    const i = document.getElementById('ai-in');
+    if (i) { i.value = 'Résume mon dernier bilan et dis-moi par quoi commencer.'; i.focus(); }
+  }, 350);
 }
