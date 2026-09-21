@@ -11548,6 +11548,14 @@ function renderAgentSample() {
     <div style="flex:1;min-width:220px">
       <div style="font-size:13px;font-weight:800;color:var(--color-text)">🔒 Aperçu figé · portefeuille fictif</div>
       <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px;line-height:1.5">Ces chiffres sont un exemple, rien n'est calculé sur tes données. Avec Premium, les conseils IA (✦) portent sur ton vrai portefeuille.</div>
+      <div style="font-size:11px;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:0.05em;margin:12px 0 6px">Ce que Premium ajoute</div>
+      <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--color-text-secondary);line-height:1.65">
+        <li><strong style="color:var(--color-text)">Score et alertes</strong> calculés sur tes vraies positions (concentration, secteurs, écarts)</li>
+        <li><strong style="color:var(--color-text)">Conseils IA chiffrés (✦)</strong> : alléger, renforcer, avec un ETF de remplacement</li>
+        <li><strong style="color:var(--color-text)">Brief du jour</strong> : ce qui a bougé dans ton portefeuille et pourquoi</li>
+        <li><strong style="color:var(--color-text)">Priorités et recommandations</strong> mises à jour à chaque visite</li>
+        <li><strong style="color:var(--color-text)">Tchat IA sans limite</strong>, et l'Agent qui connaît ton bilan et tes objectifs</li>
+      </ul>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="nav('ajouter')" style="padding:9px 14px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer">+ Ajouter mes positions</button>

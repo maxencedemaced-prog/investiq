@@ -67,14 +67,18 @@ function showTabHint(page) {
 // « Ne plus afficher » : tous les onglets sont considérés comme vus
 function tabHintsOff() {
   tabMarkSeen(Object.keys(TAB_HINTS));
+  try { localStorage.setItem(agentSampleSeenKey(), '1'); } catch {}
   updateNavDots();
+  try { renderAgentTabs(); } catch {}
   document.getElementById('tab-hint')?.remove();
 }
 
 // Paramètres : remet tous les points rouges et les explications
 function tabHintsReset() {
   try { localStorage.removeItem(tabSeenKey()); } catch {}
+  try { localStorage.removeItem(agentSampleSeenKey()); } catch {}   // point rouge de l'onglet « Exemple Premium » de l'Agent IA
   updateNavDots();
+  try { renderAgentTabs(); } catch {}
   const b = document.getElementById('tab-hints-reset');
   if (b) { b.textContent = '✓ Explications réactivées : clique sur un onglet'; setTimeout(() => { b.textContent = '🔴 Réafficher les explications des onglets'; }, 3500); }
 }
