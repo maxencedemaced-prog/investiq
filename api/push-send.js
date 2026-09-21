@@ -1,172 +1,142 @@
-// api/push-send.js — v2
-// Deux modes :
-//   ?mode=briefing (défaut) → briefing quotidien du matin, toujours le briefing
-//   ?mode=alerts            → vérifie les franchissements de prix d'alerte (intra-day)
-export const config = { runtime: 'nodejs' };
-
+// api/push-send.js — v3 : envoi programmé des notifications (appelé par les crons, jamais par le navigateur)
+//   ?mode=briefing  → briefing du matin (valeur du portefeuille, variation de la dernière séance, à surveiller)
+//   ?mode=alerts    → prix passé sous le seuil d'alerte d'une position (max 1 alerte / position / 24 h)
+// Chaque utilisateur choisit dans ses paramètres : daily (chaque jour) · weekly (le lundi) · off (rien).
 const { createClient } = require('@supabase/supabase-js');
-const webpush = require('web-push');
+const { pushReady, sendToDevice } = require('./_push');
+const { getQuotes } = require('./_quotes');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-webpush.setVapidDetails(
-  'mailto:contact@investiq.fr',
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+const fmtEur = (n) => Math.abs(n) >= 1000
+  ? (n / 1000).toFixed(1).replace('.', ',') + ' k€'
+  : Math.round(n).toLocaleString('fr-FR') + ' €';
+const fmtPct = (n) => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1).replace('.', ',') + ' %';
+const chunk = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
 
-const ALLOWED_ORIGINS = [
-  'https://investiq-kappa.vercel.app',
-  'http://localhost:3000',
-  'http://127.0.0.1:5500',
-];
-
-const fmtK = (n) => n >= 1000 ? (n/1000).toFixed(1).replace('.', ',') + ' k€' : Math.round(n) + ' €';
-
-// Prix live Finnhub (pour le mode alerts)
-async function fetchLivePrice(symbol) {
-  try {
-    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${process.env.FINNHUB_API_KEY}`);
-    const d = await r.json();
-    return d && d.c > 0 ? { price: d.c, changePct: d.dp || 0 } : null;
-  } catch { return null; }
+// Appareils regroupés par utilisateur, avec sa préférence de fréquence
+async function loadRecipients() {
+  const { data: devices, error } = await supabase.from('push_devices').select('user_id, endpoint, subscription');
+  if (error) throw new Error('lecture push_devices : ' + error.message);
+  const byUser = new Map();
+  for (const d of devices || []) {
+    if (!byUser.has(d.user_id)) byUser.set(d.user_id, { userId: d.user_id, devices: [], notif: 'daily' });
+    byUser.get(d.user_id).devices.push(d);
+  }
+  const ids = [...byUser.keys()];
+  for (const part of chunk(ids, 100)) {
+    const { data: profs } = await supabase.from('profiles').select('id, notif').in('id', part);
+    for (const p of profs || []) if (byUser.has(p.id)) byUser.get(p.id).notif = p.notif || 'daily';
+  }
+  return [...byUser.values()];
 }
 
-async function sendPush(subscriptionRaw, payload) {
-  const subscription = JSON.parse(subscriptionRaw);
-  await webpush.sendNotification(subscription, JSON.stringify({
-    icon: '/icons/icon-192.png', url: '/', ...payload
-  }));
+async function loadPositions(userIds, alertsOnly) {
+  const rows = [];
+  for (const part of chunk(userIds, 100)) {
+    let q = supabase.from('positions').select('id, user_id, name, qty, pru, price, alert_price, alert_sent_at').in('user_id', part);
+    if (alertsOnly) q = q.not('alert_price', 'is', null);
+    const { data, error } = await q;
+    if (error) throw new Error('lecture positions : ' + error.message);
+    rows.push(...(data || []));
+  }
+  return rows;
+}
+
+// Envoie à tous les appareils de l'utilisateur ; supprime ceux qui n'existent plus. Renvoie le nombre d'appareils joints.
+async function notifyUser(user, payload) {
+  let ok = 0;
+  for (const d of user.devices) {
+    const r = await sendToDevice(d, payload);
+    if (r.ok) ok++;
+    else if (r.gone) await supabase.from('push_devices').delete().eq('endpoint', d.endpoint);
+    else console.error('[push-send] échec pour', user.userId, ':', r.error);
+  }
+  return ok;
 }
 
 module.exports = async function handler(req, res) {
-  const origin = req.headers.origin || '';
-  if (ALLOWED_ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  // Auth requise dans tous les cas (y compris le mode test) — ce endpoint peut
-  // déclencher l'envoi d'une notification push à n'importe quel user_id, il ne
-  // doit jamais être atteignable sans le secret du cron.
-  const authHeader = req.headers['authorization'];
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Réservé aux crons : sans le secret, ce point d'entrée pourrait notifier n'importe qui.
+  if (!process.env.CRON_SECRET || req.headers['authorization'] !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+  if (!pushReady()) return res.status(500).json({ error: 'Clés VAPID manquantes (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY).' });
 
-  const isTest = req.query && req.query.test === '1';
   const mode = (req.query && req.query.mode) || 'briefing';
+  if (mode !== 'briefing' && mode !== 'alerts') return res.status(400).json({ error: 'Unknown mode' });
 
-  // ── MODE TEST ──
-  if (isTest) {
-    let body = {};
-    try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {}; } catch {}
-    const user_id = body.user_id;
-    if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
-    const { data: sub, error: subErr } = await supabase
-      .from('push_subscriptions').select('subscription').eq('user_id', user_id).single();
-    if (subErr || !sub) return res.status(404).json({ error: 'No subscription found.' });
-    try {
-      await sendPush(sub.subscription, {
-        title: '🧪 Test InvestIQ',
-        body: 'Les notifications fonctionnent ! Briefing chaque matin à 8h, alertes prix en journée.',
-        tag: 'investiq-test',
-      });
-      return res.status(200).json({ ok: true });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  }
+  try {
+    const recipients = (await loadRecipients()).filter(u => u.notif !== 'off');
+    if (!recipients.length) return res.status(200).json({ mode, users: 0, sent: 0 });
 
-  const { data: subs, error } = await supabase
-    .from('push_subscriptions').select('user_id, subscription');
-  if (error) {
-    console.error('[api/push-send] lecture push_subscriptions:', error.message);
-    return res.status(500).json({ sent: 0, error: error.message });
-  }
-  if (!subs?.length) return res.status(200).json({ sent: 0 });
+    // ── Briefing du matin ──
+    if (mode === 'briefing') {
+      const isMonday = new Date().getUTCDay() === 1;
+      const targets = recipients.filter(u => u.notif !== 'weekly' || isMonday);
+      const positions = await loadPositions(targets.map(u => u.userId), false);
+      const quotes = await getQuotes(positions.map(p => p.name));
+      let sent = 0, skipped = 0;
 
-  let sent = 0, failed = 0;
+      for (const u of targets) {
+        const mine = positions.filter(p => p.user_id === u.userId);
+        if (!mine.length) { skipped++; continue; }   // rien à résumer
 
-  // ══════════════════════════════════════════════════
-  //  MODE BRIEFING (8h) — TOUJOURS le briefing du jour
-  // ══════════════════════════════════════════════════
-  if (mode === 'briefing') {
-    for (const sub of subs) {
-      try {
-        const { data: positions } = await supabase
-          .from('positions').select('name, price, pru, qty').eq('user_id', sub.user_id);
-
-        let totalVal = 0, totalCost = 0;
-        (positions || []).forEach(p => { totalVal += (p.price || p.pru) * p.qty; totalCost += p.pru * p.qty; });
-        const pnl = totalVal - totalCost;
-        const pnlPct = totalCost > 0 ? (pnl / totalCost * 100) : 0;
-        const inLoss = (positions || []).filter(p => p.pru > 0 && (p.price - p.pru) / p.pru * 100 < -10).length;
-
-        // Le briefing reste le briefing. Les positions en difficulté sont mentionnées
-        // dans le corps, elles ne remplacent plus le titre.
-        const title = '☀️ Ton briefing InvestIQ';
-        let body = `${fmtK(totalVal)} · ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}% global · ${(positions || []).length} positions`;
-        if (inLoss > 0) body += ` · ${inLoss} à surveiller`;
-
-        await sendPush(sub.subscription, { title, body, tag: 'investiq-daily' });
-        sent++;
-      } catch (err) {
-        failed++;
-        if (err.statusCode === 410) await supabase.from('push_subscriptions').delete().eq('user_id', sub.user_id);
-        else console.error('[api/push-send] briefing échoué pour', sub.user_id, ':', err.message);
-      }
-    }
-    return res.status(200).json({ mode, sent, failed });
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  //  MODE ALERTS (intra-day) — franchissements de prix d'alerte
-  //  N'envoie QUE si un seuil défini par l'utilisateur est franchi,
-  //  max 1 alerte / position / 24h (colonne alert_sent_at).
-  // ══════════════════════════════════════════════════════════════
-  if (mode === 'alerts') {
-    for (const sub of subs) {
-      try {
-        const { data: positions } = await supabase
-          .from('positions')
-          .select('id, name, price, alert_price, alert_sent_at')
-          .eq('user_id', sub.user_id)
-          .not('alert_price', 'is', null);
-        if (!positions?.length) continue;
-
-        const dayAgo = Date.now() - 24 * 3600 * 1000;
-        const triggered = [];
-
-        for (const p of positions) {
-          if (p.alert_sent_at && new Date(p.alert_sent_at).getTime() > dayAgo) continue; // déjà alerté < 24h
-          const live = await fetchLivePrice(p.name);
-          if (!live) continue;
-          if (live.price <= p.alert_price) {
-            triggered.push({ ...p, livePrice: live.price });
-            await supabase.from('positions')
-              .update({ price: live.price, alert_sent_at: new Date().toISOString() })
-              .eq('id', p.id);
+        let value = 0, cost = 0, dayDelta = 0;
+        const movers = [];
+        for (const p of mine) {
+          const q = quotes[p.name];
+          const price = q ? q.price : (p.price || p.pru);
+          const v = price * p.qty;
+          value += v; cost += p.pru * p.qty;
+          if (q && q.changePct) {
+            dayDelta += v - v / (1 + q.changePct / 100);
+            movers.push({ name: p.name, pct: q.changePct });
           }
         }
+        const prevValue = value - dayDelta;
+        const dayPct = prevValue > 0 ? dayDelta / prevValue * 100 : 0;
+        const totalPct = cost > 0 ? (value - cost) / cost * 100 : 0;
+        const inLoss = mine.filter(p => p.pru > 0 && ((quotes[p.name]?.price ?? p.price) - p.pru) / p.pru * 100 < -10).length;
 
-        if (triggered.length) {
-          const first = triggered[0];
-          const title = `🔔 Alerte prix — ${first.name}`;
-          let body = `${first.name} a atteint ${first.livePrice.toFixed(2)} € (ton seuil : ${Number(first.alert_price).toFixed(2)} €)`;
-          if (triggered.length > 1) body += ` · +${triggered.length - 1} autre${triggered.length > 2 ? 's' : ''} alerte${triggered.length > 2 ? 's' : ''}`;
-          await sendPush(sub.subscription, { title, body, tag: 'investiq-alert-' + first.id });
-          sent++;
+        let body = movers.length
+          ? `${fmtEur(value)} · ${fmtPct(dayPct)} à la dernière séance · ${fmtPct(totalPct)} depuis l'achat`
+          : `${fmtEur(value)} · ${fmtPct(totalPct)} depuis l'achat · ${mine.length} position${mine.length > 1 ? 's' : ''}`;
+        movers.sort((a, b) => b.pct - a.pct);
+        if (movers.length > 1 && (Math.abs(movers[0].pct) >= 1.5 || Math.abs(movers[movers.length - 1].pct) >= 1.5)) {
+          const best = movers[0], worst = movers[movers.length - 1];
+          body += `\n▲ ${best.name} ${fmtPct(best.pct)} · ▼ ${worst.name} ${fmtPct(worst.pct)}`;
         }
-      } catch (err) {
-        failed++;
-        if (err.statusCode === 410) await supabase.from('push_subscriptions').delete().eq('user_id', sub.user_id);
-        else console.error('[api/push-send] alerte échouée pour', sub.user_id, ':', err.message);
+        if (inLoss) body += `\n${inLoss} position${inLoss > 1 ? 's' : ''} à plus de 10 % sous ton prix d'achat`;
+
+        if (await notifyUser(u, { title: '☀️ Ton briefing InvestIQ', body, tag: 'investiq-daily' })) sent++;
+      }
+      return res.status(200).json({ mode, users: targets.length, sent, skipped });
+    }
+
+    // ── Alertes de prix ──
+    const positions = await loadPositions(recipients.map(u => u.userId), true);
+    const dayAgo = Date.now() - 24 * 3600 * 1000;
+    const due = positions.filter(p => !p.alert_sent_at || new Date(p.alert_sent_at).getTime() < dayAgo);
+    const quotes = await getQuotes(due.map(p => p.name));
+    let sent = 0, triggeredCount = 0;
+
+    for (const u of recipients) {
+      const hits = due.filter(p => p.user_id === u.userId && quotes[p.name] && quotes[p.name].price <= Number(p.alert_price));
+      if (!hits.length) continue;
+      triggeredCount += hits.length;
+      const first = hits[0], q = quotes[first.name];
+      let body = `${first.name} est à ${q.price.toFixed(2).replace('.', ',')} € (ton seuil : ${Number(first.alert_price).toFixed(2).replace('.', ',')} €)`;
+      if (hits.length > 1) body += ` · +${hits.length - 1} autre${hits.length > 2 ? 's' : ''} alerte${hits.length > 2 ? 's' : ''}`;
+      const reached = await notifyUser(u, { title: `🔔 Alerte prix · ${first.name}`, body, tag: 'investiq-alert-' + first.id });
+      if (reached) {
+        sent++;
+        // On ne marque « alerté » que si la notification est réellement partie : sinon on réessaiera au prochain passage
+        await supabase.from('positions').update({ alert_sent_at: new Date().toISOString() }).in('id', hits.map(p => p.id));
       }
     }
-    return res.status(200).json({ mode, sent, failed });
+    return res.status(200).json({ mode, users: recipients.length, checked: due.length, triggered: triggeredCount, sent });
+  } catch (err) {
+    console.error('[push-send]', err.message);
+    return res.status(500).json({ error: err.message });
   }
-
-  return res.status(400).json({ error: 'Unknown mode' });
 };

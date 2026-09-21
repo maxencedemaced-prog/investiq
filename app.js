@@ -4543,7 +4543,7 @@ async function initApp(user) {
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
-  if ('Notification' in window) Notification.requestPermission();
+  try { pushInit(); } catch(e) {}   // notifications push : ne demande plus la permission d'office, c'est l'utilisateur qui l'active
   initTheme();
   } catch(e) { console.error('initApp error:', e); alert('Erreur de chargement: ' + e.message); }
 }
@@ -4692,7 +4692,7 @@ function backToLoginAfterSignup(email) {
   document.getElementById('login-pass')?.focus();
 }
 async function logout() {
-  if (!isDemo) await sb.auth.signOut();
+  if (!isDemo) { try { await pushOnLogout(); } catch(e) {} await sb.auth.signOut(); }
   clearUserCaches(); try { localStorage.removeItem('iq_cache_uid'); } catch {}
   showAuthScreen();
   closeSidebar();
@@ -6671,7 +6671,7 @@ function nav(page, auto=false) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} },
+}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderPushCard();}catch(e){} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(auto); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
 }
@@ -6806,6 +6806,14 @@ const NOTIF_NAV = {
 };
 
 function renderNotifications() {
+  renderNotificationList();
+  // Invitation à activer les notifications push (uniquement si elles ne le sont pas encore)
+  if (typeof pushBellPromptHTML === 'function') pushBellPromptHTML().then(html => {
+    const list = document.getElementById('notif-list');
+    if (html && list && !document.getElementById('push-bell-prompt')) list.insertAdjacentHTML('afterbegin', html);
+  }).catch(() => {});
+}
+function renderNotificationList() {
   const list = document.getElementById('notif-list');
   if (!notifications.length) {
     list.innerHTML = '<div class="notif-empty" style="padding:20px;text-align:center;color:#8e8e93;font-size:13px">✅ Tout va bien — aucune alerte</div>';

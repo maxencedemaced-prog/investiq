@@ -1,0 +1,19 @@
+# Alertes de prix « en journée » gratuites : GitHub appelle l'API toutes les 30 minutes pendant les heures de marché.
+# (Sur l'offre gratuite de Vercel, un cron ne peut tourner qu'une fois par jour.)
+# À configurer une fois : GitHub > Settings > Secrets and variables > Actions > New repository secret
+#   APP_URL      = https://investiq-kappa.vercel.app
+#   CRON_SECRET  = la même valeur que la variable CRON_SECRET de Vercel
+name: Alertes de prix
+on:
+  schedule:
+    - cron: '*/30 7-17 * * 1-5'   # UTC : ~9h–19h à Paris, du lundi au vendredi
+  workflow_dispatch: {}
+jobs:
+  alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier les seuils d'alerte
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/push-send?mode=alerts"
