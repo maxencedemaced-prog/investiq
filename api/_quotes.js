@@ -50,22 +50,24 @@ async function fetchOne(at) {
   return null;
 }
 
-async function getQuote(symbol) {
-  for (const at of attemptsFor(symbol)) {
+async function getQuote(symbol, preferYahoo) {
+  let list = attemptsFor(symbol);
+  if (preferYahoo) list = [...list.filter(a => a.type === 'yahoo'), ...list.filter(a => a.type !== 'yahoo')];   // évite des requêtes Finnhub vouées à l'échec pour les valeurs européennes
+  for (const at of list) {
     try { const q = await fetchOne(at); if (q) return q; } catch { /* essai suivant */ }
   }
   return null;
 }
 
 // Renvoie { symbole: { price, changePct } } (les symboles introuvables sont absents). 8 requêtes en parallèle maximum.
-async function getQuotes(symbols) {
+async function getQuotes(symbols, opts = {}) {
   const list = [...new Set(symbols.filter(Boolean))];
   const out = {};
   let i = 0;
   await Promise.all(Array.from({ length: Math.min(8, list.length) }, async () => {
     while (i < list.length) {
       const s = list[i++];
-      const q = await getQuote(s);
+      const q = await getQuote(s, opts.preferYahoo);
       if (q) out[s] = q;
     }
   }));

@@ -58,18 +58,28 @@ module.exports = async function handler(req, res) {
       return sent ? res.status(200).json({ ok: true, sent }) : res.status(502).json({ error: lastErr || 'Envoi impossible.' });
     }
 
+    // ── Préférence de l'appareil : alertes « forte hausse / forte baisse » ──
+    if (body.prefs && typeof body.prefs.moves === 'boolean' && typeof body.endpoint === 'string') {
+      const { error } = await supabase.from('push_devices').update({ moves: body.prefs.moves, updated_at: new Date().toISOString() })
+        .eq('user_id', userId).eq('endpoint', body.endpoint);
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ ok: true });
+    }
+
     // ── Enregistrement de l'appareil ──
     const sub = body.subscription;
     if (!sub || typeof sub.endpoint !== 'string' || !sub.keys?.p256dh || !sub.keys?.auth) {
       return res.status(400).json({ error: 'Abonnement invalide' });
     }
-    const { error } = await supabase.from('push_devices').upsert({
+    const row = {
       user_id: userId,
       endpoint: sub.endpoint,
       subscription: JSON.stringify(sub),
       user_agent: String(req.headers['user-agent'] || '').slice(0, 200),
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'endpoint' });   // même appareil qui change de compte : l'abonnement passe au nouveau compte
+    };
+    if (typeof body.moves === 'boolean') row.moves = body.moves;   // sinon on garde la valeur existante (ou true par défaut)
+    const { error } = await supabase.from('push_devices').upsert(row, { onConflict: 'endpoint' });   // même appareil qui change de compte : l'abonnement passe au nouveau compte
     if (error) return res.status(500).json({ error: error.message });
     return res.status(200).json({ ok: true });
   }

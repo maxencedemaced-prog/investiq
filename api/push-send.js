@@ -16,25 +16,32 @@ const chunk = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, 
 
 // Appareils regroupés par utilisateur, avec sa préférence de fréquence
 async function loadRecipients() {
-  const { data: devices, error } = await supabase.from('push_devices').select('user_id, endpoint, subscription');
+  let { data: devices, error } = await supabase.from('push_devices').select('user_id, endpoint, subscription, moves');
+  if (error) ({ data: devices, error } = await supabase.from('push_devices').select('user_id, endpoint, subscription'));   // colonne « moves » pas encore créée
   if (error) throw new Error('lecture push_devices : ' + error.message);
   const byUser = new Map();
   for (const d of devices || []) {
-    if (!byUser.has(d.user_id)) byUser.set(d.user_id, { userId: d.user_id, devices: [], notif: 'daily' });
+    if (!byUser.has(d.user_id)) byUser.set(d.user_id, { userId: d.user_id, devices: [], notif: 'daily', watchlist: [] });
     byUser.get(d.user_id).devices.push(d);
   }
   const ids = [...byUser.keys()];
   for (const part of chunk(ids, 100)) {
-    const { data: profs } = await supabase.from('profiles').select('id, notif').in('id', part);
-    for (const p of profs || []) if (byUser.has(p.id)) byUser.get(p.id).notif = p.notif || 'daily';
+    const { data: profs } = await supabase.from('profiles').select('id, notif, watchlist').in('id', part);
+    for (const p of profs || []) if (byUser.has(p.id)) {
+      const u = byUser.get(p.id);
+      u.notif = p.notif || 'daily';
+      u.watchlist = Array.isArray(p.watchlist) ? p.watchlist.filter(w => w && typeof w.ticker === 'string') : [];
+    }
   }
-  return [...byUser.values()];
+  const users = [...byUser.values()];
+  users.forEach(u => { u.moves = u.devices.some(d => d.moves !== false); });   // au moins un appareil veut les alertes de mouvements
+  return users;
 }
 
 async function loadPositions(userIds, alertsOnly) {
   const rows = [];
   for (const part of chunk(userIds, 100)) {
-    let q = supabase.from('positions').select('id, user_id, name, qty, pru, price, alert_price, alert_sent_at').in('user_id', part);
+    let q = supabase.from('positions').select('id, user_id, name, type, qty, pru, price, alert_price, alert_sent_at').in('user_id', part);
     if (alertsOnly) q = q.not('alert_price', 'is', null);
     const { data, error } = await q;
     if (error) throw new Error('lecture positions : ' + error.message);
@@ -44,15 +51,84 @@ async function loadPositions(userIds, alertsOnly) {
 }
 
 // Envoie à tous les appareils de l'utilisateur ; supprime ceux qui n'existent plus. Renvoie le nombre d'appareils joints.
-async function notifyUser(user, payload) {
+async function notifyUser(user, payload, deviceFilter) {
   let ok = 0;
   for (const d of user.devices) {
+    if (deviceFilter && !deviceFilter(d)) continue;
     const r = await sendToDevice(d, payload);
     if (r.ok) ok++;
     else if (r.gone) await supabase.from('push_devices').delete().eq('endpoint', d.endpoint);
     else console.error('[push-send] échec pour', user.userId, ':', r.error);
   }
   return ok;
+}
+
+// ── Alertes « ça bouge » ──
+// Seuils de variation sur la séance : action de ton portefeuille ou de ta watchlist 5 % · ETF 3 % · grande valeur du marché 6 %.
+const MOVE_STOCK = 5, MOVE_ETF = 3, MOVE_MARKET = 6, MOVE_MAX_PER_PUSH = 3, MOVE_MAX_MARKET = 2;
+const MARKET_LIST = {
+  'MC.PA': 'LVMH', 'OR.PA': "L'Oréal", 'RMS.PA': 'Hermès', 'TTE.PA': 'TotalEnergies', 'SAN.PA': 'Sanofi', 'AIR.PA': 'Airbus',
+  'AI.PA': 'Air Liquide', 'SU.PA': 'Schneider Electric', 'BNP.PA': 'BNP Paribas', 'CS.PA': 'AXA', 'SAF.PA': 'Safran',
+  'DG.PA': 'Vinci', 'KER.PA': 'Kering', 'STLAP.PA': 'Stellantis', 'ASML.AS': 'ASML', 'SAP.DE': 'SAP', 'SIE.DE': 'Siemens',
+  'AAPL': 'Apple', 'MSFT': 'Microsoft', 'NVDA': 'NVIDIA', 'GOOGL': 'Alphabet', 'AMZN': 'Amazon', 'META': 'Meta', 'TSLA': 'Tesla',
+  'JPM': 'JPMorgan', 'V': 'Visa', 'NFLX': 'Netflix', 'AMD': 'AMD',
+};
+const sameSym = (a, b) => String(a).toUpperCase() === String(b).toUpperCase();
+
+async function sendMoves(users) {
+  if (!users.length) return 0;
+  const day = new Date().toISOString().slice(0, 10);
+
+  // Déjà envoyé aujourd'hui ? Si la table de suivi est absente on s'abstient (sinon on renverrait la même alerte toutes les 30 min).
+  const done = new Set();
+  for (const part of chunk(users.map(u => u.userId), 100)) {
+    const { data, error } = await supabase.from('push_events').select('user_id, event_key').in('user_id', part).like('event_key', `mv:%:${day}`);
+    if (error) throw new Error('lecture push_events (SUPABASE_PUSH.sql exécuté ?) : ' + error.message);
+    (data || []).forEach(e => done.add(e.user_id + '|' + e.event_key));
+  }
+
+  const positions = await loadPositions(users.map(u => u.userId), false);
+  const symbols = [...Object.keys(MARKET_LIST), ...positions.map(p => p.name), ...users.flatMap(u => u.watchlist.map(w => w.ticker))];
+  const quotes = await getQuotes(symbols, { preferYahoo: true });
+  let sent = 0;
+
+  for (const u of users) {
+    const cands = [], seen = new Set();
+    const add = (sym, label, where, threshold, rank) => {
+      const q = quotes[sym]; const k = sym.toUpperCase();
+      if (!q || seen.has(k) || Math.abs(q.changePct) < threshold) return;
+      seen.add(k);
+      if (done.has(`${u.userId}|mv:${k}:${day}`)) return;
+      cands.push({ key: `mv:${k}:${day}`, label, where, pct: q.changePct, rank });
+    };
+    for (const p of positions.filter(p => p.user_id === u.userId)) add(p.name, p.name, 'dans ton portefeuille', /etf/i.test(p.type || '') ? MOVE_ETF : MOVE_STOCK, 0);
+    for (const w of u.watchlist) add(w.ticker, w.name || w.ticker, 'dans ta watchlist', MOVE_STOCK, 1);
+    for (const [sym, name] of Object.entries(MARKET_LIST)) {
+      if (!positions.some(p => p.user_id === u.userId && sameSym(p.name, sym)) && !u.watchlist.some(w => sameSym(w.ticker, sym))) add(sym, name, 'sur le marché', MOVE_MARKET, 2);
+    }
+    if (!cands.length) continue;
+
+    // Le plus concerné d'abord (portefeuille, puis watchlist, puis marché), puis les plus gros mouvements
+    cands.sort((a, b) => a.rank - b.rank || Math.abs(b.pct) - Math.abs(a.pct));
+    const picked = [];
+    let marketCount = 0;
+    for (const c of cands) {
+      if (picked.length >= MOVE_MAX_PER_PUSH) break;
+      if (c.rank === 2 && marketCount++ >= MOVE_MAX_MARKET) continue;
+      picked.push(c);
+    }
+
+    const up = (c) => c.pct >= 0;
+    const payload = picked.length === 1
+      ? { title: `${up(picked[0]) ? '🚀' : '📉'} ${picked[0].label} ${fmtPct(picked[0].pct)}`, body: `${up(picked[0]) ? 'Forte hausse' : 'Forte baisse'} sur la séance, ${picked[0].where}.`, tag: 'investiq-move-' + picked[0].key }
+      : { title: '📊 ça bouge sur les marchés', body: picked.map(c => `${up(c) ? '▲' : '▼'} ${c.label} ${fmtPct(c.pct)} (${c.where.replace('dans ton ', '').replace('dans ta ', '')})`).join('\n'), tag: 'investiq-moves-' + day };
+
+    if (await notifyUser(u, payload, d => d.moves !== false)) {
+      sent++;
+      await supabase.from('push_events').upsert(picked.map(c => ({ user_id: u.userId, event_key: c.key })), { onConflict: 'user_id,event_key', ignoreDuplicates: true });
+    }
+  }
+  return sent;
 }
 
 module.exports = async function handler(req, res) {
@@ -134,7 +210,12 @@ module.exports = async function handler(req, res) {
         await supabase.from('positions').update({ alert_sent_at: new Date().toISOString() }).in('id', hits.map(p => p.id));
       }
     }
-    return res.status(200).json({ mode, users: recipients.length, checked: due.length, triggered: triggeredCount, sent });
+    // ── Gros mouvements : une action de ton portefeuille, de ta watchlist ou une grande valeur du marché ──
+    let movesSent = 0;
+    try { movesSent = await sendMoves(recipients.filter(u => u.moves)); }
+    catch (err) { console.error('[push-send] mouvements :', err.message); }
+
+    return res.status(200).json({ mode, users: recipients.length, checked: due.length, triggered: triggeredCount, sent, movesSent });
   } catch (err) {
     console.error('[push-send]', err.message);
     return res.status(500).json({ error: err.message });

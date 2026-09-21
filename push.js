@@ -44,7 +44,7 @@ async function pushEnable() {
     let sub = await reg.pushManager.getSubscription();
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushB64ToBytes(kj.key) });
     const h = await pushHeaders(); if (!h) throw new Error('Session expirée, reconnecte-toi');
-    const r = await fetch('/api/push-subscribe', { method: 'POST', headers: h, body: JSON.stringify({ subscription: sub.toJSON() }) });
+    const r = await fetch('/api/push-subscribe', { method: 'POST', headers: h, body: JSON.stringify({ subscription: sub.toJSON(), moves: pushMovesOn() }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Enregistrement impossible');
     showToast('🔔 Notifications activées');
     pushTest(true);   // notification de confirmation immédiate
@@ -89,7 +89,7 @@ async function pushInit() {
   try {
     const sub = await reg.pushManager.getSubscription(); if (!sub) return;
     const h = await pushHeaders(); if (!h) return;
-    fetch('/api/push-subscribe', { method: 'POST', headers: h, body: JSON.stringify({ subscription: sub.toJSON() }) }).catch(() => {});
+    fetch('/api/push-subscribe', { method: 'POST', headers: h, body: JSON.stringify({ subscription: sub.toJSON(), moves: pushMovesOn() }) }).catch(() => {});
   } catch {}
 }
 
@@ -101,6 +101,19 @@ async function pushOnLogout() {
     if (h) await fetch('/api/push-subscribe', { method: 'DELETE', headers: h, body: JSON.stringify({ endpoint: sub.endpoint }) });
     await sub.unsubscribe();
   } catch {}
+}
+
+// Alertes « forte hausse / forte baisse » (portefeuille, watchlist, grandes valeurs) : activées par défaut, réglage par appareil
+const pushMovesOn = () => { try { return localStorage.getItem('iq_push_moves') !== '0'; } catch { return true; } };
+async function pushMovesChanged(on) {
+  try { localStorage.setItem('iq_push_moves', on ? '1' : '0'); } catch {}
+  try {
+    const sub = await pushCurrentSub(); const h = await pushHeaders();
+    if (!sub || !h) throw new Error('Active d\'abord les notifications');
+    const r = await fetch('/api/push-subscribe', { method: 'POST', headers: h, body: JSON.stringify({ endpoint: sub.endpoint, prefs: { moves: !!on } }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Enregistrement impossible');
+    showToast(on ? '✓ Alertes de gros mouvements activées' : 'Alertes de gros mouvements désactivées');
+  } catch (e) { showToast('Réglage impossible : ' + e.message); }
 }
 
 // Choix de fréquence du briefing (daily / weekly / off), enregistré sur le profil
@@ -128,7 +141,11 @@ async function renderPushCard() {
       ${st === 'on'
         ? `<button class="btn-secondary" id="push-test" onclick="pushTest()" style="flex:1">Envoyer un test</button><button class="btn-secondary" onclick="pushDisable()" style="flex:1">Désactiver</button>`
         : `<button class="btn-primary" id="push-btn" onclick="pushEnable()" style="flex:1">🔔 Activer les notifications</button>`}
-    </div>` : ''}`;
+    </div>` : ''}
+    ${st === 'on' ? `<label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;cursor:pointer">
+      <input type="checkbox" ${pushMovesOn() ? 'checked' : ''} onchange="pushMovesChanged(this.checked)" style="margin-top:3px;width:auto;flex-shrink:0">
+      <span style="font-size:13px;line-height:1.5"><strong>Alertes de gros mouvements</strong><br><span style="color:var(--color-text-secondary)">Quand une action explose ou s'effondre en séance (+5 % / −5 %) : les tiennes, celles de ta watchlist, et les grandes valeurs du marché (LVMH, Apple, NVIDIA…).</span></span>
+    </label>` : ''}`;
 }
 
 // Invitation dans la cloche, tant que les notifications ne sont pas actives

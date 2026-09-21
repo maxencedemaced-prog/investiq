@@ -20,3 +20,14 @@ alter table push_devices enable row level security;
 alter table profiles  add column if not exists notif text default 'daily';          -- daily | weekly | off
 alter table positions add column if not exists alert_price numeric;                  -- seuil d'alerte de prix
 alter table positions add column if not exists alert_sent_at timestamp with time zone; -- dernière alerte envoyée (max 1 / 24 h)
+
+-- 3) Alertes de gros mouvements (une seule fois par action et par jour) et préférence par appareil
+alter table push_devices add column if not exists moves boolean default true;   -- recevoir les alertes « forte hausse / forte baisse »
+
+create table if not exists push_events (
+  user_id uuid references auth.users on delete cascade not null,
+  event_key text not null,                       -- ex. « mv:NVDA:2026-09-21 »
+  sent_at timestamp with time zone default timezone('utc', now()),
+  primary key (user_id, event_key)
+);
+alter table push_events enable row level security;   -- accès serveur uniquement
