@@ -5940,36 +5940,52 @@ Génère un rapport structuré en JSON :
 }
 Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais chiffres.`;
 
-  try {
-    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide, sans backticks.');
-    const clean = raw.replace(/```json|```/g,'').trim();
-    const result = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
+  // L'IA écrit un rapport long : on lui laisse la place (le plafond par défaut de 2048 tokens tronquait la réponse → JSON illisible
+  // → rapport de secours affiché SANS prévenir). Deux tentatives, et un message clair si ça échoue.
+  let result = null, reason = '';
+  for (let attempt = 0; attempt < 2 && !result; attempt++) {
+    try {
+      const raw = await callClaude(
+        prompt + (attempt ? '\n\nIMPORTANT : sois PLUS BREF (phrases courtes, 3 points forts, 3 points d\'attention, 3 actions).' : ''),
+        'Réponds UNIQUEMENT en JSON valide, sans backticks.', 4000);
+      if (callClaudeFailed(raw) || raw === 'Erreur de connexion.') { reason = String(raw).replace(/^🔒\s*/, '').slice(0, 200); break; }   // quota / connexion : inutile de réessayer
+      const clean = raw.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
+      if (!parsed.resume_executif || !parsed.mensualite_recommandee) throw new Error('réponse incomplète');
+      result = parsed;
+    } catch (e) {
+      console.error('Bilan IA error (tentative ' + (attempt + 1) + ') :', e);
+      reason = 'La réponse de l\'IA était incomplète.';
+    }
+  }
+  if (result) {
     finalizeBilanResult(result, bilanCapital || tv);   // projections calculées, pas inventées par l'IA
     window._lastBilanResult = result;
     saveBilan(result);
     renderBilanResult(result, Date.now());
-  } catch(e) {
-    console.error('Bilan IA error:', e);
-    const _fallbackResult = {
-      score_global: 7.0,
-      score_label: 'Situation correcte',
-      score_color: '#f59e0b',
-      resume_executif: 'Analyse générée localement. Tu as une bonne base d\'investissement avec un portefeuille actif.',
-      points_forts: ['Portefeuille diversifié', 'Investissement régulier', 'Horizon long terme'],
-      points_attention: ['Optimiser la mensualité', 'Revoir l\'allocation'],
-      mensualite_recommandee: Math.round(capacite * 0.4),
-      mensualite_min: Math.round(capacite * 0.2),
-      mensualite_max: Math.round(capacite * 0.6),
-      mensualite_explication: 'Basé sur ta capacité d\'épargne',
-      allocation_cible: [{type:'ETF Monde',pct:70,color:'#3fb950',explication:'Base solide'},{type:'Obligations',pct:20,color:'#6366f1',explication:'Stabilité'},{type:'Actions',pct:10,color:'#f59e0b',explication:'Performance'}],
-      objectif_principal: bilanData.objectifs?.[0] || 'Capital long terme',
-      actions_prioritaires: [{priorite:'urgent',action:'Définir une mensualité fixe',impact:'Régularité = performance'},{priorite:'important',action:'Renforcer la diversification',impact:'Réduire le risque'},{priorite:'conseil',action:'Ouvrir un PEA si pas encore fait',impact:'Avantage fiscal'}],
-      verdict: 'Tu es sur la bonne voie. Avec de la régularité, tes objectifs sont atteignables !'
-    };
-    finalizeBilanResult(_fallbackResult, bilanCapital || tv);
-    window._lastBilanResult = _fallbackResult;
-    renderBilanResult(_fallbackResult);   // résultat local de secours : non sauvegardé
+    return;
   }
+  // Secours : version simplifiée, clairement signalée à l'utilisateur (bandeau + bouton « Relancer »)
+  const _fallbackResult = {
+    _fallback: true, _fallbackReason: reason,
+    score_global: 7.0,
+    score_label: 'Situation correcte',
+    score_color: '#f59e0b',
+    resume_executif: 'Version simplifiée : l\'analyse IA n\'a pas pu être générée. Les chiffres détaillés plus bas (diagnostic, objectifs, plan) sont calculés à partir de tes réponses et restent valables.',
+    points_forts: ['Tu as renseigné ta situation en détail', 'Tu épargnes déjà régulièrement', 'Tu as un horizon long terme'],
+    points_attention: ['Relance l\'analyse pour obtenir des recommandations personnalisées', 'Vérifie ta mensualité et ton allocation'],
+    mensualite_recommandee: Math.round(capacite * 0.4),
+    mensualite_min: Math.round(capacite * 0.2),
+    mensualite_max: Math.round(capacite * 0.6),
+    mensualite_explication: 'Estimation simple : 40 % de ta capacité d\'épargne',
+    allocation_cible: [{type:'ETF Monde',pct:70,color:'#3fb950',explication:'Base solide'},{type:'Obligations',pct:20,color:'#6366f1',explication:'Stabilité'},{type:'Actions',pct:10,color:'#f59e0b',explication:'Performance'}],
+    objectif_principal: bilanData.objectifs?.[0] || 'Capital long terme',
+    actions_prioritaires: [{priorite:'urgent',action:'Relancer l\'analyse IA',impact:'Pour obtenir un verdict et des actions personnalisés'},{priorite:'important',action:'Définir une mensualité fixe',impact:'Régularité = performance'},{priorite:'conseil',action:'Ouvrir un PEA si pas encore fait',impact:'Avantage fiscal'}],
+    verdict: 'Analyse simplifiée. Relance l\'analyse pour obtenir ton verdict personnalisé.'
+  };
+  finalizeBilanResult(_fallbackResult, bilanCapital || tv);
+  window._lastBilanResult = _fallbackResult;
+  renderBilanResult(_fallbackResult);   // non sauvegardé
 }
 
 // ── Bilan : projections CALCULÉES (l'IA ne fait que recommander la mensualité et l'allocation) ──
@@ -6049,6 +6065,10 @@ function renderBilanResult(r, ts) {
   const prio = {urgent:'#f87171', important:'#f59e0b', conseil:'#3fb950'};
 
   const html = `
+  ${r._fallback ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);border-radius:12px">
+    <div style="font-size:12.5px;color:${txt};line-height:1.5;flex:1;min-width:200px"><strong>Version simplifiée.</strong> L'analyse IA n'a pas pu être générée${r._fallbackReason ? ' (' + _escHtml(r._fallbackReason) + ')' : ''}. Les chiffres détaillés plus bas sont calculés à partir de tes réponses.</div>
+    <button onclick="renderBilanStep(8)" style="background:#16a34a;color:#fff;border:none;border-radius:9px;padding:9px 14px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">Relancer l'analyse</button>
+  </div>` : ''}
   ${ts ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:${surf};border:1px solid ${bord};border-radius:12px">
     <div style="font-size:12px;color:${sub}">📅 Bilan du <strong style="color:${txt}">${bilanDateLabel(ts)}</strong></div>
     <button onclick="restartBilan()" style="background:transparent;border:1px solid ${bord};color:${txt};font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer">🔄 Refaire mon bilan</button>

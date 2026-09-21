@@ -48,9 +48,10 @@ function bxIndicators(M) {
       M.tauxEpargne >= 15 ? 'Très bon niveau : c\'est ce qui construit un patrimoine.' : M.tauxEpargne >= 5 ? 'Correct. Viser 10 à 15 % accélère nettement le capital.' : 'Faible : même 50 € de plus par mois change la trajectoire sur 10 ans.']);
   }
   if (M.moisSecurite != null) {
-    const c = M.moisSecurite >= 3 ? bxGood : M.moisSecurite >= 1.5 ? bxWarn : bxBad;
+    const tm = parseFloat(((bilanData.precisions || {}).securite || {}).mois) || 3;   // objectif choisi par l'utilisateur (3 mois par défaut)
+    const c = M.moisSecurite >= tm ? bxGood : M.moisSecurite >= tm / 2 ? bxWarn : bxBad;
     list.push(['Épargne de précaution', M.moisSecurite.toFixed(1) + ' mois', c,
-      M.moisSecurite >= 3 ? 'Ton livret couvre au moins 3 mois de charges : bon matelas.' : `Objectif : 3 mois de charges, soit ${bxE(M.essentiel * 3)}. Il manque ${bxE(M.manqueSecurite)}.`]);
+      M.moisSecurite >= tm ? `Ton livret couvre au moins ${tm} mois de charges : bon matelas.` : `Objectif : ${tm} mois de charges, soit ${bxE(M.essentiel * tm)}. Il manque ${bxE(Math.max(0, M.essentiel * tm - M.livret))}.`]);
   }
   return list;
 }
@@ -180,7 +181,7 @@ function bilanPdfExtra(doc, y, margin, colW, r) {
   const need = h => { if (y + h > 280) { doc.addPage(); y = 16; } };
   const title = t => { need(14); doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20); doc.text(t, margin, y); y += 6; };
   const line = (t, bold) => { const ls = doc.splitTextToSize(t, colW); need(ls.length * 4.2 + 2); doc.setFontSize(9); doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setTextColor(bold ? 20 : 70, bold ? 20 : 70, bold ? 20 : 70); doc.text(ls, margin, y); y += ls.length * 4.2 + 1.5; };
-  const plain = s => String(s).replace(/→/g, '->').replace(/[^\x20-\x7EÀ-ÿ€]/g, '');
+  const plain = s => String(s).replace(/[  ]/g, ' ').replace(/→/g, '->').replace(/[^\x20-\x7EÀ-ÿ€]/g, '');
   title('Analyse detaillee');
   bxIndicators(M).forEach(i => line(plain(`${i[0]} : ${i[1]} - ${i[3]}`)));
   y += 3;
@@ -201,11 +202,11 @@ function bilanPdfExtra(doc, y, margin, colW, r) {
     objsPdf.forEach(o => { line(plain(o.label), true); o.lines.forEach(l => line(plain('- ' + l))); });
     y += 3;
     const plan = bxActionPlan(M, r);
-    if (plan.steps.length || plan.sorted.length) {
+    if (plan.steps.length || plan.rows.length) {
       title('Plan d\'action chiffre');
       plan.steps.forEach(s => line(plain(s.t + ' : ' + s.d)));
-      plan.sorted.forEach(o => line(plain(`${o.label} : ${bxE(o.monthly)}/mois${o.horizon != null ? ' (echeance ' + (Math.round(o.horizon * 10) / 10) + ' an)' : ''}`)));
-      if (plan.sorted.length) line(plain(`Total ${bxE(plan.total)}/mois pour un budget d'epargne de ${bxE(plan.budget)}/mois${plan.gap > 0 ? ` : il manque ${bxE(plan.gap)}/mois, decale ou reduis les objectifs les plus lointains.` : '.'}`), true);
+      plan.rows.forEach(x => line(plain(`${x.o.label} : il faudrait ${bxE(x.o.monthly)}/mois pour ${bxYrs(x.o.horizon)} - ${x.full ? 'finance avec ton budget' : x.alloc > 0 ? 'avec ton budget : atteint en ' + bxYrs(x.years) : 'pas de budget disponible'}`)));
+      if (plan.rows.length) line(plain(`Total ${bxE(plan.total)}/mois${plan.secMonthly ? ' (matelas inclus)' : ''} pour un budget d'epargne de ${bxE(plan.budget)}/mois${plan.gap > 0 ? ` : il manque ${bxE(plan.gap)}/mois. Concentre-toi sur 2 ou 3 priorites, repousse ou reduis les autres.` : '.'}`), true);
       y += 3;
     }
   }
@@ -348,7 +349,7 @@ function bxObjectiveResults(M, r) {
     const effort = M.revenu ? (M.credits + mens) / M.revenu * 100 : null;
     const monthly = bxSolveMonthly(apportReco, apport, 2, delai);
     const okAp = apport >= apportReco, okEf = effort != null && effort <= BX_DEBT_MAX;
-    out.push({ id: 'immo', label: 'Achat immobilier', icon: 'home', horizon: delai, monthly, status: okAp && okEf ? 'ok' : okEf || okAp ? 'warn' : 'bad', lines: [
+    out.push({ id: 'immo', label: 'Achat immobilier', icon: 'home', horizon: delai, monthly, target: apportReco, cap0: apport, rate: 2, status: okAp && okEf ? 'ok' : okEf || okAp ? 'warn' : 'bad', lines: [
       `Budget total (prix + frais de notaire) : ${bxE(besoin)}`,
       `Apport recommandé (frais + 10 % du prix) : ${bxE(apportReco)} — tu en as ${bxE(apport)}${okAp ? ' ✓' : ` (il manque ${bxE(apportReco - apport)})`}`,
       `Emprunt nécessaire : ${bxE(emprunt)} → mensualité d'environ ${bxE(mens)} (3,5 % sur ${duree} ans, hypothèse)`,
@@ -360,7 +361,7 @@ function bxObjectiveResults(M, r) {
     const depart = num('retraite', 'age') || 64, years = depart - age, revenu = num('retraite', 'revenu'), pension = num('retraite', 'pension');
     if (years > 0) {
       const gap = Math.max(0, revenu - pension), K = gap * 12 / 0.04, monthly = bxSolveMonthly(K, cap0, rate, years);
-      out.push({ id: 'retraite', label: 'Retraite', icon: 'clock', horizon: years, monthly, status: gap === 0 ? 'ok' : monthly <= ((r && r.mensualite_recommandee) || 0) ? 'ok' : 'warn', lines: [
+      out.push({ id: 'retraite', label: 'Retraite', icon: 'clock', horizon: years, monthly, target: K, cap0, rate, status: gap === 0 ? 'ok' : monthly <= ((r && r.mensualite_recommandee) || 0) ? 'ok' : 'warn', lines: [
         `Revenu souhaité ${bxE(revenu)}/mois, pension estimée ${bxE(pension)}/mois → il manque ${bxE(gap)}/mois`,
         `Capital nécessaire (règle des 4 %) : ${bxE(K)}`,
         gap > 0 ? `Versement nécessaire : ${bxE(monthly)}/mois pendant ${years} ans (rendement ${rate} %/an, avec ton capital actuel)` : 'Ta pension couvre déjà ton objectif.',
@@ -369,20 +370,20 @@ function bxObjectiveResults(M, r) {
   }
   if (objs.includes('revenus') && num('revenus', 'revenu') > 0) {
     const revenu = num('revenus', 'revenu'), h = num('revenus', 'horizon') || 15, K = revenu * 12 / 0.04, monthly = bxSolveMonthly(K, cap0, rate, h);
-    out.push({ id: 'revenus', label: 'Revenus passifs', icon: 'dollar', horizon: h, monthly, status: monthly <= ((r && r.mensualite_recommandee) || 0) ? 'ok' : 'warn', lines: [
+    out.push({ id: 'revenus', label: 'Revenus passifs', icon: 'dollar', horizon: h, monthly, target: K, cap0, rate, status: monthly <= ((r && r.mensualite_recommandee) || 0) ? 'ok' : 'warn', lines: [
       `Pour ${bxE(revenu)}/mois de revenus passifs, il faut un capital d'environ ${bxE(K)} (rendement de 4 %/an)`,
       `Versement nécessaire : ${bxE(monthly)}/mois pendant ${h} ans (rendement ${rate} %/an)`,
     ] });
   }
   if (objs.includes('capital') && num('capital', 'montant') > 0) {
     const K = num('capital', 'montant'), h = num('capital', 'horizon') || 10, monthly = bxSolveMonthly(K, cap0, rate, h);
-    out.push({ id: 'capital', label: 'Capital visé', icon: 'up', horizon: h, monthly, status: monthly <= ((r && r.mensualite_recommandee) || 0) ? 'ok' : 'warn', lines: [
+    out.push({ id: 'capital', label: 'Capital visé', icon: 'up', horizon: h, monthly, target: K, cap0, rate, status: monthly <= ((r && r.mensualite_recommandee) || 0) ? 'ok' : 'warn', lines: [
       `Pour atteindre ${bxE(K)} en ${h} ans : ${bxE(monthly)}/mois (rendement ${rate} %/an, avec ton capital actuel)`,
     ] });
   }
   if (objs.includes('projet') && num('projet', 'montant') > 0) {
     const K = num('projet', 'montant'), mois = num('projet', 'delai') || 24, rateP = mois <= 36 ? 0 : 2, monthly = bxSolveMonthly(K, 0, rateP, mois / 12);
-    out.push({ id: 'projet', label: 'Projet précis', icon: 'flag', horizon: mois / 12, monthly, status: monthly <= ((r && r.mensualite_recommandee) || 0) ? 'ok' : 'warn', lines: [
+    out.push({ id: 'projet', label: 'Projet précis', icon: 'flag', horizon: mois / 12, monthly, target: K, cap0: 0, rate: rateP, status: monthly <= ((r && r.mensualite_recommandee) || 0) ? 'ok' : 'warn', lines: [
       `Pour ${bxE(K)} dans ${mois >= 12 ? (mois / 12) + ' an' + (mois > 12 ? 's' : '') : mois + ' mois'} : ${bxE(monthly)}/mois`,
       mois <= 36 ? 'Horizon court : garde cet argent sur un support sans risque de perte (livret), pas en bourse.' : 'Horizon moyen : un support prudent reste préférable à la bourse pour ce projet.',
     ] });
@@ -393,7 +394,7 @@ function bxObjectiveResults(M, r) {
     if (P.securite && P.securite.mutuelle === 'non') alerts.push('Pas de complémentaire santé : un poste de dépense imprévu important, à revoir.');
     if (P.securite && P.securite.prevoyance === 'non') alerts.push('Pas de prévoyance : en cas d\'invalidité ou de décès, ton budget (et celui de ta famille) n\'est pas protégé.');
     if (P.securite && P.securite.prevoyance === 'nsp') alerts.push('Vérifie si tu as une prévoyance (souvent via l\'employeur) : décès et invalidité sont les gros risques oubliés.');
-    out.push({ id: 'securite', label: 'Sécuriser mon épargne', icon: 'shield', horizon: 1, monthly, status: gap === 0 ? 'ok' : 'warn', lines: [
+    out.push({ id: 'securite', label: 'Sécuriser mon épargne', icon: 'shield', horizon: 1, monthly, target: cible, cap0: M.livret, rate: 0, status: gap === 0 ? 'ok' : 'warn', lines: [
       `Matelas visé : ${mois} mois de charges = ${bxE(cible)} — tu as ${bxE(M.livret)} sur livrets${gap > 0 ? ` (il manque ${bxE(gap)})` : ' ✓'}`,
       gap > 0 ? `Pour l'atteindre en 12 mois : ${bxE(monthly)}/mois` : '',
     ].filter(Boolean).concat(alerts) });
@@ -410,17 +411,38 @@ function bxObjectiveResults(M, r) {
 }
 
 // Plan d'action chiffré : matelas → objectifs par échéance → reste vers la stratégie long terme
+// Nombre d'années pour atteindre `target` avec un versement mensuel donné (Infinity au-delà de 60 ans)
+function bxYearsToReach(target, cap0, ratePct, monthly) {
+  if (cap0 >= target) return 0;
+  if (monthly <= 0) return Infinity;
+  const i = Math.pow(1 + ratePct / 100, 1 / 12) - 1;
+  for (let n = 1; n <= 720; n++) {
+    const fv = cap0 * Math.pow(1 + ratePct / 100, n / 12) + (i > 0 ? monthly * (Math.pow(1 + i, n) - 1) / i : monthly * n);
+    if (fv >= target) return n / 12;
+  }
+  return Infinity;
+}
+const bxYrs = y => !isFinite(y) ? 'plus de 60 ans' : y < 1 ? Math.max(1, Math.round(y * 12)) + ' mois' : (Math.round(y * 10) / 10 + '').replace('.', ',') + ' an' + (y >= 1.5 ? 's' : '');
 function bxActionPlan(M, r) {
-  const res = bxObjectiveResults(M, r).filter(o => o.monthly != null && isFinite(o.monthly) && o.id !== 'securite');
+  const allObj = bxObjectiveResults(M, r);
+  const res = allObj.filter(o => o.monthly != null && isFinite(o.monthly) && o.id !== 'securite');
   const budget = (r && r.mensualite_recommandee) || 0, steps = [];
-  const sec = bxObjectiveResults(M, r).find(o => o.id === 'securite');
+  const sec = allObj.find(o => o.id === 'securite');
   const gap3 = M.essentiel ? M.manqueSecurite : 0;
   const needSecurite = sec ? Math.max(0, (parseFloat(((bilanData.precisions || {}).securite || {}).mois) || 6) * M.essentiel - M.livret) : gap3;
   const alloc = Math.max(50, Math.min(budget || 200, M.epargne || budget || 200));
   if (needSecurite > 0) steps.push({ t: 'Sécuriser ton matelas', d: `Il te manque ${bxE(needSecurite)} sur tes livrets. En y consacrant ${bxE(alloc)}/mois, c'est fait en ${Math.ceil(needSecurite / alloc)} mois. Tant que ce n'est pas fait, ne prends pas de risque avec le reste.` });
   const sorted = res.slice().sort((a, b) => (a.horizon || 99) - (b.horizon || 99));
-  const total = sorted.reduce((t, o) => t + o.monthly, 0);
-  return { steps, sorted, total, budget, gap: Math.max(0, total - budget), needSecurite, alloc };
+  const secMonthly = sec && sec.monthly > 0 ? sec.monthly : 0;
+  const total = sorted.reduce((t, o) => t + o.monthly, 0) + secMonthly;
+  // Ce que le budget permet réellement : matelas d'abord, puis les objectifs du plus proche au plus lointain
+  let remaining = Math.max(0, budget - Math.min(secMonthly, budget));
+  const rows = sorted.map(o => {
+    const a = Math.min(o.monthly, remaining); remaining -= a;
+    const full = a >= o.monthly - 0.5;
+    return { o, alloc: a, full, years: full ? o.horizon : bxYearsToReach(o.target, o.cap0, o.rate, a) };
+  });
+  return { steps, sorted, rows, secMonthly, total, budget, gap: Math.max(0, total - budget), needSecurite, alloc };
 }
 
 // ── Affichage ──
@@ -446,16 +468,22 @@ function bxPlanHTML(M, r) {
   const { surf, bord, txt, sub } = _bxT;
   const p = bxActionPlan(M, r);
   if (!p.steps.length && !p.sorted.length) return '';
-  const num = (i, t, d) => `<div style="display:flex;gap:12px;margin-bottom:12px"><span style="width:26px;height:26px;border-radius:50%;background:${bxGood};color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i}</span><div><div style="font-size:13.5px;font-weight:800;color:${txt}">${t}</div><div style="font-size:12.5px;color:${sub};line-height:1.55;margin-top:2px">${d}</div></div></div>`;
+  const num = (i, t, d) => `<div style="display:flex;gap:12px;margin-bottom:12px"><span style="width:26px;height:26px;border-radius:50%;background:${bxGood};color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i}</span><div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:800;color:${txt}">${t}</div><div style="font-size:12.5px;color:${sub};line-height:1.55;margin-top:2px">${d}</div></div></div>`;
+  const when = h => h == null ? '' : bxYrs(h);
   let i = 1, html = '';
   p.steps.forEach(s => { html += num(i++, s.t, s.d); });
-  if (p.sorted.length) {
-    html += num(i++, 'Financer tes objectifs, du plus proche au plus lointain', `<table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;color:${txt}"><thead><tr style="color:${sub};font-size:10.5px;text-align:right"><th style="text-align:left;padding-bottom:4px">Objectif</th><th>Échéance</th><th>Versement nécessaire</th></tr></thead><tbody>${p.sorted.map(o => `<tr style="border-top:1px solid ${bord}"><td style="padding:6px 0">${o.label}</td><td style="text-align:right">${o.horizon != null ? (o.horizon >= 1 ? Math.round(o.horizon * 10) / 10 + ' an' + (o.horizon >= 1.5 ? 's' : '') : Math.round(o.horizon * 12) + ' mois') : ''}</td><td style="text-align:right;font-weight:700">${bxE(o.monthly)}/mois</td></tr>`).join('')}<tr style="border-top:2px solid ${bord};font-weight:800"><td style="padding:7px 0">Total</td><td></td><td style="text-align:right">${bxE(p.total)}/mois</td></tr></tbody></table>`);
-    html += num(i++, p.gap > 0 ? 'Ajuster : tes objectifs dépassent ton budget' : 'Ton budget suffit', p.gap > 0
-      ? `Tes objectifs demandent ${bxE(p.total)}/mois pour un budget d'épargne recommandé de ${bxE(p.budget)}/mois : il manque ${bxE(p.gap)}/mois. Décale les échéances les plus lointaines, réduis le montant visé ou augmente ton épargne (l'analyse de tes dépenses peut libérer de la marge).`
-      : `Tes objectifs demandent ${bxE(p.total)}/mois pour un budget de ${bxE(p.budget)}/mois : ${bxE(p.budget - p.total)}/mois restent pour ta stratégie long terme.`);
+  if (p.rows.length) {
+    const cell = x => x.full ? `<span style="color:${bxGood};font-weight:700">Financé</span>` : x.alloc > 0 ? `<span style="color:${bxWarn};font-weight:700">Atteint en ${bxYrs(x.years)}</span> <span style="color:${sub}">au lieu de ${when(x.o.horizon)}</span>` : `<span style="color:${bxBad};font-weight:700">Pas de budget</span>`;
+    html += num(i++, 'Financer tes objectifs, du plus proche au plus lointain', `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;color:${txt};min-width:440px"><thead><tr style="color:${sub};font-size:10.5px;text-align:left"><th style="padding-bottom:4px">Objectif</th><th style="text-align:right">Échéance visée</th><th style="text-align:right">Il faudrait</th><th style="text-align:right">Avec ton budget</th></tr></thead><tbody>${p.rows.map(x => `<tr style="border-top:1px solid ${bord}"><td style="padding:7px 0">${x.o.label}</td><td style="text-align:right">${when(x.o.horizon)}</td><td style="text-align:right;font-weight:700">${bxE(x.o.monthly)}/mois</td><td style="text-align:right">${cell(x)}</td></tr>`).join('')}<tr style="border-top:2px solid ${bord};font-weight:800"><td style="padding:7px 0">Total${p.secMonthly ? ' (matelas inclus)' : ''}</td><td></td><td style="text-align:right">${bxE(p.total)}/mois</td><td style="text-align:right;color:${sub};font-weight:600">budget ${bxE(p.budget)}/mois</td></tr></tbody></table></div>`);
+    const first = p.rows.filter(x => x.full).map(x => x.o.label.toLowerCase());
+    const late = p.rows.filter(x => !x.full);
+    html += num(i++, p.gap > 0 ? 'Ajuster : tes objectifs dépassent ton budget' : 'Ton budget suffit',
+      p.gap > 0
+        ? `Il te faudrait ${bxE(p.total)}/mois pour tout tenir à la date visée, pour un budget d'épargne recommandé de ${bxE(p.budget)}/mois (il manque ${bxE(p.gap)}/mois). ${first.length ? `Avec ton budget, ${first.join(', ')} ${first.length > 1 ? 'sont financés' : 'est financé'} dans les temps.` : 'Aucun objectif n\'est financé à la date visée avec ce budget.'} ${late.length ? `Pour les autres, choisis : repousser l'échéance (voir « Atteint en… »), réduire le montant visé, ou augmenter ton épargne — l'analyse de tes dépenses peut libérer de la marge. Concentre-toi sur 2 ou 3 priorités plutôt que de tout financer à moitié.` : ''}`
+        : `Il te faut ${bxE(p.total)}/mois pour un budget de ${bxE(p.budget)}/mois : ${bxE(p.budget - p.total)}/mois restent pour ta stratégie long terme.`);
   }
   return `<div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:18px;margin-bottom:16px">
     <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:14px">Ton plan d'action chiffré</div>${html}
+    <div style="font-size:10.5px;color:${sub};line-height:1.5">Le budget est la mensualité recommandée du bilan. Le matelas de sécurité est financé en premier, puis les objectifs du plus proche au plus lointain.</div>
   </div>`;
 }
