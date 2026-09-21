@@ -51,11 +51,11 @@ async function loadPositions(userIds, alertsOnly) {
 }
 
 // Envoie à tous les appareils de l'utilisateur ; supprime ceux qui n'existent plus. Renvoie le nombre d'appareils joints.
-async function notifyUser(user, payload, deviceFilter) {
+async function notifyUser(user, payload, deviceFilter, urgency = 'normal') {
   let ok = 0;
   for (const d of user.devices) {
     if (deviceFilter && !deviceFilter(d)) continue;
-    const r = await sendToDevice(d, payload);
+    const r = await sendToDevice(d, payload, urgency);
     if (r.ok) ok++;
     else if (r.gone) await supabase.from('push_devices').delete().eq('endpoint', d.endpoint);
     else console.error('[push-send] échec pour', user.userId, ':', r.error);
@@ -143,7 +143,7 @@ async function sendMoves(users, alertCount) {
       ? { title: `${up(picked[0]) ? '🚀' : '📉'} ${picked[0].label} ${fmtPct(picked[0].pct)}`, body: `${up(picked[0]) ? 'Forte hausse' : 'Forte baisse'} sur la séance, ${picked[0].where}.`, tag: 'investiq-move-' + picked[0].key }
       : { title: '📊 ça bouge sur les marchés', body: picked.map(c => `${up(c) ? '▲' : '▼'} ${c.label} ${fmtPct(c.pct)} (${c.where.replace('dans ton ', '').replace('dans ta ', '')})`).join('\n'), tag: 'investiq-moves-' + day };
 
-    if (await notifyUser(u, payload, d => d.moves !== false)) {
+    if (await notifyUser(u, payload, d => d.moves !== false, 'high')) {
       sent++;
       await countAlert(u.userId, alertCount);
       await supabase.from('push_events').upsert(picked.map(c => ({ user_id: u.userId, event_key: c.key })), { onConflict: 'user_id,event_key', ignoreDuplicates: true });
@@ -226,7 +226,7 @@ module.exports = async function handler(req, res) {
       const first = hits[0], q = quotes[first.name];
       let body = `${first.name} est à ${q.price.toFixed(2).replace('.', ',')} € (ton seuil : ${Number(first.alert_price).toFixed(2).replace('.', ',')} €)`;
       if (hits.length > 1) body += ` · +${hits.length - 1} autre${hits.length > 2 ? 's' : ''} alerte${hits.length > 2 ? 's' : ''}`;
-      const reached = await notifyUser(u, { title: `🔔 Alerte prix · ${first.name}`, body, tag: 'investiq-alert-' + first.id });
+      const reached = await notifyUser(u, { title: `🔔 Alerte prix · ${first.name}`, body, tag: 'investiq-alert-' + first.id }, null, 'high');
       if (reached) {
         sent++;
         await countAlert(u.userId, alertCount);
