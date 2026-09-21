@@ -553,6 +553,7 @@ La somme des montants doit faire exactement ${budget}.`;
 function renderMonthlyPlan(plan, isNew) {
   const el = document.getElementById('obj-monthly-plan');
   if (!el) return;
+  setTimeout(() => { try { renderNextPlanCard(false); } catch {} }, 0);   // la carte « prochain plan » passe à « ton plan du mois est affiché »
   const d = plan.data;
   const budget = plan.budget;
   const generated = new Date(plan.ts).toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
