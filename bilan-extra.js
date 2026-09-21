@@ -114,7 +114,7 @@ function bilanExtraHTML(r, T) {
     <div style="font-size:10.5px;color:${sub};margin-top:10px;line-height:1.5">Simulation avant frais et impôts, rendement non garanti. La rente théorique retire 4 % du capital par an (règle courante, sans épuiser le capital sur une longue période). Elle s'ajoute à ta pension de retraite légale, qui n'est pas calculée ici.</div>
   </div>` : '';
 
-  return diag + bxObjectivesHTML(M, r) + bxPlanHTML(M, r) + bilanDeepHTML(r, _bxT) + loan + retire;
+  return diag + bxRiskHTML(r, _bxT) + bxObjectivesHTML(M, r) + bxPlanHTML(M, r) + bilanDeepHTML(r, _bxT) + loan + retire;
 }
 
 function bxLoanCompute() {
@@ -185,6 +185,14 @@ function bilanPdfExtra(doc, y, margin, colW, r) {
   title('Analyse detaillee');
   bxIndicators(M).forEach(i => line(plain(`${i[0]} : ${i[1]} - ${i[3]}`)));
   y += 3;
+  const RP = bilanRiskProfile();
+  if (RP) {
+    const share = bxEquityShare(r && r.allocation_cible), base = bilanRiskBase();
+    title('Profil de risque');
+    line(plain(`${RP.label} - part d'actions recommandee : ${RP.min} a ${RP.max} %.${RP.contradiction ? ' Tes reponses ne vont pas dans le meme sens : on retient la plus prudente.' : ''}${RP.capped ? ' Horizon court : niveau de risque limite.' : ''}`));
+    if (share) line(plain(`Allocation cible : ${Math.round(share)} % d'actions (${share >= RP.min - 2 && share <= RP.max + 2 ? 'dans la fourchette de ton profil' : share > RP.max ? 'AU-DESSUS de ton profil' : 'en dessous de ton profil'}). Si les marches actions baissaient de 30 %, perte estimee : environ ${bxE(base * share / 100 * 0.3)} (${(share * 0.3).toFixed(0)} % de ton patrimoine investi).`));
+    y += 3;
+  }
   if (M.revenu) {
     const mmax = Math.max(0, M.revenu * BX_DEBT_MAX / 100 - M.credits);
     const P = bxLoan(mmax, 3.5, 20);
@@ -515,6 +523,7 @@ PROFIL :
 - Expérience : ${d.experience || '?'} ; réaction à une baisse de 20 % : ${d.reaction || '?'} ; perte maximale acceptée : ${d.perteMax || '?'} % ; horizon : ${d.horizon || '?'}
 - Objectifs : ${objs.length ? objs.join(', ') : 'non précisés'}
 ${bilanPrecisionsText()}
+${bilanRiskText()}
 ${d.commentaires ? 'NOTES : ' + d.commentaires : ''}
 
 Réponds UNIQUEMENT avec ce JSON :
@@ -593,4 +602,74 @@ function bilanPdfDeep(doc, y, margin, colW, r) {
   }
   if ((D.questions || []).length) { title('Questions a te poser'); D.questions.forEach(k => line('- ' + k)); y += 2; }
   return y;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PROFIL DE RISQUE : calculé à partir des réponses de l'étape « Tolérance au risque »
+//  → fourchette de part d'actions, contrôle de l'allocation proposée, simulation de baisse
+// ═══════════════════════════════════════════════════════════════
+const BX_REACTION = { vendre_tout: 0, vendre_partiel: 1, attendre: 2, tenir: 3, renforcer: 4 };
+const BX_REACTION_TXT = { vendre_tout: 'tu vendrais tout', vendre_partiel: 'tu vendrais une partie', attendre: 'tu attendrais sans rien faire', tenir: 'tu resterais investi', renforcer: 'tu en profiterais pour renforcer' };
+const BX_LOSS = { '5': 0, '10': 1, '20': 2, '30': 3, '50': 4 };
+const BX_LEVELS = [
+  { label: 'Très prudent', min: 0, max: 20 }, { label: 'Prudent', min: 20, max: 35 }, { label: 'Équilibré', min: 40, max: 60 },
+  { label: 'Dynamique', min: 60, max: 80 }, { label: 'Offensif', min: 80, max: 100 },
+];
+const BX_HORIZON_TXT = { court: 'moins de 3 ans', moyen: '3 à 7 ans', long: '7 à 15 ans', 'tres-long': '15 ans et plus' };
+// Montant sur lequel on raisonne : patrimoine investi (bourse, PEA, assurance vie), à défaut les positions suivies, à défaut un exemple
+function bilanRiskBase() {
+  const M = bilanMetrics(), inv = M.bourse + M.pea + M.av;
+  if (inv > 0) return inv;
+  const pv = typeof positions !== 'undefined' ? positions.reduce((a, p) => a + p.qty * p.price, 0) : 0;
+  return pv > 0 ? pv : 10000;
+}
+function bilanRiskProfile() {
+  const d = bilanData || {};
+  const a = BX_REACTION[d.reaction], b = BX_LOSS[String(d.perteMax)];
+  const known = [a, b].filter(x => x != null);
+  if (!known.length) return null;
+  let level = Math.min(...known);                                   // on retient la réponse la plus prudente
+  const contradiction = a != null && b != null && Math.abs(a - b) >= 2;
+  const cap = d.horizon === 'court' ? 1 : d.horizon === 'moyen' ? 2 : d.horizon === 'long' ? 3 : 4;   // horizon court = pas de risque élevé
+  const capped = level > cap; level = Math.min(level, cap);
+  return { level, ...BX_LEVELS[level], a, b, contradiction, capped, horizon: d.horizon };
+}
+// Part « actions » d'une allocation cible (ETF monde et actions comptent ; obligations, livrets, monétaire, immobilier non)
+function bxEquityShare(alloc) {
+  return (alloc || []).reduce((t, x) => t + (/oblig|livret|mon[ée]taire|cash|fonds euro|\bor\b|immo|scpi/i.test(String(x.type || '')) ? 0 : (Number(x.pct) || 0)), 0);
+}
+function bilanRiskText() {
+  const P = bilanRiskProfile(); if (!P) return '';
+  return `PROFIL DE RISQUE CALCULÉ : ${P.label} — part d'actions recommandée ${P.min} à ${P.max} %. Ton allocation_cible DOIT respecter cette fourchette (les ETF actions et les actions comptent comme « actions »).`;
+}
+function bxRiskHTML(r, T) {
+  const { surf, bord, txt, sub } = T || _bxT;
+  const P = bilanRiskProfile(); if (!P) return '';
+  const d = bilanData || {}, share = bxEquityShare(r && r.allocation_cible), base = bilanRiskBase();
+  const col = P.level <= 1 ? '#38bdf8' : P.level === 2 ? bxGood : P.level === 3 ? bxWarn : bxBad;
+  const inRange = share >= P.min - 2 && share <= P.max + 2;
+  const loss30 = base * share / 100 * 0.30, lossPct = share * 0.30;
+  const limit = parseFloat(d.perteMax) || null;
+  const why = [];
+  if (P.a != null) why.push(`Face à une baisse de 20 % en 1 mois, ${BX_REACTION_TXT[d.reaction]}.`);
+  if (P.b != null) why.push(`Tu acceptes une perte maximale de ${d.perteMax} %${d.perteMax === '50' ? ' ou plus' : ''}.`);
+  if (P.horizon) why.push(`Ton horizon : ${BX_HORIZON_TXT[P.horizon] || P.horizon}.`);
+  const notes = [];
+  if (P.contradiction) notes.push('Tes deux réponses ne vont pas dans le même sens : on retient la plus prudente, par sécurité.');
+  if (P.capped) notes.push('Avec un horizon aussi court, on limite le niveau de risque : les actions peuvent baisser longtemps.');
+  return `<div style="background:${surf};border:1px solid ${bord};border-radius:16px;padding:18px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:12px">Ton profil de risque</div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+      <span style="font-size:22px;font-weight:900;color:${col};letter-spacing:-0.03em">${P.label}</span>
+      <span style="font-size:12.5px;color:${sub}">Part d'actions recommandée : <strong style="color:${txt}">${P.min} à ${P.max} %</strong></span>
+    </div>
+    <div style="height:8px;border-radius:99px;background:${bord};position:relative;margin-bottom:6px"><div style="position:absolute;left:${P.min}%;width:${P.max - P.min}%;height:100%;border-radius:99px;background:${col}"></div>${share ? `<div title="Ton allocation cible" style="position:absolute;left:calc(${Math.min(100, share)}% - 5px);top:-3px;width:10px;height:14px;border-radius:3px;background:${txt}"></div>` : ''}</div>
+    <div style="display:flex;justify-content:space-between;font-size:10.5px;color:${sub};margin-bottom:12px"><span>0 % actions</span><span>100 % actions</span></div>
+    ${why.map(w => `<div style="font-size:12.5px;color:${txt};line-height:1.55;margin-bottom:2px">• ${w}</div>`).join('')}
+    ${notes.map(n => `<div style="font-size:12px;color:${bxWarn};line-height:1.5;margin-top:6px">${n}</div>`).join('')}
+    ${share ? `<div style="border-top:1px solid ${bord};margin-top:12px;padding-top:12px;font-size:12.5px;color:${txt};line-height:1.6">
+      Ton allocation cible contient <strong>${Math.round(share)} % d'actions</strong> : ${inRange ? `<span style="color:${bxGood};font-weight:700">dans la fourchette de ton profil.</span>` : share > P.max ? `<span style="color:${bxBad};font-weight:700">au-dessus de ce que ton profil supporte.</span> Réduis la part d'actions ou renforce les obligations.` : `<span style="color:${bxWarn};font-weight:700">en dessous de ton profil.</span> Tu pourrais prendre un peu plus de risque, si tes objectifs l'exigent.`}
+      <br>Si les marchés actions baissaient de 30 %, tu perdrais environ <strong>${bxE(loss30)}</strong> (${lossPct.toFixed(0)} % de ton patrimoine investi de ${bxE(base)})${limit ? (lossPct > limit ? ` : <span style="color:${bxBad};font-weight:700">plus que ta limite de ${limit} %.</span>` : ` : <span style="color:${bxGood};font-weight:700">dans ta limite de ${limit} %.</span>`) : '.'}
+    </div>` : ''}
+  </div>`;
 }

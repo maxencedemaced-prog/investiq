@@ -5692,10 +5692,10 @@ function renderBilanStep(step) {
     5: `
       ${bilanBadge("scale")}
       <div style="font-size:18px;font-weight:800;color:${txt};margin-bottom:4px;letter-spacing:-0.04em">Tolérance au risque réelle</div>
-      <div style="font-size:13px;color:${sub};margin-bottom:24px">Des scénarios concrets pour évaluer ta vraie tolérance.</div>
+      <div style="font-size:13px;color:${sub};margin-bottom:24px">Deux questions pour mesurer ce que tu supportes vraiment. Tes réponses déterminent la part d'actions de ton allocation cible et la baisse que ton plan doit pouvoir encaisser sans que tu paniques.</div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
         <div style="padding:16px;background:${surf};border:1px solid ${bord};border-radius:14px;margin-bottom:6px">
-          <div style="display:flex;align-items:flex-start;gap:10px;font-size:13.5px;font-weight:600;color:${txt};margin-bottom:14px;line-height:1.5"><span style="color:#f87171;margin-top:1px">${bilanIco('down', 18)}</span><span>Ton portefeuille perd <strong style="color:#f87171">20 % en 1 mois</strong> (soit ${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.2)}). Tu…</span></div>
+          <div style="display:flex;align-items:flex-start;gap:10px;font-size:13.5px;font-weight:600;color:${txt};margin-bottom:14px;line-height:1.5"><span style="color:#f87171;margin-top:1px">${bilanIco('down', 18)}</span><span><strong>Question 1 · Ta réaction.</strong> Imagine que ton portefeuille de ${fmtK(bilanRiskBase())} perde <strong style="color:#f87171">20 % en 1 mois</strong> (soit −${fmtK(bilanRiskBase() * 0.2)}). Que fais-tu ?</span></div>
           ${[
             {val:'vendre_tout', icon:'down', label:'Je vends tout immédiatement', color:'#f87171'},
             {val:'vendre_partiel', icon:'minus', label:'Je vends une partie pour limiter', color:'#f97316'},
@@ -5710,12 +5710,12 @@ function renderBilanStep(step) {
           </label>`).join('')}
         </div>
         <div style="${sectionStyle}">
-          <label style="${labelStyle}">Quelle perte maximale peux-tu supporter sans paniquer ?</label>
+          <label style="${labelStyle}">Question 2 · Ta limite. Quelle perte maximale peux-tu supporter sans paniquer ?</label>
           <select id="b-perte-max" style="${fieldStyle}">
-            <option value="5" ${bilanData.perteMax==='5'?'selected':''}>5% maximum (-${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.05)} €)</option>
-            <option value="10" ${bilanData.perteMax==='10'?'selected':''}>10% acceptable (-${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.1)} €)</option>
-            <option value="20" ${bilanData.perteMax==='20'?'selected':''}>20% supportable (-${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.2)} €)</option>
-            <option value="30" ${bilanData.perteMax==='30'?'selected':''}>30% si nécessaire (-${fmtK(positions.reduce((a,p)=>a+p.qty*p.price,0)*0.3)} €)</option>
+            <option value="5" ${bilanData.perteMax==='5'?'selected':''}>5% maximum (-${fmtK(bilanRiskBase()*0.05)})</option>
+            <option value="10" ${bilanData.perteMax==='10'?'selected':''}>10% acceptable (-${fmtK(bilanRiskBase()*0.1)})</option>
+            <option value="20" ${bilanData.perteMax==='20'?'selected':''}>20% supportable (-${fmtK(bilanRiskBase()*0.2)})</option>
+            <option value="30" ${bilanData.perteMax==='30'?'selected':''}>30% si nécessaire (-${fmtK(bilanRiskBase()*0.3)})</option>
             <option value="50" ${bilanData.perteMax==='50'?'selected':''}>50%+ j\'ai un horizon très long</option>
           </select>
         </div>
@@ -5916,6 +5916,7 @@ TOLÉRANCE RISQUE : Perd max ${bilanData.perteMax}% | Réaction baisse : ${bilan
 EXPÉRIENCE : ${bilanData.experience} | Problème principal : ${bilanData.probleme}
 ÉVÉNEMENT PRÉVU : ${bilanData.evenement}
 ${typeof bilanPrecisionsText === 'function' ? bilanPrecisionsText() : ''}
+${typeof bilanRiskText === 'function' ? bilanRiskText() : ''}
 ${bilanData.commentaires ? 'NOTES : ' + bilanData.commentaires : ''}
 
 PORTEFEUILLE ACTUEL :
@@ -5958,15 +5959,20 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
     let reason = '';
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const raw = await callClaude(p, SYS_JSON, 3500);
-        if (callClaudeFailed(raw) || raw === 'Erreur de connexion.') return { fail: String(raw).replace(/^🔒\s*/, '').slice(0, 200) };   // quota / connexion : inutile de réessayer
+        const raw = await callClaude(p, SYS_JSON, 3500, undefined, { noThinking: true });
+        const meta = window._lastAIMeta || {};
+        // quota / connexion : inutile de réessayer. Une réponse vide (« Aucune réponse. ») vaut, elle, un nouvel essai.
+        if (raw !== 'Aucune réponse.' && (callClaudeFailed(raw) || raw === 'Erreur de connexion.')) return { fail: String(raw).replace(/^🔒\s*/, '').slice(0, 200) };
+        if (raw === 'Aucune réponse.') { console.warn('Bilan IA : réponse vide', meta); reason = 'L\'IA n\'a renvoyé aucun texte' + (meta.stop_reason === 'max_tokens' ? ' (limite de longueur atteinte)' : ''); continue; }
         const clean = raw.replace(/```json|```/g, '').trim();
-        const parsed = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
+        let parsed;
+        try { parsed = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1)); }
+        catch (pe) { console.warn('Bilan IA : JSON illisible', meta, 'longueur', clean.length); reason = meta.stop_reason === 'max_tokens' ? 'La réponse de l\'IA a été coupée (trop longue)' : 'La réponse de l\'IA était illisible'; throw pe; }
         if (!valid(parsed)) throw new Error('réponse incomplète');
         return { data: parsed };
       } catch (e) {
         console.error('Bilan IA error (tentative ' + (attempt + 1) + ') :', e);
-        reason = 'La réponse de l\'IA était incomplète.';
+        if (!reason) reason = 'La réponse de l\'IA était incomplète.';
       }
     }
     return { fail: reason };
@@ -9552,7 +9558,7 @@ function premiumLockedStateHTML(featureName, text) {
   </div>`;
 }
 
-async function callClaude(prompt,sys,maxTokens,model){
+async function callClaude(prompt,sys,maxTokens,model,opts){
   const system=sys||('Tu es le copilote financier IA d\'InvestIQ, pour investisseurs particuliers francophones.\n'+AI_PERSONA);
   try{
     // Récupère le token de session Supabase (requis par l'API sécurisée)
@@ -9567,6 +9573,7 @@ async function callClaude(prompt,sys,maxTokens,model){
     const body = { prompt, system };
     if (maxTokens) body.max_tokens = maxTokens;
     if (model) body.model = model;
+    if (opts && opts.noThinking) body.no_thinking = true;
     const res=await fetch('/api/claude',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
@@ -9595,6 +9602,7 @@ async function callClaude(prompt,sys,maxTokens,model){
       }
       throw new Error(d?.error || 'HTTP ' + res.status);
     }
+    window._lastAIMeta = d.meta || null;   // diagnostic (stop_reason, tokens) : aide à comprendre une réponse vide ou coupée
     return d.text||d.error||'Aucune réponse.';
   }catch{return'Erreur de connexion.';}
 }

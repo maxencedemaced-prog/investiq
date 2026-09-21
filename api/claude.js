@@ -180,7 +180,7 @@ export default async function handler(req, res) {
     // qu'une réponse JSON compacte) mais toujours borné côté serveur, jamais laissé
     // au client sans limite.
     const requestedTokens = Number.isFinite(max_tokens) ? Math.trunc(max_tokens) : 2048;
-    const finalMaxTokens = Math.min(Math.max(requestedTokens, 256), 4096);
+    const finalMaxTokens = Math.min(Math.max(requestedTokens, 256), 6000);
     // Modèle choisi par l'appelant parmi une liste blanche fixe — jamais une chaîne
     // arbitraire envoyée telle quelle à Anthropic.
     const finalModel = MODEL_PRICING[model] ? model : DEFAULT_MODEL;
@@ -190,22 +190,31 @@ export default async function handler(req, res) {
       console.error('[api/claude] ANTHROPIC_API_KEY manquante dans les variables d\'environnement Vercel');
       return res.status(500).json({ error: 'Configuration serveur : clé API manquante' });
     }
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: finalModel,
-        max_tokens: finalMaxTokens,
-        system: system || 'Tu es le copilote financier IA d\'InvestIQ. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.',
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await response.json();
+    const callAnthropic = async (extra) => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: finalModel,
+          max_tokens: finalMaxTokens,
+          system: system || 'Tu es le copilote financier IA d\'InvestIQ. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.',
+          messages: [{ role: 'user', content: prompt }],
+          ...extra
+        })
+      });
+      return { response: r, data: await r.json() };
+    };
+    // Sorties structurées longues (bilan) : le client demande de désactiver la réflexion étendue, qui peut consommer
+    // tout le budget de tokens et ne laisser aucun texte (« Aucune réponse ») ou un JSON tronqué.
+    // Si le modèle refuse ce paramètre, on refait l'appel sans.
+    let { response, data } = await callAnthropic(req.body.no_thinking === true ? { thinking: { type: 'disabled' } } : {});
+    if (!response.ok && req.body.no_thinking === true && /thinking/i.test(data?.error?.message || '')) {
+      ({ response, data } = await callAnthropic({}));
+    }
     if (!response.ok || data.error) {
       const msg = data?.error?.message || `Anthropic HTTP ${response.status}`;
       console.error('[api/claude] Anthropic error:', response.status, msg);
@@ -216,6 +225,8 @@ export default async function handler(req, res) {
     await logUsage({ userId: user.id, model: finalModel, usage: data.usage, system });
     res.status(200).json({
       text: text || 'Aucune réponse.',
+      // Diagnostic : pourquoi la réponse est vide ou coupée (max_tokens…)
+      meta: { stop_reason: data.stop_reason || null, output_tokens: data.usage?.output_tokens ?? null, blocks: (data.content || []).map(b => b.type) },
       // Compteur du jour pour l'affichage côté client (comptes gratuits uniquement)
       quota: (() => {
         const q = quota.quota;
