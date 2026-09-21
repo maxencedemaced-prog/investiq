@@ -5401,6 +5401,9 @@ async function openBilan() {
   }
   document.getElementById('bilan-modal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  // Une saisie en cours (bilan qu'on refait, ou parti analyser ses dépenses) : on la reprend là où elle s'est arrêtée,
+  // avec un bouton pour retourner voir le dernier bilan
+  if (bilanInProgress()) { renderBilanStep(bilanStep); return; }
   // Un bilan déjà fait : on le rouvre (avec « Refaire mon bilan ») au lieu de repartir de zéro
   let saved = loadSavedBilan();
   if (!saved && !isDemo) {
@@ -5412,12 +5415,11 @@ async function openBilan() {
   }
   if (saved) {
     bilanData = saved.data || {};
+    bilanStep = BILAN_STEPS.length;          // on consulte un résultat : ce n'est pas une saisie en cours
     window._lastBilanResult = saved.result;
     renderBilanResult(saved.result, saved.ts);
     return;
   }
-  // Un bilan commencé (ex. parti analyser ses dépenses) : on reprend là où on s'était arrêté
-  if (bilanInProgress()) { renderBilanStep(bilanStep); return; }
   bilanData = {};
   bilanStep = 0;
   renderBilanStep(0);
@@ -5781,6 +5783,11 @@ function renderBilanStep(step) {
   };
 
   el.innerHTML = steps[step] || '';
+  // Une saisie est en cours alors qu'un bilan existe déjà : accès direct au dernier bilan
+  if (step <= 7) {
+    const sv = loadSavedBilan();
+    if (sv) el.insertAdjacentHTML('afterbegin', `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:${surf};border:1px solid ${bord};border-radius:12px"><span style="font-size:12px;color:${sub}">Tu as déjà un bilan du <strong style="color:${txt}">${bilanDateLabel(sv.ts)}</strong></span><button type="button" onclick="bilanShowLast()" style="background:transparent;border:1px solid ${bord};color:${txt};font:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer">Voir mon dernier bilan</button></div>`);
+  }
 
   // Animation des étapes de chargement
   if (step === 8) {
@@ -6060,8 +6067,27 @@ async function syncBilanFromCloud() {
   } catch (e) { console.warn('bilan sync:', e); return false; }
 }
 function restartBilan() {
-  bilanData = {}; bilanStep = 0;
+  bilanData = {}; bilanStep = 0; window._bilanDraft = null;
   renderBilanStep(0);
+}
+// Depuis la saisie en cours : retourner voir le dernier bilan (la saisie est mise de côté, pas perdue)
+function bilanShowLast() {
+  const saved = loadSavedBilan(); if (!saved) return;
+  if (bilanInProgress()) {
+    try { Object.assign(bilanData, bilanCollect(bilanStep)); } catch {}
+    window._bilanDraft = { data: bilanData, step: bilanStep };
+  }
+  bilanData = saved.data || {};
+  bilanStep = BILAN_STEPS.length;
+  window._lastBilanResult = saved.result;
+  renderBilanResult(saved.result, saved.ts);
+  document.getElementById('bilan-modal')?.scrollTo?.(0, 0);
+}
+// Depuis le dernier bilan : reprendre la saisie mise de côté
+function bilanResumeDraft() {
+  const d = window._bilanDraft; if (!d) return;
+  bilanData = d.data; bilanStep = d.step; window._bilanDraft = null;
+  renderBilanStep(bilanStep);
 }
 function bilanDateLabel(ts) {
   return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -6077,6 +6103,7 @@ function renderBilanResult(r, ts) {
   const prio = {urgent:'#f87171', important:'#f59e0b', conseil:'#3fb950'};
 
   const html = `
+  ${window._bilanDraft ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:rgba(22,163,74,0.10);border:1px solid rgba(22,163,74,0.35);border-radius:12px"><span style="font-size:12.5px;color:${txt}">Tu as un bilan <strong>en cours de saisie</strong> (étape ${Math.min(window._bilanDraft.step + 1, 8)}/8).</span><button type="button" onclick="bilanResumeDraft()" style="background:#16a34a;color:#fff;border:none;font:inherit;font-size:12.5px;font-weight:700;padding:8px 13px;border-radius:9px;cursor:pointer">Reprendre ma saisie</button></div>` : ''}
   ${r._fallback ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);border-radius:12px">
     <div style="font-size:12.5px;color:${txt};line-height:1.5;flex:1;min-width:200px"><strong>Version simplifiée.</strong> L'analyse IA n'a pas pu être générée${r._fallbackReason ? ' (' + _escHtml(r._fallbackReason) + ')' : ''}. Les chiffres détaillés plus bas sont calculés à partir de tes réponses.</div>
     <button onclick="renderBilanStep(8)" style="background:#16a34a;color:#fff;border:none;border-radius:9px;padding:9px 14px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">Relancer l'analyse</button>
