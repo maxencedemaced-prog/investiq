@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="380 302 514 451" role="img" aria-label="Kapitaro">
+  <g stroke-linejoin="round" stroke-width="8">
+    <path fill="#f3f3f3" stroke="#f3f3f3" d="M416,318 H498 V491 L698,318 H838 L396,659 V338 Q396,318 416,318 Z"/>
+    <path fill="#f3f3f3" stroke="#f3f3f3" d="M681,487 V612 L793,737 H866 Q882,737 876,722 Z"/>
+    <g fill="#24e898" stroke="#24e898">
+      <path d="M422,676 L492,624 V736 H422 Z"/>
+      <path d="M526,598 L591,550 V736 H526 Z"/>
+      <path d="M625,525 L679,485 V667 A70,70 0 0 1 625,735 Z"/>
+    </g>
+  </g>
+</svg>
