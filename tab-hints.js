@@ -44,7 +44,7 @@ function showTabHint(page) {
   const icon = (document.getElementById('nav-' + page) || document.getElementById('bnav-' + page))?.querySelector('svg')?.outerHTML || '';
   const el = document.createElement('div');
   el.id = 'tab-hint';
-  el.style.cssText = 'position:fixed;inset:0;z-index:10004;display:flex;align-items:flex-start;justify-content:center;padding:84px 16px 16px;background:rgba(0,0,0,0.28)';
+  el.style.cssText = 'position:fixed;inset:0;z-index:10004;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,0.28)';
   el.onclick = e => { if (e.target === el) el.remove(); };
   el.innerHTML = `
     <div role="dialog" aria-label="${h.title}" style="max-width:390px;width:100%;background:var(--color-surface,#fff);color:var(--color-text,#1c1c1e);border:1px solid var(--color-border,#e4e4e7);border-radius:18px;padding:18px 18px 14px;box-shadow:0 24px 60px rgba(0,0,0,0.35)">
