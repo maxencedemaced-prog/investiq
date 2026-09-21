@@ -15,7 +15,7 @@ const TAB_HINTS = {
   ai:        { title: 'Agent IA', text: 'Ton copilote financier : pose-lui des questions sur ton portefeuille, demande-lui un avis, ou faites ensemble un ordre comme ajouter une position ou une alerte.' },
   bilan:     { title: 'Mon bilan', premium: true, text: 'Le bilan patrimonial complet : ta situation, tes objectifs, un plan d\'action chiffré et un PDF à garder. Tu le retrouves ici à tout moment.' },
   settings:  { title: 'Paramètres', text: 'Ton compte, ton abonnement, tes notifications et l\'apparence de l\'application (thème clair ou sombre).' },
-  agentSample: { title: 'Exemple Premium', premium: true, emoji: '✦', note: "Aperçu figé : rien n'est calculé sur tes données. Avec Premium, tout porte sur ton vrai portefeuille.", text: "Voici ce que l'Agent IA te donne avec Premium : score, alertes, conseils chiffrés et analyse de ton portefeuille. Ici, ce sont des chiffres d'exemple." },
+  agentSample: { title: "Exemple de l'Agent IA", premium: true, emoji: '✦', note: "Aperçu figé : rien n'est calculé sur tes données. Avec Premium, tout porte sur ton vrai portefeuille.", text: "Voici ce que l'Agent IA te donne avec Premium : score, alertes, conseils chiffrés et analyse de ton portefeuille. Ici, ce sont des chiffres d'exemple." },
 };
 
 const tabSeenKey = () => 'iq_seen_tabs_' + (currentUser?.id || 'demo');
