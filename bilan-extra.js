@@ -34,9 +34,9 @@ function bxLoan(m, ratePct, years) {
 function bxIndicators(M) {
   const list = [];
   if (M.effort != null) {
-    const c = M.effort <= 30 ? bxGood : M.effort <= BX_DEBT_MAX ? bxWarn : bxBad;
+    const c = M.effort <= 33 ? bxGood : M.effort <= 40 ? bxWarn : bxBad;
     list.push(['Poids logement + crédits', M.effort.toFixed(0) + ' %', c,
-      M.effort <= 30 ? 'Confortable : il te reste de la marge.' : M.effort <= BX_DEBT_MAX ? 'Proche de la limite : peu de place pour un nouveau crédit.' : `Au-dessus de ${BX_DEBT_MAX} %, les banques refusent en général un nouveau crédit.`]);
+      M.effort <= 33 ? 'Confortable : il te reste de la marge pour épargner et vivre.' : M.effort <= 40 ? 'Élevé : ton budget est déjà bien absorbé par le logement et les crédits.' : 'Très élevé : peu de marge pour épargner ou absorber un imprévu.']);
   }
   if (M.revenu) {
     const c = M.resteAVivre >= M.revenu * 0.35 ? bxGood : M.resteAVivre > 0 ? bxWarn : bxBad;
