@@ -5881,6 +5881,68 @@ function bilanCollect(step) {
   return data;
 }
 
+// ── Appels IA « JSON » du Bilan ──
+// Récupère un JSON coupé (réponse arrêtée par la limite de longueur) : on garde tout jusqu'au dernier élément complet et on referme.
+function jsonRepairTruncated(s) {
+  const st = []; let inStr = false, esc = false, last = -1, lastStack = null;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') inStr = true;
+    else if (c === '{' || c === '[') st.push(c);
+    else if (c === '}' || c === ']') { st.pop(); last = i; lastStack = st.slice(); }
+  }
+  if (last < 0) return null;
+  return s.slice(0, last + 1) + lastStack.reverse().map(x => x === '{' ? '}' : ']').join('');
+}
+async function bilanAskJSON(p, valid) {
+  let reason = '';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let meta = {};
+    try {
+      const raw = await callClaude(p, 'Réponds UNIQUEMENT en JSON valide, sans backticks.', 3500, undefined, { noThinking: true, onMeta: m => { meta = m || {}; } });
+      // quota / connexion : inutile de réessayer. Une réponse vide (« Aucune réponse. ») vaut, elle, un nouvel essai.
+      if (raw !== 'Aucune réponse.' && (callClaudeFailed(raw) || raw === 'Erreur de connexion.')) return { fail: String(raw).replace(/^🔒\s*/, '').slice(0, 200) };
+      if (raw === 'Aucune réponse.') { console.warn('Bilan IA : réponse vide', meta); reason = 'L\'IA n\'a renvoyé aucun texte'; continue; }
+      const clean = raw.replace(/```json|```/g, '').trim();
+      const start = clean.indexOf('{');
+      let parsed = null;
+      try { parsed = JSON.parse(clean.slice(start, clean.lastIndexOf('}') + 1)); }
+      catch (pe) {
+        const fixed = jsonRepairTruncated(clean.slice(start));      // réponse coupée : on récupère la partie exploitable
+        if (fixed) { try { parsed = JSON.parse(fixed); } catch {} }
+        if (!parsed) { console.warn('Bilan IA : JSON illisible', meta, 'longueur', clean.length); reason = meta.stop_reason === 'max_tokens' ? 'La réponse de l\'IA a été coupée (trop longue)' : 'La réponse de l\'IA était illisible'; throw pe; }
+        console.warn('Bilan IA : réponse coupée, partie exploitable récupérée', meta);
+      }
+      if (!valid(parsed)) throw new Error('réponse incomplète');
+      return { data: parsed };
+    } catch (e) {
+      console.error('Bilan IA error (tentative ' + (attempt + 1) + ') :', e);
+      if (!reason) reason = 'La réponse de l\'IA était incomplète.';
+    }
+  }
+  return { fail: reason };
+}
+const bilanValidDeep1 = r => Array.isArray(r.risques) || Array.isArray(r.analyse_objectifs);
+const bilanValidDeep2 = r => Array.isArray(r.plan_90_jours) && r.plan_90_jours.length > 0;
+// Relance UNIQUEMENT les parties d'approfondissement manquantes (le reste du bilan est conservé)
+async function bilanRetryDeep() {
+  const r = window._lastBilanResult; if (!r || typeof bilanDeepPrompt !== 'function') return;
+  const D = r.deep || {};
+  const need1 = !(Array.isArray(D.risques) && D.risques.length), need2 = !(Array.isArray(D.plan_90_jours) && D.plan_90_jours.length);
+  const el = document.getElementById('bilan-deep-retry'); if (el) el.innerHTML = '<div style="font-size:12.5px;opacity:.7">Génération en cours… (environ 30 secondes)</div>';
+  const [b1, b2] = await Promise.all([
+    need1 ? bilanAskJSON(bilanDeepPrompt(1), bilanValidDeep1) : Promise.resolve({ data: null, skip: true }),
+    need2 ? bilanAskJSON(bilanDeepPrompt(2), bilanValidDeep2) : Promise.resolve({ data: null, skip: true }),
+  ]);
+  r.deep = { ...D, ...(b1.data || {}), ...(b2.data || {}) };
+  r._deepFailed = (need1 && !b1.data) || (need2 && !b2.data);
+  if (!r._deepFailed) delete r._deepFailed;
+  window._lastBilanResult = r;
+  saveBilan(r);
+  renderBilanResult(r, Date.now());
+}
+
 async function generateBilanIA() {
   // Animer les étapes de chargement
   for (let i = 0; i < 5; i++) {
@@ -5947,43 +6009,25 @@ Génère un rapport structuré en JSON :
   ],
   "verdict": "phrase finale motivante"
 }
-Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais chiffres.`;
+Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais chiffres. N'utilise JAMAIS de guillemets doubles à l'intérieur des textes (utilise « » ou des apostrophes), et pas de retour à la ligne dans les textes.`;
 
-  // Le rapport est long : on le génère en DEUX appels en parallèle, chacun de taille raisonnable
-  //   A = analyse (score, résumé, mensualité, allocation, actions, verdict)
-  //   B = approfondissement (objectif par objectif, plan 90 jours, enveloppes, risques)
-  // Chaque appel a assez de place pour ne pas être tronqué et reste sous la durée maximale d'une fonction serveur.
-  // Si A échoue → version simplifiée clairement signalée ; si seul B échoue → rapport complet sans l'approfondissement, avec un bouton pour le relancer.
-  const SYS_JSON = 'Réponds UNIQUEMENT en JSON valide, sans backticks.';
-  const askJSON = async (p, valid) => {
-    let reason = '';
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const raw = await callClaude(p, SYS_JSON, 3500, undefined, { noThinking: true });
-        const meta = window._lastAIMeta || {};
-        // quota / connexion : inutile de réessayer. Une réponse vide (« Aucune réponse. ») vaut, elle, un nouvel essai.
-        if (raw !== 'Aucune réponse.' && (callClaudeFailed(raw) || raw === 'Erreur de connexion.')) return { fail: String(raw).replace(/^🔒\s*/, '').slice(0, 200) };
-        if (raw === 'Aucune réponse.') { console.warn('Bilan IA : réponse vide', meta); reason = 'L\'IA n\'a renvoyé aucun texte' + (meta.stop_reason === 'max_tokens' ? ' (limite de longueur atteinte)' : ''); continue; }
-        const clean = raw.replace(/```json|```/g, '').trim();
-        let parsed;
-        try { parsed = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1)); }
-        catch (pe) { console.warn('Bilan IA : JSON illisible', meta, 'longueur', clean.length); reason = meta.stop_reason === 'max_tokens' ? 'La réponse de l\'IA a été coupée (trop longue)' : 'La réponse de l\'IA était illisible'; throw pe; }
-        if (!valid(parsed)) throw new Error('réponse incomplète');
-        return { data: parsed };
-      } catch (e) {
-        console.error('Bilan IA error (tentative ' + (attempt + 1) + ') :', e);
-        if (!reason) reason = 'La réponse de l\'IA était incomplète.';
-      }
-    }
-    return { fail: reason };
-  };
-  const promptB = typeof bilanDeepPrompt === 'function' ? bilanDeepPrompt() : '';
-  const [resA, resB] = await Promise.all([
-    askJSON(prompt, r => r.resume_executif && r.mensualite_recommandee),
-    promptB ? askJSON(promptB, r => Array.isArray(r.plan_90_jours) && r.plan_90_jours.length) : Promise.resolve({ data: null }),
+  // Le rapport est produit en TROIS appels parallèles, chacun assez court pour ne jamais être coupé :
+  //   A  = analyse (score, résumé, mensualité, allocation, actions, verdict)
+  //   B1 = objectifs un par un + risques + erreurs à éviter
+  //   B2 = plan des 90 jours + enveloppes + questions
+  // Si A échoue → version simplifiée clairement signalée ; si B1/B2 échouent → rapport complet sans ces parties, avec un bouton pour les relancer.
+  const pB1 = typeof bilanDeepPrompt === 'function' ? bilanDeepPrompt(1) : '', pB2 = typeof bilanDeepPrompt === 'function' ? bilanDeepPrompt(2) : '';
+  const [resA, resB1, resB2] = await Promise.all([
+    bilanAskJSON(prompt, r => r.resume_executif && r.mensualite_recommandee),
+    pB1 ? bilanAskJSON(pB1, bilanValidDeep1) : Promise.resolve({ data: null }),
+    pB2 ? bilanAskJSON(pB2, bilanValidDeep2) : Promise.resolve({ data: null }),
   ]);
   const result = resA.data, reason = resA.fail || '';
-  if (result) { if (resB.data) result.deep = resB.data; else if (promptB) result._deepFailed = true; }
+  if (result) {
+    const deep = { ...(resB1.data || {}), ...(resB2.data || {}) };
+    if (Object.keys(deep).length) result.deep = deep;
+    if ((pB1 && !resB1.data) || (pB2 && !resB2.data)) result._deepFailed = true;
+  }
   if (result) {
     finalizeBilanResult(result, bilanCapital || tv);   // projections calculées, pas inventées par l'IA
     window._lastBilanResult = result;
@@ -9603,6 +9647,7 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
       throw new Error(d?.error || 'HTTP ' + res.status);
     }
     window._lastAIMeta = d.meta || null;   // diagnostic (stop_reason, tokens) : aide à comprendre une réponse vide ou coupée
+    if (opts && opts.onMeta) { try { opts.onMeta(d.meta || null); } catch {} }   // propre à CET appel (les appels peuvent être parallèles)
     return d.text||d.error||'Aucune réponse.';
   }catch{return'Erreur de connexion.';}
 }

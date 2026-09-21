@@ -505,7 +505,7 @@ function bxPlanHTML(M, r) {
 // ═══════════════════════════════════════════════════════════════
 //  APPROFONDISSEMENT PAR L'IA (2e appel) : objectif par objectif, plan 90 jours, enveloppes, risques
 // ═══════════════════════════════════════════════════════════════
-function bilanDeepPrompt() {
+function bilanDeepPrompt(part) {
   const M = bilanMetrics(), d = bilanData || {};
   const objs = (d.objectifs || []).map(o => (BX_Q[o] || {}).title).filter(Boolean);
   const e = n => Math.round(n) + ' €';
@@ -526,29 +526,32 @@ ${bilanPrecisionsText()}
 ${bilanRiskText()}
 ${d.commentaires ? 'NOTES : ' + d.commentaires : ''}
 
-Réponds UNIQUEMENT avec ce JSON :
+${part === 2 ? `Réponds UNIQUEMENT avec ce JSON :
 {
-  "analyse_objectifs": [ {"objectif": "nom exact d'un objectif ci-dessus", "verdict": "réaliste | ambitieux | à revoir", "analyse": "4 à 5 phrases : est-ce cohérent avec le revenu, le patrimoine et les précisions ? quels arbitrages ?", "conseils": ["conseil concret 1", "conseil concret 2", "conseil concret 3"]} ],
-  "plan_90_jours": [ {"periode": "Semaine 1", "action": "action précise", "pourquoi": "pourquoi maintenant, en une phrase"} ],
-  "enveloppes": [ {"enveloppe": "ex. Livret A / LDDS, PEA, assurance vie, PER…", "role": "à quoi elle sert pour CE profil", "conseil": "comment l'utiliser concrètement"} ],
-  "risques": [ {"risque": "risque réel de CE profil", "comment_reduire": "action concrète"} ],
-  "erreurs_a_eviter": ["erreur fréquente adaptée à ce profil"],
-  "questions": ["question à te poser ou à poser à un conseiller / une banque"]
+  "plan_90_jours": [ {"periode": "Semaine 1", "action": "action précise (1 phrase)", "pourquoi": "pourquoi maintenant (1 phrase)"} ],
+  "enveloppes": [ {"enveloppe": "ex. Livret A / LDDS, PEA, assurance vie, PER", "role": "à quoi elle sert pour CE profil (1 phrase)", "conseil": "comment l'utiliser (1 phrase)"} ],
+  "questions": ["question à te poser ou à poser à un conseiller (1 phrase)"]
 }
-Contraintes de taille : un élément d'analyse_objectifs par objectif (max 6) ; plan_90_jours = 6 étapes ; enveloppes = 4 ; risques = 4 ; erreurs_a_eviter = 4 ; questions = 3.`;
+Contraintes : plan_90_jours = 6 étapes ; enveloppes = 4 ; questions = 3. Phrases courtes.` : `Réponds UNIQUEMENT avec ce JSON :
+{
+  "analyse_objectifs": [ {"objectif": "nom exact d'un objectif ci-dessus", "verdict": "réaliste | ambitieux | à revoir", "analyse": "3 à 4 phrases : est-ce cohérent avec le revenu, le patrimoine et les précisions ? quels arbitrages ?", "conseils": ["conseil concret 1", "conseil concret 2", "conseil concret 3"]} ],
+  "risques": [ {"risque": "risque réel de CE profil", "comment_reduire": "action concrète (1 phrase)"} ],
+  "erreurs_a_eviter": ["erreur fréquente adaptée à ce profil (1 phrase)"]
 }
-
+Contraintes : un élément d'analyse_objectifs par objectif (max 6, tableau vide si aucun objectif) ; risques = 4 ; erreurs_a_eviter = 4. Phrases courtes.`}
+FORMAT : n'utilise JAMAIS de guillemets doubles à l'intérieur des textes (utilise « » ou des apostrophes) et pas de retour à la ligne dans les textes.`;
+}
 function bilanDeepHTML(r, T) {
   const { surf, bord, txt, sub } = T || _bxT;
   const D = r && r.deep;
   const card = `background:${surf};border:1px solid ${bord};border-radius:16px;padding:18px;margin-bottom:16px`;
   const h = t => `<div style="font-size:13px;font-weight:700;color:${txt};margin-bottom:12px">${t}</div>`;
   const x = s => _escHtml(s == null ? '' : s);
-  if (!D) {
-    return r && r._deepFailed ? `<div style="${card};display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div style="font-size:12.5px;color:${txt};line-height:1.5;flex:1;min-width:200px"><strong>L'analyse approfondie n'a pas pu être générée</strong> (analyse par objectif, plan des 90 jours, enveloppes, risques). Le reste du bilan est complet.</div>
-      <button onclick="renderBilanStep(8)" style="background:#16a34a;color:#fff;border:none;border-radius:9px;padding:9px 14px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">Relancer l'analyse</button></div>` : '';
-  }
+  // Bandeau « certaines parties n'ont pas pu être générées » + relance des seules parties manquantes
+  const failedBanner = r && r._deepFailed ? `<div id="bilan-deep-retry" style="${card};display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="font-size:12.5px;color:${txt};line-height:1.5;flex:1;min-width:200px"><strong>${D ? 'Une partie de l\'analyse approfondie n\'a pas pu être générée' : 'L\'analyse approfondie n\'a pas pu être générée'}</strong> (analyse par objectif, risques, plan des 90 jours, enveloppes). Le reste du bilan est complet.</div>
+      <button onclick="bilanRetryDeep()" style="background:#16a34a;color:#fff;border:none;border-radius:9px;padding:9px 14px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer">Relancer cette partie</button></div>` : '';
+  if (!D) return failedBanner;
   const vcol = v => /r[ée]aliste/i.test(v) ? bxGood : /ambitieux/i.test(v) ? bxWarn : bxBad;
   const objs = (D.analyse_objectifs || []).length ? `<div style="${card}">${h('Analyse de tes objectifs')}
     ${D.analyse_objectifs.map(o => `<div style="border:1px solid ${bord};border-radius:12px;padding:13px;margin-bottom:10px">
@@ -569,7 +572,7 @@ function bilanDeepHTML(r, T) {
     </div></div>` : '';
   const qs = (D.questions || []).length ? `<div style="${card}">${h('Les questions à te poser (ou à poser à un conseiller)')}
     ${D.questions.map(k => `<div style="display:flex;gap:8px;font-size:12.5px;color:${txt};line-height:1.55;margin-bottom:6px"><span style="color:${bxGood};flex-shrink:0">?</span><span>${x(k)}</span></div>`).join('')}</div>` : '';
-  return objs + plan + env + risks + qs;
+  return failedBanner + objs + plan + env + risks + qs;
 }
 
 // Section PDF de l'approfondissement IA
