@@ -44,12 +44,11 @@ create policy "Users manage own profile" on profiles for all using (auth.uid() =
 create policy "Users manage own positions" on positions for all using (auth.uid() = user_id);
 create policy "Users manage own objectives" on objectives for all using (auth.uid() = user_id);
 
--- Auto-création du profil + objectif à l'inscription
+-- Auto-création du profil à l'inscription (l'objectif est créé par l'utilisateur, pas ici)
 create or replace function handle_new_user()
 returns trigger as $$
 begin
   insert into public.profiles (id, email) values (new.id, new.email);
-  insert into public.objectives (user_id) values (new.id);
   return new;
 end;
 $$ language plpgsql security definer;

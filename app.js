@@ -4727,8 +4727,14 @@ async function loadObjective() {
     // Sans .order() pour compatibilité max avec toutes les versions de la table
     const { data, error } = await sb.from('objectives').select('*').eq('user_id', currentUser.id);
     if (error) { console.warn('[loadObjective] Supabase error:', error.message); }
-    if (data && data.length > 0) {
-      allObjectives = data.map((d, i) => ({
+    // Le déclencheur d'inscription crée une ligne « par défaut » (200 €/mois, 10 ans, 7 %, 50 k€) que l'utilisateur n'a
+    // jamais choisie : on l'ignore pour qu'un compte neuf n'ait pas d'objectif tant qu'il n'en a pas créé un.
+    const isPlaceholder = d => !d.validated_at && d.risk == null && d.stock_pct == null
+      && Number(d.target) === 50000 && Number(d.years) === 10 && Number(d.rate) === 7 && Number(d.monthly) === 200 && !Number(d.capital || 0);
+    const realRows = (data || []).filter(d => !isPlaceholder(d));
+    if (data && data.length > 0 && realRows.length === 0) { allObjectives = []; activeObjId = null; }
+    if (realRows.length > 0) {
+      allObjectives = realRows.map((d, i) => ({
         id: d.id,
         label: ('Objectif ' + (i + 1)),
         capital: d.capital || 0,
