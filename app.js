@@ -2241,6 +2241,25 @@ function copyToClipboard(text) {
   });
 }
 
+// Petite fenêtre d'explication réutilisable (ex. boutons « ⓘ Méthodologie »)
+function showInfoPopup(title, bodyHtml) {
+  document.getElementById('info-popup')?.remove();
+  const el = document.createElement('div');
+  el.id = 'info-popup';
+  el.style.cssText = 'position:fixed;inset:0;z-index:10005;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,0.4)';
+  el.onclick = e => { if (e.target === el) el.remove(); };
+  el.innerHTML = `
+    <div style="max-width:420px;width:100%;max-height:80vh;overflow:auto;background:var(--color-surface,#fff);color:var(--color-text,#1c1c1e);border:1px solid var(--color-border,#e4e4e7);border-radius:18px;padding:20px 20px 16px;box-shadow:0 24px 60px rgba(0,0,0,0.35)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px">
+        <div style="font-size:16px;font-weight:800;letter-spacing:-0.02em">${title}</div>
+        <button onclick="document.getElementById('info-popup')?.remove()" style="background:none;border:none;font-size:20px;line-height:1;color:var(--color-text-secondary,#71717a);cursor:pointer;padding:0;flex-shrink:0">×</button>
+      </div>
+      <div style="font-size:13px;line-height:1.6;color:var(--color-text-secondary,#71717a)">${bodyHtml}</div>
+    </div>`;
+  document.body.appendChild(el);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('info-popup')?.remove(); });
+
 function showToast(msg) {
   const t = document.createElement('div');
   t.className = 'toast';
@@ -8600,6 +8619,17 @@ function renderObj() { /* legacy - kept for compat */ }
 async function saveObjectif() { /* legacy */ }
 
 // ===== CRISE =====
+let criseShowPct = false;   // false = € · true = % — bascule d'affichage des « Chocs de marché »
+function toggleCriseUnit() { criseShowPct = !criseShowPct; renderCrise(); }
+function showCriseMethodology() {
+  showInfoPopup('Méthodologie des scénarios', `
+    <p>Chaque scénario applique un <strong>taux de rendement annuel constant</strong> à ton capital actuel et à tes versements mensuels, sur la durée de ton objectif.</p>
+    <p><strong>Réaliste (+7 %/an)</strong> correspond au rendement historique moyen du MSCI World sur 20 ans, dividendes réinvestis.<br>
+    <strong>Pessimiste (-3 %/an)</strong> et <strong>Optimiste (+12 %/an)</strong> sont des hypothèses d'école pour visualiser l'écart possible, pas une prévision.</p>
+    <p>Les « Chocs de marché » simulent une baisse immédiate et ponctuelle de ton portefeuille actuel, sans lien avec les scénarios ci-dessus.</p>
+    <p style="margin-top:10px">⚠️ Les performances passées ne préjugent pas des performances futures. Ces simulations sont éducatives, pas un conseil en investissement.</p>`);
+}
+
 function renderCrise() {
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
   const monthly = objChartMonthly || 200;
@@ -8670,10 +8700,10 @@ function renderCrise() {
         <div style="width:36px;height:36px;background:${isDark?'rgba(99,102,241,0.15)':'#eff6ff'};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">📊</div>
         <div>
           <div style="font-size:15px;font-weight:700;color:${text};letter-spacing:-0.03em">Structures de scénarios</div>
-          <div style="font-size:12px;color:${sub};display:flex;align-items:center;gap:5px">Basé sur le MSCI World et l'historique 20 ans <span style="font-size:14px">ⓘ</span></div>
+          <div style="font-size:12px;color:${sub};display:flex;align-items:center;gap:5px">Basé sur le MSCI World et l'historique 20 ans <span onclick="showCriseMethodology()" style="font-size:14px;cursor:pointer">ⓘ</span></div>
         </div>
       </div>
-      <button style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:${raised};border:1px solid ${border};border-radius:8px;font-size:12px;font-weight:600;color:${sub};cursor:pointer">
+      <button onclick="showCriseMethodology()" style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:${raised};border:1px solid ${border};border-radius:8px;font-size:12px;font-weight:600;color:${sub};cursor:pointer">
         ⓘ Méthodologie
       </button>
     </div>
@@ -8724,8 +8754,8 @@ function renderCrise() {
           <div style="font-size:12px;color:${sub}">Impact d'une baisse brutale sur ton portefeuille actuel (${fmtK(tv)})</div>
         </div>
       </div>
-      <button style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:${raised};border:1px solid ${border};border-radius:8px;font-size:12px;font-weight:600;color:${sub};cursor:pointer">
-        Afficher en % ▾
+      <button onclick="toggleCriseUnit()" style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:${raised};border:1px solid ${border};border-radius:8px;font-size:12px;font-weight:600;color:${sub};cursor:pointer">
+        Afficher en ${criseShowPct ? '€' : '%'} ▾
       </button>
     </div>
 
@@ -8740,8 +8770,8 @@ function renderCrise() {
             <span style="font-size:16px;font-weight:900;color:${s.color}">${s.label}</span>
             <span style="font-size:11px;color:${sub}">${s.desc}</span>
           </div>
-          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em;margin-bottom:4px">${fmtK(newVal)}</div>
-          <div style="font-size:13px;font-weight:700;color:${s.color};margin-bottom:10px">${fmtK(loss)} de perte</div>
+          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em;margin-bottom:4px">${criseShowPct ? (100+s.pct)+'%' : fmtK(newVal)}</div>
+          <div style="font-size:13px;font-weight:700;color:${s.color};margin-bottom:10px">${criseShowPct ? s.pct+'% de perte' : fmtK(loss)+' de perte'}</div>
           <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:5px;overflow:hidden">
             <div style="height:100%;background:${s.color};width:${100+s.pct}%;border-radius:99px;transition:width 0.8s ease"></div>
           </div>
