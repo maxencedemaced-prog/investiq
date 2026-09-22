@@ -1864,4 +1864,10 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
 
   /* Scénario crise : cartes à 3 colonnes coupées/illisibles → une carte par ligne */
   .crise-cards-grid { grid-template-columns: 1fr !important; }
+
+  /* Actualités : Exposition + Recommandation IA (largeurs fixes) écrasaient le texte de l'article
+     jusqu'à un mot par ligne → l'article prend sa propre ligne, les 2 blocs passent dessous */
+  .news-row { flex-wrap: wrap !important; }
+  .news-row > div:nth-child(2) { flex-basis: 100% !important; }
+  .news-side { flex: 1 1 0 !important; min-width: 0 !important; margin-top: 10px; }
 }

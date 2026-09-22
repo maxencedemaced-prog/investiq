@@ -9070,7 +9070,7 @@ function renderNewsList() {
       style="background:${surf};border-radius:14px;margin-bottom:10px;border:1px solid ${bord};${n.impact==='élevé'?`border-left:3px solid #f87171`:''};overflow:hidden;transition:all 0.15s;cursor:pointer"
       onmouseover="this.style.background='${hoverBg}';this.style.borderColor='${isDark?'rgba(255,255,255,0.15)':'#d1d5db'}'"
       onmouseout="this.style.background='${surf}';this.style.borderColor='${bord}'">
-      <div style="display:flex;align-items:flex-start;gap:14px;padding:16px" onclick="toggleNews(${i})">
+      <div class="news-row" style="display:flex;align-items:flex-start;gap:14px;padding:16px" onclick="toggleNews(${i})">
         <!-- Logo -->
         <div style="width:44px;height:44px;border-radius:12px;background:${logoColor}20;border:1px solid ${logoColor}40;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${logoColor};flex-shrink:0">${logoText}</div>
         <!-- Contenu principal -->
@@ -9088,13 +9088,13 @@ function renderNewsList() {
         </div>
         <!-- Exposition réelle -->
         ${hasExposure ? `
-        <div style="flex-shrink:0;text-align:center;min-width:80px">
+        <div class="news-side" style="flex-shrink:0;text-align:center;min-width:80px">
           <div style="font-size:10px;font-weight:600;color:${sub2};margin-bottom:4px;white-space:nowrap">Exposition</div>
           <div style="font-size:18px;font-weight:800;color:${txt};letter-spacing:-0.03em">${exposurePct.toFixed(1)}%</div>
           <div style="font-size:10px;color:${sub2};margin-top:2px">≈ ${fmtK(exposureValue)}</div>
         </div>` : ''}
         <!-- Recommandation IA -->
-        <div style="flex-shrink:0;min-width:120px;border-left:1px solid ${bord};padding-left:14px">
+        <div class="news-side" style="flex-shrink:0;min-width:120px;border-left:1px solid ${bord};padding-left:14px">
           <div style="font-size:10px;font-weight:600;color:${sub2};margin-bottom:5px">Recommandation IA</div>
           <div style="font-size:13px;font-weight:700;color:${recoColor};margin-bottom:4px">${recoLabel}</div>
           <div style="font-size:11px;color:${sub2};line-height:1.4;margin-bottom:8px">${recoSub}</div>
@@ -10063,10 +10063,10 @@ function renderVerdict(data, ts) {
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;position:relative">
       ${(data.decisions||[]).map(d => {
         const a = ACTIONS[d.action] || ACTIONS.conserver;
-        return `<div onclick="sq('Explique pourquoi tu ${a.label.toLowerCase().replace('je ','')} ${d.name} aujourd\\'hui')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 11px;background:rgba(255,255,255,0.04);border-radius:10px;border-left:3px solid ${a.color}">
-          <span style="font-size:13px;font-weight:900;color:${a.color};width:16px;text-align:center">${a.icon}</span>
+        return `<div onclick="sq('Explique pourquoi tu ${a.label.toLowerCase().replace('je ','')} ${d.name} aujourd\\'hui')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 11px;background:rgba(255,255,255,0.04);border-radius:10px;border-left:3px solid ${a.color};min-width:0">
+          <span style="font-size:13px;font-weight:900;color:${a.color};width:16px;text-align:center;flex-shrink:0">${a.icon}</span>
           <span style="font-size:12px;font-weight:800;color:#fff;flex-shrink:0">${a.label} ${displayName(d.name)}</span>
-          <span style="font-size:10px;color:rgba(255,255,255,0.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">— ${d.raison||''}</span>
+          <span style="font-size:10px;color:rgba(255,255,255,0.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">— ${d.raison||''}</span>
         </div>`;
       }).join('')}
     </div>
@@ -11664,12 +11664,12 @@ function renderAgentDashboard() {
       heroEl.innerHTML = `
       <div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:20px 22px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
         <div style="display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start">
-          <div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
               <div style="font-size:17px;font-weight:900;color:#fff">Bonjour ${name}</div>
               <span style="font-size:16px">👋</span>
-              <button onclick="openBilan()" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;cursor:pointer;margin-left:auto">Bilan rapide</button>
-              <button onclick="nav('sante')" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#a5b4fc;cursor:pointer">Santé détail</button>
+              <button onclick="openBilan()" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;cursor:pointer;margin-left:auto;white-space:nowrap">Bilan rapide</button>
+              <button onclick="nav('sante')" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#a5b4fc;cursor:pointer;white-space:nowrap">Santé détail</button>
             </div>
             <div style="font-size:9px;font-weight:700;color:rgba(74,222,128,0.7);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px">✦ Aujourd'hui j'ai trouvé</div>
             <div id="agent-hero-notifs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
