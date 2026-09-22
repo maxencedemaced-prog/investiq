@@ -586,7 +586,7 @@ function renderMonthlyPlan(plan, isNew) {
       ${(d.lignes||[]).map(l => {
         const isSocle = l.role === 'socle';
         const c = isSocle ? '#4ade80' : '#a5b4fc';
-        return `<div onclick="openActionFromObjectif('${l.ticker}','${(l.name||'').replace(/'/g,"\\\\'")}',${l.montant})" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:11px 13px;background:rgba(255,255,255,0.04);border-radius:12px;border-left:3px solid ${c}">
+        return `<div onclick="openActionFromObjectif('${l.ticker}','${(l.name||'').replace(/'/g,"\\'")}',${l.montant})" style="cursor:pointer;display:flex;align-items:center;gap:11px;padding:11px 13px;background:rgba(255,255,255,0.04);border-radius:12px;border-left:3px solid ${c}">
           ${typeof getCompanyLogo==='function' ? getCompanyLogo(l.ticker, l.name, 34, 9) : ''}
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;font-weight:800;color:#fff">${displayName(l.name||l.ticker)} <span style="font-size:9px;color:rgba(255,255,255,0.4)">${l.ticker}</span></div>
@@ -1587,7 +1587,7 @@ Sois ULTRA concret. Donne de vrais tickers (IWDA.L, VWCE.DE, AAPL, etc.) et de v
         <div id="dca-full-analysis" style="display:none">
           <div style="font-size:14px;color:#1c1c1e;line-height:1.8;margin-bottom:12px">${formatMD(r_resp)}</div>
         </div>
-        <button onclick="const el=document.getElementById('dca-full-analysis');const btn=this;if(el.style.display==='none'){el.style.display='block';btn.textContent='▴ Masquer l\'analyse';btn.style.background='#f0f0f0';}else{el.style.display='none';btn.textContent='🔬 Voir l\'analyse complète';btn.style.background='#fff';}"
+        <button onclick="toggleDcaFullAnalysis(this)"
           style="width:100%;background:#fff;border:1.5px solid #e5e5ea;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#1c1c1e;cursor:pointer;margin-bottom:12px;transition:all 0.15s">
           🔬 Voir l'analyse complète
         </button>
@@ -3540,7 +3540,7 @@ function renderAgendaView() {
         ${evt.prevision ? `<div style="background:#fff;border-radius:10px;padding:8px 10px;text-align:center;border:1px solid #e5e5ea"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:3px">PRÉVISION</div><div style="font-size:14px;font-weight:800;color:#1c1c1e">${evt.prevision}</div></div>` : ''}
         ${evt.actual ? `<div style="background:#e8f8f0;border-radius:10px;padding:8px 10px;text-align:center;border:1px solid #1a7f5a40"><div style="font-size:11px;color:#1a7f5a;font-weight:700;margin-bottom:3px">RÉSULTAT</div><div style="font-size:14px;font-weight:800;color:#1a7f5a">${evt.actual}</div></div>` : ''}
       </div>` : ''}
-      <div id="evt-impact-${evt.id}" style="font-size:13px;color:#1c1c1e;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\'")}','${evt.impact}')">
+      <div id="evt-impact-${evt.id}" style="font-size:13px;color:#1c1c1e;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\\'")}','${evt.impact}')">
         💬 <span style="text-decoration:underline;color:#1a7f5a">Voir l'impact potentiel sur les marchés →</span>
       </div>
     </div>`;
@@ -3715,7 +3715,7 @@ function agendaSelectDay(isoDate) {
         ${evt.prevision?`<div style="background:#fff;border-radius:10px;padding:8px;text-align:center;border:1px solid #e5e5ea"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:3px">PRÉVISION</div><div style="font-size:14px;font-weight:800;color:#1c1c1e">${evt.prevision}</div></div>`:''}
         ${evt.actual?`<div style="background:#e8f8f0;border-radius:10px;padding:8px;text-align:center;border:1px solid #1a7f5a40"><div style="font-size:11px;color:#1a7f5a;font-weight:700;margin-bottom:3px">RÉSULTAT</div><div style="font-size:14px;font-weight:800;color:#1a7f5a">${evt.actual}</div></div>`:''}
       </div>` : ''}
-      <div id="evt-impact-${evt.id}" style="font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\'")}','${evt.impact}')">
+      <div id="evt-impact-${evt.id}" style="font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px" onclick="loadEventImpact('${evt.id}','${evt.titre.replace(/'/g,"\\'")}','${evt.impact}')">
         💬 <span style="text-decoration:underline;color:#1a7f5a">Voir l'impact potentiel →</span>
       </div>
     </div>`).join('')}`;
@@ -3932,7 +3932,7 @@ function searchEntreprise(query) {
       const res = await fetch('/api/search?q=' + encodeURIComponent(query));
       const data = await res.json();
       const results = (data.results || []).slice(0, 6);
-      const safeQuery = query.replace(/'/g,'\\');
+      const safeQuery = query.replace(/'/g,"\\'");
       if (!results.length) {
         drop.style.display = 'block';
         drop.innerHTML = `
@@ -3946,7 +3946,7 @@ function searchEntreprise(query) {
       }
       drop.style.display = 'block';
       drop.innerHTML = results.map(r => `
-        <div onclick="searchEntrepriseNews('${r.ticker}','${(r.name||r.ticker).replace(/'/g,'\\')}');document.getElementById('ent-search-results').style.display='none';document.getElementById('ent-search').value='${(r.name||r.ticker).replace(/'/g,'\\')}'"
+        <div onclick="searchEntrepriseNews('${r.ticker}','${(r.name||r.ticker).replace(/'/g,"\\'")}');document.getElementById('ent-search-results').style.display='none';document.getElementById('ent-search').value='${(r.name||r.ticker).replace(/'/g,"\\'")}'"
              style="padding:12px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0"
              onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='#fff'">
           <div style="font-size:13px;font-weight:700;color:#1c1c1e">${r.name || r.ticker}</div>
@@ -11008,13 +11008,13 @@ function showPosMenu(id, ev) {
   const txt  = isDark ? '#f0f0f0' : '#09090b';
 
   const items = [
-    { icon:'🤖', label:"Analyser avec l'IA", fn:`openDecisionFromPos('${(p.name||'').replace(/'/g,"\\\\'")}','garder')` },
-    { icon:'💬', label:"Demander à l'Agent", fn:`nav('ai');setTimeout(()=>sq('Que penses-tu de ma position ${(p.name||'').replace(/'/g,"\\\\'")} ?'),250)` },
+    { icon:'🤖', label:"Analyser avec l'IA", fn:`openDecisionFromPos('${(p.name||'').replace(/'/g,"\\'")}','garder')` },
+    { icon:'💬', label:"Demander à l'Agent", fn:`nav('ai');setTimeout(()=>sq('Que penses-tu de ma position ${(p.name||'').replace(/'/g,"\\'")} ?'),250)` },
     { icon:'✏️', label:'Modifier', fn:`openEditPos('${p.id}')` },
     { icon:'🔔', label:p.alert_price ? `Alerte : ${Number(p.alert_price).toFixed(2)} €` : 'Définir une alerte', fn:`openEditPos('${p.id}')` },
   ];
   if (p.platform && p.platform !== 'Autre') {
-    items.push({ icon:'🔗', label:`Ouvrir sur ${p.platform}`, fn:`openOnPlatform('${p.platform}','${(p.name||'').replace(/'/g,"\\\\'")}')` });
+    items.push({ icon:'🔗', label:`Ouvrir sur ${p.platform}`, fn:`openOnPlatform('${p.platform}','${(p.name||'').replace(/'/g,"\\'")}')` });
   }
   items.push({ icon:'🗑️', label:'Supprimer', fn:`deletePosConfirm('${p.id}')`, danger:true });
 
@@ -11867,7 +11867,7 @@ function renderAgentDashboard() {
       </div>
       <div style="display:flex;flex-direction:column;gap:7px">
         ${prios.map(p => `
-        <button onclick="sq('${p.q.replace(/'/g,"\\\\'")}')" style="text-align:left;padding:9px 10px;background:${bg};border:1px solid ${bord};border-radius:10px;cursor:pointer;border-left:3px solid ${p.c};width:100%">
+        <button onclick="sq('${p.q.replace(/'/g,"\\'")}')" style="text-align:left;padding:9px 10px;background:${bg};border:1px solid ${bord};border-radius:10px;cursor:pointer;border-left:3px solid ${p.c};width:100%">
           <div style="font-size:11px;font-weight:700;color:${txt}">${p.t}</div>
           <div style="font-size:9px;color:${sub};margin-top:1px">${p.s}</div>
         </button>`).join('')}
@@ -12054,7 +12054,7 @@ function renderDailyBrief(items) {
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;border-left:3px solid ${item.color}">
       <span style="font-size:18px;flex-shrink:0">${item.icon}</span>
       <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);line-height:1.4">${item.text}</span>
-      <button onclick="sq('${item.text.replace(/'/g,"\'")} — explique-moi en détail')"
+      <button onclick="sq('${item.text.replace(/'/g,"\\'")} — explique-moi en détail')"
         style="margin-left:auto;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0;white-space:nowrap">
         → Détails
       </button>
