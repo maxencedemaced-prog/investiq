@@ -9070,7 +9070,7 @@ function renderNewsList() {
       style="background:${surf};border-radius:14px;margin-bottom:10px;border:1px solid ${bord};${n.impact==='élevé'?`border-left:3px solid #f87171`:''};overflow:hidden;transition:all 0.15s;cursor:pointer"
       onmouseover="this.style.background='${hoverBg}';this.style.borderColor='${isDark?'rgba(255,255,255,0.15)':'#d1d5db'}'"
       onmouseout="this.style.background='${surf}';this.style.borderColor='${bord}'">
-      <div class="news-row" style="display:flex;align-items:flex-start;gap:14px;padding:16px" onclick="toggleNews(${i})">
+      <div class="news-row" style="display:flex;align-items:flex-start;gap:14px;padding:16px" onclick="askAgentFrom(${JSON.stringify(`Explique-moi cette actualité et son impact potentiel sur mon portefeuille : « ${n.titre} ». ${n.resume||''}`).replace(/"/g,'&quot;')})">
         <!-- Logo -->
         <div style="width:44px;height:44px;border-radius:12px;background:${logoColor}20;border:1px solid ${logoColor}40;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${logoColor};flex-shrink:0">${logoText}</div>
         <!-- Contenu principal -->
