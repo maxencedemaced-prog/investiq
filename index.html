@@ -16,7 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260921155507">
+  <link rel="stylesheet" href="style.css?v=20260922120851">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -303,6 +303,18 @@
         <div style="display:flex;background:rgba(255,255,255,0.06);border-radius:12px;padding:4px;margin-bottom:24px">
           <button class="auth-tab active" id="tab-login" onclick="switchAuth('login')" style="flex:1;padding:10px;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.12);color:#fff">Connexion</button>
           <button class="auth-tab" id="tab-signup" onclick="switchAuth('signup')" style="flex:1;padding:10px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;background:transparent;color:rgba(255,255,255,0.4)">Inscription</button>
+        </div>
+
+        <!-- CONNEXION GOOGLE -->
+        <button onclick="loginWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;background:#fff;border:none;border-radius:14px;font-size:14px;font-weight:700;color:#1f1f1f;cursor:pointer;transition:all 0.2s;margin-bottom:20px"
+          onmouseover="this.style.boxShadow='0 4px 16px rgba(255,255,255,0.15)'" onmouseout="this.style.boxShadow='none'">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.4 0-13.8 4.1-17.1 10.1.4.2.1.1 0 0"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.1-5.1l-6.5-5.5C29.6 35.2 26.9 36 24 36c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.1 39.6 16 44 24 44"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6.5 5.5C41.4 35.7 44 30.2 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+          Continuer avec Google
+        </button>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div>
+          <span style="font-size:12px;color:rgba(255,255,255,0.25);font-weight:600">ou par email</span>
+          <div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div>
         </div>
 
         <!-- FORMULAIRE CONNEXION -->
@@ -1824,11 +1836,11 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260921155507"></script>
-<script src="depenses.js?v=20260921155507"></script>
-<script src="bilan-extra.js?v=20260921155507"></script>
-<script src="tab-hints.js?v=20260921155507"></script>
-<script src="push.js?v=20260921155507"></script>
+<script src="app.js?v=20260922120851"></script>
+<script src="depenses.js?v=20260922120851"></script>
+<script src="bilan-extra.js?v=20260922120851"></script>
+<script src="tab-hints.js?v=20260922120851"></script>
+<script src="push.js?v=20260922120851"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->

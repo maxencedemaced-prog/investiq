@@ -4612,6 +4612,14 @@ function setAuthMsg(msg, ok=false) {
   const el = document.getElementById('auth-msg');
   el.textContent = msg; el.className = 'auth-msg ' + (ok?'success':'error');
 }
+async function loginWithGoogle() {
+  setAuthMsg('Redirection vers Google...', true);
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+  if (error) setAuthMsg("Connexion Google indisponible pour l'instant.");
+}
 async function login() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
