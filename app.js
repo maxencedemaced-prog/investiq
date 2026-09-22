@@ -1494,6 +1494,16 @@ async function deleteObjective(id) {
   showToast('✓ Objectif supprimé');
 }
 
+// Affiche/masque l'analyse IA complète du plan DCA (bouton « Voir l'analyse complète »)
+function toggleDcaFullAnalysis(btn) {
+  const el = document.getElementById('dca-full-analysis');
+  if (!el || !btn) return;
+  const show = el.style.display === 'none';
+  el.style.display = show ? 'block' : 'none';
+  btn.textContent = show ? '▴ Masquer l’analyse' : '🔬 Voir l’analyse complète';
+  btn.style.background = show ? '#f0f0f0' : '#fff';
+}
+
 // Sauvegarder la simulation DCA comme nouvel objectif — avec plan IA
 async function saveDCAAsObjective() {
   const m  = parseFloat(document.getElementById('dca-m')?.value) || 200;
