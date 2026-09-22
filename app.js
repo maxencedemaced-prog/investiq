@@ -8002,11 +8002,12 @@ async function renderSante() {
       </div>
       <div style="flex:1;display:flex;flex-direction:column;gap:10px">
         ${[
-          {icon:'🛡️', title:'Bonne diversification globale', sub:'Votre portefeuille est bien diversifié sur plusieurs classes d\'actifs.', ok:true},
-          {icon:'⭐', title:'Réduire la concentration', sub:`Envisagez de réduire l'exposition à ${maxPos?maxPos.name:'votre position principale'} (${maxPct}%) pour limiter le risque.`, ok:parseFloat(maxPct)<=25},
-          {icon:'📈', title:'Améliorer la performance', sub:'Certaines positions sous-performent le marché. L\'IA peut vous aider.', ok:tpct>=0},
+          {icon:'🛡️', title:'Bonne diversification globale', sub:dedupPos.length>=8?'Votre portefeuille est bien diversifié sur plusieurs classes d\'actifs.':`${dedupPos.length} position${dedupPos.length>1?'s':''} — vise 8 ou plus pour bien diversifier.`, ok:dedupPos.length>=8, q:`Comment améliorer la diversification de mon portefeuille (${dedupPos.length} positions actuellement) ?`},
+          {icon:'⭐', title:'Réduire la concentration', sub:`Envisagez de réduire l'exposition à ${maxPos?maxPos.name:'votre position principale'} (${maxPct}%) pour limiter le risque.`, ok:parseFloat(maxPct)<=25, q:`Comment réduire progressivement mon exposition à ${maxPos?maxPos.name:'ma position principale'} (${maxPct}% de mon portefeuille) ?`},
+          {icon:'📈', title:'Améliorer la performance', sub:'Certaines positions sous-performent le marché. L\'IA peut vous aider.', ok:tpct>=0, q:'Quelles positions sous-performent dans mon portefeuille, et que suggères-tu ?'},
         ].map(c=>`
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border-radius:12px;border:1px solid ${border}">
+        <div onclick="askAgentFrom(${JSON.stringify(c.q).replace(/"/g,'&quot;')})" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border-radius:12px;border:1px solid ${border};transition:border-color 0.15s"
+          onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='${border}'">
           <div style="display:flex;align-items:flex-start;gap:10px">
             <span style="font-size:18px;flex-shrink:0;margin-top:1px">${c.icon}</span>
             <div>
@@ -8014,7 +8015,10 @@ async function renderSante() {
               <div style="font-size:12px;color:${textSec};line-height:1.5">${c.sub}</div>
             </div>
           </div>
-          <div style="font-size:16px;flex-shrink:0;color:${c.ok?'#3fb950':textSec}">${c.ok?'✓':'›'}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            ${c.ok?'<span style="font-size:16px;color:#3fb950">✓</span>':''}
+            <span style="font-size:16px;color:${textSec}">›</span>
+          </div>
         </div>`).join('')}
       </div>
     </div>
@@ -11158,6 +11162,11 @@ function openOnPlatform(platform, ticker) {
 
 
 // ===== AGENT IA =====
+// Depuis une autre page (ex. Santé) : ouvre l'Agent IA et pose directement la question
+function askAgentFrom(question) {
+  nav('ai');
+  sq(question);
+}
 function sq(q) {
   if (aiBusy) { showToast('⏳ Attends la réponse en cours...'); return; }
   const inp = document.getElementById('ai-in');
