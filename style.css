@@ -1825,3 +1825,43 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
 .nav-dot { position: absolute; top: 50%; right: 9px; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 0 2px var(--color-surface, #fff); animation: navDotPulse 1.8s ease-in-out infinite; pointer-events: none; }
 .bnav-btn .nav-dot { top: 6px; right: calc(50% - 17px); margin-top: 0; }
 @keyframes navDotPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE — cartes/tableaux conçus pour desktop qui se chevauchaient
+   sur téléphone (grilles à colonnes fixes trop nombreuses/étroites)
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Accueil : badge « Performance totale » qui passait par-dessus le titre */
+  .hero-perf-badge {
+    position: static !important;
+    display: inline-block !important;
+    margin: 0 0 14px !important;
+    text-align: left !important;
+  }
+
+  /* Portefeuille : 4 pastilles (Valeur/Investi/Plus-value/Perf.) trop serrées, la 4e sortait de l'écran */
+  .port-metrics-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Portefeuille : tableau à 7 colonnes illisible → carte empilée par position */
+  .pos-row-head { display: none !important; }
+  .pos-row {
+    grid-template-columns: 1fr auto !important;
+    grid-template-rows: auto auto !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+  }
+  .pos-row > div:nth-child(1) { grid-column: 1 / 2; grid-row: 1; min-width: 0; }
+  .pos-row > div:nth-child(2) { display: none !important; }   /* Investi : redondant avec Valeur/Perf. sur mobile */
+  .pos-row > div:nth-child(3) { display: none !important; }   /* Prix moyen : idem */
+  .pos-row > div:nth-child(4) { grid-column: 1 / 2; grid-row: 2; }
+  .pos-row > div:nth-child(5) { grid-column: 2 / 3; grid-row: 2; align-items: flex-end !important; text-align: right; }
+  .pos-row > div:nth-child(6) { display: none !important; }   /* mini-graphique décoratif */
+  .pos-row > div:nth-child(7) { grid-column: 2 / 3; grid-row: 1; justify-self: end; }
+
+  /* Santé : score + barres + anneau sur une seule ligne trop étroite → empilés */
+  .sante-score-grid { grid-template-columns: 1fr !important; gap: 18px !important; }
+  .sante-score-grid > div:last-child { justify-self: center; }
+
+  /* Scénario crise : cartes à 3 colonnes coupées/illisibles → une carte par ligne */
+  .crise-cards-grid { grid-template-columns: 1fr !important; }
+}

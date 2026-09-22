@@ -6919,7 +6919,7 @@ async function renderHome() {
       <div style="position:absolute;top:0;right:0;bottom:0;width:45%;opacity:0.8;pointer-events:none">
         ${sparkline(mainSparkData, tpnl>=0?'#4ade80':'#f87171', 400, 160, true)}
       </div>
-      <div style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
+      <div class="hero-perf-badge" style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
         <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Performance totale</div>
         <div style="font-size:20px;font-weight:800;color:${pnlColor};letter-spacing:-0.04em">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
         <div style="font-size:12px;color:${pnlColor};opacity:0.7;margin-top:2px">${tpnl>=0?'↑':'↓'} ${Math.abs(tpct).toFixed(1)}%</div>
@@ -7125,7 +7125,7 @@ async function renderHome() {
     const topSector = Object.entries(topSectors).sort((a,b)=>b[1]-a[1])[0];
     const topPct = topSector ? (topSector[1]/tv2*100).toFixed(0) : 0;
     if (topSector && topPct > 35) {
-      insightEl.innerHTML = `Votre exposition au secteur <strong style="color:#fff">${topSector[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisagez une diversification pour réduire le risque.`;
+      insightEl.innerHTML = `Votre exposition au secteur <strong style="color:var(--color-text)">${topSector[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisagez une diversification pour réduire le risque.`;
     }
   }, 800);
 }
@@ -7423,7 +7423,7 @@ function renderPortfolio(auto=false) {
 
   // Métriques topbar
   const metricsHtml = `
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+  <div class="port-metrics-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
     ${[
       {label:'Valeur totale', val: fmtK(tv), sub: '', spark: true, trend: 0.3},
       {label:'Investi', val: fmtK(ti), sub: '', spark: false},
@@ -7458,7 +7458,7 @@ function renderPortfolio(auto=false) {
         <button onclick="toggleSelectMode(false)" style="padding:6px 13px;background:transparent;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer">Annuler</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
+    <div class="pos-row-head" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
       ${['ACTIF','INVESTI','PRIX MOY.','VALEUR','PERF.','',''].map(h=>`<div style="font-size:10px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.06em">${h}</div>`).join('')}
     </div>
     <!-- Lignes positions -->
@@ -7476,7 +7476,7 @@ function renderPortfolio(auto=false) {
       const sigLabel = sig?.signal==='BUY'?'Renforcer':sig?.signal==='SELL'?'Vendre':'Garder';
       const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
       return `
-      <div id="row-${p.id}" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
+      <div id="row-${p.id}" class="pos-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
         onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'"
         onclick="togglePos('${p.id}')">
         <!-- Actif -->
@@ -7889,7 +7889,7 @@ async function renderSante() {
   <div style="background:linear-gradient(135deg,${isDark?'#080c10,#0d1520':'#f0fdf4,#ecfdf5'});border:1px solid ${isDark?'rgba(63,185,80,0.2)':' rgba(22,163,74,0.2)'};border-radius:20px;padding:24px;margin-bottom:14px;position:relative;overflow:hidden">
     <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(63,185,80,0.12),transparent);pointer-events:none"></div>
     <div style="font-size:10px;font-weight:700;color:${isDark?'rgba(255,255,255,0.4)':textSec};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px">Score de santé</div>
-    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center">
+    <div class="sante-score-grid" style="display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center">
       <!-- Score gauche -->
       <div>
         <div style="font-size:56px;font-weight:900;color:${scoreColor};letter-spacing:-0.05em;line-height:1">${score.toFixed(1)}</div>
@@ -8678,7 +8678,7 @@ function renderCrise() {
       </button>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;margin-bottom:16px">
+    <div class="crise-cards-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;margin-bottom:16px">
       ${scenarios.map(s => {
         const proj = calcProjection(s.rate, years, capital, monthly);
         const invested = capital + monthly*12*years;
@@ -8729,7 +8729,7 @@ function renderCrise() {
       </button>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;margin-bottom:16px">
+    <div class="crise-cards-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;margin-bottom:16px">
       ${shocks.map(s => {
         const newVal = tv * (1 + s.pct/100);
         const loss = newVal - tv;
