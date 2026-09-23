@@ -57,6 +57,7 @@ async function pushEnable() {
     const r = await fetch('/api/push-subscribe', { method: 'POST', headers: h, body: JSON.stringify({ subscription: sub.toJSON(), moves: pushMovesOn() }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Enregistrement impossible');
     showToast('🔔 Notifications activées');
+    try { trackEvent('push_enabled'); } catch(e) {}
     pushTest(true);   // notification de confirmation immédiate
   } catch (e) {
     console.warn('[push] activation :', e.message);

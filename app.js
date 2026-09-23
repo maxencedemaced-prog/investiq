@@ -138,7 +138,7 @@ async function validateObjectif(labelOverride, forceNew) {
         };
         const { data: inserted, error } = await sb.from('objectives').insert(insertPayload).select().single();
         if (error) console.warn('[validateObjectif] insert error:', error.message);
-        else if (inserted) savedId = inserted.id;
+        else if (inserted) { savedId = inserted.id; trackEvent('objectif_created', { target: data.target, years: data.years }); }
       }
       // Recharge tous les objectifs depuis Supabase
       await loadObjective();
@@ -2277,6 +2277,18 @@ function showToast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.classList.add('show'), 10);
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+// ===== ANALYTICS (table Supabase "events") =====
+// Base légère pour un futur tableau de bord (conversion, rétention, usage). Silencieux en cas d'échec :
+// ne doit jamais bloquer ni ralentir une action réelle de l'utilisateur.
+function trackEvent(type, meta) {
+  if (isDemo || !currentUser) return;
+  try {
+    sb.from('events').insert({ user_id: currentUser.id, type, meta: meta || null }).then(({ error }) => {
+      if (error) console.warn('[trackEvent]', type, error.message);
+    });
+  } catch (e) { console.warn('[trackEvent]', type, e.message); }
 }
 
 // ===== TX MODAL =====
@@ -4543,6 +4555,7 @@ async function initApp(user) {
   document.getElementById('app').style.display = 'flex';
   document.getElementById('demo-banner').style.display = 'none';
   openNotifPanelByDefault();
+  try { trackEvent('login'); } catch(e) {}
   const email = user.email || '';
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
@@ -6160,6 +6173,7 @@ function loadSavedBilan() {
 }
 function saveBilan(result, localOnly) {
   try { localStorage.setItem(bilanKey(), JSON.stringify({ ts: Date.now(), result, data: bilanData })); } catch {}
+  trackEvent('bilan_completed');
   // Copie dans le compte (table « bilans », voir SUPABASE_BILANS.sql) : retrouvable sur tous les appareils.
   // Silencieux si la table n'existe pas encore : la copie locale reste utilisée.
   if (!localOnly && !isDemo && currentUser) {
@@ -6687,6 +6701,7 @@ async function exportBilanPDF() {
 function nav(page, auto=false) {
   // Mémorise la page pour la restaurer si Chrome recharge l'onglet (Memory Saver)
   try { sessionStorage.setItem('iq_last_page', page); } catch {}
+  if (!auto) { try { trackEvent('page_view', { page }); } catch(e) {} }
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const sec = document.getElementById('sec-'+page);
@@ -7812,6 +7827,7 @@ async function addPos() {
         .eq('id', existing.id);
       if (error) { showToast('Erreur: ' + error.message); return; }
       await addTransaction(name, 'achat', qty, pru, 'Renforcement de position');
+      trackEvent('position_added', { type, renforcement: true });
     }
     acClear();
     nav('portfolio');
@@ -7832,6 +7848,7 @@ async function addPos() {
   if (data) {
     positions.push(data);
     await addTransaction(name, 'achat', qty, pru, 'Ouverture de position');
+    trackEvent('position_added', { type, renforcement: false });
     acClear();
     nav('portfolio');
     showToast('✓ ' + name + ' ajouté au portefeuille !');
@@ -9732,6 +9749,7 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
       aiQuotaState = d.quota || { mode: 'daily', used: AI_FREE_DAILY, limit: AI_FREE_DAILY, welcome: AI_FREE_WELCOME };
       window._aiQuotaHitAt = Date.now();
       updateAIQuotaBadge();
+      trackEvent('ai_quota_reached');
       if (!window._aiQuotaModalAt || Date.now() - window._aiQuotaModalAt > 30 * 60000) {
         window._aiQuotaModalAt = Date.now();
         showAIQuotaModal();
@@ -11341,6 +11359,7 @@ async function sendAI() {
   if (!q) return;
   inp.value = '';
   aiBusy = true;
+  trackEvent('ai_question');
 
   const chat = document.getElementById('ai-chat');
   if (!chat) { aiBusy = false; return; } // page AI pas affichée → ne pas bloquer le verrou
