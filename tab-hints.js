@@ -68,7 +68,9 @@ function showTabHint(page) {
 function tabHintsOff() {
   tabMarkSeen(Object.keys(TAB_HINTS));
   try { localStorage.setItem(agentSampleSeenKey(), '1'); } catch {}
+  try { localStorage.setItem(menuSeenKey(), '1'); } catch {}
   updateNavDots();
+  try { updateMenuDot(); } catch {}
   try { renderAgentTabs(); } catch {}
   document.getElementById('tab-hint')?.remove();
 }
@@ -77,7 +79,9 @@ function tabHintsOff() {
 function tabHintsReset() {
   try { localStorage.removeItem(tabSeenKey()); } catch {}
   try { localStorage.removeItem(agentSampleSeenKey()); } catch {}   // point rouge de l'onglet « Exemple Premium » de l'Agent IA
+  try { localStorage.removeItem(menuSeenKey()); } catch {}          // point rouge du bouton ☰ (menu mobile)
   updateNavDots();
+  try { updateMenuDot(); } catch {}
   try { renderAgentTabs(); } catch {}
   const b = document.getElementById('tab-hints-reset');
   if (b) { b.textContent = '✓ Explications réactivées : clique sur un onglet'; setTimeout(() => { b.textContent = '🔴 Réafficher les explications des onglets'; }, 3500); }
@@ -96,4 +100,22 @@ document.addEventListener('click', e => {
   setTimeout(() => showTabHint(page), 300);
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('tab-hint')?.remove(); });
-window.addEventListener('DOMContentLoaded', () => { try { updateNavDots(); } catch {} });
+window.addEventListener('DOMContentLoaded', () => { try { updateNavDots(); updateMenuDot(); } catch {} });
+
+// Point rouge sur le bouton ☰ (menu mobile) tant qu'il n'a jamais été ouvert : sur mobile, seuls
+// 5 raccourcis apparaissent en bas — ce point signale que le ☰ donne accès à tous les autres outils.
+const menuSeenKey = () => 'iq_seen_menu_' + (currentUser?.id || 'demo');
+function updateMenuDot() {
+  const btn = document.querySelector('.menu-btn');
+  if (!btn) return;
+  let seen = false;
+  try { seen = localStorage.getItem(menuSeenKey()) === '1'; } catch {}
+  const dot = btn.querySelector('.nav-dot');
+  if (seen) { if (dot) dot.remove(); return; }
+  if (!dot) { const d = document.createElement('i'); d.className = 'nav-dot'; d.setAttribute('aria-label', 'Nouveau'); btn.appendChild(d); }
+}
+document.addEventListener('click', e => {
+  if (!e.target || !e.target.closest || !e.target.closest('.menu-btn')) return;
+  try { localStorage.setItem(menuSeenKey(), '1'); } catch {}
+  updateMenuDot();
+});
