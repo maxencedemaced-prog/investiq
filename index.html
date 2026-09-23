@@ -16,7 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260923132841">
+  <link rel="stylesheet" href="style.css?v=20260923133610">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1634,7 +1634,6 @@ window.addEventListener('load', function() {
     <div style="display:flex;gap:8px;align-items:center">
       <span id="agent-last-update" style="font-size:11px;color:var(--color-text-tertiary)"></span>
       <button class="btn-secondary" onclick="refreshPrices().then(()=>initAgent())" style="font-size:13px;padding:8px 14px">↻ Actualiser</button>
-      <button class="btn-secondary" onclick="clearChat()" style="font-size:13px;padding:8px 14px">Effacer</button>
     </div>
   </div>
 
@@ -1679,6 +1678,7 @@ window.addEventListener('load', function() {
         <div class="card chat-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
           <div style="padding:12px 14px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">
             <div style="font-size:12px;font-weight:800">Pose une question à ton Agent IA</div>
+            <button class="btn-secondary" onclick="clearChat()" style="font-size:11px;padding:5px 11px">Effacer</button>
           </div>
           <div id="agent-quick-actions" style="padding:10px 12px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--color-border)">
             <button onclick="sq('Analyse mon portefeuille en détail')" style="background:var(--color-bg-subtle,#f5f5f5);border:1px solid var(--color-border);border-radius:99px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">📊 Analyser mes positions</button>
@@ -1836,11 +1836,11 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260923132841"></script>
-<script src="depenses.js?v=20260923132841"></script>
-<script src="bilan-extra.js?v=20260923132841"></script>
-<script src="tab-hints.js?v=20260923132841"></script>
-<script src="push.js?v=20260923132841"></script>
+<script src="app.js?v=20260923133610"></script>
+<script src="depenses.js?v=20260923133610"></script>
+<script src="bilan-extra.js?v=20260923133610"></script>
+<script src="tab-hints.js?v=20260923133610"></script>
+<script src="push.js?v=20260923133610"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
