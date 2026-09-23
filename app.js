@@ -11681,7 +11681,7 @@ function renderAgentDashboard() {
     } else {
       heroEl.innerHTML = `
       <div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:20px 22px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
-        <div style="display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start">
+        <div class="agent-hero-grid" style="display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start">
           <div style="min-width:0">
             <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
               <div style="font-size:17px;font-weight:900;color:#fff">Bonjour ${name}</div>
@@ -11712,7 +11712,7 @@ function renderAgentDashboard() {
             </div>
           </div>
           <!-- Score circulaire -->
-          <div style="text-align:center;min-width:96px">
+          <div class="agent-hero-score" style="text-align:center;min-width:96px">
             <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Score Premium</div>
             <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(${scoreColor} ${score*36}deg, rgba(255,255,255,0.08) 0deg);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;position:relative">
               <div style="width:62px;height:62px;border-radius:50%;background:#0d1422;display:flex;flex-direction:column;align-items:center;justify-content:center">

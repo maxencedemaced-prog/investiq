@@ -1877,4 +1877,11 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
   .brief-row { flex-wrap: wrap !important; }
   .brief-main { flex-basis: 100% !important; }
   .brief-btn { margin-left: 0 !important; margin-top: 6px !important; }
+
+  /* Agent IA : en-tête (salutation + score). Les ajustements min-width/flex-wrap ne suffisaient
+     pas à chaque cas (nom long, brief IA...) → colonne du score empilée sous le reste, point final,
+     quel que soit le contenu de gauche. */
+  .agent-hero-grid { grid-template-columns: 1fr !important; }
+  .agent-hero-score { min-width: 0 !important; margin-top: 14px; }
+  .agent-hero-score > div:first-child { text-align: left !important; }
 }
