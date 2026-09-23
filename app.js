@@ -6844,11 +6844,32 @@ const NOTIF_NAV = {
 
 function renderNotifications() {
   renderNotificationList();
+  renderTopbarNotifStrip();
   // Invitation à activer les notifications push (uniquement si elles ne le sont pas encore)
   if (typeof pushBellPromptHTML === 'function') pushBellPromptHTML().then(html => {
     const list = document.getElementById('notif-list');
     if (html && list && !document.getElementById('push-bell-prompt')) list.insertAdjacentHTML('afterbegin', html);
   }).catch(() => {});
+}
+
+// Bandeau de notifications dans la barre du haut — desktop large uniquement (voir CSS .topbar-notif-strip) :
+// l'espace y est libre, ça les rend visibles sans attendre un clic sur la cloche.
+function renderTopbarNotifStrip() {
+  const el = document.getElementById('topbar-notif-strip');
+  if (!el) return;
+  if (!notifications.length) { el.innerHTML = ''; return; }
+  const impactColor = { high:'#dc2626', medium:'#f59e0b', low:'#8e8e93' };
+  const shown = notifications.slice(0, 2);
+  el.innerHTML = shown.map(n => {
+    const page = Object.entries(NOTIF_NAV).find(([k]) => n.action.includes(k.split(' ').pop()));
+    const navPage = page ? page[1] : null;
+    return `<button onclick="${navPage ? `nav('${navPage}')` : `toggleNotifPanel()`}" title="${_escHtml(n.texte)}"
+      style="display:flex;align-items:center;gap:6px;max-width:220px;background:var(--color-bg-subtle,#f5f5f5);border:1px solid var(--color-border);border-left:3px solid ${impactColor[n.impact]||'#8e8e93'};border-radius:10px;padding:6px 12px;cursor:pointer;text-align:left;font:inherit;flex-shrink:0">
+      <span style="font-size:12px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(n.titre)}</span>
+    </button>`;
+  }).join('') + (notifications.length > shown.length
+    ? `<button onclick="toggleNotifPanel()" style="font-size:11px;font-weight:700;color:var(--color-text-secondary);background:none;border:none;cursor:pointer;padding:6px 6px;white-space:nowrap;flex-shrink:0">+${notifications.length - shown.length}</button>`
+    : '');
 }
 function renderNotificationList() {
   const list = document.getElementById('notif-list');

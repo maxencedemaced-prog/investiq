@@ -121,11 +121,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 .auth-msg.error{color:#ff3b30}.auth-msg.success{color:#34c759}
 @media(max-width:700px){.auth-wrap{flex-direction:column;gap:24px}.auth-pitch{text-align:center}.auth-pitch-title{font-size:28px}.auth-features-list{display:none}.auth-card{max-width:100%}}
 #app{display:flex;flex-direction:column;min-height:100vh}
-.topbar{height:52px;background:rgba(250,250,250,0.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--color-border-subtle);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 16px;position:sticky;top:0;z-index:100}
+.topbar{height:52px;background:rgba(250,250,250,0.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--color-border-subtle);display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:0 16px;position:sticky;top:0;z-index:100}
 .topbar-left{display:flex;align-items:center;gap:12px}
 .topbar-logo{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;color:#1c1c1e;letter-spacing:-0.4px}
 .menu-btn{background:transparent;border:none;color:#1c1c1e;cursor:pointer;padding:6px;border-radius:8px;display:flex;align-items:center}
 .menu-btn:hover{background:var(--color-bg)}
+/* Notifications en clair dans la barre du haut : l'espace central était vide sur grand écran (colonne 1fr inutilisée) */
+.topbar-notif-strip{display:none;align-items:center;gap:8px;overflow:hidden;padding:0 16px}
+@media (min-width:1240px){ .topbar-notif-strip{display:flex} }
 .topbar-right{display:flex;align-items:center;gap:6px;justify-content:flex-end}
 .price-ticker{display:flex;align-items:center;gap:8px;padding:4px 12px;background:var(--color-bg);border-radius:99px;justify-content:center}
 .notif-btn{position:relative;background:transparent;border:none;cursor:pointer;padding:7px;border-radius:8px;color:#1c1c1e;display:flex;align-items:center}
