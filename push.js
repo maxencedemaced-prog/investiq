@@ -1,6 +1,14 @@
 // push.js — notifications push sur l'appareil courant (téléphone ou ordinateur).
 // Serveur : api/push-key.js, api/push-subscribe.js, api/push-send.js. Dépend d'app.js : sb, currentUser, isDemo, showToast.
 
+// Auto-guérison : si un appareil a déjà un service worker installé (même désactivé depuis, même en
+// mode démo), on lui demande de vérifier une mise à jour à CHAQUE visite, sans attendre le délai
+// habituel du navigateur (jusqu'à 24h). Sans ça, un appareil resterait bloqué sur une ancienne
+// version de l'app jusqu'à ce que quelqu'un vide son cache à la main.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistration().then(reg => reg && reg.update()).catch(() => {});
+}
+
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 // iPhone/iPad : les notifications n'existent que si l'app est ajoutée à l'écran d'accueil
 const pushNeedsInstall = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
