@@ -10081,10 +10081,12 @@ function renderVerdict(data, ts) {
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;position:relative">
       ${(data.decisions||[]).map(d => {
         const a = ACTIONS[d.action] || ACTIONS.conserver;
-        return `<div onclick="sq('Explique pourquoi tu ${a.label.toLowerCase().replace('je ','')} ${d.name} aujourd\\'hui')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 11px;background:rgba(255,255,255,0.04);border-radius:10px;border-left:3px solid ${a.color};min-width:0">
-          <span style="font-size:13px;font-weight:900;color:${a.color};width:16px;text-align:center;flex-shrink:0">${a.icon}</span>
-          <span style="font-size:12px;font-weight:800;color:#fff;flex-shrink:0">${a.label} ${displayName(d.name)}</span>
-          <span style="font-size:10px;color:rgba(255,255,255,0.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">— ${d.raison||''}</span>
+        return `<div onclick="sq('Explique pourquoi tu ${a.label.toLowerCase().replace('je ','')} ${d.name} aujourd\\'hui')" class="verdict-row" style="cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:2px 10px;padding:8px 11px;background:rgba(255,255,255,0.04);border-radius:10px;border-left:3px solid ${a.color};min-width:0">
+          <div class="verdict-label" style="display:flex;align-items:center;gap:10px;min-width:0">
+            <span style="font-size:13px;font-weight:900;color:${a.color};width:16px;text-align:center;flex-shrink:0">${a.icon}</span>
+            <span style="font-size:12px;font-weight:800;color:#fff">${a.label} ${displayName(d.name)}</span>
+          </div>
+          <span class="verdict-reason" style="font-size:10px;color:rgba(255,255,255,0.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">— ${d.raison||''}</span>
         </div>`;
       }).join('')}
     </div>

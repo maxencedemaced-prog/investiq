@@ -1889,4 +1889,10 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
   .agent-hero-title-row { flex-wrap: wrap !important; }
   .agent-hero-greeting { flex-basis: 100% !important; }
   .agent-hero-buttons { margin-left: 0 !important; }
+
+  /* Que ferait Kapitaro : le libellé du signal (« Signal : réduire Vanguard FTSE All-World »)
+     ne devait jamais rétrécir → sur un nom de position long, il élargissait toute la page.
+     Il prend maintenant sa propre ligne, la raison passe en dessous. */
+  .verdict-row { flex-wrap: wrap !important; }
+  .verdict-label { flex-basis: 100% !important; }
 }
