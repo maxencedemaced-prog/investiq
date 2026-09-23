@@ -12069,9 +12069,9 @@ function renderDailyBrief(items) {
   const el = document.getElementById('agent-hero-notifs') || document.getElementById('agent-brief-content');
   if (!el || !items?.length) return;
   el.innerHTML = items.map(item => `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;border-left:3px solid ${item.color}">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:10px;border-left:3px solid ${item.color};min-width:0">
       <span style="font-size:18px;flex-shrink:0">${item.icon}</span>
-      <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);line-height:1.4">${item.text}</span>
+      <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);line-height:1.4;flex:1;min-width:0">${item.text}</span>
       <button onclick="sq('${item.text.replace(/'/g,"\\'")} — explique-moi en détail')"
         style="margin-left:auto;background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0;white-space:nowrap">
         → Détails
