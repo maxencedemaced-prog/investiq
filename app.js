@@ -4528,6 +4528,12 @@ function claimCaches(ownerId) {
   } catch {}
 }
 
+// Ouvre le panneau de notifications dès l'arrivée sur l'app (pas sur mobile : il y prend tout l'écran)
+function openNotifPanelByDefault() {
+  if (window.innerWidth < 768) return;
+  document.getElementById('notif-panel')?.classList.add('open');
+}
+
 async function initApp(user) {
   try {
   currentUser = user; isDemo = false;
@@ -4536,6 +4542,7 @@ async function initApp(user) {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('demo-banner').style.display = 'none';
+  openNotifPanelByDefault();
   const email = user.email || '';
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
@@ -4584,6 +4591,7 @@ function enterDemo() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('demo-banner').style.display = 'block';
+  openNotifPanelByDefault();
   document.getElementById('topbar-email').textContent = 'Demo';
   document.getElementById('topbar-avatar').textContent = 'D';
   positions = [
