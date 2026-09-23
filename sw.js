@@ -1,5 +1,5 @@
 // ===== Kapitaro Service Worker =====
-const CACHE_NAME = 'kapitaro-v1'; // incrémenté pour forcer la mise à jour
+const CACHE_NAME = 'kapitaro-v2'; // incrémenté pour forcer la mise à jour
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -14,13 +14,16 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Stratégie network-first pour les fichiers de l'app : toujours la version fraîche
+// Stratégie network-first pour les fichiers de l'app : toujours la version fraîche.
+// « no-store » explicite : sans ça, un simple fetch() peut être satisfait par le cache HTTP
+// du navigateur sans même toucher le réseau, et l'app resterait bloquée sur une ancienne version
+// (index.html en premier lieu — tant qu'il est périmé, il continue de charger un vieil app.js/style.css).
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   // Seulement pour nos propres fichiers JS/CSS/HTML
   if (url.origin === self.location.origin && /\.(js|css|html)$|\/$/.test(url.pathname)) {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
+      fetch(e.request, { cache: 'no-store' }).catch(() => caches.match(e.request))
     );
   }
 });

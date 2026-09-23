@@ -18,7 +18,9 @@ async function pushHeaders() {
 }
 async function pushRegSW() {
   if (!('serviceWorker' in navigator)) return null;
-  try { await navigator.serviceWorker.register('/sw.js'); return await navigator.serviceWorker.ready; } catch (e) { console.warn('[push] service worker :', e.message); return null; }
+  // updateViaCache:'none' — le fichier sw.js lui-même ne doit jamais venir du cache HTTP, sinon le
+  // navigateur peut continuer d'exécuter une ancienne version du service worker pendant des heures.
+  try { await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }); return await navigator.serviceWorker.ready; } catch (e) { console.warn('[push] service worker :', e.message); return null; }
 }
 async function pushCurrentSub() {
   if (!pushSupported()) return null;
