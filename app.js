@@ -11683,11 +11683,15 @@ function renderAgentDashboard() {
       <div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:20px 22px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
         <div class="agent-hero-grid" style="display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start">
           <div style="min-width:0">
-            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-              <div style="font-size:17px;font-weight:900;color:#fff">Bonjour ${name}</div>
-              <span style="font-size:16px">👋</span>
-              <button class="agent-hero-bilan-btn" onclick="openBilan()" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;cursor:pointer;margin-left:auto;white-space:nowrap">Bilan rapide</button>
-              <button onclick="nav('sante')" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#a5b4fc;cursor:pointer;white-space:nowrap">Santé détail</button>
+            <div class="agent-hero-title-row" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+              <div class="agent-hero-greeting" style="display:flex;align-items:center;gap:8px">
+                <div style="font-size:17px;font-weight:900;color:#fff">Bonjour ${name}</div>
+                <span style="font-size:16px">👋</span>
+              </div>
+              <div class="agent-hero-buttons" style="display:flex;gap:8px;margin-left:auto">
+                <button class="agent-hero-bilan-btn" onclick="openBilan()" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;cursor:pointer;white-space:nowrap">Bilan rapide</button>
+                <button onclick="nav('sante')" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#a5b4fc;cursor:pointer;white-space:nowrap">Santé détail</button>
+              </div>
             </div>
             <div style="font-size:9px;font-weight:700;color:rgba(74,222,128,0.7);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px">✦ Aujourd'hui j'ai trouvé</div>
             <div id="agent-hero-notifs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">

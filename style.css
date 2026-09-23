@@ -1884,7 +1884,9 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
   .agent-hero-grid { grid-template-columns: 1fr !important; }
   .agent-hero-score { min-width: 0 !important; margin-top: 14px; }
   .agent-hero-score > div:first-child { text-align: left !important; }
-  /* Le décalage automatique vers la droite (pensé pour une seule ligne) débordait de l'écran
-     une fois les 2 boutons repliés sous le nom → ils suivent juste le fil normalement */
-  .agent-hero-bilan-btn { margin-left: 0 !important; }
+  /* Nom sur sa propre ligne, les 2 boutons ensemble sur la ligne suivante — fixe, ne dépend plus
+     de la longueur du nom (avant : un bouton restait à côté du nom selon les cas, l'autre en dessous) */
+  .agent-hero-title-row { flex-wrap: wrap !important; }
+  .agent-hero-greeting { flex-basis: 100% !important; }
+  .agent-hero-buttons { margin-left: 0 !important; }
 }
