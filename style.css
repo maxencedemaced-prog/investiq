@@ -533,6 +533,8 @@ input:focus,select:focus{outline:none;background:#ebebeb}
   .sidebar{left:0;display:flex !important}
   .sidebar-overlay{display:none !important}
   .menu-btn{display:none}
+  /* La sidebar fixe (176px) est au-dessus de la topbar : réserve cette largeur pour que rien ne s'affiche caché dessous */
+  .topbar-left{min-width:180px}
   /* Contenu fluide : suit la largeur de l'écran (plafonné à 1560 px et centré à droite du menu sur très grands écrans) */
   .main{margin-left:max(180px, calc(90px + (100vw - 1560px) / 2));width:auto;box-sizing:border-box;padding:32px clamp(24px, 3vw, 48px);max-width:1560px;padding-bottom:32px !important}
   .metrics-grid{grid-template-columns:repeat(4,1fr)}
