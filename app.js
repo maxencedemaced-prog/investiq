@@ -11686,7 +11686,7 @@ function renderAgentDashboard() {
             <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
               <div style="font-size:17px;font-weight:900;color:#fff">Bonjour ${name}</div>
               <span style="font-size:16px">👋</span>
-              <button onclick="openBilan()" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;cursor:pointer;margin-left:auto;white-space:nowrap">Bilan rapide</button>
+              <button class="agent-hero-bilan-btn" onclick="openBilan()" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#fbbf24;cursor:pointer;margin-left:auto;white-space:nowrap">Bilan rapide</button>
               <button onclick="nav('sante')" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:3px 9px;font-size:10px;font-weight:700;color:#a5b4fc;cursor:pointer;white-space:nowrap">Santé détail</button>
             </div>
             <div style="font-size:9px;font-weight:700;color:rgba(74,222,128,0.7);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px">✦ Aujourd'hui j'ai trouvé</div>

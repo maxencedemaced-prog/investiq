@@ -164,7 +164,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 .notif-item-action{font-size:12px;color:#1c1c1e;font-weight:700;margin-top:7px;background:#fff;border:none;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;display:inline-block}
 .notif-item-time{font-size:11px;color:#c7c7cc;margin-top:5px;font-weight:500}
 .notif-empty{text-align:center;color:#8e8e93;font-size:14px;padding:36px 20px;font-weight:500}
-.main{flex:1;padding:24px 20px;width:100%;display:flex;flex-direction:column;gap:0}
+.main{flex:1;padding:24px 20px;width:100%;display:flex;flex-direction:column;gap:0;overflow-x:hidden}
 .sec{display:none}.sec.active{display:block}
 .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:12px}
 .page-header h1{font-size:26px;font-weight:900;color:var(--color-text);letter-spacing:var(--tracking-tighter);line-height:1.1}
@@ -1884,4 +1884,7 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
   .agent-hero-grid { grid-template-columns: 1fr !important; }
   .agent-hero-score { min-width: 0 !important; margin-top: 14px; }
   .agent-hero-score > div:first-child { text-align: left !important; }
+  /* Le décalage automatique vers la droite (pensé pour une seule ligne) débordait de l'écran
+     une fois les 2 boutons repliés sous le nom → ils suivent juste le fil normalement */
+  .agent-hero-bilan-btn { margin-left: 0 !important; }
 }
