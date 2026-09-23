@@ -6728,11 +6728,35 @@ function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-overlay').classList.remove('show');
 }
-function toggleNotifPanel() {
-  document.getElementById('notif-panel').classList.toggle('open');
-  document.getElementById('notif-dot').classList.remove('show');
+// Sur mobile, le panneau recouvre tout l'écran : sans ça, faire défiler son contenu pouvait
+// aussi faire défiler la page derrière (elle réapparaissait en haut pendant qu'on scrollait).
+// Sur desktop, le panneau reste ouvert en permanence à côté du contenu : on n'y touche jamais.
+let _notifScrollY = 0;
+function notifPanelBodyLock(lock) {
+  if (window.innerWidth >= 768) return;
+  if (lock) {
+    _notifScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${_notifScrollY}px`;
+    document.body.style.width = '100%';
+  } else {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, _notifScrollY);
+  }
 }
-function closeNotifPanel() { document.getElementById('notif-panel').classList.remove('open'); }
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  const willOpen = !panel.classList.contains('open');
+  panel.classList.toggle('open', willOpen);
+  document.getElementById('notif-dot').classList.remove('show');
+  notifPanelBodyLock(willOpen);
+}
+function closeNotifPanel() {
+  document.getElementById('notif-panel').classList.remove('open');
+  notifPanelBodyLock(false);
+}
 
 // ===== FORMATTERS =====
 function fmt(n) { return Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
