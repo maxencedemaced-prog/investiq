@@ -1871,4 +1871,10 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
   .news-row { flex-wrap: wrap !important; }
   .news-row > div:nth-child(2) { flex-basis: 100% !important; }
   .news-side { flex: 1 1 0 !important; min-width: 0 !important; margin-top: 10px; }
+
+  /* Agent IA : brief du jour (icône + texte + bouton) — le texte se retrouvait écrasé à 1-2 mots
+     par ligne faute de place à côté du bouton « Détails » → le bouton passe sous le texte */
+  .brief-row { flex-wrap: wrap !important; }
+  .brief-main { flex-basis: 100% !important; }
+  .brief-btn { margin-left: 0 !important; margin-top: 6px !important; }
 }
