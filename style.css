@@ -548,7 +548,9 @@ input:focus,select:focus{outline:none;background:#ebebeb}
   .menu-btn{display:flex !important}
   .topbar{height:50px;padding:0 12px}
   #topbar-email{max-width:80px;font-size:11px}
-  .page-header{margin-bottom:16px}
+  .page-header{margin-bottom:16px;flex-wrap:wrap}
+  .page-header > div:first-child{flex:1 1 100%;min-width:0}
+  .page-header > div:not(:first-child){flex-wrap:wrap}
   .page-header h1{font-size:22px}
   .card{padding:14px;border-radius:14px}
   .metrics-grid{grid-template-columns:repeat(2,1fr);gap:8px}

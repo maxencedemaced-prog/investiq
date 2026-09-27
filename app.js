@@ -4656,6 +4656,7 @@ function claimCaches(ownerId) {
 // Ouvre le panneau de notifications dès l'arrivée sur l'app (pas sur mobile : il y prend tout l'écran)
 function openNotifPanelByDefault() {
   if (window.innerWidth < 768) return;
+  try { renderNotifications(); } catch(e) {}
   document.getElementById('notif-panel')?.classList.add('open');
 }
 
@@ -6876,6 +6877,7 @@ function notifPanelBodyLock(lock) {
 function toggleNotifPanel() {
   const panel = document.getElementById('notif-panel');
   const willOpen = !panel.classList.contains('open');
+  if (willOpen) { try { renderNotifications(); } catch(e) {} }
   panel.classList.toggle('open', willOpen);
   document.getElementById('notif-dot').classList.remove('show');
   notifPanelBodyLock(willOpen);
@@ -7018,18 +7020,18 @@ function renderNotificationList() {
   const impactBg = { high:'#fff0f0', medium:'#fff9e6', low:'#f5f5f5' };
   const impactBorder = { high:'#cc2f26', medium:'#f59e0b', low:'#e5e5ea' };
   list.innerHTML = notifications.map((n,i) => {
-    const page = Object.entries(NOTIF_NAV).find(([k])=>n.action.includes(k.split(' ').pop()));
+    const page = Object.entries(NOTIF_NAV).find(([k])=>String(n.action||'').includes(k.split(' ').pop()));
     const navPage = page ? page[1] : null;
     return `
     <div class="notif-item ${n.impact}" style="background:${impactBg[n.impact]||'#f5f5f5'};border-left:3px solid ${impactBorder[n.impact]||'#e5e5ea'};border-radius:12px;padding:12px 14px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
-        <div style="font-size:13px;font-weight:800;color:#1c1c1e;line-height:1.3">${n.titre}</div>
-        <div style="font-size:11px;color:#8e8e93;white-space:nowrap;margin-left:8px">${n.heure}</div>
+        <div style="font-size:13px;font-weight:800;color:#1c1c1e;line-height:1.3">${_escHtml(n.titre)}</div>
+        <div style="font-size:11px;color:#8e8e93;white-space:nowrap;margin-left:8px">${_escHtml(n.heure || '')}</div>
       </div>
-      <div style="font-size:12px;color:#3c3c43;line-height:1.5;margin-bottom:8px">${n.texte}</div>
+      <div style="font-size:12px;color:#3c3c43;line-height:1.5;margin-bottom:8px">${_escHtml(n.texte)}</div>
       <button onclick="closeNotifPanel();${navPage?`nav('${navPage}')`:''}" 
               style="background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">
-        → ${n.action}
+        → ${_escHtml(n.action || 'Voir')}
       </button>
     </div>`;
   }).join('');
