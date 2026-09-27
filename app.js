@@ -9893,6 +9893,10 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
       return aiQuotaMessage();
     }
     if (res.ok && d && d.quota) { aiQuotaState = d.quota; updateAIQuotaBadge(); }
+    if (!res.ok && d?.code === 'fair_use') {
+      if (!window._aiErrShown || Date.now() - window._aiErrShown > 60000) { window._aiErrShown = Date.now(); showToast('⏳ ' + d.error); }
+      return d.error;
+    }
     if (!res.ok) {
       console.error('[callClaude] HTTP', res.status, d?.error);
       // Une seule alerte visible par minute pour ne pas spammer

@@ -72,6 +72,9 @@ function rateLimited(userId, max = 20, windowMs = 60_000) {
 // puis DAILY par jour quand elles sont épuisées. Valeurs ajustables avec le temps.
 const FREE_WELCOME_CREDITS = 15;
 const FREE_DAILY_AFTER_WELCOME = 3;
+// « Illimité » Premium = usage raisonnable : plafond invisible en usage normal (appels automatiques compris),
+// qui empêche un compte abusif de générer des milliers d'appels facturés par jour
+const PREMIUM_DAILY_CAP = 300;
 
 function isPremiumProfile(profile) {
   if (!profile) return false;
@@ -95,10 +98,14 @@ async function checkFreeQuota(userId) {
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('is_premium, subscription_status, premium_until').eq('id', userId).single();
-    if (isPremiumProfile(profile)) return { blocked: false, premium: true, quota: null };
-
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
+    if (isPremiumProfile(profile)) {
+      const { count, error } = await supabaseAdmin.from('ai_usage_log').select('id', { count: 'exact', head: true })
+        .eq('user_id', userId).gte('created_at', startOfDay.toISOString());
+      if (error) console.error('[api/claude] plafond Premium:', error.message);
+      return { blocked: false, premium: true, quota: null, fairUseHit: !error && (count || 0) >= PREMIUM_DAILY_CAP };
+    }
     const [total, today] = await Promise.all([
       supabaseAdmin.from('ai_usage_log').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabaseAdmin.from('ai_usage_log').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', startOfDay.toISOString()),
@@ -162,6 +169,13 @@ export default async function handler(req, res) {
 
     // ── 2bis. QUOTA GRATUIT : accès IA illimité réservé à Premium ──
     const quota = await checkFreeQuota(user.id);
+    if (quota.fairUseHit) {
+      console.warn('[api/claude] plafond Premium atteint pour', user.id);
+      return res.status(429).json({
+        code: 'fair_use',
+        error: `Tu as atteint la limite d'usage raisonnable de l'IA pour aujourd'hui (${PREMIUM_DAILY_CAP} analyses). Elle se réinitialise demain matin.`
+      });
+    }
     if (quota.blocked) {
       return res.status(429).json({
         code: 'quota_exceeded',
