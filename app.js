@@ -431,13 +431,45 @@ function getCachedMonthlyPlan() {
 
 let _monthlyPlanBusy = false; // verrou anti-boucle
 
+// Ligne détenue qui a perdu plus de 60 % : la renforcer n'a pas de sens (c'est aussi ce que dit l'analyse)
+function planLineBlocked(ticker) {
+  const p = positions.find(x => String(x.name).toUpperCase() === String(ticker).toUpperCase());
+  return !!(p && p.pru > 0 && p.price >= 0 && (p.price - p.pru) / p.pru <= -0.6);
+}
+
+// Filet de sécurité, quoi que réponde l'IA : retire les lignes effondrées et les actions à moins de 1 €,
+// puis redistribue leur montant sur les autres lignes pour garder le budget du mois. true = plan modifié.
+function sanitizePlanLines(data, budget, livePrices) {
+  const lignes = data?.lignes || [];
+  const keep = lignes.filter(l => {
+    const px = livePrices[String(l.ticker).toUpperCase()];
+    return !planLineBlocked(l.ticker) && !(px > 0 && px < 1);
+  });
+  if (keep.length === lignes.length) return false;
+  data.removedLines = lignes.filter(l => !keep.includes(l)).map(l => l.name || l.ticker);
+  const kept = keep.reduce((s, l) => s + (Number(l.montant) || 0), 0);
+  if (keep.length && kept > 0) {
+    keep.forEach(l => { l.montant = Math.round((Number(l.montant) || 0) / kept * budget); l.pct = Math.round(l.montant / budget * 100); });
+    const diff = budget - keep.reduce((s, l) => s + l.montant, 0);
+    [...keep].sort((a, b) => b.montant - a.montant)[0].montant += diff;
+  }
+  data.lignes = keep;
+  return true;
+}
+
 async function generateMonthlyPlan(force = false) {
   const el = document.getElementById('obj-monthly-plan');
   if (!el) return;
 
   const budget = objChartMonthly || 200;
   const cached = getCachedMonthlyPlan();
-  if (cached && !force) { renderMonthlyPlan(cached, false); return; }
+  if (cached && !force) {
+    // Un plan déjà généré ce mois peut contenir une ligne effondrée depuis : on la retire aussi
+    if (sanitizePlanLines(cached.data, cached.budget, {}) && cached.data.lignes.length) {
+      try { localStorage.setItem(MONTHLY_PLAN_KEY, JSON.stringify(cached)); } catch {}
+    }
+    if (cached.data.lignes.length) { renderMonthlyPlan(cached, false); return; }
+  }
   const prevPlan = force ? cached : null; // sert à détecter un changement de plan en cours de mois
   if (_monthlyPlanBusy) return; // génération déjà en cours
   // Cooldown 5 min après un échec (évite les rafales d'appels API)
@@ -461,7 +493,7 @@ async function generateMonthlyPlan(force = false) {
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
   const held = positions.slice(0, 12).map(p => {
     const pnl = p.pru>0 ? ((p.price-p.pru)/p.pru*100).toFixed(1) : '0';
-    return `${displayName(p.name)} (${p.name}) : ${(p.qty*p.price/tv*100||0).toFixed(0)}% du portef., P&L ${pnl>=0?'+':''}${pnl}%`;
+    return `${displayName(p.name)} (${p.name}) : ${(p.qty*p.price/tv*100||0).toFixed(0)}% du portef., P&L ${pnl>=0?'+':''}${pnl}%${planLineBlocked(p.name) ? ' — EFFONDRÉE, NE PAS RENFORCER' : ''}`;
   }).join('\n');
   const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
 
@@ -478,6 +510,8 @@ ${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (o
 - Rééquilibrage par apports : regarde ce qu'il détient DÉJÀ et oriente le budget vers ce qui est sous-pondéré vs sa cible, sans vendre.
 - DIVERSIFICATION QUI DÉPEND DU BUDGET : ${(() => { const s = planSizing(0, budget, objStockPct); const nbMois = s.nbStocks > 0 ? Math.max(1, Math.min(s.nbStocks, Math.round(s.stockMonthly / 40) || 1)) : 0; return nbMois > 0 ? `sur la part actions (~${Math.round(s.stockMonthly)}€ ce mois-ci) propose ${nbMois} action${nbMois > 1 ? 's' : ''} DIFFÉRENTE${nbMois > 1 ? 'S' : ''}, de secteurs différents, aucune au-dessus de 40% du montant actions, ~20€ minimum par ligne. Plus le budget est élevé, plus il faut d'actions distinctes (jamais tout sur une seule).` : 'aucune action individuelle ce mois-ci.'; })()}
 - Évite de racheter ce qui pèse déjà plus de 25% de son portefeuille.
+- INTERDIT : renforcer une ligne marquée "EFFONDRÉE" (perte de plus de 60 %) ; une ligne qui pèse peu parce qu'elle s'est effondrée n'est PAS sous-pondérée.
+- Choisis uniquement des grandes entreprises solides et liquides (grandes capitalisations) et de grands ETF UCITS. JAMAIS d'action à moins de 1 €, de "penny stock", de petite valeur spéculative ou d'entreprise en difficulté financière (redressement, liquidation).
 - La somme des montants "actions" doit représenter ~${objStockPct}% du budget, et les ETF ~${100-objStockPct}%.
 ${objStockPct < 100 ? `POCHE ETF : UN SEUL ETF actions monde (MSCI World OU All-World, jamais les deux : ils se recoupent presque totalement). ${objRisk === 'agressif' ? '' : objRisk === 'equilibre' ? 'Ajoute un ETF obligataire pour environ 20 % de la poche ETF.' : 'Profil PRUDENT : ajoute un ETF obligataire (type Global Aggregate) pour environ 30 à 40 % de la poche ETF, comme dans son plan de départ.'} Aucune ligne inférieure à 20 €.` : ''}
 
@@ -497,11 +531,18 @@ La somme des montants doit faire exactement ${budget}.`;
     const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
     if (!data.lignes?.length) throw new Error('empty');
 
-    // Compléter prix pour le tracking
+    // Prix live de chaque ligne : sert au suivi à J+7 et à écarter les actions à quelques centimes
+    const live = {};
+    try {
+      const r = await fetch('/api/prices?symbols=' + encodeURIComponent(data.lignes.map(l => l.ticker).join(',')));
+      ((await r.json()).quotes || []).forEach(q => { if (q.symbol) live[q.symbol.toUpperCase()] = parseFloat(q.price) || 0; });
+    } catch {}
     data.lignes.forEach(l => {
       const p = positions.find(x => x.name === l.ticker || x.ticker === l.ticker);
-      l._price = p?.price || null;
+      l._price = live[String(l.ticker).toUpperCase()] || p?.price || null;
     });
+    sanitizePlanLines(data, budget, live);
+    if (!data.lignes.length) throw new Error('plan vide après filtrage');
 
     const plan = { month: currentMonthId(), objId: activeObjId, stockPct: objStockPct, budget, data, ts: Date.now() };
 
@@ -581,6 +622,7 @@ function renderMonthlyPlan(plan, isNew) {
     </div>` : ''}
 
     <div style="font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5;margin-bottom:14px;position:relative">${d.synthese||''}</div>
+    ${d.removedLines?.length ? `<div style="font-size:11px;color:rgba(255,255,255,0.55);margin:-6px 0 12px;position:relative">🛡️ Écarté du plan : ${d.removedLines.map(n => _escHtml(displayName(n))).join(', ')} (ligne en très forte perte ou action à moins de 1 €) — le montant est reporté sur les autres lignes.</div>` : ''}
 
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;position:relative">
       ${(d.lignes||[]).map(l => {
@@ -680,7 +722,7 @@ Tickers réels (LSE/XETRA pour les ETF, Euronext/NASDAQ/NYSE pour les actions). 
     let etfs, actions = [];
     if (clean.indexOf('{') !== -1 && clean.indexOf('{') < (clean.indexOf('[') === -1 ? 1e9 : clean.indexOf('['))) {
       const obj = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
-      etfs = obj.etfs; actions = Array.isArray(obj.actions) ? obj.actions.filter(a => a && a.ticker) : [];
+      etfs = obj.etfs; actions = Array.isArray(obj.actions) ? obj.actions.filter(a => a && a.ticker && !planLineBlocked(a.ticker)) : [];
     } else {
       etfs = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']') + 1));
     }
@@ -864,7 +906,8 @@ Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Co
     const raw = await callClaude(prompt, 'Tu es un expert en investissement. Réponds UNIQUEMENT en JSON valide sans markdown.');
     const clean = raw.replace(/```json|```/g, '').trim();
     const actions = JSON.parse(clean);
-    if (Array.isArray(actions) && actions.length > 0) return actions;
+    const safe = Array.isArray(actions) ? actions.filter(a => a && a.ticker && !planLineBlocked(a.ticker)) : [];
+    if (safe.length > 0) return safe;
   } catch(e) {
     console.warn('AI recs failed, using fallback', e);
   }
