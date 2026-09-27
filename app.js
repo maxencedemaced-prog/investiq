@@ -5432,7 +5432,9 @@ function getCompanyLogo(ticker, name, size, radius) {
     'FDJ.PA': '<svg viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#00843D"/><text x="18" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#fff" font-family="Arial">FDJ</text></svg>',
   };;
   if (svgLogos[ticker]) {
-    return '<div style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">'+svgLogos[ticker].replace('36 36', s+' '+s).replace('rx="8"','rx="'+r+'"')+'</div>';
+    // Le dessin reste en coordonnées 36×36 et c'est l'affichage qui est mis à l'échelle (sinon le logo est rogné en petite taille)
+    const svg = svgLogos[ticker].replace('<svg ', '<svg width="'+s+'" height="'+s+'" ').replace('rx="8"', 'rx="'+Math.round(r*36/s)+'"');
+    return '<div style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">'+svg+'</div>';
   }
   const t = (ticker||'').toUpperCase();
   const base = t.replace(/\.PA$|\.DE$|\.L$|\.AS$|\.MI$|\.SW$/,'');

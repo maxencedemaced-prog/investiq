@@ -1901,3 +1901,8 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
 }
 
 [data-theme="dark"] .btn-save:hover{background:var(--color-surface-raised)}
+
+/* Mode clair : l'orange #f59e0b et le gris #c7c7cc, utilisés comme couleur de TEXTE, sont trop pâles sur fond blanc
+   (contraste ~2 et ~1,6). On les fonce, sans toucher aux fonds/bordures ni au bloc sombre du plan du mois. */
+:root:not([data-theme="dark"]) .main :is([style^="color:#f59e0b"], [style*=";color:#f59e0b"]):not(#obj-monthly-plan *) { color: #b45309 !important; }
+:root:not([data-theme="dark"]) .main :is([style^="color:#c7c7cc"], [style*=";color:#c7c7cc"]):not(#obj-monthly-plan *) { color: #8e8e93 !important; }
