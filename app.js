@@ -7530,7 +7530,7 @@ function renderPortfolio(auto=false) {
       </div>
       <div style="display:flex;gap:8px">
         <button onclick="bulkDelete()" style="padding:6px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer">🗑️ Supprimer</button>
-        <button onclick="bulkAskAI()" style="padding:6px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser</button>
+        <button onclick="bulkAskAI()" style="padding:6px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser <span style="font-size:10px;opacity:0.7">✨</span></button>
         <button onclick="toggleSelectMode(false)" style="padding:6px 13px;background:transparent;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer">Annuler</button>
       </div>
     </div>
@@ -10637,7 +10637,7 @@ const PLAN_PREMIUM_ONLY = [
   'Bilan patrimonial complet + export PDF',
   'Conseils IA sur tes alertes : que faire et par quoi remplacer',
   'Mes dépenses : analyse de ton relevé, abonnements à résilier, économies investies',
-  'Sélection multiple et actions groupées',
+  'Analyse groupée de plusieurs positions par l\'Agent IA',
 ];
 
 // Choix de facturation (annuel par défaut) — partagé par la fenêtre et les Paramètres
@@ -10835,7 +10835,7 @@ function showPremiumWelcome() {
       </div>
       <div style="padding:22px 24px">
         <div style="font-size:13.5px;color:#52525b;line-height:1.6;margin-bottom:18px">
-          Ton abonnement est actif. Toutes les fonctionnalités avancées sont débloquées — analyses illimitées, sélection multiple, bilan complet.
+          Ton abonnement est actif. Toutes les fonctionnalités avancées sont débloquées — analyses illimitées, analyse groupée, bilan complet.
         </div>
         <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">Commencer</button>
       </div>
@@ -11160,16 +11160,6 @@ function refreshPortfolioUI() {
 let selectMode = false;
 
 function toggleSelectMode(force) {
-  // Fonctionnalité Premium — le paywall s'ouvre si l'utilisateur n'est pas abonné
-  if (force !== false && !selectMode && !isPremiumUser()) {
-    showPremiumGate('Sélection multiple', [
-      'Sélectionne plusieurs positions d\'un coup',
-      'Supprime en lot au lieu de ligne par ligne',
-      'Envoie plusieurs actifs à l\'Agent IA pour une analyse croisée',
-      'Gagne du temps sur les portefeuilles de 20+ lignes',
-    ]);
-    return;
-  }
   selectMode = (force === undefined) ? !selectMode : force;
   const bar = document.getElementById('bulk-bar');
   const btn = document.getElementById('btn-select-mode');
@@ -11225,6 +11215,14 @@ async function bulkDelete() {
 function bulkAskAI() {
   const ids = getSelectedIds();
   if (!ids.length) { showToast('⚠️ Sélectionne au moins une position'); return; }
+  if (!isPremiumUser()) {
+    showPremiumGate('Analyse groupée par l\'IA', [
+      'Envoie plusieurs positions d\'un coup à l\'Agent IA',
+      'Analyse croisée : doublons, concentration, lignes à renforcer ou alléger',
+      'Idéal pour les portefeuilles de 10+ lignes',
+    ]);
+    return;
+  }
   const names = ids.map(id => {
     const p = positions.find(x => String(x.id) === String(id));
     return p ? `${displayName(p.name)} (${p.name})` : '';
