@@ -61,6 +61,15 @@ export default async function handler(req, res) {
     }
 
     let customerId = profile?.stripe_customer_id || null;
+    // Identifiant créé en mode test (ou client supprimé) : inconnu en production, on en recrée un
+    if (customerId) {
+      try {
+        const existing = await stripe.customers.retrieve(customerId);
+        if (existing.deleted) customerId = null;
+      } catch (e) {
+        if (e.code === 'resource_missing') customerId = null; else throw e;
+      }
+    }
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email,
