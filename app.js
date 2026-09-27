@@ -10469,7 +10469,7 @@ function showCSVPreview(rows, filename) {
           </label>
           <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:8px 0 0 26px;font-size:11px;color:${sub}">
             <span style="display:inline-flex;align-items:center;gap:5px">PRU
-              <input type="number" min="0" step="0.01" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="à remplir" oninput="csvRowSet(${i},'pru',this.value);this.style.borderColor='';document.getElementById('csv-nopru-${i}')?.remove()" style="${inp};width:78px${r.pru > 0 ? '' : ';border-color:#f59e0b'}"> €</span>
+              <input type="number" min="0" step="0.01" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="?" oninput="csvRowSet(${i},'pru',this.value);this.style.borderColor='';document.getElementById('csv-nopru-${i}')?.remove()" style="${inp};width:78px${r.pru > 0 ? '' : ';border-color:#f59e0b'}"> €</span>
             ${r.pru > 0 ? '' : `<span id="csv-nopru-${i}" style="flex-basis:100%;color:#d97706;font-weight:600">PRU absent du fichier : sans lui, le cours actuel${r.price > 0 ? ' (' + r.price.toFixed(2) + ' €)' : ''} sera utilisé et ta performance affichera 0 %.</span>`}
             <span style="display:inline-flex;align-items:center;gap:5px">Déjà réalisé
               <button type="button" id="csv-pvsign-${i}" onclick="csvRowToggleSign(${i})" title="Plus-value (+) ou moins-value (−)" style="width:26px;height:26px;border-radius:7px;border:none;font-size:15px;font-weight:800;cursor:pointer;background:rgba(22,163,74,0.12);color:#16a34a">+</button>
