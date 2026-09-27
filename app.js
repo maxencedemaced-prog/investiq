@@ -10200,7 +10200,7 @@ function showCSVHelp() {
       </div>
 
       <div style="font-size:11px;color:${sub};background:${bg};border-radius:10px;padding:10px 13px;margin-bottom:16px;line-height:1.5">
-        💡 Formats acceptés : <strong style="color:${txt}">.csv</strong> de n'importe quel courtier. Kapitaro détecte tout seul les colonnes (nom, quantité, prix d'achat). Tu verras un aperçu et pourras décocher ce que tu ne veux pas avant de valider — rien n'est importé sans ton accord.
+        💡 Formats acceptés : <strong style="color:${txt}">PDF, CSV ou Excel</strong> de n'importe quel courtier. Kapitaro repère tout seul les positions (nom, quantité, prix d'achat) ; pour un PDF, le texte du relevé est lu par l'IA (tes coordonnées bancaires sont masquées avant). Tu verras un aperçu pour décocher, corriger le PRU et indiquer tes plus/moins-values déjà réalisées avant de valider — rien n'est importé sans ton accord.
       </div>
 
       <div style="display:flex;gap:10px">
@@ -10211,20 +10211,96 @@ function showCSVHelp() {
   document.body.appendChild(overlay);
 }
 
-function handleCSVImport(file) {
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('Chargement impossible : ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+// Point d'entrée de l'import : CSV/TXT (lu localement), Excel (converti en CSV), PDF (texte extrait puis analysé par l'IA)
+async function handleCSVImport(file) {
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const rows = parseCSVSmart(e.target.result);
-      if (!rows.length) { showToast('⚠️ Aucune position détectée dans ce fichier'); return; }
-      showCSVPreview(rows, file.name);
-    } catch(err) {
-      console.error('CSV:', err);
-      showToast('⚠️ Fichier illisible — vérifie que c\'est bien un export CSV');
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  try {
+    let rows;
+    if (ext === 'pdf' || file.type === 'application/pdf') {
+      rows = await parsePDFStatement(file);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      rows = parseCSVSmart(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ';' }));
+    } else {
+      rows = parseCSVSmart(await file.text());
     }
-  };
-  reader.readAsText(file, 'utf-8');
+    if (!rows || !rows.length) { showToast('⚠️ Aucune position détectée dans ce fichier'); return; }
+    showCSVPreview(rows, file.name);
+    trackEvent('import_file', { format: ext, count: rows.length });
+  } catch (err) {
+    console.error('Import:', err);
+    showToast('⚠️ ' + (err.userMessage || 'Fichier illisible — essaie un export CSV, Excel ou PDF de ton courtier'));
+  } finally {
+    document.getElementById('import-loading')?.remove();
+  }
+}
+
+async function parsePDFStatement(file) {
+  if (isDemo || !currentUser) { const e = new Error('demo'); e.userMessage = 'Crée un compte pour importer un PDF'; throw e; }
+  const loading = document.createElement('div');
+  loading.id = 'import-loading';
+  loading.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10003;display:flex;align-items:center;justify-content:center;padding:20px';
+  loading.innerHTML = '<div style="background:#fff;color:#09090b;border-radius:16px;padding:20px 24px;font-size:14px;font-weight:700;text-align:center;max-width:320px">📄 Lecture de ton relevé…<div style="font-size:12px;font-weight:500;color:#71717a;margin-top:6px">Quelques secondes : l\'IA repère tes positions.</div></div>';
+  document.body.appendChild(loading);
+
+  const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  await loadScriptOnce(PDFJS + 'pdf.min.js');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let text = '';
+  for (let p = 1; p <= Math.min(pdf.numPages, 15); p++) {
+    const content = await (await pdf.getPage(p)).getTextContent();
+    // Regroupe les morceaux par ligne visuelle (même hauteur) pour garder les colonnes d'une même position ensemble
+    const lines = {};
+    for (const it of content.items) {
+      const y = Math.round(it.transform[5]);
+      (lines[y] = lines[y] || []).push(it);
+    }
+    text += Object.keys(lines).sort((a, b) => b - a)
+      .map(y => lines[y].sort((a, b) => a.transform[4] - b.transform[4]).map(i => i.str).join(' ').replace(/\s+/g, ' ').trim())
+      .filter(Boolean).join('\n') + '\n';
+  }
+  // Données personnelles inutiles à l'analyse : jamais envoyées
+  text = text.replace(/\b(?:FR|DE|BE|LU|ES|IT|NL)\d{2}(?:\s?[A-Z0-9]{4}){4,6}(?:\s?[A-Z0-9]{1,3})?\b/g, '[IBAN]')
+             .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[EMAIL]')
+             .replace(/(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}/g, '[TEL]');
+  if (text.replace(/\s/g, '').length < 40) {
+    const e = new Error('no text'); e.userMessage = 'Ce PDF est une image scannée, sans texte lisible. Essaie l\'export CSV de ton courtier.'; throw e;
+  }
+
+  const { data } = await sb.auth.getSession();
+  const token = data?.session?.access_token;
+  const r = await fetch('/api/parse-statement', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ text }),
+  });
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(out.error); e.userMessage = out.error || 'Analyse du PDF impossible'; throw e; }
+
+  return (out.positions || []).map(p => {
+    const name = p.ticker || p.name;
+    const pru = p.pru || 0, price = p.price || pru;
+    return {
+      name: name.slice(0, 30),
+      fullName: p.ticker ? p.name.slice(0, 50) : '',
+      qty: Math.round(p.qty * 10000) / 10000,
+      pru: Math.round(pru * 100) / 100,
+      price: Math.round(price * 100) / 100,
+      checked: true,
+    };
+  });
 }
 
 // Parse un CSV avec détection auto (séparateur ; , ou tab · colonnes par mots-clés)
@@ -10326,16 +10402,30 @@ function showCSVPreview(rows, filename) {
           <option ${platform==='Autre'?'selected':''}>Autre</option>
         </select>
       </div>
-      <div style="font-size:11px;color:${sub};margin-bottom:10px">Décoche ce que tu ne veux pas importer. Les doublons (même nom) mettront à jour la position existante.</div>
+      <div style="font-size:11px;color:${sub};margin-bottom:10px;line-height:1.5">Décoche ce que tu ne veux pas importer et corrige le PRU si besoin. Si tu as déjà vendu une partie d'une ligne, indique la <strong style="color:${txt}">plus-value (+) ou moins-value (−) déjà réalisée</strong> : le PRU sera recalculé pour refléter ton vrai gain. Les doublons (même nom) mettent à jour la position existante.</div>
       <div style="flex:1;overflow-y:auto;border:1px solid ${bord};border-radius:12px">
-        ${rows.map((r, i) => `
-        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid ${bord};cursor:pointer">
-          <input type="checkbox" checked onchange="window._csvRows[${i}].checked=this.checked" style="width:16px;height:16px;accent-color:#16a34a;flex-shrink:0">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;font-weight:700;color:${txt}">${displayName(r.name)}${r.fullName && r.fullName !== r.name ? ` <span style="font-weight:400;color:${sub}">· ${r.fullName}</span>` : ''}</div>
-            <div style="font-size:10px;color:${sub}">${r.qty} part${r.qty>1?'s':''} · PRU ${r.pru>0 ? r.pru.toFixed(2)+' €' : '—'} ${r.price>0 && r.price!==r.pru ? '· prix '+r.price.toFixed(2)+' €' : ''}</div>
+        ${rows.map((r, i) => {
+          r.pv = 0; r.pvSign = 1;
+          const inp = `background:transparent;border:1px solid ${bord};border-radius:7px;padding:4px 6px;color:${txt};font-size:12px;font-weight:600`;
+          return `
+        <div style="padding:10px 12px;border-bottom:1px solid ${bord}">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+            <input type="checkbox" checked onchange="window._csvRows[${i}].checked=this.checked" style="width:16px;height:16px;accent-color:#16a34a;flex-shrink:0;margin-top:1px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:${txt};overflow-wrap:anywhere">${_escHtml(displayName(r.name))}${r.fullName && r.fullName !== r.name ? ` <span style="font-weight:400;color:${sub}">· ${_escHtml(r.fullName)}</span>` : ''}</div>
+              <div style="font-size:10px;color:${sub}">${r.qty} part${r.qty>1?'s':''}${r.price>0 ? ' · cours '+r.price.toFixed(2)+' €' : ''}</div>
+            </div>
+          </label>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:8px 0 0 26px;font-size:11px;color:${sub}">
+            <span style="display:inline-flex;align-items:center;gap:5px">PRU
+              <input type="number" min="0" step="0.01" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="${r.price > 0 ? r.price : ''}" oninput="csvRowSet(${i},'pru',this.value)" style="${inp};width:78px"> €</span>
+            <span style="display:inline-flex;align-items:center;gap:5px">Déjà réalisé
+              <button type="button" id="csv-pvsign-${i}" onclick="csvRowToggleSign(${i})" title="Plus-value (+) ou moins-value (−)" style="width:26px;height:26px;border-radius:7px;border:none;font-size:15px;font-weight:800;cursor:pointer;background:rgba(22,163,74,0.12);color:#16a34a">+</button>
+              <input type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="csvRowSet(${i},'pv',this.value)" style="${inp};width:78px"> €</span>
+            <span id="csv-pruadj-${i}" style="font-weight:700"></span>
           </div>
-        </label>`).join('')}
+        </div>`;
+        }).join('')}
       </div>
       <div style="display:flex;gap:10px;margin-top:14px">
         <button onclick="document.getElementById('csv-preview-modal').remove()" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Annuler</button>
@@ -10345,6 +10435,38 @@ function showCSVPreview(rows, filename) {
   document.body.appendChild(overlay);
 }
 
+// PRU ajusté des gains/pertes déjà encaissés : une plus-value réalisée réduit le coût net restant, une moins-value l'augmente
+function csvRowPru(r) {
+  const base = r.pru > 0 ? r.pru : (r.price || 0);
+  if (!r.pv || !r.qty) return base;
+  return Math.max(0.01, Math.round((base - r.pvSign * r.pv / r.qty) * 100) / 100);
+}
+function csvRowRender(i) {
+  const r = window._csvRows[i];
+  const el = document.getElementById('csv-pruadj-' + i);
+  if (!el) return;
+  if (!r.pv) { el.textContent = ''; return; }
+  const adj = csvRowPru(r);
+  el.style.color = r.pvSign > 0 ? '#16a34a' : '#dc2626';
+  el.textContent = '→ PRU ajusté ' + adj.toFixed(2) + ' €' + (adj <= 0.01 ? ' (ligne déjà remboursée)' : '');
+}
+function csvRowSet(i, field, val) {
+  const n = parseFloat(String(val).replace(',', '.'));
+  window._csvRows[i][field] = Number.isFinite(n) && n > 0 ? n : 0;
+  csvRowRender(i);
+}
+function csvRowToggleSign(i) {
+  const r = window._csvRows[i];
+  r.pvSign = -r.pvSign;
+  const b = document.getElementById('csv-pvsign-' + i);
+  if (b) {
+    b.textContent = r.pvSign > 0 ? '+' : '−';
+    b.style.background = r.pvSign > 0 ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)';
+    b.style.color = r.pvSign > 0 ? '#16a34a' : '#dc2626';
+  }
+  csvRowRender(i);
+}
+
 async function confirmCSVImport() {
   const rows = (window._csvRows || []).filter(r => r.checked);
   const platform = document.getElementById('csv-platform-sel')?.value || window._csvPlatform || 'Autre';
@@ -10352,8 +10474,10 @@ async function confirmCSVImport() {
   if (!rows.length) return;
 
   let added = 0, updated = 0;
-  for (const r of rows) {
+  for (let r of rows) {
     const existing = positions.find(p => p.name.toUpperCase() === r.name.toUpperCase());
+    const basePru = r.pru > 0 ? r.pru : (existing ? existing.pru : r.price);
+    r = { ...r, pru: basePru > 0 ? csvRowPru({ ...r, pru: basePru }) : 0 };
     if (existing) {
       existing.qty = r.qty;
       if (r.pru > 0) existing.pru = r.pru;

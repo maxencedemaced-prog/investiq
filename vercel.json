@@ -11,7 +11,8 @@
     }
   ],
   "functions": {
-    "api/claude.js": { "maxDuration": 60 }
+    "api/claude.js": { "maxDuration": 60 },
+    "api/parse-statement.js": { "maxDuration": 60 }
   },
   "crons": [
     {
