@@ -2127,6 +2127,17 @@ function decisionAcSearch(query) {
     } catch { drop.style.display = 'none'; }
   }, 300);
 }
+// Entrée : prend la 1re suggestion affichée, sinon lance l'analyse · Échap : ferme la liste
+function decisionNameKey(e) {
+  const drop = document.getElementById('d-ac-drop');
+  if (e.key === 'Escape') { if (drop) drop.style.display = 'none'; return; }
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const first = drop && drop.style.display !== 'none' ? drop.querySelector('.ac-item') : null;
+  if (first) first.click();
+  else analyseDecision();
+}
+
 function decisionAcPick(ticker, name) {
   setDecisionAsset(ticker, name);
   const drop = document.getElementById('d-ac-drop');
