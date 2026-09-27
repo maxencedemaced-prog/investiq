@@ -48,7 +48,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260927180536">
+  <link rel="stylesheet" href="style.css?v=20260927180756">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -995,7 +995,7 @@ window.addEventListener('load', function() {
   <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-left">
-      <button class="menu-btn" onclick="toggleSidebar()">
+      <button class="menu-btn" onclick="toggleSidebar()" aria-label="Ouvrir le menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <div class="topbar-logo" style="display:flex;align-items:center;gap:8px">
@@ -1014,7 +1014,7 @@ window.addEventListener('load', function() {
         <span style="width:34px;height:5px;background:rgba(128,128,128,0.25);border-radius:99px;overflow:hidden;display:inline-block"><span id="ai-quota-pill-bar" style="display:block;height:100%;width:0%;background:#16a34a;border-radius:99px;transition:width .4s"></span></span>
       </button>
       <div class="price-ticker" id="price-ticker"></div>
-      <button class="notif-btn" onclick="toggleNotifPanel()">
+      <button class="notif-btn" onclick="toggleNotifPanel()" aria-label="Notifications">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <div class="notif-dot" id="notif-dot"></div>
       </button>
@@ -1065,7 +1065,7 @@ window.addEventListener('load', function() {
   <div class="notif-panel" id="notif-panel">
     <div class="notif-panel-head">
       <div class="notif-panel-title">Notifications</div>
-      <button class="notif-close" onclick="closeNotifPanel()">×</button>
+      <button class="notif-close" onclick="closeNotifPanel()" aria-label="Fermer les notifications">×</button>
     </div>
     <div id="notif-list"><div class="notif-empty">Chargement...</div></div>
   </div>
@@ -1868,11 +1868,11 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260927180536"></script>
-<script src="depenses.js?v=20260927180536"></script>
-<script src="bilan-extra.js?v=20260927180536"></script>
-<script src="tab-hints.js?v=20260927180536"></script>
-<script src="push.js?v=20260927180536"></script>
+<script src="app.js?v=20260927180756"></script>
+<script src="depenses.js?v=20260927180756"></script>
+<script src="bilan-extra.js?v=20260927180756"></script>
+<script src="tab-hints.js?v=20260927180756"></script>
+<script src="push.js?v=20260927180756"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->

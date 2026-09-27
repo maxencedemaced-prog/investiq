@@ -6897,6 +6897,9 @@ function closeNotifPanel() {
   document.getElementById('notif-panel').classList.remove('open');
   notifPanelBodyLock(false);
 }
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('notif-panel')?.classList.contains('open')) closeNotifPanel();
+});
 
 // ===== FORMATTERS =====
 function fmt(n) { return Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
