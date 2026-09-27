@@ -458,7 +458,7 @@ function sanitizePlanLines(data, budget, livePrices) {
 }
 
 async function generateMonthlyPlan(force = false) {
-  const el = document.getElementById('obj-monthly-plan');
+  let el = document.getElementById('obj-monthly-plan');
   if (!el) return;
 
   const budget = objChartMonthly || 200;
@@ -580,6 +580,7 @@ La somme des montants doit faire exactement ${budget}.`;
     renderMonthlyPlan(plan, false);
   } catch(e) {
     _monthlyPlanBusy = false;
+    el = document.getElementById('obj-monthly-plan') || el;
     if (aiJustHitQuota()) { el.innerHTML = `<div style="margin-bottom:14px">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
     try { localStorage.setItem(MONTHLY_PLAN_KEY + '_cooldown', Date.now()); } catch {}
     console.warn('monthlyPlan:', e);
@@ -738,7 +739,8 @@ Tickers réels (LSE/XETRA pour les ETF, Euronext/NASDAQ/NYSE pour les actions). 
         }
       } catch {}
       _etfPlanBusy = false;
-      renderETFCards(etfs, el, actions);
+      // La page a pu être redessinée pendant l'appel IA : on écrit dans le bloc actuellement affiché
+      renderETFCards(etfs, document.getElementById('obj-etf-plan') || el, actions);
       return;
     }
   } catch(e) {}
@@ -765,7 +767,7 @@ Tickers réels (LSE/XETRA pour les ETF, Euronext/NASDAQ/NYSE pour les actions). 
         { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Diversification maximale' },
         { ticker:'AGGH.L',  name:'iShares Global Aggregate',   desc:'Obligations mondiales stables',      role:'satellite', type:'ETF Obligations', pct_capital:40, pct_mensuel:40, color:'#0ea5e9', pourquoi:'Stabilité et protection du capital' },
       ];
-  renderETFCards(fallback, el, fallbackStocks(sizing.nbStocks));
+  renderETFCards(fallback, document.getElementById('obj-etf-plan') || el, fallbackStocks(sizing.nbStocks));
 }
 
 // Combien d'actions différentes proposer : plus on investit en actions, plus on diversifie.
