@@ -10458,13 +10458,19 @@ function showCSVPreview(rows, filename) {
           <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
             <input type="checkbox" checked onchange="window._csvRows[${i}].checked=this.checked" style="width:16px;height:16px;accent-color:#16a34a;flex-shrink:0;margin-top:1px">
             <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:700;color:${txt};overflow-wrap:anywhere">${_escHtml(displayName(r.name))}${r.fullName && r.fullName !== r.name ? ` <span style="font-weight:400;color:${sub}">· ${_escHtml(r.fullName)}</span>` : ''}</div>
+              <div style="font-size:12px;font-weight:700;color:${txt};overflow-wrap:anywhere">${(() => {
+                const nice = displayName(r.name);
+                // Symbole sans nom connu dans l'app (ex. AEEM.PA) : le nom du relevé passe en titre, le symbole en discret
+                if (nice === r.name && r.fullName && r.fullName !== r.name) return `${_escHtml(r.fullName)} <span style="font-weight:400;color:${sub}">· ${_escHtml(r.name)}</span>`;
+                return _escHtml(nice) + (r.fullName && r.fullName !== r.name ? ` <span style="font-weight:400;color:${sub}">· ${_escHtml(r.fullName)}</span>` : '');
+              })()}</div>
               <div style="font-size:10px;color:${sub}">${r.qty} part${r.qty>1?'s':''}${r.price>0 ? ' · cours '+r.price.toFixed(2)+' €' : ''}</div>
             </div>
           </label>
           <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:8px 0 0 26px;font-size:11px;color:${sub}">
             <span style="display:inline-flex;align-items:center;gap:5px">PRU
-              <input type="number" min="0" step="0.01" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="${r.price > 0 ? r.price : ''}" oninput="csvRowSet(${i},'pru',this.value)" style="${inp};width:78px"> €</span>
+              <input type="number" min="0" step="0.01" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="à remplir" oninput="csvRowSet(${i},'pru',this.value);this.style.borderColor='';document.getElementById('csv-nopru-${i}')?.remove()" style="${inp};width:78px${r.pru > 0 ? '' : ';border-color:#f59e0b'}"> €</span>
+            ${r.pru > 0 ? '' : `<span id="csv-nopru-${i}" style="flex-basis:100%;color:#d97706;font-weight:600">PRU absent du fichier : sans lui, le cours actuel${r.price > 0 ? ' (' + r.price.toFixed(2) + ' €)' : ''} sera utilisé et ta performance affichera 0 %.</span>`}
             <span style="display:inline-flex;align-items:center;gap:5px">Déjà réalisé
               <button type="button" id="csv-pvsign-${i}" onclick="csvRowToggleSign(${i})" title="Plus-value (+) ou moins-value (−)" style="width:26px;height:26px;border-radius:7px;border:none;font-size:15px;font-weight:800;cursor:pointer;background:rgba(22,163,74,0.12);color:#16a34a">+</button>
               <input type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="csvRowSet(${i},'pv',this.value)" style="${inp};width:78px"> €</span>
