@@ -10236,6 +10236,7 @@ async function handleCSVImport(file) {
       rows = parseCSVSmart(await file.text());
     }
     if (!rows || !rows.length) { showToast('⚠️ Aucune position détectée dans ce fichier'); return; }
+    await resolveImportTickers(rows);
     showCSVPreview(rows, file.name);
     trackEvent('import_file', { format: ext, count: rows.length });
   } catch (err) {
@@ -10244,6 +10245,38 @@ async function handleCSVImport(file) {
   } finally {
     document.getElementById('import-loading')?.remove();
   }
+}
+
+// Les prix en direct passent par le symbole boursier : on le retrouve pour chaque ligne qui n'en a pas
+// (ISIN d'abord, sinon le nom), en privilégiant une cotation en euros.
+async function resolveImportTickers(rows) {
+  const todo = rows.filter(r => !r.tickerKnown);
+  if (!todo.length) return;
+  if (!document.getElementById('import-loading')) {
+    const l = document.createElement('div');
+    l.id = 'import-loading';
+    l.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10003;display:flex;align-items:center;justify-content:center;padding:20px';
+    document.body.appendChild(l);
+  }
+  document.getElementById('import-loading').innerHTML = '<div style="background:#fff;color:#09090b;border-radius:16px;padding:20px 24px;font-size:14px;font-weight:700;text-align:center;max-width:320px">🔎 Identification de tes titres…<div style="font-size:12px;font-weight:500;color:#71717a;margin-top:6px">Pour que les prix se mettent à jour en direct.</div></div>';
+  const rank = (sym) => {
+    const suf = (sym.match(/\.[A-Z]+$/) || [''])[0];
+    return { '.PA': 0, '.AS': 1, '.DE': 2, '.MI': 3, '.BR': 4, '': 5, '.F': 6, '.L': 9 }[suf] ?? 7;
+  };
+  const resolve = async (r) => {
+    const q = r.isin || r.fullName || r.name;
+    try {
+      const res = await fetch('/api/search?q=' + encodeURIComponent(q));
+      const list = (await res.json()).results || [];
+      if (!list.length) return;
+      const best = r.isin ? [...list].sort((a, b) => rank(a.ticker) - rank(b.ticker))[0] : list[0];
+      r.fullName = r.fullName || r.name;
+      r.name = best.ticker;
+      r.type = best.type;
+      r.sector = best.sector || '';
+    } catch {}
+  };
+  for (let i = 0; i < todo.length; i += 5) await Promise.all(todo.slice(i, i + 5).map(resolve));
 }
 
 async function parsePDFStatement(file) {
@@ -10293,6 +10326,8 @@ async function parsePDFStatement(file) {
     const name = p.ticker || p.name;
     const pru = p.pru || 0, price = p.price || pru;
     return {
+      isin: p.isin || null,
+      tickerKnown: !!p.ticker,
       name: name.slice(0, 30),
       fullName: p.ticker ? p.name.slice(0, 50) : '',
       qty: Math.round(p.qty * 10000) / 10000,
@@ -10362,7 +10397,11 @@ function parseCSVSmart(text) {
     if (!name || qty <= 0) continue;
     const pru = iPru >= 0 ? num(c[iPru]) : 0;
     const price = iPrice >= 0 ? num(c[iPrice]) : pru;
+    const rawT = iTicker >= 0 ? (c[iTicker] || '').replace(/"/g,'').trim() : '';
+    const isIsin = /^[A-Z]{2}[A-Z0-9]{10}$/.test(rawT);
     rows.push({
+      isin: isIsin ? rawT : null,
+      tickerKnown: !!rawT && !isIsin,
       name: name.slice(0, 30),
       fullName: iName >= 0 && iTicker >= 0 ? (c[iName]||'').replace(/"/g,'').slice(0,50) : '',
       qty: Math.round(qty * 10000) / 10000,
@@ -10489,7 +10528,7 @@ async function confirmCSVImport() {
       updated++;
     } else {
       const pos = { name: r.name, qty: r.qty, pru: r.pru || r.price || 0, price: r.price || r.pru || 0,
-                    type: 'Action', sector: '', platform, alert_price: null };
+                    type: r.type || 'Action', sector: r.sector || '', platform, alert_price: null };
       if (!isDemo && currentUser) {
         try {
           const { data } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
