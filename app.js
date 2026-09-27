@@ -10263,13 +10263,20 @@ async function resolveImportTickers(rows) {
     const suf = (sym.match(/\.[A-Z]+$/) || [''])[0];
     return { '.PA': 0, '.AS': 1, '.DE': 2, '.MI': 3, '.BR': 4, '': 5, '.F': 6, '.L': 9 }[suf] ?? 7;
   };
+  const search = async (q) => ((await (await fetch('/api/search?q=' + encodeURIComponent(q))).json()).results || []);
   const resolve = async (r) => {
-    const q = r.isin || r.fullName || r.name;
+    const label = r.fullName || r.name;
     try {
-      const res = await fetch('/api/search?q=' + encodeURIComponent(q));
-      const list = (await res.json()).results || [];
+      const list = await search(r.isin || label);
       if (!list.length) return;
-      const best = r.isin ? [...list].sort((a, b) => rank(a.ticker) - rank(b.ticker))[0] : list[0];
+      let best = r.isin ? [...list].sort((a, b) => rank(a.ticker) - rank(b.ticker))[0] : list[0];
+      // L'ISIN ne renvoie parfois qu'une cotation hors euro (ex. Londres) : même titre recherché par son nom
+      if (r.isin && rank(best.ticker) > 5) {
+        const base = best.ticker.split('.')[0];
+        const alt = (await search(label)).filter(x => x.ticker.split('.')[0] === base && rank(x.ticker) < 5)
+          .sort((a, b) => rank(a.ticker) - rank(b.ticker))[0];
+        if (alt) best = alt;
+      }
       r.fullName = r.fullName || r.name;
       r.name = best.ticker;
       r.type = best.type;
