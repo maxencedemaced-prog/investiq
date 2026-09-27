@@ -591,6 +591,7 @@ function renderMonthlyPlan(plan, isNew) {
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;font-weight:800;color:#fff">${displayName(l.name||l.ticker)} <span style="font-size:9px;color:rgba(255,255,255,0.4)">${l.ticker}</span></div>
             <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:1px">${l.raison||''}</div>
+            ${recoActionsHTML(l.ticker, l.name || l.ticker, l.montant, isSocle ? 'ETF' : '', true)}
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-size:16px;font-weight:900;color:${c}">${l.montant} €</div>
@@ -812,6 +813,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
           <div style="margin-top:8px;background:${trackBg};border-radius:99px;height:4px;overflow:hidden">
             <div style="height:100%;background:${e.color};width:${pctC}%;border-radius:99px;transition:width 1s ease"></div>
           </div>
+          ${recoActionsHTML(e.ticker, e.name, mCap || mMens, isAction ? 'Action' : 'ETF', isDark)}
         </div>
         <div style="text-align:right;flex-shrink:0">
           ${mCap > 0 ? `<div style="font-size:14px;font-weight:900;color:${e.color}">${mCap.toLocaleString('fr-FR')} €</div>
@@ -929,7 +931,7 @@ function renderActionCard(a, i, isOld) {
     ? '<span style="background:#f0f0f0;color:#8e8e93;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px">Remplacé</span>'
     : '<span style="background:#e8f8f0;color:#1a7f5a;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px">⚡ Actuel</span>';
   const cursor = isOld ? 'default' : 'pointer';
-  const onclick = isOld ? '' : `onclick="openActionFromObjectif('${a.ticker}','${a.name}',${a.montant})"`;
+  const onclick = isOld ? '' : `onclick="openActionFromObjectif('${jsArg(a.ticker)}','${jsArg(a.name)}',${Number(a.montant) || 0})"`;
   const hover = isOld ? '' : `onmouseover="this.style.borderColor='#f59e0b';this.style.background='#fffdf5'" onmouseout="this.style.borderColor='#f0f0f0';this.style.background='#fff'"`;
 
   return `<div ${onclick} ${hover}
@@ -953,11 +955,11 @@ function renderActionCard(a, i, isOld) {
     ${!isOld ? `<div style="margin-top:10px">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8e93;margin-bottom:4px">
         <span>Montant suggéré : <strong style="color:#1c1c1e">${fmtK(a.montant)}</strong></span>
-        <span style="font-weight:700;color:#f59e0b">Analyser & Acheter →</span>
       </div>
       <div style="background:#f5f5f5;border-radius:6px;height:6px;overflow:hidden">
         <div style="height:100%;background:linear-gradient(90deg,${a.color}60,${a.color});width:${40 + i*12}%"></div>
       </div>
+      ${recoActionsHTML(a.ticker, a.name, a.montant, '', false)}
     </div>` : ''}
   </div>`;
 }
@@ -2277,6 +2279,19 @@ function showToast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.classList.add('show'), 10);
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+// Texte inséré comme argument '...' d'un onclick="..." : protège apostrophes (L'Oréal), guillemets et antislash
+function jsArg(s) { return _escHtml(String(s ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")); }
+
+// Boutons « Analyser » / « Ajouter » d'une carte de recommandation (le clic ne se propage pas à la carte)
+function recoActionsHTML(ticker, name, amount, type, dark) {
+  const a = `'${jsArg(ticker)}','${jsArg(name)}',${Number(amount) || 0}`;
+  const base = 'padding:6px 11px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap';
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
+    <button type="button" onclick="event.stopPropagation();openActionFromObjectif(${a})" style="${base};background:${dark ? 'rgba(255,255,255,0.08)' : '#f4f4f5'};border:1px solid ${dark ? 'rgba(255,255,255,0.14)' : '#e4e4e7'};color:${dark ? 'rgba(255,255,255,0.85)' : '#3f3f46'}">🔍 Analyser</button>
+    <button type="button" onclick="event.stopPropagation();addToPortfolioFromDecision('${jsArg(ticker)}',${Number(amount) || 0},'${jsArg(name)}','${jsArg(type || '')}')" style="${base};background:#16a34a;border:1px solid #16a34a;color:#fff">➕ Ajouter au portefeuille</button>
+  </div>`;
 }
 
 // ===== ANALYTICS (table Supabase "events") =====
@@ -9302,7 +9317,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
 
       <!-- AJOUTER AU PORTEFEUILLE -->
       ${d.recommandation !== 'EVITER' ? `
-      <button class="btn-primary" onclick="addToPortfolioFromDecision('${name}', ${amt})" style="width:100%;margin-top:10px;background:#1a7f5a">
+      <button class="btn-primary" onclick="addToPortfolioFromDecision('${jsArg(name)}', ${Number(amt) || 0})" style="width:100%;margin-top:10px;background:#1a7f5a">
         ➕ Ajouter au portefeuille
       </button>` : ''}
       <button class="btn-secondary" onclick="document.getElementById('d-result').innerHTML='';document.getElementById('d-name').value='';document.getElementById('d-name').focus()" style="width:100%;margin-top:8px">
@@ -9317,41 +9332,30 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
   decisionIntention = null;
 }
 
-async function addToPortfolioFromDecision(ticker, amount) {
+// Pré-remplit le formulaire d'ajout : la quantité est le montant divisé par le cours, en fraction d'action
+// (la plupart des courtiers, dont Trade Republic, achètent au montant et non à la part entière)
+async function addToPortfolioFromDecision(ticker, amount, name, type) {
   nav('ajouter');
-  setTimeout(async () => {
-    try {
-      // Cherche le prix live
-      const res = await fetch('/api/prices?symbols=' + encodeURIComponent(ticker));
-      const data = await res.json();
-      const quote = data.quotes?.[0];
-      const price = quote?.price || 0;
-      const qty = price > 0 ? Math.max(1, Math.floor(amount / price)) : 1;
-
-      // Simule une sélection autocomplete
-      const company = {
-        ticker: ticker,
-        name: ticker,
-        type: ticker.includes('.') && !ticker.includes('.PA') ? 'ETF' : 'Action',
-        sector: ''
-      };
-      await acSelect(company);
-
-      // Remplis qty et PRU après acSelect (qui charge le prix live)
-      setTimeout(() => {
-        const qtyEl = document.getElementById('f-qty');
-        const pruEl = document.getElementById('f-pru');
-        if (qtyEl && !qtyEl.value) qtyEl.value = qty;
-        if (pruEl && !pruEl.value && price) pruEl.value = price;
-        showToast(`✅ ${ticker} pré-rempli — vérifie et valide !`);
-      }, 1000);
-    } catch(e) {
-      // Fallback manuel
-      const company = { ticker, name: ticker, type: 'Action', sector: '' };
-      acSelect(company);
-      showToast('✅ Remplis les détails et valide');
-    }
-  }, 200);
+  await new Promise(r => setTimeout(r, 150));
+  acClear();
+  const company = {
+    ticker,
+    name: name || displayName(ticker) || ticker,
+    type: type || (ticker.includes('.') && !ticker.includes('.PA') ? 'ETF' : 'Action'),
+    sector: ''
+  };
+  await acSelect(company);
+  const price = parseFloat(document.getElementById('f-price')?.value) || 0;
+  const qtyEl = document.getElementById('f-qty');
+  if (price > 0 && amount > 0 && qtyEl) {
+    const qty = Math.round(amount / price * 10000) / 10000;
+    qtyEl.value = qty;
+    try { updatePosTotal(); } catch(e) {}
+    try { updateAddPreview(); } catch(e) {}
+    showToast(`✅ ${qty} part${qty > 1 ? 's' : ''} ≈ ${Math.round(amount)} € au cours de ${price.toFixed(2)} € — vérifie et valide`);
+  } else {
+    showToast('✅ Indique la quantité achetée et valide');
+  }
 }
 
 // ===== DCA =====
