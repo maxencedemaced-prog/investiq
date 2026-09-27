@@ -8871,9 +8871,10 @@ function renderCrise() {
     {label:'-10%', pct:-10, color:'#f97316', desc:'Correction normale'},
     {label:'-20%', pct:-20, color:'#ef4444', desc:'Marché baissier'},
     {label:'-30%', pct:-30, color:'#dc2626', desc:'Crise modérée'},
-    {label:'-40%', pct:-40, color:'#b91c1c', desc:'Crise sévère'},
-    {label:'-50%', pct:-50, color:'#991b1b', desc:'Crash 2008'},
-    {label:'-60%', pct:-60, color:'#7f1d1d', desc:'Crise extrême'},
+    // Rouges foncés illisibles sur fond sombre : variantes plus claires en mode sombre
+    {label:'-40%', pct:-40, color:isDark?'#ef4444':'#b91c1c', desc:'Crise sévère'},
+    {label:'-50%', pct:-50, color:isDark?'#f43f5e':'#991b1b', desc:'Crash 2008'},
+    {label:'-60%', pct:-60, color:isDark?'#fb7185':'#7f1d1d', desc:'Crise extrême'},
   ];
 
   const strategies = [

@@ -217,7 +217,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sy
 .btn-primary:hover{background:var(--color-primary-hover);opacity:0.92}
 .btn-secondary{padding:12px 20px;background:var(--color-bg);border:none;border-radius:12px;color:#1c1c1e;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
 .btn-secondary:hover{background:var(--color-bg-subtle);border-color:var(--color-text-tertiary)}
-.btn-save{padding:12px 20px;background:var(--color-bg);border:none;border-radius:12px;color:#1c1c1e;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-save{padding:12px 20px;background:var(--color-bg);border:none;border-radius:12px;color:var(--color-text);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
 .btn-save:hover{background:#ebebeb}
 .btn-danger{padding:10px 16px;background:#fff0f0;border:none;border-radius:10px;color:#cc2f26;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700}
 .btn-refresh{display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--color-bg);border:none;border-radius:10px;color:#1c1c1e;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap}
@@ -447,7 +447,7 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 .obj-wp-num{width:36px;height:36px;border-radius:50%;background:#e5e5ea;color:#8e8e93;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;transition:all 0.3s}
 .obj-wp-label{font-size:11px;font-weight:700;color:#8e8e93;transition:all 0.3s}
 .obj-wp-step.active .obj-wp-num{background:#1c1c1e;color:#fff}
-.obj-wp-step.active .obj-wp-label{color:#1c1c1e}
+.obj-wp-step.active .obj-wp-label{color:var(--color-text)}
 .obj-wp-step.done .obj-wp-num{background:#1a7f5a;color:#fff}
 .obj-wp-line{flex:1;height:2px;background:#e5e5ea;margin:0 8px;margin-bottom:20px}
 .obj-step-card{background:#fff;border-radius:20px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.05);text-align:center}
@@ -456,7 +456,7 @@ input:focus,select:focus{outline:none;background:#ebebeb}
 .obj-step-kicker{font-size:11px;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
 .risk-card-icon{width:44px;height:44px;border-radius:14px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:0}
 .risk-card.active{box-shadow:0 8px 24px rgba(0,0,0,0.12)}
-.obj-step-h2{font-size:24px;font-weight:800;color:#1c1c1e;letter-spacing:-0.6px;margin-bottom:8px}
+.obj-step-h2{font-size:24px;font-weight:800;color:var(--color-text);letter-spacing:-0.6px;margin-bottom:8px}
 .obj-step-p{font-size:15px;color:#8e8e93;font-weight:500;margin-bottom:4px}
 .obj-step-card .form-grid{text-align:left}
 .obj-step-card .field{text-align:left}
@@ -782,10 +782,11 @@ a, button, [onclick] { transition: opacity 0.15s ease, transform 0.15s ease, bac
   --color-border-strong: #2a3d52;
   --color-text: #e6edf3;
   --color-text-secondary: #7d8590;
-  --color-text-tertiary: #484f58;
+  --color-text-tertiary: #6e7681;
   --color-text-disabled: #30363d;
-  --color-primary: #e6edf3;
-  --color-primary-hover: #ffffff;
+  /* Utilisée comme fond avec du texte blanc (boutons, étapes, sélection) : même vert que .btn-primary en sombre */
+  --color-primary: #16a34a;
+  --color-primary-hover: #15803d;
   --color-green: #3fb950;
   --color-green-light: rgba(63,185,80,0.1);
   --color-green-border: rgba(63,185,80,0.25);
@@ -1898,3 +1899,5 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
   .verdict-row { flex-wrap: wrap !important; }
   .verdict-label { flex-basis: 100% !important; }
 }
+
+[data-theme="dark"] .btn-save:hover{background:var(--color-surface-raised)}
