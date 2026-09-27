@@ -9303,8 +9303,29 @@ function openDecision(ticker,signal){
 }
 function setDecisionIntent(intent) { selectIntent(intent); } // alias compat
 
+// Texte tapé sans choisir de suggestion (« LVM ») : on retrouve le vrai titre pour que l'analyse,
+// les prix et l'ajout au portefeuille utilisent un symbole qui existe (MC.PA)
+async function resolveDecisionText(text) {
+  const t = text.trim().toLowerCase();
+  if (t.length < 2) return null;
+  const exact = AC_DB.find(c => c.ticker.toLowerCase() === t || c.ticker.toLowerCase().split('.')[0] === t);
+  if (exact) return exact;
+  const byName = AC_DB.find(c => c.name.toLowerCase().startsWith(t)) || AC_DB.find(c => c.name.toLowerCase().includes(t));
+  if (byName) return byName;
+  if (positions.some(p => p.name.toLowerCase() === t)) return null;   // déjà un symbole connu du portefeuille
+  try {
+    const results = ((await (await fetch('/api/search?q=' + encodeURIComponent(text.trim()))).json()).results || []);
+    return results[0] || null;
+  } catch { return null; }
+}
+
 async function analyseDecision() {
-  const name = getDecisionTicker();
+  let name = getDecisionTicker();
+  const nameInput = document.getElementById('d-name');
+  if (name && nameInput && !(nameInput.dataset.ticker && nameInput.value.trim() === nameInput.dataset.label)) {
+    const found = await resolveDecisionText(name);
+    if (found) { setDecisionAsset(found.ticker, found.name); name = found.ticker; updateDecisionCTA(); }
+  }
   const amt  = parseInt(document.getElementById('d-amount-display')?.dataset.amount || 500);
   const bk   = profile.bankroll || 5000;
   const pct  = Math.round(amt / bk * 100) || 1;
