@@ -1118,8 +1118,7 @@ async function openActionFromObjectif(ticker, name, amount) {
   document.getElementById('d-result').innerHTML = '';
   nav('decision');
   setTimeout(() => {
-    const nameEl = document.getElementById('d-name');
-    if (nameEl) nameEl.value = ticker;
+    setDecisionAsset(ticker, name);
     updateDecisionAmount(Math.max(50, Math.round(amount)));
     selectIntent('acheter');
     document.getElementById('sec-decision')?.scrollTo(0,0);
@@ -2107,7 +2106,7 @@ function decisionAcSearch(query) {
   clearTimeout(_decAcTimer);
   const q = (query || '').trim().toLowerCase();
   if (q.length < 2) { drop.style.display = 'none'; return; }
-  const item = r => `<div class="ac-item" onclick="decisionAcPick('${jsArg(r.ticker)}')">
+  const item = r => `<div class="ac-item" onclick="decisionAcPick('${jsArg(r.ticker)}','${jsArg(r.name)}')">
       <div class="ac-item-avatar ${r.type==='ETF'?'etf':''}">${_escHtml(r.ticker.slice(0,2))}</div>
       <div class="ac-item-info">
         <div class="ac-item-name">${_escHtml(r.name)}</div>
@@ -2128,12 +2127,28 @@ function decisionAcSearch(query) {
     } catch { drop.style.display = 'none'; }
   }, 300);
 }
-function decisionAcPick(ticker) {
-  const input = document.getElementById('d-name');
-  if (input) input.value = ticker;
+function decisionAcPick(ticker, name) {
+  setDecisionAsset(ticker, name);
   const drop = document.getElementById('d-ac-drop');
   if (drop) drop.style.display = 'none';
   try { updateDecisionCTA(); } catch(e) {}
+}
+
+// Le champ affiche un nom lisible (« LVMH ») ; le symbole (MC.PA), utilisé pour l'analyse et les prix, reste en coulisse
+function setDecisionAsset(ticker, name) {
+  const input = document.getElementById('d-name');
+  if (!input) return;
+  const nice = displayName(ticker);
+  const label = (nice && nice !== ticker) ? nice : (name || ticker);
+  input.value = label;
+  input.dataset.ticker = ticker;
+  input.dataset.label = label;
+}
+// Symbole à analyser : celui choisi dans les suggestions, sinon le texte tapé tel quel
+function getDecisionTicker() {
+  const input = document.getElementById('d-name');
+  const v = (input?.value || '').trim();
+  return (input?.dataset.ticker && v === input.dataset.label) ? input.dataset.ticker : v;
 }
 
 function acSearch(query) {
@@ -2823,8 +2838,7 @@ async function obOpenAction(ticker, name, amount) {
   decisionIntention = 'acheter';
   nav('decision');
   setTimeout(() => {
-    const nameEl = document.getElementById('d-name');
-    if (nameEl) nameEl.value = ticker;
+    setDecisionAsset(ticker, name);
     updateDecisionAmount(Math.max(50, Math.round(amount)));
     selectIntent('acheter');
     // Lance l'analyse automatiquement
@@ -5497,7 +5511,7 @@ function updateDecisionCTA() {
   const amount = document.getElementById('d-amount-display')?.dataset.amount || 500;
   const intentLbl = { garder: 'Que faire ?', acheter: 'Acheter', vendre: 'Vendre' }[decisionIntention || 'garder'];
   if (name) {
-    cta.innerHTML = `🤖 Analyser <strong style="margin:0 4px">${name}</strong> · ${intentLbl} · ${parseInt(amount).toLocaleString('fr-FR')} €`;
+    cta.innerHTML = `🤖 Analyser <strong style="margin:0 4px">${_escHtml(name)}</strong> · ${intentLbl} · ${parseInt(amount).toLocaleString('fr-FR')} €`;
     cta.style.opacity = '1';
   } else {
     cta.innerHTML = `🤖 Obtenir mon analyse personnalisée`;
@@ -5532,8 +5546,7 @@ function initDecisionPage() {
 }
 
 function prefillDecision(ticker) {
-  const input = document.getElementById('d-name');
-  if (input) { input.value = ticker; }
+  setDecisionAsset(ticker);
   const drop = document.getElementById('d-ac-drop');
   if (drop) drop.style.display = 'none';
   updateDecisionCTA();
@@ -7883,8 +7896,7 @@ function openDecisionFromPos(name, action) {
   document.getElementById('d-result').innerHTML = '';
   nav('decision');
   setTimeout(() => {
-    const nameEl = document.getElementById('d-name');
-    if (nameEl) nameEl.value = name;
+    setDecisionAsset(name);
     updateDecisionAmount(parseInt(document.getElementById('d-amount-display')?.dataset.amount || 500));
     selectIntent(action);
     document.getElementById('sec-decision')?.scrollTo(0,0);
@@ -9284,16 +9296,15 @@ function openDecision(ticker,signal){
   document.getElementById('d-result').innerHTML = '';
   nav('decision');
   setTimeout(() => {
-    const nameEl = document.getElementById('d-name');
-    if (nameEl) nameEl.value = ticker;
+    setDecisionAsset(ticker);
     updateDecisionAmount(amt);
-    showToast(`✓ Pré-rempli — ${ticker} · ${amt.toLocaleString('fr-FR')} €`);
+    showToast(`✓ Pré-rempli — ${displayName(ticker)} · ${amt.toLocaleString('fr-FR')} €`);
   }, 150);
 }
 function setDecisionIntent(intent) { selectIntent(intent); } // alias compat
 
 async function analyseDecision() {
-  const name = document.getElementById('d-name').value.trim();
+  const name = getDecisionTicker();
   const amt  = parseInt(document.getElementById('d-amount-display')?.dataset.amount || 500);
   const bk   = profile.bankroll || 5000;
   const pct  = Math.round(amt / bk * 100) || 1;
@@ -9337,7 +9348,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
   result.innerHTML = `<div class="card" style="text-align:center;padding:32px">
     <div style="font-size:32px;margin-bottom:8px">🧠</div>
     <div style="font-weight:700;color:#1c1c1e">Analyse en cours...</div>
-    <div style="font-size:13px;color:#8e8e93;margin-top:4px">L'IA analyse ${name} pour toi</div>
+    <div style="font-size:13px;color:#8e8e93;margin-top:4px">L'IA analyse ${_escHtml(displayName(name))} pour toi</div>
   </div>`;
 
   try {
@@ -9355,7 +9366,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
         <div style="display:flex;align-items:center;gap:16px">
           <div style="font-size:48px">${d.emoji}</div>
           <div>
-            <div style="font-size:11px;font-weight:700;color:${recoColor};text-transform:uppercase;letter-spacing:1px">${name} · ${['garder','acheter','vendre'].includes(intent) ? {garder:'Analyse générale',acheter:'Acheter ?',vendre:'Vendre ?'}[intent] : 'Analyse'}</div>
+            <div style="font-size:11px;font-weight:700;color:${recoColor};text-transform:uppercase;letter-spacing:1px">${_escHtml(displayName(name))} · ${['garder','acheter','vendre'].includes(intent) ? {garder:'Analyse générale',acheter:'Acheter ?',vendre:'Vendre ?'}[intent] : 'Analyse'}</div>
             <div style="font-size:24px;font-weight:900;color:${recoColor}">${d.recommandation}</div>
             <div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-top:2px">${d.phrase_cle}</div>
           </div>
