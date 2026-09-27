@@ -1888,8 +1888,8 @@ async function acSearchYahoo(query) {
     const results = data.results || [];
     if (!results.length) {
       drop.innerHTML = `<div class="ac-no-result">
-        <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat pour "${query}"</div>
-        <button class="ac-manual-btn" onclick="acSelectManual('${query.toUpperCase()}')">Utiliser "${query.toUpperCase()}" comme ticker →</button>
+        <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat pour "${_escHtml(query)}"</div>
+        <button class="ac-manual-btn" onclick="acSelectManual('${jsArg(query.toUpperCase())}')">Utiliser "${_escHtml(query.toUpperCase())}" comme ticker →</button>
       </div>`;
       return;
     }
@@ -1906,7 +1906,7 @@ async function acSearchYahoo(query) {
     const drop2 = document.getElementById('ac-drop');
     if (drop2) drop2.innerHTML = `<div class="ac-no-result">
       <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat trouvé</div>
-      <button class="ac-manual-btn" onclick="acSelectManual('${query.toUpperCase()}')">Utiliser "${query.toUpperCase()}" comme ticker →</button>
+      <button class="ac-manual-btn" onclick="acSelectManual('${jsArg(query.toUpperCase())}')">Utiliser "${_escHtml(query.toUpperCase())}" comme ticker →</button>
     </div>`;
   }
 }
@@ -3099,6 +3099,8 @@ async function obFinish(action) {
 function formatMD(text) {
   if (text) text = String(text).replace(/```[a-z]*\n?/g, '').replace(/```/g, ''); // retire les blocs de code résiduels
   if (!text) return '';
+  // Le texte vient de l'IA (qui a pu lire des actus, un PDF…) : aucun HTML ne doit s'exécuter, seul le markdown ci-dessous est mis en forme
+  text = _escHtml(text);
 
   // ── Parse les tableaux markdown en HTML ──
   function parseTable(block) {
@@ -3172,7 +3174,7 @@ function formatMD(text) {
     .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #f0f0f0;margin:12px 0">')
     .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#1c1c1e;font-weight:800">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^>{1,2}\s*(.+)$/gm, '<div style="background:#f0faf6;border-left:3px solid #1a7f5a;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:13px;color:#065f46;font-weight:600">$1</div>')
+    .replace(/^(?:&gt;){1,2}\s*(.+)$/gm, '<div style="background:#f0faf6;border-left:3px solid #1a7f5a;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:13px;color:#065f46;font-weight:600">$1</div>')
     .replace(/^#{1,3}\s+(.+)$/gm, '<div style="font-size:15px;font-weight:800;color:#1c1c1e;margin:18px 0 8px;letter-spacing:-0.2px;display:flex;align-items:center;gap:8px">$1</div>')
     .replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:5px 0;font-size:13px"><span style="color:#1a7f5a;font-weight:800;flex-shrink:0;margin-top:1px">→</span><span style="color:#3c3c43">$1</span></div>')
     .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:10px;margin:6px 0;align-items:flex-start"><span style="background:#1c1c1e;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px">$1</span><span style="font-size:13px;color:#3c3c43">$2</span></div>')
@@ -3469,7 +3471,7 @@ function renderNewsPage(auto=false) {
       <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Populaires à suivre</div>
       <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">
         ${POPULAR.filter(p => !allTracked.find(t => t.ticker === p.ticker)).slice(0, 6).map(p => `
-          <div style="background:#fff;border-radius:12px;padding:10px 12px;border:1.5px solid #f0f0f0;flex-shrink:0;min-width:130px;cursor:pointer" onclick="openCompany('${p.ticker}','${p.name}','${p.sector}')">
+          <div style="background:#fff;border-radius:12px;padding:10px 12px;border:1.5px solid #f0f0f0;flex-shrink:0;min-width:130px;cursor:pointer" onclick="openCompany('${jsArg(p.ticker)}','${jsArg(p.name)}','${jsArg(p.sector)}')">
             <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
               <div style="width:28px;height:28px;border-radius:8px;background:#1c1c1e;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${p.ticker.slice(0,2)}</div>
               <div>
@@ -3477,7 +3479,7 @@ function renderNewsPage(auto=false) {
                 <div style="font-size:10px;color:#8e8e93">${p.sector}</div>
               </div>
             </div>
-            <button onclick="event.stopPropagation();toggleFavorite('${p.ticker}','${p.name}','${p.sector}')" id="pop-btn-${p.ticker}"
+            <button onclick="event.stopPropagation();toggleFavorite('${jsArg(p.ticker)}','${jsArg(p.name)}','${jsArg(p.sector)}')" id="pop-btn-${p.ticker}"
               style="width:100%;background:${isFavorite(p.ticker)?'#e8f8f0':'#f5f5f5'};color:${isFavorite(p.ticker)?'#1a7f5a':'#1c1c1e'};border:none;border-radius:8px;padding:5px 0;font-size:11px;font-weight:700;cursor:pointer">
               ${isFavorite(p.ticker) ? '★ Suivi' : '+ Suivre'}
             </button>
@@ -4017,7 +4019,7 @@ Si tu n'as pas d'actualité récente et datée fiable sur une entreprise, utilis
           </div>
           <!-- Étoile -->
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;cursor:pointer"
-            onclick="event.stopPropagation();toggleStar(this.querySelector('button'),'${a.ticker}','${a.entreprise}')">
+            onclick="event.stopPropagation();toggleStar(this.querySelector('button'),'${jsArg(a.ticker)}','${jsArg(a.entreprise)}')">
             <span style="font-size:11px;font-weight:700;color:${isFav?'#f59e0b':logoColor}">${a.entreprise}</span>
             <button class="ent-star-${a.ticker}" style="background:none;border:none;cursor:pointer;font-size:20px;padding:0;line-height:1;color:${isFav?'#f59e0b':sub2}">
               ${isFav?'★':'☆'}
@@ -4034,7 +4036,7 @@ Si tu n'as pas d'actualité récente et datée fiable sur une entreprise, utilis
             style="flex:1;background:${isDark2?'rgba(255,255,255,0.06)':'#f4f4f5'};color:${sub2};border:1px solid ${bord2};border-radius:10px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;text-align:center;display:block">
             🔗 Voir les articles
           </a>
-          <button onclick="openCompany('${a.ticker}','${a.entreprise}','')"
+          <button onclick="openCompany('${jsArg(a.ticker)}','${jsArg(a.entreprise)}','')"
             style="flex:1;background:${isDark2?'var(--color-text)':'#09090b'};color:${isDark2?'var(--color-bg)':'#fff'};border:none;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer">
             📊 Voir la fiche
           </button>
@@ -4156,7 +4158,7 @@ async function renderSignaux() {
     return `
     <div id="sig-card-${s.ticker}" style="background:${sb};border:1px solid ${sbd};border-left:3px solid ${sc};border-radius:14px;padding:16px;margin-bottom:10px;cursor:pointer;transition:all 0.15s"
       onmouseover="this.style.borderColor='${sc}'" onmouseout="this.style.borderLeftColor='${sc}';this.style.borderColor='${sbd}'"
-      onclick="openDecisionFromPos('${s.ticker}','${s.signal==='acheter'?'acheter':s.signal==='vendre'?'vendre':'garder'}')">
+      onclick="openDecisionFromPos('${jsArg(s.ticker)}','${s.signal==='acheter'?'acheter':s.signal==='vendre'?'vendre':'garder'}')">
 
       <!-- Header -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
@@ -4383,7 +4385,7 @@ async function openCompany(ticker, name, sector) {
         <div style="font-size:22px;font-weight:800;color:#1c1c1e;letter-spacing:-0.5px">${name}</div>
         <div style="font-size:13px;color:#8e8e93;font-weight:500">${ticker} · ${sector}</div>
       </div>
-      <button class="btn-follow ${isFavorite(ticker)?'following':''}" id="fav-btn-${ticker}" onclick="toggleFavorite('${ticker}','${name}','${sector}');updateFavBtn('${ticker}')">
+      <button class="btn-follow ${isFavorite(ticker)?'following':''}" id="fav-btn-${ticker}" onclick="toggleFavorite('${jsArg(ticker)}','${jsArg(name)}','${jsArg(sector)}');updateFavBtn('${jsArg(ticker)}')">
         ${isFavorite(ticker) ? '★ Suivi' : '☆ Suivre'}
       </button>
     </div>
@@ -4420,7 +4422,7 @@ async function openCompany(ticker, name, sector) {
 
 function updateFavBtn(ticker) {
   const btn = document.getElementById('fav-btn-' + ticker);
-  if (btn) btn.outerHTML = `<button class="btn-follow ${isFavorite(ticker)?'following':''}" id="fav-btn-${ticker}" onclick="toggleFavorite('${ticker}','${activeCompany?.name||ticker}','${activeCompany?.sector||''}');updateFavBtn('${ticker}')">${isFavorite(ticker)?'★ Suivi':'☆ Suivre'}</button>`;
+  if (btn) btn.outerHTML = `<button class="btn-follow ${isFavorite(ticker)?'following':''}" id="fav-btn-${ticker}" onclick="toggleFavorite('${jsArg(ticker)}','${jsArg(activeCompany?.name||ticker)}','${jsArg(activeCompany?.sector||'')}');updateFavBtn('${jsArg(ticker)}')">${isFavorite(ticker)?'★ Suivi':'☆ Suivre'}</button>`;
 }
 
 async function fetchCompanyPrice(ticker) {
@@ -4493,8 +4495,8 @@ Sois pédagogue, concis et direct. Utilise des termes simples.`;
         <p>${data.verdict || ''}</p>
       </div>
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-primary" style="font-size:13px;padding:10px 16px" onclick="openDecision('${ticker}','acheter')">Analyser pour investir →</button>
-        <button class="btn-secondary" style="font-size:13px;padding:10px 16px" onclick="toggleFavorite('${ticker}','${activeCompany?.name||ticker}','${activeCompany?.sector||''}');updateFavBtn('${ticker}')">${isFavorite(ticker)?'★ Suivi':'☆ Suivre'}</button>
+        <button class="btn-primary" style="font-size:13px;padding:10px 16px" onclick="openDecision('${jsArg(ticker)}','acheter')">Analyser pour investir →</button>
+        <button class="btn-secondary" style="font-size:13px;padding:10px 16px" onclick="toggleFavorite('${jsArg(ticker)}','${jsArg(activeCompany?.name||ticker)}','${jsArg(activeCompany?.sector||'')}');updateFavBtn('${jsArg(ticker)}')">${isFavorite(ticker)?'★ Suivi':'☆ Suivre'}</button>
       </div>`;
   }
 
@@ -4550,13 +4552,13 @@ function searchCompany(query) {
   if (drop) {
     drop.style.display = 'block';
     drop.innerHTML = results.map(r => `
-      <div class="search-result-item" onclick="openCompany('${r.ticker}','${r.name}','${r.sector}');clearSearch()">
+      <div class="search-result-item" onclick="openCompany('${jsArg(r.ticker)}','${jsArg(r.name)}','${jsArg(r.sector)}');clearSearch()">
         <div class="sr-avatar">${r.ticker.slice(0,2).toUpperCase()}</div>
         <div>
           <div class="sr-name">${r.name}</div>
           <div class="sr-ticker">${r.ticker} · ${r.sector}</div>
         </div>
-        <button class="btn-follow sm ${isFavorite(r.ticker)?'following':''}" onclick="event.stopPropagation();toggleFavorite('${r.ticker}','${r.name}','${r.sector}')" style="margin-left:auto">
+        <button class="btn-follow sm ${isFavorite(r.ticker)?'following':''}" onclick="event.stopPropagation();toggleFavorite('${jsArg(r.ticker)}','${jsArg(r.name)}','${jsArg(r.sector)}')" style="margin-left:auto">
           ${isFavorite(r.ticker) ? '★' : '☆'}
         </button>
       </div>`).join('');
@@ -9160,8 +9162,8 @@ function renderNewsList() {
       const style   = inPortf
         ? 'background:#1c1c1e;color:#fff;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:3px'
         : 'background:#f0f0f0;color:#3c3c43;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:3px';
-      return `<span style="${style}" onclick="event.stopPropagation();openCompany('${a}','${a}','')">
-        ${inPortf ? '📦 ' : ''}${a}${isFav ? ' ★' : ''}
+      return `<span style="${style}" onclick="event.stopPropagation();openCompany('${jsArg(a)}','${jsArg(a)}','')">
+        ${inPortf ? '📦 ' : ''}${_escHtml(a)}${isFav ? ' ★' : ''}
       </span>`;
     }).join('');
 
@@ -9177,7 +9179,7 @@ function renderNewsList() {
 
     // Bouton analyser
     const analyseBtn = n.signal !== 'éviter' && first
-      ? `<button onclick="event.stopPropagation();openDecision('${first}','${n.signal}')"
+      ? `<button onclick="event.stopPropagation();openDecision('${jsArg(first)}','${jsArg(n.signal)}')"
            style="background:#1c1c1e;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
            🤔 Analyser
          </button>`
@@ -9266,7 +9268,7 @@ function renderNewsList() {
           <div style="font-size:10px;font-weight:600;color:${sub2};margin-bottom:5px">Recommandation IA</div>
           <div style="font-size:13px;font-weight:700;color:${recoColor};margin-bottom:4px">${recoLabel}</div>
           <div style="font-size:11px;color:${sub2};line-height:1.4;margin-bottom:8px">${recoSub}</div>
-          ${analyseBtn ? `<button onclick="event.stopPropagation();openDecision('${first}','${n.signal}')" style="padding:5px 12px;background:#16a34a;border:none;border-radius:6px;font-size:11px;font-weight:700;color:#fff;cursor:pointer">Voir →</button>` : ''}
+          ${analyseBtn ? `<button onclick="event.stopPropagation();openDecision('${jsArg(first)}','${jsArg(n.signal)}')" style="padding:5px 12px;background:#16a34a;border:none;border-radius:6px;font-size:11px;font-weight:700;color:#fff;cursor:pointer">Voir →</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -9886,7 +9888,8 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
     }
     window._lastAIMeta = d.meta || null;   // diagnostic (stop_reason, tokens) : aide à comprendre une réponse vide ou coupée
     if (opts && opts.onMeta) { try { opts.onMeta(d.meta || null); } catch {} }   // propre à CET appel (les appels peuvent être parallèles)
-    return d.text||d.error||'Aucune réponse.';
+    // Les réponses (texte ou JSON) sont souvent insérées telles quelles dans la page : aucune balise HTML ne doit passer
+    return String(d.text||d.error||'Aucune réponse.').replace(/<\/?[a-zA-Z!][^>]*>/g, '');
   }catch{return'Erreur de connexion.';}
 }
 
