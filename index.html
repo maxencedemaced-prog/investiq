@@ -48,7 +48,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260927182737">
+  <link rel="stylesheet" href="style.css?v=20260927183003">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -383,7 +383,7 @@
           </div>
           <div style="margin-bottom:14px">
             <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px">Mot de passe</label>
-            <input type="password" id="signup-pass" placeholder="••••••••"
+            <input type="password" id="signup-pass" placeholder="8 caractères minimum" autocomplete="new-password"
               style="width:100%;padding:13px 16px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;font-size:15px;color:#fff;outline:none;box-sizing:border-box"
               onfocus="this.style.borderColor='rgba(26,127,90,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
           </div>
@@ -1792,7 +1792,7 @@ window.addEventListener('load', function() {
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title"><span class="card-icon dark">🔒</span>Sécurité</div></div>
-        <div class="field"><label>Nouveau mot de passe</label><input type="password" id="new-pass" placeholder="Min. 6 caractères"></div>
+        <div class="field"><label>Nouveau mot de passe</label><input type="password" id="new-pass" placeholder="Min. 8 caractères"></div>
         <div class="field"><label>Confirmer</label><input type="password" id="new-pass2" placeholder="••••••••"></div>
         <button class="btn-primary" onclick="changePassword()">Changer le mot de passe</button>
         <div id="pass-msg" style="margin-top:10px;font-size:14px;display:none;font-weight:700"></div>
@@ -1868,11 +1868,11 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260927182737"></script>
-<script src="depenses.js?v=20260927182737"></script>
-<script src="bilan-extra.js?v=20260927182737"></script>
-<script src="tab-hints.js?v=20260927182737"></script>
-<script src="push.js?v=20260927182737"></script>
+<script src="app.js?v=20260927183003"></script>
+<script src="depenses.js?v=20260927183003"></script>
+<script src="bilan-extra.js?v=20260927183003"></script>
+<script src="tab-hints.js?v=20260927183003"></script>
+<script src="push.js?v=20260927183003"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->

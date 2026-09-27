@@ -4809,7 +4809,7 @@ async function signup() {
   const pass2 = document.getElementById('signup-pass2').value;
   if (!email||!pass) { setAuthMsg('Remplis tous les champs.'); return; }
   if (pass!==pass2) { setAuthMsg('Mots de passe différents.'); return; }
-  if (pass.length<6) { setAuthMsg('Mot de passe trop court.'); return; }
+  if (pass.length<8) { setAuthMsg('Mot de passe trop court : au moins 8 caractères.'); return; }
   setAuthMsg('Création...', true);
   const { data, error } = await sb.auth.signUp({ email, password: pass });
   if (error) {
@@ -4817,7 +4817,7 @@ async function signup() {
     if (m.includes('rate limit')) setAuthMsg("Trop d'emails envoyés récemment. Réessaie dans environ 1 heure.");
     else if (m.includes('already') || m.includes('registered')) setAuthMsg('Un compte existe déjà avec cet email — connecte-toi.');
     else if (m.includes('invalid') && m.includes('email')) setAuthMsg('Adresse email invalide.');
-    else if (m.includes('password')) setAuthMsg('Mot de passe refusé : utilise au moins 6 caractères.');
+    else if (m.includes('password')) setAuthMsg('Mot de passe refusé : utilise au moins 8 caractères.');
     else setAuthMsg(error.message);
     return;
   }
@@ -4885,7 +4885,7 @@ async function changePassword() {
   const p2 = document.getElementById('new-pass2').value;
   const msg = document.getElementById('pass-msg');
   if (p!==p2) { msg.style.display='block'; msg.style.color='#ff3b30'; msg.textContent='Mots de passe différents.'; return; }
-  if (p.length<6) { msg.style.display='block'; msg.style.color='#ff3b30'; msg.textContent='Trop court.'; return; }
+  if (p.length<8) { msg.style.display='block'; msg.style.color='#ff3b30'; msg.textContent='Trop court : au moins 8 caractères.'; return; }
   const { error } = await sb.auth.updateUser({ password: p });
   msg.style.display='block';
   if (error) { msg.style.color='#ff3b30'; msg.textContent='Erreur: '+error.message; }
