@@ -229,7 +229,8 @@ function depExtractExpenses(rows) {
 function depBuildItems(tx) {
   const times = tx.map(t => t.date.getTime());
   const spanDays = (Math.max(...times) - Math.min(...times)) / 86400000 + 1;
-  const months = Math.max(1, Math.round(spanDays / 30.4));
+  // Durée réelle couverte, sans arrondi : 45 jours = 1,5 mois (arrondi à 1, les moyennes mensuelles étaient gonflées de 50 %)
+  const months = Math.max(1, Math.round(spanDays / 30.4 * 10) / 10);
   const groups = new Map(), txs = [];
   tx.forEach(t => {
     const raw = depNormalize(t.label);
@@ -248,7 +249,10 @@ function depBuildItems(tx) {
     const avg = g.total / g.count;
     const stable = g.amounts.every(a => Math.abs(a - avg) <= avg * 0.12);
     const recurring = g.count >= 2 && (g.last - g.first) / 86400000 >= 25 && stable;
-    return { key: g.key, label: g.label, cat: g.cat, monthly: Math.round(g.total / months * 100) / 100, recurring };
+    // Prélèvement récurrent : montant habituel × fréquence réelle (Netflix = 13,49 €/mois, quelle que soit la durée du relevé)
+    const perMonth = Math.max(1, Math.round((g.count - 1) / ((g.last - g.first) / 86400000 / 30.4)));
+    const monthly = recurring ? avg * perMonth : g.total / months;
+    return { key: g.key, label: g.label, cat: g.cat, monthly: Math.round(monthly * 100) / 100, recurring };
   }).filter(i => i.monthly > 0) };
 }
 
@@ -847,7 +851,7 @@ function depRenderResults() {
       <div>
         <div style="font-size:11px;font-weight:700;${DEP_MUTED};text-transform:uppercase;letter-spacing:.06em">Tes dépenses analysées</div>
         <div style="font-size:34px;font-weight:900;color:var(--color-text);letter-spacing:-0.04em;line-height:1.1">${depFmt0(a.total)}<span style="font-size:14px;font-weight:600;${DEP_MUTED}"> /mois</span></div>
-        <div style="font-size:11.5px;${DEP_MUTED};margin-top:2px">${depState.source === 'csv' ? `d'après ${depState.nTx || ''} opérations sur ${depState.months} mois` : "d'après tes abonnements cochés"} · hors virements et épargne</div>
+        <div style="font-size:11.5px;${DEP_MUTED};margin-top:2px">${depState.source === 'csv' ? `d'après ${depState.nTx || ''} opérations sur ${String(depState.months).replace(".", ",")} mois` : "d'après tes abonnements cochés"} · hors virements et épargne</div>
       </div>
       <button onclick="depReset()" style="background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);font:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer">🔄 Refaire</button>
     </div>

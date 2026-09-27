@@ -6826,6 +6826,8 @@ async function exportBilanPDF() {
 
 // ===== NAV =====
 function nav(page, auto=false) {
+  // Page inconnue (ancien nom mémorisé, lien périmé) : accueil plutôt qu'un écran vide
+  if (!document.getElementById('sec-' + page)) page = 'home';
   // Mémorise la page pour la restaurer si Chrome recharge l'onglet (Memory Saver)
   try { sessionStorage.setItem('iq_last_page', page); } catch {}
   if (!auto) { try { trackEvent('page_view', { page }); } catch(e) {} }
