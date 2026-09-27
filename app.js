@@ -1621,6 +1621,17 @@ Sois ULTRA concret. Donne de vrais tickers (IWDA.L, VWCE.DE, AAPL, etc.) et de v
 
   try {
     const r_resp = await callClaude(prompt, 'Tu es conseiller financier pédagogue. Sois concret et donne des vrais noms et montants.');
+    // IA indisponible (non connecté, quota, panne) : pas de faux « plan prêt », mais l'objectif chiffré reste enregistrable
+    if (callClaudeFailed(r_resp) || aiJustHitQuota() || /limite d'usage raisonnable/.test(r_resp)) {
+      if (contentEl) contentEl.innerHTML = `
+        <div style="background:#fff9e6;border-radius:12px;padding:12px 14px;border-left:3px solid #f59e0b;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:#92400e">Le plan détaillé par l'IA n'a pas pu être préparé</div>
+          <div style="font-size:12px;color:#78350f;margin-top:3px;line-height:1.5">${_escHtml(r_resp)}</div>
+        </div>
+        <div style="font-size:12px;color:#3c3c43;line-height:1.5">Tu peux quand même sauvegarder cet objectif : la projection chiffrée (${fmtK(Math.round(total))} en ${y} an${y > 1 ? 's' : ''}) sera enregistrée dans la page Objectif.</div>`;
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
+      return;
+    }
     if (contentEl) {
       // Extrait les lignes clés : première ligne de chaque bloc **titre**
       const keyLines = r_resp.split('\n')
@@ -1633,7 +1644,7 @@ Sois ULTRA concret. Donne de vrais tickers (IWDA.L, VWCE.DE, AAPL, etc.) et de v
         <div style="margin-bottom:14px">
           ${keyLines.map(l => `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #f5f5f5">
             <span style="color:#1a7f5a;font-weight:800;flex-shrink:0">✓</span>
-            <span style="font-size:13px;color:#1c1c1e;font-weight:500">${l}</span>
+            <span style="font-size:13px;color:#1c1c1e;font-weight:500">${_escHtml(l)}</span>
           </div>`).join('')}
         </div>` : '';
 
