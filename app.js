@@ -2098,6 +2098,44 @@ const AC_DB = [
 
 let acSelected = null;
 
+// Autocomplétion du champ « Quel actif ? » (Aide à la décision) : même base que le formulaire d'ajout,
+// mais le choix remplit seulement le champ d'analyse
+let _decAcTimer = null;
+function decisionAcSearch(query) {
+  const drop = document.getElementById('d-ac-drop');
+  if (!drop) return;
+  clearTimeout(_decAcTimer);
+  const q = (query || '').trim().toLowerCase();
+  if (q.length < 2) { drop.style.display = 'none'; return; }
+  const item = r => `<div class="ac-item" onclick="decisionAcPick('${jsArg(r.ticker)}')">
+      <div class="ac-item-avatar ${r.type==='ETF'?'etf':''}">${_escHtml(r.ticker.slice(0,2))}</div>
+      <div class="ac-item-info">
+        <div class="ac-item-name">${_escHtml(r.name)}</div>
+        <div class="ac-item-meta">${_escHtml([r.ticker, r.type, r.sector, r.exchange].filter(Boolean).join(' · '))}</div>
+      </div>
+      <div class="ac-item-type ${r.type==='ETF'?'etf':''}">${_escHtml(r.type || '')}</div>
+    </div>`;
+  const local = AC_DB.filter(c => c.ticker.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)).slice(0, 7);
+  drop.style.display = 'block';
+  if (local.length) { drop.innerHTML = local.map(item).join(''); return; }
+  drop.innerHTML = '<div class="ac-no-result"><div style="font-size:13px;color:#8e8e93;font-weight:600">Recherche en cours...</div></div>';
+  _decAcTimer = setTimeout(async () => {
+    try {
+      const results = ((await (await fetch('/api/search?q=' + encodeURIComponent(query.trim()))).json()).results || []);
+      if (document.getElementById('d-name')?.value.trim().toLowerCase() !== q) return;   // l'utilisateur a continué à taper
+      drop.innerHTML = results.length ? results.map(item).join('')
+        : `<div class="ac-no-result"><div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat pour « ${_escHtml(query)} » : tu peux quand même lancer l'analyse avec ce nom.</div></div>`;
+    } catch { drop.style.display = 'none'; }
+  }, 300);
+}
+function decisionAcPick(ticker) {
+  const input = document.getElementById('d-name');
+  if (input) input.value = ticker;
+  const drop = document.getElementById('d-ac-drop');
+  if (drop) drop.style.display = 'none';
+  try { updateDecisionCTA(); } catch(e) {}
+}
+
 function acSearch(query) {
   const drop = document.getElementById('ac-drop');
   const clearBtn = document.getElementById('ac-clear');
@@ -2258,8 +2296,7 @@ function acClear() {
 // Close autocomplete on outside click
 document.addEventListener('click', e => {
   if (!e.target.closest('.ac-wrap')) {
-    const drop = document.getElementById('ac-drop');
-    if (drop) drop.style.display = 'none';
+    document.querySelectorAll('#ac-drop, #d-ac-drop').forEach(d => d.style.display = 'none');
   }
 });
 
