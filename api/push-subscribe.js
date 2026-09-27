@@ -70,7 +70,9 @@ module.exports = async function handler(req, res) {
 
     // ── Enregistrement de l'appareil ──
     const sub = body.subscription;
-    if (!sub || typeof sub.endpoint !== 'string' || !sub.keys?.p256dh || !sub.keys?.auth) {
+    // Le serveur enverra des requêtes à cette adresse : uniquement une URL https de service push, jamais une adresse arbitraire
+    if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\/[^\s/]+\//.test(sub.endpoint) || sub.endpoint.length > 1000
+        || !sub.keys?.p256dh || !sub.keys?.auth) {
       return res.status(400).json({ error: 'Abonnement invalide' });
     }
     const row = {

@@ -4913,7 +4913,8 @@ async function saveProfile() {
   profile.horizon = document.getElementById('s-horizon').value;
   profile.risk = document.getElementById('s-risk').value;
   profile.notif = document.getElementById('s-notif')?.value||'daily';
-  if (!isDemo) await sb.from('profiles').upsert({ id:currentUser.id, ...profile });
+  // Seules les préférences partent du navigateur : les colonnes d'abonnement sont réservées au serveur
+  if (!isDemo) await sb.from('profiles').upsert({ id:currentUser.id, bankroll:profile.bankroll, horizon:profile.horizon, risk:profile.risk, notif:profile.notif });
 }
 async function loadPositions() {
   const { data } = await sb.from('positions').select('*').eq('user_id',currentUser.id).order('created_at');
