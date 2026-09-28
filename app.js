@@ -11003,13 +11003,13 @@ function showPremiumWelcome() {
 
 
 // ═══════════════════════════════════════════════════════════
-//  ⚖️ CONTENUS LÉGAUX — BROUILLONS À FAIRE VALIDER PAR UN AVOCAT
-//  Les champs entre [[CROCHETS]] doivent être complétés.
+//  ⚖️ CONTENUS LÉGAUX — À FAIRE VALIDER PAR UN AVOCAT
+//  Reste à compléter : le nom du médiateur de la consommation (CGU/CGV, article 8).
 // ═══════════════════════════════════════════════════════════
 
 // Date de dernière révision des documents contractuels.
 // À METTRE À JOUR à chaque modification substantielle des textes.
-const LEGAL_LAST_UPDATE = '2026-09-13';
+const LEGAL_LAST_UPDATE = '2026-09-28';
 
 function legalDateFR() {
   try {
@@ -11017,10 +11017,7 @@ function legalDateFR() {
   } catch { return LEGAL_LAST_UPDATE; }
 }
 
-// ⚠️ À COMPLÉTER avant tout encaissement réel (bloqué sur la création de la société/EI) :
-// les champs [[...]] ci-dessous (raison sociale, SIREN, adresse, contact) dans "mentions"
-// et "privacy". Tant qu'ils restent entre crochets, l'app n'est pas publiable en Live —
-// les mentions légales réelles sont une obligation (LCEN art. 6-III), pas un détail cosmétique.
+// Identité de l'éditeur : obligation LCEN art. 6-III, à tenir à jour (adresse, contact).
 const LEGAL_DOCS = {
   mentions: {
     title: 'Mentions légales',
@@ -11029,8 +11026,8 @@ const LEGAL_DOCS = {
 <p class="legal-date">Dernière mise à jour : {{LEGAL_DATE}}</p>
 
 <h3>Article 1 — Éditeur du service</h3>
-<p>Le service Kapitaro est édité par [[NOM / RAISON SOCIALE]], [[FORME JURIDIQUE — ex: micro-entreprise, SASU]], immatriculée sous le numéro SIREN [[SIREN]], dont le siège est situé [[ADRESSE COMPLÈTE]].</p>
-<p>Directeur de la publication : [[PRÉNOM NOM]]<br>Contact : [[EMAIL DE CONTACT]]</p>
+<p>Le service Kapitaro est édité par Maxence De Macedo, entrepreneur individuel (EI) exerçant sous le nom commercial Quorvia, immatriculé sous le numéro SIREN 902 642 016, dont le siège est situé 21 Le Routoir, 38240 Meylan, France.</p>
+<p>Directeur de la publication : Maxence De Macedo<br>Contact : contact@kapitaro.fr</p>
 
 <h3>Article 2 — Hébergement</h3>
 <p>Le site est hébergé par Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis.</p>
@@ -11095,7 +11092,7 @@ const LEGAL_DOCS = {
 <p class="legal-date">Dernière mise à jour : {{LEGAL_DATE}}</p>
 
 <h3>Article 1 — Responsable du traitement</h3>
-<p>[[NOM / RAISON SOCIALE]], [[ADRESSE]]. Contact : [[EMAIL]]</p>
+<p>Maxence De Macedo, entrepreneur individuel (nom commercial Quorvia), 21 Le Routoir, 38240 Meylan, France. Contact : contact@kapitaro.fr</p>
 
 <h3>Article 2 — Données collectées</h3>
 <ul>
@@ -11122,7 +11119,7 @@ const LEGAL_DOCS = {
 <p>Les données sont conservées pendant la durée de vie du compte, puis supprimées sous trente (30) jours après sa fermeture. Les factures sont conservées dix (10) ans conformément aux obligations comptables.</p>
 
 <h3>Article 6 — Droits des personnes concernées</h3>
-<p>Conformément au RGPD, vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité. L'export et la suppression de vos données sont accessibles directement depuis vos paramètres, ou sur demande à [[EMAIL]].</p>
+<p>Conformément au RGPD, vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité. L'export et la suppression de vos données sont accessibles directement depuis vos paramètres, ou sur demande à contact@kapitaro.fr.</p>
 <p>Vous pouvez introduire une réclamation auprès de la CNIL (www.cnil.fr).</p>
 
 <h3>Article 7 — Cookies et traceurs</h3>
