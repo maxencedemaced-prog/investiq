@@ -53,7 +53,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260928194235">
+  <link rel="stylesheet" href="style.css?v=20260928194433">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -181,13 +181,13 @@
       <!-- STATS SOCIALES -->
       <div style="display:flex;gap:24px;margin-bottom:36px;flex-wrap:wrap">
         <div>
-          <div style="font-size:22px;font-weight:900;color:#fff" id="hero-count-users">—</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">utilisateurs actifs</div>
+          <div style="font-size:22px;font-weight:900;color:#fff">Gratuit</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">pour commencer</div>
         </div>
         <div style="width:1px;background:rgba(255,255,255,0.1)"></div>
         <div>
-          <div style="font-size:22px;font-weight:900;color:#4ade80" id="hero-count-portf">—</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">portefeuilles suivis</div>
+          <div style="font-size:22px;font-weight:900;color:#4ade80">100 %</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">en français</div>
         </div>
         <div style="width:1px;background:rgba(255,255,255,0.1)"></div>
         <div>
@@ -650,21 +650,7 @@
     resize();
     initParticles();
     draw();
-    animateCount('hero-count-users', 12847, '+');
-    animateCount('hero-count-portf', 8241, '');
     initHeroDashboard();
-  }
-
-  function animateCount(id, target, prefix) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    let current = 0;
-    const step = target / 60;
-    const timer = setInterval(() => {
-      current = Math.min(current + step, target);
-      el.textContent = prefix + Math.floor(current).toLocaleString('fr-FR');
-      if (current >= target) clearInterval(timer);
-    }, 16);
   }
 
   window.addEventListener('resize', () => {
@@ -1897,11 +1883,11 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260928194235"></script>
-<script src="depenses.js?v=20260928194235"></script>
-<script src="bilan-extra.js?v=20260928194235"></script>
-<script src="tab-hints.js?v=20260928194235"></script>
-<script src="push.js?v=20260928194235"></script>
+<script src="app.js?v=20260928194433"></script>
+<script src="depenses.js?v=20260928194433"></script>
+<script src="bilan-extra.js?v=20260928194433"></script>
+<script src="tab-hints.js?v=20260928194433"></script>
+<script src="push.js?v=20260928194433"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
