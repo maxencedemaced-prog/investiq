@@ -7126,7 +7126,7 @@ async function renderHome() {
 
   document.getElementById('home-greeting').textContent = `${greet} ${name} ! ${emoji}`;
   const subEl = document.getElementById('home-date');
-  if (subEl) subEl.textContent = 'Voici la santé de votre portefeuille aujourd\'hui.';
+  if (subEl) subEl.textContent = 'Voici la santé de ton portefeuille aujourd\'hui.';
 
   // Portefeuille vierge : on garde le tableau de bord complet (tout à zéro) et on
   // ajoute l'invitation "Commence ton investissement" EN DESSOUS.
@@ -8243,7 +8243,7 @@ async function renderSante() {
         ${[
           {icon:'🛡️', title:'Bonne diversification globale', sub:dedupPos.length>=8?'Votre portefeuille est bien diversifié sur plusieurs classes d\'actifs.':`${dedupPos.length} position${dedupPos.length>1?'s':''} — vise 8 ou plus pour bien diversifier.`, ok:dedupPos.length>=8, q:`Comment améliorer la diversification de mon portefeuille (${dedupPos.length} positions actuellement) ?`},
           {icon:'⭐', title:'Réduire la concentration', sub:`Envisagez de réduire l'exposition à ${maxPos?maxPos.name:'votre position principale'} (${maxPct}%) pour limiter le risque.`, ok:parseFloat(maxPct)<=25, q:`Comment réduire progressivement mon exposition à ${maxPos?maxPos.name:'ma position principale'} (${maxPct}% de mon portefeuille) ?`},
-          {icon:'📈', title:'Améliorer la performance', sub:'Certaines positions sous-performent le marché. L\'IA peut vous aider.', ok:tpct>=0, q:'Quelles positions sous-performent dans mon portefeuille, et que suggères-tu ?'},
+          {icon:'📈', title:'Améliorer la performance', sub:'Certaines positions sous-performent le marché. L\'IA peut t\'aider.', ok:tpct>=0, q:'Quelles positions sous-performent dans mon portefeuille, et que suggères-tu ?'},
         ].map(c=>`
         <div onclick="askAgentFrom(${JSON.stringify(c.q).replace(/"/g,'&quot;')})" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border-radius:12px;border:1px solid ${border};transition:border-color 0.15s"
           onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='${border}'">
