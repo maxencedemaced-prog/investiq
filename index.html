@@ -48,7 +48,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260927184747">
+  <link rel="stylesheet" href="style.css?v=20260928085016">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -423,6 +423,17 @@
             🔒 Données sécurisées · Aucune carte bancaire requise<br>
             Kapitaro est un outil éducatif — pas un conseiller financier agréé
           </div>
+        </div>
+
+        <!-- TARIFS + DOCUMENTS LÉGAUX (consultables sans compte) -->
+        <div style="margin-top:14px;font-size:11.5px;color:rgba(255,255,255,0.55);line-height:1.6;text-align:center">
+          Gratuit pour commencer · <strong style="color:rgba(255,255,255,0.8)">Premium 9,99 €/mois</strong> ou 79,99 €/an, sans engagement
+        </div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;font-size:11px">
+          <button type="button" onclick="openLegalDoc('cgu')" style="background:none;border:none;padding:0;color:rgba(255,255,255,0.45);text-decoration:underline;cursor:pointer;font:inherit">CGU / CGV</button>
+          <button type="button" onclick="openLegalDoc('mentions')" style="background:none;border:none;padding:0;color:rgba(255,255,255,0.45);text-decoration:underline;cursor:pointer;font:inherit">Mentions légales</button>
+          <button type="button" onclick="openLegalDoc('privacy')" style="background:none;border:none;padding:0;color:rgba(255,255,255,0.45);text-decoration:underline;cursor:pointer;font:inherit">Confidentialité</button>
+          <button type="button" onclick="openLegalDoc('risk')" style="background:none;border:none;padding:0;color:rgba(255,255,255,0.45);text-decoration:underline;cursor:pointer;font:inherit">Risques</button>
         </div>
       </div>
     </div>
@@ -1868,11 +1879,11 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260927184747"></script>
-<script src="depenses.js?v=20260927184747"></script>
-<script src="bilan-extra.js?v=20260927184747"></script>
-<script src="tab-hints.js?v=20260927184747"></script>
-<script src="push.js?v=20260927184747"></script>
+<script src="app.js?v=20260928085016"></script>
+<script src="depenses.js?v=20260928085016"></script>
+<script src="bilan-extra.js?v=20260928085016"></script>
+<script src="tab-hints.js?v=20260928085016"></script>
+<script src="push.js?v=20260928085016"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
