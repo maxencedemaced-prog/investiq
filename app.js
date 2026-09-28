@@ -11075,7 +11075,7 @@ function showPremiumWelcome() {
 
 // Date de dernière révision des documents contractuels.
 // À METTRE À JOUR à chaque modification substantielle des textes.
-const LEGAL_LAST_UPDATE = '2026-09-28';
+const LEGAL_LAST_UPDATE = '2026-09-29';
 
 function legalDateFR() {
   try {
@@ -11190,7 +11190,7 @@ const LEGAL_DOCS = {
 
 <h3>Article 7 — Cookies et traceurs</h3>
 <p>Kapitaro n'utilise <strong>aucun cookie publicitaire ni traceur tiers</strong>. Seul le stockage local strictement nécessaire au fonctionnement (session, préférences d'affichage, cache) est utilisé — il ne requiert pas de consentement préalable.</p>
-<p>La fréquentation du site est mesurée par Vercel Web Analytics, de manière anonyme et agrégée, <strong>sans cookie</strong> ni identification des visiteurs. Les statistiques d'utilisation des comptes connectés servent uniquement à améliorer le service et ne sont ni vendues ni partagées.</p>
+<p>La fréquentation du site est mesurée par Vercel Web Analytics, de manière anonyme et agrégée, <strong>sans cookie</strong> ni identification des visiteurs. Les statistiques d'utilisation des comptes connectés servent uniquement à améliorer le service et ne sont ni vendues ni partagées. En cas de bug, un rapport technique est enregistré (message d'erreur, page concernée, navigateur utilisé, et compte s'il est connecté) afin de corriger le problème ; il ne contient aucune donnée que tu as saisie et est effacé après 90 jours.</p>
 `
   },
 

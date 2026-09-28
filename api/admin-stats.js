@@ -133,6 +133,38 @@ export default async function handler(req, res) {
     const aiTotalCost = (aiRows || []).reduce((s, r) => s + (r.cost_usd || 0), 0);
     const aiTotalCalls = (aiRows || []).length;
 
+    // ── Bugs rencontrés par les visiteurs (30 derniers jours), regroupés par erreur identique ──
+    const errors = await (async () => {
+      const since30 = new Date(Date.now() - 30 * DAY).toISOString();
+      // Ménage : on ne garde que 90 jours d'erreurs
+      supabaseAdmin.from('client_errors').delete().lt('created_at', new Date(Date.now() - 90 * DAY).toISOString()).then(() => {}, () => {});
+      const { data: rows, error } = await supabaseAdmin.from('client_errors')
+        .select('created_at, user_id, kind, message, source, line, page, app_version, user_agent, stack')
+        .gte('created_at', since30).order('created_at', { ascending: false }).limit(5000);
+      if (error) return { disponible: false, raison: error.message };
+      const groups = {};
+      const daily = {};
+      for (const r of rows || []) {
+        const key = `${r.message}|${r.source || ''}|${r.line || ''}`;
+        const g = groups[key] = groups[key] || { message: r.message, source: r.source, line: r.line, kind: r.kind, count: 0, users: new Set(), pages: new Set(), last_seen: r.created_at, version: r.app_version, user_agent: r.user_agent, stack: r.stack };
+        g.count++;
+        g.users.add(r.user_id || 'visiteur');
+        if (r.page) g.pages.add(r.page);
+        daily[dayOf(r.created_at)] = (daily[dayOf(r.created_at)] || 0) + 1;
+      }
+      const top = Object.values(groups).sort((a, b) => b.count - a.count).slice(0, 25)
+        .map(g => ({ ...g, users: g.users.size, pages: [...g.pages].slice(0, 5) }));
+      const since24 = Date.now() - DAY, since7 = Date.now() - 7 * DAY;
+      return {
+        disponible: true,
+        total_24h: (rows || []).filter(r => new Date(r.created_at) >= since24).length,
+        total_7j: (rows || []).filter(r => new Date(r.created_at) >= since7).length,
+        total_30j: (rows || []).length,
+        par_jour: last30.map(d => ({ day: d, count: daily[d] || 0 })),
+        top,
+      };
+    })().catch(e => ({ disponible: false, raison: e.message }));
+
     res.status(200).json({
       generated_at: new Date().toISOString(),
       users: { total: totalUsers, premium: payingNow.length, signups_7j: signups7, signups_30j: signups30,
@@ -160,6 +192,7 @@ export default async function handler(req, res) {
         push_devices: pushCount || 0,
       },
       ai: { total_calls_90j: aiTotalCalls, total_cost_usd_90j: Math.round(aiTotalCost * 100) / 100 },
+      errors,
     });
   } catch (e) {
     console.error('[admin-stats]', e.message);
