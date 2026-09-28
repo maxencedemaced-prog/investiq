@@ -14,8 +14,9 @@
     }
   ],
   "functions": {
-    "api/claude.js": { "maxDuration": 60 },
-    "api/parse-statement.js": { "maxDuration": 60 }
+    "api/claude.js": { "maxDuration": 120 },
+    "api/parse-statement.js": { "maxDuration": 120 },
+    "api/push-send.js": { "maxDuration": 120 }
   },
   "crons": [
     {
@@ -24,7 +25,7 @@
     },
     {
       "path": "/api/push-send?mode=alerts",
-      "schedule": "0 15 * * 1-5"
+      "schedule": "*/15 7-17 * * 1-5"
     }
   ],
   "rewrites": [

@@ -1,12 +1,9 @@
-# Alertes de prix « en journée » gratuites : GitHub appelle l'API toutes les 30 minutes pendant les heures de marché.
-# (Sur l'offre gratuite de Vercel, un cron ne peut tourner qu'une fois par jour.)
-# À configurer une fois : GitHub > Settings > Secrets and variables > Actions > New repository secret
-#   CRON_SECRET  = la même valeur que la variable CRON_SECRET de Vercel   (obligatoire)
-#   APP_URL      = https://kapitaro.fr                                    (facultatif : c'est la valeur par défaut)
+# Déclenchement MANUEL uniquement (bouton « Run workflow » dans GitHub > Actions), pour tester un envoi d'alertes.
+# Les alertes automatiques passent désormais par les crons Vercel Pro (vercel.json, toutes les 15 min en heures de bourse) :
+# ne pas remettre de « schedule » ici, sinon les alertes seraient vérifiées deux fois.
+# Secrets GitHub nécessaires : CRON_SECRET (même valeur que sur Vercel), APP_URL facultatif (https://kapitaro.fr par défaut).
 name: Alertes de prix
 on:
-  schedule:
-    - cron: '*/30 7-17 * * 1-5'   # UTC : ~9h–19h à Paris, du lundi au vendredi
   workflow_dispatch: {}
 jobs:
   alerts:
