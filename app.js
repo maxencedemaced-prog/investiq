@@ -2807,7 +2807,8 @@ function obApplyPreset(capital, monthly, target) {
 // Part d'actions proposée par défaut selon le niveau choisi à l'étape 1
 function obDefaultStockPct() {
   const p = OB_PROFILES[obProfileLevel];
-  return p && p.defaultRisk === 'eleve' ? 60 : p && p.defaultRisk === 'faible' ? 15 : 30;
+  // Débutant ('faible') : 0 % d'actions, comme promis à l'étape 1 (« 100% ETF monde »)
+  return p && p.defaultRisk === 'eleve' ? 60 : p && p.defaultRisk === 'faible' ? 0 : 30;
 }
 
 // Valeur dans 10 ans, capitalisation mensuelle (même formule que la page Objectif)
@@ -2827,7 +2828,7 @@ function obUpdateBudgetPreview() {
     // Rendement du profil proposé à l'étape suivante : les chiffres restent les mêmes jusqu'à la page Objectif
     const r = riskFromStockPct(obDefaultStockPct());
     const fv = obProjection10y(capital, monthly, r.rate);
-    const lbl = document.getElementById('ob-preview-label');
+    const lbl = document.getElementById('ob-projection-label');
     if (lbl) lbl.textContent = `Projection à ${r.rate} %/an (profil ${r.label.toLowerCase()})`;
     preview.style.display = 'block';
     const onTrack = target > 0 && fv >= target;
