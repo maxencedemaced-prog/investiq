@@ -171,37 +171,81 @@ async function pushBellPromptHTML() {
   </div>`;
 }
 
-// ── « Installer l'app » sur la page de connexion ──
+// ── « Installer l'app » : page de connexion, bandeau de l'Accueil (connecté, sur téléphone) et ligne des Paramètres ──
 // Android / ordinateur (Chrome, Edge) : vraie installation en un clic via l'événement beforeinstallprompt (capté dans index.html).
 // iPhone / iPad : Apple ne permet pas d'installer par un bouton, on explique le geste Partager → « Sur l'écran d'accueil ».
-const INSTALL_DISMISS_KEY = 'iq_install_dismissed';
-const appIsInstalled = () => window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+const INSTALL_DISMISS_KEY = 'iq_install_dismissed';            // bloc de la page de connexion
+const INSTALL_HOME_DISMISS_KEY = 'iq_install_home_dismissed';  // bandeau de l'Accueil (utilisateur connecté)
+const appIsInstalled = () => window._appJustInstalled === true || window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
 const isMobileDevice = () => /android|mobile/i.test(navigator.userAgent);
 const isIOSDevice = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const installDismissedRecently = key => { try { return Date.now() - Number(localStorage.getItem(key) || 0) < 14 * 86400000; } catch { return false; } };
+
+// 'prompt' (bouton d'installation en un clic) | 'ios' | 'android' (geste expliqué) | null (déjà installée ou impossible)
+function installMode() {
+  if (appIsInstalled()) return null;
+  if (window._installEvt) return 'prompt';
+  if (isIOSDevice()) return 'ios';
+  if (isMobileDevice()) return 'android';
+  return null;   // ordinateur sans installation possible (ex. Firefox, Safari)
+}
+
+// Explication du geste ; strong = couleur du texte mis en avant (blanc sur la page de connexion sombre)
+function installHowHTML(mode, strong) {
+  const s = t => `<strong${strong ? ` style="color:${strong}"` : ''}>${t}</strong>`;
+  if (mode === 'ios') return `Touche ${s('Partager')} <span style="font-size:13px">⬆️</span> (en bas dans Safari, en haut dans Chrome), puis ${s('« Sur l\'écran d\'accueil »')}.`;
+  if (mode === 'android') return `Ouvre le menu ${s('⋮')} de ton navigateur, puis ${s('« Installer l\'application »')} ou ${s('« Ajouter à l\'écran d\'accueil »')}.`;
+  return "Sur ton écran d'accueil, en plein écran, avec les notifications. Gratuit, sans passer par un magasin d'applications.";
+}
 
 function installAppRender() {
+  const mode = installMode();
+
+  // 1) Page de connexion
   const box = document.getElementById('install-app-box');
-  if (!box) return;
-  let dismissedRecently = false;
-  try { dismissedRecently = Date.now() - Number(localStorage.getItem(INSTALL_DISMISS_KEY) || 0) < 14 * 86400000; } catch {}
-  if (appIsInstalled() || dismissedRecently) { box.style.display = 'none'; return; }
-  const btn = document.getElementById('install-app-btn');
-  const text = document.getElementById('install-app-text');
-  if (window._installEvt) {
-    btn.style.display = 'block';
-    text.textContent = "Sur ton écran d'accueil, en plein écran, avec les notifications. Gratuit, sans passer par un magasin d'applications.";
-    box.style.display = 'block';
-  } else if (isIOSDevice()) {
-    btn.style.display = 'none';
-    text.innerHTML = 'Touche <strong style="color:#fff">Partager</strong> <span style="font-size:13px">⬆️</span> (en bas dans Safari, en haut dans Chrome), puis <strong style="color:#fff">« Sur l\'écran d\'accueil »</strong>.';
-    box.style.display = 'block';
-  } else if (isMobileDevice()) {
-    // Android sans signal d'installation (Samsung Internet, Firefox, Chrome qui n'a pas encore réagi…) : on explique le geste.
-    btn.style.display = 'none';
-    text.innerHTML = 'Ouvre le menu <strong style="color:#fff">⋮</strong> de ton navigateur, puis <strong style="color:#fff">« Installer l\'application »</strong> ou <strong style="color:#fff">« Ajouter à l\'écran d\'accueil »</strong>.';
-    box.style.display = 'block';
-  } else {
-    box.style.display = 'none';   // ordinateur sans installation possible (ex. Firefox, Safari)
+  if (box) {
+    if (!mode || installDismissedRecently(INSTALL_DISMISS_KEY)) box.style.display = 'none';
+    else {
+      document.getElementById('install-app-btn').style.display = mode === 'prompt' ? 'block' : 'none';
+      document.getElementById('install-app-text').innerHTML = installHowHTML(mode, '#fff');
+      box.style.display = 'block';
+    }
+  }
+
+  // 2) Bandeau de l'Accueil : seulement sur téléphone (sur ordinateur, la ligne des Paramètres suffit)
+  const banner = document.getElementById('home-install-banner');
+  if (banner) {
+    const mobile = isMobileDevice() || isIOSDevice();
+    if (!mode || !mobile || installDismissedRecently(INSTALL_HOME_DISMISS_KEY)) { banner.style.display = 'none'; banner.innerHTML = ''; }
+    else {
+      banner.innerHTML = `<div class="install-banner">
+        <img src="icons/kapitaro-tile.svg" alt="">
+        <div style="flex:1;min-width:0">
+          <div class="install-banner-title">Installe l'app Kapitaro</div>
+          <div class="install-banner-text">${installHowHTML(mode)}</div>
+          ${mode === 'prompt' ? '<button type="button" class="set-pill primary" style="margin-top:8px" onclick="installApp()">📲 Installer l\'app</button>' : ''}
+        </div>
+        <button type="button" class="install-banner-x" onclick="installHomeDismiss()" aria-label="Masquer">✕</button>
+      </div>`;
+      banner.style.display = 'block';
+    }
+  }
+
+  // 3) Ligne « Installer l'app » des Paramètres : toujours là tant que ce n'est pas installé
+  const wrap = document.getElementById('set-install-wrap');
+  const body = document.getElementById('set-install-body');
+  if (wrap && body) {
+    if (!mode) { wrap.style.display = 'none'; body.innerHTML = ''; }
+    else {
+      body.innerHTML = `<div class="set-row">
+        <div class="set-row-main">
+          <div class="set-row-title">Installer l'app sur cet appareil</div>
+          <div class="set-row-sub">${installHowHTML(mode)}</div>
+        </div>
+        ${mode === 'prompt' ? '<div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="installApp()">Installer</button></div>' : ''}
+      </div>`;
+      wrap.style.display = 'block';
+    }
   }
 }
 
@@ -211,23 +255,28 @@ async function installApp() {
   evt.prompt();
   let outcome = 'dismissed';
   try { outcome = (await evt.userChoice).outcome; } catch {}
-  window._installEvt = null;
+  window._installEvt = null;   // un événement ne sert qu'une fois ; le navigateur en renverra un si besoin
   if (outcome === 'accepted') {
+    window._appJustInstalled = true;
     try { window.va && window.va('event', { name: 'app_install_accepted' }); } catch {}
-    document.getElementById('install-app-box').style.display = 'none';
-  } else {
-    installAppRender();
   }
+  installAppRender();
 }
 
 function installAppDismiss() {
   try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch {}
-  document.getElementById('install-app-box').style.display = 'none';
+  installAppRender();
+}
+
+function installHomeDismiss() {
+  try { localStorage.setItem(INSTALL_HOME_DISMISS_KEY, String(Date.now())); } catch {}
+  installAppRender();
 }
 
 window.addEventListener('kapitaro-installable', installAppRender);
 window.addEventListener('appinstalled', () => {
+  window._appJustInstalled = true;
   try { window.va && window.va('event', { name: 'app_installed' }); } catch {}
-  const box = document.getElementById('install-app-box'); if (box) box.style.display = 'none';
+  installAppRender();
 });
 installAppRender();

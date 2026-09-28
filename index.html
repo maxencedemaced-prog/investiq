@@ -53,7 +53,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260928233000">
+  <link rel="stylesheet" href="style.css?v=20260929001500">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1100,6 +1100,8 @@ window.addEventListener('load', function() {
           </button>
         </div>
       </div>
+      <!-- Proposition d'installer l'app (téléphone, navigateur, app pas encore installée) : rempli par push.js -->
+      <div id="home-install-banner" style="display:none"></div>
       <div class="metrics-grid" id="home-metrics"></div>
       <div id="home-score"></div>
       <div id="home-alerts" style="display:none"></div>
@@ -1832,6 +1834,12 @@ window.addEventListener('load', function() {
         </div>
         <div class="set-note">L'IA s'en sert pour adapter ses conseils. Enregistré automatiquement.</div>
 
+        <!-- APPLICATION : affiché tant que l'app n'est pas installée sur cet appareil (rempli par push.js) -->
+        <div id="set-install-wrap" style="display:none">
+          <div class="set-label">Application</div>
+          <div class="set-group" id="set-install-body"></div>
+        </div>
+
         <!-- APPARENCE -->
         <div class="set-label">Apparence</div>
         <div class="set-group">
@@ -1937,11 +1945,11 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260928233000"></script>
+<script src="app.js?v=20260929002000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20260928233000"></script>
-<script src="push.js?v=20260928233000"></script>
+<script src="push.js?v=20260929001500"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
