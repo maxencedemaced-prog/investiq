@@ -1956,3 +1956,12 @@ button.set-row:hover{background:var(--color-bg-subtle)}
 .install-banner-text{font-size:12px;color:var(--color-text-secondary);line-height:1.45;margin-top:1px}
 .install-banner-text strong{color:var(--color-text)}
 .install-banner-x{background:none;border:none;color:var(--color-text-tertiary);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0;align-self:flex-start}
+
+/* Tutoriel, étape 1 : cartes de niveau alignées (icône · texte à gauche · coche à droite) */
+.ob-level-row{display:flex;align-items:center;gap:12px;text-align:left;flex:1 1 auto;width:100%}
+.ob-level-icon{font-size:24px;width:36px;text-align:center;flex-shrink:0}
+.ob-level-main{flex:1 1 auto;min-width:0;text-align:left}
+.ob-level-title{font-weight:800;font-size:14px;color:#1c1c1e}
+.ob-level-sub{font-size:12px;color:#8e8e93;line-height:1.4;margin-top:1px}
+.ob-level-row .ob-profile-check{margin-left:auto}
+[data-theme="dark"] .ob-level-title{color:var(--color-text)}
