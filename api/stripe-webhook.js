@@ -39,6 +39,16 @@ function planFromSub(sub) {
   return null; // prix inconnu (changé manuellement dans Stripe, etc.) : on ne devine pas
 }
 
+// Abonnement lié à une facture. Les versions récentes de l'API Stripe (2025+) ne renvoient plus
+// invoice.subscription : l'information est dans invoice.parent.subscription_details.
+function invoiceSubscriptionId(invoice) {
+  const s = invoice?.subscription
+    || invoice?.parent?.subscription_details?.subscription
+    || invoice?.lines?.data?.[0]?.parent?.subscription_item_details?.subscription
+    || invoice?.lines?.data?.[0]?.subscription;
+  return typeof s === 'string' ? s : s?.id || null;
+}
+
 // Retrouve l'utilisateur : d'abord par metadata, sinon par customer Stripe
 async function findUserId(subscriptionOrSession) {
   const meta = subscriptionOrSession.metadata?.user_id
@@ -114,9 +124,9 @@ export default async function handler(req, res) {
 
       // ── Renouvellement mensuel réussi : on prolonge la période ──
       case 'invoice.payment_succeeded': {
-        const invoice = event.data.object;
-        if (!invoice.subscription) break;
-        const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+        const subId = invoiceSubscriptionId(event.data.object);
+        if (!subId) break;
+        const sub = await stripe.subscriptions.retrieve(subId);
         const userId = await findUserId(sub);
         if (!userId) break;
         await setPremium(userId, {
@@ -131,9 +141,9 @@ export default async function handler(req, res) {
       // ── Échec de paiement : on garde l'accès jusqu'à la fin de période payée ──
       // (Stripe relance automatiquement ; la résiliation viendra si l'échec persiste)
       case 'invoice.payment_failed': {
-        const invoice = event.data.object;
-        if (!invoice.subscription) break;
-        const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+        const subId = invoiceSubscriptionId(event.data.object);
+        if (!subId) break;
+        const sub = await stripe.subscriptions.retrieve(subId);
         const userId = await findUserId(sub);
         if (!userId) break;
         await setPremium(userId, {
