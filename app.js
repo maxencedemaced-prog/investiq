@@ -4657,7 +4657,22 @@ window.addEventListener('DOMContentLoaded', async () => {
 // ── Caches du navigateur : rattachés à UN compte ──
 // Briefing, verdict, signaux, plan… sont stockés en localStorage. Sans nettoyage, ils passaient
 // d'un compte (ou du mode démo) à l'autre et affichaient le portefeuille de quelqu'un d'autre.
-const KEEP_CACHE = /^(iq_theme|iq_logo_domains|iq_last_page|iq_legal_accepted|iq_onboarded|iq_cache_uid|iq_seen_|iq_bilan_|iq_depenses_)/;
+const KEEP_CACHE = /^(iq_theme|iq_logo_domains|iq_last_page|iq_legal_accepted|iq_onboarded|iq_cache_uid|iq_seen_|iq_bilan_|iq_depenses_|iq_reset_seen_)/;
+
+// Compte remis à zéro depuis Supabase (profiles.data_reset_at) : on efface aussi les copies gardées sur l'appareil
+// (bilan, dépenses, tutoriel, bulles d'aide…), une seule fois par remise à zéro.
+function applyAccountReset(resetAt) {
+  if (!resetAt || !currentUser) return;
+  const seenKey = 'iq_reset_seen_' + currentUser.id;
+  try {
+    if (localStorage.getItem(seenKey) === String(resetAt)) return;
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('iq_') && !/^(iq_theme|iq_logo_domains|iq_cache_uid|iq_reset_seen_|iq_legal_accepted)/.test(k))
+      .forEach(k => localStorage.removeItem(k));
+    localStorage.setItem(seenKey, String(resetAt));
+    try { updateNavDots(); updateMenuDot(); } catch(e) {}
+  } catch {}
+}
 function clearUserCaches() {
   try {
     Object.keys(localStorage)
@@ -4907,6 +4922,7 @@ async function changePassword() {
 async function loadProfile() {
   const { data } = await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   if (data) {
+    applyAccountReset(data.data_reset_at);
     profile = { bankroll: data.bankroll||5000, horizon: data.horizon||'moyen', risk: data.risk||'faible', notif: data.notif||'daily',
                 is_premium: data.is_premium || data.premium || false,
                 premium_until: data.premium_until || data.subscription_end || null,
