@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulateur d'intérêts composés gratuit (versements mensuels) — Kapitaro</title>
+  <meta name="description" content="Calcule gratuitement ce que devient ton épargne grâce aux intérêts composés : capital de départ, versement mensuel, durée et rendement. Graphique et tableau année par année.">
+  <link rel="canonical" href="https://kapitaro.fr/simulateur-interets-composes">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/simulateur-interets-composes">
+  <meta property="og:title" content="Simulateur d'intérêts composés gratuit — Kapitaro">
+  <meta property="og:description" content="Capital de départ, versement mensuel, durée, rendement : vois en un instant ce que les intérêts composés font de ton épargne.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Simulateur d'intérêts composés — Kapitaro",
+        "url": "https://kapitaro.fr/simulateur-interets-composes",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "fr",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Comment calculer des intérêts composés ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Chaque période, les intérêts sont calculés sur le capital de départ et sur les intérêts déjà gagnés. Pour un capital C placé à un taux annuel r pendant n années, on obtient C × (1 + r)^n. Avec des versements mensuels, on additionne la valeur finale de chaque versement : le simulateur fait ce calcul pour toi." } },
+          { "@type": "Question", "name": "Combien rapportent 100 € par mois pendant 20 ans ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Avec un rendement hypothétique de 5 % par an, 100 € versés chaque mois pendant 20 ans (24 000 € au total) donnent environ 41 100 €, dont environ 17 100 € d'intérêts. Ce rendement n'est pas garanti." } },
+          { "@type": "Question", "name": "Quelle est la règle des 72 ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "En divisant 72 par le taux de rendement annuel, on obtient le nombre d'années approximatif pour doubler un capital. À 6 % par an, un capital double en environ 12 ans." } },
+          { "@type": "Question", "name": "Quel rendement annuel utiliser dans une simulation ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Cela dépend du placement : un livret réglementé rapporte peu mais sans risque, un fonds en euros un peu plus, et les actions ou ETF davantage sur le long terme mais avec des baisses possibles. Mieux vaut tester plusieurs hypothèses prudentes, les performances passées ne préjugeant pas des performances futures." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    :root{
+      --bg:#f7f8fa; --surface:#fff; --text:#0b1220; --muted:#5b6475; --faint:#8a93a3; --border:#e4e7ec;
+      --green:#16a34a; --green-soft:rgba(22,163,74,.1); --invested:#94a3b8; --navy:#080e1e;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{ --bg:#080c10; --surface:#131920; --text:#e6edf3; --muted:#9aa4b2; --faint:#6e7681; --border:#1e2d3d; --green-soft:rgba(22,163,74,.16); --invested:#475569; }
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+    a{color:var(--green)}
+    .top{background:var(--navy);color:#fff}
+    .top-in{max-width:960px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none;font-weight:800;font-size:17px}
+    .brand img{width:30px;height:30px;border-radius:8px}
+    .top-cta{background:var(--green);color:#fff;text-decoration:none;font-weight:700;font-size:13.5px;padding:9px 14px;border-radius:10px;white-space:nowrap}
+    .hero{background:var(--navy);color:#fff;padding:18px 16px 70px}
+    .hero-in{max-width:960px;margin:0 auto}
+    h1{font-size:clamp(26px,5vw,40px);line-height:1.15;letter-spacing:-.03em;margin:6px 0 10px}
+    .hero p{color:rgba(255,255,255,.65);font-size:16px;max-width:640px;margin:0}
+    main{max-width:960px;margin:-50px auto 0;padding:0 16px 40px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+    .sim{display:grid;grid-template-columns:1fr 1.25fr;gap:22px}
+    @media (max-width:760px){.sim{grid-template-columns:1fr}}
+    .presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+    .presets button{font:inherit;font-size:12.5px;font-weight:700;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:6px 11px;border-radius:99px;cursor:pointer}
+    .presets button:hover{border-color:var(--green)}
+    .field{margin-bottom:16px}
+    .field-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+    .field label{font-size:13.5px;font-weight:700}
+    .field-val{display:flex;align-items:center;gap:4px}
+    .field input[type=number]{width:108px;font:inherit;font-weight:700;font-size:14px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)}
+    .field .unit{font-size:13px;color:var(--muted);min-width:34px}
+    input[type=range]{width:100%;accent-color:var(--green)}
+    .result-total{font-size:clamp(30px,6vw,42px);font-weight:900;letter-spacing:-.04em;line-height:1.1}
+    .result-sub{font-size:13.5px;color:var(--muted);margin-top:4px}
+    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
+    .kpi{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center}
+    .kpi b{display:block;font-size:17px;letter-spacing:-.02em;white-space:nowrap}
+    @media (max-width:420px){.kpi{padding:9px 4px}.kpi b{font-size:14px}.kpi span{font-size:10px}}
+    .kpi span{font-size:11px;color:var(--muted);font-weight:600}
+    .kpi.gain b{color:var(--green)}
+    .chart{width:100%;height:auto;display:block}
+    .legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:6px}
+    .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+    details{margin-top:16px}
+    summary{cursor:pointer;font-weight:700;font-size:14px}
+    table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+    th,td{padding:7px 6px;border-bottom:1px solid var(--border);text-align:right}
+    th:first-child,td:first-child{text-align:left}
+    th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+    .content{max-width:720px;margin:36px auto 0}
+    .content h2{font-size:23px;letter-spacing:-.02em;line-height:1.25;margin:34px 0 10px}
+    .content p,.content li{font-size:15.5px;color:var(--text)}
+    .content .muted{color:var(--muted)}
+    .formula{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-family:'SF Mono',Consolas,monospace;font-size:14.5px;overflow-x:auto}
+    .example{background:var(--green-soft);border-left:3px solid var(--green);border-radius:10px;padding:12px 16px}
+    .cta{margin:40px auto 0;max-width:720px;background:var(--navy);color:#fff;border-radius:18px;padding:24px;text-align:center}
+    .cta h2{margin:0 0 6px;font-size:22px}
+    .cta p{color:rgba(255,255,255,.65);margin:0 0 16px}
+    .cta a{display:inline-block;background:var(--green);color:#fff;text-decoration:none;font-weight:800;padding:12px 20px;border-radius:12px}
+    .faq h3{font-size:16.5px;margin:22px 0 4px}
+    footer{max-width:720px;margin:36px auto 0;padding:0 16px 40px;font-size:12px;color:var(--faint);line-height:1.6}
+    footer a{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Simulateur d'intérêts composés</h1>
+      <p>Capital de départ, versement mensuel, durée et rendement : vois en un instant ce que devient ton épargne quand tes intérêts rapportent à leur tour des intérêts.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Exemples">
+            <button type="button" data-preset="0,100,20,5">100 €/mois, 20 ans</button>
+            <button type="button" data-preset="1000,200,15,5">1 000 € + 200 €/mois</button>
+            <button type="button" data-preset="10000,0,20,5">10 000 € placés</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="c">Capital de départ</label><span class="field-val"><input type="number" id="c-n" min="0" max="1000000" step="100" aria-label="Capital de départ en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="c" min="0" max="100000" step="500" value="1000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="m">Versement mensuel</label><span class="field-val"><input type="number" id="m-n" min="0" max="20000" step="10" aria-label="Versement mensuel en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="m" min="0" max="3000" step="10" value="200">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="y">Durée</label><span class="field-val"><input type="number" id="y-n" min="1" max="60" step="1" aria-label="Durée en années"><span class="unit">ans</span></span></div>
+            <input type="range" id="y" min="1" max="50" step="1" value="20">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="r">Rendement annuel moyen</label><span class="field-val"><input type="number" id="r-n" min="0" max="20" step="0.1" aria-label="Rendement annuel en pourcentage"><span class="unit">%/an</span></span></div>
+            <input type="range" id="r" min="0" max="12" step="0.1" value="5">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Capital final estimé</div>
+          <div class="result-total" id="out-total">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-invested">—</b><span>Total versé</span></div>
+            <div class="kpi gain"><b id="out-gain">—</b><span>Intérêts gagnés</span></div>
+            <div class="kpi"><b id="out-mult">—</b><span>Multiplicateur</span></div>
+          </div>
+          <svg class="chart" id="chart" viewBox="0 0 520 220" role="img" aria-label="Évolution du capital : versements et intérêts composés"></svg>
+          <div class="legend"><span><i style="background:var(--invested)"></i>Argent versé</span><span><i style="background:var(--green)"></i>Intérêts composés</span></div>
+        </div>
+      </div>
+      <details>
+        <summary>Voir le détail année par année</summary>
+        <div style="overflow-x:auto"><table><thead><tr><th>Année</th><th>Total versé</th><th>Intérêts cumulés</th><th>Capital</th></tr></thead><tbody id="table"></tbody></table></div>
+      </details>
+    </div>
+
+    <article class="content">
+      <h2>Comment fonctionnent les intérêts composés ?</h2>
+      <p>Avec des intérêts <strong>simples</strong>, tu gagnes chaque année la même somme, calculée sur ton seul capital de départ. Avec des intérêts <strong>composés</strong>, les intérêts gagnés s'ajoutent au capital et rapportent à leur tour des intérêts l'année suivante. C'est un effet « boule de neige » : lent au début, puis de plus en plus fort avec le temps.</p>
+      <p>Placés à 5 % par an, 10 000 € rapportent un peu plus de 500 € la première année. Mais la dixième année, ils rapportent bien plus, parce que les intérêts se calculent sur un capital qui a déjà grossi. Au bout de 20 ans, avec des intérêts capitalisés chaque mois, ces 10 000 € deviennent environ <strong>27 100 €</strong>, sans aucun versement supplémentaire.</p>
+
+      <h2>La formule de calcul des intérêts composés</h2>
+      <p>Pour un capital placé en une seule fois :</p>
+      <div class="formula">Capital final = Capital de départ × (1 + taux)<sup>nombre de périodes</sup></div>
+      <p>Si tu verses une somme chaque mois, chaque versement grandit pendant un temps différent : le premier pendant toute la durée, le dernier presque pas. Le simulateur additionne tout ça pour toi, avec des intérêts calculés chaque mois (taux annuel ÷ 12).</p>
+
+      <h2>Exemple : 100 € par mois pendant 20 ans</h2>
+      <div class="example">
+        <p style="margin:0">Tu mets <strong>100 € de côté chaque mois</strong> pendant <strong>20 ans</strong>, soit <strong>24 000 €</strong> versés au total. Avec un rendement moyen hypothétique de 5 % par an, tu obtiens environ <strong>41 100 €</strong> : plus de <strong>17 000 €</strong> viennent uniquement des intérêts composés.</p>
+      </div>
+      <p>Le temps compte encore plus que le montant. 200 € par mois à 5 % pendant 30 ans donnent environ 166 500 €. Les mêmes 200 € pendant 40 ans donnent environ <strong>305 200 €</strong>, presque le double, pour seulement 24 000 € versés en plus. D'où le conseil classique : commencer tôt, même avec de petites sommes.</p>
+
+      <h2>Intérêts composés et investissement programmé (DCA)</h2>
+      <p>Verser la même somme chaque mois, quoi qu'il arrive sur les marchés, s'appelle l'investissement programmé (ou DCA, pour <em>dollar-cost averaging</em>). Cette méthode lisse ton prix d'achat dans le temps et évite d'essayer de deviner le « bon moment ». Combinée aux intérêts composés et aux dividendes réinvestis, c'est l'une des façons les plus simples de faire grandir une épargne sur le long terme.</p>
+
+      <h2>La règle des 72</h2>
+      <p>Pour estimer de tête le temps nécessaire pour doubler un capital, divise 72 par le rendement annuel. À 6 % par an, un capital double en environ 12 ans. À 3 %, il faut environ 24 ans.</p>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>Quel rendement annuel utiliser dans ma simulation ?</h3>
+        <p>Cela dépend du placement. Un livret réglementé rapporte peu mais sans risque, un fonds en euros un peu plus. Les actions et les ETF ont historiquement rapporté davantage sur de longues périodes, mais avec des baisses parfois fortes en chemin. Teste plusieurs hypothèses, en restant prudent : les performances passées ne préjugent pas des performances futures.</p>
+        <h3>Les impôts et les frais sont-ils pris en compte ?</h3>
+        <p>Non. Le simulateur montre un rendement brut. Selon ton enveloppe (livret, assurance vie, PEA, compte-titres), la fiscalité et les frais réduisent le résultat final. Pour une comparaison réaliste, tu peux baisser un peu le rendement.</p>
+        <h3>L'inflation est-elle prise en compte ?</h3>
+        <p>Non plus : les montants sont en euros « courants ». Pour raisonner en pouvoir d'achat, retire environ l'inflation attendue du rendement (par exemple 5 % − 2 % = 3 %).</p>
+        <h3>Est-ce que ce simulateur est gratuit ?</h3>
+        <p>Oui, sans inscription. Pour suivre ton vrai portefeuille, te fixer un objectif et recevoir des alertes, tu peux créer un compte Kapitaro gratuit.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Passe de la simulation à ton vrai portefeuille</h2>
+      <p>Suis tes actions et ETF en direct, fixe-toi un objectif et pose tes questions à un assistant IA. Gratuit pour commencer.</p>
+      <a href="/" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Simulation indicative à but pédagogique, basée sur un rendement constant hypothétique. Elle ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital ; les performances passées ne préjugent pas des performances futures.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var ids = ['c', 'm', 'y', 'r'];
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+
+    function project(c, m, y, r) {
+      var i = r / 100 / 12, rows = [], cap = c, inv = c;
+      for (var year = 1; year <= y; year++) {
+        for (var k = 0; k < 12; k++) { cap = cap * (1 + i) + m; inv += m; }
+        rows.push({ year: year, inv: inv, cap: cap });
+      }
+      return rows;
+    }
+
+    function draw(rows, c) {
+      var svg = document.getElementById('chart'), W = 520, H = 220, L = 8, R = 8, T = 10, B = 24;
+      var max = rows.length ? rows[rows.length - 1].cap : 1; if (max <= 0) max = 1;
+      var pts = [{ year: 0, inv: c, cap: c }].concat(rows);
+      var x = function (k) { return L + (W - L - R) * k / (pts.length - 1 || 1); };
+      var yv = function (v) { return T + (H - T - B) * (1 - v / max); };
+      var line = function (key) { return pts.map(function (p, k) { return (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + yv(p[key]).toFixed(1); }).join(''); };
+      var base = 'L' + x(pts.length - 1).toFixed(1) + ',' + yv(0) + 'L' + x(0).toFixed(1) + ',' + yv(0) + 'Z';
+      var step = Math.max(1, Math.ceil((pts.length - 1) / 5)), ticks = '';
+      var last = pts.length - 1, marks = [];
+      for (var k = 0; k < last; k += step) if (last - k >= step / 2) marks.push(k);
+      marks.push(last);   // toujours la dernière année, ancrée à droite pour ne pas être coupée
+      marks.forEach(function (k) {
+        var anchor = k === 0 ? 'start' : (k === last ? 'end' : 'middle');
+        ticks += '<text x="' + x(k).toFixed(1) + '" y="' + (H - 6) + '" font-size="15" text-anchor="' + anchor + '" fill="var(--faint)">' + (k ? k + ' an' + (k > 1 ? 's' : '') : 'Auj.') + '</text>';
+      });
+      svg.innerHTML =
+        '<path d="' + line('cap') + base + '" fill="var(--green)" opacity="0.85"/>' +
+        '<path d="' + line('inv') + base + '" fill="var(--invested)"/>' + ticks;
+    }
+
+    function update() {
+      var c = get('c'), m = get('m'), y = Math.max(1, Math.min(60, Math.round(get('y')))), r = Math.min(20, get('r'));
+      var rows = project(c, m, y, r), last = rows[rows.length - 1];
+      var gain = last.cap - last.inv;
+      document.getElementById('out-total').textContent = fmt(last.cap);
+      document.getElementById('out-sub').textContent = 'après ' + y + ' an' + (y > 1 ? 's' : '') + ' à ' + r.toLocaleString('fr-FR') + ' % par an';
+      document.getElementById('out-invested').textContent = fmt(last.inv);
+      document.getElementById('out-gain').textContent = '+' + fmt(gain);
+      document.getElementById('out-mult').textContent = last.inv > 0 ? '×' + (last.cap / last.inv).toFixed(2).replace('.', ',') : '—';
+      document.getElementById('table').innerHTML = rows.map(function (row) {
+        return '<tr><td>' + row.year + '</td><td>' + fmt(row.inv) + '</td><td>' + fmt(row.cap - row.inv) + '</td><td><strong>' + fmt(row.cap) + '</strong></td></tr>';
+      }).join('');
+      draw(rows, c);
+    }
+
+    // Curseur ↔ champ chiffré synchronisés (le champ accepte des valeurs au-delà du curseur)
+    ids.forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    document.querySelectorAll('[data-preset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-preset').split(',');
+        ids.forEach(function (id, k) { document.getElementById(id).value = v[k]; document.getElementById(id + '-n').value = v[k]; });
+        update();
+      });
+    });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'interets-composes', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+    update();
+  })();
+  </script>
+</body>
+</html>
