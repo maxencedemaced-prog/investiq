@@ -90,7 +90,7 @@ async function pushTest(silent) {
     if (!r.ok) throw new Error(j.error || 'Envoi impossible');
     if (!silent) showToast('Notification envoyée : regarde ton appareil');
   } catch (e) { showToast('Test impossible : ' + e.message); }
-  if (btn && !silent) { btn.disabled = false; btn.textContent = 'Envoyer un test'; }
+  if (btn && !silent) { btn.disabled = false; btn.textContent = 'Envoyer'; }
 }
 
 // À la connexion : enregistre le service worker et resynchronise l'abonnement (le navigateur peut le renouveler).
@@ -136,28 +136,27 @@ async function pushPrefChanged() {
 // Carte « Notifications » des Paramètres
 async function renderPushCard() {
   const box = document.getElementById('push-card-body'); if (!box) return;
-  if (isDemo) { box.innerHTML = '<div style="font-size:13px;line-height:1.55;color:var(--color-text-secondary)">Les notifications sont disponibles avec un compte : crée le tien pour les activer.</div>'; return; }
+  const row = (title, sub, ctrl, subColor) => `<div class="set-row"><div class="set-row-main"><div class="set-row-title">${title}</div>${sub ? `<div class="set-row-sub"${subColor ? ` style="color:${subColor}"` : ''}>${sub}</div>` : ''}</div>${ctrl ? `<div class="set-row-ctrl">${ctrl}</div>` : ''}</div>`;
+  if (isDemo) { box.innerHTML = row('Notifications sur cet appareil', 'Disponibles avec un compte : crée le tien pour les activer.'); return; }
   const st = await pushState();
-  const msg = {
+  const sub = {
     unsupported: 'Ce navigateur ne gère pas les notifications. Essaie Chrome, Edge, Firefox ou Safari récent.',
-    install: 'Sur iPhone, ajoute d\'abord Kapitaro à l\'écran d\'accueil : bouton Partager, puis « Sur l\'écran d\'accueil ». Ouvre ensuite l\'app depuis cette icône et reviens ici.',
-    denied: 'Les notifications sont bloquées pour ce site. Autorise-les dans les réglages du navigateur (cadenas à côté de l\'adresse), puis recharge la page.',
-    on: '✓ Actives sur cet appareil.',
-    off: 'Désactivées sur cet appareil.',
+    install: 'Sur iPhone, ajoute d\'abord Kapitaro à l\'écran d\'accueil (Partager, puis « Sur l\'écran d\'accueil »), ouvre l\'app depuis cette icône et reviens ici.',
+    denied: 'Bloquées pour ce site. Autorise-les dans les réglages du navigateur (cadenas à côté de l\'adresse), puis recharge la page.',
+    on: 'Activées',
+    off: 'Désactivées',
   }[st];
-  const color = st === 'on' ? '#16a34a' : (st === 'denied' ? '#dc2626' : 'var(--color-text-secondary)');
+  const sw = (on, handler, id, label) => `<label class="set-switch"><input type="checkbox" ${id ? `id="${id}"` : ''} ${on ? 'checked' : ''} onchange="${handler}" aria-label="${label}"><span></span></label>`;
   const canToggle = st === 'on' || st === 'off';
-  box.innerHTML = `
-    <div style="font-size:13px;line-height:1.55;color:${color};font-weight:${st === 'on' ? 700 : 500}">${msg}</div>
-    ${canToggle ? `<div class="btn-row" style="margin-top:12px">
-      ${st === 'on'
-        ? `<button class="btn-secondary" id="push-test" onclick="pushTest()" style="flex:1">Envoyer un test</button><button class="btn-secondary" onclick="pushDisable()" style="flex:1">Désactiver</button>`
-        : `<button class="btn-primary" id="push-btn" onclick="pushEnable()" style="flex:1">🔔 Activer les notifications</button>`}
-    </div>` : ''}
-    ${st === 'on' ? `<label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;cursor:pointer">
-      <input type="checkbox" ${pushMovesOn() ? 'checked' : ''} onchange="pushMovesChanged(this.checked)" style="margin-top:3px;width:auto;flex-shrink:0">
-      <span style="font-size:13px;line-height:1.5"><strong>Alertes de gros mouvements</strong><br><span style="color:var(--color-text-secondary)">Quand une action explose ou s'effondre en séance (+5 % / −5 %) : les tiennes, celles de ta watchlist, et les grandes valeurs du marché (LVMH, Apple, NVIDIA…).</span></span>
-    </label>` : ''}`;
+  box.innerHTML =
+    row('Notifications sur cet appareil', sub,
+        canToggle ? sw(st === 'on', st === 'on' ? 'pushDisable()' : 'pushEnable()', 'push-btn', 'Notifications sur cet appareil') : '',
+        st === 'denied' ? '#dc2626' : '')
+    + (st === 'on'
+      ? row('Alertes de gros mouvements', 'Quand une action bouge de plus de 5 % en séance : les tiennes, ta watchlist et les grandes valeurs.',
+            sw(pushMovesOn(), 'pushMovesChanged(this.checked)', '', 'Alertes de gros mouvements'))
+        + row('Notification de test', 'Pour vérifier que tout arrive bien', '<button type="button" class="set-pill" id="push-test" onclick="pushTest()">Envoyer</button>')
+      : '');
 }
 
 // Invitation dans la cloche, tant que les notifications ne sont pas actives
