@@ -1949,6 +1949,15 @@ window.addEventListener('load', function() {
           </div>
         </div>
         <div class="set-note">Même quand l'app est fermée : briefing, alertes de prix et gros mouvements. 2 alertes par jour au maximum, jamais de spam.</div>
+        <div class="set-group" style="margin-top:10px">
+          <div class="set-row">
+            <div class="set-row-main">
+              <div class="set-row-title">E-mails de conseils et rappels</div>
+              <div class="set-row-sub">Quelques e-mails pour bien démarrer et ne pas perdre le fil, jamais de publicité</div>
+            </div>
+            <div class="set-row-ctrl"><label class="set-switch"><input type="checkbox" id="s-email-opt" checked onchange="emailPrefChanged(this.checked)" aria-label="E-mails de conseils et rappels"><span></span></label></div>
+          </div>
+        </div>
 
         <!-- PROFIL INVESTISSEUR -->
         <div class="set-label">Profil investisseur</div>
@@ -2079,7 +2088,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260929060000"></script>
+<script src="app.js?v=20260929070000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20260928233000"></script>
