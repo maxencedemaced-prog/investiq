@@ -9647,8 +9647,8 @@ function updateDCA() {
   const barInv = document.getElementById('dca-bar-inv');
   const barGain = document.getElementById('dca-bar-gain');
   if (barInv && barGain && total > 0) {
-    barInv.style.width = (invested/total*100).toFixed(1).replace(".", ",") + ' %';
-    barGain.style.width = (gain/total*100).toFixed(1).replace(".", ",") + ' %';
+    barInv.style.width = (invested/total*100).toFixed(1) + '%';
+    barGain.style.width = (gain/total*100).toFixed(1) + '%';
   }
 
   // Message tip + warning si rendement irréaliste
