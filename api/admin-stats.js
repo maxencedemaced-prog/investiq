@@ -118,17 +118,18 @@ export default async function handler(req, res) {
       signups: signupsByDay[day] || 0, minutes: minutesByDay[day] ?? null }));
 
     // ── Usage produit ──
+    const notAdmin = (q) => adminId ? q.neq('user_id', adminId) : q;
     const [{ count: positionsCount }, { count: objectivesCount }, { count: bilansCount }, { count: pushCount }] =
       await Promise.all([
-        supabaseAdmin.from('positions').select('id', { count: 'exact', head: true }),
-        supabaseAdmin.from('objectives').select('id', { count: 'exact', head: true }),
-        supabaseAdmin.from('bilans').select('id', { count: 'exact', head: true }),
-        supabaseAdmin.from('push_devices').select('endpoint', { count: 'exact', head: true }),
+        notAdmin(supabaseAdmin.from('positions').select('id', { count: 'exact', head: true })),
+        notAdmin(supabaseAdmin.from('objectives').select('id', { count: 'exact', head: true })),
+        notAdmin(supabaseAdmin.from('bilans').select('id', { count: 'exact', head: true })),
+        notAdmin(supabaseAdmin.from('push_devices').select('endpoint', { count: 'exact', head: true })),
       ]);
 
-    // ── Coût IA (Anthropic) ──
-    const { data: aiRows } = await supabaseAdmin
-      .from('ai_usage_log').select('cost_usd, created_at').gte('created_at', since);
+    // ── Coût IA (Anthropic) des utilisateurs, hors compte admin (la facture réelle totale est sur la console Anthropic) ──
+    const { data: aiRows } = await notAdmin(supabaseAdmin
+      .from('ai_usage_log').select('cost_usd, created_at').gte('created_at', since));
     const aiTotalCost = (aiRows || []).reduce((s, r) => s + (r.cost_usd || 0), 0);
     const aiTotalCalls = (aiRows || []).length;
 
