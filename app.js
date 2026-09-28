@@ -4829,6 +4829,14 @@ function switchAuth(m) {
   document.getElementById('tab-signup').classList.toggle('active', m==='signup');
   setAuthMsg('');
 }
+// Boutons « Créer mon compte » de la présentation : remonte au formulaire, onglet Inscription ouvert
+function lpSignup() {
+  switchAuth('signup');
+  const tab = document.getElementById('tab-signup');
+  if (tab) tab.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => document.getElementById('signup-email')?.focus({ preventScroll: true }), 500);
+  try { window.va && window.va('event', { name: 'landing_cta' }); } catch {}
+}
 function setAuthMsg(msg, ok=false) {
   const el = document.getElementById('auth-msg');
   el.textContent = msg; el.className = 'auth-msg ' + (ok?'success':'error');
