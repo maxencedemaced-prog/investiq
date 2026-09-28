@@ -4727,6 +4727,7 @@ async function initApp(user) {
   document.getElementById('demo-banner').style.display = 'none';
   openNotifPanelByDefault();
   try { trackEvent('login'); startHeartbeat(); } catch(e) {}
+  requestWelcomeEmail(user);
   const email = user.email || '';
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
@@ -4829,6 +4830,30 @@ function switchAuth(m) {
   document.getElementById('tab-signup').classList.toggle('active', m==='signup');
   setAuthMsg('');
 }
+// E-mail de bienvenue : demandé une fois par appareil pour les comptes récents ; le serveur garantit l'envoi unique
+function requestWelcomeEmail(user) {
+  try {
+    if (!user?.id || Date.now() - new Date(user.created_at).getTime() > 3 * 86400000) return;
+    const key = 'iq_welcome_req_' + user.id;
+    if (localStorage.getItem(key)) return;
+    sb.auth.getSession().then(({ data }) => {
+      const token = data?.session?.access_token;
+      if (!token) return;
+      fetch('/api/email-welcome', { method: 'POST', headers: { Authorization: 'Bearer ' + token } })
+        .then(r => { if (r.ok) localStorage.setItem(key, '1'); }).catch(() => {});
+    });
+  } catch {}
+}
+
+// Préférence « e-mails de conseils et rappels » (Paramètres → Notifications)
+async function emailPrefChanged(on) {
+  if (isDemo || !currentUser) { showToast('Crée un compte pour gérer tes e-mails'); return; }
+  const { error } = await sb.from('profiles').update({ email_opt_out: !on }).eq('id', currentUser.id);
+  if (error) { showToast('Réglage impossible : ' + error.message); return; }
+  profile.email_opt_out = !on;
+  showToast(on ? '✓ E-mails de conseils activés' : 'E-mails de conseils désactivés');
+}
+
 // Boutons « Créer mon compte » de la présentation : remonte au formulaire, onglet Inscription ouvert
 function lpSignup() {
   switchAuth('signup');
@@ -4956,7 +4981,8 @@ async function loadProfile() {
                 premium_until: data.premium_until || data.subscription_end || null,
                 subscription_status: data.subscription_status || null,
                 subscription_plan: data.subscription_plan || null,
-                stripe_customer_id: data.stripe_customer_id || null };
+                stripe_customer_id: data.stripe_customer_id || null,
+                email_opt_out: data.email_opt_out === true };
     document.getElementById('s-bankroll').value = profile.bankroll;
     document.getElementById('s-horizon').value = profile.horizon;
     document.getElementById('s-risk').value = profile.risk;
@@ -9100,6 +9126,8 @@ function renderSettingsAccount() {
   set('set-plan', isPremiumUser() ? '✨ Premium' : 'Offre gratuite');
   const viaGoogle = (currentUser?.app_metadata?.providers || [currentUser?.app_metadata?.provider]).includes('google');
   set('set-pass-sub', viaGoogle ? 'Tu te connectes avec Google : tu peux aussi définir un mot de passe' : 'Modifier ton mot de passe');
+  const emailSw = document.getElementById('s-email-opt');
+  if (emailSw) { emailSw.checked = !profile?.email_opt_out; emailSw.disabled = isDemo; }
   syncThemeSeg();
 }
 
@@ -11187,7 +11215,8 @@ const LEGAL_DOCS = {
 </ul>
 
 <h3>Article 4 — Destinataires et sous-traitants</h3>
-<p>Supabase (hébergement des données, Union européenne) · Vercel (hébergement applicatif) · Anthropic (traitement des requêtes IA) · Stripe (paiements) · Finnhub (données de marché).</p>
+<p>Supabase (hébergement des données, Union européenne) · Vercel (hébergement applicatif) · Anthropic (traitement des requêtes IA) · Stripe (paiements) · Finnhub (données de marché) · Resend (envoi des e-mails).</p>
+<p><strong>E-mails :</strong> nous t'envoyons un e-mail de bienvenue et, de temps en temps, un rappel utile (par exemple si ton portefeuille est resté vide ou si tu ne t'es pas connecté depuis un moment). Aucune publicité, aucune transmission de ton adresse à des tiers. Tu peux refuser ces e-mails à tout moment via le lien présent dans chacun d'eux ou dans Paramètres → Notifications.</p>
 <p>Certains transferts hors Union européenne sont encadrés par les clauses contractuelles types de la Commission européenne.</p>
 
 <h3>Article 5 — Durée de conservation</h3>
