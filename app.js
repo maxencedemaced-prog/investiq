@@ -1714,7 +1714,9 @@ function updateObjSlider(val) {
     if (monthIndex === 0) {
       labelEl.textContent = "Point de départ";
     } else if (projValue >= objChartTarget) {
-      labelEl.innerHTML = `<span style="color:#4ade80">🎯 Objectif atteint !</span> · +${fmtK(gains)} d'intérêts composés`;
+      // Projection (pas un fait) : on dit QUAND l'objectif serait atteint, pas qu'il l'est déjà
+      const hitYears = (Math.max(0, objProjectionData.findIndex(v => v >= objChartTarget)) / 12).toFixed(1).replace(/\.0$/, '').replace('.', ',');
+      labelEl.innerHTML = `<span style="color:#4ade80">🎯 Objectif atteint en ${hitYears} ans</span> · +${fmtK(gains)} d'intérêts composés`;
     } else {
       labelEl.innerHTML = `Dans ${years} ans · <span style="color:#4ade80">+${fmtK(gains)} de gains</span> (+${gainsPct}%)`;
     }
@@ -2778,10 +2780,8 @@ function obNext(step) {
 
   // Étape 3 : reco risque selon profil
   if (step === 3) {
-    const p = OB_PROFILES[obProfileLevel];
     // Défaut du curseur selon le profil suggéré par le parcours
-    const defaultPct = p && p.defaultRisk === 'eleve' ? 60 : p && p.defaultRisk === 'faible' ? 15 : 30;
-    renderAllocSlider('ob-alloc-container', 'ob', defaultPct, false);
+    renderAllocSlider('ob-alloc-container', 'ob', obDefaultStockPct(), false);
   }
 
   // Étape 4 : label profil + générer plan
@@ -2804,6 +2804,18 @@ function obApplyPreset(capital, monthly, target) {
   obUpdateBudgetPreview();
 }
 
+// Part d'actions proposée par défaut selon le niveau choisi à l'étape 1
+function obDefaultStockPct() {
+  const p = OB_PROFILES[obProfileLevel];
+  return p && p.defaultRisk === 'eleve' ? 60 : p && p.defaultRisk === 'faible' ? 15 : 30;
+}
+
+// Valeur dans 10 ans, capitalisation mensuelle (même formule que la page Objectif)
+function obProjection10y(capital, monthly, ratePct) {
+  const r = ratePct / 100 / 12, n = 120;
+  return Math.round(capital * Math.pow(1 + r, n) + (r > 0 ? monthly * ((Math.pow(1 + r, n) - 1) / r) : monthly * n));
+}
+
 function obUpdateBudgetPreview() {
   const capital = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
   const monthly = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
@@ -2812,8 +2824,11 @@ function obUpdateBudgetPreview() {
   const previewT = document.getElementById('ob-preview-text');
   if (!preview || !previewT) return;
   if (capital > 0 || monthly > 0) {
-    const rate = 0.07/12, n = 10*12;
-    const fv = capital * Math.pow(1+rate,n) + (monthly > 0 ? monthly*((Math.pow(1+rate,n)-1)/rate) : 0);
+    // Rendement du profil proposé à l'étape suivante : les chiffres restent les mêmes jusqu'à la page Objectif
+    const r = riskFromStockPct(obDefaultStockPct());
+    const fv = obProjection10y(capital, monthly, r.rate);
+    const lbl = document.getElementById('ob-preview-label');
+    if (lbl) lbl.textContent = `Projection à ${r.rate} %/an (profil ${r.label.toLowerCase()})`;
     preview.style.display = 'block';
     const onTrack = target > 0 && fv >= target;
     previewT.innerHTML = `En 10 ans : <strong style="color:#1a7f5a">${fmtK(Math.round(fv))}</strong>${target > 0 ? ` · Objectif ${fmtK(target)} : <strong style="color:${onTrack?'#1a7f5a':'#f59e0b'}">${onTrack?'✓ Atteignable en 10 ans':'⚠ Allonge la durée ou augmente le versement'}</strong>` : ''}`;
@@ -2924,19 +2939,12 @@ async function obGeneratePlan() {
   objStockPct = alloc.stockPct; objGlide = alloc.glide; objRisk = alloc.risk; objChartRate = alloc.rate;
   const planEl   = document.getElementById('ob-plan-content');
 
-  // Calculs de projection
-  const r10 = Math.pow(1.07, 10);
   const budgetCourt = Math.round(bankroll * 0.3);
   const budgetLong  = bankroll - budgetCourt;
 
-  // Allocation ETF selon la répartition choisie (le socle World domine la poche ETF)
-  const etfAlloc = (risk === 'agressif' || risk === 'eleve')
-    ? ['70% IWDA (ETF Monde)', '30% VWCE (ETF All-World)']
-    : (risk === 'dynamique')
-    ? ['75% IWDA (ETF Monde)', '25% VWCE (ETF All-World)']
-    : (risk === 'equilibre' || risk === 'modere')
-    ? ['80% IWDA (ETF Monde)', '20% VWCE (ETF All-World)']
-    : ['90% IWDA (ETF Monde)', '10% VWCE (ETF All-World)'];
+  // Répartition = celle du curseur : un seul ETF Monde comme socle (deux ETF Monde feraient doublon) + la part d'actions choisie
+  const etfAlloc = [`${alloc.etfPct ?? (100 - alloc.stockPct)}% ETF Monde (IWDA) — ton socle diversifié`];
+  if (alloc.stockPct > 0) etfAlloc.push(`${alloc.stockPct}% actions — la sélection est dans ton plan`);
 
   const both = obGoals.long && obGoals.court;
 
@@ -2946,8 +2954,8 @@ async function obGeneratePlan() {
   if (obGoals.long) {
     const capitalLong = both ? budgetLong : bankroll;
     const monthlyLong = both ? Math.round(monthly * 0.7) : monthly;
-    const rr = Math.pow(1.07, 10);
-    const proj = Math.round(capitalLong * rr + monthlyLong * 12 * ((rr - 1) / 0.07));
+    // Même calcul que la page Objectif (rendement du profil choisi, capitalisation mensuelle) pour afficher le même chiffre
+    const proj = obProjection10y(capitalLong, monthlyLong, alloc.rate);
     html += `
     <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #1a7f5a">
       <div style="font-size:12px;font-weight:800;color:#1a7f5a;margin-bottom:10px">🏦 PLAN LONG TERME — Construire ton patrimoine</div>
@@ -2960,7 +2968,7 @@ async function obGeneratePlan() {
           <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DÉPART</div><div style="font-size:13px;font-weight:800">${fmtK(capitalLong)}</div></div>
           <div><div style="font-size:11px;color:#8e8e93;font-weight:700">MENSUEL</div><div style="font-size:13px;font-weight:800">${monthlyLong}€/mois</div></div>
           <div><div style="font-size:11px;color:#8e8e93;font-weight:700">OBJECTIF</div><div style="font-size:13px;font-weight:800;color:#1c1c1e">${fmtK(target)}</div></div>
-          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DANS 10 ANS</div><div style="font-size:13px;font-weight:800;color:#1a7f5a">~${fmtK(proj)}</div></div>
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DANS 10 ANS</div><div style="font-size:13px;font-weight:800;color:#1a7f5a">~${fmtK(proj)}</div><div style="font-size:10px;color:#8e8e93">à ${alloc.rate} %/an</div></div>
         </div>
         <div style="background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#8e8e93">
           ⏱ Horizon : 10-20 ans · Ne pas toucher · Réinvestir les dividendes
