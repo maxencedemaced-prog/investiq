@@ -62,6 +62,14 @@ async function findUserId(subscriptionOrSession) {
   return data?.id || null;
 }
 
+// Statistiques du tableau de bord (table events) : jamais bloquant pour le traitement du paiement
+async function logEvent(userId, type, meta) {
+  try {
+    const { error } = await supabase.from('events').insert({ user_id: userId, type, meta: meta || null });
+    if (error) console.warn('[webhook] event', type, error.message);
+  } catch (e) { console.warn('[webhook] event', type, e.message); }
+}
+
 // Met à jour le statut premium d'un utilisateur
 async function setPremium(userId, { active, until, customerId, subscriptionId, status, plan }) {
   const payload = {
@@ -119,6 +127,7 @@ export default async function handler(req, res) {
           active: true, until, status, plan,
           customerId: session.customer, subscriptionId: subId,
         });
+        await logEvent(userId, 'premium_activated', { plan, amount: (session.amount_total || 0) / 100, stripe_event: event.id });
         break;
       }
 
@@ -135,6 +144,10 @@ export default async function handler(req, res) {
           status: sub.status, plan: planFromSub(sub),
           customerId: sub.customer, subscriptionId: sub.id,
         });
+        // La 1re facture est déjà comptée par premium_activated : seuls les vrais renouvellements sont suivis ici
+        if (event.data.object.billing_reason === 'subscription_cycle') {
+          await logEvent(userId, 'subscription_renewed', { plan: planFromSub(sub), amount: (event.data.object.amount_paid || 0) / 100, stripe_event: event.id });
+        }
         break;
       }
 
@@ -153,6 +166,7 @@ export default async function handler(req, res) {
           customerId: sub.customer, subscriptionId: sub.id,
         });
         console.warn('[webhook] Paiement échoué pour', userId);
+        await logEvent(userId, 'payment_failed', { plan: planFromSub(sub), stripe_event: event.id });
         break;
       }
 
@@ -170,6 +184,12 @@ export default async function handler(req, res) {
           plan: planFromSub(sub),
           customerId: sub.customer, subscriptionId: sub.id,
         });
+        const prev = event.data.previous_attributes || {};
+        if (prev.cancel_at_period_end === false && sub.cancel_at_period_end) {
+          await logEvent(userId, 'cancel_scheduled', { plan: planFromSub(sub), stripe_event: event.id });
+        } else if (prev.cancel_at_period_end === true && !sub.cancel_at_period_end) {
+          await logEvent(userId, 'cancel_reverted', { plan: planFromSub(sub), stripe_event: event.id });
+        }
         break;
       }
 
@@ -182,6 +202,7 @@ export default async function handler(req, res) {
           active: false, until: null, status: 'canceled',
           customerId: sub.customer, subscriptionId: sub.id,
         });
+        await logEvent(userId, 'subscription_ended', { stripe_event: event.id });
         break;
       }
 

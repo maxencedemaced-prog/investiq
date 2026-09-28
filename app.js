@@ -2417,12 +2417,23 @@ function recoActionsHTML(ticker, name, amount, type, dark) {
 // Base légère pour un futur tableau de bord (conversion, rétention, usage). Silencieux en cas d'échec :
 // ne doit jamais bloquer ni ralentir une action réelle de l'utilisateur.
 function trackEvent(type, meta) {
-  if (isDemo || !currentUser) return;
+  if (isDemo || !currentUser) return Promise.resolve();
   try {
-    sb.from('events').insert({ user_id: currentUser.id, type, meta: meta || null }).then(({ error }) => {
+    return sb.from('events').insert({ user_id: currentUser.id, type, meta: meta || null }).then(({ error }) => {
       if (error) console.warn('[trackEvent]', type, error.message);
-    });
-  } catch (e) { console.warn('[trackEvent]', type, e.message); }
+    }, () => {});
+  } catch (e) { console.warn('[trackEvent]', type, e.message); return Promise.resolve(); }
+}
+
+// Temps passé dans l'app : un signal toutes les 2 minutes tant que l'app est à l'écran (onglet visible).
+// Temps estimé côté tableau de bord = nombre de signaux × 2 min.
+const HEARTBEAT_MIN = 2;
+let _heartbeatTimer = null;
+function startHeartbeat() {
+  if (_heartbeatTimer) return;
+  _heartbeatTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') trackEvent('heartbeat');
+  }, HEARTBEAT_MIN * 60 * 1000);
 }
 
 // ===== TX MODAL =====
@@ -4706,7 +4717,7 @@ async function initApp(user) {
   document.getElementById('app').style.display = 'flex';
   document.getElementById('demo-banner').style.display = 'none';
   openNotifPanelByDefault();
-  try { trackEvent('login'); } catch(e) {}
+  try { trackEvent('login'); startHeartbeat(); } catch(e) {}
   const email = user.email || '';
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
@@ -10765,6 +10776,8 @@ async function startCheckout(btn, plan) {
     });
     const out = await res.json();
     if (!res.ok || !out.url) throw new Error(out.error || 'Erreur inconnue');
+    // Enregistré avant de quitter la page (au plus 1 s d'attente pour ne pas retarder le paiement)
+    await Promise.race([trackEvent('checkout_started', { plan: plan === 'annual' ? 'annual' : 'monthly' }), new Promise(r => setTimeout(r, 1000))]);
     window.location.href = out.url;
   } catch (e) {
     showToast('⚠️ ' + e.message);
@@ -10875,6 +10888,7 @@ function plansComparisonHTML(lapsed) {
 // opts (facultatif) : { feature, subtitle, benefits } → bandeau de contexte quand la fenêtre
 // s'ouvre parce qu'une fonctionnalité est réservée à Premium (ou que le quota IA est atteint).
 function showPlansModal(opts) {
+  trackEvent('paywall_view', { feature: (opts && opts.feature) || 'offre' });
   document.getElementById('premium-gate')?.remove();
   document.getElementById('plans-modal')?.remove();
   const lapsed = profile?.subscription_status === 'canceled' || profile?.subscription_status === 'unpaid';
@@ -11115,7 +11129,7 @@ const LEGAL_DOCS = {
 <li><strong>Compte :</strong> adresse email, mot de passe chiffré.</li>
 <li><strong>Profil d'investisseur :</strong> capital disponible, horizon, tolérance au risque, objectifs.</li>
 <li><strong>Portefeuille :</strong> actifs détenus, quantités, prix d'achat, plateformes.</li>
-<li><strong>Usage :</strong> conversations avec l'assistant IA, recommandations générées et leur suivi.</li>
+<li><strong>Usage :</strong> conversations avec l'assistant IA, recommandations générées et leur suivi, statistiques d'utilisation du service (pages consultées, fonctionnalités utilisées, temps passé dans l'application).</li>
 <li><strong>Paiement :</strong> traité exclusivement par Stripe — aucune donnée bancaire n'est stockée par Kapitaro.</li>
 </ul>
 
@@ -11140,6 +11154,7 @@ const LEGAL_DOCS = {
 
 <h3>Article 7 — Cookies et traceurs</h3>
 <p>Kapitaro n'utilise <strong>aucun cookie publicitaire ni traceur tiers</strong>. Seul le stockage local strictement nécessaire au fonctionnement (session, préférences d'affichage, cache) est utilisé — il ne requiert pas de consentement préalable.</p>
+<p>La fréquentation du site est mesurée par Vercel Web Analytics, de manière anonyme et agrégée, <strong>sans cookie</strong> ni identification des visiteurs. Les statistiques d'utilisation des comptes connectés servent uniquement à améliorer le service et ne sont ni vendues ni partagées.</p>
 `
   },
 
