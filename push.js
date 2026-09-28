@@ -5,8 +5,9 @@
 // mode démo), on lui demande de vérifier une mise à jour à CHAQUE visite, sans attendre le délai
 // habituel du navigateur (jusqu'à 24h). Sans ça, un appareil resterait bloqué sur une ancienne
 // version de l'app jusqu'à ce que quelqu'un vide son cache à la main.
+// Enregistré pour tous les visiteurs : il rend aussi le site installable comme une app (bouton « Installer l'app »).
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistration().then(reg => reg && reg.update()).catch(() => {});
+  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
 }
 
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -89,7 +90,7 @@ async function pushTest(silent) {
     if (!r.ok) throw new Error(j.error || 'Envoi impossible');
     if (!silent) showToast('Notification envoyée : regarde ton appareil');
   } catch (e) { showToast('Test impossible : ' + e.message); }
-  if (btn && !silent) { btn.disabled = false; btn.textContent = 'Envoyer un test'; }
+  if (btn && !silent) { btn.disabled = false; btn.textContent = 'Envoyer'; }
 }
 
 // À la connexion : enregistre le service worker et resynchronise l'abonnement (le navigateur peut le renouveler).
@@ -135,28 +136,27 @@ async function pushPrefChanged() {
 // Carte « Notifications » des Paramètres
 async function renderPushCard() {
   const box = document.getElementById('push-card-body'); if (!box) return;
-  if (isDemo) { box.innerHTML = '<div style="font-size:13px;line-height:1.55;color:var(--color-text-secondary)">Les notifications sont disponibles avec un compte : crée le tien pour les activer.</div>'; return; }
+  const row = (title, sub, ctrl, subColor) => `<div class="set-row"><div class="set-row-main"><div class="set-row-title">${title}</div>${sub ? `<div class="set-row-sub"${subColor ? ` style="color:${subColor}"` : ''}>${sub}</div>` : ''}</div>${ctrl ? `<div class="set-row-ctrl">${ctrl}</div>` : ''}</div>`;
+  if (isDemo) { box.innerHTML = row('Notifications sur cet appareil', 'Disponibles avec un compte : crée le tien pour les activer.'); return; }
   const st = await pushState();
-  const msg = {
+  const sub = {
     unsupported: 'Ce navigateur ne gère pas les notifications. Essaie Chrome, Edge, Firefox ou Safari récent.',
-    install: 'Sur iPhone, ajoute d\'abord Kapitaro à l\'écran d\'accueil : bouton Partager, puis « Sur l\'écran d\'accueil ». Ouvre ensuite l\'app depuis cette icône et reviens ici.',
-    denied: 'Les notifications sont bloquées pour ce site. Autorise-les dans les réglages du navigateur (cadenas à côté de l\'adresse), puis recharge la page.',
-    on: '✓ Actives sur cet appareil.',
-    off: 'Désactivées sur cet appareil.',
+    install: 'Sur iPhone, ajoute d\'abord Kapitaro à l\'écran d\'accueil (Partager, puis « Sur l\'écran d\'accueil »), ouvre l\'app depuis cette icône et reviens ici.',
+    denied: 'Bloquées pour ce site. Autorise-les dans les réglages du navigateur (cadenas à côté de l\'adresse), puis recharge la page.',
+    on: 'Activées',
+    off: 'Désactivées',
   }[st];
-  const color = st === 'on' ? '#16a34a' : (st === 'denied' ? '#dc2626' : 'var(--color-text-secondary)');
+  const sw = (on, handler, id, label) => `<label class="set-switch"><input type="checkbox" ${id ? `id="${id}"` : ''} ${on ? 'checked' : ''} onchange="${handler}" aria-label="${label}"><span></span></label>`;
   const canToggle = st === 'on' || st === 'off';
-  box.innerHTML = `
-    <div style="font-size:13px;line-height:1.55;color:${color};font-weight:${st === 'on' ? 700 : 500}">${msg}</div>
-    ${canToggle ? `<div class="btn-row" style="margin-top:12px">
-      ${st === 'on'
-        ? `<button class="btn-secondary" id="push-test" onclick="pushTest()" style="flex:1">Envoyer un test</button><button class="btn-secondary" onclick="pushDisable()" style="flex:1">Désactiver</button>`
-        : `<button class="btn-primary" id="push-btn" onclick="pushEnable()" style="flex:1">🔔 Activer les notifications</button>`}
-    </div>` : ''}
-    ${st === 'on' ? `<label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;cursor:pointer">
-      <input type="checkbox" ${pushMovesOn() ? 'checked' : ''} onchange="pushMovesChanged(this.checked)" style="margin-top:3px;width:auto;flex-shrink:0">
-      <span style="font-size:13px;line-height:1.5"><strong>Alertes de gros mouvements</strong><br><span style="color:var(--color-text-secondary)">Quand une action explose ou s'effondre en séance (+5 % / −5 %) : les tiennes, celles de ta watchlist, et les grandes valeurs du marché (LVMH, Apple, NVIDIA…).</span></span>
-    </label>` : ''}`;
+  box.innerHTML =
+    row('Notifications sur cet appareil', sub,
+        canToggle ? sw(st === 'on', st === 'on' ? 'pushDisable()' : 'pushEnable()', 'push-btn', 'Notifications sur cet appareil') : '',
+        st === 'denied' ? '#dc2626' : '')
+    + (st === 'on'
+      ? row('Alertes de gros mouvements', 'Quand une action bouge de plus de 5 % en séance : les tiennes, ta watchlist et les grandes valeurs.',
+            sw(pushMovesOn(), 'pushMovesChanged(this.checked)', '', 'Alertes de gros mouvements'))
+        + row('Notification de test', 'Pour vérifier que tout arrive bien', '<button type="button" class="set-pill" id="push-test" onclick="pushTest()">Envoyer</button>')
+      : '');
 }
 
 // Invitation dans la cloche, tant que les notifications ne sont pas actives
@@ -170,3 +170,64 @@ async function pushBellPromptHTML() {
     <button onclick="pushEnable()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer">Activer les notifications</button>
   </div>`;
 }
+
+// ── « Installer l'app » sur la page de connexion ──
+// Android / ordinateur (Chrome, Edge) : vraie installation en un clic via l'événement beforeinstallprompt (capté dans index.html).
+// iPhone / iPad : Apple ne permet pas d'installer par un bouton, on explique le geste Partager → « Sur l'écran d'accueil ».
+const INSTALL_DISMISS_KEY = 'iq_install_dismissed';
+const appIsInstalled = () => window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+const isMobileDevice = () => /android|mobile/i.test(navigator.userAgent);
+const isIOSDevice = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function installAppRender() {
+  const box = document.getElementById('install-app-box');
+  if (!box) return;
+  let dismissedRecently = false;
+  try { dismissedRecently = Date.now() - Number(localStorage.getItem(INSTALL_DISMISS_KEY) || 0) < 14 * 86400000; } catch {}
+  if (appIsInstalled() || dismissedRecently) { box.style.display = 'none'; return; }
+  const btn = document.getElementById('install-app-btn');
+  const text = document.getElementById('install-app-text');
+  if (window._installEvt) {
+    btn.style.display = 'block';
+    text.textContent = "Sur ton écran d'accueil, en plein écran, avec les notifications. Gratuit, sans passer par un magasin d'applications.";
+    box.style.display = 'block';
+  } else if (isIOSDevice()) {
+    btn.style.display = 'none';
+    text.innerHTML = 'Touche <strong style="color:#fff">Partager</strong> <span style="font-size:13px">⬆️</span> (en bas dans Safari, en haut dans Chrome), puis <strong style="color:#fff">« Sur l\'écran d\'accueil »</strong>.';
+    box.style.display = 'block';
+  } else if (isMobileDevice()) {
+    // Android sans signal d'installation (Samsung Internet, Firefox, Chrome qui n'a pas encore réagi…) : on explique le geste.
+    btn.style.display = 'none';
+    text.innerHTML = 'Ouvre le menu <strong style="color:#fff">⋮</strong> de ton navigateur, puis <strong style="color:#fff">« Installer l\'application »</strong> ou <strong style="color:#fff">« Ajouter à l\'écran d\'accueil »</strong>.';
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';   // ordinateur sans installation possible (ex. Firefox, Safari)
+  }
+}
+
+async function installApp() {
+  const evt = window._installEvt;
+  if (!evt) return;
+  evt.prompt();
+  let outcome = 'dismissed';
+  try { outcome = (await evt.userChoice).outcome; } catch {}
+  window._installEvt = null;
+  if (outcome === 'accepted') {
+    try { window.va && window.va('event', { name: 'app_install_accepted' }); } catch {}
+    document.getElementById('install-app-box').style.display = 'none';
+  } else {
+    installAppRender();
+  }
+}
+
+function installAppDismiss() {
+  try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch {}
+  document.getElementById('install-app-box').style.display = 'none';
+}
+
+window.addEventListener('kapitaro-installable', installAppRender);
+window.addEventListener('appinstalled', () => {
+  try { window.va && window.va('event', { name: 'app_installed' }); } catch {}
+  const box = document.getElementById('install-app-box'); if (box) box.style.display = 'none';
+});
+installAppRender();

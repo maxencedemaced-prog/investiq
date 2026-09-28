@@ -84,7 +84,7 @@ function tabHintsReset() {
   try { updateMenuDot(); } catch {}
   try { renderAgentTabs(); } catch {}
   const b = document.getElementById('tab-hints-reset');
-  if (b) { b.textContent = '✓ Explications réactivées : clique sur un onglet'; setTimeout(() => { b.textContent = '🔴 Réafficher les explications des onglets'; }, 3500); }
+  if (b) { b.textContent = '✓ Explications réactivées : clique sur un onglet'; setTimeout(() => { b.textContent = "Le petit mot d'aide à l'ouverture de chaque onglet"; }, 3500); }
 }
 
 // Premier clic sur un onglet : le point disparaît et la fenêtre d'explication s'ouvre

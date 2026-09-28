@@ -1714,7 +1714,9 @@ function updateObjSlider(val) {
     if (monthIndex === 0) {
       labelEl.textContent = "Point de départ";
     } else if (projValue >= objChartTarget) {
-      labelEl.innerHTML = `<span style="color:#4ade80">🎯 Objectif atteint !</span> · +${fmtK(gains)} d'intérêts composés`;
+      // Projection (pas un fait) : on dit QUAND l'objectif serait atteint, pas qu'il l'est déjà
+      const hitYears = (Math.max(0, objProjectionData.findIndex(v => v >= objChartTarget)) / 12).toFixed(1).replace(/\.0$/, '').replace('.', ',');
+      labelEl.innerHTML = `<span style="color:#4ade80">🎯 Objectif atteint en ${hitYears} ans</span> · +${fmtK(gains)} d'intérêts composés`;
     } else {
       labelEl.innerHTML = `Dans ${years} ans · <span style="color:#4ade80">+${fmtK(gains)} de gains</span> (+${gainsPct}%)`;
     }
@@ -2778,10 +2780,8 @@ function obNext(step) {
 
   // Étape 3 : reco risque selon profil
   if (step === 3) {
-    const p = OB_PROFILES[obProfileLevel];
     // Défaut du curseur selon le profil suggéré par le parcours
-    const defaultPct = p && p.defaultRisk === 'eleve' ? 60 : p && p.defaultRisk === 'faible' ? 15 : 30;
-    renderAllocSlider('ob-alloc-container', 'ob', defaultPct, false);
+    renderAllocSlider('ob-alloc-container', 'ob', obDefaultStockPct(), false);
   }
 
   // Étape 4 : label profil + générer plan
@@ -2804,6 +2804,19 @@ function obApplyPreset(capital, monthly, target) {
   obUpdateBudgetPreview();
 }
 
+// Part d'actions proposée par défaut selon le niveau choisi à l'étape 1
+function obDefaultStockPct() {
+  const p = OB_PROFILES[obProfileLevel];
+  // Débutant ('faible') : 0 % d'actions, comme promis à l'étape 1 (« 100% ETF monde »)
+  return p && p.defaultRisk === 'eleve' ? 60 : p && p.defaultRisk === 'faible' ? 0 : 30;
+}
+
+// Valeur dans 10 ans, capitalisation mensuelle (même formule que la page Objectif)
+function obProjection10y(capital, monthly, ratePct) {
+  const r = ratePct / 100 / 12, n = 120;
+  return Math.round(capital * Math.pow(1 + r, n) + (r > 0 ? monthly * ((Math.pow(1 + r, n) - 1) / r) : monthly * n));
+}
+
 function obUpdateBudgetPreview() {
   const capital = parseFloat(document.getElementById('ob-bankroll')?.value) || 0;
   const monthly = parseFloat(document.getElementById('ob-monthly')?.value)  || 0;
@@ -2812,8 +2825,11 @@ function obUpdateBudgetPreview() {
   const previewT = document.getElementById('ob-preview-text');
   if (!preview || !previewT) return;
   if (capital > 0 || monthly > 0) {
-    const rate = 0.07/12, n = 10*12;
-    const fv = capital * Math.pow(1+rate,n) + (monthly > 0 ? monthly*((Math.pow(1+rate,n)-1)/rate) : 0);
+    // Rendement du profil proposé à l'étape suivante : les chiffres restent les mêmes jusqu'à la page Objectif
+    const r = riskFromStockPct(obDefaultStockPct());
+    const fv = obProjection10y(capital, monthly, r.rate);
+    const lbl = document.getElementById('ob-projection-label');
+    if (lbl) lbl.textContent = `Projection à ${r.rate} %/an (profil ${r.label.toLowerCase()})`;
     preview.style.display = 'block';
     const onTrack = target > 0 && fv >= target;
     previewT.innerHTML = `En 10 ans : <strong style="color:#1a7f5a">${fmtK(Math.round(fv))}</strong>${target > 0 ? ` · Objectif ${fmtK(target)} : <strong style="color:${onTrack?'#1a7f5a':'#f59e0b'}">${onTrack?'✓ Atteignable en 10 ans':'⚠ Allonge la durée ou augmente le versement'}</strong>` : ''}`;
@@ -2924,19 +2940,12 @@ async function obGeneratePlan() {
   objStockPct = alloc.stockPct; objGlide = alloc.glide; objRisk = alloc.risk; objChartRate = alloc.rate;
   const planEl   = document.getElementById('ob-plan-content');
 
-  // Calculs de projection
-  const r10 = Math.pow(1.07, 10);
   const budgetCourt = Math.round(bankroll * 0.3);
   const budgetLong  = bankroll - budgetCourt;
 
-  // Allocation ETF selon la répartition choisie (le socle World domine la poche ETF)
-  const etfAlloc = (risk === 'agressif' || risk === 'eleve')
-    ? ['70% IWDA (ETF Monde)', '30% VWCE (ETF All-World)']
-    : (risk === 'dynamique')
-    ? ['75% IWDA (ETF Monde)', '25% VWCE (ETF All-World)']
-    : (risk === 'equilibre' || risk === 'modere')
-    ? ['80% IWDA (ETF Monde)', '20% VWCE (ETF All-World)']
-    : ['90% IWDA (ETF Monde)', '10% VWCE (ETF All-World)'];
+  // Répartition = celle du curseur : un seul ETF Monde comme socle (deux ETF Monde feraient doublon) + la part d'actions choisie
+  const etfAlloc = [`${alloc.etfPct ?? (100 - alloc.stockPct)}% ETF Monde (IWDA) — ton socle diversifié`];
+  if (alloc.stockPct > 0) etfAlloc.push(`${alloc.stockPct}% actions — la sélection est dans ton plan`);
 
   const both = obGoals.long && obGoals.court;
 
@@ -2946,8 +2955,8 @@ async function obGeneratePlan() {
   if (obGoals.long) {
     const capitalLong = both ? budgetLong : bankroll;
     const monthlyLong = both ? Math.round(monthly * 0.7) : monthly;
-    const rr = Math.pow(1.07, 10);
-    const proj = Math.round(capitalLong * rr + monthlyLong * 12 * ((rr - 1) / 0.07));
+    // Même calcul que la page Objectif (rendement du profil choisi, capitalisation mensuelle) pour afficher le même chiffre
+    const proj = obProjection10y(capitalLong, monthlyLong, alloc.rate);
     html += `
     <div style="background:#e8f8f0;border-radius:14px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #1a7f5a">
       <div style="font-size:12px;font-weight:800;color:#1a7f5a;margin-bottom:10px">🏦 PLAN LONG TERME — Construire ton patrimoine</div>
@@ -2960,7 +2969,7 @@ async function obGeneratePlan() {
           <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DÉPART</div><div style="font-size:13px;font-weight:800">${fmtK(capitalLong)}</div></div>
           <div><div style="font-size:11px;color:#8e8e93;font-weight:700">MENSUEL</div><div style="font-size:13px;font-weight:800">${monthlyLong}€/mois</div></div>
           <div><div style="font-size:11px;color:#8e8e93;font-weight:700">OBJECTIF</div><div style="font-size:13px;font-weight:800;color:#1c1c1e">${fmtK(target)}</div></div>
-          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DANS 10 ANS</div><div style="font-size:13px;font-weight:800;color:#1a7f5a">~${fmtK(proj)}</div></div>
+          <div><div style="font-size:11px;color:#8e8e93;font-weight:700">DANS 10 ANS</div><div style="font-size:13px;font-weight:800;color:#1a7f5a">~${fmtK(proj)}</div><div style="font-size:10px;color:#8e8e93">à ${alloc.rate} %/an</div></div>
         </div>
         <div style="background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#8e8e93">
           ⏱ Horizon : 10-20 ans · Ne pas toucher · Réinvestir les dividendes
@@ -5329,6 +5338,7 @@ function applyTheme(theme) {
     if (icon) icon.textContent = '🌙';
     if (label) label.textContent = 'Sombre';
   }
+  try { syncThemeSeg(); } catch {}
 }
 
 function toggleTheme() {
@@ -6898,7 +6908,7 @@ function nav(page, auto=false) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderPushCard();}catch(e){} },
+}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSettingsAccount();}catch(e){console.warn('account:',e);} try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderPushCard();}catch(e){} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(auto); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
 }
@@ -9062,10 +9072,34 @@ function renderCrise() {
 
 // ===== SETTINGS =====
 async function saveSettings() {
-  await saveProfile();
-  const msg=document.getElementById('settings-msg');
-  msg.style.display='block';
-  setTimeout(()=>msg.style.display='none',2000);
+  try { await saveProfile(); showToast('✓ Profil enregistré'); } catch { showToast('Enregistrement impossible'); }
+}
+
+// En-tête « compte » des Paramètres : initiale, e-mail, offre + libellé du mot de passe selon le mode de connexion
+function renderSettingsAccount() {
+  const email = isDemo ? 'Mode démo' : (currentUser?.email || '');
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  set('set-email', email);
+  set('set-avatar', (email.replace(/[^a-zA-Z0-9]/g, '')[0] || 'K'));
+  set('set-plan', isPremiumUser() ? '✨ Premium' : 'Offre gratuite');
+  const viaGoogle = (currentUser?.app_metadata?.providers || [currentUser?.app_metadata?.provider]).includes('google');
+  set('set-pass-sub', viaGoogle ? 'Tu te connectes avec Google : tu peux aussi définir un mot de passe' : 'Modifier ton mot de passe');
+  syncThemeSeg();
+}
+
+function syncThemeSeg() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  document.querySelectorAll('[data-theme-opt]').forEach(b => b.classList.toggle('on', b.dataset.themeOpt === cur));
+}
+
+function toggleSettingsPassForm() {
+  const f = document.getElementById('set-pass-form');
+  if (!f) return;
+  const open = f.style.display === 'none';
+  f.style.display = open ? 'flex' : 'none';
+  const chev = document.getElementById('set-pass-chev');
+  if (chev) chev.style.transform = open ? 'rotate(90deg)' : '';
+  if (open) document.getElementById('new-pass')?.focus();
 }
 
 // ===== NEWS =====
@@ -10919,6 +10953,7 @@ function showPlansModal(opts) {
 // Carte d'abonnement dans les Paramètres — s'adapte au statut
 function renderSubscriptionCard() {
   updateSidebarPremiumCard();
+  try { renderSettingsAccount(); } catch {}
   const el = document.getElementById('sub-card');
   if (!el) return;
   const premium = isPremiumUser();
@@ -10933,10 +10968,12 @@ function renderSubscriptionCard() {
     // un ancien abonné d'une personne qui n'a jamais souscrit.
     const lapsed = status === 'canceled' || status === 'unpaid';
     el.innerHTML = `
-      <div style="background:linear-gradient(135deg,#0b1220,#111c33);border-radius:18px;padding:20px 18px;color:#fff">
-        <div style="font-size:17px;font-weight:900;letter-spacing:-0.02em;margin-bottom:4px">${lapsed ? 'Reprends Premium' : 'Ton offre'}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">${lapsed ? 'Ton abonnement est terminé : retrouve tous les outils.' : 'Tu es sur l\'offre gratuite. Compare avec Premium :'}</div>
-        <div data-plans-root data-lapsed="${lapsed ? 1 : 0}">${plansComparisonHTML(lapsed)}</div>
+      <div class="set-row">
+        <div class="set-row-main">
+          <div class="set-row-title">${lapsed ? 'Ton abonnement Premium est terminé' : 'Offre gratuite'}</div>
+          <div class="set-row-sub">${lapsed ? 'Retrouve l\'IA illimitée, le bilan complet et tous les outils.' : `Premium : IA illimitée, bilan complet, analyse de tes dépenses. Dès ${PREMIUM_PRICE}/mois, sans engagement.`}</div>
+        </div>
+        <div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="showPlansModal()">${lapsed ? 'Reprendre' : 'Voir Premium'}</button></div>
       </div>`;
     return;
   }
@@ -10945,27 +10982,18 @@ function renderSubscriptionCard() {
   const canceling = status === 'cancel_at_period_end';
   const pastDue = status === 'past_due';
   const planLabel = profile?.subscription_plan === 'annual' ? `${PREMIUM_PRICE_ANNUAL}/an` : `${PREMIUM_PRICE}/mois`;
+  const sub = canceling ? `Prend fin le ${until} : tu gardes l'accès jusque-là`
+    : until ? `${planLabel} · renouvellement le ${until}` : `${planLabel} · actif`;
   el.innerHTML = `
-    <div style="background:linear-gradient(135deg,#0d2818,#14532d);border-radius:16px;padding:20px;color:#fff">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
-        <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:rgba(74,222,128,0.2);color:#4ade80;letter-spacing:0.06em">✨ PREMIUM ACTIF</span>
-        <span style="font-size:11px;color:rgba(255,255,255,0.5)">${planLabel}</span>
+    <div class="set-row">
+      <div class="set-row-main">
+        <div class="set-row-title">✨ Premium</div>
+        <div class="set-row-sub">${sub}</div>
       </div>
-      ${pastDue ? `
-        <div style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#fcd34d">
-          ⚠️ Dernier paiement refusé. Mets à jour ta carte pour ne pas perdre l'accès${until ? ` après le ${until}` : ''}.
-        </div>` : canceling ? `
-        <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:rgba(255,255,255,0.75)">
-          Ton abonnement prendra fin le ${until}. Tu gardes l'accès jusque-là.
-        </div>` : `
-        <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-bottom:14px">
-          ${until ? `Prochain renouvellement le ${until}` : 'Abonnement actif'}
-        </div>`}
-      <button onclick="openBillingPortal(this)" style="width:100%;padding:12px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">
-        Gérer mon abonnement
-      </button>
-      <div style="font-size:10.5px;color:rgba(255,255,255,0.4);text-align:center;margin-top:9px">Factures, moyen de paiement et résiliation</div>
-    </div>`;
+      <div class="set-row-ctrl"><button type="button" class="set-pill" onclick="openBillingPortal(this)">Gérer</button></div>
+    </div>
+    ${pastDue ? `<div class="set-warn">⚠️ Dernier paiement refusé. Mets à jour ta carte dans « Gérer » pour ne pas perdre l'accès${until ? ` après le ${until}` : ''}.</div>` : ''}
+    <div class="set-note" style="margin:0 16px 12px">Factures, moyen de paiement et résiliation : bouton « Gérer ».</div>`;
 }
 
 // Pastille "Passez à Premium" de la sidebar — visible sur toutes les pages,

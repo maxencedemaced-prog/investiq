@@ -1906,3 +1906,45 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
    (contraste ~2 et ~1,6). On les fonce, sans toucher aux fonds/bordures ni au bloc sombre du plan du mois. */
 :root:not([data-theme="dark"]) .main :is([style^="color:#f59e0b"], [style*=";color:#f59e0b"]):not(#obj-monthly-plan *) { color: #b45309 !important; }
 :root:not([data-theme="dark"]) .main :is([style^="color:#c7c7cc"], [style*=";color:#c7c7cc"]):not(#obj-monthly-plan *) { color: #8e8e93 !important; }
+
+/* La barre de navigation du bas (mobile) n'a de sens que dans l'app : jamais par-dessus l'écran de connexion */
+#app[style*="display:none"] ~ #bottom-nav, #app[style*="display: none"] ~ #bottom-nav { display: none !important; }
+
+/* ===== PARAMÈTRES — groupes de lignes épurés (style réglages d'app) ===== */
+.set-wrap{max-width:640px}
+.set-account{display:flex;align-items:center;gap:14px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:16px;margin-bottom:6px}
+.set-avatar{width:46px;height:46px;border-radius:50%;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800;flex-shrink:0;text-transform:uppercase}
+.set-account-email{font-size:15px;font-weight:700;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.set-account-plan{font-size:12.5px;color:var(--color-text-secondary);margin-top:2px}
+.set-label{font-size:12px;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin:22px 4px 8px}
+.set-group{background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;overflow:hidden}
+.set-row{display:flex;align-items:center;gap:14px;padding:13px 16px;min-height:52px;border-top:1px solid var(--color-border);width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;font-family:inherit;color:var(--color-text);box-sizing:border-box}
+.set-group > :first-child, .set-group > :first-child > .set-row:first-child{border-top:0}
+.set-row-main{flex:1;min-width:0}
+.set-row-title{font-size:14px;font-weight:600;color:var(--color-text)}
+.set-row-sub{font-size:12px;color:var(--color-text-secondary);line-height:1.45;margin-top:2px}
+.set-row-ctrl{flex-shrink:0;display:flex;align-items:center;gap:8px}
+button.set-row{cursor:pointer;transition:background .15s}
+button.set-row:hover{background:var(--color-bg-subtle)}
+.set-chev{color:var(--color-text-tertiary);font-size:18px;line-height:1}
+.set-danger .set-row-title{color:#dc2626}
+.set-note{font-size:11.5px;color:var(--color-text-secondary);line-height:1.5;margin:8px 4px 0}
+.set-select,.set-input{font-family:inherit;font-size:13.5px;font-weight:600;color:var(--color-text);background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:9px;padding:7px 10px;max-width:170px;width:auto;margin:0}
+.set-input{width:110px;text-align:right}
+.set-pill{font-family:inherit;font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:99px;border:1px solid var(--color-border);background:var(--color-bg-subtle);color:var(--color-text);cursor:pointer;white-space:nowrap}
+.set-pill.primary{background:#16a34a;border-color:#16a34a;color:#fff}
+.set-switch{position:relative;display:inline-block;width:46px;height:28px;flex-shrink:0;cursor:pointer}
+.set-switch input{opacity:0;width:0;height:0;position:absolute}
+.set-switch span{position:absolute;inset:0;background:var(--color-border-strong);border-radius:99px;transition:background .2s}
+.set-switch span::before{content:'';position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.set-switch input:checked + span{background:#16a34a}
+.set-switch input:checked + span::before{transform:translateX(18px)}
+.set-switch input:focus-visible + span{outline:2px solid #16a34a;outline-offset:2px}
+.set-seg{display:inline-flex;background:var(--color-bg-subtle);border:1px solid var(--color-border);border-radius:10px;padding:3px}
+.set-seg button{font-family:inherit;font-size:12.5px;font-weight:600;border:0;background:none;color:var(--color-text-secondary);padding:6px 12px;border-radius:7px;cursor:pointer}
+.set-seg button.on{background:var(--color-surface);color:var(--color-text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.set-form{padding:4px 16px 16px;display:flex;flex-direction:column;gap:8px}
+.set-form input{margin:0}
+.set-warn{margin:0 16px 14px;padding:10px 12px;border-radius:10px;font-size:12.5px;line-height:1.5;background:rgba(245,158,11,.12);color:#b45309}
+[data-theme="dark"] .set-warn{color:#fcd34d}
+@media (max-width:480px){.set-row-sub{font-size:11.5px}.set-select{max-width:140px}}

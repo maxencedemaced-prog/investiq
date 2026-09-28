@@ -40,9 +40,11 @@
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR", "description": "Version gratuite" }
   }
   </script>
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json" crossorigin="use-credentials">
   <!-- Mesure d'audience Vercel Web Analytics : anonyme, sans cookie (à activer dans Vercel > projet > Analytics) -->
   <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+  <!-- Installation de l'app : Chrome peut proposer l'installation avant que les scripts de la page soient chargés -->
+  <script>window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window._installEvt = e; window.dispatchEvent(new Event('kapitaro-installable')); });</script>
   <script defer src="/_vercel/insights/script.js"></script>
   <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
   <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
@@ -51,7 +53,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260928164636">
+  <link rel="stylesheet" href="style.css?v=20260928233000">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -166,13 +168,13 @@
       <!-- STATS SOCIALES -->
       <div style="display:flex;gap:24px;margin-bottom:36px;flex-wrap:wrap">
         <div>
-          <div style="font-size:22px;font-weight:900;color:#fff" id="hero-count-users">—</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">utilisateurs actifs</div>
+          <div style="font-size:22px;font-weight:900;color:#fff">Gratuit</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">pour commencer</div>
         </div>
         <div style="width:1px;background:rgba(255,255,255,0.1)"></div>
         <div>
-          <div style="font-size:22px;font-weight:900;color:#4ade80" id="hero-count-portf">—</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">portefeuilles suivis</div>
+          <div style="font-size:22px;font-weight:900;color:#4ade80">Débutant</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">ou confirmé</div>
         </div>
         <div style="width:1px;background:rgba(255,255,255,0.1)"></div>
         <div>
@@ -329,6 +331,19 @@
           <div style="width:6px;height:6px;background:#4ade80;border-radius:50%;flex-shrink:0;animation:pulse-dot 2s infinite"></div>
           <div style="font-size:11px;color:rgba(255,255,255,0.5);font-weight:500" id="hero-ai-msg">Agent IA · Analyse en cours...</div>
         </div>
+      </div>
+
+      <!-- INSTALLER L'APP : juste au-dessus du formulaire de connexion (affiché sur téléphone, ou sur ordinateur si le navigateur permet l'installation) -->
+      <div id="install-app-box" style="display:none;padding:12px 14px;background:rgba(22,163,74,0.12);border:1px solid rgba(22,163,74,0.35);border-radius:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="icons/kapitaro-tile.svg" width="38" height="38" alt="" style="border-radius:10px;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px;font-weight:800;color:#fff">Installe l'app Kapitaro</div>
+            <div id="install-app-text" style="font-size:11.5px;color:rgba(255,255,255,0.6);line-height:1.45;margin-top:1px">Sur ton écran d'accueil, en plein écran, avec les notifications.</div>
+          </div>
+          <button type="button" onclick="installAppDismiss()" aria-label="Masquer" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0">✕</button>
+        </div>
+        <button type="button" id="install-app-btn" onclick="installApp()" style="display:none;width:100%;margin-top:10px;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">📲 Installer l'app — gratuit</button>
       </div>
 
       <!-- FORMULAIRE -->
@@ -635,21 +650,7 @@
     resize();
     initParticles();
     draw();
-    animateCount('hero-count-users', 12847, '+');
-    animateCount('hero-count-portf', 8241, '');
     initHeroDashboard();
-  }
-
-  function animateCount(id, target, prefix) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    let current = 0;
-    const step = target / 60;
-    const timer = setInterval(() => {
-      current = Math.min(current + step, target);
-      el.textContent = prefix + Math.floor(current).toLocaleString('fr-FR');
-      if (current >= target) clearInterval(timer);
-    }, 16);
   }
 
   window.addEventListener('resize', () => {
@@ -903,7 +904,7 @@ window.addEventListener('load', function() {
             <input type="number" id="ob-target" step="5000" placeholder="Ex: 50 000" oninput="obCheckBudget();obUpdateBudgetPreview()" min="0">
           </div>
           <div id="ob-budget-preview" style="display:none;background:#e8f8f0;border-radius:10px;padding:10px 14px;border-left:3px solid #1a7f5a">
-            <div style="font-size:11px;font-weight:700;color:#1a7f5a;margin-bottom:3px">Projection à 7%/an</div>
+            <div id="ob-projection-label" style="font-size:11px;font-weight:700;color:#1a7f5a;margin-bottom:3px">Projection sur 10 ans</div>
             <div style="font-size:13px;color:#1c1c1e;font-weight:600" id="ob-preview-text">—</div>
           </div>
           <div id="ob-budget-error" style="display:none;background:#fff0f0;border-radius:10px;padding:10px 14px;font-size:13px;color:#cc2f26;font-weight:600">⚠ Remplis les 3 champs</div>
@@ -984,8 +985,8 @@ window.addEventListener('load', function() {
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-          <button class="btn-primary" style="width:100%;font-size:15px;padding:14px" onclick="obFinish('objectif')">📊 Voir mon tableau de bord →</button>
-          <button class="btn-secondary" style="width:100%;font-size:13px" onclick="obFinish('home')">Accéder à l'app</button>
+          <button class="btn-primary" style="width:100%;font-size:15px;padding:14px" onclick="obFinish('objectif')">🎯 Voir mon plan en détail →</button>
+          <button class="btn-secondary" style="width:100%;font-size:13px" onclick="obFinish('home')">Aller à l'accueil</button>
         </div>
       </div>
     </div>
@@ -1116,7 +1117,7 @@ window.addEventListener('load', function() {
       <div class="page-header">
         <div>
           <h1>Mon portefeuille</h1>
-          <p class="page-sub">Suivez la performance de vos investissements en temps réel.</p>
+          <p class="page-sub">Suis la performance de tes investissements en temps réel.</p>
         </div>
         <div style="display:flex;gap:8px">
           <input type="file" id="csv-file-input" accept=".csv,.txt,.pdf,.xlsx,.xls,text/csv,application/pdf" style="display:none" onchange="handleCSVImport(this.files[0]);this.value=''">
@@ -1143,7 +1144,7 @@ window.addEventListener('load', function() {
       <div class="page-header">
         <div>
           <h1>Santé du portefeuille</h1>
-          <p class="page-sub">Analyse complète de votre portefeuille et recommandations personnalisées.</p>
+          <p class="page-sub">Analyse complète de ton portefeuille et recommandations personnalisées.</p>
         </div>
       </div>
       <div id="sante-content"></div>
@@ -1152,7 +1153,7 @@ window.addEventListener('load', function() {
     <!-- OBJECTIF -->
     <section id="sec-objectif" class="sec">
       <div class="page-header">
-        <div><h1>Mon objectif</h1><p class="page-sub">Suivez l'évolution de votre objectif personnalisé</p></div>
+        <div><h1>Mon objectif</h1><p class="page-sub">Suis l'évolution de ton objectif personnalisé</p></div>
       </div>
 
       <!-- WIZARD -->
@@ -1768,7 +1769,7 @@ window.addEventListener('load', function() {
       <div class="page-header">
         <div>
           <h1>Scénario crise</h1>
-          <p class="page-sub">Simulez l'impact des crises sur votre portefeuille et préparez votre stratégie.</p>
+          <p class="page-sub">Simule l'impact des crises sur ton portefeuille et prépare ta stratégie.</p>
         </div>
       </div>
       <div id="crise-content"></div>
@@ -1782,81 +1783,135 @@ window.addEventListener('load', function() {
     <!-- SETTINGS -->
     <section id="sec-settings" class="sec">
       <div class="page-header"><h1>Paramètres</h1></div>
+      <div class="set-wrap">
 
-      <!-- ABONNEMENT -->
-      <div id="sub-card" style="margin-bottom:16px"></div>
-      <!-- NOTIFICATIONS PUSH -->
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon dark">🔔</span>Notifications</div></div>
-        <div style="font-size:13px;color:#8e8e93;line-height:1.55;margin-bottom:12px">Sur cet appareil, même quand l'app est fermée : ton briefing du matin (valeur du portefeuille, dernière séance), une alerte dès qu'un prix passe sous le seuil que tu as fixé, et une alerte quand une action explose ou s'effondre (2 alertes par jour au maximum, jamais de spam).</div>
-        <div id="push-card-body"></div>
-        <div class="field" style="margin-top:14px;margin-bottom:0"><label>Briefing du matin</label>
-          <select id="s-notif" onchange="pushPrefChanged()"><option value="daily">Chaque jour</option><option value="weekly">Chaque lundi</option><option value="off">Désactivé (aucune notification)</option></select>
+        <!-- COMPTE -->
+        <div class="set-account">
+          <div class="set-avatar" id="set-avatar">K</div>
+          <div style="flex:1;min-width:0">
+            <div class="set-account-email" id="set-email">—</div>
+            <div class="set-account-plan" id="set-plan">Offre gratuite</div>
+          </div>
         </div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon dark">$</span>Profil investisseur</div></div>
-        <div class="form-grid">
-          <div class="field"><label>Bankroll (€)</label><input type="number" id="s-bankroll" value="5000" step="500"></div>
-          <div class="field"><label>Horizon</label><select id="s-horizon"><option value="court">Court (&lt;3 ans)</option><option value="moyen" selected>Moyen (3–7 ans)</option><option value="long">Long (&gt;7 ans)</option></select></div>
-          <div class="field"><label>Tolérance au risque</label><select id="s-risk"><option value="faible" selected>Faible</option><option value="modere">Modérée</option><option value="eleve">Élevée</option></select></div>
+
+        <!-- ABONNEMENT (lignes rendues par renderSubscriptionCard) -->
+        <div class="set-label">Abonnement</div>
+        <div class="set-group" id="sub-card"></div>
+
+        <!-- NOTIFICATIONS -->
+        <div class="set-label">Notifications</div>
+        <div class="set-group">
+          <div id="push-card-body"></div>
+          <div class="set-row">
+            <div class="set-row-main">
+              <div class="set-row-title">Briefing du matin</div>
+              <div class="set-row-sub">Valeur de ton portefeuille et dernière séance</div>
+            </div>
+            <div class="set-row-ctrl">
+              <select id="s-notif" class="set-select" onchange="pushPrefChanged()"><option value="daily">Chaque jour</option><option value="weekly">Chaque lundi</option><option value="off">Désactivé</option></select>
+            </div>
+          </div>
         </div>
-        <button class="btn-save" onclick="saveSettings()">Sauvegarder le profil</button>
-        <div id="settings-msg" style="margin-top:10px;font-size:14px;color:#00b386;display:none;font-weight:700">✓ Sauvegardé</div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon dark">🔒</span>Sécurité</div></div>
-        <div class="field"><label>Nouveau mot de passe</label><input type="password" id="new-pass" placeholder="Min. 8 caractères"></div>
-        <div class="field"><label>Confirmer</label><input type="password" id="new-pass2" placeholder="••••••••"></div>
-        <button class="btn-primary" onclick="changePassword()">Changer le mot de passe</button>
-        <div id="pass-msg" style="margin-top:10px;font-size:14px;display:none;font-weight:700"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon" style="background:#e8f8f0;color:#1a7f5a">?</span>Aide & Tutoriel</div></div>
-        <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">Revoir le guide de démarrage ou explorer l'app avec des données fictives.</div>
-        <div class="btn-row">
-          <button class="btn-secondary" onclick="showOnboarding(true)" style="flex:1">
-            📋 Revoir le tutoriel
+        <div class="set-note">Même quand l'app est fermée : briefing, alertes de prix et gros mouvements. 2 alertes par jour au maximum, jamais de spam.</div>
+
+        <!-- PROFIL INVESTISSEUR -->
+        <div class="set-label">Profil investisseur</div>
+        <div class="set-group">
+          <div class="set-row">
+            <div class="set-row-main"><div class="set-row-title">Capital disponible</div><div class="set-row-sub">Ce que tu peux investir</div></div>
+            <div class="set-row-ctrl"><input type="number" id="s-bankroll" class="set-input" value="5000" step="500" min="0" inputmode="numeric" onchange="saveSettings()" aria-label="Capital disponible en euros"><span style="font-size:13px;color:var(--color-text-secondary)">€</span></div>
+          </div>
+          <div class="set-row">
+            <div class="set-row-main"><div class="set-row-title">Horizon</div><div class="set-row-sub">Dans combien de temps tu auras besoin de cet argent</div></div>
+            <div class="set-row-ctrl"><select id="s-horizon" class="set-select" onchange="saveSettings()" aria-label="Horizon"><option value="court">Moins de 3 ans</option><option value="moyen" selected>3 à 7 ans</option><option value="long">Plus de 7 ans</option></select></div>
+          </div>
+          <div class="set-row">
+            <div class="set-row-main"><div class="set-row-title">Tolérance au risque</div><div class="set-row-sub">Ce que tu acceptes de voir baisser</div></div>
+            <div class="set-row-ctrl"><select id="s-risk" class="set-select" onchange="saveSettings()" aria-label="Tolérance au risque"><option value="faible" selected>Faible</option><option value="modere">Modérée</option><option value="eleve">Élevée</option></select></div>
+          </div>
+        </div>
+        <div class="set-note">L'IA s'en sert pour adapter ses conseils. Enregistré automatiquement.</div>
+
+        <!-- APPARENCE -->
+        <div class="set-label">Apparence</div>
+        <div class="set-group">
+          <div class="set-row">
+            <div class="set-row-main"><div class="set-row-title">Thème</div></div>
+            <div class="set-row-ctrl">
+              <div class="set-seg" role="group" aria-label="Thème">
+                <button type="button" data-theme-opt="light" onclick="applyTheme('light')">☀️ Clair</button>
+                <button type="button" data-theme-opt="dark" onclick="applyTheme('dark')">🌙 Sombre</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SÉCURITÉ -->
+        <div class="set-label">Connexion</div>
+        <div class="set-group">
+          <button type="button" class="set-row" onclick="toggleSettingsPassForm()">
+            <div class="set-row-main"><div class="set-row-title">Mot de passe</div><div class="set-row-sub" id="set-pass-sub">Modifier ton mot de passe</div></div>
+            <span class="set-chev" id="set-pass-chev">›</span>
           </button>
-          <button class="btn-secondary" onclick="loadDemo();nav('portfolio')" style="flex:1">
-            👀 Mode démo
+          <div id="set-pass-form" class="set-form" style="display:none">
+            <input type="password" id="new-pass" placeholder="Nouveau mot de passe (8 car. min.)" autocomplete="new-password">
+            <input type="password" id="new-pass2" placeholder="Confirme-le" autocomplete="new-password">
+            <button class="btn-primary" onclick="changePassword()">Enregistrer le mot de passe</button>
+            <div id="pass-msg" style="font-size:13px;display:none;font-weight:700"></div>
+          </div>
+          <button type="button" class="set-row" onclick="logout()">
+            <div class="set-row-main"><div class="set-row-title">Se déconnecter</div></div>
+            <span class="set-chev">›</span>
           </button>
         </div>
-        <button class="btn-secondary" id="tab-hints-reset" onclick="tabHintsReset()" style="width:100%;margin-top:10px">🔴 Réafficher les explications des onglets</button>
-      </div>
-      <!-- MES DONNÉES (RGPD) -->
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon">🔐</span>Mes données</div></div>
-        <div style="font-size:13px;color:#8e8e93;margin-bottom:12px">Tu restes propriétaire de tes données. Tu peux les récupérer ou les effacer à tout moment.</div>
-        <div class="btn-row" style="flex-wrap:wrap">
-          <button class="btn-secondary" onclick="exportMyData()" style="flex:1;min-width:180px">📦 Télécharger mes données</button>
-          <button class="btn-secondary" onclick="exportPDF()" style="flex:1;min-width:180px">📄 Exporter en PDF</button>
-        </div>
-      </div>
 
-      <!-- LÉGAL -->
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon">⚖️</span>Informations légales</div></div>
-        <div style="display:flex;flex-direction:column;gap:1px;margin:-4px -4px 0">
-          <button class="legal-link" onclick="openLegalDoc('cgu')">📜 Conditions d'utilisation et de vente<span>›</span></button>
-          <button class="legal-link" onclick="openLegalDoc('privacy')">🔒 Politique de confidentialité<span>›</span></button>
-          <button class="legal-link" onclick="openLegalDoc('risk')">⚠️ Avertissement sur les risques<span>›</span></button>
-          <button class="legal-link" onclick="openLegalDoc('mentions')">📋 Mentions légales<span>›</span></button>
+        <!-- AIDE -->
+        <div class="set-label">Aide</div>
+        <div class="set-group">
+          <button type="button" class="set-row" onclick="showOnboarding(true)">
+            <div class="set-row-main"><div class="set-row-title">Revoir le tutoriel</div><div class="set-row-sub">Le guide de démarrage en 4 étapes</div></div>
+            <span class="set-chev">›</span>
+          </button>
+          <button type="button" class="set-row" onclick="tabHintsReset()">
+            <div class="set-row-main"><div class="set-row-title">Réafficher les explications</div><div class="set-row-sub" id="tab-hints-reset">Le petit mot d'aide à l'ouverture de chaque onglet</div></div>
+            <span class="set-chev">›</span>
+          </button>
+          <button type="button" class="set-row" onclick="loadDemo();nav('portfolio')">
+            <div class="set-row-main"><div class="set-row-title">Mode démo</div><div class="set-row-sub">Explorer l'app avec un portefeuille fictif</div></div>
+            <span class="set-chev">›</span>
+          </button>
         </div>
-        <div style="font-size:11.5px;color:#8e8e93;line-height:1.55;margin-top:14px;padding-top:13px;border-top:1px solid var(--color-border,#eee)">
-          Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. L'éditeur n'est pas enregistré auprès de l'ORIAS ni agréé par l'AMF. Investir comporte un risque de perte en capital.
-        </div>
-      </div>
 
-      <!-- ZONE DANGER -->
-      <div class="card">
-        <div class="card-head"><div class="card-title"><span class="card-icon red">⚠</span>Zone sensible</div></div>
-        <div class="btn-row" style="margin-bottom:10px">
-          <button class="btn-danger" onclick="logout()" style="flex:1">Se déconnecter</button>
+        <!-- MES DONNÉES (RGPD) -->
+        <div class="set-label">Mes données</div>
+        <div class="set-group">
+          <button type="button" class="set-row" onclick="exportPDF()">
+            <div class="set-row-main"><div class="set-row-title">Rapport PDF du portefeuille</div><div class="set-row-sub">Tes positions et ta performance, à imprimer ou garder</div></div>
+            <span class="set-chev">›</span>
+          </button>
+          <button type="button" class="set-row" onclick="exportMyData()">
+            <div class="set-row-main"><div class="set-row-title">Télécharger toutes mes données</div><div class="set-row-sub">Un fichier avec tout ce que Kapitaro garde sur toi</div></div>
+            <span class="set-chev">›</span>
+          </button>
         </div>
-        <button onclick="deleteMyAccount()" style="width:100%;padding:11px;background:transparent;border:1px solid #fecaca;border-radius:10px;font-size:12.5px;font-weight:600;color:#dc2626;cursor:pointer">
-          Supprimer définitivement mon compte et mes données
-        </button>
+
+        <!-- LÉGAL -->
+        <div class="set-label">Informations légales</div>
+        <div class="set-group">
+          <button type="button" class="set-row" onclick="openLegalDoc('cgu')"><div class="set-row-main"><div class="set-row-title">Conditions d'utilisation et de vente</div></div><span class="set-chev">›</span></button>
+          <button type="button" class="set-row" onclick="openLegalDoc('privacy')"><div class="set-row-main"><div class="set-row-title">Politique de confidentialité</div></div><span class="set-chev">›</span></button>
+          <button type="button" class="set-row" onclick="openLegalDoc('risk')"><div class="set-row-main"><div class="set-row-title">Avertissement sur les risques</div></div><span class="set-chev">›</span></button>
+          <button type="button" class="set-row" onclick="openLegalDoc('mentions')"><div class="set-row-main"><div class="set-row-title">Mentions légales</div></div><span class="set-chev">›</span></button>
+        </div>
+        <div class="set-note">Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. L'éditeur n'est pas enregistré auprès de l'ORIAS ni agréé par l'AMF. Investir comporte un risque de perte en capital.</div>
+
+        <!-- SUPPRESSION -->
+        <div class="set-group" style="margin-top:28px">
+          <button type="button" class="set-row set-danger" onclick="deleteMyAccount()">
+            <div class="set-row-main"><div class="set-row-title">Supprimer mon compte</div><div class="set-row-sub">Efface définitivement ton compte et toutes tes données</div></div>
+          </button>
+        </div>
+        <div style="height:24px"></div>
       </div>
     </section>
 
@@ -1882,11 +1937,11 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260928164636"></script>
-<script src="depenses.js?v=20260928164636"></script>
-<script src="bilan-extra.js?v=20260928164636"></script>
-<script src="tab-hints.js?v=20260928164636"></script>
-<script src="push.js?v=20260928164636"></script>
+<script src="app.js?v=20260928233000"></script>
+<script src="depenses.js?v=20260928194433"></script>
+<script src="bilan-extra.js?v=20260928194433"></script>
+<script src="tab-hints.js?v=20260928233000"></script>
+<script src="push.js?v=20260928233000"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
