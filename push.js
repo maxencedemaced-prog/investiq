@@ -177,6 +177,7 @@ async function pushBellPromptHTML() {
 // iPhone / iPad : Apple ne permet pas d'installer par un bouton, on explique le geste Partager → « Sur l'écran d'accueil ».
 const INSTALL_DISMISS_KEY = 'iq_install_dismissed';
 const appIsInstalled = () => window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+const isMobileDevice = () => /android|mobile/i.test(navigator.userAgent);
 const isIOSDevice = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 function installAppRender() {
@@ -193,10 +194,15 @@ function installAppRender() {
     box.style.display = 'block';
   } else if (isIOSDevice()) {
     btn.style.display = 'none';
-    text.innerHTML = 'Touche <strong style="color:#fff">Partager</strong> <span style="font-size:13px">⬆️</span> en bas de Safari, puis <strong style="color:#fff">« Sur l\'écran d\'accueil »</strong>.';
+    text.innerHTML = 'Touche <strong style="color:#fff">Partager</strong> <span style="font-size:13px">⬆️</span> (en bas dans Safari, en haut dans Chrome), puis <strong style="color:#fff">« Sur l\'écran d\'accueil »</strong>.';
+    box.style.display = 'block';
+  } else if (isMobileDevice()) {
+    // Android sans signal d'installation (Samsung Internet, Firefox, Chrome qui n'a pas encore réagi…) : on explique le geste.
+    btn.style.display = 'none';
+    text.innerHTML = 'Ouvre le menu <strong style="color:#fff">⋮</strong> de ton navigateur, puis <strong style="color:#fff">« Installer l\'application »</strong> ou <strong style="color:#fff">« Ajouter à l\'écran d\'accueil »</strong>.';
     box.style.display = 'block';
   } else {
-    box.style.display = 'none';   // navigateur qui ne permet pas l'installation (ex. Firefox sur ordinateur)
+    box.style.display = 'none';   // ordinateur sans installation possible (ex. Firefox, Safari)
   }
 }
 
