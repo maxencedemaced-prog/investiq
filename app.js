@@ -1268,7 +1268,7 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
   if (el) { el.style.width = '0%'; el.style.transition = 'width 1s cubic-bezier(0.16,1,0.3,1)'; setTimeout(() => { el.style.width = pct + '%'; }, 150); }
   if (marker) { marker.style.left = '0%'; marker.style.transition = 'left 1s cubic-bezier(0.16,1,0.3,1)'; setTimeout(() => { marker.style.left = pct + '%'; }, 150); }
   const pctEl = document.getElementById('obj-real-pct');
-  if (pctEl) pctEl.textContent = pct.toFixed(1) + '%';
+  if (pctEl) pctEl.textContent = pct.toFixed(1).replace(".", ",") + ' %';
   const valEl = document.getElementById('obj-real-val');
   if (valEl) valEl.textContent = fmtK(tv);
   const targetEl = document.getElementById('obj-real-target');
@@ -1447,7 +1447,7 @@ function renderMultiObjChart() {
     const targetEl = document.getElementById('obj-real-target');
     if (bar) bar.style.width = pct + '%';
     if (marker) marker.style.left = pct + '%';
-    if (pctEl) pctEl.textContent = pct.toFixed(1) + '%';
+    if (pctEl) pctEl.textContent = pct.toFixed(1).replace(".", ",") + ' %';
     if (valEl) valEl.textContent = fmtK(tv);
     if (targetEl) targetEl.textContent = fmtK(active.target);
   }
@@ -1490,7 +1490,7 @@ function renderObjLegend(tv) {
         <div style="margin-top:5px;background:#e5e5ea;border-radius:4px;height:4px;width:180px;overflow:hidden">
           <div style="height:100%;background:${active.color};width:${pct}%;border-radius:4px"></div>
         </div>
-        <div style="font-size:10px;color:#8e8e93;margin-top:2px">${pct.toFixed(1)}% atteint</div>
+        <div style="font-size:10px;color:#8e8e93;margin-top:2px">${pct.toFixed(1).replace(".", ",")} % atteint</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:18px;font-weight:900;color:${active.color}">${fmtK(fv)}</div>
@@ -2357,7 +2357,7 @@ function sharePortfolio() {
   const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
   const tpnl = tv-ti, tpct = ti?tpnl/ti*100:0;
-  const text = `Mon portefeuille Kapitaro 📊\n\nValeur : ${fmtK(tv)}\nPlus-value : ${tpnl>=0?'+':''}${fmtK(tpnl)} (${tpnl>=0?'+':''}${tpct.toFixed(1)}%)\n\nPositions : ${positions.map(p=>p.name).join(', ')}\n\n🔗 kapitaro.fr`;
+  const text = `Mon portefeuille Kapitaro 📊\n\nValeur : ${fmtK(tv)}\nPlus-value : ${tpnl>=0?'+':''}${fmtK(tpnl)} (${tpnl>=0?'+':''}${tpct.toFixed(1).replace(".", ",")} %)\n\nPositions : ${positions.map(p=>p.name).join(', ')}\n\n🔗 kapitaro.fr`;
   if (navigator.share) {
     navigator.share({ title: 'Mon portefeuille Kapitaro', text, url: 'https://kapitaro.fr' })
       .catch(() => copyToClipboard(text));
@@ -3428,7 +3428,7 @@ function buildBloombergTicker(allTracked) {
     const downColor = '#ef4444'; // rouge vif
     const color = chg !== null ? (up ? upColor : downColor) : 'rgba(255,255,255,0.3)';
     const arrow = up ? '▲' : '▼';
-    const chgStr = chg !== null ? (up?'+':'') + chg.toFixed(2) + '%' : '';
+    const chgStr = chg !== null ? (up?'+':'') + chg.toFixed(2).replace(".", ",") + ' %' : '';
     const priceStr = price ? fmt(price) + '€' : '';
     const sep = '<span style="color:rgba(255,255,255,0.1);margin:0 4px;font-size:10px">|</span>';
     const tickerEl = document.createElement('span');
@@ -4478,7 +4478,7 @@ async function fetchCompanyPrice(ticker) {
       if (priceEl) { priceEl.textContent = q.price ? q.price.toFixed(2) + ' €' : '—'; }
       if (changeEl) {
         const chg = q.changePct || 0;
-        changeEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+        changeEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace(".", ",") + ' %';
         changeEl.className = 'metric-val ' + (chg >= 0 ? 'green' : 'red');
       }
     }
@@ -5097,7 +5097,7 @@ function showPriceTicker() {
     const chg = p.change_pct || 0;
     const color = chg >= 0 ? '#1a7f5a' : '#cc2f26';
     const sign = chg >= 0 ? '+' : '';
-    return `<span style="font-size:11px;font-weight:700;color:${color};white-space:nowrap">${p.name} ${sign}${chg.toFixed(1)}%</span>`;
+    return `<span style="font-size:11px;font-weight:700;color:${color};white-space:nowrap">${p.name} ${sign}${chg.toFixed(1).replace(".", ",")} %</span>`;
   });
 
   if (allItems.length <= 3) {
@@ -5563,7 +5563,7 @@ function updateDecisionAmount(euros) {
   const pctEl = document.getElementById('d-amount-pct');
   if (pctEl) {
     const bk = profile.bankroll || 0;
-    pctEl.textContent = bk > 0 ? `= ${(euros / bk * 100).toFixed(1)}% de ta bankroll` : '';
+    pctEl.textContent = bk > 0 ? `= ${(euros / bk * 100).toFixed(1).replace(".", ",")} % de ta bankroll` : '';
   }
   renderAmountChips();
   updateDecisionCTA();
@@ -6218,7 +6218,7 @@ PROFIL CLIENT :
 - Revenu net mensuel : ${revenu.toLocaleString('fr-FR')} €
 - Capacité d'épargne : ${capacite.toLocaleString('fr-FR')} €/mois (${revenu>0?(capacite/revenu*100).toFixed(0):0}% des revenus)
 - Patrimoine total : ${patrimoine.toLocaleString('fr-FR')} € (dont ${tv.toLocaleString('fr-FR')} € en bourse)
-- Performance bourse : ${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{maximumFractionDigits:0})} € (${ti>0?(pnl/ti*100).toFixed(1):0}%)
+- Performance bourse : ${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{maximumFractionDigits:0})} € (${ti>0?(pnl/ti*100).toFixed(1).replace(".", ","):0} %)
 
 OBJECTIFS : ${(bilanData.objectifs||[]).join(', ')}
 HORIZON : ${bilanData.horizon}
@@ -6231,7 +6231,7 @@ ${typeof bilanFactsText === 'function' ? bilanFactsText() : ''}
 ${bilanData.commentaires ? 'NOTES : ' + bilanData.commentaires : ''}
 
 PORTEFEUILLE ACTUEL :
-${positions.slice(0,8).map(p=>`${p.name}: ${(p.qty*p.price).toLocaleString('fr-FR',{maximumFractionDigits:0})}€ (${((p.qty*p.price/tv)*100).toFixed(1)}%)`).join('\n')}
+${positions.slice(0,8).map(p=>`${p.name}: ${(p.qty*p.price).toLocaleString('fr-FR',{maximumFractionDigits:0})}€ (${((p.qty*p.price/tv)*100).toFixed(1).replace(".", ",")} %)`).join('\n')}
 
 Génère un rapport structuré en JSON :
 {
@@ -6956,7 +6956,15 @@ document.addEventListener('keydown', e => {
 
 // ===== FORMATTERS =====
 function fmt(n) { return Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function fmtK(n) { return n>=1000?(n/1000).toFixed(1)+' k€':fmt(n)+' €'; }
+function fmtK(n) { return n>=1000?(n/1000).toFixed(1).replace('.', ',')+' k€':fmt(n)+' €'; }
+
+// Prénom pour les salutations : fourni par Google à la connexion, sinon rien (jamais le début de l'e-mail)
+function userFirstName() {
+  if (isDemo) return '';
+  const m = currentUser?.user_metadata || {};
+  const raw = m.given_name || m.first_name || String(m.full_name || m.name || '').trim().split(/\s+/)[0] || '';
+  return raw && !raw.includes('@') ? raw.charAt(0).toUpperCase() + raw.slice(1) : '';
+}
 function fmtI(n) { return Math.round(n).toLocaleString('fr-FR'); }
 
 // ===== NOTIFICATIONS =====
@@ -6992,18 +7000,18 @@ async function checkAndGenerateNotifications() {
   // ── 3. MARCHÉ EN BAISSE — opportunité DCA ──
   const avgChange = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
   if (avgChange < -3) {
-    newNotifs.push({ titre:'📉 Marché en baisse — opportunité !', texte:`Ton portefeuille baisse de ${Math.abs(avgChange).toFixed(1)}% aujourd'hui. Historiquement, c'est le bon moment pour renforcer en DCA, pas pour vendre.`, action:'Simulateur DCA', impact:'medium', heure:"Aujourd'hui", type:'marche' });
+    newNotifs.push({ titre:'📉 Marché en baisse — opportunité !', texte:`Ton portefeuille baisse de ${Math.abs(avgChange).toFixed(1).replace(".", ",")} % aujourd'hui. Historiquement, c'est le bon moment pour renforcer en DCA, pas pour vendre.`, action:'Simulateur DCA', impact:'medium', heure:"Aujourd'hui", type:'marche' });
   } else if (avgChange < -1.5) {
-    newNotifs.push({ titre:'📊 Légère baisse du marché', texte:`Baisse de ${Math.abs(avgChange).toFixed(1)}% aujourd'hui — reste calme, c'est normal. Ton horizon long terme est ton meilleur allié.`, action:'Voir Objectif', impact:'low', heure:"Aujourd'hui", type:'marche' });
+    newNotifs.push({ titre:'📊 Légère baisse du marché', texte:`Baisse de ${Math.abs(avgChange).toFixed(1).replace(".", ",")} % aujourd'hui — reste calme, c'est normal. Ton horizon long terme est ton meilleur allié.`, action:'Voir Objectif', impact:'low', heure:"Aujourd'hui", type:'marche' });
   }
 
   // ── 4. OBJECTIF EN DANGER ──
   if (objChartTarget && objChartTarget > 0 && tv > 0) {
     const pct = tv / objChartTarget * 100;
     if (pct < 10 && objChartYears <= 5) {
-      newNotifs.push({ titre:'🎯 Objectif en danger', texte:`Tu as atteint ${pct.toFixed(1)}% de ton objectif de ${fmtK(objChartTarget)} avec ${objChartYears} ans devant toi. Augmente tes versements mensuels.`, action:'Voir Objectif', impact:'high', heure:'Analyse', type:'objectif' });
+      newNotifs.push({ titre:'🎯 Objectif en danger', texte:`Tu as atteint ${pct.toFixed(1).replace(".", ",")} % de ton objectif de ${fmtK(objChartTarget)} avec ${objChartYears} ans devant toi. Augmente tes versements mensuels.`, action:'Voir Objectif', impact:'high', heure:'Analyse', type:'objectif' });
     } else if (pct < 20 && objChartYears <= 3) {
-      newNotifs.push({ titre:'⚡ Accélère vers ton objectif', texte:`${pct.toFixed(1)}% de l'objectif atteint. Il te reste ${objChartYears} ans — le moment d'intensifier les versements.`, action:'Simulateur DCA', impact:'medium', heure:'Analyse', type:'objectif' });
+      newNotifs.push({ titre:'⚡ Accélère vers ton objectif', texte:`${pct.toFixed(1).replace(".", ",")} % de l'objectif atteint. Il te reste ${objChartYears} ans — le moment d'intensifier les versements.`, action:'Simulateur DCA', impact:'medium', heure:'Analyse', type:'objectif' });
     }
   }
 
@@ -7110,7 +7118,7 @@ async function renderHome() {
   const greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
   const emojis = ['👋','👋','👋','👋','👋'];
   const emoji = emojis[new Date().getDay() % emojis.length];
-  const name = isDemo ? 'Toi' : (currentUser?.email||'').split('@')[0];
+  const name = userFirstName();
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
   const tpnl = tv - ti;
@@ -7124,7 +7132,7 @@ async function renderHome() {
   const best = sorted[0], worst = sorted[sorted.length-1];
   const today = new Date().toISOString().split('T')[0];
 
-  document.getElementById('home-greeting').textContent = `${greet} ${name} ! ${emoji}`;
+  document.getElementById('home-greeting').textContent = `${greet}${name ? ' ' + name : ''} ! ${emoji}`;
   const subEl = document.getElementById('home-date');
   if (subEl) subEl.textContent = 'Voici la santé de ton portefeuille aujourd\'hui.';
 
@@ -7164,7 +7172,7 @@ async function renderHome() {
   const pnlBg = tpnl >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)';
   const chgColor = avgChange >= 0 ? '#4ade80' : '#f87171';
   const mainSparkData = isEmpty ? Array(30).fill(50) : genSparkData(avgChange > 0 ? 1 : -1, 30);
-  const scoreTxt = isEmpty ? '—' : score.toFixed(1);
+  const scoreTxt = isEmpty ? '—' : score.toFixed(1).replace(".", ",");
   const scoreShownColor = isEmpty ? '#8e8e93' : scoreColor;
   const stripItems = (isEmpty || !scoreItems.length)
     ? ['Diversification','Concentration max','Part ETF','Performance'].map(label => ({label, score:0}))
@@ -7179,13 +7187,13 @@ async function renderHome() {
       <div class="hero-perf-badge" style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
         <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Performance totale</div>
         <div style="font-size:20px;font-weight:800;color:${pnlColor};letter-spacing:-0.04em">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
-        <div style="font-size:12px;color:${pnlColor};opacity:0.7;margin-top:2px">${tpnl>=0?'↑':'↓'} ${Math.abs(tpct).toFixed(1)}%</div>
+        <div style="font-size:12px;color:${pnlColor};opacity:0.7;margin-top:2px">${tpnl>=0?'↑':'↓'} ${Math.abs(tpct).toFixed(1).replace(".", ",")} %</div>
       </div>
       <div style="position:relative;z-index:2">
         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Valeur totale du portefeuille</div>
         <div style="font-size:clamp(32px,5vw,48px);font-weight:900;color:#fff;letter-spacing:-0.05em;line-height:1;margin-bottom:16px" id="home-tv-counter">—</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
-          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${chgColor}">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1)}% aujourd'hui</div>
+          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${chgColor}">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1).replace(".", ",")} % aujourd'hui</div>
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.6)">${positions.length} positions</div>
           <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${scoreShownColor}">${scoreTxt}/10 santé</div>
           ${targetVal > 0 ? `<div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#a5b4fc">${pctObj.toFixed(0)}% objectif</div>` : ''}
@@ -7210,7 +7218,7 @@ async function renderHome() {
   const actions = [
     { icon:'＋', label:'Ajouter une position', sub:'Ajoutez une action, ETF...', page:'ajouter', color:'#6366f1' },
     { icon:'🤔', label:'Aide à la décision', sub:'Analyse et recommandations', page:'decision', color:'#f59e0b' },
-    { icon:'🤖', label:'Agent IA', sub:'Discutez avec votre assistant', page:'ai', color:'#16a34a' },
+    { icon:'🤖', label:'Agent IA', sub:'Discute avec ton assistant', page:'ai', color:'#16a34a' },
   ];
   html += `
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
@@ -7247,7 +7255,7 @@ async function renderHome() {
     <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--color-border)">
       <div style="width:6px;height:6px;background:#16a34a;border-radius:50%;flex-shrink:0;animation:pulse-dot 2s infinite"></div>
       <div id="home-ai-insight" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;flex:1">
-        ${positions.length > 0 ? `${avgChange>=0?'Portef. en hausse de':'Portef. en baisse de'} <strong style="color:${chgColor}">${avgChange>=0?'+':''}${avgChange.toFixed(1)}%</strong> aujourd'hui.` : 'Ajoute des positions pour recevoir des insights personnalisés.'}
+        ${positions.length > 0 ? `${avgChange>=0?'Portef. en hausse de':'Portef. en baisse de'} <strong style="color:${chgColor}">${avgChange>=0?'+':''}${avgChange.toFixed(1).replace(".", ",")} %</strong> aujourd'hui.` : 'Ajoute des positions pour recevoir des insights personnalisés.'}
       </div>
       <div onclick="event.stopPropagation();nav('ai')" style="font-size:11px;font-weight:600;color:#16a34a;flex-shrink:0;cursor:pointer">Agent IA →</div>
     </div>
@@ -7262,13 +7270,13 @@ async function renderHome() {
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">🏆 Meilleure performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${best.name}</div>
-        <div style="font-size:20px;font-weight:900;color:#16a34a;letter-spacing:-0.04em;margin-bottom:8px">+${(best.change_pct||0).toFixed(2)}%</div>
+        <div style="font-size:20px;font-weight:900;color:#16a34a;letter-spacing:-0.04em;margin-bottom:8px">+${(best.change_pct||0).toFixed(2).replace(".", ",")} %</div>
         <div style="opacity:0.7">${sparkline(bestData,'#4ade80',120,32,true)}</div>
       </div>
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">📉 Plus faible performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${worst.name}</div>
-        <div style="font-size:20px;font-weight:900;color:#dc2626;letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0).toFixed(2)}%</div>
+        <div style="font-size:20px;font-weight:900;color:#dc2626;letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0).toFixed(2).replace(".", ",")} %</div>
         <div style="opacity:0.7">${sparkline(worstData,'#f87171',120,32,true)}</div>
       </div>
     </div>`;
@@ -7320,7 +7328,7 @@ async function renderHome() {
               <div>
                 <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px">
                   <span style="color:#09090b">${name}</span>
-                  <span style="color:#09090b">${fmtK(val)} <span style="color:var(--color-text-tertiary)">${(val/tv*100).toFixed(1)}%</span></span>
+                  <span style="color:#09090b">${fmtK(val)} <span style="color:var(--color-text-tertiary)">${(val/tv*100).toFixed(1).replace(".", ",")} %</span></span>
                 </div>
                 <div style="background:#f0f0f2;border-radius:99px;height:4px;overflow:hidden">
                   <div style="height:100%;background:${colors[i%colors.length]};width:${(val/tv*100)}%;border-radius:99px;transition:width 1s cubic-bezier(0.16,1,0.3,1)"></div>
@@ -7382,7 +7390,7 @@ async function renderHome() {
     const topSector = Object.entries(topSectors).sort((a,b)=>b[1]-a[1])[0];
     const topPct = topSector ? (topSector[1]/tv2*100).toFixed(0) : 0;
     if (topSector && topPct > 35) {
-      insightEl.innerHTML = `Votre exposition au secteur <strong style="color:var(--color-text)">${topSector[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisagez une diversification pour réduire le risque.`;
+      insightEl.innerHTML = `Ton exposition au secteur <strong style="color:var(--color-text)">${topSector[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisage une diversification pour réduire le risque.`;
     }
   }, 800);
 }
@@ -7435,7 +7443,7 @@ function renderPlatforms() {
   const platforms = {};
   positions.forEach(p=>{ const v=p.qty*p.price; platforms[p.platform||'Autre']=(platforms[p.platform||'Autre']||0)+v; });
   document.getElementById('home-platforms').innerHTML = Object.entries(platforms).map(([name,val])=>`
-    <div class="bar-row"><div class="bar-label"><span>${name}</span><span>${fmtK(val)} (${(val/tv*100).toFixed(1)}%)</span></div>
+    <div class="bar-row"><div class="bar-label"><span>${name}</span><span>${fmtK(val)} (${(val/tv*100).toFixed(1).replace(".", ",")} %)</span></div>
     <div class="bar-bg"><div class="bar-fill" style="width:${val/tv*100}%;background:#1c1c1e"></div></div></div>`).join('');
 }
 
@@ -7583,7 +7591,7 @@ function buildScore() {
   const {score,items}=calcScore();
   const color=score>=7?'#1a7f5a':score>=5?'#ff9500':'#ff3b30';
   const bg=score>=7?'#e8f8f0':score>=5?'#fff5e0':'#fff0f0';
-  let html=`<div class="score-wrap"><div class="score-ring" style="background:${bg};border-color:${color}"><div class="score-num" style="color:${color}">${score.toFixed(1)}</div><div class="score-max" style="color:${color}">/10</div></div><div class="score-items">`;
+  let html=`<div class="score-wrap"><div class="score-ring" style="background:${bg};border-color:${color}"><div class="score-num" style="color:${color}">${score.toFixed(1).replace(".", ",")}</div><div class="score-max" style="color:${color}">/10</div></div><div class="score-items">`;
   items.forEach(it=>{const c=it.score>=7?'#1a7f5a':it.score>=5?'#ff9500':'#ff3b30';html+=`<div class="score-row"><span class="score-row-label">${it.label}</span><div class="score-bar-bg"><div class="score-bar-fill" style="width:${it.score/10*100}%;background:${c}"></div></div><span class="score-val" style="color:${c}">${it.score}</span></div>`;});
   html+='</div></div>';
   const tips=items.filter(i=>i.tip);
@@ -7685,7 +7693,7 @@ function renderPortfolio(auto=false) {
       {label:'Valeur totale', val: fmtK(tv), sub: '', spark: true, trend: 0.3},
       {label:'Investi', val: fmtK(ti), sub: '', spark: false},
       {label:'Plus-value', val: (tpnl>=0?'+':'')+tpnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', sub: '', color: tpnl>=0?'#3fb950':'#f87171', spark: false},
-      {label:'Performance', val: (tpct>=0?'+':'')+tpct.toFixed(2)+'%', sub: '', color: tpct>=0?'#3fb950':'#f87171', spark: false},
+      {label:'Performance', val: (tpct>=0?'+':'')+tpct.toFixed(2).replace(".", ",") + ' %', sub: '', color: tpct>=0?'#3fb950':'#f87171', spark: false},
     ].map(m=>`
     <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:14px;padding:14px 16px">
       <div style="font-size:9px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">${m.label}</div>
@@ -7756,8 +7764,8 @@ function renderPortfolio(auto=false) {
         </div>
         <!-- Perf -->
         <div style="display:flex;flex-direction:column;justify-content:center">
-          <div style="font-size:13px;font-weight:700;color:${pnlColor}">${pnl>=0?'+':''}${pct.toFixed(2)}%</div>
-          <div style="font-size:10px;color:${chgColor}">${chg>=0?'+':''}${chg.toFixed(2)}% auj.</div>
+          <div style="font-size:13px;font-weight:700;color:${pnlColor}">${pnl>=0?'+':''}${pct.toFixed(2).replace(".", ",")} %</div>
+          <div style="font-size:10px;color:${chgColor}">${chg>=0?'+':''}${chg.toFixed(2).replace(".", ",")} % auj.</div>
         </div>
         <!-- Sparkline -->
         <div style="display:flex;align-items:center">${miniSparkline(chg>0?1:-1, pnl>=0?'#3fb950':'#f87171')}</div>
@@ -7832,9 +7840,9 @@ function renderPortfolio(auto=false) {
     const topPct = top ? (top[1]/tv*100).toFixed(0) : null;
     const pnlPositions = positions.filter(p=>p.qty*p.price > p.qty*p.pru).length;
     if (top && topPct > 30) {
-      el.innerHTML = `Votre exposition au secteur <strong>${top[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisagez une diversification pour réduire le risque.`;
+      el.innerHTML = `Ton exposition au secteur <strong>${top[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisage une diversification pour réduire le risque.`;
     } else {
-      el.innerHTML = `<strong>${pnlPositions}</strong> position${pnlPositions>1?'s':''} en plus-value sur ${positions.length}. Portef. ${tpct>=0?'en hausse':'en baisse'} de <strong style="color:${tpct>=0?'#3fb950':'#f87171'}">${Math.abs(tpct).toFixed(1)}%</strong> au total.`;
+      el.innerHTML = `<strong>${pnlPositions}</strong> position${pnlPositions>1?'s':''} en plus-value sur ${positions.length}. Portef. ${tpct>=0?'en hausse':'en baisse'} de <strong style="color:${tpct>=0?'#3fb950':'#f87171'}">${Math.abs(tpct).toFixed(1).replace(".", ",")} %</strong> au total.`;
     }
   }, 600);
 
@@ -7869,7 +7877,7 @@ async function generatePosSignal(p) {
 TON : tutoiement, direct et chaleureux, concret et chiffré, jamais alarmiste. Assume tes conclusions ("À ta place, je...").
 
 Position : ${p.name} (${p.type})
-PRU : ${p.pru}€ | Prix actuel : ${p.price}€ | Performance : ${pnl.toFixed(1)}%
+PRU : ${p.pru}€ | Prix actuel : ${p.price}€ | Performance : ${pnl.toFixed(1).replace(".", ",")} %
 Quantité : ${p.qty} parts | Valeur totale : ${fmt(p.qty * p.price)}€
 
 ${isAction ? `C'est une action individuelle — donne un signal court terme précis avec timing.` : `C'est un ETF — signal long terme, pas de timing court terme.`}
@@ -7944,7 +7952,7 @@ function togglePos(id) {
     <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:${sub}">
       <span>PRU <strong style="color:var(--color-text)">${fmt(p.pru)} €</strong></span>
       <span>Prix <strong style="color:var(--color-text)">${fmt(p.price)} €</strong></span>
-      <span>P&L <strong style="color:${c}">${pnlEur>=0?'+':''}${fmtI(pnlEur)} € (${pnl>=0?'+':''}${pnl.toFixed(1)}%)</strong></span>
+      <span>P&L <strong style="color:${c}">${pnlEur>=0?'+':''}${fmtI(pnlEur)} € (${pnl>=0?'+':''}${pnl.toFixed(1).replace(".", ",")} %)</strong></span>
       ${p.alert_price ? `<span>🔔 Alerte <strong style="color:var(--color-text)">${fmt(p.alert_price)} €</strong></span>` : ''}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -8070,8 +8078,8 @@ function exportPDF() {
   const tv=positions.reduce((a,p)=>a+p.qty*p.price,0);
   const ti=positions.reduce((a,p)=>a+p.qty*p.pru,0);
   const tpnl=tv-ti, tpct=ti?tpnl/ti*100:0;
-  const rows=positions.map(p=>{const val=p.qty*p.price,pnl=val-p.qty*p.pru,pct=p.qty*p.pru?pnl/(p.qty*p.pru)*100:0;return`<tr><td>${p.name}</td><td>${p.type}</td><td>${p.qty}</td><td>${fmt(p.pru)}€</td><td>${fmt(p.price)}€</td><td>${fmt(val)}€</td><td style="color:${pnl>=0?'#1a7f5a':'#ff3b30'}">${pnl>=0?'+':''}${pct.toFixed(1)}%</td></tr>`;}).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kapitaro — Rapport</title><style>body{font-family:-apple-system,sans-serif;padding:40px;color:#1c1c1e}h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px}p{color:#8e8e93}table{width:100%;border-collapse:collapse;margin-top:24px}th{text-align:left;padding:10px;background:#f2f2f7;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#8e8e93}td{padding:12px 10px;border-bottom:1px solid #f2f2f7;font-size:14px}.summary{display:flex;gap:24px;margin:24px 0}.metric{background:#f2f2f7;border-radius:14px;padding:16px;min-width:140px}.metric-label{font-size:11px;color:#8e8e93;text-transform:uppercase;font-weight:700;margin-bottom:6px}.metric-val{font-size:22px;font-weight:800}</style></head><body><h1>Kapitaro</h1><p>Rapport du ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</p><div class="summary"><div class="metric"><div class="metric-label">Valeur totale</div><div class="metric-val">${fmtK(tv)}</div></div><div class="metric"><div class="metric-label">Total investi</div><div class="metric-val">${fmtK(ti)}</div></div><div class="metric"><div class="metric-label">Plus-value</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div></div><div class="metric"><div class="metric-label">Performance</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${tpct.toFixed(2)}%</div></div></div><table><thead><tr><th>Actif</th><th>Type</th><th>Qté</th><th>PRU</th><th>Prix actuel</th><th>Valeur</th><th>+/-</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+  const rows=positions.map(p=>{const val=p.qty*p.price,pnl=val-p.qty*p.pru,pct=p.qty*p.pru?pnl/(p.qty*p.pru)*100:0;return`<tr><td>${p.name}</td><td>${p.type}</td><td>${p.qty}</td><td>${fmt(p.pru)}€</td><td>${fmt(p.price)}€</td><td>${fmt(val)}€</td><td style="color:${pnl>=0?'#1a7f5a':'#ff3b30'}">${pnl>=0?'+':''}${pct.toFixed(1).replace(".", ",")} %</td></tr>`;}).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kapitaro — Rapport</title><style>body{font-family:-apple-system,sans-serif;padding:40px;color:#1c1c1e}h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px}p{color:#8e8e93}table{width:100%;border-collapse:collapse;margin-top:24px}th{text-align:left;padding:10px;background:#f2f2f7;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#8e8e93}td{padding:12px 10px;border-bottom:1px solid #f2f2f7;font-size:14px}.summary{display:flex;gap:24px;margin:24px 0}.metric{background:#f2f2f7;border-radius:14px;padding:16px;min-width:140px}.metric-label{font-size:11px;color:#8e8e93;text-transform:uppercase;font-weight:700;margin-bottom:6px}.metric-val{font-size:22px;font-weight:800}</style></head><body><h1>Kapitaro</h1><p>Rapport du ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</p><div class="summary"><div class="metric"><div class="metric-label">Valeur totale</div><div class="metric-val">${fmtK(tv)}</div></div><div class="metric"><div class="metric-label">Total investi</div><div class="metric-val">${fmtK(ti)}</div></div><div class="metric"><div class="metric-label">Plus-value</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${fmtK(tpnl)}</div></div><div class="metric"><div class="metric-label">Performance</div><div class="metric-val" style="color:${tpnl>=0?'#1a7f5a':'#ff3b30'}">${tpnl>=0?'+':''}${tpct.toFixed(2).replace(".", ",")} %</div></div></div><table><thead><tr><th>Actif</th><th>Type</th><th>Qté</th><th>PRU</th><th>Prix actuel</th><th>Valeur</th><th>+/-</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
   const win=window.open('','_blank');
   win.document.write(html);
   win.document.close();
@@ -8137,7 +8145,7 @@ async function renderSante() {
   });
   if(maxPos && parseFloat(maxPct)>25) alerts.push({icon:'🟡',name:maxPos.name,msg:`représente ${maxPct}% du portefeuille`,tag:'Concentration élevée',tagColor:'#f59e0b',tagBg:isDark?'rgba(245,158,11,0.15)':'#fffbeb'});
   dedupPos.filter(p=>p.qty*p.price<p.qty*p.pru&&(p.price-p.pru)/p.pru*100<-20).forEach(p=>{
-    alerts.push({icon:'🟠',name:p.name,msg:`en forte perte (${((p.price-p.pru)/p.pru*100).toFixed(1)}%)`,tag:'Performance faible',tagColor:'#fb923c',tagBg:isDark?'rgba(251,146,60,0.15)':'#fff7ed'});
+    alerts.push({icon:'🟠',name:p.name,msg:`en forte perte (${((p.price-p.pru)/p.pru*100).toFixed(1).replace(".", ",")} %)`,tag:'Performance faible',tagColor:'#fb923c',tagBg:isDark?'rgba(251,146,60,0.15)':'#fff7ed'});
   });
 
   const COLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
@@ -8150,7 +8158,7 @@ async function renderSante() {
     <div class="sante-score-grid" style="display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center">
       <!-- Score gauche -->
       <div>
-        <div style="font-size:56px;font-weight:900;color:${scoreColor};letter-spacing:-0.05em;line-height:1">${score.toFixed(1)}</div>
+        <div style="font-size:56px;font-weight:900;color:${scoreColor};letter-spacing:-0.05em;line-height:1">${score.toFixed(1).replace(".", ",")}</div>
         <div style="font-size:16px;color:${isDark?'rgba(255,255,255,0.4)':textSec};font-weight:400;margin-bottom:8px">/10</div>
         <div style="font-size:14px;font-weight:700;color:${scoreColor}">${scoreLabel}</div>
         <div style="margin-top:10px;display:flex;align-items:center;gap:7px;background:${isDark?'rgba(63,185,80,0.1)':'rgba(22,163,74,0.08)'};border-radius:10px;padding:8px 12px;border:1px solid ${isDark?'rgba(63,185,80,0.2)':'rgba(22,163,74,0.2)'}">
@@ -8203,7 +8211,7 @@ async function renderSante() {
       </div>
       <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
         <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Performance</div>
-        <div style="font-size:28px;font-weight:900;color:${tpct>=0?'#3fb950':'#f87171'};letter-spacing:-0.04em">${tpct>=0?'+':''}${tpct.toFixed(1)}%</div>
+        <div style="font-size:28px;font-weight:900;color:${tpct>=0?'#3fb950':'#f87171'};letter-spacing:-0.04em">${tpct>=0?'+':''}${tpct.toFixed(1).replace(".", ",")} %</div>
         <div style="font-size:11px;color:${textSec};margin-top:4px">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{maximumFractionDigits:0})} €</div>
       </div>
     </div>
@@ -8221,7 +8229,7 @@ async function renderSante() {
           <div style="flex:1;background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:5px;overflow:hidden">
             <div style="height:100%;background:${COLORS[i%COLORS.length]};width:${pct}%;border-radius:99px;transition:width 1s ease"></div>
           </div>
-          <div style="font-size:11px;font-weight:600;color:${textSec};min-width:42px;text-align:right">${pct.toFixed(1)}%</div>
+          <div style="font-size:11px;font-weight:600;color:${textSec};min-width:42px;text-align:right">${pct.toFixed(1).replace(".", ",")} %</div>
           <div style="font-size:11px;color:${pnl>=0?'#3fb950':'#f87171'};min-width:70px;text-align:right">${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{maximumFractionDigits:0})} €</div>
         </div>`}).join('')}
     </div>
@@ -8242,7 +8250,7 @@ async function renderSante() {
       <div style="flex:1;display:flex;flex-direction:column;gap:10px">
         ${[
           {icon:'🛡️', title:'Bonne diversification globale', sub:dedupPos.length>=8?'Votre portefeuille est bien diversifié sur plusieurs classes d\'actifs.':`${dedupPos.length} position${dedupPos.length>1?'s':''} — vise 8 ou plus pour bien diversifier.`, ok:dedupPos.length>=8, q:`Comment améliorer la diversification de mon portefeuille (${dedupPos.length} positions actuellement) ?`},
-          {icon:'⭐', title:'Réduire la concentration', sub:`Envisagez de réduire l'exposition à ${maxPos?maxPos.name:'votre position principale'} (${maxPct}%) pour limiter le risque.`, ok:parseFloat(maxPct)<=25, q:`Comment réduire progressivement mon exposition à ${maxPos?maxPos.name:'ma position principale'} (${maxPct}% de mon portefeuille) ?`},
+          {icon:'⭐', title:'Réduire la concentration', sub:`Envisage de réduire l'exposition à ${maxPos?maxPos.name:'ta position principale'} (${maxPct}%) pour limiter le risque.`, ok:parseFloat(maxPct)<=25, q:`Comment réduire progressivement mon exposition à ${maxPos?maxPos.name:'ma position principale'} (${maxPct}% de mon portefeuille) ?`},
           {icon:'📈', title:'Améliorer la performance', sub:'Certaines positions sous-performent le marché. L\'IA peut t\'aider.', ok:tpct>=0, q:'Quelles positions sous-performent dans mon portefeuille, et que suggères-tu ?'},
         ].map(c=>`
         <div onclick="askAgentFrom(${JSON.stringify(c.q).replace(/"/g,'&quot;')})" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border-radius:12px;border:1px solid ${border};transition:border-color 0.15s"
@@ -9354,7 +9362,7 @@ function renderNewsList() {
         ${hasExposure ? `
         <div class="news-side" style="flex-shrink:0;text-align:center;min-width:80px">
           <div style="font-size:10px;font-weight:600;color:${sub2};margin-bottom:4px;white-space:nowrap">Exposition</div>
-          <div style="font-size:18px;font-weight:800;color:${txt};letter-spacing:-0.03em">${exposurePct.toFixed(1)}%</div>
+          <div style="font-size:18px;font-weight:800;color:${txt};letter-spacing:-0.03em">${exposurePct.toFixed(1).replace(".", ",")} %</div>
           <div style="font-size:10px;color:${sub2};margin-top:2px">≈ ${fmtK(exposureValue)}</div>
         </div>` : ''}
         <!-- Recommandation IA -->
@@ -9435,7 +9443,7 @@ async function analyseDecision() {
   // Contexte position existante
   const pos = positions.find(p => p.name.toLowerCase() === name.toLowerCase());
   const posCtx = pos
-    ? `L'utilisateur a déjà cette position : ${pos.qty} parts, PRU ${fmt(pos.pru)}€, prix actuel ${fmt(pos.price)}€, performance ${((pos.price-pos.pru)/pos.pru*100).toFixed(1)}%.`
+    ? `L'utilisateur a déjà cette position : ${pos.qty} parts, PRU ${fmt(pos.pru)}€, prix actuel ${fmt(pos.price)}€, performance ${((pos.price-pos.pru)/pos.pru*100).toFixed(1).replace(".", ",")} %.`
     : "L'utilisateur n'a pas encore cette position.";
 
   const intent = decisionIntention || 'garder';
@@ -9616,7 +9624,7 @@ function updateDCA() {
   // Labels
   document.getElementById('dca-m-o').textContent = m.toLocaleString('fr-FR') + ' €';
   document.getElementById('dca-y-o').textContent = y + ' an' + (y > 1 ? 's' : '');
-  document.getElementById('dca-r-o').textContent = rAnn.toFixed(1) + ' %';
+  document.getElementById('dca-r-o').textContent = rAnn.toFixed(1).replace(".", ",") + ' %';
   document.getElementById('dca-s-o').textContent = s.toLocaleString('fr-FR') + ' €';
 
   // Calcul final
@@ -9629,7 +9637,7 @@ function updateDCA() {
   const heroTotal = document.getElementById('dca-hero-total');
   if (heroTotal) heroTotal.textContent = fmtK(Math.round(total));
   const heroSub = document.getElementById('dca-hero-sub');
-  if (heroSub) heroSub.textContent = `${m.toLocaleString('fr-FR')} €/mois pendant ${y} an${y>1?'s':''} à ${rAnn.toFixed(1)}%${s>0 ? ' · départ ' + fmtK(s) : ''}`;
+  if (heroSub) heroSub.textContent = `${m.toLocaleString('fr-FR')} €/mois pendant ${y} an${y>1?'s':''} à ${rAnn.toFixed(1).replace(".", ",")} %${s>0 ? ' · départ ' + fmtK(s) : ''}`;
   const heroInv = document.getElementById('dca-hero-invested');
   if (heroInv) heroInv.textContent = fmtK(Math.round(invested));
   const heroGain = document.getElementById('dca-hero-gain');
@@ -9639,8 +9647,8 @@ function updateDCA() {
   const barInv = document.getElementById('dca-bar-inv');
   const barGain = document.getElementById('dca-bar-gain');
   if (barInv && barGain && total > 0) {
-    barInv.style.width = (invested/total*100).toFixed(1) + '%';
-    barGain.style.width = (gain/total*100).toFixed(1) + '%';
+    barInv.style.width = (invested/total*100).toFixed(1).replace(".", ",") + ' %';
+    barGain.style.width = (gain/total*100).toFixed(1).replace(".", ",") + ' %';
   }
 
   // Message tip + warning si rendement irréaliste
@@ -10152,7 +10160,7 @@ function renderRecoHistory() {
         <span style="font-size:11px;font-weight:700;color:${txt}">${actionLabel[r.action]||r.action} ${r.ticker}</span>
         <span style="font-size:10px;color:${sub};margin-left:5px">le ${d}</span>
       </div>
-      <span style="font-size:11px;font-weight:800;color:${(r.perf_pct||0)>=0?'#16a34a':'#dc2626'}">${(r.perf_pct||0)>=0?'+':''}${(r.perf_pct||0).toFixed(1)}%</span>
+      <span style="font-size:11px;font-weight:800;color:${(r.perf_pct||0)>=0?'#16a34a':'#dc2626'}">${(r.perf_pct||0)>=0?'+':''}${(r.perf_pct||0).toFixed(1).replace(".", ",")} %</span>
     </div>`;
   }).join('');
 
@@ -10229,7 +10237,7 @@ async function generateKapitaroVerdict(force = false) {
     .sort((a,b)=>b.val-a.val).slice(0,8);
 
   const prompt = `Voici le portefeuille réel de l'utilisateur (${fmtK(tv)} au total, profil ${profile.risk||'équilibré'}, horizon ${profile.horizon||'long terme'}) :
-${lines.map(l => `- ${l.name} (${l.ticker}, ${l.type||'?'}) : ${l.weightPct.toFixed(0)}% du portefeuille, P&L ${l.pnlPct>=0?'+':''}${l.pnlPct.toFixed(1)}%`).join('\n')}
+${lines.map(l => `- ${l.name} (${l.ticker}, ${l.type||'?'}) : ${l.weightPct.toFixed(0)}% du portefeuille, P&L ${l.pnlPct>=0?'+':''}${l.pnlPct.toFixed(1).replace(".", ",")} %`).join('\n')}
 ${objChartTarget > 0 ? `Objectif : ${fmtK(objChartTarget)} — ${Math.min(tv/objChartTarget*100,100).toFixed(0)}% atteint.` : ''}
 
 EXERCICE "QUE FERAIT KAPITARO ?" : à titre pédagogique, pour chaque ligne, identifie le critère objectif le plus pertinent (concentration, valorisation, poids dans l'objectif...) et le signal qu'il indique généralement — sans jamais formuler d'instruction destinée à l'utilisateur. Distingue toujours le constat chiffré de l'hypothèse d'école. Sois sélectif : la plupart des lignes n'appellent aucun signal fort — ne signale renforcer/reduire/vendre que si le critère le justifie clairement.
@@ -11558,12 +11566,12 @@ function updateAddPreview() {
       </div>
       <div>
         <div style="font-size:10px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-weight:700">Plus/moins-value</div>
-        <div style="font-size:16px;font-weight:900;color:${c}">${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} € <span style="font-size:12px">(${pnl>=0?'+':''}${pnlPct.toFixed(1)}%)</span></div>
+        <div style="font-size:16px;font-weight:900;color:${c}">${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} € <span style="font-size:12px">(${pnl>=0?'+':''}${pnlPct.toFixed(1).replace(".", ",")} %)</span></div>
       </div>` : ''}
       ${weight > 0 ? `
       <div style="margin-left:auto;text-align:right">
         <div style="font-size:10px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-weight:700">Poids portefeuille</div>
-        <div style="font-size:16px;font-weight:900;color:${weight>35?'#d97706':'var(--color-text)'}">${weight.toFixed(1)}%</div>
+        <div style="font-size:16px;font-weight:900;color:${weight>35?'#d97706':'var(--color-text)'}">${weight.toFixed(1).replace(".", ",")} %</div>
       </div>` : ''}
     </div>
     ${weight > 35 ? `<div style="font-size:11px;color:#d97706;margin-top:8px">⚠️ Cette position représenterait plus d'un tiers de ton portefeuille — pense à diversifier.</div>` : ''}`;
@@ -11663,7 +11671,7 @@ function buildAgentSuggestions() {
     suggestions.push({ label: '💡 Quel ETF acheter ?', q: 'Quel ETF monde me recommandes-tu pour débuter ?' });
     suggestions.push({ label: '🏦 Quelle plateforme ?', q: 'Trade Republic ou XTB, laquelle me conseilles-tu ?' });
   } else {
-    if (avgChg < -2) suggestions.push({ label: '📉 Marché en baisse — quoi faire ?', q: `Mon portefeuille baisse de ${Math.abs(avgChg).toFixed(1)}% aujourd'hui. Je fais quoi ?` });
+    if (avgChg < -2) suggestions.push({ label: '📉 Marché en baisse — quoi faire ?', q: `Mon portefeuille baisse de ${Math.abs(avgChg).toFixed(1).replace(".", ",")} % aujourd'hui. Je fais quoi ?` });
     if (pnl < 0) suggestions.push({ label: '⚠️ Mes pertes — que faire ?', q: `J'ai une perte de ${fmtK(Math.abs(pnl))} sur mon portefeuille. Dois-je couper ou tenir ?` });
     if (pctObj > 0 && pctObj < 50) suggestions.push({ label: '🎯 Accélérer vers mon objectif', q: `Je suis à ${pctObj.toFixed(0)}% de mon objectif. Comment accélérer ?` });
     suggestions.push({ label: '📊 Analyse mon portefeuille', q: 'Analyse mon portefeuille et dis-moi ce que tu en penses.' });
@@ -11696,7 +11704,7 @@ function getFullContext() {
   const avgChg = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
 
   let ctx = `=== CONTEXTE UTILISATEUR ===
-Portefeuille : ${positions.length} positions · Valeur ${fmtK(tv)} · P&L ${pnl>=0?'+':''}${fmtK(pnl)} (${pct}%) · Variation aujourd'hui : ${avgChg>=0?'+':''}${avgChg.toFixed(1)}%
+Portefeuille : ${positions.length} positions · Valeur ${fmtK(tv)} · P&L ${pnl>=0?'+':''}${fmtK(pnl)} (${pct}%) · Variation aujourd'hui : ${avgChg>=0?'+':''}${avgChg.toFixed(1).replace(".", ",")} %
 Profil : horizon ${profile.horizon || 'moyen'} · risque ${profile.risk || 'faible'} · bankroll ${profile.bankroll || 5000}€
 `;
 
@@ -12002,11 +12010,11 @@ function renderAgentSimple() {
     else {
       const tv = positions.reduce((a, p) => a + p.qty * p.price, 0);
       const pnl = tv - positions.reduce((a, p) => a + p.qty * p.pru, 0);
-      const name = isDemo ? 'Toi' : (currentUser?.email || '').split('@')[0];
+      const name = userFirstName();
       heroEl.innerHTML = `<div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:22px 24px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="font-size:34px">🤖</div>
         <div style="flex:1;min-width:200px">
-          <div style="font-size:16px;font-weight:900;color:#fff">Bonjour ${_escHtml(name)}</div>
+          <div style="font-size:16px;font-weight:900;color:#fff">Bonjour${name ? ' ' + _escHtml(name) : ''}</div>
           <div style="font-size:12.5px;color:rgba(255,255,255,0.55);margin-top:3px;line-height:1.5">${positions.length} position${positions.length > 1 ? 's' : ''} · ${fmtK(tv)} · <span style="color:${pnl >= 0 ? '#4ade80' : '#f87171'}">${pnl >= 0 ? '+' : ''}${fmtK(pnl)}</span>. Pose-moi une question ci-dessous. Le tableau de bord complet (score, alertes, analyse IA) est inclus avec Premium.</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -12080,7 +12088,7 @@ function renderAgentDashboard() {
     if (!isPremiumUser()) return agentView === 'sample' ? renderAgentSample() : renderAgentSimple();   // compte gratuit : vue simple ou exemple figé
     clearAgentSample();   // Premium : dashboard complet, aucune trace de l'exemple
   }
-  const name = isDemo ? 'Toi' : (currentUser?.email||'').split('@')[0];
+  const name = userFirstName();
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
   const tpnl = tv - ti;
@@ -12118,7 +12126,7 @@ function renderAgentDashboard() {
           <div style="min-width:0">
             <div class="agent-hero-title-row" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
               <div class="agent-hero-greeting" style="display:flex;align-items:center;gap:8px">
-                <div style="font-size:17px;font-weight:900;color:#fff">Bonjour ${name}</div>
+                <div style="font-size:17px;font-weight:900;color:#fff">Bonjour${name ? ' ' + _escHtml(name) : ''}</div>
                 <span style="font-size:16px">👋</span>
               </div>
               <div class="agent-hero-buttons" style="display:flex;gap:8px;margin-left:auto">
@@ -12153,7 +12161,7 @@ function renderAgentDashboard() {
             <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Score Premium</div>
             <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(${scoreColor} ${score*36}deg, rgba(255,255,255,0.08) 0deg);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;position:relative">
               <div style="width:62px;height:62px;border-radius:50%;background:#0d1422;display:flex;flex-direction:column;align-items:center;justify-content:center">
-                <div style="font-size:20px;font-weight:900;color:#fff;line-height:1">${score.toFixed(1)}<span style="font-size:10px;color:rgba(255,255,255,0.4)">/10</span></div>
+                <div style="font-size:20px;font-weight:900;color:#fff;line-height:1">${score.toFixed(1).replace(".", ",")}<span style="font-size:10px;color:rgba(255,255,255,0.4)">/10</span></div>
                 <div style="font-size:8px;color:${score>=7?'#4ade80':score>=5?'#fbbf24':'#f87171'};font-weight:700;margin-top:2px">${score>=7?'Bon ▲':score>=5?'Moyen ●':'Faible ▼'}</div>
               </div>
             </div>
@@ -12189,7 +12197,7 @@ function renderAgentDashboard() {
         ${sorted.slice(0,4).map(p => {
           const c = (p.change_pct||0)>=0?'#16a34a':'#dc2626';
           return `<div onclick="nav('portfolio')" style="cursor:pointer;text-align:center;padding:9px 5px;background:${bg};border-radius:10px;border:1px solid ${bord}">
-            <div style="font-size:14px;font-weight:900;color:${c}">${(p.change_pct||0)>=0?'+':''}${(p.change_pct||0).toFixed(1)}%</div>
+            <div style="font-size:14px;font-weight:900;color:${c}">${(p.change_pct||0)>=0?'+':''}${(p.change_pct||0).toFixed(1).replace(".", ",")} %</div>
             <div style="font-size:9px;font-weight:600;color:${sub};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.ticker||p.name}</div>
           </div>`;
         }).join('')}
@@ -12211,7 +12219,7 @@ function renderAgentDashboard() {
       return `<div onclick="sq('Analyse ma position ${p.name} : dois-je ${theme.action.toLowerCase().replace(' ?','')} ?')" style="cursor:pointer;background:${theme.bg};border-radius:12px;padding:11px;border:1px solid ${theme.c}22;display:flex;flex-direction:column;min-height:104px">
         <div style="font-size:9px;font-weight:700;color:${theme.c};margin-bottom:5px">${theme.tag}</div>
         <div style="font-size:12px;font-weight:800;color:${txt};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px">${displayName(p.name)}</div>
-        <div style="font-size:10px;color:${sub};margin-bottom:6px">${pPnl>=0?'+':''}${pPnl.toFixed(1)}% · ${pPct.toFixed(0)}% du portef.</div>
+        <div style="font-size:10px;color:${sub};margin-bottom:6px">${pPnl>=0?'+':''}${pPnl.toFixed(1).replace(".", ",")} % · ${pPct.toFixed(0)}% du portef.</div>
         <div style="font-size:10px;font-weight:700;color:${theme.c};margin-top:auto">${theme.action} — Demander à l'IA →</div>
       </div>`;
     }).join('');
@@ -12239,10 +12247,10 @@ function renderAgentDashboard() {
       reason = `poids de ${pPct.toFixed(0)}% — au-dessus du seuil de concentration conseillé`;
     } else if (pPnl < -15) {
       verb = 'surveiller';
-      reason = `moins-value de ${pPnl.toFixed(1)}% — analyse recommandée avant tout arbitrage`;
+      reason = `moins-value de ${pPnl.toFixed(1).replace(".", ",")} % — analyse recommandée avant tout arbitrage`;
     } else if (pPnl > 8) {
       verb = 'renforcer';
-      reason = `momentum positif (+${pPnl.toFixed(1)}%) sur position de qualité`;
+      reason = `momentum positif (+${pPnl.toFixed(1).replace(".", ",")} %) sur position de qualité`;
     } else {
       verb = 'conserver';
       reason = `position équilibrée — pas d'action requise`;
@@ -12281,7 +12289,7 @@ function renderAgentDashboard() {
               <div style="font-size:12px;font-weight:800;color:${txt}">${i+1}. ${verbLabel} ${displayName(r.name)}</div>
               <span style="font-size:11px;font-weight:800;color:${c}">${r.confidence}%</span>
             </div>
-            <div style="font-size:10px;color:${sub};margin-bottom:6px">Position ${r.weightPct.toFixed(0)}% · perf ${r.pnlPct>=0?'+':''}${r.pnlPct.toFixed(1)}% — ${r.reason}</div>
+            <div style="font-size:10px;color:${sub};margin-bottom:6px">Position ${r.weightPct.toFixed(0)}% · perf ${r.pnlPct>=0?'+':''}${r.pnlPct.toFixed(1).replace(".", ",")} % — ${r.reason}</div>
             <div style="background:${bord};border-radius:99px;height:3px;overflow:hidden">
               <div style="height:100%;background:${c};width:${r.confidence}%;border-radius:99px"></div>
             </div>
@@ -12309,9 +12317,9 @@ function renderAgentDashboard() {
   const prioEl = document.getElementById('agent-priorites');
   if (prioEl) {
     const prios = [
-      sorted[sorted.length-1] && (sorted[sorted.length-1].change_pct||0) < -1 ? {t:`Agir sur ${sorted[sorted.length-1].ticker||sorted[sorted.length-1].name}`, s:`${(sorted[sorted.length-1].change_pct||0).toFixed(1)}% aujourd'hui`, c:'#dc2626', q:`Que faire avec ${sorted[sorted.length-1].name} qui baisse ?`} : null,
+      sorted[sorted.length-1] && (sorted[sorted.length-1].change_pct||0) < -1 ? {t:`Agir sur ${sorted[sorted.length-1].ticker||sorted[sorted.length-1].name}`, s:`${(sorted[sorted.length-1].change_pct||0).toFixed(1).replace(".", ",")} % aujourd'hui`, c:'#dc2626', q:`Que faire avec ${sorted[sorted.length-1].name} qui baisse ?`} : null,
       topByWeight[0] && topByWeight[0].qty*topByWeight[0].price/tv > 0.3 ? {t:`Gérer ${topByWeight[0].ticker||topByWeight[0].name}`, s:`Poids ${(topByWeight[0].qty*topByWeight[0].price/tv*100).toFixed(0)}%`, c:'#d97706', q:`Comment réduire mon exposition à ${topByWeight[0].name} ?`} : null,
-      sorted[0] && (sorted[0].change_pct||0) > 1 ? {t:`Agir sur ${sorted[0].ticker||sorted[0].name}`, s:`+${(sorted[0].change_pct||0).toFixed(1)}% — prendre gains ?`, c:'#16a34a', q:`Dois-je prendre mes gains sur ${sorted[0].name} ?`} : null,
+      sorted[0] && (sorted[0].change_pct||0) > 1 ? {t:`Agir sur ${sorted[0].ticker||sorted[0].name}`, s:`+${(sorted[0].change_pct||0).toFixed(1).replace(".", ",")} % — prendre gains ?`, c:'#16a34a', q:`Dois-je prendre mes gains sur ${sorted[0].name} ?`} : null,
     ].filter(Boolean);
     if (!prios.length) prios.push({t:'Tout est calme', s:'Aucune action urgente', c:'#16a34a', q:'Fais-moi un point complet sur mon portefeuille'});
     prioEl.innerHTML = `
@@ -12353,7 +12361,7 @@ function renderAgentDashboard() {
     ${worst && (worst.change_pct||0) < 0 ? `
     <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
       <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">⚠ Risque principal</div>
-      <div style="font-size:14px;font-weight:900;color:#dc2626;margin-bottom:3px">${displayName(worst.name)} (${(worst.change_pct||0).toFixed(1)}%)</div>
+      <div style="font-size:14px;font-weight:900;color:#dc2626;margin-bottom:3px">${displayName(worst.name)} (${(worst.change_pct||0).toFixed(1).replace(".", ",")} %)</div>
       <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:8px">Position la plus faible aujourd'hui. Surveille l'évolution avant d'agir.</div>
       <button onclick="sq('Analyse le risque sur ${worst.name}')" style="width:100%;padding:7px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;color:#dc2626;font-size:10px;font-weight:700;cursor:pointer">Analyser ce risque →</button>
     </div>` : ''}
@@ -12374,7 +12382,7 @@ function renderAgentDashboard() {
     <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
       <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">💰 Opportunité principale</div>
       <div style="font-size:13px;font-weight:900;color:${txt};margin-bottom:3px">Optimise ${riskiest.ticker||riskiest.name}</div>
-      <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:6px">Position leader (${rPct.toFixed(0)}% du portef., ${rGainWord}${rPnl.toFixed(1)}%) — ${rMsg}</div>
+      <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:6px">Position leader (${rPct.toFixed(0)}% du portef., ${rGainWord}${rPnl.toFixed(1).replace(".", ",")} %) — ${rMsg}</div>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
         <span style="color:${sub}">Conviction</span><span style="font-weight:800;color:#d97706">${rConviction}%</span>
       </div>
@@ -12407,7 +12415,7 @@ function renderAgentDashboard() {
       ${[
         ['Valeur totale', fmtK(tv), txt],
         ['P&L global', `${tpnl>=0?'+':''}${fmtI(tpnl)} €`, tpnl>=0?'#16a34a':'#dc2626'],
-        ['Perf. moyenne jour', `${avgChange>=0?'+':''}${avgChange.toFixed(2)}%`, avgChange>=0?'#16a34a':'#dc2626'],
+        ['Perf. moyenne jour', `${avgChange>=0?'+':''}${avgChange.toFixed(2).replace(".", ",")} %`, avgChange>=0?'#16a34a':'#dc2626'],
         ['Positions', positions.length, txt],
       ].map(([l,v,c]) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${bord}">
@@ -12469,8 +12477,8 @@ async function generateDailyBrief() {
   }
 
   const prompt = `Tu es le copilote financier IA de l'utilisateur. Génère son briefing du jour — ULTRA court, ton chaleureux et direct (tutoiement), comme un ami compétent qui le met au courant en 10 secondes.
-Valeur: ${fmtK(tv)} · P&L: ${pnl>=0?'+':''}${fmtK(pnl)} · Variation auj: ${avgChg>=0?'+':''}${avgChg.toFixed(1)}%
-Positions: ${positions.slice(0,6).map(p=>`${p.name}(${(p.change_pct||0).toFixed(1)}%)`).join(', ')}
+Valeur: ${fmtK(tv)} · P&L: ${pnl>=0?'+':''}${fmtK(pnl)} · Variation auj: ${avgChg>=0?'+':''}${avgChg.toFixed(1).replace(".", ",")} %
+Positions: ${positions.slice(0,6).map(p=>`${p.name}(${(p.change_pct||0).toFixed(1).replace(".", ",")} %)`).join(', ')}
 ${pctObj ? `Objectif: ${pctObj}% atteint` : ''}
 
 Génère exactement 3 points courts. Format JSON UNIQUEMENT:
@@ -12490,8 +12498,8 @@ Sois TRÈS concis. Max 12 mots par point. Utilise les vraies données.`;
   } catch(e) {
     // Fallback calculé localement
     const items = [
-      { icon: avgChg>=0?'📈':'📉', text: `Portef. ${avgChg>=0?'en hausse':'en baisse'} de ${Math.abs(avgChg).toFixed(1)}% aujourd'hui`, color: avgChg>=0?'#4ade80':'#f87171', type:'perf' },
-      { icon: best?'🏆':'—', text: best ? `${best.name} meilleure perf. (+${(best.change_pct||0).toFixed(1)}%)` : 'Pas de données', color:'#fbbf24', type:'alert' },
+      { icon: avgChg>=0?'📈':'📉', text: `Portef. ${avgChg>=0?'en hausse':'en baisse'} de ${Math.abs(avgChg).toFixed(1).replace(".", ",")} % aujourd'hui`, color: avgChg>=0?'#4ade80':'#f87171', type:'perf' },
+      { icon: best?'🏆':'—', text: best ? `${best.name} meilleure perf. (+${(best.change_pct||0).toFixed(1).replace(".", ",")} %)` : 'Pas de données', color:'#fbbf24', type:'alert' },
       { icon: '💡', text: pctObj ? `${pctObj}% de l'objectif atteint · Continue le DCA` : 'Définis un objectif pour suivre ta progression', color:'#a5b4fc', type:'tip' }
     ];
     try { localStorage.setItem('iq_daily_brief', JSON.stringify({items, ts:Date.now()})); } catch {}
