@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Épargne de précaution : combien garder de côté ? Calculateur gratuit — Kapitaro</title>
+  <meta name="description" content="Calcule le montant de ton épargne de précaution selon tes dépenses et ta situation (salarié, indépendant, enfants…), et en combien de temps la constituer. Gratuit, sans inscription.">
+  <link rel="canonical" href="https://kapitaro.fr/epargne-de-precaution">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/epargne-de-precaution">
+  <meta property="og:title" content="Épargne de précaution : combien garder de côté ? — Kapitaro">
+  <meta property="og:description" content="Selon tes dépenses et ta situation, découvre le montant idéal de ton matelas de sécurité et en combien de temps le constituer.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Calculateur d'épargne de précaution — Kapitaro",
+        "url": "https://kapitaro.fr/epargne-de-precaution",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "fr",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Combien faut-il avoir en épargne de précaution ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "La règle la plus courante est de garder de côté l'équivalent de 3 à 6 mois de dépenses. Un revenu irrégulier (indépendant, CDD, intérim), des enfants à charge ou un logement dont on est propriétaire justifient plutôt le haut de la fourchette, voire davantage." } },
+          { "@type": "Question", "name": "Où placer son épargne de précaution ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Sur un support sans risque et disponible à tout moment : en France, les livrets réglementés (Livret A, LDDS, et le LEP pour ceux qui y ont droit) sont les plus utilisés. On évite les placements qui peuvent baisser, comme les actions." } },
+          { "@type": "Question", "name": "Faut-il constituer son épargne de précaution avant d'investir ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Oui, c'est la base : sans matelas de sécurité, un imprévu peut obliger à vendre ses placements au mauvais moment, parfois à perte. Une fois l'épargne de précaution en place, on peut investir l'argent de long terme plus sereinement." } },
+          { "@type": "Question", "name": "Quelles dépenses compter ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Les dépenses indispensables d'un mois : loyer ou crédit, charges, alimentation, transport, assurances, abonnements nécessaires. Les loisirs et les achats plaisir peuvent être réduits en cas de coup dur." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Épargne de précaution : combien garder de côté ?</h1>
+      <p>Ton matelas de sécurité selon tes dépenses et ta situation, et en combien de temps le constituer. C'est la première étape avant d'investir.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="field">
+            <div class="field-head"><label for="d">Mes dépenses indispensables par mois</label><span class="field-val"><input type="number" id="d-n" min="0" max="50000" step="50" aria-label="Dépenses mensuelles en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="d" min="300" max="8000" step="50" value="1800">
+          </div>
+          <div class="field">
+            <label for="s" style="display:block;margin-bottom:6px">Ma situation</label>
+            <select id="s">
+              <option value="3,3,6">Salarié en CDI ou fonctionnaire</option>
+              <option value="6,6,9">CDD, intérim ou période d'essai</option>
+              <option value="9,6,12">Indépendant, freelance ou chef d'entreprise</option>
+              <option value="3,3,6">Retraité</option>
+              <option value="6,4,9">Étudiant ou sans emploi</option>
+            </select>
+          </div>
+          <div class="checks">
+            <label><input type="checkbox" id="kids">J'ai des enfants à charge</label>
+            <label><input type="checkbox" id="owner">Je suis propriétaire de mon logement</label>
+            <label><input type="checkbox" id="single">Je suis le seul revenu du foyer</label>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="h">J'ai déjà mis de côté</label><span class="field-val"><input type="number" id="h-n" min="0" max="1000000" step="100" aria-label="Épargne déjà disponible en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="h" min="0" max="50000" step="100" value="2000">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="m">Je peux épargner par mois</label><span class="field-val"><input type="number" id="m-n" min="0" max="20000" step="10" aria-label="Épargne mensuelle en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="m" min="0" max="2000" step="10" value="200">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Ton épargne de précaution conseillée</div>
+          <div class="result-total result-big-green" id="out-target">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="progress" aria-hidden="true"><div id="out-bar" style="width:0"></div></div>
+          <div class="range-note" id="out-progress"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-have">—</b><span>Déjà de côté</span></div>
+            <div class="kpi"><b id="out-left">—</b><span>Reste à épargner</span></div>
+            <div class="kpi gain"><b id="out-time">—</b><span>Objectif atteint</span></div>
+          </div>
+          <div class="example" id="out-advice" style="margin-top:4px;font-size:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>Qu'est-ce que l'épargne de précaution ?</h2>
+      <p>C'est une réserve d'argent disponible à tout moment, mise de côté pour faire face aux imprévus : une panne de voiture, une facture de santé, une perte d'emploi, un gros appareil à remplacer… Elle t'évite de t'endetter ou de devoir vendre tes placements au mauvais moment.</p>
+
+      <h2>Combien mettre de côté ?</h2>
+      <p>La règle la plus répandue est de garder l'équivalent de <strong>3 à 6 mois de dépenses indispensables</strong>. Le calculateur ajuste ce nombre selon ta situation :</p>
+      <ul>
+        <li><strong>Revenu stable</strong> (CDI, fonctionnaire, retraite) : environ 3 mois peuvent suffire.</li>
+        <li><strong>Revenu moins sûr</strong> (CDD, intérim, période d'essai, recherche d'emploi) : plutôt 6 mois.</li>
+        <li><strong>Revenu irrégulier</strong> (indépendant, freelance, chef d'entreprise) : 6 à 12 mois, car les mois creux et les délais de paiement sont fréquents.</li>
+        <li><strong>Enfants à charge, propriétaire, seul revenu du foyer</strong> : on ajoute une marge, car les imprévus coûtent plus cher ou il n'y a pas d'autre salaire pour amortir le choc.</li>
+      </ul>
+      <div class="example">
+        <p style="margin:0">Exemple : avec <strong>1 800 € de dépenses indispensables</strong> par mois et un CDI, on vise environ <strong>5 400 €</strong> (3 mois). Avec 2 000 € déjà de côté et 200 € épargnés chaque mois, l'objectif est atteint en <strong>17 mois</strong>.</p>
+      </div>
+
+      <h2>Où placer son épargne de précaution ?</h2>
+      <p>Elle doit être <strong>sans risque</strong> et <strong>disponible immédiatement</strong>. En France, on utilise surtout les livrets réglementés : Livret A, LDDS, et le LEP pour les foyers qui y ont droit. Leur rendement est modeste, mais ce n'est pas leur rôle : ils sont là pour te protéger, pas pour faire fructifier ton argent. Évite les actions, les ETF ou tout placement qui peut baisser au moment où tu en as besoin.</p>
+
+      <h2>Et après ?</h2>
+      <p>Une fois ton matelas de sécurité constitué, l'argent que tu n'utiliseras pas avant plusieurs années peut être investi pour le long terme. Pour voir ce que cela peut donner, essaie le <a href="/calculateur-objectif-epargne">calculateur d'objectif d'épargne</a> ou le <a href="/rendement-etf-msci-world">simulateur d'ETF MSCI World</a>.</p>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>Quelles dépenses faut-il compter ?</h3>
+        <p>Les dépenses indispensables d'un mois : loyer ou crédit, charges, alimentation, transport, assurances, abonnements nécessaires. Les loisirs et les achats plaisir peuvent être réduits en cas de coup dur, donc on ne les compte pas.</p>
+        <h3>Et si mon épargne de précaution dépasse le montant conseillé ?</h3>
+        <p>Garder un peu plus n'est pas un problème si cela te rassure. Mais au-delà, l'argent qui dort perd du pouvoir d'achat avec l'inflation : le surplus peut servir à un projet ou être investi sur le long terme.</p>
+        <h3>Dois-je la constituer avant de rembourser mes dettes ?</h3>
+        <p>Une petite réserve d'abord (par exemple un mois de dépenses) évite de s'endetter davantage au premier imprévu. Ensuite, rembourser les crédits chers (crédit renouvelable, découvert) est souvent prioritaire.</p>
+        <h3>Ce calculateur est-il gratuit ?</h3>
+        <p>Oui, sans inscription. Avec un compte Kapitaro gratuit, ton bilan patrimonial vérifie aussi ton épargne de précaution et te propose un plan d'action.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Fais le point sur toute ta situation</h2>
+      <p>Épargne de sécurité, objectifs, portefeuille : Kapitaro t'aide à avancer étape par étape. Gratuit pour commencer.</p>
+      <a href="/" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+
+    <section class="others">
+      <h2>Autres outils gratuits</h2>
+      <a href="/calculateur-objectif-epargne"><div>Calculateur d'objectif d'épargne<span>Combien mettre de côté chaque mois pour atteindre ton objectif</span></div>›</a>
+      <a href="/simulateur-interets-composes"><div>Simulateur d'intérêts composés<span>Ce que devient ton épargne avec le temps</span></div>›</a>
+      <a href="/rendement-etf-msci-world"><div>Combien rapporte un ETF MSCI World<span>3 scénarios et l'effet des frais</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Calcul indicatif à but pédagogique, basé sur des règles courantes. Il ne constitue pas un conseil financier personnalisé. Investir comporte un risque de perte en capital.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var ids = ['d', 'h', 'm'];
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+    var plural = function (n, w) { return n + ' ' + w + (n > 1 ? 's' : ''); };
+    var duration = function (months) {
+      if (months <= 0) return 'Déjà atteint';
+      if (months < 12) return months + ' mois';
+      var y = Math.floor(months / 12), mo = months % 12;
+      return plural(y, 'an') + (mo ? ' ' + mo + ' mois' : '');
+    };
+
+    function update() {
+      var d = get('d'), have = get('h'), m = get('m');
+      var sit = document.getElementById('s').value.split(',').map(Number);
+      var extra = (document.getElementById('kids').checked ? 1 : 0) + (document.getElementById('owner').checked ? 1 : 0) + (document.getElementById('single').checked ? 1 : 0);
+      var months = Math.min(12, sit[0] + extra);
+      var lo = Math.min(12, sit[1] + extra), hi = Math.min(12, sit[2] + extra);
+      var target = d * months, left = Math.max(0, target - have);
+      var pct = target > 0 ? Math.min(100, have / target * 100) : 0;
+      var monthsToGo = left <= 0 ? 0 : (m > 0 ? Math.ceil(left / m) : Infinity);
+
+      document.getElementById('out-target').textContent = fmt(target);
+      document.getElementById('out-sub').textContent = months + ' mois de dépenses' + (lo !== hi ? ' (fourchette conseillée : ' + fmt(d * lo) + ' à ' + fmt(d * hi) + ')' : '');
+      document.getElementById('out-bar').style.width = pct.toFixed(1) + '%';
+      document.getElementById('out-progress').textContent = Math.round(pct) + ' % déjà constitué';
+      document.getElementById('out-have').textContent = fmt(have);
+      document.getElementById('out-left').textContent = fmt(left);
+      document.getElementById('out-time').textContent = monthsToGo === Infinity ? '—' : duration(monthsToGo);
+
+      var adv = document.getElementById('out-advice');
+      if (left <= 0) {
+        adv.innerHTML = '<strong>Ton matelas de sécurité est en place.</strong> Garde-le sur un livret disponible ; l\'argent en plus que tu n\'utiliseras pas avant plusieurs années peut être investi pour le long terme.';
+      } else if (m <= 0) {
+        adv.innerHTML = 'Indique combien tu peux mettre de côté chaque mois pour savoir quand ton épargne de précaution sera prête. Même 20 ou 50 € par mois font la différence.';
+      } else {
+        adv.innerHTML = 'En mettant <strong>' + fmt(m) + ' de côté chaque mois</strong>, ton épargne de précaution sera prête dans <strong>' + duration(monthsToGo) + '</strong>. Un virement automatique le jour de la paie aide à tenir le rythme.';
+      }
+    }
+
+    ids.forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    ['s', 'kids', 'owner', 'single'].forEach(function (id) { document.getElementById(id).addEventListener('change', update); });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'epargne-precaution', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+    update();
+  })();
+  </script>
+</body>
+</html>

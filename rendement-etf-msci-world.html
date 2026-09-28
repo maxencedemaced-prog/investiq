@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combien rapporte un ETF MSCI World ? Simulateur gratuit — Kapitaro</title>
+  <meta name="description" content="Simule ce que pourrait devenir un investissement régulier dans un ETF MSCI World, selon 3 scénarios de rendement et les frais de l'ETF. Gratuit, sans inscription.">
+  <link rel="canonical" href="https://kapitaro.fr/rendement-etf-msci-world">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/rendement-etf-msci-world">
+  <meta property="og:title" content="Combien rapporte un ETF MSCI World ? — Kapitaro">
+  <meta property="og:description" content="3 scénarios de rendement, l'effet des frais, versements mensuels : simule ton investissement dans un ETF MSCI World.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Simulateur de rendement d'un ETF MSCI World — Kapitaro",
+        "url": "https://kapitaro.fr/rendement-etf-msci-world",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "fr",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Combien rapporte un ETF MSCI World par an ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Il n'y a pas de rendement fixe : un ETF MSCI World suit les actions de grandes entreprises des pays développés, avec des années de forte hausse et des années de baisse. Sur de longues périodes, les simulations retiennent souvent une hypothèse de 4 à 8 % par an, sans aucune garantie." } },
+          { "@type": "Question", "name": "Combien rapportent 200 € par mois sur un ETF MSCI World pendant 20 ans ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Pour 48 000 € versés, et avec des frais de 0,20 % par an, on obtient environ 71 700 € dans un scénario à 4 % par an, 90 300 € à 6 % et 114 900 € à 8 %. Ce sont des hypothèses, pas des promesses." } },
+          { "@type": "Question", "name": "Un ETF MSCI World peut-il perdre de l'argent ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Oui. L'indice a par exemple perdu plus de 40 % en 2008. C'est pourquoi on le réserve en général à de l'argent dont on n'aura pas besoin avant plusieurs années, après s'être constitué une épargne de précaution." } },
+          { "@type": "Question", "name": "Peut-on mettre un ETF MSCI World dans un PEA ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Oui, il existe des ETF MSCI World éligibles au PEA, grâce à une réplication dite synthétique. On en trouve aussi sur compte-titres et dans certains contrats d'assurance vie." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Combien rapporte un ETF MSCI World ?</h1>
+      <p>Simule ce que pourrait devenir ton investissement dans un ETF MSCI World, selon trois scénarios de rendement, en tenant compte des frais de l'ETF.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Exemples">
+            <button type="button" data-preset="0,100,20,0.2">100 €/mois, 20 ans</button>
+            <button type="button" data-preset="0,200,20,0.2">200 €/mois, 20 ans</button>
+            <button type="button" data-preset="10000,0,15,0.2">10 000 € d'un coup</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="c">Montant de départ</label><span class="field-val"><input type="number" id="c-n" min="0" max="1000000" step="100" aria-label="Montant de départ en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="c" min="0" max="100000" step="500" value="1000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="m">Versement mensuel</label><span class="field-val"><input type="number" id="m-n" min="0" max="20000" step="10" aria-label="Versement mensuel en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="m" min="0" max="3000" step="10" value="200">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="y">Durée</label><span class="field-val"><input type="number" id="y-n" min="1" max="60" step="1" aria-label="Durée en années"><span class="unit">ans</span></span></div>
+            <input type="range" id="y" min="1" max="40" step="1" value="20">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="f">Frais de l'ETF</label><span class="field-val"><input type="number" id="f-n" min="0" max="3" step="0.01" aria-label="Frais annuels de l'ETF en pourcentage"><span class="unit">%/an</span></span></div>
+            <input type="range" id="f" min="0" max="2" step="0.01" value="0.2">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Valeur estimée dans le scénario moyen (6 %/an)</div>
+          <div class="result-total" id="out-mid">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-low">—</b><span>Prudent · 4 %</span></div>
+            <div class="kpi gain"><b id="out-mid2">—</b><span>Moyen · 6 %</span></div>
+            <div class="kpi"><b id="out-high">—</b><span>Favorable · 8 %</span></div>
+          </div>
+          <svg class="chart" id="chart" viewBox="0 0 520 220" role="img" aria-label="Trois scénarios d'évolution de l'investissement"></svg>
+          <div class="legend" style="flex-wrap:wrap"><span><i style="background:var(--invested)"></i>Argent versé</span><span><i style="background:#86efac"></i>Prudent</span><span><i style="background:var(--green)"></i>Moyen</span><span><i style="background:#15803d"></i>Favorable</span></div>
+          <div class="compare">
+            <div>Total versé<b id="out-invested">—</b>de ta poche</div>
+            <div>Frais payés à l'ETF<b id="out-fees">—</b>scénario moyen</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>Qu'est-ce qu'un ETF MSCI World ?</h2>
+      <p>Un ETF (ou « tracker ») est un fonds coté en bourse qui reproduit un indice. L'indice MSCI World regroupe environ 1 400 à 1 500 grandes et moyennes entreprises de 23 pays développés. En achetant une seule part, tu investis donc d'un coup dans des centaines de sociétés, avec des frais annuels souvent très bas, de l'ordre de 0,1 à 0,5 %.</p>
+      <p>C'est pour cette simplicité et cette diversification que beaucoup de débutants en font le cœur de leur épargne de long terme. À noter : les États-Unis représentent environ 70 % de l'indice, avec une forte place des grandes entreprises technologiques.</p>
+
+      <h2>Pourquoi trois scénarios plutôt qu'un seul chiffre ?</h2>
+      <p>Parce que personne ne connaît le rendement futur. Un ETF MSCI World monte et baisse avec les marchés d'actions : certaines années sont excellentes, d'autres négatives. Montrer une fourchette (4 %, 6 % et 8 % par an avant frais) donne une idée plus honnête de ce qui peut arriver sur une longue période, qu'un chiffre unique présenté comme certain.</p>
+      <div class="example">
+        <p style="margin:0">Avec <strong>200 € par mois pendant 20 ans</strong> (48 000 € versés) et des frais de 0,20 % par an, tu obtiens environ <strong>71 700 €</strong> dans le scénario prudent, <strong>90 300 €</strong> dans le scénario moyen et <strong>114 900 €</strong> dans le scénario favorable.</p>
+      </div>
+
+      <h2>L'effet des frais sur le long terme</h2>
+      <p>Des frais qui semblent minuscules pèsent lourd au bout de 20 ans. Dans le scénario moyen, 200 € par mois pendant 20 ans donnent environ 90 300 € avec des frais de 0,20 % par an, mais seulement 77 600 € avec des frais de 1,5 % par an : près de <strong>12 600 € de différence</strong>. Tu peux le vérifier en bougeant le curseur « Frais de l'ETF » ci-dessus.</p>
+
+      <h2>Les risques à connaître</h2>
+      <ul>
+        <li><strong>Des baisses parfois fortes</strong> : l'indice a perdu plus de 40 % en 2008. Il faut pouvoir attendre, sans être obligé de vendre au pire moment.</li>
+        <li><strong>Un horizon long</strong> : on le réserve en général à de l'argent dont on n'aura pas besoin avant 5 à 8 ans ou plus.</li>
+        <li><strong>La concentration</strong> : forte part des États-Unis et de quelques très grandes entreprises.</li>
+        <li><strong>Le change</strong> : les entreprises sont surtout cotées en dollars ; les variations entre l'euro et le dollar jouent sur ta performance.</li>
+      </ul>
+      <p class="muted">Avant d'investir, mieux vaut s'être constitué une <a href="/epargne-de-precaution">épargne de précaution</a>.</p>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>Peut-on mettre un ETF MSCI World dans un PEA ?</h3>
+        <p>Oui, il existe des ETF MSCI World éligibles au PEA grâce à une réplication dite synthétique. On en trouve aussi sur compte-titres et dans certains contrats d'assurance vie. L'enveloppe choisie change surtout la fiscalité.</p>
+        <h3>Vaut-il mieux investir d'un coup ou tous les mois ?</h3>
+        <p>Investir la même somme chaque mois (l'investissement programmé) lisse ton prix d'achat et évite de chercher le « bon moment ». C'est souvent la méthode la plus simple à tenir, surtout quand on débute.</p>
+        <h3>Les impôts sont-ils pris en compte ?</h3>
+        <p>Non : la simulation montre une valeur avant impôts, avec un rendement constant hypothétique. Les dividendes sont supposés réinvestis, comme dans les ETF dits « capitalisants ».</p>
+        <h3>Ce simulateur est-il gratuit ?</h3>
+        <p>Oui, sans inscription. Avec un compte Kapitaro gratuit, tu peux suivre ton vrai portefeuille d'ETF et d'actions, prix à jour, et te fixer un objectif.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Suis ton ETF et ton portefeuille au même endroit</h2>
+      <p>Prix à jour, performance, répartition et objectif : Kapitaro t'aide à garder le cap. Gratuit pour commencer.</p>
+      <a href="/" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+
+    <section class="others">
+      <h2>Autres outils gratuits</h2>
+      <a href="/simulateur-interets-composes"><div>Simulateur d'intérêts composés<span>Ce que devient ton épargne avec le temps</span></div>›</a>
+      <a href="/calculateur-objectif-epargne"><div>Calculateur d'objectif d'épargne<span>Combien mettre de côté chaque mois pour atteindre ton objectif</span></div>›</a>
+      <a href="/epargne-de-precaution"><div>Calculateur d'épargne de précaution<span>Combien garder de côté avant d'investir</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Simulation indicative à but pédagogique, basée sur des rendements constants hypothétiques. Elle ne constitue pas un conseil en investissement ni une recommandation d'achat d'un produit. Investir comporte un risque de perte en capital ; les performances passées ne préjugent pas des performances futures.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var ids = ['c', 'm', 'y', 'f'];
+    var SCEN = [4, 6, 8], COLORS = ['#86efac', 'var(--green)', '#15803d'];
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+
+    // Valeur année par année ; les frais annuels sont retirés du rendement (capitalisation mensuelle)
+    function project(c, m, y, grossPct, feePct) {
+      var i = (grossPct - feePct) / 100 / 12, cap = c, inv = c, fees = 0, pts = [{ inv: c, cap: c }];
+      for (var year = 1; year <= y; year++) {
+        for (var k = 0; k < 12; k++) { fees += cap * feePct / 100 / 12; cap = cap * (1 + i) + m; inv += m; }
+        pts.push({ inv: inv, cap: cap });
+      }
+      return { pts: pts, fees: fees };
+    }
+
+    function draw(series) {
+      var svg = document.getElementById('chart'), W = 520, H = 220, L = 8, R = 8, T = 10, B = 24;
+      var base = series[0].pts, last = base.length - 1;
+      var max = Math.max(1, series[2].pts[last].cap);
+      var x = function (k) { return L + (W - L - R) * k / (last || 1); };
+      var yv = function (v) { return T + (H - T - B) * (1 - v / max); };
+      var path = function (pts, key) { return pts.map(function (p, k) { return (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + yv(p[key]).toFixed(1); }).join(''); };
+      var area = path(base, 'inv') + 'L' + x(last).toFixed(1) + ',' + yv(0) + 'L' + x(0).toFixed(1) + ',' + yv(0) + 'Z';
+      var step = Math.max(1, Math.ceil(last / 5)), marks = [], ticks = '';
+      for (var k = 0; k < last; k += step) if (last - k >= step / 2) marks.push(k);
+      marks.push(last);
+      marks.forEach(function (k) {
+        var anchor = k === 0 ? 'start' : (k === last ? 'end' : 'middle');
+        ticks += '<text x="' + x(k).toFixed(1) + '" y="' + (H - 6) + '" font-size="15" text-anchor="' + anchor + '" fill="var(--faint)">' + (k ? k + ' an' + (k > 1 ? 's' : '') : 'Auj.') + '</text>';
+      });
+      svg.innerHTML = '<path d="' + area + '" fill="var(--invested)" opacity="0.6"/>' +
+        series.map(function (s, n) { return '<path d="' + path(s.pts, 'cap') + '" fill="none" stroke="' + COLORS[n] + '" stroke-width="' + (n === 1 ? 3.5 : 2.5) + '" stroke-linejoin="round"/>'; }).join('') + ticks;
+    }
+
+    function update() {
+      var c = get('c'), m = get('m'), y = Math.max(1, Math.min(60, Math.round(get('y')))), f = Math.min(3, get('f'));
+      var series = SCEN.map(function (r) { return project(c, m, y, r, f); });
+      var end = function (s) { return s.pts[s.pts.length - 1]; };
+      document.getElementById('out-mid').textContent = fmt(end(series[1]).cap);
+      document.getElementById('out-sub').textContent = 'après ' + y + ' an' + (y > 1 ? 's' : '') + ', frais de ' + f.toLocaleString('fr-FR') + ' %/an déduits';
+      document.getElementById('out-low').textContent = fmt(end(series[0]).cap);
+      document.getElementById('out-mid2').textContent = fmt(end(series[1]).cap);
+      document.getElementById('out-high').textContent = fmt(end(series[2]).cap);
+      document.getElementById('out-invested').textContent = fmt(end(series[1]).inv);
+      document.getElementById('out-fees').textContent = fmt(series[1].fees);
+      draw(series);
+    }
+
+    ids.forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    document.querySelectorAll('[data-preset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-preset').split(',');
+        ids.forEach(function (id, k) { document.getElementById(id).value = v[k]; document.getElementById(id + '-n').value = v[k]; });
+        update();
+      });
+    });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'etf-msci-world', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+    update();
+  })();
+  </script>
+</body>
+</html>

@@ -71,3 +71,10 @@ footer a{color:var(--muted)}
 .others a{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 16px;text-decoration:none;color:var(--text);font-weight:700;margin-bottom:8px}
 .others a span{font-weight:400;font-size:13px;color:var(--muted);display:block}
 .others a:hover{border-color:var(--green)}
+.field select{width:100%;font:inherit;font-size:14px;font-weight:600;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text)}
+.checks{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.checks label{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;cursor:pointer}
+.checks input{width:18px;height:18px;accent-color:var(--green)}
+.progress{height:12px;border-radius:99px;background:var(--bg);border:1px solid var(--border);overflow:hidden;margin:14px 0 6px}
+.progress div{height:100%;background:var(--green);border-radius:99px;transition:width .2s}
+.range-note{font-size:12.5px;color:var(--muted)}
