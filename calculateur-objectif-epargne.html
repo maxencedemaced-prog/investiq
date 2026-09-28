@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculateur d'objectif d'épargne : combien épargner par mois ? — Kapitaro</title>
+  <meta name="description" content="Combien mettre de côté chaque mois pour atteindre ton objectif ? Indique la somme visée, la durée et ton capital de départ : le calculateur gratuit te donne le versement mensuel nécessaire.">
+  <link rel="canonical" href="https://kapitaro.fr/calculateur-objectif-epargne">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/calculateur-objectif-epargne">
+  <meta property="og:title" content="Combien épargner par mois pour atteindre ton objectif ? — Kapitaro">
+  <meta property="og:description" content="Somme visée, durée, capital de départ : obtiens en un instant le versement mensuel nécessaire. Gratuit, sans inscription.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Calculateur d'objectif d'épargne — Kapitaro",
+        "url": "https://kapitaro.fr/calculateur-objectif-epargne",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "fr",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Combien épargner par mois pour avoir 50 000 € ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "En partant de zéro, il faut environ 278 € par mois pendant 15 ans sans aucun rendement. Avec un rendement hypothétique de 5 % par an, environ 187 € par mois suffisent, les intérêts composés faisant le reste. Ce rendement n'est pas garanti." } },
+          { "@type": "Question", "name": "Comment calculer combien épargner par mois ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Sans rendement, on divise la somme restant à atteindre par le nombre de mois. Avec un rendement, on tient compte des intérêts gagnés par chaque versement jusqu'à l'échéance, ce qui réduit l'effort mensuel. Le calculateur fait ce calcul automatiquement." } },
+          { "@type": "Question", "name": "Vaut-il mieux commencer tôt ou épargner plus ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Commencer tôt est souvent plus efficace : pour 50 000 € à 5 % par an, il faut environ 122 € par mois sur 20 ans, mais environ 322 € par mois sur 10 ans. Plus la durée est longue, plus les intérêts composés travaillent." } },
+          { "@type": "Question", "name": "Quel rendement choisir pour mon objectif ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Pour un objectif proche (moins de 3 à 5 ans), mieux vaut une épargne sans risque et un rendement faible. Pour un objectif lointain, une part d'actions ou d'ETF peut viser un rendement plus élevé, avec des variations possibles en chemin." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="outils.css?v=20260929">
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Combien épargner par mois pour atteindre ton objectif ?</h1>
+      <p>Indique la somme que tu vises, dans combien de temps, et ce que tu as déjà : le calculateur te donne le montant à mettre de côté chaque mois.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Exemples">
+            <button type="button" data-preset="10000,3,0,3">10 000 € en 3 ans</button>
+            <button type="button" data-preset="50000,15,0,5">50 000 € en 15 ans</button>
+            <button type="button" data-preset="100000,20,5000,5">100 000 € en 20 ans</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="t">Mon objectif</label><span class="field-val"><input type="number" id="t-n" min="0" max="10000000" step="1000" aria-label="Objectif en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="t" min="1000" max="500000" step="1000" value="50000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="y">Dans</label><span class="field-val"><input type="number" id="y-n" min="1" max="60" step="1" aria-label="Durée en années"><span class="unit">ans</span></span></div>
+            <input type="range" id="y" min="1" max="40" step="1" value="15">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="c">J'ai déjà</label><span class="field-val"><input type="number" id="c-n" min="0" max="10000000" step="100" aria-label="Capital de départ en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="c" min="0" max="100000" step="500" value="0">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="r">Rendement annuel moyen</label><span class="field-val"><input type="number" id="r-n" min="0" max="20" step="0.1" aria-label="Rendement annuel en pourcentage"><span class="unit">%/an</span></span></div>
+            <input type="range" id="r" min="0" max="12" step="0.1" value="5">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">À mettre de côté chaque mois</div>
+          <div class="result-total result-big-green" id="out-pmt">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-invested">—</b><span>Total versé</span></div>
+            <div class="kpi gain"><b id="out-gain">—</b><span>Intérêts gagnés</span></div>
+            <div class="kpi"><b id="out-share">—</b><span>Part des intérêts</span></div>
+          </div>
+          <svg class="chart" id="chart" viewBox="0 0 520 220" role="img" aria-label="Progression vers l'objectif : versements et intérêts"></svg>
+          <div class="legend"><span><i style="background:var(--invested)"></i>Argent versé</span><span><i style="background:var(--green)"></i>Intérêts composés</span></div>
+          <div class="compare">
+            <div>Sans aucun rendement<b id="out-zero">—</b>par mois</div>
+            <div id="out-later-box">Si tu commences dans 5 ans<b id="out-later">—</b>par mois</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>Comment est calculé le montant à épargner ?</h2>
+      <p>Sans placement, c'est une simple division : la somme qu'il te reste à réunir, divisée par le nombre de mois. Pour 50 000 € en 15 ans en partant de zéro, cela fait environ <strong>278 € par mois</strong>.</p>
+      <p>Si ton épargne rapporte des intérêts, chaque versement grandit jusqu'à l'échéance, et les intérêts gagnés rapportent à leur tour. Tu as donc besoin de verser moins. Avec un rendement moyen hypothétique de 5 % par an, les mêmes 50 000 € en 15 ans demandent environ <strong>187 € par mois</strong> : près de 16 000 € viennent des intérêts composés.</p>
+
+      <h2>Le temps, ton meilleur allié</h2>
+      <div class="example">
+        <p style="margin:0">Pour réunir <strong>50 000 €</strong> à 5 % par an, il faut environ <strong>122 € par mois sur 20 ans</strong>, <strong>187 € sur 15 ans</strong>, mais <strong>322 € sur 10 ans</strong>. Attendre cinq ou dix ans avant de commencer peut presque tripler l'effort mensuel.</p>
+      </div>
+      <p>C'est pour cela qu'on conseille souvent de commencer tôt, même avec une petite somme, puis d'augmenter les versements quand c'est possible (hausse de salaire, fin d'un crédit…).</p>
+
+      <h2>Bien choisir son objectif</h2>
+      <ul>
+        <li><strong>Un objectif chiffré et daté</strong> : « 20 000 € d'apport dans 5 ans » motive bien plus que « mettre de côté ».</li>
+        <li><strong>Une épargne de précaution d'abord</strong> : garder l'équivalent de quelques mois de dépenses disponible évite de toucher à ton projet au premier imprévu.</li>
+        <li><strong>Un placement adapté à la durée</strong> : pour un objectif proche, privilégie la sécurité ; pour un objectif lointain, une part d'actions ou d'ETF peut viser plus de rendement, avec des variations en chemin.</li>
+        <li><strong>Des versements automatiques</strong> : un virement programmé le jour de la paie, et tu n'as plus à y penser.</li>
+      </ul>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>Combien épargner par mois pour avoir 10 000 € ?</h3>
+        <p>En 3 ans, il faut environ 278 € par mois sans rendement, ou environ 266 € avec un rendement de 3 % par an. Sur une durée aussi courte, les intérêts jouent peu : c'est surtout la régularité qui compte.</p>
+        <h3>Les impôts, les frais et l'inflation sont-ils pris en compte ?</h3>
+        <p>Non, le calcul utilise un rendement brut et constant. Pour rester prudent, tu peux baisser un peu le rendement, ou viser un objectif légèrement plus haut pour tenir compte de l'inflation.</p>
+        <h3>Que faire si le montant mensuel est trop élevé ?</h3>
+        <p>Trois leviers : allonger la durée, revoir l'objectif, ou partir d'un capital de départ plus élevé. Teste différentes combinaisons dans le calculateur : l'effet de la durée est souvent surprenant.</p>
+        <h3>Est-ce que ce calculateur est gratuit ?</h3>
+        <p>Oui, sans inscription. Avec un compte Kapitaro gratuit, tu peux enregistrer ton objectif, suivre ta progression et recevoir un plan d'investissement adapté à ton profil.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Enregistre ton objectif et suis ta progression</h2>
+      <p>Kapitaro calcule ton plan mois par mois, suit ton portefeuille en direct et te dit si tu es sur la bonne voie. Gratuit pour commencer.</p>
+      <a href="/" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+
+    <section class="others">
+      <h2>Autres outils gratuits</h2>
+      <a href="/simulateur-interets-composes"><div>Simulateur d'intérêts composés<span>Ce que devient ton épargne avec le temps</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Calcul indicatif à but pédagogique, basé sur un rendement constant hypothétique. Il ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital ; les performances passées ne préjugent pas des performances futures.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var ids = ['t', 'y', 'c', 'r'];
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+
+    // Versement mensuel nécessaire pour atteindre t en y années avec un capital c et un rendement annuel r (capitalisation mensuelle)
+    function pmt(t, c, y, r) {
+      var i = r / 100 / 12, n = y * 12;
+      if (n <= 0) return Math.max(0, t - c);
+      if (i === 0) return Math.max(0, (t - c) / n);
+      var g = Math.pow(1 + i, n);
+      return Math.max(0, (t - c * g) * i / (g - 1));
+    }
+
+    function project(c, m, y, r) {
+      var i = r / 100 / 12, rows = [{ year: 0, inv: c, cap: c }], cap = c, inv = c;
+      for (var year = 1; year <= y; year++) {
+        for (var k = 0; k < 12; k++) { cap = cap * (1 + i) + m; inv += m; }
+        rows.push({ year: year, inv: inv, cap: cap });
+      }
+      return rows;
+    }
+
+    function draw(pts, target) {
+      var svg = document.getElementById('chart'), W = 520, H = 220, L = 8, R = 8, T = 10, B = 24;
+      var max = Math.max(target, pts[pts.length - 1].cap, 1);
+      var last = pts.length - 1;
+      var x = function (k) { return L + (W - L - R) * k / (last || 1); };
+      var yv = function (v) { return T + (H - T - B) * (1 - v / max); };
+      var line = function (key) { return pts.map(function (p, k) { return (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + yv(p[key]).toFixed(1); }).join(''); };
+      var base = 'L' + x(last).toFixed(1) + ',' + yv(0) + 'L' + x(0).toFixed(1) + ',' + yv(0) + 'Z';
+      var step = Math.max(1, Math.ceil(last / 5)), marks = [], ticks = '';
+      for (var k = 0; k < last; k += step) if (last - k >= step / 2) marks.push(k);
+      marks.push(last);
+      marks.forEach(function (k) {
+        var anchor = k === 0 ? 'start' : (k === last ? 'end' : 'middle');
+        ticks += '<text x="' + x(k).toFixed(1) + '" y="' + (H - 6) + '" font-size="15" text-anchor="' + anchor + '" fill="var(--faint)">' + (k ? k + ' an' + (k > 1 ? 's' : '') : 'Auj.') + '</text>';
+      });
+      var ty = yv(target).toFixed(1);
+      svg.innerHTML =
+        '<path d="' + line('cap') + base + '" fill="var(--green)" opacity="0.85"/>' +
+        '<path d="' + line('inv') + base + '" fill="var(--invested)"/>' +
+        '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + ty + '" y2="' + ty + '" stroke="var(--text)" stroke-dasharray="5 4" stroke-width="1.5" opacity="0.55"/>' +
+        '<text x="' + (L + 4) + '" y="' + (Number(ty) < 30 ? Number(ty) + 19 : Number(ty) - 6) + '" font-size="15" font-weight="700" fill="var(--text)">Objectif ' + fmt(target) + '</text>' + ticks;
+    }
+
+    function update() {
+      var t = get('t'), y = Math.max(1, Math.min(60, Math.round(get('y')))), c = get('c'), r = Math.min(20, get('r'));
+      var m = pmt(t, c, y, r);
+      var pts = project(c, m, y, r), end = pts[pts.length - 1];
+      var gain = Math.max(0, end.cap - end.inv);
+      var pmtEl = document.getElementById('out-pmt');
+      if (m <= 0 && t > 0) {
+        pmtEl.textContent = '0 €';
+        document.getElementById('out-sub').textContent = 'Ton capital de départ suffit : il devrait atteindre l\'objectif tout seul en ' + y + ' an' + (y > 1 ? 's' : '') + '.';
+      } else {
+        pmtEl.textContent = fmt(m);
+        document.getElementById('out-sub').textContent = 'pendant ' + y + ' an' + (y > 1 ? 's' : '') + ' pour réunir ' + fmt(t) + ' à ' + r.toLocaleString('fr-FR') + ' % par an';
+      }
+      document.getElementById('out-invested').textContent = fmt(end.inv);
+      document.getElementById('out-gain').textContent = '+' + fmt(gain);
+      document.getElementById('out-share').textContent = end.cap > 0 ? Math.round(gain / end.cap * 100) + ' %' : '—';
+      document.getElementById('out-zero').textContent = fmt(pmt(t, c, y, 0));
+      var laterBox = document.getElementById('out-later-box');
+      if (y > 5) { laterBox.style.display = ''; document.getElementById('out-later').textContent = fmt(pmt(t, c, y - 5, r)); }
+      else laterBox.style.display = 'none';
+      draw(pts, t);
+    }
+
+    ids.forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    document.querySelectorAll('[data-preset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-preset').split(',');
+        ids.forEach(function (id, k) { document.getElementById(id).value = v[k]; document.getElementById(id + '-n').value = v[k]; });
+        update();
+      });
+    });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'objectif-epargne', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+    update();
+  })();
+  </script>
+</body>
+</html>
