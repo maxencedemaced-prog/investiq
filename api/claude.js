@@ -173,7 +173,7 @@ export default async function handler(req, res) {
       console.warn('[api/claude] plafond Premium atteint pour', user.id);
       return res.status(429).json({
         code: 'fair_use',
-        error: `Tu as atteint la limite d'usage raisonnable de l'IA pour aujourd'hui (${PREMIUM_DAILY_CAP} analyses). Elle se réinitialise demain matin.`
+        error: `Utilisation anormale détectée : plus de ${PREMIUM_DAILY_CAP} analyses IA aujourd'hui. Pour protéger le service, l'IA est en pause jusqu'à demain matin. Si c'est une erreur, écris-nous à contact@kapitaro.fr.`
       });
     }
     if (quota.blocked) {

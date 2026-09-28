@@ -1622,7 +1622,7 @@ Sois ULTRA concret. Donne de vrais tickers (IWDA.L, VWCE.DE, AAPL, etc.) et de v
   try {
     const r_resp = await callClaude(prompt, 'Tu es conseiller financier pédagogue. Sois concret et donne des vrais noms et montants.');
     // IA indisponible (non connecté, quota, panne) : pas de faux « plan prêt », mais l'objectif chiffré reste enregistrable
-    if (callClaudeFailed(r_resp) || aiJustHitQuota() || /limite d'usage raisonnable/.test(r_resp)) {
+    if (callClaudeFailed(r_resp) || aiJustHitQuota() || /utilisation anormale|limite d'usage raisonnable/i.test(r_resp)) {
       if (contentEl) contentEl.innerHTML = `
         <div style="background:#fff9e6;border-radius:12px;padding:12px 14px;border-left:3px solid #f59e0b;margin-bottom:10px">
           <div style="font-size:12px;font-weight:700;color:#92400e">Le plan détaillé par l'IA n'a pas pu être préparé</div>
@@ -4828,6 +4828,14 @@ function switchAuth(m) {
   document.getElementById('tab-login').classList.toggle('active', m==='login');
   document.getElementById('tab-signup').classList.toggle('active', m==='signup');
   setAuthMsg('');
+}
+// Boutons « Créer mon compte » de la présentation : remonte au formulaire, onglet Inscription ouvert
+function lpSignup() {
+  switchAuth('signup');
+  const tab = document.getElementById('tab-signup');
+  if (tab) tab.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => document.getElementById('signup-email')?.focus({ preventScroll: true }), 500);
+  try { window.va && window.va('event', { name: 'landing_cta' }); } catch {}
 }
 function setAuthMsg(msg, ok=false) {
   const el = document.getElementById('auth-msg');
@@ -10860,7 +10868,7 @@ const PLAN_COMMON = [
 ];
 const PLAN_FREE_IA = `${AI_FREE_WELCOME} analyses IA offertes, puis ${AI_FREE_DAILY} par jour`;
 const PLAN_PREMIUM_ONLY = [
-  'Analyses IA <strong style="color:#4ade80">illimitées</strong> (plus aucun plafond)',
+  'Analyses IA <strong style="color:#4ade80">illimitées</strong>',
   'Agent IA complet : score, alertes et analyse de tout ton portefeuille',
   'Signaux IA sur tes positions et les opportunités du marché',
   'Bilan patrimonial complet + export PDF',
@@ -11133,6 +11141,7 @@ const LEGAL_DOCS = {
 
 <h3>Article 4 — Offre Premium et abonnement</h3>
 <p>L'offre Premium est proposée selon deux formules au choix : 9,99 € TTC par mois, ou 79,99 € TTC par an, sans engagement de durée. Le paiement s'effectue par carte bancaire via notre prestataire Stripe. L'utilisateur peut changer de formule à tout moment depuis les paramètres du compte.</p>
+<p><strong>Analyses IA illimitées :</strong> l'offre Premium donne un accès illimité à l'assistant IA pour un usage personnel normal. Afin de protéger le service contre les abus et les usages automatisés, une utilisation anormale (au-delà de 300 analyses IA sur une même journée) suspend l'accès à l'IA jusqu'au lendemain, sans autre conséquence sur l'abonnement.</p>
 <p><strong>Reconduction :</strong> l'abonnement est reconduit tacitement à l'identique (mensuellement ou annuellement selon la formule choisie) jusqu'à résiliation. Celle-ci peut intervenir à tout moment depuis les paramètres du compte et prend effet à la fin de la période en cours.</p>
 <p><strong>Droit de rétractation :</strong> conformément aux articles L. 221-18 et suivants du Code de la consommation, l'utilisateur dispose d'un délai de quatorze (14) jours pour se rétracter. En demandant l'accès immédiat au service, il accepte de commencer à en bénéficier avant la fin de ce délai ; il reste redevable du montant correspondant à la période consommée.</p>
 

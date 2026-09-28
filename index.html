@@ -41,6 +41,18 @@
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR", "description": "Version gratuite" }
   }
   </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Kapitaro est-il vraiment gratuit ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui. La version gratuite n'a pas de limite de durée et ne demande aucune carte bancaire. Premium (9,99 € par mois ou 79,99 € par an, sans engagement) ajoute l'IA illimitée et des outils avancés." } },
+      { "@type": "Question", "name": "Kapitaro a-t-il accès à mon compte chez mon courtier ?", "acceptedAnswer": { "@type": "Answer", "text": "Non. Kapitaro ne se connecte à aucune banque ni aucun courtier et ne peut passer aucun ordre : tu ajoutes toi-même tes positions, ou tu importes un relevé." } },
+      { "@type": "Question", "name": "Kapitaro est-il un conseil en investissement ?", "acceptedAnswer": { "@type": "Answer", "text": "Non. Kapitaro est un outil pédagogique d'aide à la décision ; la décision finale appartient à l'utilisateur. Investir comporte un risque de perte en capital." } },
+      { "@type": "Question", "name": "Faut-il installer une application ?", "acceptedAnswer": { "@type": "Answer", "text": "Non, Kapitaro fonctionne dans le navigateur, sur téléphone comme sur ordinateur, et peut être ajouté à l'écran d'accueil pour l'ouvrir comme une app." } }
+    ]
+  }
+  </script>
   <link rel="manifest" href="manifest.json" crossorigin="use-credentials">
   <!-- Mesure d'audience Vercel Web Analytics : anonyme, sans cookie (à activer dans Vercel > projet > Analytics) -->
   <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
@@ -54,7 +66,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260929011500">
+  <link rel="stylesheet" href="style.css?v=20260929050000">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -134,7 +146,8 @@
 </script>
 
 <!-- AUTH -->
-<div id="auth-screen" class="auth-screen" style="display:flex;min-height:100vh;background:#0a0a0f;position:relative;overflow:hidden">
+<div id="auth-screen" class="auth-screen" style="display:flex;flex-direction:column;min-height:100vh;background:#0a0a0f;position:relative;overflow:hidden">
+  <div id="auth-hero" style="position:relative;display:flex;width:100%;min-height:100vh;overflow:hidden">
 
   <!-- FOND ANIMÉ PREMIUM -->
   <canvas id="hero-canvas" style="position:absolute;inset:0;width:100%;height:100%;opacity:0.6;pointer-events:none"></canvas>
@@ -243,6 +256,8 @@
           ⚠️ Kapitaro est un outil éducatif d'aide à la décision. Les informations fournies ne constituent pas des conseils financiers réglementés. Investir comporte des risques de perte en capital.
         </div>
       </div>
+      <!-- Invite à découvrir la présentation plus bas -->
+      <a href="#lp-fonctions" onclick="event.preventDefault();document.getElementById('lp-fonctions').scrollIntoView({behavior:'smooth'})" style="display:inline-flex;align-items:center;gap:6px;margin-top:18px;font-size:13.5px;font-weight:700;color:#4ade80;text-decoration:none">Découvrir ce que fait Kapitaro <span aria-hidden="true">↓</span></a>
     </div>
 
     <!-- COLONNE DROITE : DASHBOARD FLOTTANT + FORMULAIRE -->
@@ -460,6 +475,148 @@
         </div>
       </div>
     </div>
+  </div>
+  </div><!-- /auth-hero -->
+
+  <!-- ═══ PRÉSENTATION DE L'APP (visiteurs non connectés, aussi lue par Google) ═══ -->
+  <div class="lp">
+
+    <section class="lp-sec" id="lp-fonctions">
+      <div class="lp-kicker">Tout au même endroit</div>
+      <h2 class="lp-h2">Ce que Kapitaro fait pour toi</h2>
+      <p class="lp-lead">Suivre ses placements, comprendre où on en est et savoir quoi faire ensuite, sans tableur ni jargon.</p>
+      <div class="lp-grid">
+        <div class="lp-feat"><div class="lp-ico">📈</div><h3>Ton portefeuille en direct</h3><p>Actions et ETF avec les prix à jour, ta performance et ta répartition. Importe ton relevé de courtier (PDF, Excel ou CSV) au lieu de tout ressaisir.</p></div>
+        <div class="lp-feat"><div class="lp-ico">❤️</div><h3>Un score de santé sur 10</h3><p>Diversification, concentration, part d'ETF : tu vois tout de suite ce qui va bien et ce qu'il faut améliorer en priorité.</p></div>
+        <div class="lp-feat"><div class="lp-ico">🎯</div><h3>Des objectifs et un plan</h3><p>Fixe un objectif, vois s'il est réaliste et reçois un plan d'investissement chiffré, mois par mois.</p></div>
+        <div class="lp-feat"><div class="lp-ico">✦</div><h3>Un assistant IA en français</h3><p>Pose tes questions sur ton portefeuille et reçois des réponses claires, adaptées à ta situation et à ton niveau.</p></div>
+        <div class="lp-feat"><div class="lp-ico">🧭</div><h3>Une aide avant de décider</h3><p>Tu hésites à acheter ou à vendre ? Décris ton idée et obtiens une analyse chiffrée avant d'agir.</p></div>
+        <div class="lp-feat"><div class="lp-ico">🔔</div><h3>Briefing et alertes</h3><p>Un point chaque matin sur ton téléphone et une alerte quand un prix passe sous ton seuil, même app fermée.</p></div>
+      </div>
+    </section>
+
+    <section class="lp-sec">
+      <div class="lp-kicker">Aperçu</div>
+      <h2 class="lp-h2">Clair dès le premier coup d'œil</h2>
+      <div class="lp-shots">
+        <div class="lp-shot">
+          <div class="lp-mock">
+            <div class="lp-mock-label">Score de santé</div>
+            <div class="lp-score"><b>7,8</b><span>/10</span><em>Bon</em></div>
+            <div class="lp-bar"><span>Diversification</span><i style="--w:80%"></i></div>
+            <div class="lp-bar"><span>Concentration</span><i style="--w:70%"></i></div>
+            <div class="lp-bar"><span>Part d'ETF</span><i style="--w:90%"></i></div>
+            <div class="lp-bar"><span>Performance</span><i style="--w:75%"></i></div>
+          </div>
+          <p>Ton portefeuille noté sur 10, avec la priorité à améliorer.</p>
+        </div>
+        <div class="lp-shot">
+          <div class="lp-mock">
+            <div class="lp-mock-label">Objectif · 50 000 € dans 15 ans</div>
+            <div class="lp-score"><b>187 €</b><span>/mois</span></div>
+            <svg viewBox="0 0 240 90" class="lp-curve" aria-hidden="true"><path d="M0 88 C60 80 110 64 150 46 S220 12 240 4 L240 90 L0 90Z" fill="rgba(74,222,128,.18)"/><path d="M0 88 C60 80 110 64 150 46 S220 12 240 4" fill="none" stroke="#4ade80" stroke-width="2.5"/><line x1="0" x2="240" y1="6" y2="6" stroke="rgba(255,255,255,.35)" stroke-dasharray="4 4"/></svg>
+            <div class="lp-pill">✓ Atteignable</div>
+          </div>
+          <p>Ce qu'il faut mettre de côté chaque mois, et la courbe pour y arriver.</p>
+        </div>
+        <div class="lp-shot">
+          <div class="lp-mock lp-chat">
+            <div class="lp-mock-label">Assistant IA</div>
+            <div class="lp-msg lp-me">Mon portefeuille est-il trop concentré ?</div>
+            <div class="lp-msg lp-ai">Une seule action pèse 38 % de ton portefeuille. Au-delà de 20 à 25 % sur une ligne, une mauvaise nouvelle peut peser lourd : un ETF diversifié réduit ce risque.</div>
+          </div>
+          <p>Des réponses simples, calculées sur tes vraies positions.</p>
+        </div>
+      </div>
+      <p class="lp-note">Exemples illustratifs.</p>
+    </section>
+
+    <section class="lp-sec">
+      <div class="lp-kicker">Comment ça marche</div>
+      <h2 class="lp-h2">Prêt en trois minutes</h2>
+      <div class="lp-steps">
+        <div class="lp-step"><b>1</b><h3>Crée ton compte gratuit</h3><p>Un e-mail ou ton compte Google, sans carte bancaire.</p></div>
+        <div class="lp-step"><b>2</b><h3>Ajoute tes placements</h3><p>À la main, ou en important le relevé de ton courtier. Pas encore investi ? Le tutoriel te propose un premier plan.</p></div>
+        <div class="lp-step"><b>3</b><h3>Suis, comprends, décide</h3><p>Ton score, ton objectif et l'assistant IA t'aident à garder le cap.</p></div>
+      </div>
+      <div class="lp-center"><button type="button" class="lp-cta" onclick="lpSignup()">Créer mon compte gratuit</button></div>
+    </section>
+
+    <section class="lp-sec" id="lp-tarifs">
+      <div class="lp-kicker">Tarifs</div>
+      <h2 class="lp-h2">Commence gratuitement</h2>
+      <div class="lp-plans">
+        <div class="lp-plan">
+          <h3>Gratuit</h3>
+          <div class="lp-price"><b>0 €</b><span>pour toujours</span></div>
+          <ul>
+            <li>Suivi du portefeuille avec prix à jour</li>
+            <li>Score de santé et analyse de la répartition</li>
+            <li>Objectifs avec faisabilité et plan</li>
+            <li>Simulateur d'investissement régulier et scénarios de crise</li>
+            <li>Alertes chiffrées et agenda économique</li>
+            <li>15 analyses IA offertes, puis 3 par jour</li>
+          </ul>
+          <button type="button" class="lp-cta lp-cta-ghost" onclick="lpSignup()">Commencer gratuitement</button>
+        </div>
+        <div class="lp-plan lp-plan-pro">
+          <h3>Premium</h3>
+          <div class="lp-price"><b>9,99 €</b><span>par mois, ou 79,99 € par an</span></div>
+          <ul>
+            <li><strong>Tout le gratuit</strong>, plus :</li>
+            <li>Analyses IA illimitées</li>
+            <li>Agent IA complet sur tout ton portefeuille</li>
+            <li>Bilan patrimonial complet et export PDF</li>
+            <li>Analyse de tes dépenses et des abonnements à résilier</li>
+            <li>Conseils IA sur tes alertes</li>
+          </ul>
+          <button type="button" class="lp-cta" onclick="lpSignup()">Essayer, puis passer Premium</button>
+          <div class="lp-small">Sans engagement, résiliable en un clic.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-sec">
+      <div class="lp-kicker">Questions fréquentes</div>
+      <h2 class="lp-h2">Tu te demandes peut-être…</h2>
+      <div class="lp-faq">
+        <details><summary>Est-ce vraiment gratuit ?</summary><p>Oui. La version gratuite n'a pas de limite de durée et ne demande aucune carte bancaire. Premium est une option pour ceux qui veulent l'IA illimitée et les outils avancés.</p></details>
+        <details><summary>Kapitaro a-t-il accès à mon compte chez mon courtier ?</summary><p>Non. Kapitaro ne se connecte à aucune banque ni aucun courtier et ne peut passer aucun ordre : tu ajoutes toi-même tes positions, ou tu importes un relevé.</p></details>
+        <details><summary>Mes données sont-elles protégées ?</summary><p>Tes données sont chiffrées lors des échanges, hébergées de façon sécurisée, et ne sont jamais vendues. Tu peux les télécharger ou supprimer ton compte à tout moment depuis les Paramètres.</p></details>
+        <details><summary>Est-ce un conseil en investissement ?</summary><p>Non. Kapitaro est un outil pédagogique d'aide à la décision : il t'aide à comprendre et à organiser tes placements, mais la décision finale t'appartient. Investir comporte un risque de perte en capital.</p></details>
+        <details><summary>Faut-il installer une application ?</summary><p>Non, Kapitaro fonctionne dans ton navigateur, sur téléphone comme sur ordinateur. Tu peux aussi l'ajouter à ton écran d'accueil pour l'ouvrir comme une app et recevoir les notifications.</p></details>
+        <details><summary>Je débute complètement, est-ce pour moi ?</summary><p>Oui, c'est même pensé pour ça : un tutoriel te guide au départ, tout est expliqué en français simple, et l'assistant répond à tes questions sans jargon.</p></details>
+      </div>
+    </section>
+
+    <section class="lp-sec">
+      <div class="lp-kicker">Sans compte</div>
+      <h2 class="lp-h2">Nos outils gratuits</h2>
+      <div class="lp-tools">
+        <a href="/simulateur-interets-composes">Simulateur d'intérêts composés<span>›</span></a>
+        <a href="/calculateur-objectif-epargne">Combien épargner par mois ?<span>›</span></a>
+        <a href="/rendement-etf-msci-world">Combien rapporte un ETF MSCI World<span>›</span></a>
+        <a href="/epargne-de-precaution">Épargne de précaution<span>›</span></a>
+      </div>
+    </section>
+
+    <section class="lp-final">
+      <h2>Prêt à y voir plus clair dans tes placements ?</h2>
+      <p>Gratuit pour commencer, sans carte bancaire.</p>
+      <button type="button" class="lp-cta" onclick="lpSignup()">Créer mon compte gratuit</button>
+    </section>
+
+    <footer class="lp-foot">
+      <div class="lp-foot-links">
+        <button type="button" onclick="openLegalDoc('cgu')">CGU / CGV</button>
+        <button type="button" onclick="openLegalDoc('mentions')">Mentions légales</button>
+        <button type="button" onclick="openLegalDoc('privacy')">Confidentialité</button>
+        <button type="button" onclick="openLegalDoc('risk')">Risques</button>
+        <a href="mailto:contact@kapitaro.fr">Contact</a>
+      </div>
+      <p>Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. L'éditeur n'est pas enregistré auprès de l'ORIAS ni agréé par l'AMF. Investir comporte un risque de perte en capital.</p>
+      <p>© Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016</p>
+    </footer>
   </div>
 </div>
 
@@ -1922,7 +2079,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260929030000"></script>
+<script src="app.js?v=20260929060000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20260928233000"></script>
