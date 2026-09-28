@@ -5,8 +5,9 @@
 // mode démo), on lui demande de vérifier une mise à jour à CHAQUE visite, sans attendre le délai
 // habituel du navigateur (jusqu'à 24h). Sans ça, un appareil resterait bloqué sur une ancienne
 // version de l'app jusqu'à ce que quelqu'un vide son cache à la main.
+// Enregistré pour tous les visiteurs : il rend aussi le site installable comme une app (bouton « Installer l'app »).
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistration().then(reg => reg && reg.update()).catch(() => {});
+  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
 }
 
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -170,3 +171,58 @@ async function pushBellPromptHTML() {
     <button onclick="pushEnable()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer">Activer les notifications</button>
   </div>`;
 }
+
+// ── « Installer l'app » sur la page de connexion ──
+// Android / ordinateur (Chrome, Edge) : vraie installation en un clic via l'événement beforeinstallprompt (capté dans index.html).
+// iPhone / iPad : Apple ne permet pas d'installer par un bouton, on explique le geste Partager → « Sur l'écran d'accueil ».
+const INSTALL_DISMISS_KEY = 'iq_install_dismissed';
+const appIsInstalled = () => window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+const isIOSDevice = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function installAppRender() {
+  const box = document.getElementById('install-app-box');
+  if (!box) return;
+  let dismissedRecently = false;
+  try { dismissedRecently = Date.now() - Number(localStorage.getItem(INSTALL_DISMISS_KEY) || 0) < 14 * 86400000; } catch {}
+  if (appIsInstalled() || dismissedRecently) { box.style.display = 'none'; return; }
+  const btn = document.getElementById('install-app-btn');
+  const text = document.getElementById('install-app-text');
+  if (window._installEvt) {
+    btn.style.display = 'block';
+    text.textContent = "Sur ton écran d'accueil, en plein écran, avec les notifications. Gratuit, sans passer par un magasin d'applications.";
+    box.style.display = 'block';
+  } else if (isIOSDevice()) {
+    btn.style.display = 'none';
+    text.innerHTML = 'Touche <strong style="color:#fff">Partager</strong> <span style="font-size:13px">⬆️</span> en bas de Safari, puis <strong style="color:#fff">« Sur l\'écran d\'accueil »</strong>.';
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';   // navigateur qui ne permet pas l'installation (ex. Firefox sur ordinateur)
+  }
+}
+
+async function installApp() {
+  const evt = window._installEvt;
+  if (!evt) return;
+  evt.prompt();
+  let outcome = 'dismissed';
+  try { outcome = (await evt.userChoice).outcome; } catch {}
+  window._installEvt = null;
+  if (outcome === 'accepted') {
+    try { window.va && window.va('event', { name: 'app_install_accepted' }); } catch {}
+    document.getElementById('install-app-box').style.display = 'none';
+  } else {
+    installAppRender();
+  }
+}
+
+function installAppDismiss() {
+  try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch {}
+  document.getElementById('install-app-box').style.display = 'none';
+}
+
+window.addEventListener('kapitaro-installable', installAppRender);
+window.addEventListener('appinstalled', () => {
+  try { window.va && window.va('event', { name: 'app_installed' }); } catch {}
+  const box = document.getElementById('install-app-box'); if (box) box.style.display = 'none';
+});
+installAppRender();

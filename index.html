@@ -43,6 +43,8 @@
   <link rel="manifest" href="manifest.json">
   <!-- Mesure d'audience Vercel Web Analytics : anonyme, sans cookie (à activer dans Vercel > projet > Analytics) -->
   <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+  <!-- Installation de l'app : Chrome peut proposer l'installation avant que les scripts de la page soient chargés -->
+  <script>window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window._installEvt = e; window.dispatchEvent(new Event('kapitaro-installable')); });</script>
   <script defer src="/_vercel/insights/script.js"></script>
   <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
   <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
@@ -51,7 +53,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260928164636">
+  <link rel="stylesheet" href="style.css?v=20260928172659">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -333,6 +335,19 @@
 
       <!-- FORMULAIRE -->
       <div style="background:rgba(255,255,255,0.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,0.4)">
+
+        <!-- INSTALLER L'APP (affiché seulement si l'appareil le permet et que l'app n'est pas déjà installée) -->
+        <div id="install-app-box" style="display:none;margin-bottom:18px;padding:12px 14px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.3);border-radius:14px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <img src="icons/kapitaro-tile.svg" width="38" height="38" alt="" style="border-radius:10px;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13.5px;font-weight:800;color:#fff">Installe l'app Kapitaro</div>
+              <div id="install-app-text" style="font-size:11.5px;color:rgba(255,255,255,0.6);line-height:1.45;margin-top:1px">Sur ton écran d'accueil, en plein écran, avec les notifications.</div>
+            </div>
+            <button type="button" onclick="installAppDismiss()" aria-label="Masquer" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0">✕</button>
+          </div>
+          <button type="button" id="install-app-btn" onclick="installApp()" style="display:none;width:100%;margin-top:10px;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">📲 Installer l'app — gratuit</button>
+        </div>
 
         <!-- ONGLETS -->
         <div style="display:flex;background:rgba(255,255,255,0.06);border-radius:12px;padding:4px;margin-bottom:24px">
@@ -1882,11 +1897,11 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-<script src="app.js?v=20260928164636"></script>
-<script src="depenses.js?v=20260928164636"></script>
-<script src="bilan-extra.js?v=20260928164636"></script>
-<script src="tab-hints.js?v=20260928164636"></script>
-<script src="push.js?v=20260928164636"></script>
+<script src="app.js?v=20260928172659"></script>
+<script src="depenses.js?v=20260928172659"></script>
+<script src="bilan-extra.js?v=20260928172659"></script>
+<script src="tab-hints.js?v=20260928172659"></script>
+<script src="push.js?v=20260928172659"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->
