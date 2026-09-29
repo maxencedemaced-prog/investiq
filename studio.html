@@ -60,7 +60,7 @@
     </div>
   </div>
 
-  <div class="notice" id="notice">📸 <b>Instagram : publication automatique activée.</b> Un post validé part tout seul à l'heure prévue (vérification toutes les 15 min), ou tout de suite avec <b>🚀 Publier maintenant</b>.<br>Facebook, LinkedIn et TikTok : pas encore automatiques. Utilise <b>Télécharger</b> et <b>Copier le texte</b> pour les publier à la main.</div>
+  <div class="notice" id="notice">📸 <b>Publication automatique : Instagram et Facebook.</b> Un post validé part tout seul à l'heure prévue (vérification toutes les 15 min), ou tout de suite avec <b>🚀 Publier maintenant</b>.<br>LinkedIn et TikTok : pas encore automatiques. Utilise <b>Télécharger</b> et <b>Copier le texte</b> pour les publier à la main.</div>
 
   <div class="tabs">
     <button class="tab on" data-f="draft" onclick="setFilter('draft')">À valider</button>
@@ -137,7 +137,7 @@ function render() {
     var actions = p.status === 'draft'
       ? '<button class="btn primary" onclick="approve(\'' + p.id + '\', this)">✓ Valider et programmer</button><button class="btn warn" onclick="removePost(\'' + p.id + '\')">Supprimer</button>'
       : p.status === 'approved'
-        ? ((p.platforms || []).indexOf('instagram') >= 0 ? '<button class="btn primary" onclick="publishNow(\'' + p.id + '\', this)">🚀 Publier maintenant</button>' : '') + '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button><button class="btn" onclick="markPublished(\'' + p.id + '\')">Marquer publié</button><button class="btn" onclick="backToDraft(\'' + p.id + '\')">Repasser en brouillon</button>'
+        ? (((p.platforms || []).indexOf('instagram') >= 0 || (p.platforms || []).indexOf('facebook') >= 0) ? '<button class="btn primary" onclick="publishNow(\'' + p.id + '\', this)">🚀 Publier maintenant</button>' : '') + '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button><button class="btn" onclick="markPublished(\'' + p.id + '\')">Marquer publié</button><button class="btn" onclick="backToDraft(\'' + p.id + '\')">Repasser en brouillon</button>'
       : p.status === 'publishing'
         ? '<span class="sub">⏳ Publication en cours…</span>'
         : '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button>';
@@ -156,17 +156,22 @@ function render() {
 }
 
 // État de la publication Instagram (réussie avec lien, erreur, ou programmée)
+var AUTO_NAMES = { instagram: 'Instagram', facebook: 'Facebook' };
 function publishStatus(p) {
-  var log = (p.publish_log || {}).instagram, when = p.scheduled_at ? new Date(p.scheduled_at).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
-  var line = '';
-  if (log && log.ok) line = '✅ Publié sur Instagram' + (log.permalink ? ' · <a href="' + esc(log.permalink) + '" target="_blank" rel="noopener" style="color:#24e898">voir le post</a>' : '');
-  else if (log && log.error) line = '<span style="color:#fca5a5">⚠️ Instagram : ' + esc(log.error) + ' (essai ' + (log.attempts || 1) + '/3)</span>';
-  else if (p.status === 'approved' && (p.platforms || []).indexOf('instagram') >= 0) line = '📅 Publication automatique sur Instagram ' + (when ? 'le ' + esc(when) : 'dès que possible');
-  return line ? '<div class="sub" style="margin-top:12px;font-size:13px;line-height:1.5">' + line + '</div>' : '';
+  var when = p.scheduled_at ? new Date(p.scheduled_at).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
+  var lines = [];
+  Object.keys(AUTO_NAMES).forEach(function (pl) {
+    if ((p.platforms || []).indexOf(pl) < 0) return;
+    var log = (p.publish_log || {})[pl], name = AUTO_NAMES[pl];
+    if (log && log.ok) lines.push('✅ Publié sur ' + name + (log.permalink ? ' · <a href="' + esc(log.permalink) + '" target="_blank" rel="noopener" style="color:#24e898">voir le post</a>' : ''));
+    else if (log && log.error) lines.push('<span style="color:#fca5a5">⚠️ ' + name + ' : ' + esc(log.error) + ' (essai ' + (log.attempts || 1) + '/3)</span>');
+    else if (p.status === 'approved') lines.push('📅 ' + name + ' : publication automatique ' + (when ? 'le ' + esc(when) : 'dès que possible'));
+  });
+  return lines.length ? '<div class="sub" style="margin-top:12px;font-size:13px;line-height:1.6">' + lines.join('<br>') + '</div>' : '';
 }
 
 async function publishNow(id, btn) {
-  if (!confirm('Publier ce post sur Instagram maintenant ?')) return;
+  if (!confirm('Publier ce post maintenant sur les réseaux automatiques (Instagram, Facebook) ?')) return;
   btn.disabled = true; btn.textContent = 'Publication (≈ 30 s)…';
   try {
     var s = (await sbClient.auth.getSession()).data.session;
@@ -174,8 +179,8 @@ async function publishNow(id, btn) {
     var d = await r.json().catch(function () { return {}; });
     if (!r.ok) throw new Error(d.error || 'Erreur ' + r.status);
     if (d.post) Object.assign(findPost(id), d.post);
-    var ok = d.post && d.post.publish_log && d.post.publish_log.instagram && d.post.publish_log.instagram.ok;
-    toast(ok ? '🎉 Publié sur Instagram !' : (d.result && d.result.skipped) || 'Publication impossible : voir le message sur le post', 6000);
+    var ok = d.post && d.post.status === 'published';
+    toast(ok ? '🎉 Publié !' : (d.result && d.result.skipped) || 'Publication impossible : voir le message sur le post', 6000);
     if (ok) setFilter('published'); else render();
   } catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = '🚀 Publier maintenant'; }
 }

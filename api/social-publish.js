@@ -3,6 +3,7 @@
 //   POST {id} avec le jeton de l'admin : bouton « Publier maintenant » du Studio.
 // Instagram (API avec connexion Instagram) : carrousel d'images JPEG hébergées dans le stockage public « social ».
 // Le jeton Instagram (60 jours) est renouvelé automatiquement et conservé dans la table app_tokens (jamais côté navigateur).
+// Facebook : publication multi-photos sur la page Kapitaro, active dès que FACEBOOK_ACCESS_TOKEN est configuré dans Vercel.
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -91,31 +92,65 @@ async function publishInstagram(p) {
   return { ok: true, id: pub.id, permalink, account: me.username || null };
 }
 
+// ── Facebook : publication multi-photos sur la page Kapitaro ──
+// FACEBOOK_ACCESS_TOKEN peut être un jeton d'utilisateur système (recommandé, n'expire pas) ou directement un jeton de page.
+const FB = 'https://graph.facebook.com';
+async function fb(path, token, params, method = 'POST') {
+  const body = new URLSearchParams({ ...(params || {}), access_token: token });
+  const url = method === 'GET' ? `${FB}/${path}?${body}` : `${FB}/${path}`;
+  const r = await fetch(url, method === 'GET' ? {} : { method, body });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error?.error_user_msg || j.error?.message || `Facebook ${r.status}`);
+  return j;
+}
+async function fbPage() {
+  const token = process.env.FACEBOOK_ACCESS_TOKEN;
+  if (!token) throw new Error('FACEBOOK_ACCESS_TOKEN manquant dans Vercel');
+  try {
+    // Jeton d'utilisateur (ou système) : liste des pages gérées, on prend la page Kapitaro
+    const { data } = await fb('me/accounts', token, { fields: 'id,name,access_token' }, 'GET');
+    const page = (data || []).find(p => /kapitaro/i.test(p.name)) || (data || [])[0];
+    if (page?.access_token) return { id: page.id, name: page.name, token: page.access_token };
+  } catch {}
+  // Sinon, c'est déjà un jeton de page
+  const me = await fb('me', token, { fields: 'id,name' }, 'GET');
+  return { id: me.id, name: me.name, token };
+}
+async function publishFacebook(p) {
+  const urls = (p.image_urls || []).slice(0, 10);
+  if (!urls.length) throw new Error('Aucune image : valide le post dans le Studio');
+  const page = await fbPage();
+  const media = [];
+  for (const u of urls) media.push((await fb(`${page.id}/photos`, page.token, { url: u, published: 'false' })).id);
+  const params = { message: buildCaption(p) };
+  media.forEach((m, i) => { params[`attached_media[${i}]`] = JSON.stringify({ media_fbid: m }); });
+  const post = await fb(`${page.id}/feed`, page.token, params);
+  return { ok: true, id: post.id, permalink: `https://www.facebook.com/${post.id}`, account: page.name };
+}
+
+// Réseaux publiés automatiquement (Facebook seulement si sa clé est configurée)
+const AUTOMATED = { instagram: publishInstagram, facebook: publishFacebook };
+const automatedFor = platforms => (platforms || []).filter(pl => AUTOMATED[pl] && (pl !== 'facebook' || process.env.FACEBOOK_ACCESS_TOKEN));
+
 // Publie un post : verrouillage (évite un double envoi cron + bouton), puis chaque réseau automatisé
 async function publishPost(id) {
   const { data: locked } = await sb.from('social_posts').update({ status: 'publishing', locked_at: new Date().toISOString() })
     .eq('id', id).eq('status', 'approved').select().maybeSingle();
   if (!locked) return { skipped: 'déjà en cours ou pas validé' };
   const log = { ...(locked.publish_log || {}) };
-  const platforms = locked.platforms || [];
-  let published = false, failed = false;
-  if (platforms.includes('instagram') && !log.instagram?.ok) {
-    const attempts = (log.instagram?.attempts || 0) + 1;
+  const targets = automatedFor(locked.platforms);
+  for (const pl of targets) {
+    if (log[pl]?.ok) continue;                        // déjà publié sur ce réseau lors d'un essai précédent
+    const attempts = (log[pl]?.attempts || 0) + 1;
     try {
-      log.instagram = { ...(await publishInstagram(locked)), attempts, at: new Date().toISOString() };
-      published = true;
+      log[pl] = { ...(await AUTOMATED[pl](locked)), attempts, at: new Date().toISOString() };
     } catch (e) {
-      log.instagram = { ok: false, error: e.message, attempts, at: new Date().toISOString() };
-      failed = true;
+      log[pl] = { ok: false, error: e.message, attempts, at: new Date().toISOString() };
     }
   }
-  const upd = { publish_log: log };
-  if (published || (!failed && log.instagram?.ok)) {
-    upd.status = 'published';
-    upd.published_at = new Date().toISOString();
-  } else {
-    upd.status = 'approved';
-  }
+  const allOk = targets.length > 0 && targets.every(pl => log[pl]?.ok);
+  const upd = { publish_log: log, status: allOk ? 'published' : 'approved' };
+  if (allOk) upd.published_at = new Date().toISOString();
   await sb.from('social_posts').update(upd).eq('id', id);
   return { id, status: upd.status, log };
 }
@@ -132,8 +167,9 @@ export default async function handler(req, res) {
         .eq('status', 'approved').lte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(3);
       const results = [];
       for (const p of due || []) {
-        if (!(p.platforms || []).includes('instagram')) continue;           // rien d'automatisable pour l'instant
-        if ((p.publish_log?.instagram?.attempts || 0) >= MAX_ATTEMPTS) continue;
+        // Réseaux automatisés encore à publier, sans avoir épuisé les essais
+        const pending = automatedFor(p.platforms).filter(pl => !p.publish_log?.[pl]?.ok && (p.publish_log?.[pl]?.attempts || 0) < MAX_ATTEMPTS);
+        if (!pending.length) continue;
         results.push(await publishPost(p.id));
       }
       return res.status(200).json({ processed: results.length, results });
