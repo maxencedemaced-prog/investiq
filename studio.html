@@ -176,7 +176,10 @@ function publishStatus(p) {
 }
 
 async function publishNow(id, btn) {
-  if (!confirm('Publier ce post maintenant sur les réseaux automatiques (Instagram, Facebook) ?')) return;
+  // Confirmation avec les seuls réseaux automatiques cochés et encore à publier
+  var targets = missingAuto(findPost(id)).map(function (pl) { return AUTO_NAMES[pl]; });
+  if (!targets.length) { toast('Aucun réseau automatique à publier : coche Instagram ou Facebook'); return; }
+  if (!confirm('Publier ce post maintenant sur ' + targets.join(' et ') + ' ?')) return;
   btn.disabled = true; btn.textContent = 'Publication (≈ 30 s)…';
   try {
     var s = (await sbClient.auth.getSession()).data.session;
