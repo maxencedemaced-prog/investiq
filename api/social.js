@@ -55,7 +55,7 @@ RÈGLES ABSOLUES (réglementation AMF) :
 FORMAT : réponds UNIQUEMENT avec un tableau JSON, sans texte autour. Chaque post :
 {"title": "titre interne court",
  "slides": [ 5 à 7 objets ],
- "caption": "légende : accroche (1 phrase avec un emoji), 2 à 4 phrases utiles, une question pour faire réagir, puis « 👉 … (lien en bio) », puis une ligne « Contenu éducatif, pas un conseil en investissement. »",
+ "caption": "légende AÉRÉE, blocs séparés par une ligne vide (\\n\\n) : accroche (1 phrase avec un emoji) \\n\\n 2 à 4 phrases utiles \\n\\n une question pour faire réagir \\n\\n « 👉 … (lien en bio) » \\n\\n « Contenu éducatif, pas un conseil en investissement. »",
  "hashtags": "8 à 12 hashtags français pertinents, séparés par des espaces, dont #kapitaro"}
 Types de diapositives (champ "t") :
 - {"t":"cover","title":"accroche forte, max 70 caractères","sub":"max 70 caractères"}  ← toujours la 1re
@@ -181,12 +181,15 @@ export default async function handler(req, res) {
       return res.status(200).json({ post: data });
     }
     if (b.action === 'upload') {
-      const png = typeof b.png === 'string' ? b.png.replace(/^data:image\/png;base64,/, '') : '';
-      const buf = Buffer.from(png, 'base64');
+      // JPEG (format exigé par Instagram) ; PNG accepté pour compatibilité
+      const raw = typeof (b.image || b.png) === 'string' ? (b.image || b.png) : '';
+      const buf = Buffer.from(raw.replace(/^data:image\/(png|jpeg);base64,/, ''), 'base64');
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id)) || !Number.isInteger(b.index) || b.index < 0 || b.index > 9) return res.status(400).json({ error: 'Paramètres invalides' });
-      if (buf.length < 1000 || buf.length > 4_000_000 || buf.readUInt32BE(0) !== 0x89504e47) return res.status(400).json({ error: 'Image invalide' });
-      const path = `${b.id}/${b.index + 1}-${Date.now()}.png`;
-      const { error } = await sb.storage.from('social').upload(path, buf, { contentType: 'image/png', upsert: true });
+      const isJpeg = buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+      const isPng = buf.length > 4 && buf.readUInt32BE(0) === 0x89504e47;
+      if (buf.length < 1000 || buf.length > 4_000_000 || !(isJpeg || isPng)) return res.status(400).json({ error: 'Image invalide' });
+      const path = `${b.id}/${b.index + 1}-${Date.now()}.${isJpeg ? 'jpg' : 'png'}`;
+      const { error } = await sb.storage.from('social').upload(path, buf, { contentType: isJpeg ? 'image/jpeg' : 'image/png', upsert: true });
       if (error) throw error;
       const { data } = sb.storage.from('social').getPublicUrl(path);
       return res.status(200).json({ url: data.publicUrl });
