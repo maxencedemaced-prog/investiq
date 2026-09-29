@@ -77,7 +77,8 @@
   <p class="sub" id="video-info" style="margin:8px 0 12px"></p>
   <div class="row" style="justify-content:flex-end">
     <button class="btn" onclick="document.getElementById('dlg-video').close()">Fermer</button>
-    <button class="btn" onclick="downloadVideo()">⬇ Télécharger (TikTok)</button>
+    <button class="btn" id="btn-video-mute" onclick="remakeVideoMuted(this)">🔇 Version sans musique</button>
+    <button class="btn" onclick="downloadVideo()">⬇ Télécharger</button>
     <button class="btn primary" id="btn-video-use" onclick="useVideo(this)">📤 Publier en Reel (Instagram, Facebook)</button>
   </div>
 </dialog>
@@ -182,19 +183,28 @@ async function saveFormat(id, format) {
 }
 
 // ── Création de la vidéo (Reels / TikTok) à partir des diapositives ──
-var VIDEO = null;   // { id, blob, mp4, url }
-async function makeVideo(id, btn) {
+var VIDEO = null;   // { id, blob, mp4, url, muted }
+// Version muette : pour publier à la main et ajouter un son de la bibliothèque Instagram / TikTok (sous licence dans leurs apps)
+async function remakeVideoMuted(btn) {
+  if (!VIDEO) return;
+  document.getElementById('dlg-video').close();
+  var src = document.querySelector('#post-' + VIDEO.id + ' button[onclick^="makeVideo"]');
+  if (src) await makeVideo(VIDEO.id, src, { music: false });
+}
+async function makeVideo(id, btn, opts) {
+  opts = opts || {};
   var p = findPost(id), label = btn.textContent;
   btn.disabled = true;
   try {
     var images = [];
     for (var i = 0; i < p.slides.length; i++) { btn.textContent = 'Images ' + (i + 1) + '/' + p.slides.length + '…'; images.push(await slidePng(p, i)); }
-    var res = await KapitaroVideo.make(images, p.slides, { onProgress: function (f) { btn.textContent = 'Vidéo ' + Math.round(f * 100) + ' %… (garde l\'onglet affiché)'; } });
+    var res = await KapitaroVideo.make(images, p.slides, { music: opts.music !== false, onProgress: function (f) { btn.textContent = 'Vidéo ' + Math.round(f * 100) + ' %… (garde l\'onglet affiché)'; } });
     if (VIDEO && VIDEO.url) URL.revokeObjectURL(VIDEO.url);
-    VIDEO = { id: id, blob: res.blob, mp4: res.mp4, url: URL.createObjectURL(res.blob), seconds: res.seconds };
+    VIDEO = { id: id, blob: res.blob, mp4: res.mp4, url: URL.createObjectURL(res.blob), seconds: res.seconds, muted: opts.music === false };
     var v = document.getElementById('video-preview'); v.src = VIDEO.url;
-    document.getElementById('video-info').textContent = res.seconds + ' secondes · ' + (res.mp4 ? 'MP4, compatible Instagram et TikTok' : 'format WebM : utilise Chrome ou Edge à jour pour un MP4 compatible Instagram');
+    document.getElementById('video-info').textContent = res.seconds + ' secondes · ' + (opts.music === false ? 'sans musique : ajoute un son dans Instagram ou TikTok · ' : 'musique d\'ambiance libre de droits · ') + (res.mp4 ? 'MP4, compatible Instagram et TikTok' : 'format WebM : utilise Chrome ou Edge à jour pour un MP4 compatible Instagram');
     document.getElementById('btn-video-use').style.display = res.mp4 ? '' : 'none';
+    document.getElementById('btn-video-mute').style.display = opts.music === false ? 'none' : '';
     document.getElementById('dlg-video').showModal();
   } catch (e) { toast(e.message, 7000); }
   btn.disabled = false; btn.textContent = label;
