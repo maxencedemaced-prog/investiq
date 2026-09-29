@@ -175,6 +175,8 @@ export default async function handler(req, res) {
       if (f.scheduled_at === null || !isNaN(Date.parse(f.scheduled_at))) upd.scheduled_at = f.scheduled_at;
       if (Array.isArray(f.platforms)) upd.platforms = f.platforms.filter(p => ['instagram', 'facebook', 'linkedin', 'tiktok'].includes(p));
       if (Array.isArray(f.image_urls)) upd.image_urls = f.image_urls.filter(u => typeof u === 'string' && u.startsWith(SUPABASE_URL)).slice(0, 10);
+      if (f.format === 'carousel' || f.format === 'reel') upd.format = f.format;
+      if (f.video_url === null || (typeof f.video_url === 'string' && f.video_url.startsWith(`${SUPABASE_URL}/storage/v1/object/public/social/`))) upd.video_url = f.video_url;
       if (f.status === 'published') upd.published_at = new Date().toISOString();
       const { data, error } = await sb.from('social_posts').update(upd).eq('id', b.id).select().single();
       if (error) throw error;
@@ -193,6 +195,15 @@ export default async function handler(req, res) {
       if (error) throw error;
       const { data } = sb.storage.from('social').getPublicUrl(path);
       return res.status(200).json({ url: data.publicUrl });
+    }
+    // Vidéo (trop lourde pour passer par ce serveur) : lien d'envoi signé, le navigateur l'envoie directement au stockage
+    if (b.action === 'video-upload-url') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
+      const path = `${b.id}/video-${Date.now()}.mp4`;
+      const { data, error } = await sb.storage.from('social').createSignedUploadUrl(path);
+      if (error) throw error;
+      const { data: pub } = sb.storage.from('social').getPublicUrl(path);
+      return res.status(200).json({ path, token: data.token, publicUrl: pub.publicUrl });
     }
     if (b.action === 'delete') {
       const { error } = await sb.from('social_posts').update({ status: 'rejected' }).eq('id', b.id);
