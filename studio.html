@@ -140,7 +140,7 @@ function render() {
         ? (((p.platforms || []).indexOf('instagram') >= 0 || (p.platforms || []).indexOf('facebook') >= 0) ? '<button class="btn primary" onclick="publishNow(\'' + p.id + '\', this)">🚀 Publier maintenant</button>' : '') + '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button><button class="btn" onclick="markPublished(\'' + p.id + '\')">Marquer publié</button><button class="btn" onclick="backToDraft(\'' + p.id + '\')">Repasser en brouillon</button>'
       : p.status === 'publishing'
         ? '<span class="sub">⏳ Publication en cours…</span>'
-        : '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button>';
+        : (missingAuto(p).length ? '<button class="btn primary" onclick="publishNow(\'' + p.id + '\', this)">🚀 Publier sur les réseaux manquants</button>' : '') + '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button>';
     return '<div class="post" id="post-' + p.id + '">' +
       '<div class="post-h"><div class="post-t">' + esc(p.title) + (p.kind === 'actu' ? '<span class="badge">ACTU</span>' : '') + '</div>' +
       '<div class="row"><label style="margin:0">Publication</label><input type="datetime-local" value="' + toLocalInput(p.scheduled_at) + '" onchange="saveDate(\'' + p.id + '\', this.value)" style="width:auto"></div></div>' +
@@ -157,6 +157,10 @@ function render() {
 
 // État de la publication Instagram (réussie avec lien, erreur, ou programmée)
 var AUTO_NAMES = { instagram: 'Instagram', facebook: 'Facebook' };
+// Réseaux automatiques cochés mais pas encore publiés (ex. Facebook branché après la publication Instagram)
+function missingAuto(p) {
+  return (p.platforms || []).filter(function (pl) { return AUTO_NAMES[pl] && !((p.publish_log || {})[pl] || {}).ok; });
+}
 function publishStatus(p) {
   var when = p.scheduled_at ? new Date(p.scheduled_at).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
   var lines = [];
@@ -166,6 +170,7 @@ function publishStatus(p) {
     if (log && log.ok) lines.push('✅ Publié sur ' + name + (log.permalink ? ' · <a href="' + esc(log.permalink) + '" target="_blank" rel="noopener" style="color:#24e898">voir le post</a>' : ''));
     else if (log && log.error) lines.push('<span style="color:#fca5a5">⚠️ ' + name + ' : ' + esc(log.error) + ' (essai ' + (log.attempts || 1) + '/3)</span>');
     else if (p.status === 'approved') lines.push('📅 ' + name + ' : publication automatique ' + (when ? 'le ' + esc(when) : 'dès que possible'));
+    else if (p.status === 'published') lines.push('⏳ ' + name + ' : pas encore publié');
   });
   return lines.length ? '<div class="sub" style="margin-top:12px;font-size:13px;line-height:1.6">' + lines.join('<br>') + '</div>' : '';
 }
@@ -179,7 +184,7 @@ async function publishNow(id, btn) {
     var d = await r.json().catch(function () { return {}; });
     if (!r.ok) throw new Error(d.error || 'Erreur ' + r.status);
     if (d.post) Object.assign(findPost(id), d.post);
-    var ok = d.post && d.post.status === 'published';
+    var ok = d.post && d.post.status === 'published' && !missingAuto(d.post).length;
     toast(ok ? '🎉 Publié !' : (d.result && d.result.skipped) || 'Publication impossible : voir le message sur le post', 6000);
     if (ok) setFilter('published'); else render();
   } catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = '🚀 Publier maintenant'; }
