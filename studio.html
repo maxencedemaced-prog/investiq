@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="/social-templates.js"></script>
+  <script src="/social-video.js"></script>
   <style>
     :root{--bg:#0b1120;--card:#131c33;--line:#1f2a44;--txt:#e5e7eb;--mut:#8b93a7;--green:#16a34a;--green2:#24e898}
     *{box-sizing:border-box}
@@ -69,6 +70,18 @@
   </div>
   <div id="list"><div class="empty">Chargement…</div></div>
 </div>
+
+<dialog id="dlg-video" style="max-width:420px">
+  <h3 style="margin:0 0 8px">🎬 Vidéo du post</h3>
+  <video id="video-preview" controls playsinline style="width:100%;border-radius:12px;background:#000;aspect-ratio:9/16"></video>
+  <p class="sub" id="video-info" style="margin:8px 0 12px"></p>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn" onclick="document.getElementById('dlg-video').close()">Fermer</button>
+    <button class="btn" id="btn-video-mute" onclick="remakeVideoMuted(this)">🔇 Version sans musique</button>
+    <button class="btn" onclick="downloadVideo()">⬇ Télécharger</button>
+    <button class="btn primary" id="btn-video-use" onclick="useVideo(this)">📤 Publier en Reel (Instagram, Facebook)</button>
+  </div>
+</dialog>
 
 <dialog id="dlg-actu">
   <h3 style="margin:0 0 6px">⚡ Post d'actualité</h3>
@@ -149,10 +162,75 @@ function render() {
       '<div class="grid2"><div><label>Légende</label><textarea rows="8" onchange="saveField(\'' + p.id + '\', \'caption\', this.value)">' + esc(p.caption) + '</textarea></div>' +
       '<div><label>Hashtags</label><textarea rows="3" onchange="saveField(\'' + p.id + '\', \'hashtags\', this.value)">' + esc(p.hashtags) + '</textarea>' +
       '<label style="margin-top:10px">Réseaux</label><div class="plats">' + plats + '</div>' +
+      formatBlock(p) +
       publishStatus(p) +
-      '<div class="row" style="margin-top:14px">' + actions + '</div></div></div></div>';
+      '<div class="row" style="margin-top:14px">' + actions + '<button class="btn" onclick="makeVideo(\'' + p.id + '\', this)">🎬 Vidéo</button></div></div></div></div>';
   }).join('');
   items.forEach(renderThumbs);
+}
+
+// ── Format de publication : carrousel d'images ou Reel (vidéo) ──
+function formatBlock(p) {
+  if (p.status === 'published') return p.video_url ? '<div class="sub" style="margin-top:10px">🎬 <a href="' + esc(p.video_url) + '" target="_blank" rel="noopener" style="color:#24e898">Vidéo (pour TikTok)</a></div>' : '';
+  var reel = p.format === 'reel' && p.video_url;
+  return '<label style="margin-top:10px">Format</label><div class="plats">' +
+    '<label><input type="radio" name="fmt-' + p.id + '" ' + (reel ? '' : 'checked') + ' onchange="saveFormat(\'' + p.id + '\', \'carousel\')"> Carrousel d\'images</label>' +
+    '<label' + (p.video_url ? '' : ' style="opacity:.5" title="Crée d\'abord la vidéo avec 🎬 Vidéo"') + '><input type="radio" name="fmt-' + p.id + '" ' + (reel ? 'checked' : '') + (p.video_url ? '' : ' disabled') + ' onchange="saveFormat(\'' + p.id + '\', \'reel\')"> Reel (vidéo)</label></div>' +
+    (p.video_url ? '<div class="sub" style="margin-top:4px">🎬 Vidéo prête · <a href="' + esc(p.video_url) + '" target="_blank" rel="noopener" style="color:#24e898">la voir / la télécharger</a></div>' : '');
+}
+async function saveFormat(id, format) {
+  try { var d = await api('POST', { action: 'update', id: id, fields: { format: format } }); Object.assign(findPost(id), d.post); toast(format === 'reel' ? '🎬 Sera publié en Reel' : '🖼 Sera publié en carrousel'); render(); } catch (e) { toast(e.message); }
+}
+
+// ── Création de la vidéo (Reels / TikTok) à partir des diapositives ──
+var VIDEO = null;   // { id, blob, mp4, url, muted }
+// Version muette : pour publier à la main et ajouter un son de la bibliothèque Instagram / TikTok (sous licence dans leurs apps)
+async function remakeVideoMuted(btn) {
+  if (!VIDEO) return;
+  document.getElementById('dlg-video').close();
+  var src = document.querySelector('#post-' + VIDEO.id + ' button[onclick^="makeVideo"]');
+  if (src) await makeVideo(VIDEO.id, src, { music: false });
+}
+async function makeVideo(id, btn, opts) {
+  opts = opts || {};
+  var p = findPost(id), label = btn.textContent;
+  btn.disabled = true;
+  try {
+    var images = [];
+    for (var i = 0; i < p.slides.length; i++) { btn.textContent = 'Images ' + (i + 1) + '/' + p.slides.length + '…'; images.push(await slidePng(p, i)); }
+    var res = await KapitaroVideo.make(images, p.slides, { music: opts.music !== false, onProgress: function (f) { btn.textContent = 'Vidéo ' + Math.round(f * 100) + ' %… (garde l\'onglet affiché)'; } });
+    if (VIDEO && VIDEO.url) URL.revokeObjectURL(VIDEO.url);
+    VIDEO = { id: id, blob: res.blob, mp4: res.mp4, url: URL.createObjectURL(res.blob), seconds: res.seconds, muted: opts.music === false };
+    var v = document.getElementById('video-preview'); v.src = VIDEO.url;
+    document.getElementById('video-info').textContent = res.seconds + ' secondes · ' + (opts.music === false ? 'sans musique : ajoute un son dans Instagram ou TikTok · ' : 'musique d\'ambiance libre de droits · ') + (res.mp4 ? 'MP4, compatible Instagram et TikTok' : 'format WebM : utilise Chrome ou Edge à jour pour un MP4 compatible Instagram');
+    document.getElementById('btn-video-use').style.display = res.mp4 ? '' : 'none';
+    document.getElementById('btn-video-mute').style.display = opts.music === false ? 'none' : '';
+    document.getElementById('dlg-video').showModal();
+  } catch (e) { toast(e.message, 7000); }
+  btn.disabled = false; btn.textContent = label;
+}
+function downloadVideo() {
+  if (!VIDEO) return;
+  var p = findPost(VIDEO.id), a = document.createElement('a');
+  a.href = VIDEO.url;
+  a.download = (p.title || 'video').replace(/[^\wÀ-ſ -]/g, '').slice(0, 60) + (VIDEO.mp4 ? '.mp4' : '.webm');
+  a.click();
+}
+// Envoie la vidéo dans le stockage (lien d'envoi signé, direct depuis le navigateur) puis la choisit comme format du post
+async function useVideo(btn) {
+  if (!VIDEO || !VIDEO.mp4) return;
+  btn.disabled = true; btn.textContent = 'Envoi de la vidéo…';
+  try {
+    var up = await api('POST', { action: 'video-upload-url', id: VIDEO.id });
+    var r = await sbClient.storage.from('social').uploadToSignedUrl(up.path, up.token, VIDEO.blob, { contentType: 'video/mp4', upsert: true });
+    if (r.error) throw r.error;
+    var d = await api('POST', { action: 'update', id: VIDEO.id, fields: { video_url: up.publicUrl, format: 'reel' } });
+    Object.assign(findPost(VIDEO.id), d.post);
+    document.getElementById('dlg-video').close();
+    toast('🎬 Vidéo enregistrée : ce post sera publié en Reel');
+    render();
+  } catch (e) { toast(e.message || 'Envoi impossible', 7000); }
+  btn.disabled = false; btn.textContent = '📤 Publier en Reel (Instagram, Facebook)';
 }
 
 // État de la publication Instagram (réussie avec lien, erreur, ou programmée)

@@ -54,15 +54,16 @@ async function ig(path, token, params, method = 'POST') {
 }
 
 // Attend qu'Instagram ait fini de traiter un conteneur (images téléchargées depuis notre stockage)
-async function waitReady(id, token) {
-  for (let i = 0; i < 15; i++) {
+async function waitReady(id, token, tries = 15, what = 'les images') {
+  for (let i = 0; i < tries; i++) {
     const s = await ig(id, token, { fields: 'status_code' }, 'GET');
     if (s.status_code === 'FINISHED') return;
-    if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') throw new Error('Instagram n\'a pas pu traiter les images');
-    await sleep(2000);
+    if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') throw new Error(`Instagram n'a pas pu traiter ${what}`);
+    await sleep(3000);
   }
-  throw new Error('Instagram met trop de temps à traiter les images, nouvel essai au prochain passage');
+  throw new Error(`Instagram met trop de temps à traiter ${what}, nouvel essai au prochain passage`);
 }
+const isReel = p => p.format === 'reel' && typeof p.video_url === 'string' && p.video_url;
 
 function buildCaption(p) {
   const tags = String(p.hashtags || '').split(/\s+/).filter(t => t.startsWith('#')).slice(0, 30).join(' ');
@@ -71,13 +72,18 @@ function buildCaption(p) {
 
 async function publishInstagram(p) {
   const urls = (p.image_urls || []).slice(0, 10);
-  if (!urls.length) throw new Error('Aucune image : valide le post dans le Studio');
-  if (urls.some(u => !/\.jpe?g(\?|$)/i.test(u))) throw new Error('Images au format PNG (validées avant la mise à jour) : repasse le post en brouillon puis revalide-le');
+  const reel = isReel(p);
+  if (!reel && !urls.length) throw new Error('Aucune image : valide le post dans le Studio');
+  if (!reel && urls.some(u => !/\.jpe?g(\?|$)/i.test(u))) throw new Error('Images au format PNG (validées avant la mise à jour) : repasse le post en brouillon puis revalide-le');
   const token = await igToken();
   const me = await ig('me', token, { fields: 'user_id,username' }, 'GET');
   const userId = me.user_id || me.id;
   let creationId;
-  if (urls.length === 1) {
+  if (reel) {
+    // Reel : Instagram télécharge la vidéo depuis notre stockage puis la traite (jusqu'à ~2 min)
+    creationId = (await ig(`${userId}/media`, token, { media_type: 'REELS', video_url: p.video_url, caption: buildCaption(p), share_to_feed: 'true' })).id;
+    await waitReady(creationId, token, 45, 'la vidéo');
+  } else if (urls.length === 1) {
     creationId = (await ig(`${userId}/media`, token, { image_url: urls[0], caption: buildCaption(p) })).id;
   } else {
     const children = [];
@@ -118,6 +124,12 @@ async function fbPage() {
 }
 async function publishFacebook(p) {
   const urls = (p.image_urls || []).slice(0, 10);
+  const page0 = isReel(p) ? await fbPage() : null;
+  if (page0) {
+    // Vidéo sur la page (Facebook la télécharge depuis notre stockage)
+    const v = await fb(`${page0.id}/videos`, page0.token, { file_url: p.video_url, description: buildCaption(p) });
+    return { ok: true, id: v.id, permalink: `https://www.facebook.com/${v.id}`, account: page0.name };
+  }
   if (!urls.length) throw new Error('Aucune image : valide le post dans le Studio');
   const page = await fbPage();
   const media = [];
