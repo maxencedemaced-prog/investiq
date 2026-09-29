@@ -105,7 +105,7 @@ async function fb(path, token, params, method = 'POST') {
 }
 async function fbPage() {
   const token = process.env.FACEBOOK_ACCESS_TOKEN;
-  if (!token) throw new Error('FACEBOOK_ACCESS_TOKEN manquant dans Vercel');
+  if (!token) throw new Error('clé FACEBOOK_ACCESS_TOKEN manquante ou vide dans Vercel');
   try {
     // Jeton d'utilisateur (ou système) : liste des pages gérées, on prend la page Kapitaro
     const { data } = await fb('me/accounts', token, { fields: 'id,name,access_token' }, 'GET');
@@ -130,12 +130,14 @@ async function publishFacebook(p) {
 
 // Réseaux publiés automatiquement (Facebook seulement si sa clé est configurée)
 const AUTOMATED = { instagram: publishInstagram, facebook: publishFacebook };
-const automatedFor = platforms => (platforms || []).filter(pl => AUTOMATED[pl] && (pl !== 'facebook' || process.env.FACEBOOK_ACCESS_TOKEN));
+// Un réseau coché mais non configuré (clé absente ou vide) produit une erreur visible dans le Studio, jamais un oubli silencieux
+const automatedFor = platforms => (platforms || []).filter(pl => AUTOMATED[pl]);
 
 // Publie un post : verrouillage (évite un double envoi cron + bouton), puis chaque réseau automatisé
-async function publishPost(id) {
+// manual = bouton du Studio : peut aussi compléter un post déjà publié sur les réseaux manquants
+async function publishPost(id, manual = false) {
   const { data: locked } = await sb.from('social_posts').update({ status: 'publishing', locked_at: new Date().toISOString() })
-    .eq('id', id).eq('status', 'approved').select().maybeSingle();
+    .eq('id', id).in('status', manual ? ['approved', 'published'] : ['approved']).select().maybeSingle();
   if (!locked) return { skipped: 'déjà en cours ou pas validé' };
   const log = { ...(locked.publish_log || {}) };
   const targets = automatedFor(locked.platforms);
@@ -179,7 +181,7 @@ export default async function handler(req, res) {
       if (!(await isAdmin(req))) return res.status(403).json({ error: 'Accès réservé.' });
       const id = String(req.body?.id || '');
       if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: 'Post invalide' });
-      const result = await publishPost(id);
+      const result = await publishPost(id, true);
       const { data: post } = await sb.from('social_posts').select('*').eq('id', id).single();
       return res.status(200).json({ result, post });
     }
