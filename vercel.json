@@ -17,7 +17,8 @@
   "functions": {
     "api/claude.js": { "maxDuration": 120 },
     "api/parse-statement.js": { "maxDuration": 120 },
-    "api/push-send.js": { "maxDuration": 120 }
+    "api/push-send.js": { "maxDuration": 120 },
+    "api/social.js": { "maxDuration": 180 }
   },
   "crons": [
     {
@@ -31,6 +32,10 @@
     {
       "path": "/api/email-send",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/social?cron=weekly",
+      "schedule": "0 16 * * 0"
     }
   ],
   "rewrites": [

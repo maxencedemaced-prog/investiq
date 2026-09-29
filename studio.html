@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Studio réseaux — Kapitaro</title>
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="/social-templates.js"></script>
+  <style>
+    :root{--bg:#0b1120;--card:#131c33;--line:#1f2a44;--txt:#e5e7eb;--mut:#8b93a7;--green:#16a34a;--green2:#24e898}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+    .wrap{max-width:1100px;margin:0 auto;padding:22px 16px 80px}
+    h1{font-size:21px;margin:0}
+    .sub{color:var(--mut);font-size:13px;margin-top:2px}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+    .btn{font:inherit;font-size:13.5px;font-weight:700;border:1px solid var(--line);background:#1a2540;color:var(--txt);border-radius:10px;padding:9px 14px;cursor:pointer;white-space:nowrap}
+    .btn:hover{border-color:#34446b}
+    .btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+    .btn.warn{background:#7c2d12;border-color:#9a3412}
+    .btn:disabled{opacity:.55;cursor:wait}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .notice{background:#1a2540;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px;color:#c7cedd;line-height:1.5;margin-bottom:16px}
+    .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+    .tab{font:inherit;font-size:13px;font-weight:700;padding:7px 13px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer}
+    .tab.on{background:var(--txt);color:var(--bg);border-color:var(--txt)}
+    .post{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+    .post-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    .post-t{font-weight:800;font-size:15px}
+    .badge{font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;background:#3b1d1d;color:#fca5a5;margin-left:6px}
+    .slides{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px}
+    .thumb{flex-shrink:0;width:216px;height:270px;border-radius:12px;overflow:hidden;position:relative;cursor:pointer;border:2px solid transparent}
+    .thumb.sel{border-color:var(--green2)}
+    .thumb .kps{transform:scale(.2);transform-origin:0 0}
+    .editor{background:#0f1729;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;display:grid;gap:8px}
+    label{font-size:12px;color:var(--mut);font-weight:700;display:block;margin-bottom:3px}
+    input[type=text],input[type=datetime-local],textarea{width:100%;font:inherit;font-size:13.5px;background:#0b1120;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+    textarea{resize:vertical;min-height:70px;line-height:1.45}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    @media (max-width:760px){.grid2{grid-template-columns:1fr}}
+    .plats label{display:inline-flex;align-items:center;gap:5px;margin-right:12px;color:var(--txt);font-weight:600;font-size:13px}
+    .empty{text-align:center;color:var(--mut);padding:40px 10px}
+    #render{position:fixed;left:-20000px;top:0}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 16px;border-radius:10px;font-size:13.5px;display:none;z-index:9;max-width:90vw}
+    dialog{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:16px;padding:18px;max-width:520px;width:92vw}
+    dialog::backdrop{background:rgba(0,0,0,.6)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>🎬 Studio réseaux</h1><div class="sub">Tu relis, tu valides, c'est programmé. Chaque dimanche, 3 nouveaux posts sont préparés automatiquement.</div></div>
+    <div class="row">
+      <button class="btn" id="btn-gen" onclick="generate()">✨ Préparer 3 posts</button>
+      <button class="btn primary" onclick="document.getElementById('dlg-actu').showModal()">⚡ Post d'actu</button>
+    </div>
+  </div>
+
+  <div class="notice" id="notice">Publication automatique pas encore connectée (étape 2 : accès Instagram, Facebook et LinkedIn). En attendant : valide un post, clique sur <b>Télécharger</b> et <b>Copier le texte</b>, publie depuis ton téléphone, puis <b>Marquer publié</b>.</div>
+
+  <div class="tabs">
+    <button class="tab on" data-f="draft" onclick="setFilter('draft')">À valider</button>
+    <button class="tab" data-f="approved" onclick="setFilter('approved')">Validés</button>
+    <button class="tab" data-f="published" onclick="setFilter('published')">Publiés</button>
+  </div>
+  <div id="list"><div class="empty">Chargement…</div></div>
+</div>
+
+<dialog id="dlg-actu">
+  <h3 style="margin:0 0 6px">⚡ Post d'actualité</h3>
+  <p class="sub" style="margin:0 0 12px">Décris l'événement en une ou deux phrases, avec les faits que tu connais. Le post explique ce que ça change pour l'épargne, sans prédiction.</p>
+  <textarea id="actu-topic" placeholder="Ex. : La BCE a annoncé aujourd'hui une baisse de ses taux directeurs de 0,25 point."></textarea>
+  <div class="row" style="justify-content:flex-end;margin-top:12px">
+    <button class="btn" onclick="document.getElementById('dlg-actu').close()">Annuler</button>
+    <button class="btn primary" id="btn-actu" onclick="generateActu()">Générer le post</button>
+  </div>
+</dialog>
+
+<div id="render"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+var sbClient = supabase.createClient('https://soyyznyceqzimhoaffaw.supabase.co', 'sb_publishable_3_8eb6YbCfJ04Qihdy9ivw_NsQ4H_cu');
+var POSTS = [], FILTER = 'draft', SEL = {};
+var PLATFORMS = [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['linkedin', 'LinkedIn'], ['tiktok', 'TikTok']];
+
+function toast(msg, ms) { var t = document.getElementById('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, ms || 3500); }
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+
+async function api(method, body) {
+  var s = (await sbClient.auth.getSession()).data.session;
+  if (!s) throw new Error('NOAUTH');
+  var r = await fetch('/api/social', { method: method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.access_token }, body: body ? JSON.stringify(body) : undefined });
+  var d = await r.json().catch(function () { return {}; });
+  if (r.status === 403) throw new Error('Accès réservé au compte administrateur.');
+  if (!r.ok) throw new Error(d.error || 'Erreur ' + r.status);
+  return d;
+}
+
+async function load() {
+  try {
+    var d = await api('GET');
+    POSTS = d.posts || [];
+    render();
+  } catch (e) {
+    document.getElementById('list').innerHTML = e.message === 'NOAUTH'
+      ? '<div class="empty">Connecte-toi d\'abord avec ton compte administrateur sur <a href="/" style="color:#24e898">kapitaro.fr</a>, puis reviens sur cette page.</div>'
+      : '<div class="empty">' + esc(e.message) + '</div>';
+  }
+}
+
+function setFilter(f) {
+  FILTER = f;
+  document.querySelectorAll('.tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-f') === f); });
+  render();
+}
+
+function toLocalInput(iso) {
+  if (!iso) return '';
+  var d = new Date(iso), p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function render() {
+  var list = document.getElementById('list');
+  var items = POSTS.filter(function (p) { return p.status === FILTER; });
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">' + (FILTER === 'draft' ? 'Aucun post à valider. Clique sur « ✨ Préparer 3 posts » pour en générer.' : 'Rien ici pour l\'instant.') + '</div>';
+    return;
+  }
+  list.innerHTML = items.map(function (p) {
+    var plats = PLATFORMS.map(function (x) { return '<label><input type="checkbox" data-plat="' + x[0] + '" ' + ((p.platforms || []).indexOf(x[0]) >= 0 ? 'checked' : '') + ' onchange="savePlatforms(\'' + p.id + '\')"> ' + x[1] + '</label>'; }).join('');
+    var actions = p.status === 'draft'
+      ? '<button class="btn primary" onclick="approve(\'' + p.id + '\', this)">✓ Valider et programmer</button><button class="btn warn" onclick="removePost(\'' + p.id + '\')">Supprimer</button>'
+      : p.status === 'approved'
+        ? '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button><button class="btn primary" onclick="markPublished(\'' + p.id + '\')">Marquer publié</button><button class="btn" onclick="backToDraft(\'' + p.id + '\')">Repasser en brouillon</button>'
+        : '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button>';
+    return '<div class="post" id="post-' + p.id + '">' +
+      '<div class="post-h"><div class="post-t">' + esc(p.title) + (p.kind === 'actu' ? '<span class="badge">ACTU</span>' : '') + '</div>' +
+      '<div class="row"><label style="margin:0">Publication</label><input type="datetime-local" value="' + toLocalInput(p.scheduled_at) + '" onchange="saveDate(\'' + p.id + '\', this.value)" style="width:auto"></div></div>' +
+      '<div class="slides" id="slides-' + p.id + '"></div>' +
+      '<div id="editor-' + p.id + '"></div>' +
+      '<div class="grid2"><div><label>Légende</label><textarea rows="8" onchange="saveField(\'' + p.id + '\', \'caption\', this.value)">' + esc(p.caption) + '</textarea></div>' +
+      '<div><label>Hashtags</label><textarea rows="3" onchange="saveField(\'' + p.id + '\', \'hashtags\', this.value)">' + esc(p.hashtags) + '</textarea>' +
+      '<label style="margin-top:10px">Réseaux</label><div class="plats">' + plats + '</div>' +
+      '<div class="row" style="margin-top:14px">' + actions + '</div></div></div></div>';
+  }).join('');
+  items.forEach(renderThumbs);
+}
+
+function renderThumbs(p) {
+  var box = document.getElementById('slides-' + p.id);
+  box.innerHTML = '';
+  p.slides.forEach(function (s, i) {
+    var th = document.createElement('div');
+    th.className = 'thumb' + (SEL[p.id] === i ? ' sel' : '');
+    th.onclick = function () { SEL[p.id] = SEL[p.id] === i ? null : i; renderThumbs(p); renderEditor(p); };
+    var el = KapitaroSocial.renderSlide(s, i, p.slides.length);
+    th.appendChild(el);
+    box.appendChild(th);
+    KapitaroSocial.fontsReady().then(function () { KapitaroSocial.fit(el); });
+  });
+}
+
+// Édition d'une diapositive : un champ par texte présent
+var FIELDS = { kicker: 'Petit titre', title: 'Titre (*mot* = en vert)', sub: 'Sous-titre', big: 'Grand chiffre', body: 'Texte (**mot** = gras)', note: 'Note' };
+function renderEditor(p) {
+  var box = document.getElementById('editor-' + p.id), i = SEL[p.id];
+  if (i == null) { box.innerHTML = ''; return; }
+  var s = p.slides[i], html = '<div class="editor"><div class="sub">Diapositive ' + (i + 1) + ' (' + s.t + ')</div>';
+  Object.keys(FIELDS).forEach(function (k) {
+    if (typeof s[k] === 'string') html += '<div><label>' + FIELDS[k] + '</label><input type="text" value="' + esc(s[k]) + '" oninput="editSlide(\'' + p.id + '\',' + i + ',\'' + k + '\',this.value)"></div>';
+  });
+  if (Array.isArray(s.items)) html += '<div><label>Éléments (un par ligne)</label><textarea oninput="editSlide(\'' + p.id + '\',' + i + ',\'items\',this.value)">' + esc(s.items.join('\n')) + '</textarea></div>';
+  ['a', 'b'].forEach(function (k) {
+    if (s[k]) html += '<div class="row"><div style="flex:1"><label>Barre ' + k.toUpperCase() + ' : libellé</label><input type="text" value="' + esc(s[k].label) + '" oninput="editBar(\'' + p.id + '\',' + i + ',\'' + k + '\',\'label\',this.value)"></div><div style="flex:1"><label>valeur affichée</label><input type="text" value="' + esc(s[k].value) + '" oninput="editBar(\'' + p.id + '\',' + i + ',\'' + k + '\',\'value\',this.value)"></div><div style="width:110px"><label>montant</label><input type="text" value="' + esc(s[k].amount) + '" oninput="editBar(\'' + p.id + '\',' + i + ',\'' + k + '\',\'amount\',this.value)"></div></div>';
+  });
+  html += '<div class="row"><button class="btn primary" onclick="saveSlides(\'' + p.id + '\', this)">Enregistrer la diapositive</button></div></div>';
+  box.innerHTML = html;
+}
+function findPost(id) { return POSTS.find(function (p) { return p.id === id; }); }
+var _rt;
+function editSlide(id, i, k, v) {
+  var p = findPost(id); p.slides[i][k] = k === 'items' ? v.split('\n').filter(function (x) { return x.trim(); }) : v;
+  clearTimeout(_rt); _rt = setTimeout(function () { renderThumbs(p); }, 250);
+}
+function editBar(id, i, k, f, v) {
+  var p = findPost(id); p.slides[i][k][f] = f === 'amount' ? (parseFloat(String(v).replace(/\s/g, '').replace(',', '.')) || 0) : v;
+  clearTimeout(_rt); _rt = setTimeout(function () { renderThumbs(p); }, 250);
+}
+async function saveSlides(id, btn) {
+  btn.disabled = true;
+  try { await api('POST', { action: 'update', id: id, fields: { slides: findPost(id).slides } }); toast('✓ Diapositive enregistrée'); }
+  catch (e) { toast(e.message); }
+  btn.disabled = false;
+}
+async function saveField(id, k, v) {
+  var f = {}; f[k] = v;
+  try { await api('POST', { action: 'update', id: id, fields: f }); findPost(id)[k] = v; toast('✓ Enregistré'); } catch (e) { toast(e.message); }
+}
+async function saveDate(id, v) {
+  try { var iso = v ? new Date(v).toISOString() : null; await api('POST', { action: 'update', id: id, fields: { scheduled_at: iso } }); findPost(id).scheduled_at = iso; toast('✓ Date enregistrée'); } catch (e) { toast(e.message); }
+}
+async function savePlatforms(id) {
+  var plats = [].slice.call(document.querySelectorAll('#post-' + id + ' [data-plat]:checked')).map(function (c) { return c.getAttribute('data-plat'); });
+  try { await api('POST', { action: 'update', id: id, fields: { platforms: plats } }); findPost(id).platforms = plats; } catch (e) { toast(e.message); }
+}
+
+// Image finale en taille réelle (1080 × 1350), rendue hors écran
+async function slidePng(p, i) {
+  var host = document.getElementById('render');
+  host.innerHTML = '';
+  var el = KapitaroSocial.renderSlide(p.slides[i], i, p.slides.length);
+  host.appendChild(el);
+  await KapitaroSocial.fontsReady();
+  KapitaroSocial.fit(el);
+  var png = await htmlToImage.toPng(el, { width: KapitaroSocial.W, height: KapitaroSocial.H, pixelRatio: 1, cacheBust: true });
+  host.innerHTML = '';
+  return png;
+}
+
+async function approve(id, btn) {
+  var p = findPost(id);
+  btn.disabled = true;
+  try {
+    var urls = [];
+    for (var i = 0; i < p.slides.length; i++) {
+      btn.textContent = 'Images ' + (i + 1) + '/' + p.slides.length + '…';
+      var png = await slidePng(p, i);
+      var up = await api('POST', { action: 'upload', id: id, index: i, png: png });
+      urls.push(up.url);
+    }
+    var d = await api('POST', { action: 'update', id: id, fields: { status: 'approved', image_urls: urls, slides: p.slides } });
+    Object.assign(p, d.post);
+    toast('✓ Validé et programmé');
+    render();
+  } catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = '✓ Valider et programmer'; }
+}
+
+async function download(id, btn) {
+  var p = findPost(id), label = btn.textContent;
+  btn.disabled = true;
+  try {
+    var zip = new JSZip();
+    for (var i = 0; i < p.slides.length; i++) {
+      btn.textContent = 'Image ' + (i + 1) + '/' + p.slides.length + '…';
+      var png = await slidePng(p, i);
+      zip.file('image ' + (i + 1) + '.png', png.split(',')[1], { base64: true });
+    }
+    zip.file('Texte à copier.txt', (p.caption || '') + '\n\n' + (p.hashtags || ''));
+    var blob = await zip.generateAsync({ type: 'blob' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (p.title || 'post').replace(/[^\wÀ-ſ -]/g, '').slice(0, 60) + '.zip';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  } catch (e) { toast(e.message, 6000); }
+  btn.disabled = false; btn.textContent = label;
+}
+
+async function copyText(id) {
+  var p = findPost(id);
+  try { await navigator.clipboard.writeText((p.caption || '') + '\n\n' + (p.hashtags || '')); toast('📋 Texte copié'); } catch (e) { toast('Copie impossible : sélectionne le texte à la main'); }
+}
+async function setStatus(id, status, msg) {
+  try { var d = await api('POST', { action: 'update', id: id, fields: { status: status } }); Object.assign(findPost(id), d.post); toast(msg); render(); } catch (e) { toast(e.message); }
+}
+function markPublished(id) { setStatus(id, 'published', '✓ Marqué comme publié'); }
+function backToDraft(id) { setStatus(id, 'draft', 'Repassé en brouillon'); }
+async function removePost(id) {
+  if (!confirm('Supprimer ce post ?')) return;
+  try { await api('POST', { action: 'delete', id: id }); POSTS = POSTS.filter(function (p) { return p.id !== id; }); render(); toast('Post supprimé'); } catch (e) { toast(e.message); }
+}
+
+async function generate() {
+  var btn = document.getElementById('btn-gen');
+  btn.disabled = true; btn.textContent = 'Écriture en cours (≈ 1 min)…';
+  try { var d = await api('POST', { action: 'generate', count: 3 }); POSTS = POSTS.concat(d.posts || []); setFilter('draft'); toast('✨ ' + (d.posts || []).length + ' posts prêts à relire'); }
+  catch (e) { toast(e.message, 6000); }
+  btn.disabled = false; btn.textContent = '✨ Préparer 3 posts';
+}
+async function generateActu() {
+  var topic = document.getElementById('actu-topic').value.trim();
+  if (topic.length < 10) { toast('Décris l\'événement en une phrase au moins'); return; }
+  var btn = document.getElementById('btn-actu');
+  btn.disabled = true; btn.textContent = 'Écriture…';
+  try {
+    var d = await api('POST', { action: 'generate', topic: topic });
+    POSTS = (d.posts || []).concat(POSTS);
+    document.getElementById('dlg-actu').close();
+    document.getElementById('actu-topic').value = '';
+    setFilter('draft');
+    toast('⚡ Post d\'actu prêt à relire');
+  } catch (e) { toast(e.message, 6000); }
+  btn.disabled = false; btn.textContent = 'Générer le post';
+}
+
+load();
+</script>
+</body>
+</html>
