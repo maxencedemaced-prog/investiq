@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20260929"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politique de confidentialité — Kapitaro</title>
+  <meta name="description" content="Comment Kapitaro collecte, utilise et protège tes données personnelles.">
+  <link rel="canonical" href="https://kapitaro.fr/confidentialite">
+  <meta name="theme-color" content="#080e1e">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+  <style>
+    .legal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px 24px;max-width:780px;margin:-40px auto 0}
+    .legal h3{font-size:18px;margin:26px 0 8px}
+    .legal p,.legal li{font-size:15px;line-height:1.65}
+    .legal .legal-date{color:var(--muted);font-size:13px}
+    .legal-nav{max-width:780px;margin:22px auto 0;display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13.5px}
+    .legal-nav a{color:var(--muted)}
+    .legal-nav a.on{color:var(--text);font-weight:700;text-decoration:none}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/">Ouvrir Kapitaro</a>
+    </div>
+  </header>
+  <section class="hero"><div class="hero-in"><h1 id="doc-title">Politique de confidentialité</h1></div></section>
+  <main>
+    <article class="legal" id="doc-body"><p>Chargement…</p></article>
+    <nav class="legal-nav" aria-label="Documents légaux">
+      <a href="/mentions-legales" data-k="mentions">Mentions légales</a>
+      <a href="/cgu" data-k="cgu">Conditions d'utilisation et de vente</a>
+      <a href="/confidentialite" data-k="privacy">Politique de confidentialité</a>
+      <a href="/risques" data-k="risk">Avertissement sur les risques</a>
+    </nav>
+  </main>
+  <footer><p>Kapitaro · contact@kapitaro.fr · <a href="/">kapitaro.fr</a></p></footer>
+  <script src="/legal-docs.js?v=20260929"></script>
+  <script>
+    (function () {
+      var key = 'privacy', doc = LEGAL_DOCS[key];
+      if (!doc) return;
+      document.getElementById('doc-title').textContent = doc.title;
+      document.getElementById('doc-body').innerHTML = doc.content.replace(/\{\{LEGAL_DATE\}\}/g, legalDateFR());
+      var a = document.querySelector('.legal-nav a[data-k="' + key + '"]'); if (a) a.className = 'on';
+    })();
+  </script>
+</body>
+</html>
