@@ -66,7 +66,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260929050000">
+  <link rel="stylesheet" href="style.css?v=20260930140000">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -612,6 +612,7 @@
         <button type="button" onclick="openLegalDoc('mentions')">Mentions légales</button>
         <button type="button" onclick="openLegalDoc('privacy')">Confidentialité</button>
         <button type="button" onclick="openLegalDoc('risk')">Risques</button>
+        <a href="/faq">FAQ</a>
         <a href="mailto:contact@kapitaro.fr">Contact</a>
       </div>
       <p>Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. L'éditeur n'est pas enregistré auprès de l'ORIAS ni agréé par l'AMF. Investir comporte un risque de perte en capital.</p>
@@ -2019,6 +2020,18 @@ window.addEventListener('load', function() {
         <!-- AIDE -->
         <div class="set-label">Aide</div>
         <div class="set-group">
+          <a class="set-row" href="/faq" target="_blank" rel="noopener" style="text-decoration:none">
+            <div class="set-row-main"><div class="set-row-title">Questions fréquentes (FAQ)</div><div class="set-row-sub">Compte, portefeuille, outils, Premium, application</div></div>
+            <span class="set-chev">›</span>
+          </a>
+          <button type="button" class="set-row" onclick="window.KapitaroHelp && KapitaroHelp.open()">
+            <div class="set-row-main"><div class="set-row-title">Poser une question</div><div class="set-row-sub">L'aide instantanée sur l'utilisation du site</div></div>
+            <span class="set-chev">›</span>
+          </button>
+          <a class="set-row" href="mailto:contact@kapitaro.fr" style="text-decoration:none">
+            <div class="set-row-main"><div class="set-row-title">Nous écrire</div><div class="set-row-sub">contact@kapitaro.fr</div></div>
+            <span class="set-chev">›</span>
+          </a>
           <button type="button" class="set-row" onclick="showOnboarding(true)">
             <div class="set-row-main"><div class="set-row-title">Revoir le tutoriel</div><div class="set-row-sub">Le guide de démarrage en 4 étapes</div></div>
             <span class="set-chev">›</span>
@@ -2156,5 +2169,6 @@ window.addEventListener('load', function() {
     </div>
   </div>
 
+  <script defer src="/help-bot.js?v=20260930"></script>
 </body>
 </html>

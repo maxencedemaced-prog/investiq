@@ -54,9 +54,11 @@
 <body>
 <div class="wrap">
   <div class="top">
-    <div><h1>🎬 Studio réseaux</h1><div class="sub">Tu relis, tu valides, c'est programmé. Chaque dimanche, 3 nouveaux posts sont préparés automatiquement.</div></div>
+    <div><h1>🎬 Studio réseaux</h1><div class="sub">Tu relis, tu valides, c'est programmé. Chaque dimanche : l'agenda de la semaine + 2 posts pédagogiques. Chaque vendredi soir : le bilan des marchés.</div></div>
     <div class="row">
       <button class="btn" id="btn-gen" onclick="generate()">✨ Préparer 3 posts</button>
+      <button class="btn" onclick="generateMode('agenda', this)">📅 Agenda de la semaine</button>
+      <button class="btn" onclick="generateMode('recap', this)">📈 Bilan des marchés</button>
       <button class="btn primary" onclick="document.getElementById('dlg-actu').showModal()">⚡ Post d'actu</button>
     </div>
   </div>
@@ -80,6 +82,24 @@
     <button class="btn" id="btn-video-mute" onclick="remakeVideoMuted(this)">🔇 Version sans musique</button>
     <button class="btn" onclick="downloadVideo()">⬇ Télécharger</button>
     <button class="btn primary" id="btn-video-use" onclick="useVideo(this)">📤 Publier en Reel (Instagram, Facebook)</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-reel" style="max-width:440px">
+  <h3 style="margin:0 0 6px">🎞 Vidéo animée</h3>
+  <p class="sub" style="margin:0 0 12px">L'IA écrit le script à partir du post, la voix le lit, puis la vidéo est fabriquée automatiquement (≈ 3 min). Elle apparaît ensuite sur le post, prête à publier en Reel.</p>
+  <label>Style</label>
+  <select id="reel-style" style="width:100%;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px;margin-bottom:10px">
+    <option value="real">🎬 Vidéo réelle : vrais plans filmés tout du long</option>
+    <option value="motion">📊 Animé sobre : graphiques, chiffres, étapes</option>
+  </select>
+  <label>Voix</label>
+  <select id="reel-voice" style="width:100%;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select>
+  <p class="sub" id="reel-info" style="margin:10px 0 0"></p>
+  <div class="row" style="justify-content:flex-end;margin-top:14px">
+    <button class="btn" onclick="document.getElementById('dlg-reel').close()">Annuler</button>
+    <button class="btn" id="btn-reel-again" onclick="createReel(true)">↻ Refaire avec le même texte</button>
+    <button class="btn primary" id="btn-reel" onclick="createReel(false)">Créer la vidéo</button>
   </div>
 </dialog>
 
@@ -119,6 +139,7 @@ async function load() {
     var d = await api('GET');
     POSTS = d.posts || [];
     render();
+    watchReels();
   } catch (e) {
     document.getElementById('list').innerHTML = e.message === 'NOAUTH'
       ? '<div class="empty">Connecte-toi d\'abord avec ton compte administrateur sur <a href="/" style="color:#24e898">kapitaro.fr</a>, puis reviens sur cette page.</div>'
@@ -141,6 +162,8 @@ function toLocalInput(iso) {
 function render() {
   var list = document.getElementById('list');
   var items = POSTS.filter(function (p) { return p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing'); });
+  // À valider : les posts les plus récents en haut (Validés et Publiés gardent l'ordre des dates de publication)
+  if (FILTER === 'draft') items.sort(function (x, y) { return String(y.created_at || '').localeCompare(String(x.created_at || '')); });
   if (!items.length) {
     list.innerHTML = '<div class="empty">' + (FILTER === 'draft' ? 'Aucun post à valider. Clique sur « ✨ Préparer 3 posts » pour en générer.' : 'Rien ici pour l\'instant.') + '</div>';
     return;
@@ -156,15 +179,15 @@ function render() {
         : (missingAuto(p).length ? '<button class="btn primary" onclick="publishNow(\'' + p.id + '\', this)">🚀 Publier sur les réseaux manquants</button>' : '') + '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button>';
     return '<div class="post" id="post-' + p.id + '">' +
       '<div class="post-h"><div class="post-t">' + esc(p.title) + (p.kind === 'actu' ? '<span class="badge">ACTU</span>' : '') + '</div>' +
-      '<div class="row"><label style="margin:0">Publication</label><input type="datetime-local" value="' + toLocalInput(p.scheduled_at) + '" onchange="saveDate(\'' + p.id + '\', this.value)" style="width:auto"></div></div>' +
+      '<div class="row">' + themeSelect(p) + '<label style="margin:0">Publication</label><input type="datetime-local" value="' + toLocalInput(p.scheduled_at) + '" onchange="saveDate(\'' + p.id + '\', this.value)" style="width:auto"></div></div>' +
       '<div class="slides" id="slides-' + p.id + '"></div>' +
       '<div id="editor-' + p.id + '"></div>' +
       '<div class="grid2"><div><label>Légende</label><textarea rows="8" onchange="saveField(\'' + p.id + '\', \'caption\', this.value)">' + esc(p.caption) + '</textarea></div>' +
       '<div><label>Hashtags</label><textarea rows="3" onchange="saveField(\'' + p.id + '\', \'hashtags\', this.value)">' + esc(p.hashtags) + '</textarea>' +
       '<label style="margin-top:10px">Réseaux</label><div class="plats">' + plats + '</div>' +
       formatBlock(p) +
-      publishStatus(p) +
-      '<div class="row" style="margin-top:14px">' + actions + '<button class="btn" onclick="makeVideo(\'' + p.id + '\', this)">🎬 Vidéo</button></div></div></div></div>';
+      publishStatus(p) + reelStatus(p) +
+      '<div class="row" style="margin-top:14px">' + actions + '<button class="btn" onclick="openReel(\'' + p.id + '\')">🎞 Vidéo animée</button><button class="btn" onclick="makeVideo(\'' + p.id + '\', this)">🎬 Vidéo diaporama</button></div></div></div></div>';
   }).join('');
   items.forEach(renderThumbs);
 }
@@ -233,6 +256,62 @@ async function useVideo(btn) {
   btn.disabled = false; btn.textContent = '📤 Publier en Reel (Instagram, Facebook)';
 }
 
+// ── Vidéo animée (script IA + voix off + rendu sur GitHub Actions, voir api/_reel.js) ──
+var REEL_CFG = null, REEL_ID = null, _watch = null;
+async function openReel(id) {
+  REEL_ID = id;
+  try { REEL_CFG = await api('POST', { action: 'reel-config' }); } catch (e) { toast(e.message); return; }
+  var v = REEL_CFG.voices;
+  document.getElementById('reel-voice').innerHTML = v.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('') +
+    (v.length > 1 ? '<option value="duo">Duo : ' + esc(v[0]) + ' + ' + esc(v[1]) + '</option>' : '');
+  document.getElementById('reel-info').innerHTML = (REEL_CFG.warning ? '<span style="color:#fca5a5">⚠️ ' + esc(REEL_CFG.warning) + '</span><br>' : '') + (REEL_CFG.eleven ? '' : (REEL_CFG.hasKey ? '' : 'Voix gratuites en attendant ElevenLabs. ')) +
+    (REEL_CFG.dispatch ? '' : '<span style="color:#fca5a5">Fabrication pas encore branchée (GITHUB_DISPATCH_TOKEN absent de Vercel) : le script sera préparé mais la vidéo ne sera pas fabriquée.</span>');
+  var s = findPost(id).video_script;
+  document.getElementById('btn-reel-again').style.display = s && s.beats && s.beats.length ? '' : 'none';
+  document.getElementById('dlg-reel').showModal();
+}
+async function createReel(again) {
+  var btn = document.getElementById(again ? 'btn-reel-again' : 'btn-reel'), label = btn.textContent;
+  btn.disabled = true; btn.textContent = again ? 'Relance…' : 'Script et voix (≈ 1 min)…';
+  try {
+    var d = await api('POST', again ? { action: 'reel-render', id: REEL_ID } : { action: 'reel-create', id: REEL_ID, voice: document.getElementById('reel-voice').value, style: document.getElementById('reel-style').value });
+    Object.assign(findPost(REEL_ID), d.post);
+    document.getElementById('dlg-reel').close();
+    render();
+    var s = d.post.video_script || {};
+    toast(s.status === 'error' ? '⚠️ ' + s.error : '🎞 Script prêt, fabrication lancée : la vidéo arrive sur le post dans ≈ 5 min', 9000);
+    var el = document.getElementById('post-' + REEL_ID); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    watchReels();
+  } catch (e) { toast(e.message, 7000); }
+  btn.disabled = false; btn.textContent = label;
+}
+function reelPending(p) { return !!(p.video_script && (p.video_script.status === 'queued' || p.video_script.status === 'rendering')); }
+function reelStatus(p) {
+  var s = p.video_script;
+  if (!s || !s.status) return '';
+  var line = '';
+  if (reelPending(p)) line = Date.now() - Date.parse(s.queued_at || 0) > 20 * 60000
+    ? '<span style="color:#fca5a5">⚠️ La vidéo animée n\'est pas arrivée après 20 min : relance-la avec 🎞 Vidéo animée.</span>'
+    : '⏳ Vidéo animée en fabrication' + (s.status === 'rendering' ? ' (rendu en cours)' : '') + '… ≈ 5 min, pas besoin de rester sur la page';
+  else if (s.status === 'error') line = '<span style="color:#fca5a5">⚠️ Vidéo animée : ' + esc(s.error || 'échec') + '</span>';
+  else if (s.status === 'done') line = '🎞 Vidéo prête' + (s.style === 'real' ? ' (vidéo réelle)' : ' (animé sobre)') + (s.voice ? ' · voix ' + esc(s.voice) : '');
+  return line ? '<div class="sub" style="margin-top:8px">' + line + '</div>' : '';
+}
+// Suivi automatique : toutes les 20 s tant qu'une vidéo est en fabrication (réaffiche seulement si un état change)
+function watchReels() {
+  if (_watch || !POSTS.some(reelPending)) return;
+  _watch = setInterval(async function () {
+    if (!POSTS.some(reelPending)) { clearInterval(_watch); _watch = null; return; }
+    try {
+      var before = {}; POSTS.forEach(function (p) { before[p.id] = (p.video_script || {}).status; });
+      var d = await api('GET'), changed = false, ready = 0;
+      (d.posts || []).forEach(function (n) { var s = (n.video_script || {}).status; if (s !== before[n.id]) { changed = true; if (s === 'done') ready++; } });
+      if (changed) { POSTS = d.posts || POSTS; render(); }
+      if (ready) toast('🎞 Vidéo animée prête : le post sera publié en Reel', 7000);
+    } catch (e) {}
+  }, 20000);
+}
+
 // État de la publication Instagram (réussie avec lien, erreur, ou programmée)
 var AUTO_NAMES = { instagram: 'Instagram', facebook: 'Facebook' };
 // Réseaux automatiques cochés mais pas encore publiés (ex. Facebook branché après la publication Instagram)
@@ -286,7 +365,7 @@ function renderThumbs(p) {
 }
 
 // Édition d'une diapositive : un champ par texte présent
-var FIELDS = { kicker: 'Petit titre', title: 'Titre (*mot* = en vert)', sub: 'Sous-titre', big: 'Grand chiffre', body: 'Texte (**mot** = gras)', note: 'Note' };
+var FIELDS = { kicker: 'Petit titre', emoji: 'Emoji', title: 'Titre (*mot* = en couleur)', sub: 'Sous-titre', big: 'Grand chiffre', body: 'Texte (**mot** = gras)', myth: 'Idée reçue', fact: 'En réalité', note: 'Note' };
 function renderEditor(p) {
   var box = document.getElementById('editor-' + p.id), i = SEL[p.id];
   if (i == null) { box.innerHTML = ''; return; }
@@ -295,6 +374,15 @@ function renderEditor(p) {
     if (typeof s[k] === 'string') html += '<div><label>' + FIELDS[k] + '</label><input type="text" value="' + esc(s[k]) + '" oninput="editSlide(\'' + p.id + '\',' + i + ',\'' + k + '\',this.value)"></div>';
   });
   if (Array.isArray(s.items)) html += '<div><label>Éléments (un par ligne)</label><textarea oninput="editSlide(\'' + p.id + '\',' + i + ',\'items\',this.value)">' + esc(s.items.join('\n')) + '</textarea></div>';
+  // Comparatif en deux colonnes : titre + éléments de chaque colonne
+  ['left', 'right'].forEach(function (k) {
+    if (!s[k]) return;
+    var name = k === 'left' ? 'gauche' : 'droite';
+    html += '<div class="row"><div style="flex:1"><label>Colonne ' + name + ' : titre</label><input type="text" value="' + esc(s[k].title) + '" oninput="editCol(\'' + p.id + '\',' + i + ',\'' + k + '\',\'title\',this.value)"></div></div>' +
+      '<div><label>Colonne ' + name + ' : éléments (un par ligne)</label><textarea oninput="editCol(\'' + p.id + '\',' + i + ',\'' + k + '\',\'items\',this.value)">' + esc((s[k].items || []).join('\n')) + '</textarea></div>';
+  });
+  // Tableaux de données réelles (marchés, agenda) : seuls les libellés sont modifiables
+  if (Array.isArray(s.rows)) html += '<div class="sub">Données réelles : ' + (s.t === 'market' ? 'les variations viennent des marchés et ne sont pas modifiables.' : 'jours et heures issus du calendrier économique.') + '</div>';
   ['a', 'b'].forEach(function (k) {
     if (s[k]) html += '<div class="row"><div style="flex:1"><label>Barre ' + k.toUpperCase() + ' : libellé</label><input type="text" value="' + esc(s[k].label) + '" oninput="editBar(\'' + p.id + '\',' + i + ',\'' + k + '\',\'label\',this.value)"></div><div style="flex:1"><label>valeur affichée</label><input type="text" value="' + esc(s[k].value) + '" oninput="editBar(\'' + p.id + '\',' + i + ',\'' + k + '\',\'value\',this.value)"></div><div style="width:110px"><label>montant</label><input type="text" value="' + esc(s[k].amount) + '" oninput="editBar(\'' + p.id + '\',' + i + ',\'' + k + '\',\'amount\',this.value)"></div></div>';
   });
@@ -303,6 +391,11 @@ function renderEditor(p) {
 }
 function findPost(id) { return POSTS.find(function (p) { return p.id === id; }); }
 var _rt;
+function editCol(id, i, k, f, v) {
+  var p = findPost(id), c = p.slides[i][k] = p.slides[i][k] || { title: '', items: [] };
+  c[f] = f === 'items' ? v.split('\n').filter(function (x) { return x.trim(); }) : v;
+  clearTimeout(_rt); _rt = setTimeout(function () { renderThumbs(p); }, 250);
+}
 function editSlide(id, i, k, v) {
   var p = findPost(id); p.slides[i][k] = k === 'items' ? v.split('\n').filter(function (x) { return x.trim(); }) : v;
   clearTimeout(_rt); _rt = setTimeout(function () { renderThumbs(p); }, 250);
@@ -397,12 +490,31 @@ async function removePost(id) {
   try { await api('POST', { action: 'delete', id: id }); POSTS = POSTS.filter(function (p) { return p.id !== id; }); render(); toast('Post supprimé'); } catch (e) { toast(e.message); }
 }
 
-async function generate() {
-  var btn = document.getElementById('btn-gen');
+async function generate() { return generateMode('weekly', document.getElementById('btn-gen')); }
+// mode : 'weekly' (agenda + 2 posts pédagogiques), 'agenda' (rendez-vous éco réels), 'recap' (marchés réels de la semaine)
+async function generateMode(mode, btn) {
+  var label = btn.textContent;
   btn.disabled = true; btn.textContent = 'Écriture en cours (≈ 1 min)…';
-  try { var d = await api('POST', { action: 'generate', count: 3 }); POSTS = POSTS.concat(d.posts || []); setFilter('draft'); toast('✨ ' + (d.posts || []).length + ' posts prêts à relire'); }
-  catch (e) { toast(e.message, 6000); }
-  btn.disabled = false; btn.textContent = '✨ Préparer 3 posts';
+  try {
+    var d = await api('POST', { action: 'generate', mode: mode, count: 3 });
+    POSTS = POSTS.concat(d.posts || []); setFilter('draft');
+    toast('✨ ' + (d.posts || []).length + ' post' + ((d.posts || []).length > 1 ? 's' : '') + ' prêt' + ((d.posts || []).length > 1 ? 's' : '') + ' à relire');
+  } catch (e) { toast(e.message, 7000); }
+  btn.disabled = false; btn.textContent = label;
+}
+
+// Ambiance de couleurs du carrousel (appliquée à toutes les diapositives)
+var THEME_NAMES = { nuit: '🌙 Nuit', clair: '☀️ Clair', violet: '💜 Violet', ocean: '🌊 Océan', soleil: '🌅 Soleil', actu: '📰 Actu' };
+function themeSelect(p) {
+  var cur = (p.slides[0] && p.slides[0].theme) || 'nuit';
+  return '<select onchange="setTheme(\'' + p.id + '\', this.value)" style="font:inherit;font-size:13px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:7px 8px">' +
+    Object.keys(THEME_NAMES).map(function (k) { return '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + THEME_NAMES[k] + '</option>'; }).join('') + '</select>';
+}
+async function setTheme(id, theme) {
+  var p = findPost(id);
+  p.slides.forEach(function (s) { s.theme = theme; });
+  renderThumbs(p);
+  try { await api('POST', { action: 'update', id: id, fields: { slides: p.slides } }); toast('🎨 Ambiance enregistrée' + (p.status !== 'draft' ? ' : revalide le post pour refaire les images' : '')); } catch (e) { toast(e.message); }
 }
 async function generateActu() {
   var topic = document.getElementById('actu-topic').value.trim();

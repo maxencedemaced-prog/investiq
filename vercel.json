@@ -41,6 +41,10 @@
     {
       "path": "/api/social-publish",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/social?cron=recap",
+      "schedule": "30 18 * * 5"
     }
   ],
   "rewrites": [

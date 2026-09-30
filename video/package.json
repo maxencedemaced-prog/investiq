@@ -1,0 +1,18 @@
+{
+  "name": "kapitaro-video",
+  "private": true,
+  "description": "Vidéos animées Kapitaro (Reels) rendues avec Remotion par GitHub Actions",
+  "scripts": {
+    "render": "node render-job.mjs",
+    "preview": "remotion studio src/index.js"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.530",
+    "@remotion/google-fonts": "4.0.530",
+    "@supabase/supabase-js": "^2.45.0",
+    "msedge-tts": "^2.0.8",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "4.0.530"
+  }
+}
