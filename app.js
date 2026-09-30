@@ -4724,6 +4724,21 @@ function openNotifPanelByDefault() {
     if (code && /^[A-Za-z0-9]{4,12}$/.test(code)) localStorage.setItem('kp_ref', JSON.stringify({ code: code.toUpperCase(), at: Date.now() }));
   } catch (e) {}
 })();
+let referralPromo = false;   // filleul jamais abonné : −50 % sur le 1er mois de la formule mensuelle
+async function loadReferralPromo() {
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return;
+    const r = await fetch('/api/referral', { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return;
+    const d = await r.json();
+    const was = referralPromo;
+    referralPromo = !!d.promo_filleul;
+    if (referralPromo) plansBilling = 'monthly';
+    if (was !== referralPromo) { try { renderSubscriptionCard(); } catch (e) {} try { setPlansBilling(plansBilling); } catch (e) {} }
+  } catch (e) {}
+}
 async function attachReferral(user) {
   let ref = null;
   try { ref = JSON.parse(localStorage.getItem('kp_ref') || 'null'); } catch (e) {}
@@ -4793,7 +4808,7 @@ async function initApp(user) {
   openNotifPanelByDefault();
   try { trackEvent('login'); startHeartbeat(); } catch(e) {}
   requestWelcomeEmail(user);
-  attachReferral(user);
+  attachReferral(user).then(loadReferralPromo);
   const email = user.email || '';
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
@@ -10975,6 +10990,7 @@ const PLAN_PREMIUM_ONLY = [
 
 // Choix de facturation (annuel par défaut) — partagé par la fenêtre et les Paramètres
 let plansBilling = 'annual';
+const PROMO_PRICE = '4,99 €';   // 1er mois d'un filleul (coupon Stripe PARRAINAGE50)
 const PRICE_MONTHLY_NUM = 9.99, PRICE_ANNUAL_NUM = 79.99;
 const _eur = n => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
@@ -10992,6 +11008,7 @@ function plansComparisonHTML(lapsed) {
   const seg = (key, label, extra) => `<button type="button" class="plan-seg${plansBilling === key ? ' on' : ''}" onclick="setPlansBilling('${key}')">${label}${extra || ''}</button>`;
   const row = t => `<li><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg><span>${t}</span></li>`;
   const premium = isPremiumUser();
+  const promo = referralPromo && !premium && !lapsed;
   return `
   <div class="plans-grid">
     <div class="plan-card plan-free">
@@ -11013,13 +11030,20 @@ function plansComparisonHTML(lapsed) {
         <div class="plan-name">Premium</div>
         <div class="plan-desc">Sans plafond, avec les outils avancés</div>
         <div class="plan-seg-wrap">${seg('monthly', 'Mensuel')}${seg('annual', 'Annuel', `<span class="plan-badge">-${PREMIUM_ANNUAL_SAVINGS_PCT}%</span>`)}</div>
-        <div class="plan-price"><b>${annual ? PREMIUM_PRICE_ANNUAL : PREMIUM_PRICE}</b><span>${annual ? '/an' : '/mois'}</span></div>
-        ${annual
+        ${promo && !annual ? `<div class="plan-promo">🎁 Invité par un ami : −50 % le 1er mois</div>` : ''}
+        <div class="plan-price">${promo && !annual ? `<s class="plan-old">${PREMIUM_PRICE}</s>` : ''}<b>${annual ? PREMIUM_PRICE_ANNUAL : promo ? PROMO_PRICE : PREMIUM_PRICE}</b><span>${annual ? '/an' : promo ? 'le 1er mois' : '/mois'}</span></div>
+        ${promo && !annual
+          ? `<div class="plan-note">puis ${PREMIUM_PRICE}/mois · sans engagement</div>
+             <div class="plan-save">Tu économises 5,00 € sur ton 1er mois</div>`
+          : promo && annual
+          ? `<div class="plan-note">soit ${_eur(PRICE_ANNUAL_NUM / 12)}/mois · sans engagement</div>
+             <div class="plan-save plan-save-link" onclick="setPlansBilling('monthly')">Ta réduction parrainage (−50 % le 1er mois) s'applique à la formule mensuelle →</div>`
+          : annual
           ? `<div class="plan-note">soit ${_eur(PRICE_ANNUAL_NUM / 12)}/mois · sans engagement</div>
              <div class="plan-save">Tu économises ${_eur(yearSaving)} par an</div>`
           : `<div class="plan-note">facturé chaque mois · sans engagement</div>
              <div class="plan-save plan-save-link" onclick="setPlansBilling('annual')">Passe à l'annuel et économise ${_eur(yearSaving)} par an →</div>`}
-        <button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : PREMIUM_PRICE + '/mois'}</button>
+        <button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>
         <div class="plan-foot">Résiliable à tout moment</div>
       </div>
       <div class="plan-list">
@@ -11082,10 +11106,10 @@ function renderSubscriptionCard() {
     el.innerHTML = `
       <div class="set-row">
         <div class="set-row-main">
-          <div class="set-row-title">${lapsed ? 'Ton abonnement Premium est terminé' : 'Offre gratuite'}</div>
-          <div class="set-row-sub">${lapsed ? 'Retrouve l\'IA illimitée, le bilan complet et tous les outils.' : `Premium : IA illimitée, bilan complet, analyse de tes dépenses. Dès ${PREMIUM_PRICE}/mois, sans engagement.`}</div>
+          <div class="set-row-title">${lapsed ? 'Ton abonnement Premium est terminé' : referralPromo ? '🎁 Offre gratuite · réduction parrainage active' : 'Offre gratuite'}</div>
+          <div class="set-row-sub">${lapsed ? 'Retrouve l\'IA illimitée, le bilan complet et tous les outils.' : referralPromo ? `Invité par un ami : ton 1er mois Premium à <strong>${PROMO_PRICE}</strong> au lieu de ${PREMIUM_PRICE} (formule mensuelle), puis ${PREMIUM_PRICE}/mois, sans engagement.` : `Premium : IA illimitée, bilan complet, analyse de tes dépenses. Dès ${PREMIUM_PRICE}/mois, sans engagement.`}</div>
         </div>
-        <div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="showPlansModal()">${lapsed ? 'Reprendre' : 'Voir Premium'}</button></div>
+        <div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="${referralPromo && !lapsed ? "plansBilling='monthly';showPlansModal()" : 'showPlansModal()'}">${lapsed ? 'Reprendre' : referralPromo ? 'En profiter' : 'Voir Premium'}</button></div>
       </div>`;
     return;
   }

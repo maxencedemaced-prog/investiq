@@ -32,13 +32,18 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
       const code = await myCode(user.id);
-      const { data: rows } = await sb.from('referrals').select('paid_at, rewarded_at, reward').eq('referrer_id', user.id);
+      const [{ data: rows }, { data: mine }, { data: me }] = await Promise.all([
+        sb.from('referrals').select('paid_at, rewarded_at, reward').eq('referrer_id', user.id),
+        sb.from('referrals').select('id').eq('referee_id', user.id).is('paid_at', null).maybeSingle(),
+        sb.from('profiles').select('stripe_subscription_id').eq('id', user.id).maybeSingle(),
+      ]);
       const list = rows || [];
       return res.status(200).json({
         code, link: `${APP_URL}/?parrain=${code}`,
         invites: list.length,
         abonnes: list.filter(r => r.paid_at).length,
         mois_gagnes: list.filter(r => r.reward === 'credit' || r.reward === 'gift').length,
+        promo_filleul: !!mine && !me?.stripe_subscription_id,   // −50 % sur le 1er mois (formule mensuelle)
       });
     }
 
