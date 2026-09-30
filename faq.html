@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20260929"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAQ : questions fréquentes sur Kapitaro</title>
+  <meta name="description" content="Toutes les réponses sur Kapitaro : créer un compte, ajouter ou importer ses positions, score de santé, objectifs, assistant IA, Premium, résiliation, application et notifications.">
+  <link rel="canonical" href="https://kapitaro.fr/faq">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="FAQ Kapitaro : questions fréquentes">
+  <meta property="og:description" content="Compte, portefeuille, outils, Premium, application : toutes les réponses sur Kapitaro.">
+  <meta property="og:url" content="https://kapitaro.fr/faq">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+  <style>
+    .faq-wrap{max-width:780px;margin:-40px auto 0}
+    .faq-search{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:18px}
+    .faq-search input{width:100%;font:inherit;font-size:15px;padding:11px 14px;border:1px solid var(--border);border-radius:11px;background:var(--bg);color:var(--text)}
+    .faq-cat{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--green);margin:26px 4px 10px}
+    .faq-wrap details{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:8px}
+    .faq-wrap summary{cursor:pointer;font-weight:700;font-size:15.5px;list-style:none;display:flex;justify-content:space-between;gap:10px}
+    .faq-wrap summary::-webkit-details-marker{display:none}
+    .faq-wrap summary::after{content:'+';color:var(--green);font-weight:900;font-size:18px;line-height:1}
+    .faq-wrap details[open] summary::after{content:'−'}
+    .faq-wrap details p{font-size:15px;line-height:1.65;color:var(--muted);margin:10px 0 0}
+    .faq-empty{color:var(--muted);text-align:center;padding:20px}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/">Ouvrir Kapitaro</a>
+    </div>
+  </header>
+  <section class="hero"><div class="hero-in"><h1>Questions fréquentes</h1><p>Compte, portefeuille, outils, Premium, application : trouve ta réponse, ou pose ta question à l'aide en bas à droite.</p></div></section>
+  <main>
+    <div class="faq-wrap">
+      <div class="faq-search"><input type="search" id="faq-q" placeholder="Rechercher : importer, résilier, notifications…" aria-label="Rechercher dans la FAQ"></div>
+      <div id="faq-list"><p class="faq-empty">Chargement…</p></div>
+    </div>
+    <section class="cta">
+      <h2>Tu n'as pas trouvé ta réponse ?</h2>
+      <p>Écris-nous, on répond rapidement.</p>
+      <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a>
+    </section>
+  </main>
+  <footer>
+    <p>Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital.</p>
+    <p><a href="/mentions-legales">Mentions légales</a> · <a href="/cgu">CGU / CGV</a> · <a href="/confidentialite">Confidentialité</a> · <a href="/risques">Risques</a></p>
+  </footer>
+  <script src="/faq-data.js?v=20260930"></script>
+  <script>
+    (function () {
+      var faq = window.KAPITARO_FAQ || [], list = document.getElementById('faq-list');
+      var plain = function (h) { var d = document.createElement('div'); d.innerHTML = h; return d.textContent; };
+      var norm = function (s) { return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); };
+      function render(filter) {
+        var f = norm(filter || '').trim(), cats = [], html = '';
+        faq.forEach(function (e) { if (cats.indexOf(e.cat) < 0) cats.push(e.cat); });
+        cats.forEach(function (c) {
+          var items = faq.filter(function (e) { return e.cat === c && (!f || norm(e.q + ' ' + plain(e.a) + ' ' + e.keys.join(' ')).indexOf(f) >= 0); });
+          if (!items.length) return;
+          html += '<div class="faq-cat">' + c + '</div>' + items.map(function (e) { return '<details id="' + e.id + '"' + (f ? ' open' : '') + '><summary>' + e.q + '</summary><p>' + e.a + '</p></details>'; }).join('');
+        });
+        list.innerHTML = html || '<p class="faq-empty">Aucune réponse trouvée. Pose ta question à l\'aide en bas à droite, ou écris-nous.</p>';
+      }
+      render('');
+      document.getElementById('faq-q').addEventListener('input', function (e) { render(e.target.value); });
+      if (location.hash) { var d = document.getElementById(location.hash.slice(1)); if (d) { d.open = true; d.scrollIntoView(); } }
+      // Données structurées FAQ pour Google
+      var ld = document.createElement('script'); ld.type = 'application/ld+json';
+      ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(function (e) { return { '@type': 'Question', name: e.q, acceptedAnswer: { '@type': 'Answer', text: plain(e.a) } }; }) });
+      document.head.appendChild(ld);
+    })();
+  </script>
+  <script defer src="/help-bot.js?v=20260930"></script>
+</body>
+</html>
