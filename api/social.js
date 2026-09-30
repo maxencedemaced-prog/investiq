@@ -243,6 +243,15 @@ async function fetchHeadlines() {
   } catch { return []; }
 }
 
+// Coût des appels IA du Studio, enregistré dans ai_usage_log (user_id vide, étiquette « studio: ») pour le tableau de bord
+const PRICING = { 'claude-sonnet-5': { in: 2.0, out: 10.0 }, 'claude-haiku-4-5-20251001': { in: 1.0, out: 5.0 } };
+function logStudioUsage(model, usage, system) {
+  if (!usage || !sb) return;
+  const p = PRICING[model] || PRICING['claude-sonnet-5'];
+  const label = system === SYSTEM ? 'studio:posts' : /^Tu es l'éditeur des stories/.test(system) ? 'studio:stories' : /^Tu es le réalisateur/.test(system) ? 'studio:videos' : 'studio:autre';
+  sb.from('ai_usage_log').insert({ user_id: null, model, input_tokens: usage.input_tokens || 0, output_tokens: usage.output_tokens || 0,
+    cost_usd: (usage.input_tokens || 0) / 1e6 * p.in + (usage.output_tokens || 0) / 1e6 * p.out, call_label: label }).then(() => {}, () => {});
+}
 async function askClaude(prompt, system = SYSTEM, model = MODEL) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -252,6 +261,7 @@ async function askClaude(prompt, system = SYSTEM, model = MODEL) {
   });
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error?.message || 'Erreur IA');
+  logStudioUsage(model, data.usage, system);
   const text = (data.content || []).map(c => c.text || '').join('');
   try { const arr = JSON.parse(text.slice(text.indexOf('['), text.lastIndexOf(']') + 1)); return Array.isArray(arr) ? arr : []; }
   catch { throw new Error('Réponse IA illisible, réessaie'); }

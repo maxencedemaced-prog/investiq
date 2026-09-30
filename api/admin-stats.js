@@ -4,6 +4,7 @@
 // (contourne RLS) uniquement côté serveur : elle ne quitte jamais cette fonction.
 
 import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.supabase.co';
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || 'sb_publishable_3_8eb6YbCfJ04Qihdy9ivw_NsQ4H_cu';
@@ -12,6 +13,36 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'maxencedemacedo@gmail.com';
 const supabaseAdmin = process.env.SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
   : null;
+
+// Coûts IA : utilisateurs, ton propre compte, Studio (posts, vidéos, stories), voix ElevenLabs (abonnement fixe)
+async function coutsIA() {
+  const DAY = 86400000, start = new Date(); start.setUTCDate(1); start.setUTCHours(0, 0, 0, 0);
+  const since30 = new Date(Date.now() - 30 * DAY).toISOString();
+  const { data: rows } = await supabaseAdmin.from('ai_usage_log').select('user_id, model, input_tokens, cost_usd, call_label, created_at').gte('created_at', start < new Date(since30) ? start.toISOString() : since30).limit(50000);
+  const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const adminId = (list?.users || []).find(u => (u.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase())?.id || null;
+  const bucket = r => String(r.call_label || '').startsWith('studio:') ? (r.call_label === 'studio:voix' ? 'voix' : 'studio') : r.user_id && r.user_id === adminId ? 'toi' : 'utilisateurs';
+  const sum = (from) => {
+    const o = { utilisateurs: 0, toi: 0, studio: 0, voix_caracteres: 0, detail_studio: {} };
+    for (const r of rows || []) {
+      if (r.created_at < from) continue;
+      const b = bucket(r);
+      if (b === 'voix') { o.voix_caracteres += r.input_tokens || 0; continue; }
+      o[b] += r.cost_usd || 0;
+      if (b === 'studio') o.detail_studio[r.call_label.slice(7)] = (o.detail_studio[r.call_label.slice(7)] || 0) + (r.cost_usd || 0);
+    }
+    const r2 = x => Math.round(x * 100) / 100;
+    Object.keys(o.detail_studio).forEach(k => { o.detail_studio[k] = r2(o.detail_studio[k]); });
+    return { ...o, utilisateurs: r2(o.utilisateurs), toi: r2(o.toi), studio: r2(o.studio), anthropic_total: r2(o.utilisateurs + o.toi + o.studio) };
+  };
+  const elevenUsd = Number(process.env.ELEVENLABS_PLAN_USD || 6);
+  let usdEur = 0.92;
+  try { const fx = await (await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR', { signal: AbortSignal.timeout(4000) })).json(); if (fx?.rates?.EUR) usdEur = fx.rates.EUR; } catch {}
+  const mois = sum(start.toISOString()), j30 = sum(since30);
+  return { mois_en_cours: mois, jours_30: j30, elevenlabs_abonnement_usd: elevenUsd, elevenlabs_credits_mois: 30000,
+    total_mois_usd: Math.round((mois.anthropic_total + elevenUsd) * 100) / 100, taux_usd_eur: usdEur,
+    note: "Studio et voix enregistrés depuis le 30/09/2026 ; ton compte et les utilisateurs depuis le début." };
+}
 
 export default async function handler(req, res) {
   // Page ouverte en local (file://) ou depuis le site : pas de cookies impliqués, seulement un
@@ -64,7 +95,32 @@ export default async function handler(req, res) {
     const payingNow = (premiumRows || []).filter(p => p.id !== adminId);
     const monthlySubs = payingNow.filter(p => p.subscription_plan !== 'annual').length;
     const annualSubs = payingNow.filter(p => p.subscription_plan === 'annual').length;
-    const mrr = Math.round((monthlySubs * 9.99 + annualSubs * 79.99 / 12) * 100) / 100;
+    let mrr = Math.round((monthlySubs * 9.99 + annualSubs * 79.99 / 12) * 100) / 100;
+    // Revenu réel : abonnements Stripe actifs, réductions en cours comprises (ex. code AMIS2026 = 0 € ce mois-ci)
+    const stripeRev = await (async () => {
+      if (!process.env.STRIPE_SECRET_KEY) return null;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      let reel = 0, plein = 0, payants = 0, promo = 0, total = 0;
+      for (const status of ['active', 'trialing', 'past_due']) {
+        for await (const sub of stripe.subscriptions.list({ status, limit: 100 })) {
+          let full = 0;
+          for (const it of sub.items?.data || []) {
+            const price = it.price || {}, amount = (price.unit_amount || 0) / 100 * (it.quantity || 1);
+            const months = price.recurring?.interval === 'year' ? 12 * (price.recurring?.interval_count || 1) : (price.recurring?.interval_count || 1);
+            full += amount / months;
+          }
+          const d = sub.discount, active = d && d.coupon && (!d.end || d.end * 1000 > Date.now());
+          let now = full;
+          if (status === 'trialing') now = 0;
+          else if (active) now = d.coupon.percent_off ? full * (1 - d.coupon.percent_off / 100) : Math.max(0, full - (d.coupon.amount_off || 0) / 100);
+          total++; plein += full; reel += now;
+          if (now > 0) payants++; else promo++;
+        }
+      }
+      const r2 = x => Math.round(x * 100) / 100;
+      return { mrr_reel: r2(reel), mrr_apres_promos: r2(plein), abonnes_stripe: total, abonnes_payants: payants, abonnes_offerts: promo };
+    })().catch(e => ({ erreur: e.message }));
+    if (stripeRev && stripeRev.mrr_reel != null) mrr = stripeRev.mrr_reel;
 
     // ── Événements (90 derniers jours, hors signaux de présence, plafonné pour rester léger) ──
     let evQuery = supabaseAdmin.from('events').select('type, user_id, created_at, meta')
@@ -169,7 +225,8 @@ export default async function handler(req, res) {
       generated_at: new Date().toISOString(),
       users: { total: totalUsers, premium: payingNow.length, signups_7j: signups7, signups_30j: signups30,
                inactive_14j: users.filter(u => !lastSeenByUser[u.id] || Date.now() - new Date(lastSeenByUser[u.id]) > 14 * DAY).length },
-      revenue: { mrr_estime: mrr, abonnes_mensuels: monthlySubs, abonnes_annuels: annualSubs },
+      revenue: { mrr_estime: mrr, abonnes_mensuels: monthlySubs, abonnes_annuels: annualSubs, stripe: stripeRev },
+      couts: await coutsIA(),
       funnel: {
         inscrits: totalUsers,
         ont_vu_offre: funnel.paywall_view.size,
