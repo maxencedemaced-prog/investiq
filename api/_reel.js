@@ -226,7 +226,8 @@ export async function voiceOver({ beats, voices, sb, id }) {
     const voice = voices[groups[g].voice] || voices[0];
     let text = ''; const spans = [];
     for (const i of groups[g].idx) { if (text) text += ' '; spans.push({ i, from: text.length }); text += beats[i].say; spans[spans.length - 1].to = text.length; }
-    const { audio, al } = await elevenTts(text, voice.id);
+    const { audio, al, model } = await elevenTts(text, voice.id);
+    sb.from('ai_usage_log').insert({ user_id: null, model: 'elevenlabs:' + (model || ''), input_tokens: text.length, output_tokens: 0, cost_usd: 0, call_label: 'studio:voix' }).then(() => {}, () => {});
     const starts = al?.character_start_times_seconds || [], ends = al?.character_end_times_seconds || [];
     const exact = starts.length === text.length;
     const total = ends.length ? ends[ends.length - 1] : 2;
