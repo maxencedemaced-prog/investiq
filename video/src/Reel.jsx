@@ -18,9 +18,11 @@ const GLOWS = ['#3b82f6', '#6366f1', '#10b981', '#0ea5e9', '#8b5cf6', '#14b8a6']
 // Minutage : chaque scène couvre [start, end[ en secondes (fin de la dernière + 1,2 s pour la conclusion)
 const beats = data.beats.map((b, i) => {
   const from = Math.round(b.start * FPS), last = i === data.beats.length - 1;
-  const to = last ? Math.round((b.end + 1.2) * FPS) : Math.round(b.end * FPS);
+  const to = last ? Math.round((b.end + (data.jingle ? 3 : 1.2)) * FPS) : Math.round(b.end * FPS);
   return { ...b, i, from, dur: Math.max(12, to - from) };
 });
+// Le jingle démarre juste après la dernière phrase de la voix
+const JINGLE_AT = beats.length ? Math.round(beats[beats.length - 1].end * FPS) - 4 : 0;
 export const totalFrames = beats.length ? beats[beats.length - 1].from + beats[beats.length - 1].dur : 60;
 const beatAt = f => beats.findIndex(b => f >= b.from && f < b.from + b.dur);
 
@@ -308,7 +310,9 @@ export const Reel = () => (
     {data.style !== 'real' && <Background />}
     {beats.map(b => <Sequence key={b.i} from={b.from} durationInFrames={b.dur}>{data.style === 'real' ? <RealScene b={b} /> : <Scene b={b} />}</Sequence>)}
     {(data.segments || []).map((s, k) => <Sequence key={'v' + k} from={Math.round(s.start * FPS)}><Audio src={staticFile(s.file)} /></Sequence>)}
-    {data.musicFile && <Audio src={staticFile(data.musicFile)} volume={f => interpolate(f, [0, 15, totalFrames - 45, totalFrames], [0, 0.1, 0.1, 0], clamp)} />}
+    {data.musicFile && <Audio src={staticFile(data.musicFile)} volume={f => { const end = data.jingle && beats.length ? JINGLE_AT : totalFrames - 30; return interpolate(f, [0, 15, end - 20, end + 10], [0, 0.1, 0.1, data.jingle ? 0 : 0.04], clamp) * (data.jingle ? 1 : interpolate(f, [totalFrames - 45, totalFrames], [1, 0], clamp)); }} />}
+    {/* Jingle Kapitaro (signature sonore) sur la scène de fin, si public/jingle.mp3 est présent */}
+    {data.jingle && beats.length > 0 && <Sequence from={JINGLE_AT}><Audio src={staticFile('jingle.mp3')} volume={0.55} /></Sequence>}
     <Header />
   </AbsoluteFill>
 );

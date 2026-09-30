@@ -134,7 +134,7 @@ async function main() {
     beats.forEach((b, i) => { if (!b.broll_file) b.broll_file = (beats.slice(0, i).reverse().find(x => x.broll_file) || beats.find(x => x.broll_file) || {}).broll_file; });
     if (!beats.some(b => b.broll_file)) throw new Error('Aucune vidéo trouvée pour le style réel : vérifie la clé PIXABAY_API_KEY');
   }
-  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ beats, segments, musicFile, style: script.style || 'motion' }));
+  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ beats, segments, musicFile, style: script.style || 'motion', jingle: fs.existsSync(path.join('public', 'jingle.mp3')) }));
 
   execSync('npx remotion render src/index.js Reel out/reel.mp4 --codec=h264 --crf=20 --concurrency=100% --log=warn', { stdio: 'inherit' });
   const buf = fs.readFileSync('out/reel.mp4');
