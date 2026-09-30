@@ -48,6 +48,7 @@ RÈGLES ABSOLUES (réglementation AMF) :
 - Aucune prédiction, aucune promesse de gain, aucun rendement garanti : tout rendement est « hypothétique ».
 - N'utilise que les chiffres présents dans le post ou dans les faits vérifiés fournis. N'invente rien.
 - Pas de sensationnalisme ni de peur.
+- N'affirme jamais que le temps efface les pertes, que les hausses compensent les baisses ou que le marché finit toujours par remonter.
 
 FORMAT : réponds UNIQUEMENT avec un tableau JSON de 8 à 12 scènes, sans texte autour. 55 à 85 mots au total dans les champs "say".
 Chaque scène : {"v": type, "say": "phrase dite par la voix", "lines": ["texte à l'écran"], …champs du type}
@@ -76,7 +77,9 @@ RÈGLES ABSOLUES (réglementation AMF) :
 - Aucune prédiction, aucune promesse de gain, aucun rendement garanti : tout rendement est « hypothétique ». Rappelle le risque de perte en une phrase quand la vidéo parle d'investir.
 - N'utilise que les chiffres présents dans le post ou dans les faits vérifiés fournis. N'invente rien.
 - Jamais de promesse d'enrichissement : pas d'images d'argent facile ni de luxe tape-à-l'œil (voitures de sport, yachts, liasses de billets, jets). Montre plutôt des projets de vie sereins et soignés.
-- Émotions permises : légère frustration ou hésitation face à ses comptes, puis sérénité. Jamais de panique ni de peur.
+- Émotions permises : légère frustration ou hésitation face à ses comptes, puis sérénité. Jamais de panique ni de peur (pas le mot « panique »).
+- N'affirme jamais que le temps efface les pertes, que les hausses compensent les baisses ou que le marché finit toujours par remonter : le long terme réduit l'effet des variations mais ne garantit rien.
+- Le texte à l'écran et la phrase dite doivent correspondre au plan filmé choisi pour la scène.
 
 FORMAT : réponds UNIQUEMENT avec un tableau JSON de 7 à 10 scènes, sans texte autour. 45 à 75 mots au total dans les champs "say".
 Chaque scène : {"v": "shot" | "number" | "cta", "say": "phrase dite par la voix", "lines": ["texte à l'écran"], "broll": "plan filmé"}

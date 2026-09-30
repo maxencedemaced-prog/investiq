@@ -58,19 +58,35 @@ function pickMusic(total) {
 
 // Vidéos d'illustration pour les scènes qui ont des mots-clés « broll » (Pixabay ou Pexels, le premier configuré).
 // Candidats : { id, url } triés du plus adapté au moins adapté (vertical d'abord, puis horizontal recadré).
-async function pixabayCandidates(q, need, key) {
-  const r = await fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&safesearch=true&per_page=30`);
+const STOP = new Set(['a', 'an', 'the', 'of', 'at', 'on', 'in', 'with', 'and', 'to', 'for', 'close', 'up']);
+const stem = w => w.toLowerCase().replace(/(ing|ers|er|es|s)$/, '');
+async function pixabaySearch(q, need, key) {
+  const r = await fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&safesearch=true&per_page=50`);
   const j = await r.json();
+  const words = q.split(/\s+/).filter(w => w.length > 2 && !STOP.has(w.toLowerCase())).map(stem);
   const out = [];
   for (const h of j.hits || []) {
     if (h.duration < Math.min(need, 5)) continue;
+    // Pertinence : part des mots de la scène retrouvés dans les mots-clés de la vidéo
+    const tags = String(h.tags || '').split(',').flatMap(t => t.trim().split(/\s+/)).map(stem);
+    const hit = words.filter(w => tags.some(t => t === w || t.startsWith(w) || w.startsWith(t))).length;
+    const rel = words.length ? hit / words.length : 0;
+    if (rel < 0.5) continue;
     const files = Object.values(h.videos || {}).filter(v => v && v.url && v.width);
     const portrait = files.filter(v => v.height > v.width && v.height >= 1280).sort((a, b) => a.height - b.height)[0];
     const land = files.filter(v => v.width >= 1920).sort((a, b) => a.width - b.width)[0];
-    if (portrait) out.push({ id: 'pixabay-' + h.id, url: portrait.url, score: 0 });
-    else if (land) out.push({ id: 'pixabay-' + h.id, url: land.url, score: 1 });
+    if (portrait) out.push({ id: 'pixabay-' + h.id, url: portrait.url, score: (1 - rel) * 2 });
+    else if (land) out.push({ id: 'pixabay-' + h.id, url: land.url, score: (1 - rel) * 2 + 0.6 });
   }
   return out.sort((a, b) => a.score - b.score);
+}
+async function pixabayCandidates(q, need, key) {
+  let list = await pixabaySearch(q, need, key);
+  // Rien de pertinent : on retire le premier mot (souvent un adjectif) puis on garde les 2 derniers
+  const w = q.split(/\s+/);
+  if (!list.length && w.length > 2) list = await pixabaySearch(w.slice(1).join(' '), need, key);
+  if (!list.length && w.length > 2) list = await pixabaySearch(w.slice(-2).join(' '), need, key);
+  return list;
 }
 async function pexelsCandidates(q, need, key) {
   const r = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(q)}&orientation=portrait&size=medium&per_page=15`, { headers: { Authorization: key } });
