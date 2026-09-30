@@ -128,7 +128,8 @@ async function main() {
 
   const total = beats[beats.length - 1].end + 1.5;
   const musicFile = script.music === false ? null : pickMusic(total);
-  await fetchBroll(beats);
+  if (script.style === 'real') await fetchBroll(beats);
+  else beats.forEach(b => { delete b.broll; delete b.broll_file; });
   if (script.style === 'real') {
     // Plan manquant : on réutilise le plan précédent (ou suivant) plutôt que de casser le style
     beats.forEach((b, i) => { if (!b.broll_file) b.broll_file = (beats.slice(0, i).reverse().find(x => x.broll_file) || beats.find(x => x.broll_file) || {}).broll_file; });

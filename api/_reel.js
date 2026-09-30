@@ -41,7 +41,7 @@ export async function reelConfig() {
 }
 
 export const REEL_SYSTEM = `Tu es le réalisateur des vidéos courtes (Reels Instagram, TikTok) de Kapitaro, une app française qui aide les particuliers à suivre et comprendre leurs placements.
-Tu transformes un post en script de vidéo verticale de 25 à 30 secondes, lu par une voix off, avec une scène animée par phrase. Style : sobre, clair, rythmé, chaleureux, en tutoyant.
+Tu transformes un post en script de vidéo verticale de 25 à 30 secondes, lu par une voix off, avec une scène animée par phrase. Style visuel sobre, mais voix ÉNERGIQUE et vivante : phrases courtes et percutantes, questions directes, relances (« Et là ? », « Résultat : »), ponctuation expressive (points d'exclamation, points de suspension), en tutoyant.
 
 RÈGLES ABSOLUES (réglementation AMF) :
 - Contenu éducatif uniquement. Jamais de conseil personnalisé, jamais de recommandation d'acheter ou de vendre un titre, un fonds ou une crypto précis.
@@ -66,11 +66,10 @@ Types :
 - "market" / "agenda" : UNIQUEMENT si le post contient déjà un tableau de marchés ou un agenda (données réelles) : ne remplis pas "rows", le serveur recopie les données. Champs : lines, say.
 - "cta" : toujours la dernière scène. "say" invite à essayer gratuitement Kapitaro (lien en bio) ; lines : 2 lignes courtes, ex. ["Simule", "ton *projet*"].
 Varie les types : jamais deux fois de suite le même type (sauf les scènes chart).
-"broll" facultatif (2 à 4 mots EN ANGLAIS) : vidéo réelle en fond de scène, pour la 1re scène et au plus 2 autres scènes de type hook, title, quote ou number. Décris une image concrète et neutre liée au propos (ex. « city skyline night », « person using phone banking », « coins stack close up », « stock market screen », « calendar planning desk »). Pas de marque, pas de personne en détresse. "icon" facultatif (au plus une scène sur trois) parmi : ${ICONS.join(', ')}.`;
 
 // Style « vidéo réelle » : uniquement des plans filmés (banque de vidéos), texte court en surimpression
 export const REEL_SYSTEM_REAL = `Tu es le réalisateur des vidéos courtes (Reels Instagram, TikTok) de Kapitaro, une app française qui aide les particuliers à suivre et comprendre leurs placements.
-Tu transformes un post en script de VIDÉO RÉELLE de 20 à 30 secondes : chaque scène est un vrai plan filmé (banque de vidéos), avec une voix off et un texte très court en surimpression. Aucune animation, aucun graphique dessiné. Ton : posé, élégant, qui donne envie de prendre son épargne en main, en tutoyant.
+Tu transformes un post en script de VIDÉO RÉELLE de 20 à 30 secondes : chaque scène est un vrai plan filmé (banque de vidéos), avec une voix off et un texte très court en surimpression. Aucune animation, aucun graphique dessiné. Ton : élégant mais ÉNERGIQUE, qui donne envie de prendre son épargne en main : phrases courtes et percutantes, questions directes, ponctuation expressive, en tutoyant.
 
 RÈGLES ABSOLUES (réglementation AMF) :
 - Contenu éducatif uniquement. Jamais de conseil personnalisé, jamais de recommandation d'acheter ou de vendre un titre, un fonds ou une crypto précis.
@@ -96,7 +95,6 @@ function cleanBeat(b, post, duo) {
   o.lines = (Array.isArray(b.lines) ? b.lines : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 3).map(x => clip(x, 24));
   if (b.sub) o.sub = clip(b.sub, 90);
   if (ICONS.includes(b.icon)) o.icon = b.icon;
-  if (typeof b.broll === 'string' && ['hook', 'title', 'quote', 'number'].includes(b.v)) { const q = b.broll.replace(/[^A-Za-z ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 50); if (q.length > 2) o.broll = q; }
   if (duo) o.voice = b.voice === 1 ? 1 : 0;
   if (o.v === 'number') {
     o.value = clip(String(b.value || ''), 14);
@@ -148,7 +146,6 @@ export async function writeReelScript({ post, duo, askClaude, facts, style }) {
   }
   const arr = await askClaude(`Transforme ce post en script de vidéo animée :\n${content}\n\nFaits vérifiés utilisables :\n${facts}${duo ? DUO_RULE : ''}`, REEL_SYSTEM + (duo ? DUO_RULE : ''));
   const beats = arr.map(b => cleanBeat(b, post, duo)).filter(Boolean).slice(0, 14);
-  let brolls = 0; beats.forEach(b => { if (b.broll && ++brolls > 3) delete b.broll; });
   if (beats.length < 4) throw new Error('Script vidéo inexploitable, réessaie');
   if (beats[beats.length - 1].v !== 'cta') beats.push({ v: 'cta', say: 'Simule ton projet gratuitement sur Kapitaro, lien en bio.', lines: ['Simule', 'ton *projet*'], ...(duo ? { voice: 0 } : {}) });
   return beats;
@@ -158,13 +155,20 @@ export async function writeReelScript({ post, duo, askClaude, facts, style }) {
 async function elevenTts(text, voiceId) {
   let last = '';
   for (const model of [...new Set([process.env.ELEVENLABS_MODEL || 'eleven_v4', 'eleven_v3', 'eleven_multilingual_v2'])]) {
-    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
-      method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, model_id: model }), signal: AbortSignal.timeout(60000),
-    });
-    if (r.ok) { const j = await r.json(); return { audio: Buffer.from(j.audio_base64, 'base64'), al: j.alignment || j.normalized_alignment }; }
-    last = (await r.text()).slice(0, 200);
-    if (r.status === 401 || r.status === 402) break;
+    // v3/v4 : stabilité « créative » (plus d'expression) ; v2 : expressivité et débit réglés finement
+    const settings = model === 'eleven_multilingual_v2'
+      ? { stability: 0.32, similarity_boost: 0.8, style: 0.5, use_speaker_boost: true, speed: 1.08 }
+      : { stability: 0, speed: 1.08 };
+    for (const voice_settings of [settings, { speed: 1.08 }, null]) {
+      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
+        method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(voice_settings ? { text, model_id: model, voice_settings } : { text, model_id: model }), signal: AbortSignal.timeout(60000),
+      });
+      if (r.ok) { const j = await r.json(); return { audio: Buffer.from(j.audio_base64, 'base64'), al: j.alignment || j.normalized_alignment, model }; }
+      last = (await r.text()).slice(0, 200);
+      if (r.status === 401 || r.status === 402) throw new Error('Voix ElevenLabs indisponible : ' + last);
+      if (r.status !== 400 && r.status !== 422) break;   // réglage refusé → on réessaie sans ; autre erreur → modèle suivant
+    }
   }
   throw new Error('Voix ElevenLabs indisponible : ' + last);
 }
