@@ -459,7 +459,12 @@ FORMAT : réponds UNIQUEMENT par un tableau JSON contenant UN seul objet :
 const slugify = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70);
 async function writeArticle(post, takenSlugs) {
   const content = JSON.stringify({ titre: post.title, diapositives: post.slides, legende: post.caption });
-  const [a] = await askClaude(`Écris l'article de blog à partir de ce post :\n${content}\n\nFaits vérifiés utilisables :\n${verifiedFacts()}`, ARTICLE_SYSTEM);
+  // Guide débutant (sans post) : article plus long sur une question très recherchée
+  const isGuide = post.format === 'guide', topic = (post.slides || [])[0] || {};
+  const ask = isGuide
+    ? `Écris un GUIDE COMPLET pour débutants, de 1 200 à 1 600 mots, avec 6 à 8 sections et 4 questions de FAQ, sur le sujet : « ${topic.title} ». Angle : ${topic.body || 'pédagogique et concret'}. Titre proche de ce que tape un débutant sur Google.`
+    : `Écris l'article de blog à partir de ce post :\n${content}`;
+  const [a] = await askClaude(`${ask}\n\nFaits vérifiés utilisables :\n${verifiedFacts()}`, ARTICLE_SYSTEM);
   if (!a || !a.title || !Array.isArray(a.sections) || a.sections.length < 3) throw new Error('Article inexploitable');
   const text = JSON.stringify(a);
   if (/compens|rattrap|remonte(nt)? toujours|finit (toujours )?par remonter|sans (aucun )?risque de perte|garanti(e)? de gagner/i.test(text)) throw new Error('Article écarté (formulation interdite)');
@@ -470,13 +475,13 @@ async function writeArticle(post, takenSlugs) {
   return {
     slug, title: cl(a.title, 90), description: cl(a.description, 170),
     intro: (a.intro || []).slice(0, 3).map(p => cl(p, 900)),
-    sections: a.sections.slice(0, 7).map(s => ({ h2: cl(s.h2, 120), paragraphs: (s.paragraphs || []).slice(0, 4).map(p => cl(p, 1200)), bullets: (s.bullets || []).slice(0, 6).map(b => cl(b, 220)) })),
+    sections: a.sections.slice(0, 9).map(s => ({ h2: cl(s.h2, 120), paragraphs: (s.paragraphs || []).slice(0, 4).map(p => cl(p, 1200)), bullets: (s.bullets || []).slice(0, 6).map(b => cl(b, 220)) })),
     faq: (a.faq || []).slice(0, 5).map(f => ({ q: cl(f.q, 160), a: cl(f.a, 500) })).filter(f => f.q && f.a),
     written_at: new Date().toISOString(),
   };
 }
 async function articlesCron() {
-  const { data: todo } = await sb.from('social_posts').select('id, title, slides, caption').in('status', ['approved', 'publishing', 'published'])
+  const { data: todo } = await sb.from('social_posts').select('id, title, slides, caption, format').in('status', ['approved', 'publishing', 'published'])
     .is('article', null).neq('format', 'story').order('scheduled_at', { ascending: true }).limit(3);
   if (!todo || !todo.length) return { articles: 0 };
   const { data: existing } = await sb.from('social_posts').select('article').not('article', 'is', null);

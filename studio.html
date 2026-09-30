@@ -164,7 +164,7 @@ function toLocalInput(iso) {
 var DAY_FR = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 function renderCalendar() {
   var list = document.getElementById('list'), now = Date.now();
-  var items = POSTS.filter(function (p) { var t = Date.parse(p.status === 'published' && p.published_at ? p.published_at : p.scheduled_at); return t && t > now - 2 * 86400000 && t < now + 21 * 86400000; })
+  var items = POSTS.filter(function (p) { if (p.format === 'guide') return false; var t = Date.parse(p.status === 'published' && p.published_at ? p.published_at : p.scheduled_at); return t && t > now - 2 * 86400000 && t < now + 21 * 86400000; })
     .map(function (p) { return { p: p, t: Date.parse(p.status === 'published' && p.published_at ? p.published_at : p.scheduled_at) }; })
     .sort(function (a, b) { return a.t - b.t; });
   if (!items.length) { list.innerHTML = '<div class="empty">Rien de programmé pour les 3 prochaines semaines.</div>'; return; }
@@ -196,7 +196,7 @@ function goToPost(id) {
 function render() {
   var list = document.getElementById('list');
   if (FILTER === 'calendar') { renderCalendar(); return; }
-  var items = POSTS.filter(function (p) { return (p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing')) && !(p.format === 'story' && FILTER === 'draft'); });
+  var items = POSTS.filter(function (p) { return (p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing')) && !(p.format === 'story' && FILTER === 'draft') && p.format !== 'guide'; });
   // À valider : les posts les plus récents en haut (Validés et Publiés gardent l'ordre des dates de publication)
   if (FILTER === 'draft') items.sort(function (x, y) { return String(y.created_at || '').localeCompare(String(x.created_at || '')); });
   if (!items.length) {
