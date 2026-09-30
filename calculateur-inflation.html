@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20260929"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculateur d'inflation et de pouvoir d'achat — Kapitaro</title>
+  <meta name="description" content="Calcule gratuitement ce que vaudra ton argent avec l'inflation : pouvoir d'achat futur, somme nécessaire pour garder le même niveau de vie et rendement réel d'un placement.">
+  <link rel="canonical" href="https://kapitaro.fr/calculateur-inflation">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/calculateur-inflation">
+  <meta property="og:title" content="Calculateur d'inflation gratuit — Kapitaro">
+  <meta property="og:description" content="Ce que valent tes euros dans 10, 20 ou 30 ans, et le rendement réel de ton épargne.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "Calculateur d'inflation — Kapitaro",
+      "url": "https://kapitaro.fr/calculateur-inflation",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "fr",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Comment calculer la perte de pouvoir d'achat ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "On divise la somme par (1 + inflation) élevé à la puissance du nombre d'années. Avec 2 % d'inflation, 10 000 € valent environ 8 200 € d'aujourd'hui au bout de 10 ans."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Quelle inflation choisir pour la simulation ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "C'est une hypothèse. La Banque centrale européenne vise une inflation proche de 2 % par an sur le moyen terme, mais l'inflation réelle peut être nettement plus haute ou plus basse selon les périodes. Teste plusieurs valeurs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "C'est quoi le rendement réel ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "C'est le rendement d'un placement une fois l'inflation déduite. Il mesure ce que ton épargne gagne vraiment en pouvoir d'achat : environ (1 + rendement) ÷ (1 + inflation) − 1."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Ce calculateur est-il gratuit ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Oui, sans inscription. Pour suivre tes placements et ton objectif, tu peux créer un compte Kapitaro gratuit."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Kapitaro",
+          "item": "https://kapitaro.fr/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Calculateur d'inflation",
+          "item": "https://kapitaro.fr/calculateur-inflation"
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Calculateur d'inflation</h1>
+      <p>Avec l'inflation, un même billet achète un peu moins chaque année. Vois ce que vaudra ton argent dans le temps, et ce qu'il te reste vraiment une fois l'inflation déduite du rendement de ton épargne.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Exemples">
+            <button type="button" data-preset="10000,2,20,3">10 000 €, 20 ans</button>
+            <button type="button" data-preset="1000,3,10,1.5">1 000 €, 10 ans</button>
+            <button type="button" data-preset="50000,2,30,5">50 000 €, 30 ans</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="s">Somme</label><span class="field-val"><input type="number" id="s-n" min="100" max="10000000" step="100" aria-label="Somme"><span class="unit">€</span></span></div>
+            <input type="range" id="s" min="100" max="100000" step="100" value="10000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="i">Inflation annuelle (hypothèse)</label><span class="field-val"><input type="number" id="i-n" min="0" max="20" step="0.1" aria-label="Inflation annuelle (hypothèse)"><span class="unit">%/an</span></span></div>
+            <input type="range" id="i" min="0" max="10" step="0.1" value="2">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="y">Durée</label><span class="field-val"><input type="number" id="y-n" min="1" max="60" step="1" aria-label="Durée"><span class="unit">ans</span></span></div>
+            <input type="range" id="y" min="1" max="50" step="1" value="20">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="r">Rendement de ton épargne (hypothèse)</label><span class="field-val"><input type="number" id="r-n" min="0" max="20" step="0.1" aria-label="Rendement de ton épargne (hypothèse)"><span class="unit">%/an</span></span></div>
+            <input type="range" id="r" min="0" max="12" step="0.1" value="3">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Pouvoir d'achat de cette somme gardée telle quelle</div>
+          <div class="result-total" id="out-total">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-need">—</b><span>Somme nécessaire pour le même pouvoir d'achat</span></div>
+            <div class="kpi gain"><b id="out-real">—</b><span>Rendement réel de ton épargne</span></div>
+            <div class="kpi"><b id="out-placed">—</b><span>Épargne placée, en euros d'aujourd'hui</span></div>
+          </div>
+          <svg class="chart" id="chart" viewBox="0 0 520 220" role="img" aria-label="Pouvoir d'achat dans le temps"></svg>
+          <div class="legend"><span><i style="background:var(--navy)"></i>Somme gardée sans rendement</span><span><i style="background:var(--green)"></i>Somme placée (pouvoir d'achat)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>L'inflation, c'est quoi ?</h2>
+      <p>L'inflation, c'est la hausse générale des prix. Quand elle est de 2 % par an, un panier de courses qui coûte 100 € aujourd'hui coûte environ 102 € l'an prochain. Ton billet de 100 € achète donc un peu moins : c'est la <strong>perte de pouvoir d'achat</strong>.</p>
+
+      <h2>Exemple : 10 000 € avec 2 % d'inflation par an</h2>
+      <div class="example">
+        <p style="margin:0">Avec une inflation hypothétique de 2 % par an, <strong>10 000 €</strong> gardés sans rendement n'ont plus que le pouvoir d'achat d'environ <strong>8 200 €</strong> d'aujourd'hui au bout de 10 ans, <strong>6 730 €</strong> au bout de 20 ans et <strong>5 520 €</strong> au bout de 30 ans. Pour garder le même pouvoir d'achat, il faudrait environ 12 190 € dans 10 ans et 14 860 € dans 20 ans.</p>
+      </div>
+
+      <h2>Rendement nominal et rendement réel</h2>
+      <p>Le rendement affiché d'un placement est son rendement <strong>nominal</strong>. Ce qui compte pour ton pouvoir d'achat, c'est le rendement <strong>réel</strong>, une fois l'inflation déduite :</p>
+      <div class="formula">Rendement réel ≈ (1 + rendement) ÷ (1 + inflation) − 1</div>
+      <p>Un placement qui rapporte 3 % par an avec 2 % d'inflation a un rendement réel d'environ <strong>0,98 %</strong>. Une épargne qui rapporte 1,5 % avec 2 % d'inflation a un rendement réel d'environ <strong>−0,49 %</strong> : elle grossit en euros, mais perd un peu de pouvoir d'achat. Pour voir ce que peut donner un placement dans le temps, utilise le <a href="/simulateur-interets-composes">simulateur d'intérêts composés</a>.</p>
+
+      <h2>Faut-il investir pour battre l'inflation ?</h2>
+      <p>Garder une <a href="/epargne-de-precaution">épargne de précaution</a> disponible reste utile, même si l'inflation la grignote un peu. Pour l'argent dont tu n'as pas besoin avant longtemps, certains placements peuvent viser un rendement supérieur à l'inflation, mais avec un risque de perte en capital. Tout dépend de ton horizon, de tes projets et de ta tolérance au risque.</p>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>Comment calculer la perte de pouvoir d'achat ?</h3>
+        <p>On divise la somme par (1 + inflation) élevé à la puissance du nombre d'années. Avec 2 % d'inflation, 10 000 € valent environ 8 200 € d'aujourd'hui au bout de 10 ans.</p>
+        <h3>Quelle inflation choisir pour la simulation ?</h3>
+        <p>C'est une hypothèse. La Banque centrale européenne vise une inflation proche de 2 % par an sur le moyen terme, mais l'inflation réelle peut être nettement plus haute ou plus basse selon les périodes. Teste plusieurs valeurs.</p>
+        <h3>C'est quoi le rendement réel ?</h3>
+        <p>C'est le rendement d'un placement une fois l'inflation déduite. Il mesure ce que ton épargne gagne vraiment en pouvoir d'achat : environ (1 + rendement) ÷ (1 + inflation) − 1.</p>
+        <h3>Ce calculateur est-il gratuit ?</h3>
+        <p>Oui, sans inscription. Pour suivre tes placements et ton objectif, tu peux créer un compte Kapitaro gratuit.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Suis ce que ton épargne devient vraiment</h2>
+      <p>Suis tes placements, fixe-toi un objectif et pose tes questions à un assistant IA. Gratuit pour commencer.</p>
+      <a href="/" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+
+    <section class="others">
+      <h2>Autres outils gratuits</h2>
+      <a href="/simulateur-interets-composes"><div>Simulateur d'intérêts composés<span>Ce que devient ton épargne avec le temps</span></div>›</a>
+      <a href="/simulateur-investissement-programme"><div>Simulateur d'investissement programmé<span>Investir la même somme chaque mois : 3 scénarios</span></div>›</a>
+      <a href="/calculateur-frais-placement"><div>Calculateur de l'impact des frais<span>Ce que les frais te coûtent sur 10, 20 ou 30 ans</span></div>›</a>
+      <a href="/calculateur-objectif-epargne"><div>Calculateur d'objectif d'épargne<span>Combien mettre de côté chaque mois pour atteindre ton objectif</span></div>›</a>
+      <a href="/rendement-etf-msci-world"><div>Combien rapporte un ETF MSCI World<span>3 scénarios et l'effet des frais</span></div>›</a>
+      <a href="/epargne-de-precaution"><div>Calculateur d'épargne de précaution<span>Combien garder de côté avant d'investir</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Simulation indicative à but pédagogique, basée sur une inflation et un rendement constants hypothétiques. Elle ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital ; les performances passées ne préjugent pas des performances futures.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a><br><a href="/mentions-legales">Mentions légales</a> · <a href="/cgu">CGU / CGV</a> · <a href="/confidentialite">Confidentialité</a> · <a href="/risques">Risques</a> · <a href="/faq">FAQ</a> · <a href="/blog">Blog</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var ids = ["s","i","y","r"];
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+    var fv = function (c, m, years, rPct) { var i = rPct / 100 / 12, cap = c, out = [c]; for (var y = 1; y <= years; y++) { for (var k = 0; k < 12; k++) cap = cap * (1 + i) + m; out.push(cap); } return out; };
+    // Graphique : plusieurs séries (valeurs par année), même échelle, étiquettes d'années
+    function draw(series, years) {
+      var svg = document.getElementById('chart'), W = 520, H = 220, L = 8, Rr = 8, T = 10, B = 24;
+      var max = 1; series.forEach(function (s) { s.v.forEach(function (x) { if (x > max) max = x; }); });
+      var x = function (k) { return L + (W - L - Rr) * k / (years || 1); };
+      var yv = function (v) { return T + (H - T - B) * (1 - v / max); };
+      var path = function (v) { return v.map(function (p, k) { return (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + yv(p).toFixed(1); }).join(''); };
+      var step = Math.max(1, Math.ceil(years / 5)), ticks = '', marks = [];
+      for (var k = 0; k < years; k += step) if (years - k >= step / 2) marks.push(k);
+      marks.push(years);
+      marks.forEach(function (k) {
+        var anchor = k === 0 ? 'start' : (k === years ? 'end' : 'middle');
+        ticks += '<text x="' + x(k).toFixed(1) + '" y="' + (H - 6) + '" font-size="15" text-anchor="' + anchor + '" fill="var(--faint)">' + (k ? k + ' an' + (k > 1 ? 's' : '') : 'Auj.') + '</text>';
+      });
+      svg.innerHTML = series.map(function (s) {
+        return s.area ? '<path d="' + path(s.v) + 'L' + x(years).toFixed(1) + ',' + yv(0) + 'L' + x(0).toFixed(1) + ',' + yv(0) + 'Z" fill="' + s.color + '"' + (s.opacity ? ' opacity="' + s.opacity + '"' : '') + '/>'
+          : '<path d="' + path(s.v) + '" fill="none" stroke="' + s.color + '" stroke-width="3" stroke-linejoin="round"' + (s.dash ? ' stroke-dasharray="7 6"' : '') + '/>';
+      }).join('') + ticks;
+    }
+    ids.forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    document.querySelectorAll('[data-preset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-preset').split(',');
+        ids.forEach(function (id, k) { if (v[k] === undefined) return; document.getElementById(id).value = v[k]; document.getElementById(id + '-n').value = v[k]; });
+        update();
+      });
+    });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'inflation', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+
+    function update() {
+      var s = get('s'), inf = Math.min(20, get('i')) / 100, y = Math.max(1, Math.min(60, Math.round(get('y')))), r = Math.min(20, get('r')) / 100;
+      var cash = [], placed = [];
+      for (var k = 0; k <= y; k++) { cash.push(s / Math.pow(1 + inf, k)); placed.push(s * Math.pow(1 + r, k) / Math.pow(1 + inf, k)); }
+      var real = ((1 + r) / (1 + inf) - 1) * 100;
+      document.getElementById('out-total').textContent = fmt(cash[y]);
+      document.getElementById('out-sub').textContent = 'en euros d\'aujourd\'hui, dans ' + y + ' an' + (y > 1 ? 's' : '') + ' avec ' + (inf * 100).toLocaleString('fr-FR') + ' % d\'inflation par an';
+      document.getElementById('out-need').textContent = fmt(s * Math.pow(1 + inf, y));
+      document.getElementById('out-real').textContent = (real >= 0 ? '+' : '') + real.toFixed(2).replace('.', ',') + ' %/an';
+      document.getElementById('out-placed').textContent = fmt(placed[y]);
+      draw([{ v: cash, color: 'var(--navy)' }, { v: placed, color: 'var(--green)' }], y);
+    }
+    update();
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20260930"></script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20260929"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulateur d'investissement programmé (DCA) gratuit — Kapitaro</title>
+  <meta name="description" content="Investir la même somme chaque mois : simule gratuitement ce que peut devenir ton épargne selon 3 scénarios de rendement hypothétiques, avec le détail année par année.">
+  <link rel="canonical" href="https://kapitaro.fr/simulateur-investissement-programme">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/simulateur-investissement-programme">
+  <meta property="og:title" content="Simulateur d'investissement programmé gratuit — Kapitaro">
+  <meta property="og:description" content="Un versement mensuel, une durée, trois scénarios : vois ce que peut donner un investissement régulier.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "Simulateur d'investissement programmé — Kapitaro",
+      "url": "https://kapitaro.fr/simulateur-investissement-programme",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "fr",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "C'est quoi le DCA ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Le DCA (dollar-cost averaging) consiste à investir la même somme à intervalle régulier, par exemple chaque mois, sans chercher le meilleur moment pour acheter. Cela lisse le prix d'achat moyen dans le temps."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "L'investissement programmé est-il sans risque ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Non. Il réduit le risque de tout investir au mauvais moment, mais pas le risque de baisse du placement lui-même. Un investissement en actions peut perdre de la valeur, y compris sur plusieurs années."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Quels rendements utilise le simulateur ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Trois hypothèses constantes : 2 %, 5 % et 7 % par an, avec des intérêts calculés chaque mois. Ce sont des exemples pédagogiques, pas des prévisions : les performances passées ne préjugent pas des performances futures."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Les frais et les impôts sont-ils pris en compte ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Non, les montants sont bruts. Pour voir l'effet des frais sur la durée, utilise le calculateur de l'impact des frais."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Kapitaro",
+          "item": "https://kapitaro.fr/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Simulateur d'investissement programmé",
+          "item": "https://kapitaro.fr/simulateur-investissement-programme"
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Simulateur d'investissement programmé</h1>
+      <p>Tu investis la même somme chaque mois, quoi qu'il arrive sur les marchés : vois ce que ça peut donner selon trois scénarios de rendement, prudent, équilibré et dynamique.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Exemples">
+            <button type="button" data-preset="100,20">100 €/mois, 20 ans</button>
+            <button type="button" data-preset="200,25">200 €/mois, 25 ans</button>
+            <button type="button" data-preset="50,30">50 €/mois, 30 ans</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="m">Versement mensuel</label><span class="field-val"><input type="number" id="m-n" min="10" max="20000" step="10" aria-label="Versement mensuel"><span class="unit">€</span></span></div>
+            <input type="range" id="m" min="10" max="2000" step="10" value="100">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="y">Durée</label><span class="field-val"><input type="number" id="y-n" min="1" max="60" step="1" aria-label="Durée"><span class="unit">ans</span></span></div>
+            <input type="range" id="y" min="1" max="50" step="1" value="20">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Scénario équilibré (5 %/an)</div>
+          <div class="result-total" id="out-total">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-low">—</b><span>Prudent (2 %/an)</span></div>
+            <div class="kpi gain"><b id="out-high">—</b><span>Dynamique (7 %/an)</span></div>
+            <div class="kpi"><b id="out-inv">—</b><span>Total versé</span></div>
+          </div>
+          <svg class="chart" id="chart" viewBox="0 0 520 220" role="img" aria-label="Évolution de l'épargne selon trois scénarios"></svg>
+          <div class="legend"><span><i style="background:var(--invested)"></i>Argent versé</span><span><i style="background:var(--navy)"></i>Prudent</span><span><i style="background:var(--green)"></i>Équilibré</span><span><i style="background:#0ea5e9"></i>Dynamique</span></div>
+        </div>
+      </div>
+      <details>
+        <summary>Voir le détail année par année</summary>
+        <div style="overflow-x:auto"><table><thead><tr><th>Année</th><th>Total versé</th><th>Prudent</th><th>Équilibré</th><th>Dynamique</th></tr></thead><tbody id="table"></tbody></table></div>
+      </details>
+    </div>
+
+    <article class="content">
+      <h2>C'est quoi, l'investissement programmé ?</h2>
+      <p>L'investissement programmé consiste à investir <strong>la même somme à intervalle régulier</strong>, par exemple 100 € chaque mois, sans chercher à deviner le « bon moment » pour acheter. On l'appelle aussi DCA, pour <em>dollar-cost averaging</em>. C'est une méthode simple, qui demande peu de temps et qui aide à rester régulier.</p>
+      <p>Le principe : quand les prix sont hauts, ta somme achète moins de parts ; quand ils sont bas, elle en achète davantage. Sur la durée, ton prix d'achat moyen est donc <strong>lissé</strong>.</p>
+
+      <h2>Exemple : le lissage du prix d'achat</h2>
+      <div class="example">
+        <p style="margin:0">Tu investis <strong>100 € par mois</strong> pendant 5 mois dans un placement dont le prix passe par 10 €, 8 €, 5 €, 8 € puis 10 €. Tu achètes 10, puis 12,5, puis 20, puis 12,5, puis 10 parts : <strong>65 parts pour 500 €</strong>, soit un prix moyen d'environ <strong>7,69 €</strong>, plus bas que la moyenne des prix (8,20 €). Exemple fictif : si le prix n'était pas remonté, tu serais en perte.</p>
+      </div>
+
+      <h2>Combien peut rapporter 100 € par mois pendant 20 ans ?</h2>
+      <p>Avec 100 € par mois pendant 20 ans, tu verses <strong>24 000 €</strong>. Avec un rendement moyen hypothétique de 2 % par an, tu obtiendrais environ <strong>29 500 €</strong> ; à 5 %, environ <strong>41 100 €</strong> ; à 7 %, environ <strong>52 100 €</strong>. Ces rendements ne sont pas garantis : un placement en actions peut connaître des années de baisse, parfois fortes.</p>
+      <p>La durée pèse lourd : 200 € par mois pendant 25 ans (60 000 € versés) donnent environ 77 800 € à 2 %, 119 100 € à 5 % et 162 000 € à 7 %, toujours de façon hypothétique.</p>
+
+      <h2>Les limites de l'investissement programmé</h2>
+      <p>Investir régulièrement <strong>ne supprime pas le risque</strong> : si le placement baisse durablement, ton capital baisse aussi. La méthode aide surtout à garder de la discipline et à éviter d'investir toute une somme juste avant une baisse. Avant de commencer, garde une <a href="/epargne-de-precaution">épargne de précaution</a> disponible et choisis une durée cohérente avec tes projets.</p>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>C'est quoi le DCA ?</h3>
+        <p>Le DCA (<em>dollar-cost averaging</em>) consiste à investir la même somme à intervalle régulier, par exemple chaque mois, sans chercher le meilleur moment pour acheter. Cela lisse le prix d'achat moyen dans le temps.</p>
+        <h3>L'investissement programmé est-il sans risque ?</h3>
+        <p>Non. Il réduit le risque de tout investir au mauvais moment, mais pas le risque de baisse du placement lui-même. Un investissement en actions peut perdre de la valeur, y compris sur plusieurs années.</p>
+        <h3>Quels rendements utilise le simulateur ?</h3>
+        <p>Trois hypothèses constantes : 2 %, 5 % et 7 % par an, avec des intérêts calculés chaque mois. Ce sont des exemples pédagogiques, pas des prévisions : les performances passées ne préjugent pas des performances futures.</p>
+        <h3>Les frais et les impôts sont-ils pris en compte ?</h3>
+        <p>Non, les montants sont bruts. Pour voir l'effet des frais sur la durée, utilise le <a href="/calculateur-frais-placement">calculateur de l'impact des frais</a>.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Suis tes versements dans ton vrai portefeuille</h2>
+      <p>Suis tes placements, fixe-toi un objectif et pose tes questions à un assistant IA. Gratuit pour commencer.</p>
+      <a href="/" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+
+    <section class="others">
+      <h2>Autres outils gratuits</h2>
+      <a href="/simulateur-interets-composes"><div>Simulateur d'intérêts composés<span>Ce que devient ton épargne avec le temps</span></div>›</a>
+      <a href="/calculateur-frais-placement"><div>Calculateur de l'impact des frais<span>Ce que les frais te coûtent sur 10, 20 ou 30 ans</span></div>›</a>
+      <a href="/calculateur-inflation"><div>Calculateur d'inflation<span>Ce que valent tes euros dans le temps</span></div>›</a>
+      <a href="/calculateur-objectif-epargne"><div>Calculateur d'objectif d'épargne<span>Combien mettre de côté chaque mois pour atteindre ton objectif</span></div>›</a>
+      <a href="/rendement-etf-msci-world"><div>Combien rapporte un ETF MSCI World<span>3 scénarios et l'effet des frais</span></div>›</a>
+      <a href="/epargne-de-precaution"><div>Calculateur d'épargne de précaution<span>Combien garder de côté avant d'investir</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Simulation indicative à but pédagogique, basée sur des rendements constants hypothétiques. Elle ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital ; les performances passées ne préjugent pas des performances futures.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a><br><a href="/mentions-legales">Mentions légales</a> · <a href="/cgu">CGU / CGV</a> · <a href="/confidentialite">Confidentialité</a> · <a href="/risques">Risques</a> · <a href="/faq">FAQ</a> · <a href="/blog">Blog</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var ids = ["m","y"];
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+    var fv = function (c, m, years, rPct) { var i = rPct / 100 / 12, cap = c, out = [c]; for (var y = 1; y <= years; y++) { for (var k = 0; k < 12; k++) cap = cap * (1 + i) + m; out.push(cap); } return out; };
+    // Graphique : plusieurs séries (valeurs par année), même échelle, étiquettes d'années
+    function draw(series, years) {
+      var svg = document.getElementById('chart'), W = 520, H = 220, L = 8, Rr = 8, T = 10, B = 24;
+      var max = 1; series.forEach(function (s) { s.v.forEach(function (x) { if (x > max) max = x; }); });
+      var x = function (k) { return L + (W - L - Rr) * k / (years || 1); };
+      var yv = function (v) { return T + (H - T - B) * (1 - v / max); };
+      var path = function (v) { return v.map(function (p, k) { return (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + yv(p).toFixed(1); }).join(''); };
+      var step = Math.max(1, Math.ceil(years / 5)), ticks = '', marks = [];
+      for (var k = 0; k < years; k += step) if (years - k >= step / 2) marks.push(k);
+      marks.push(years);
+      marks.forEach(function (k) {
+        var anchor = k === 0 ? 'start' : (k === years ? 'end' : 'middle');
+        ticks += '<text x="' + x(k).toFixed(1) + '" y="' + (H - 6) + '" font-size="15" text-anchor="' + anchor + '" fill="var(--faint)">' + (k ? k + ' an' + (k > 1 ? 's' : '') : 'Auj.') + '</text>';
+      });
+      svg.innerHTML = series.map(function (s) {
+        return s.area ? '<path d="' + path(s.v) + 'L' + x(years).toFixed(1) + ',' + yv(0) + 'L' + x(0).toFixed(1) + ',' + yv(0) + 'Z" fill="' + s.color + '"' + (s.opacity ? ' opacity="' + s.opacity + '"' : '') + '/>'
+          : '<path d="' + path(s.v) + '" fill="none" stroke="' + s.color + '" stroke-width="3" stroke-linejoin="round"' + (s.dash ? ' stroke-dasharray="7 6"' : '') + '/>';
+      }).join('') + ticks;
+    }
+    ids.forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    document.querySelectorAll('[data-preset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-preset').split(',');
+        ids.forEach(function (id, k) { if (v[k] === undefined) return; document.getElementById(id).value = v[k]; document.getElementById(id + '-n').value = v[k]; });
+        update();
+      });
+    });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'investissement-programme', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+
+    function update() {
+      var m = get('m'), y = Math.max(1, Math.min(60, Math.round(get('y'))));
+      var low = fv(0, m, y, 2), mid = fv(0, m, y, 5), high = fv(0, m, y, 7), inv = [];
+      for (var k = 0; k <= y; k++) inv.push(m * 12 * k);
+      document.getElementById('out-total').textContent = fmt(mid[y]);
+      document.getElementById('out-sub').textContent = 'après ' + y + ' an' + (y > 1 ? 's' : '') + ' de versements de ' + fmt(m) + ' par mois';
+      document.getElementById('out-low').textContent = fmt(low[y]);
+      document.getElementById('out-high').textContent = fmt(high[y]);
+      document.getElementById('out-inv').textContent = fmt(inv[y]);
+      var rows = ''; for (var i = 1; i <= y; i++) rows += '<tr><td>' + i + '</td><td>' + fmt(inv[i]) + '</td><td>' + fmt(low[i]) + '</td><td><strong>' + fmt(mid[i]) + '</strong></td><td>' + fmt(high[i]) + '</td></tr>';
+      document.getElementById('table').innerHTML = rows;
+      draw([{ v: inv, color: 'var(--invested)', area: true }, { v: low, color: 'var(--navy)' }, { v: mid, color: 'var(--green)' }, { v: high, color: '#0ea5e9', dash: true }], y);
+    }
+    update();
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20260930"></script>
+</body>
+</html>
