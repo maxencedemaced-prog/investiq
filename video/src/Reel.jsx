@@ -244,6 +244,31 @@ const Captions = ({ b }) => {
   </div>;
 };
 
+// ── Style « vidéo réelle » : plan filmé plein écran, texte en surimpression, coupes franches ──
+const RealScene = ({ b }) => {
+  const f = useCurrentFrame(), last = b.i === beats.length - 1;
+  const o = Math.min(io(f, 0, 4, 0, 1), last ? 1 : io(f, b.dur - 3, b.dur, 1, 0));
+  const lines = b.lines && b.lines.length ? b.lines : [];
+  const size = lines.length ? fitSize(lines, 110) : 100;
+  const p = io(f, 3, 16, 0, 1);
+  return <AbsoluteFill style={{ opacity: o }}>
+    {b.broll_file && <AbsoluteFill>
+      <OffthreadVideo src={staticFile(b.broll_file)} muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${1.12 - f * 0.0009})` }} />
+      <AbsoluteFill style={{ background: b.v === 'cta'
+        ? 'rgba(6,11,24,.68)'
+        : 'linear-gradient(180deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.05) 22%, rgba(0,0,0,.08) 45%, rgba(0,0,0,.55) 68%, rgba(0,0,0,.85) 100%)' }} />
+    </AbsoluteFill>}
+    {b.v === 'cta' ? <Cta b={b} /> : <>
+      {b.v === 'number' && <div style={{ position: 'absolute', top: 820, left: 40, right: 40, textAlign: 'center', fontSize: Math.min(230, Math.floor(950 / (String(b.value).length * 0.6))), fontWeight: 800, color: '#fff', letterSpacing: -6, opacity: p, transform: `translateY(${(1 - p) * 30}px)`, textShadow: '0 10px 40px rgba(0,0,0,.5)' }}>{b.value}</div>}
+      {lines.length > 0 && <div style={{ position: 'absolute', top: b.v === 'number' ? 1090 : 1030, left: 50, right: 50, textAlign: 'center' }}>
+        {lines.map((l, k) => { const q = io(f, 3 + k * 4, 16 + k * 4, 0, 1); return <div key={k} style={{ fontSize: b.v === 'number' ? Math.min(size, 64) : size, fontWeight: 800, lineHeight: 1.08, letterSpacing: -size * 0.03, color: '#fff', whiteSpace: 'nowrap', opacity: q, transform: `translateY(${(1 - q) * 24}px)`, textShadow: '0 6px 30px rgba(0,0,0,.55)' }}><Accent text={l} /></div>; })}
+      </div>}
+      {b.v === 'number' && b.sub && <div style={{ position: 'absolute', top: 1190, left: 80, right: 80, textAlign: 'center', color: 'rgba(255,255,255,.85)', fontSize: 40, fontWeight: 600, opacity: p, textShadow: '0 4px 20px rgba(0,0,0,.6)' }}>{String(b.sub).replace(/\*/g, '')}</div>}
+    </>}
+    <Captions b={b} />
+  </AbsoluteFill>;
+};
+
 const Scene = ({ b }) => {
   const f = useCurrentFrame(), last = b.i === beats.length - 1;
   const inP = io(f, 0, 8, 0, 1), outP = last ? 1 : io(f, b.dur - 5, b.dur, 1, 0, Easing.in(Easing.cubic));
@@ -280,8 +305,8 @@ const Header = () => {
 
 export const Reel = () => (
   <AbsoluteFill style={{ fontFamily, background: C.bg }}>
-    <Background />
-    {beats.map(b => <Sequence key={b.i} from={b.from} durationInFrames={b.dur}><Scene b={b} /></Sequence>)}
+    {data.style !== 'real' && <Background />}
+    {beats.map(b => <Sequence key={b.i} from={b.from} durationInFrames={b.dur}>{data.style === 'real' ? <RealScene b={b} /> : <Scene b={b} />}</Sequence>)}
     {(data.segments || []).map((s, k) => <Sequence key={'v' + k} from={Math.round(s.start * FPS)}><Audio src={staticFile(s.file)} /></Sequence>)}
     {data.musicFile && <Audio src={staticFile(data.musicFile)} volume={f => interpolate(f, [0, 15, totalFrames - 45, totalFrames], [0, 0.1, 0.1, 0], clamp)} />}
     <Header />

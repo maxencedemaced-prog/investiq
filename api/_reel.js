@@ -49,6 +49,25 @@ Types :
 Varie les types : jamais deux fois de suite le même type (sauf les scènes chart).
 "broll" facultatif (2 à 4 mots EN ANGLAIS) : vidéo réelle en fond de scène, pour la 1re scène et au plus 2 autres scènes de type hook, title, quote ou number. Décris une image concrète et neutre liée au propos (ex. « city skyline night », « person using phone banking », « coins stack close up », « stock market screen », « calendar planning desk »). Pas de marque, pas de personne en détresse. "icon" facultatif (au plus une scène sur trois) parmi : ${ICONS.join(', ')}.`;
 
+// Style « vidéo réelle » : uniquement des plans filmés (banque de vidéos), texte court en surimpression
+export const REEL_SYSTEM_REAL = `Tu es le réalisateur des vidéos courtes (Reels Instagram, TikTok) de Kapitaro, une app française qui aide les particuliers à suivre et comprendre leurs placements.
+Tu transformes un post en script de VIDÉO RÉELLE de 20 à 30 secondes : chaque scène est un vrai plan filmé (banque de vidéos), avec une voix off et un texte très court en surimpression. Aucune animation, aucun graphique dessiné. Ton : posé, élégant, qui donne envie de prendre son épargne en main, en tutoyant.
+
+RÈGLES ABSOLUES (réglementation AMF) :
+- Contenu éducatif uniquement. Jamais de conseil personnalisé, jamais de recommandation d'acheter ou de vendre un titre, un fonds ou une crypto précis.
+- Aucune prédiction, aucune promesse de gain, aucun rendement garanti : tout rendement est « hypothétique ». Rappelle le risque de perte en une phrase quand la vidéo parle d'investir.
+- N'utilise que les chiffres présents dans le post ou dans les faits vérifiés fournis. N'invente rien.
+- Jamais de promesse d'enrichissement : pas d'images d'argent facile ni de luxe tape-à-l'œil (voitures de sport, yachts, liasses de billets, jets). Montre plutôt des projets de vie sereins et soignés.
+- Émotions permises : légère frustration ou hésitation face à ses comptes, puis sérénité. Jamais de panique ni de peur.
+
+FORMAT : réponds UNIQUEMENT avec un tableau JSON de 7 à 10 scènes, sans texte autour. 45 à 75 mots au total dans les champs "say".
+Chaque scène : {"v": "shot" | "number" | "cta", "say": "phrase dite par la voix", "lines": ["texte à l'écran"], "broll": "plan filmé"}
+- "say" : UNE phrase courte (3 à 14 mots), naturelle à l'oral. Écris les nombres EN LETTRES.
+- "lines" : 1 ou 2 lignes très courtes (2 à 18 caractères chacune) qui résument la phrase. Entoure 1 mot clé d'astérisques (*mot*).
+- "broll" (obligatoire, 3 à 6 mots EN ANGLAIS) : un plan concret et filmable, tous différents d'une scène à l'autre. Exemples : « stock market chart screen », « trader monitors financial data », « business district skyscrapers », « woman checking banking app », « frustrated man looking at bills », « couple planning budget at table », « calm woman working laptop cafe », « coins stack close up », « sunny modern apartment interior », « family walking beach sunset », « elegant watch businessman city ».
+- "number" : un chiffre marquant en surimpression. Champs en plus : "value" (max 10 car., uniquement des faits vérifiés ou du post), "sub" (max 40 car.).
+- "cta" : toujours la dernière scène, "say" invite à essayer gratuitement Kapitaro (lien en bio), "broll" montre une personne sereine avec son téléphone.`;
+
 const DUO_RULE = `
 MODE DUO : ajoute à chaque scène "voice": 0 ou 1. La voix 1 accroche et relance (questions, réactions courtes), la voix 0 explique. La 1re scène est en voix 1, la conclusion en voix 0, et chaque voix parle au moins 3 fois.`;
 
@@ -87,8 +106,27 @@ function cleanBeat(b, post, duo) {
 }
 
 // Script de la vidéo à partir du post (l'IA ne voit que le contenu du post et les faits vérifiés)
-export async function writeReelScript({ post, duo, askClaude, facts }) {
+const REAL_FALLBACK = ['business district skyscrapers', 'stock market chart screen', 'woman checking banking app', 'calm man working laptop', 'coins stack close up', 'city street evening lights'];
+function cleanBeatReal(b, duo, i) {
+  if (!b || !['shot', 'number', 'cta'].includes(b.v) || !/[\p{L}\p{N}]/u.test(b.say || '')) return null;
+  const o = { v: b.v, say: clip(b.say, 180).replace(/\s+/g, ' ') };
+  o.lines = (Array.isArray(b.lines) ? b.lines : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 2).map(x => clip(x, 22));
+  const q = typeof b.broll === 'string' ? b.broll.replace(/[^A-Za-z ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) : '';
+  o.broll = q.length > 2 ? q : REAL_FALLBACK[i % REAL_FALLBACK.length];
+  if (o.v === 'number') { o.value = clip(String(b.value || ''), 14); if (b.sub) o.sub = clip(b.sub, 60); if (!/\d/.test(o.value)) { o.v = 'shot'; delete o.value; } }
+  if (duo) o.voice = b.voice === 1 ? 1 : 0;
+  return o;
+}
+
+export async function writeReelScript({ post, duo, askClaude, facts, style }) {
   const content = JSON.stringify({ titre: post.title, diapositives: post.slides, legende: post.caption });
+  if (style === 'real') {
+    const arr = await askClaude(`Transforme ce post en script de vidéo réelle :\n${content}\n\nFaits vérifiés utilisables :\n${facts}${duo ? DUO_RULE : ''}`, REEL_SYSTEM_REAL + (duo ? DUO_RULE : ''));
+    const beats = arr.map((b, i) => cleanBeatReal(b, duo, i)).filter(Boolean).slice(0, 12);
+    if (beats.length < 4) throw new Error('Script vidéo inexploitable, réessaie');
+    if (beats[beats.length - 1].v !== 'cta') beats.push({ v: 'cta', say: 'Simule ton projet gratuitement sur Kapitaro, lien en bio.', lines: ['Simule', 'ton *projet*'], broll: 'smiling woman using smartphone', ...(duo ? { voice: 0 } : {}) });
+    return beats;
+  }
   const arr = await askClaude(`Transforme ce post en script de vidéo animée :\n${content}\n\nFaits vérifiés utilisables :\n${facts}${duo ? DUO_RULE : ''}`, REEL_SYSTEM + (duo ? DUO_RULE : ''));
   const beats = arr.map(b => cleanBeat(b, post, duo)).filter(Boolean).slice(0, 14);
   let brolls = 0; beats.forEach(b => { if (b.broll && ++brolls > 3) delete b.broll; });

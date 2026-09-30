@@ -355,9 +355,10 @@ export default async function handler(req, res) {
       if (b.action === 'reel-create') {
         const voices = reelVoices(), duo = b.voice === 'duo' && voices.length > 1;
         const pick = duo ? voices.slice(0, 2) : [voices[Math.min(Math.max(parseInt(b.voice, 10) || 0, 0), voices.length - 1)]];
-        const beats = await writeReelScript({ post, duo, askClaude, facts: verifiedFacts() });
+        const style = b.style === 'real' ? 'real' : 'motion';
+        const beats = await writeReelScript({ post, duo, askClaude, facts: verifiedFacts(), style });
         const segments = pick[0].id ? await voiceOver({ beats, voices: pick, sb, id: post.id }) : [];
-        script = { v: 1, voice: pick.map(v => v.name).join(' + '), beats, segments, edge_voices: pick[0].id ? undefined : pick.map(v => v.edge), created_at: new Date().toISOString() };
+        script = { v: 1, style, voice: pick.map(v => v.name).join(' + '), beats, segments, edge_voices: pick[0].id ? undefined : pick.map(v => v.edge), created_at: new Date().toISOString() };
       } else if (!Array.isArray(script.beats) || !script.beats.length) return res.status(400).json({ error: "Aucun script vidéo : crée d'abord la vidéo animée" });
       let status = 'queued', err = null;
       try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }

@@ -88,6 +88,11 @@
 <dialog id="dlg-reel" style="max-width:440px">
   <h3 style="margin:0 0 6px">🎞 Vidéo animée</h3>
   <p class="sub" style="margin:0 0 12px">L'IA écrit le script à partir du post, la voix le lit, puis la vidéo est fabriquée automatiquement (≈ 3 min). Elle apparaît ensuite sur le post, prête à publier en Reel.</p>
+  <label>Style</label>
+  <select id="reel-style" style="width:100%;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px;margin-bottom:10px">
+    <option value="real">🎬 Vidéo réelle : vrais plans filmés tout du long</option>
+    <option value="motion">📊 Animé sobre : graphiques, chiffres, étapes</option>
+  </select>
   <label>Voix</label>
   <select id="reel-voice" style="width:100%;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select>
   <p class="sub" id="reel-info" style="margin:10px 0 0"></p>
@@ -267,7 +272,7 @@ async function createReel(again) {
   var btn = document.getElementById(again ? 'btn-reel-again' : 'btn-reel'), label = btn.textContent;
   btn.disabled = true; btn.textContent = again ? 'Relance…' : 'Script et voix (≈ 1 min)…';
   try {
-    var d = await api('POST', again ? { action: 'reel-render', id: REEL_ID } : { action: 'reel-create', id: REEL_ID, voice: document.getElementById('reel-voice').value });
+    var d = await api('POST', again ? { action: 'reel-render', id: REEL_ID } : { action: 'reel-create', id: REEL_ID, voice: document.getElementById('reel-voice').value, style: document.getElementById('reel-style').value });
     Object.assign(findPost(REEL_ID), d.post);
     document.getElementById('dlg-reel').close();
     render();
@@ -287,7 +292,7 @@ function reelStatus(p) {
     ? '<span style="color:#fca5a5">⚠️ La vidéo animée n\'est pas arrivée après 20 min : relance-la avec 🎞 Vidéo animée.</span>'
     : '⏳ Vidéo animée en fabrication' + (s.status === 'rendering' ? ' (rendu en cours)' : '') + '… ≈ 5 min, pas besoin de rester sur la page';
   else if (s.status === 'error') line = '<span style="color:#fca5a5">⚠️ Vidéo animée : ' + esc(s.error || 'échec') + '</span>';
-  else if (s.status === 'done') line = '🎞 Vidéo animée prête' + (s.voice ? ' · voix ' + esc(s.voice) : '');
+  else if (s.status === 'done') line = '🎞 Vidéo prête' + (s.style === 'real' ? ' (vidéo réelle)' : ' (animé sobre)') + (s.voice ? ' · voix ' + esc(s.voice) : '');
   return line ? '<div class="sub" style="margin-top:8px">' + line + '</div>' : '';
 }
 // Suivi automatique : toutes les 20 s tant qu'une vidéo est en fabrication (réaffiche seulement si un état change)
