@@ -66,6 +66,8 @@ const LEGAL_DOCS = {
 <p><strong>Reconduction :</strong> l'abonnement est reconduit tacitement à l'identique (mensuellement ou annuellement selon la formule choisie) jusqu'à résiliation. Celle-ci peut intervenir à tout moment depuis les paramètres du compte et prend effet à la fin de la période en cours.</p>
 <p><strong>Droit de rétractation :</strong> conformément aux articles L. 221-18 et suivants du Code de la consommation, l'utilisateur dispose d'un délai de quatorze (14) jours pour se rétracter. En demandant l'accès immédiat au service, il accepte de commencer à en bénéficier avant la fin de ce délai ; il reste redevable du montant correspondant à la période consommée.</p>
 
+<p><strong>Parrainage :</strong> chaque utilisateur dispose d'un lien de parrainage personnel. La personne qui crée son compte avec ce lien (filleul) bénéficie de 50 % de réduction sur la première mensualité de l'abonnement Premium mensuel, si elle n'a jamais été abonnée. Lorsque le filleul a réglé cette première mensualité, le parrain reçoit un mois offert : un avoir de 9,99 € sur sa prochaine facture s'il est abonné, ou 30 jours d'accès Premium sinon. Le parrainage de soi-même est interdit ; les récompenses sont limitées à douze par an et par parrain, n'ont pas de valeur monétaire et ne sont ni remboursables ni cessibles. Kapitaro peut annuler une récompense obtenue de manière abusive.</p>
+
 <h3>Article 5 — Données de marché</h3>
 <p>Les cours affichés proviennent de fournisseurs tiers, peuvent être différés et sont communiqués à titre indicatif. L'éditeur ne garantit ni leur exactitude, ni leur exhaustivité, ni leur disponibilité continue.</p>
 

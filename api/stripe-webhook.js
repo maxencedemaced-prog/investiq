@@ -2,6 +2,7 @@
 // Gère : souscription, renouvellement, échec de paiement, résiliation.
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { renderEmail, sendEmail } from './_email.js';
 
 // Vercel doit fournir le corps brut pour valider la signature Stripe
 export const config = { api: { bodyParser: false } };
@@ -87,6 +88,44 @@ async function setPremium(userId, { active, until, customerId, subscriptionId, s
   return !error;
 }
 
+// Parrainage : au 1er paiement réel du filleul, le parrain gagne 1 mois (avoir Stripe s'il est abonné, sinon 30 jours de Premium offerts)
+const REFERRAL_CREDIT_CENTS = 999, MAX_REWARDS_PER_YEAR = 12;
+async function rewardReferrer(refereeId, invoice) {
+  if (!invoice || !(invoice.amount_paid > 0)) return;
+  const { data: ref } = await supabase.from('referrals').select('id, referrer_id, paid_at').eq('referee_id', refereeId).is('rewarded_at', null).maybeSingle();
+  if (!ref) return;
+  // Verrou : une seule récompense même si Stripe renvoie l'événement plusieurs fois
+  const { data: locked } = await supabase.from('referrals').update({ rewarded_at: new Date().toISOString(), paid_at: ref.paid_at || new Date().toISOString(), reward: 'en_cours' })
+    .eq('id', ref.id).is('rewarded_at', null).select().maybeSingle();
+  if (!locked) return;
+  const { count } = await supabase.from('referrals').select('id', { count: 'exact', head: true }).eq('referrer_id', ref.referrer_id)
+    .in('reward', ['credit', 'gift']).gte('rewarded_at', new Date(Date.now() - 365 * 86400000).toISOString());
+  if ((count || 0) >= MAX_REWARDS_PER_YEAR) { await supabase.from('referrals').update({ reward: 'plafond' }).eq('id', ref.id); return; }
+  const { data: p } = await supabase.from('profiles').select('stripe_customer_id, subscription_status, premium_until, email').eq('id', ref.referrer_id).maybeSingle();
+  let reward;
+  if (p?.stripe_customer_id && ['active', 'past_due', 'cancel_at_period_end', 'trialing'].includes(p.subscription_status)) {
+    await stripe.customers.createBalanceTransaction(p.stripe_customer_id, { amount: -REFERRAL_CREDIT_CENTS, currency: 'eur', description: 'Parrainage : 1 mois offert' });
+    reward = 'credit';
+  } else {
+    const base = Math.max(Date.now(), p?.premium_until ? new Date(p.premium_until).getTime() : 0);
+    await supabase.from('profiles').update({ is_premium: true, premium_until: new Date(base + 30 * 86400000).toISOString(), subscription_status: 'gift' }).eq('id', ref.referrer_id);
+    reward = 'gift';
+  }
+  await supabase.from('referrals').update({ reward }).eq('id', ref.id);
+  await logEvent(ref.referrer_id, 'referral_reward', { reward, referee: refereeId });
+  // Petit e-mail au parrain (jamais bloquant)
+  try {
+    const { data: au } = await supabase.auth.admin.getUserById(ref.referrer_id);
+    const to = au?.user?.email;
+    if (to) {
+      const e = renderEmail({ title: 'Merci : 1 mois offert 🎁', userId: ref.referrer_id,
+        paragraphs: ['Un ami que tu as invité vient de s\'abonner à Kapitaro Premium.', reward === 'credit' ? 'Pour te remercier, **9,99 € seront déduits de ta prochaine facture**, automatiquement.' : 'Pour te remercier, **tu as 1 mois de Premium offert**, déjà actif sur ton compte.', 'Continue de partager ton lien depuis Paramètres → Parrainage : chaque ami qui s\'abonne te fait gagner un mois.'],
+        cta: { label: 'Ouvrir Kapitaro', url: 'https://kapitaro.fr' } });
+      await sendEmail({ to, subject: 'Tu as gagné 1 mois Kapitaro Premium 🎁', html: e.html, text: e.text, unsub: e.unsub });
+    }
+  } catch (e) { console.warn('[webhook] e-mail parrain :', e.message); }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -144,6 +183,8 @@ export default async function handler(req, res) {
           status: sub.status, plan: planFromSub(sub),
           customerId: sub.customer, subscriptionId: sub.id,
         });
+        // Parrainage : récompense au 1er paiement réel du filleul (jamais bloquant pour l'abonnement)
+        try { await rewardReferrer(userId, event.data.object); } catch (e) { console.error('[webhook] parrainage :', e.message); }
         // La 1re facture est déjà comptée par premium_activated : seuls les vrais renouvellements sont suivis ici
         if (event.data.object.billing_reason === 'subscription_cycle') {
           await logEvent(userId, 'subscription_renewed', { plan: planFromSub(sub), amount: (event.data.object.amount_paid || 0) / 100, stripe_event: event.id });
