@@ -103,22 +103,34 @@ async function pexelsCandidates(q, need, key) {
     return f ? { id: 'pexels-' + v.id, url: f.link } : null;
   }).filter(Boolean);
 }
+// Plans déjà utilisés dans les 40 dernières vidéos (pour ne pas revoir les mêmes images d'une vidéo à l'autre)
+async function recentClips() {
+  const { data } = await sb.from('social_posts').select('video_script').not('video_script', 'is', null).neq('id', ID).order('created_at', { ascending: false }).limit(40);
+  return new Set((data || []).flatMap(p => (p.video_script && Array.isArray(p.video_script.clips)) ? p.video_script.clips : []));
+}
+const shuffleArr = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
+
 async function fetchBroll(beats) {
   const pixabay = (process.env.PIXABAY_API_KEY || '').trim(), pexels = (process.env.PEXELS_API_KEY || '').trim();
-  if (!pixabay && !pexels) return;
-  const used = new Set();
+  if (!pixabay && !pexels) return [];
+  const used = new Set(), recent = await recentClips();
   for (let i = 0; i < beats.length; i++) {
     const queries = Array.isArray(beats[i].broll_queries) && beats[i].broll_queries.length ? beats[i].broll_queries : (beats[i].broll ? [beats[i].broll] : []);
     if (!queries.length) continue;
     const q = queries.join(' / ');
     try {
       const need = beats[i].end - beats[i].start;
-      let list = [];
-      for (const one of queries) {
-        list = (pixabay ? await pixabayCandidates(one, need, pixabay) : await pexelsCandidates(one, need, pexels)).filter(x => !used.has(x.id));
-        if (list.length) break;
+      // Les recherches du thème dans un ordre au hasard, jusqu'à avoir un bon choix de plans
+      let pool = [];
+      for (const one of shuffleArr(queries)) {
+        const found = (pixabay ? await pixabayCandidates(one, need, pixabay) : await pexelsCandidates(one, need, pexels)).filter(x => !used.has(x.id) && !pool.some(p => p.id === x.id));
+        pool.push(...found.slice(0, 10));
+        if (pool.filter(x => !recent.has(x.id)).length >= 6) break;
       }
-      for (const c of list.filter(x => !used.has(x.id))) {
+      // Priorité aux plans jamais vus récemment, tirés au hasard parmi les plus pertinents
+      const fresh = pool.filter(x => !recent.has(x.id)).sort((a, b) => (a.score || 0) - (b.score || 0)).slice(0, 8);
+      const list = shuffleArr(fresh.length ? fresh : pool.slice(0, 8));
+      for (const c of list) {
         const res = await fetch(c.url);
         if (!res.ok) continue;
         const file = `broll-${i}.mp4`;
@@ -129,6 +141,7 @@ async function fetchBroll(beats) {
       }
     } catch (e) { console.warn('Vidéo d\'illustration :', e.message); }
   }
+  return [...used];
 }
 
 async function main() {
@@ -156,8 +169,8 @@ async function main() {
 
   const total = beats[beats.length - 1].end + 1.5;
   const musicFile = script.music === false ? null : pickMusic(total);
-  if (script.style === 'real') await fetchBroll(beats);
-  else beats.forEach(b => { delete b.broll; delete b.broll_file; });
+  const clips = script.style === 'real' ? await fetchBroll(beats) : [];
+  if (script.style !== 'real') beats.forEach(b => { delete b.broll; delete b.broll_file; });
   if (script.style === 'real') {
     // Plan manquant : on réutilise le plan précédent (ou suivant) plutôt que de casser le style
     beats.forEach((b, i) => { if (!b.broll_file) b.broll_file = (beats.slice(0, i).reverse().find(x => x.broll_file) || beats.find(x => x.broll_file) || {}).broll_file; });
@@ -174,7 +187,7 @@ async function main() {
   const { data: cur } = await sb.from('social_posts').select('video_script').eq('id', ID).single();
   const { error: e2 } = await sb.from('social_posts').update({
     video_url: pub.publicUrl,
-    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
+    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', clips, done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
   }).eq('id', ID);
   if (e2) throw e2;
   console.log('Vidéo prête :', pub.publicUrl, (buf.length / 1e6).toFixed(1) + ' Mo');

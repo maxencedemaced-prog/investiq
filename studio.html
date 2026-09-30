@@ -69,6 +69,7 @@
     <button class="tab on" data-f="draft" onclick="setFilter('draft')">À valider</button>
     <button class="tab" data-f="approved" onclick="setFilter('approved')">Validés</button>
     <button class="tab" data-f="published" onclick="setFilter('published')">Publiés</button>
+    <button class="tab" data-f="calendar" onclick="setFilter('calendar')">📅 Planning</button>
   </div>
   <div id="list"><div class="empty">Chargement…</div></div>
 </div>
@@ -159,8 +160,42 @@ function toLocalInput(iso) {
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
+// ── Planning : ce qui part et quand, jour par jour (2 jours passés → 3 semaines à venir) ──
+var DAY_FR = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+function renderCalendar() {
+  var list = document.getElementById('list'), now = Date.now();
+  var items = POSTS.filter(function (p) { var t = Date.parse(p.status === 'published' && p.published_at ? p.published_at : p.scheduled_at); return t && t > now - 2 * 86400000 && t < now + 21 * 86400000; })
+    .map(function (p) { return { p: p, t: Date.parse(p.status === 'published' && p.published_at ? p.published_at : p.scheduled_at) }; })
+    .sort(function (a, b) { return a.t - b.t; });
+  if (!items.length) { list.innerHTML = '<div class="empty">Rien de programmé pour les 3 prochaines semaines.</div>'; return; }
+  var html = '', lastDay = '';
+  items.forEach(function (it) {
+    var d = new Date(it.t), key = d.toDateString(), p = it.p, s = p.video_script || {};
+    if (key !== lastDay) {
+      lastDay = key;
+      var today = key === new Date().toDateString();
+      html += '<div style="margin:18px 0 8px;font-weight:800;font-size:14px;color:' + (today ? '#24e898' : '#e5e7eb') + '">' + (today ? 'Aujourd\'hui · ' : '') + DAY_FR[d.getDay()] + ' ' + d.getDate() + ' ' + d.toLocaleString('fr-FR', { month: 'long' }) + '</div>';
+    }
+    var isReel = p.format === 'reel' && p.video_url, video = s.status === 'done' ? (isReel ? '🎞 Reel validé' : '👀 vidéo à valider') : s.status === 'planned' || s.status === 'queued' || s.status === 'rendering' ? '⏳ vidéo en préparation' : s.status === 'error' ? '⚠️ vidéo en erreur' : '';
+    var st = p.status === 'published' ? ['Publié', '#14532d', '#86efac'] : p.status === 'approved' || p.status === 'publishing' ? ['Validé', '#1e3a5f', '#93c5fd'] : ['À valider', '#422006', '#fcd34d'];
+    html += '<div onclick="goToPost(\'' + p.id + '\')" style="display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer">' +
+      '<div style="width:52px;font-weight:800;font-size:14px">' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + '</div>' +
+      '<div style="width:26px;font-size:18px" title="' + (isReel ? 'Reel' : 'Carrousel') + '">' + (isReel || s.status ? '🎞' : '🖼') + '</div>' +
+      '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.title) + (p.kind === 'actu' ? ' <span class="badge">ACTU</span>' : '') + '</div>' +
+      (video ? '<div class="sub" style="margin-top:2px">' + video + '</div>' : '') + '</div>' +
+      '<span style="font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:' + st[1] + ';color:' + st[2] + ';white-space:nowrap">' + st[0] + '</span></div>';
+  });
+  list.innerHTML = '<div class="sub" style="margin-bottom:4px">Clique sur un post pour l\'ouvrir. Seuls les posts « Validé » partent automatiquement.</div>' + html;
+}
+function goToPost(id) {
+  var p = findPost(id);
+  setFilter(p.status === 'published' ? 'published' : p.status === 'draft' ? 'draft' : 'approved');
+  setTimeout(function () { var el = document.getElementById('post-' + id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+}
+
 function render() {
   var list = document.getElementById('list');
+  if (FILTER === 'calendar') { renderCalendar(); return; }
   var items = POSTS.filter(function (p) { return p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing'); });
   // À valider : les posts les plus récents en haut (Validés et Publiés gardent l'ordre des dates de publication)
   if (FILTER === 'draft') items.sort(function (x, y) { return String(y.created_at || '').localeCompare(String(x.created_at || '')); });
