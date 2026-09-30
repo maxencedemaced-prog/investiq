@@ -1,6 +1,7 @@
 // api/_reel.js — Vidéos animées (Reels) : script écrit par l'IA à partir d'un post, voix off, lancement du rendu sur GitHub Actions.
 // Module interne (le « _ » empêche Vercel d'en faire une route) utilisé par api/social.js.
-// Variables Vercel : ELEVENLABS_API_KEY (facultatif, voix naturelles), ELEVENLABS_VOICES « Nom:voiceId,Nom2:voiceId2 »,
+// Variables Vercel : ELEVENLABS_API_KEY (facultatif, voix naturelles : les voix de « Mes voix » sont retrouvées automatiquement),
+// ELEVENLABS_VOICES (facultatif) : ordre des voix, par noms ou « Nom:voiceId », séparés par des virgules (1re = voix par défaut, 2 premières = duo),
 // ELEVENLABS_MODEL (défaut eleven_v4, puis v3 et multilingual v2 en secours), GITHUB_DISPATCH_TOKEN (jeton GitHub « Actions : lecture et écriture » sur le dépôt), GITHUB_REPO.
 
 const clip = (s, n) => (typeof s === 'string' ? s.trim().slice(0, n) : '');
@@ -10,14 +11,29 @@ const RATE_WORDS = { 3: 'trois', 5: 'cinq', 7: 'sept' };
 const EDGE_VOICES = [{ name: 'Rémy (voix gratuite)', edge: 'fr-FR-RemyMultilingualNeural' }, { name: 'Vivienne (voix gratuite)', edge: 'fr-FR-VivienneMultilingualNeural' }];
 
 // Voix disponibles : ElevenLabs si configuré, sinon les voix Microsoft gratuites
-export function reelVoices() {
-  const list = String(process.env.ELEVENLABS_VOICES || '').split(',').map(x => x.trim()).filter(Boolean)
-    .map(x => { const i = x.lastIndexOf(':'); return i > 0 ? { name: x.slice(0, i).trim(), id: x.slice(i + 1).trim() } : null; })
-    .filter(v => v && /^[A-Za-z0-9]{10,40}$/.test(v.id));
-  return process.env.ELEVENLABS_API_KEY && list.length ? list : EDGE_VOICES;
+// Voix ElevenLabs du compte (« Mes voix », hors voix de base), dans l'ordre choisi par ELEVENLABS_VOICES si renseigné
+const nk = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+export async function reelVoices() {
+  if (!process.env.ELEVENLABS_API_KEY) return EDGE_VOICES;
+  const wanted = String(process.env.ELEVENLABS_VOICES || '').split(',').map(x => x.trim()).filter(Boolean);
+  const explicit = wanted.map(x => { const i = x.lastIndexOf(':'); return i > 0 && /^[A-Za-z0-9]{10,40}$/.test(x.slice(i + 1).trim()) ? { name: x.slice(0, i).trim(), id: x.slice(i + 1).trim() } : null; });
+  let mine = [];
+  try {
+    const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY }, signal: AbortSignal.timeout(8000) });
+    const j = await r.json();
+    mine = (j.voices || []).filter(v => v.category !== 'premade').map(v => ({ name: String(v.name).split(' - ')[0].trim(), id: v.voice_id }));
+  } catch (e) { console.warn('[reel] voix ElevenLabs :', e.message); }
+  let list = [];
+  wanted.forEach((w, k) => {
+    if (explicit[k]) { list.push(explicit[k]); return; }
+    const v = mine.find(m => nk(m.name) === nk(w)) || mine.find(m => nk(m.name).startsWith(nk(w)));
+    if (v && !list.some(x => x.id === v.id)) list.push(v);
+  });
+  mine.forEach(v => { if (!list.some(x => x.id === v.id)) list.push(v); });
+  return list.length ? list : EDGE_VOICES;
 }
-export function reelConfig() {
-  const voices = reelVoices();
+export async function reelConfig() {
+  const voices = await reelVoices();
   return { voices: voices.map(v => v.name), eleven: !!voices[0].id, dispatch: !!process.env.GITHUB_DISPATCH_TOKEN };
 }
 

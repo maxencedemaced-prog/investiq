@@ -346,14 +346,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ path, token: data.token, publicUrl: pub.publicUrl });
     }
     // ── Vidéos animées (Reels) ──
-    if (b.action === 'reel-config') return res.status(200).json(reelConfig());
+    if (b.action === 'reel-config') return res.status(200).json(await reelConfig());
     if (b.action === 'reel-create' || b.action === 'reel-render') {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
       const { data: post, error } = await sb.from('social_posts').select('*').eq('id', b.id).single();
       if (error) throw error;
       let script = post.video_script || {};
       if (b.action === 'reel-create') {
-        const voices = reelVoices(), duo = b.voice === 'duo' && voices.length > 1;
+        const voices = await reelVoices(), duo = b.voice === 'duo' && voices.length > 1;
         const pick = duo ? voices.slice(0, 2) : [voices[Math.min(Math.max(parseInt(b.voice, 10) || 0, 0), voices.length - 1)]];
         const style = b.style === 'real' ? 'real' : 'motion';
         const beats = await writeReelScript({ post, duo, askClaude, facts: verifiedFacts(), style });
