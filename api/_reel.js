@@ -65,7 +65,7 @@ Types :
 - "quote" : phrase à retenir. Champs : lines (2 ou 3 lignes).
 - "market" / "agenda" : UNIQUEMENT si le post contient déjà un tableau de marchés ou un agenda (données réelles) : ne remplis pas "rows", le serveur recopie les données. Champs : lines, say.
 - "cta" : toujours la dernière scène. "say" invite à essayer gratuitement Kapitaro (lien en bio) ; lines : 2 lignes courtes, ex. ["Simule", "ton *projet*"].
-Varie les types : jamais deux fois de suite le même type (sauf les scènes chart).
+Varie les types : jamais deux fois de suite le même type (sauf les scènes chart). "icon" facultatif (au plus une scène sur trois) parmi : ${ICONS.join(', ')}.`;
 
 // Style « vidéo réelle » : uniquement des plans filmés (banque de vidéos), texte court en surimpression
 export const REEL_SYSTEM_REAL = `Tu es le réalisateur des vidéos courtes (Reels Instagram, TikTok) de Kapitaro, une app française qui aide les particuliers à suivre et comprendre leurs placements.
