@@ -75,8 +75,8 @@ export const SHOT_THEMES = {
   serenite:       { fr: 'sérénité, calme, esprit tranquille', q: ['woman relaxing on sofa', 'calm lake sunrise', 'man reading book relaxing', 'peaceful nature morning'] },
   famille:        { fr: 'famille, enfants, transmission', q: ['family walking park', 'parents playing with children', 'family dinner table', 'family laughing together'] },
   bourse:         { fr: 'bourse, marchés financiers, cotations, actions', q: ['stock market chart screen', 'stock exchange trading screen', 'financial data monitor', 'trader looking at charts'] },
-  baisse:         { fr: 'baisse, chute, volatilité, marché qui descend', q: ['stock chart going down red', 'falling graph screen', 'stormy sky clouds timelapse', 'rough sea waves'] },
-  hausse:         { fr: 'hausse, croissance, progression, rendement', q: ['growing plant timelapse', 'rising graph screen', 'green stock chart up', 'sunrise timelapse'] },
+  baisse:         { fr: 'baisse, chute, volatilité, marché qui descend', q: ['stormy sea waves', 'dark storm clouds', 'worried man looking at phone', 'stock market screen red'] },
+  hausse:         { fr: 'hausse, croissance, progression, rendement', q: ['growing plant timelapse', 'green sprout soil', 'hiker reaching mountain summit', 'sunrise over city'] },
   temps:          { fr: 'temps, long terme, patience, années', q: ['clock time lapse', 'hourglass sand time', 'tree seasons timelapse', 'watch ticking close up'] },
   epargne:        { fr: 'épargne, économiser, mettre de côté, livret', q: ['piggy bank coins', 'saving coins jar', 'putting coins in piggy bank', 'coins stack close up'] },
   argent:         { fr: 'argent, budget, compter, dépenser', q: ['counting money hands', 'calculator budget planning', 'wallet cash payment', 'euro banknotes counting'] },
@@ -86,7 +86,7 @@ export const SHOT_THEMES = {
   retraite:       { fr: 'retraite, plus tard, vieillir', q: ['senior couple walking beach', 'retired couple smiling', 'elderly man garden', 'grandparents relaxing'] },
   debutant:       { fr: 'débuter, apprendre, comprendre', q: ['young woman laptop learning', 'student studying notes', 'person taking notes laptop', 'reading book library'] },
   diversification:{ fr: 'diversification, répartition, panier, ne pas tout miser', q: ['fruit basket market', 'colorful puzzle pieces', 'assorted vegetables market stall', 'eggs in basket'] },
-  monde:          { fr: 'monde, international, économie mondiale', q: ['earth globe rotating', 'city skyline aerial', 'world map', 'airplane taking off sunset'] },
+  monde:          { fr: 'monde, international, économie mondiale', q: ['city skyline aerial', 'container ship harbor', 'busy city street crowd', 'airplane taking off sunset'] },
   hesitation:     { fr: 'hésitation, doute, stress, frustration', q: ['man stressed laptop', 'woman worried looking at bills', 'thoughtful man window', 'frustrated woman computer'] },
   reussite:       { fr: 'satisfaction, réussite, bonne décision', q: ['happy woman laptop', 'man smiling phone', 'friends celebrating', 'woman satisfied coffee'] },
   entreprises:    { fr: 'entreprises, sociétés, économie réelle', q: ['office team meeting', 'factory production line', 'business district skyscrapers', 'people working office'] },
@@ -103,6 +103,8 @@ const THEME_WORDS = [
   ['retraite', /retrait/i], ['famille', /famille|enfant/i], ['inflation', /inflation|prix|pouvoir d'achat/i], ['appli', /appli|t[ée]l[ée]phone|kapitaro/i],
   ['hesitation', /doute|h[ée]sit|stress|peur|inqui/i], ['argent', /argent|budget|euro|€/i],
 ];
+const BANNED = /compens|rattrap|finit (toujours )?par remonter|remonte(nt)? toujours|efface(nt)? (les )?(pertes|baisses)|sans (aucun )?risque|garanti(e|s)? (de|à) (gagner|gain)|argent facile|devenir riche|panique/i;
+const safeBeats = beats => beats.filter(b => !BANNED.test(b.say || '') && !BANNED.test((b.lines || []).join(' ')));
 const themeOf = say => (THEME_WORDS.find(([, re]) => re.test(say)) || ['bourse'])[0];
 
 // Style « vidéo réelle » : uniquement des plans filmés (banque de vidéos), texte court en surimpression
@@ -181,13 +183,13 @@ export async function writeReelScript({ post, duo, askClaude, facts, style }) {
   const content = JSON.stringify({ titre: post.title, diapositives: post.slides, legende: post.caption });
   if (style === 'real') {
     const arr = await askClaude(`Transforme ce post en script de vidéo réelle :\n${content}\n\nFaits vérifiés utilisables :\n${facts}${duo ? DUO_RULE : ''}`, REEL_SYSTEM_REAL + (duo ? DUO_RULE : ''));
-    const beats = arr.map((b, i) => cleanBeatReal(b, duo, i)).filter(Boolean).slice(0, 12);
+    const beats = safeBeats(arr.map((b, i) => cleanBeatReal(b, duo, i)).filter(Boolean)).slice(0, 12);
     if (beats.length < 4) throw new Error('Script vidéo inexploitable, réessaie');
     if (beats[beats.length - 1].v !== 'cta') beats.push({ v: 'cta', say: 'Simule ton projet gratuitement sur Kapitaro, lien en bio.', lines: ['Simule', 'ton *projet*'], theme: 'kapitaro', broll_queries: SHOT_THEMES.kapitaro.q, broll: SHOT_THEMES.kapitaro.q[0], ...(duo ? { voice: 0 } : {}) });
     return beats;
   }
   const arr = await askClaude(`Transforme ce post en script de vidéo animée :\n${content}\n\nFaits vérifiés utilisables :\n${facts}${duo ? DUO_RULE : ''}`, REEL_SYSTEM + (duo ? DUO_RULE : ''));
-  const beats = arr.map(b => cleanBeat(b, post, duo)).filter(Boolean).slice(0, 14);
+  const beats = safeBeats(arr.map(b => cleanBeat(b, post, duo)).filter(Boolean)).slice(0, 14);
   if (beats.length < 4) throw new Error('Script vidéo inexploitable, réessaie');
   if (beats[beats.length - 1].v !== 'cta') beats.push({ v: 'cta', say: 'Simule ton projet gratuitement sur Kapitaro, lien en bio.', lines: ['Simule', 'ton *projet*'], ...(duo ? { voice: 0 } : {}) });
   return beats;
