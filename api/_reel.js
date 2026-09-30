@@ -1,7 +1,7 @@
 // api/_reel.js — Vidéos animées (Reels) : script écrit par l'IA à partir d'un post, voix off, lancement du rendu sur GitHub Actions.
 // Module interne (le « _ » empêche Vercel d'en faire une route) utilisé par api/social.js.
 // Variables Vercel : ELEVENLABS_API_KEY (facultatif, voix naturelles), ELEVENLABS_VOICES « Nom:voiceId,Nom2:voiceId2 »,
-// ELEVENLABS_MODEL (défaut eleven_v3), GITHUB_DISPATCH_TOKEN (jeton GitHub « Actions : lecture et écriture » sur le dépôt), GITHUB_REPO.
+// ELEVENLABS_MODEL (défaut eleven_v4, puis v3 et multilingual v2 en secours), GITHUB_DISPATCH_TOKEN (jeton GitHub « Actions : lecture et écriture » sur le dépôt), GITHUB_REPO.
 
 const clip = (s, n) => (typeof s === 'string' ? s.trim().slice(0, n) : '');
 const TYPES = ['hook', 'title', 'number', 'chart', 'compare', 'steps', 'list', 'warn', 'quote', 'market', 'agenda', 'cta'];
@@ -138,7 +138,7 @@ export async function writeReelScript({ post, duo, askClaude, facts, style }) {
 // ── Voix ElevenLabs avec minutage de chaque caractère → minutage de chaque mot ──
 async function elevenTts(text, voiceId) {
   let last = '';
-  for (const model of [...new Set([process.env.ELEVENLABS_MODEL || 'eleven_v3', 'eleven_multilingual_v2'])]) {
+  for (const model of [...new Set([process.env.ELEVENLABS_MODEL || 'eleven_v4', 'eleven_v3', 'eleven_multilingual_v2'])]) {
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
       method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, model_id: model }), signal: AbortSignal.timeout(60000),
