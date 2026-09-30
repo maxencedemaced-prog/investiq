@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1120">
+<link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>Kapitaro — Tableau de bord (privé)</title>
+<meta name="robots" content="noindex, nofollow">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#0b1120; color:#e5e7eb; }
+  .wrap { max-width:1100px; margin:0 auto; padding:28px 16px 60px; }
+  @media (max-width:560px) { .kpis { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } .kpi .v { font-size:20px; } .topbar { gap:10px; flex-wrap:wrap; } #costs table { font-size:12.5px !important; } }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:#8b93a7; font-size:13px; margin-bottom:24px; }
+  #login { max-width:340px; margin:80px auto; background:#131c33; padding:28px; border-radius:14px; border:1px solid #1f2a44; }
+  #login h2 { margin:0 0 16px; font-size:16px; }
+  #login input { width:100%; padding:10px 12px; margin-bottom:10px; border-radius:8px; border:1px solid #2a3654; background:#0b1120; color:#e5e7eb; font-size:14px; }
+  #login button, .refresh-btn { width:100%; padding:10px; border:none; border-radius:8px; background:#16a34a; color:#fff; font-weight:700; font-size:14px; cursor:pointer; }
+  .refresh-btn { width:auto; padding:8px 16px; }
+  #login .err { color:#f87171; font-size:13px; margin-top:8px; min-height:16px; }
+  #dash { display:none; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:28px; }
+  .kpi { background:#131c33; border:1px solid #1f2a44; border-radius:12px; padding:14px 16px; }
+  .kpi .v { font-size:24px; font-weight:800; }
+  .kpi .l { font-size:12px; color:#8b93a7; margin-top:2px; }
+  .card { background:#131c33; border:1px solid #1f2a44; border-radius:14px; padding:18px; margin-bottom:20px; }
+  .card h3 { margin:0 0 14px; font-size:14px; color:#c7cedd; }
+  canvas { max-height:280px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  #loading, #error { text-align:center; padding:60px 20px; color:#8b93a7; }
+  #error { color:#f87171; }
+  .bug { border-top:1px solid #1f2a44; padding:10px 0; }
+  .bug:first-child { border-top:none; }
+  .bug-msg { font-family:ui-monospace,Consolas,monospace; font-size:12.5px; color:#fca5a5; word-break:break-word; }
+  .bug-meta { font-size:11.5px; color:#8b93a7; margin-top:4px; }
+  .bug-count { display:inline-block; min-width:34px; text-align:center; font-weight:800; background:#3b1d1d; color:#fca5a5; border-radius:6px; padding:1px 6px; margin-right:8px; font-size:12px; }
+  .bug details { margin-top:4px; font-size:11px; color:#8b93a7; }
+  .bug pre { white-space:pre-wrap; margin:4px 0 0; font-size:11px; color:#aab3c5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="login">
+    <h2>Connexion admin</h2>
+    <input id="li-email" type="email" placeholder="Email" autocomplete="username">
+    <input id="li-pass" type="password" placeholder="Mot de passe" autocomplete="current-password">
+    <button onclick="doLogin()">Se connecter</button>
+    <div class="err" id="li-err"></div>
+    <p style="font-size:12.5px;color:#8b93a7;margin:10px 0 0;line-height:1.5">Tu te connectes avec Google ? Connecte-toi d'abord sur <a href="/" style="color:#4ade80">kapitaro.fr</a>, puis reviens ici : le tableau de bord s'ouvrira tout seul.</p>
+  </div>
+
+  <div id="dash">
+    <div class="topbar">
+      <div>
+        <h1>Tableau de bord Kapitaro</h1>
+        <div class="sub" id="ts"></div>
+      </div>
+      <button class="refresh-btn" onclick="loadStats()">↻ Actualiser</button>
+    </div>
+
+    <div id="loading" style="display:none">Chargement des données…</div>
+    <div id="error" style="display:none"></div>
+
+    <div id="content" style="display:none">
+      <div class="kpis" id="kpis"></div>
+
+      <div class="card" id="costs-card">
+        <h3>💶 Revenus, coûts IA et marge (mois en cours)</h3>
+        <div id="costs"></div>
+      </div>
+
+      <div class="card" id="bugs-card">
+        <h3>🐞 Bugs rencontrés par les visiteurs (30 derniers jours)</h3>
+        <div class="sub" id="bugs-summary" style="margin:0 0 12px"></div>
+        <canvas id="chart-bugs" style="max-height:160px"></canvas>
+        <div id="bugs-list" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card">
+        <h3>Conversion vers Premium (90 derniers jours, personnes distinctes)</h3>
+        <canvas id="chart-funnel"></canvas>
+        <div class="sub" id="funnel-notes" style="margin:10px 0 0"></div>
+      </div>
+
+      <div class="card">
+        <h3>Rétention : part des inscrits revenus après…</h3>
+        <canvas id="chart-retention"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Nouveaux inscrits par jour</h3>
+        <canvas id="chart-signups"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Temps passé dans l'app (minutes par jour, 30 derniers jours)</h3>
+        <canvas id="chart-minutes"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Utilisateurs actifs par jour (90 derniers jours)</h3>
+        <canvas id="chart-dau"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Connexions par jour</h3>
+        <canvas id="chart-logins"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Répartition des événements (90 jours)</h3>
+        <canvas id="chart-types"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Pages vues par jour</h3>
+        <canvas id="chart-pages"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://soyyznyceqzimhoaffaw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_3_8eb6YbCfJ04Qihdy9ivw_NsQ4H_cu';
+const API_BASE = 'https://kapitaro.fr'; // les données viennent toujours du site en ligne, même en ouvrant ce fichier localement
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let charts = {};
+
+async function doLogin() {
+  const email = document.getElementById('li-email').value.trim();
+  const password = document.getElementById('li-pass').value;
+  const err = document.getElementById('li-err');
+  err.textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { err.textContent = error.message; return; }
+  showDash();
+}
+
+async function showDash() {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('dash').style.display = 'block';
+  loadStats();
+}
+
+async function loadStats() {
+  const loading = document.getElementById('loading');
+  const errBox = document.getElementById('error');
+  const content = document.getElementById('content');
+  loading.style.display = 'block'; errBox.style.display = 'none'; content.style.display = 'none';
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { document.getElementById('dash').style.display = 'none'; document.getElementById('login').style.display = 'block'; return; }
+    const r = await fetch(API_BASE + '/api/admin-stats', { headers: { Authorization: 'Bearer ' + session.access_token } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erreur serveur');
+    render(d);
+    loading.style.display = 'none'; content.style.display = 'block';
+  } catch (e) {
+    loading.style.display = 'none';
+    errBox.style.display = 'block';
+    errBox.textContent = 'Erreur : ' + e.message;
+  }
+}
+
+// Revenus réels (Stripe, réductions comprises) face aux coûts IA : utilisateurs, ton compte, Studio, voix
+function renderCosts(d) {
+  var box = document.getElementById('costs'), c = d.couts, rev = d.revenue || {}, st = rev.stripe || {};
+  if (!c) { box.innerHTML = '<div class="sub">Coûts indisponibles.</div>'; return; }
+  var m = c.mois_en_cours, fx = c.taux_usd_eur || 0.92;
+  var eur = function (usd) { return (usd * fx).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €'; };
+  var usd = function (x) { return x.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' $'; };
+  var coutEur = c.total_mois_eur != null ? c.total_mois_eur : c.total_mois_usd * fx, marge = (rev.mrr_estime || 0) - coutEur;
+  var studio = Object.entries(m.detail_studio || {}).map(function (e) { return ({ posts: 'posts', videos: 'scripts vidéo', stories: 'stories', autre: 'autre' }[e[0]] || e[0]) + ' ' + usd(e[1]); }).join(' · ');
+  var rows = [
+    ['IA des utilisateurs (assistant, analyses…)', usd(m.utilisateurs), eur(m.utilisateurs)],
+    ['Ton propre usage de l\'IA dans l\'app', usd(m.toi), eur(m.toi)],
+    ['Studio réseaux' + (studio ? ' (' + studio + ')' : ''), usd(m.studio), eur(m.studio)],
+  ];
+  // Abonnements fixes (Claude, ElevenLabs…), réglés dans la variable FIXED_COSTS
+  (c.abonnements_fixes || []).forEach(function (f) {
+    var voix = /eleven/i.test(f.nom) ? ' (' + (m.voix_caracteres || 0).toLocaleString('fr-FR') + ' / ' + c.elevenlabs_credits_mois.toLocaleString('fr-FR') + ' crédits utilisés)' : '';
+    rows.push(['Abonnement ' + f.nom + voix, f.montant.toLocaleString('fr-FR') + (f.devise === 'USD' ? ' $' : ' €'), f.eur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €']);
+  });
+  box.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
+    rows.map(function (r) { return '<tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb">' + r[0] + '</td><td style="text-align:right;padding:8px 10px;border-bottom:1px solid #e5e7eb;white-space:nowrap">' + r[1] + '</td><td style="text-align:right;padding:8px 0;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:#6b7280">≈ ' + r[2] + '</td></tr>'; }).join('') +
+    '<tr><td style="padding:10px 0;font-weight:800">Total des coûts du mois</td><td></td><td style="text-align:right;font-weight:800">≈ ' + coutEur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</td></tr></table>' +
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px">' +
+    '<div class="kpi" style="flex:1;min-width:160px"><div class="v">' + (rev.mrr_estime || 0).toLocaleString('fr-FR') + ' €</div><div class="l">Revenu réel ce mois (' + (st.abonnes_payants ?? '—') + ' payant' + ((st.abonnes_payants || 0) > 1 ? 's' : '') + ', ' + (st.abonnes_offerts ?? 0) + ' offert' + ((st.abonnes_offerts || 0) > 1 ? 's' : '') + ')</div></div>' +
+    '<div class="kpi" style="flex:1;min-width:160px"><div class="v">≈ ' + coutEur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</div><div class="l">Coûts du mois (IA + abonnements)</div></div>' +
+    '<div class="kpi" style="flex:1;min-width:160px"><div class="v" style="color:' + (marge >= 0 ? '#16a34a' : '#dc2626') + '">' + (marge >= 0 ? '+' : '') + marge.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</div><div class="l">Marge du mois</div></div></div>' +
+    '<div class="sub" style="margin-top:10px">' + (st.erreur ? 'Stripe indisponible (' + st.erreur + ') : revenu estimé au prix catalogue. ' : '') + 'Conversion à ' + fx.toFixed(3) + ' € pour 1 $. ' + (c.note || '') + ' Hébergement (Vercel, Supabase) non inclus.</div>';
+}
+
+function render(d) {
+  document.getElementById('ts').textContent = 'Mis à jour ' + new Date(d.generated_at).toLocaleString('fr-FR');
+
+  const kpis = document.getElementById('kpis');
+  const t = d.events_by_type || {};
+  const f = d.funnel || {}, rt = d.retention || {}, rev = d.revenue || {};
+  const pct = x => x == null ? '—' : x + ' %';
+  kpis.innerHTML = [
+    ['Utilisateurs (hors toi)', d.users.total],
+    ['Inscrits 7 jours', d.users.signups_7j ?? '—'],
+    ['Inscrits 30 jours', d.users.signups_30j ?? '—'],
+    ['Premium en cours', d.users.premium],
+    ['Revenu mensuel réel', (rev.mrr_estime ?? 0).toLocaleString('fr-FR') + ' €'],
+    ['Revenu après fin des promos', rev.stripe && rev.stripe.mrr_apres_promos != null ? rev.stripe.mrr_apres_promos.toLocaleString('fr-FR') + ' €' : '—'],
+    ['Conversion inscrits → payants', f.inscrits ? pct(Math.round((f.ont_paye || 0) / f.inscrits * 100)) : '—'],
+    ['Revenus à J+1', pct(rt.d1?.pct)],
+    ['Revenus à J+7', pct(rt.d7?.pct)],
+    ['Revenus à J+30', pct(rt.d30?.pct)],
+    ['Minutes / jour actif', d.temps?.minutes_moyennes_par_jour_actif ?? '—'],
+    ['Inactifs depuis 14 j', d.users.inactive_14j ?? '—'],
+    ['Positions ajoutées', d.usage.positions],
+    ['Objectifs créés', d.usage.objectives],
+    ['Bilans complétés', d.usage.bilans],
+    ['Appareils avec notifs', d.usage.push_devices],
+    ['Questions IA (90j)', t.ai_question || 0],
+    ['Quota IA atteint (90j)', t.ai_quota_reached || 0],
+    ['Coûts du mois (IA + abonnements)', d.couts ? '≈ ' + (d.couts.total_mois_eur ?? d.couts.total_mois_usd).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + (d.couts.total_mois_eur != null ? ' €' : ' $') : '—'],
+    ['Bugs dernières 24 h', d.errors?.disponible ? d.errors.total_24h : '—'],
+    ['Bugs 7 jours', d.errors?.disponible ? d.errors.total_7j : '—'],
+  ].map(([l, v]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+
+  renderBugs(d.errors);
+  renderCosts(d);
+
+  // Entonnoir : inscrits → ont vu l'offre → ont cliqué sur payer → ont payé
+  mkChart('chart-funnel', 'bar', ['Inscrits', "Ont vu l'offre", 'Ont cliqué « payer »', 'Ont payé', 'Offerts (code 100 %)'],
+    [{ label: 'Personnes', data: [f.inscrits || 0, f.ont_vu_offre || 0, f.ont_clique_payer || 0, f.ont_paye || 0, f.offerts || 0], color: '#16a34a' }]);
+  document.getElementById('funnel-notes').textContent =
+    `Renouvellements : ${f.renouvellements || 0} · Résiliations programmées : ${f.resiliations_programmees || 0} · Abonnements terminés : ${f.abonnements_termines || 0} · Paiements échoués : ${f.paiements_echoues || 0} · Abonnés mensuels : ${rev.abonnes_mensuels || 0} · annuels : ${rev.abonnes_annuels || 0}`;
+  mkChart('chart-retention', 'bar', ['J+1', 'J+7', 'J+30'],
+    [{ label: '% des inscrits revenus', data: [rt.d1?.pct ?? 0, rt.d7?.pct ?? 0, rt.d30?.pct ?? 0], color: '#3b82f6' }]);
+
+  const days = d.daily.map(x => x.day);
+  mkChart('chart-signups', 'bar', days, [{ label: 'Nouveaux inscrits', data: d.daily.map(x => x.signups || 0), color: '#a855f7' }]);
+  const recent = d.daily.filter(x => x.minutes != null);
+  mkChart('chart-minutes', 'line', recent.map(x => x.day), [
+    { label: 'Minutes totales', data: recent.map(x => x.minutes), color: '#06b6d4' },
+    { label: 'Minutes par utilisateur actif', data: recent.map(x => x.active_users ? Math.round(x.minutes / x.active_users * 10) / 10 : 0), color: '#eab308' },
+  ]);
+  mkChart('chart-dau', 'line', days, [{ label: 'Utilisateurs actifs', data: d.daily.map(x => x.active_users || 0), color: '#16a34a' }]);
+  mkChart('chart-logins', 'bar', days, [{ label: 'Connexions', data: d.daily.map(x => x.login || 0), color: '#3b82f6' }]);
+  mkChart('chart-pages', 'bar', days, [{ label: 'Pages vues', data: d.daily.map(x => x.page_view || 0), color: '#f59e0b' }]);
+
+  const typeLabels = Object.keys(t);
+  mkPie('chart-types', typeLabels, typeLabels.map(k => t[k]));
+}
+
+// Les messages d'erreur viennent des navigateurs des visiteurs : toujours échappés avant affichage
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function renderBugs(e) {
+  const sum = document.getElementById('bugs-summary'), list = document.getElementById('bugs-list');
+  if (!e || !e.disponible) {
+    sum.textContent = 'Section pas encore active : exécute le fichier SUPABASE_ERREURS.sql dans Supabase.' + (e?.raison ? ' (' + e.raison + ')' : '');
+    list.innerHTML = '';
+    return;
+  }
+  sum.textContent = e.total_30j
+    ? `${e.total_30j} erreur(s) sur 30 jours · ${e.total_7j} sur 7 jours · ${e.total_24h} sur 24 h. Les plus fréquentes en premier.`
+    : '✅ Aucun bug remonté sur les 30 derniers jours.';
+  mkChart('chart-bugs', 'bar', e.par_jour.map(x => x.day), [{ label: 'Erreurs', data: e.par_jour.map(x => x.count), color: '#ef4444' }]);
+  const ago = iso => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
+  list.innerHTML = e.top.map(g => `
+    <div class="bug">
+      <div class="bug-msg"><span class="bug-count">${g.count}×</span>${esc(g.message)}</div>
+      <div class="bug-meta">${esc(g.source || '—')}${g.line ? ':' + g.line : ''} · page : ${esc(g.pages.join(', ') || '—')} · ${g.users} personne(s) · dernière fois ${ago(g.last_seen)} · version ${esc(g.version || '—')}</div>
+      ${g.stack || g.user_agent ? `<details><summary>Détails techniques</summary><pre>${esc(g.stack || '')}\n\n${esc(g.user_agent || '')}</pre></details>` : ''}
+    </div>`).join('');
+}
+
+function mkChart(id, type, labels, series) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type,
+    data: { labels, datasets: series.map(s => ({ label: s.label, data: s.data, borderColor: s.color, backgroundColor: s.color, tension: 0.3 })) },
+    options: { responsive: true, plugins: { legend: { labels: { color: '#c7cedd' } } },
+      scales: { x: { ticks: { color: '#8b93a7' }, grid: { color: '#1f2a44' } }, y: { ticks: { color: '#8b93a7' }, grid: { color: '#1f2a44' }, beginAtZero: true } } }
+  });
+}
+function mkPie(id, labels, data) {
+  if (charts[id]) charts[id].destroy();
+  const colors = ['#16a34a','#3b82f6','#f59e0b','#ef4444','#a855f7','#06b6d4','#eab308','#ec4899'];
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: labels.map((_,i)=>colors[i%colors.length]) }] },
+    options: { responsive: true, plugins: { legend: { position: 'right', labels: { color: '#c7cedd' } } } }
+  });
+}
+
+// Reste connecté d'une ouverture à l'autre du fichier (session Supabase stockée dans ce navigateur)
+sb.auth.getSession().then(({ data: { session } }) => { if (session) showDash(); });
+</script>
+</body>
+</html>

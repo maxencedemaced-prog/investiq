@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /studio
+Disallow: /admin
 
 Sitemap: https://kapitaro.fr/sitemap.xml
 Sitemap: https://kapitaro.fr/blog-sitemap.xml
