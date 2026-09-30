@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST' && req.body?.action === 'attach') {
-      const code = String(req.body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+      const code = String(req.body.code || user.user_metadata?.parrain || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
       if (!code) return res.status(400).json({ error: 'Code invalide' });
       // Seulement pour un compte tout neuf (moins de 14 jours) qui n'a jamais été abonné
       if (Date.now() - new Date(user.created_at).getTime() > 14 * 86400000) return res.status(200).json({ attached: false, reason: 'compte trop ancien' });
