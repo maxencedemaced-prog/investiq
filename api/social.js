@@ -11,6 +11,7 @@
 //   POST {action:'reel-render', id}         → relance la fabrication avec le script existant
 //   GET ?cron=weekly (Authorization: Bearer CRON_SECRET) → semaine suivante préparée le dimanche (1 Reel par jour + carrousel du mercredi)
 //   GET ?cron=reels                          → crée les vidéos prévues (2 par passage, toutes les 10 min)
+//   GET ?cron=stories                        → stories d'actualité automatiques (dépêches + mouvements d'indices, 10 par jour max)
 // La clé Anthropic et la clé service Supabase ne quittent jamais le serveur.
 
 import { createClient } from '@supabase/supabase-js';
@@ -219,12 +220,12 @@ async function fetchHeadlines() {
   } catch { return []; }
 }
 
-async function askClaude(prompt, system = SYSTEM) {
+async function askClaude(prompt, system = SYSTEM, model = MODEL) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: MODEL, max_tokens: 8000, system, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model, max_tokens: model === MODEL ? 8000 : 2000, system, messages: [{ role: 'user', content: prompt }] }),
   });
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error?.message || 'Erreur IA');
@@ -303,7 +304,7 @@ async function weeklyPlan() {
     return { ...s, at: parisISO(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate(), s.h, s.m) };
   });
   const times = slots.map(s => Date.parse(s.at));
-  const { data: taken } = await sb.from('social_posts').select('scheduled_at').neq('status', 'rejected')
+  const { data: taken } = await sb.from('social_posts').select('scheduled_at').neq('status', 'rejected').neq('format', 'story')
     .gte('scheduled_at', new Date(Math.min(...times) - 3600000).toISOString()).lte('scheduled_at', new Date(Math.max(...times) + 3600000).toISOString());
   const free = slots.filter(s => !(taken || []).some(p => Math.abs(Date.parse(p.scheduled_at) - Date.parse(s.at)) < 45 * 60000));
   if (!free.length) return [];
@@ -323,6 +324,80 @@ async function weeklyPlan() {
   const { data: inserted, error } = await sb.from('social_posts').insert(rows).select();
   if (error) throw error;
   return inserted;
+}
+
+// ── Stories d'actualité : ce qui peut faire bouger les marchés, publié automatiquement ──
+const STORY_MODEL = process.env.STORY_MODEL || 'claude-haiku-4-5-20251001';   // tri rapide et peu coûteux
+const STORIES_PER_DAY = 10;
+const STORY_SYSTEM = `Tu es l'éditeur des stories Instagram « actu » de Kapitaro, une app française qui aide les particuliers à suivre leurs placements.
+On te donne des dépêches récentes (souvent en anglais) et des mouvements d'indices. Sélectionne UNIQUEMENT les informations qui peuvent vraiment influencer les marchés suivis par des particuliers français : grandes entreprises (CAC 40, grandes valeurs européennes et américaines), banques centrales, chiffres économiques majeurs, fusions et rachats, gros contrats, résultats marquants, forte variation d'un indice. Ignore tout le reste (people, faits divers, petites sociétés, cryptomonnaies, opinions, analyses, promotions). S'il n'y a rien d'important, réponds [].
+
+RÈGLES ABSOLUES (réglementation AMF) :
+- Uniquement des faits présents dans la dépêche. N'invente aucun chiffre, aucune cause, aucune conséquence.
+- Aucune prédiction, aucune recommandation (jamais « acheter », « vendre », « opportunité »), aucun avis.
+- Ton neutre et sobre, pas de sensationnalisme ni de mot qui fait peur (pas « krach », « panique », « effondrement »).
+
+FORMAT : un tableau JSON, sans texte autour :
+[{"ref": numéro de la dépêche, "company": "nom court de l'entreprise ou de l'indice", "kicker": "ACTU" ou "MARCHÉS",
+  "title": "titre factuel en français, max 60 caractères", "facts": "1 ou 2 phrases factuelles en français, max 170 caractères",
+  "source": "nom du média source", "value": "variation chiffrée si elle est fournie, ex. « −1,8 % » (sinon vide)",
+  "photo": "2 à 4 mots EN ANGLAIS décrivant une vraie photo du SECTEUR d'activité, jamais la marque ni un logo : ex. « computer chips close up », « oil refinery », « airplane assembly line », « pharmaceutical laboratory », « luxury boutique window », « stock market screen »"}]`;
+
+async function newsStories() {
+  const now = parisParts(Date.now());
+  if (now.h < 7 || now.h >= 22) return { skipped: 'hors horaires (7 h – 22 h)' };
+  const midnight = parisISO(now.y, now.m, now.d, 0, 0);
+  const { data: recent } = await sb.from('social_posts').select('created_at, video_script').eq('format', 'story').gte('created_at', new Date(Date.now() - 3 * 86400000).toISOString());
+  const today = (recent || []).filter(p => p.created_at >= midnight);
+  const left = STORIES_PER_DAY - today.length;
+  if (left <= 0) return { skipped: 'limite de ' + STORIES_PER_DAY + ' stories atteinte aujourd\'hui' };
+  if (today.some(p => Date.now() - Date.parse(p.created_at) < 20 * 60000)) return { skipped: 'story récente (moins de 20 min)' };
+  const seen = new Set((recent || []).map(p => p.video_script && p.video_script.news_id).filter(Boolean));
+
+  // Candidats : mouvements forts d'indices (± 1,5 % sur la séance) et dépêches des 90 dernières minutes
+  const items = [];
+  const day = `${now.y}${String(now.m).padStart(2, '0')}${String(now.d).padStart(2, '0')}`;
+  for (const m of [{ sym: '^FCHI', label: 'CAC 40' }, { sym: '^GSPC', label: 'S&P 500' }, { sym: '^IXIC', label: 'Nasdaq' }]) {
+    try {
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(m.sym)}?range=1d&interval=5m`, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
+      const meta = (await r.json())?.chart?.result?.[0]?.meta || {};
+      const last = meta.regularMarketPrice, prev = meta.chartPreviousClose || meta.previousClose;
+      if (!last || !prev) continue;
+      const chg = Math.round((last / prev - 1) * 1000) / 10;
+      const id = `idx-${m.sym}-${day}-${chg >= 0 ? 'up' : 'down'}`;
+      if (Math.abs(chg) >= 1.5 && !seen.has(id)) items.push({ id, text: `${m.label} : ${chg > 0 ? '+' : ''}${String(chg).replace('.', ',')} % sur la séance du jour (niveau ${Math.round(last).toLocaleString('fr-FR')} points). Données de marché.`, source: 'Données de marché' });
+    } catch {}
+  }
+  if (process.env.FINNHUB_API_KEY) {
+    try {
+      const r = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${process.env.FINNHUB_API_KEY}`, { signal: AbortSignal.timeout(8000) });
+      const j = await r.json();
+      const since = Date.now() / 1000 - 90 * 60;
+      (Array.isArray(j) ? j : []).filter(n => n.datetime > since && n.headline && !seen.has('fh-' + n.id)).slice(0, 15)
+        .forEach(n => items.push({ id: 'fh-' + n.id, text: `${n.headline}. ${String(n.summary || '').slice(0, 280)}`, source: n.source || '' }));
+    } catch {}
+  }
+  if (!items.length) return { skipped: 'aucune nouvelle info' };
+
+  const list = items.map((it, i) => `${i + 1}. [${it.source}] ${it.text}`).join('\n');
+  const picks = (await askClaude(`Au plus ${Math.min(2, left)} stories. Dépêches et mouvements :\n${list}`, STORY_SYSTEM, STORY_MODEL)).slice(0, Math.min(2, left));
+  const made = [];
+  for (const s of picks) {
+    const it = items[(parseInt(s.ref, 10) || 0) - 1];
+    if (!it || !s.title || !s.company) continue;
+    const story = { kicker: s.kicker === 'MARCHÉS' ? 'MARCHÉS' : 'ACTU', company: clip(s.company, 30), title: clip(s.title, 80), facts: clip(s.facts, 200), source: clip(s.source || it.source, 40), value: clip(s.value || '', 12), photo: clip(String(s.photo || '').replace(/[^A-Za-z ]/g, ' '), 50) };
+    if (/panique|krach|effondr|ach[eè]te|vend(s|ez)\b|opportunit/i.test(story.title + ' ' + story.facts)) continue;   // garde-fou AMF
+    const { data: row, error } = await sb.from('social_posts').insert({
+      kind: 'story', format: 'story', status: 'draft', title: `Story · ${story.company} : ${story.title}`,
+      slides: [{ t: 'text', kicker: story.kicker, title: story.title, body: story.facts }], caption: '', hashtags: '',
+      platforms: ['instagram', 'facebook'], scheduled_at: new Date().toISOString(),
+      video_script: { type: 'story', status: 'queued', news_id: it.id, story, queued_at: new Date().toISOString() },
+    }).select().single();
+    if (error) { console.warn('[stories]', error.message); continue; }
+    try { await dispatchRender(row.id); made.push(story.title); }
+    catch (e) { await sb.from('social_posts').update({ video_script: { ...row.video_script, status: 'error', error: e.message } }).eq('id', row.id); }
+  }
+  return { stories: made };
 }
 
 // Vidéo d'un post : script (IA) + voix, puis fabrication lancée sur GitHub Actions
@@ -372,9 +447,10 @@ export default async function handler(req, res) {
 
   try {
     // Tâches automatiques (cron Vercel) : lot du dimanche (agenda + pédagogie), bilan des marchés du vendredi soir
-    if (req.method === 'GET' && ['weekly', 'recap', 'reels'].includes(req.query.cron)) {
+    if (req.method === 'GET' && ['weekly', 'recap', 'reels', 'stories'].includes(req.query.cron)) {
       if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({ error: 'Non autorisé' });
       if (req.query.cron === 'weekly') { const posts = await weeklyPlan(); return res.status(200).json({ generated: posts.length }); }
+      if (req.query.cron === 'stories') return res.status(200).json(await newsStories());
       if (req.query.cron === 'recap') {
         const at = nextSaturday();
         const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).neq('status', 'rejected').eq('kind', 'actu').gte('scheduled_at', new Date(Date.parse(at) - 3600000).toISOString()).lte('scheduled_at', new Date(Date.parse(at) + 3600000).toISOString());
