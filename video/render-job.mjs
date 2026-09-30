@@ -170,8 +170,8 @@ async function main() {
   const { data: pub } = sb.storage.from('social').getPublicUrl(file);
   const { data: cur } = await sb.from('social_posts').select('video_script').eq('id', ID).single();
   const { error: e2 } = await sb.from('social_posts').update({
-    video_url: pub.publicUrl, format: 'reel',
-    video_script: { ...(cur?.video_script || {}), status: 'done', done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
+    video_url: pub.publicUrl,
+    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
   }).eq('id', ID);
   if (e2) throw e2;
   console.log('Vidéo prête :', pub.publicUrl, (buf.length / 1e6).toFixed(1) + ' Mo');

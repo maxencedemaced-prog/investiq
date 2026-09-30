@@ -285,16 +285,42 @@ async function createReel(again) {
   } catch (e) { toast(e.message, 7000); }
   btn.disabled = false; btn.textContent = label;
 }
-function reelPending(p) { return !!(p.video_script && (p.video_script.status === 'queued' || p.video_script.status === 'rendering')); }
+async function validateReel(id, btn) {
+  var p = findPost(id);
+  btn.disabled = true; btn.textContent = 'Validation…';
+  try {
+    var d = await api('POST', { action: 'update', id: id, fields: { format: 'reel' } });
+    Object.assign(p, d.post);
+    if (p.status === 'draft') { await approve(id, btn); return; }
+    toast('✅ Reel validé : il sera publié à la date prévue');
+    render();
+  } catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = '✓ Valider ce Reel'; }
+}
+function reelPending(p) { return !!(p.video_script && ['planned', 'queued', 'rendering'].indexOf(p.video_script.status) >= 0); }
 function reelStatus(p) {
   var s = p.video_script;
   if (!s || !s.status) return '';
   var line = '';
-  if (reelPending(p)) line = Date.now() - Date.parse(s.queued_at || 0) > 20 * 60000
+  if (s.status === 'planned') line = '🗓 Vidéo prévue (' + (s.style === 'real' ? 'vidéo réelle' : 'animé sobre') + ') : elle se crée toute seule dans les prochaines minutes';
+  else if (reelPending(p)) line = Date.now() - Date.parse(s.queued_at || 0) > 20 * 60000
     ? '<span style="color:#fca5a5">⚠️ La vidéo animée n\'est pas arrivée après 20 min : relance-la avec 🎞 Vidéo animée.</span>'
     : '⏳ Vidéo animée en fabrication' + (s.status === 'rendering' ? ' (rendu en cours)' : '') + '… ≈ 5 min, pas besoin de rester sur la page';
   else if (s.status === 'error') line = '<span style="color:#fca5a5">⚠️ Vidéo animée : ' + esc(s.error || 'échec') + '</span>';
-  else if (s.status === 'done') line = '🎞 Vidéo prête' + (s.style === 'real' ? ' (vidéo réelle)' : ' (animé sobre)') + (s.voice ? ' · voix ' + esc(s.voice) : '');
+  else if (s.status === 'done') {
+    var kind = (s.style === 'real' ? 'vidéo réelle' : 'animé sobre') + (s.voice ? ' · voix ' + esc(s.voice) : '');
+    var isReel = p.format === 'reel' && p.video_url;
+    if (p.status === 'published') line = '🎞 Vidéo (' + kind + ')';
+    else return '<div style="margin-top:12px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">' +
+      '<video src="' + esc(p.video_url) + '" controls playsinline preload="metadata" style="width:170px;aspect-ratio:9/16;border-radius:12px;background:#000;border:2px solid ' + (isReel ? '#24e898' : '#1f2a44') + '"></video>' +
+      '<div style="flex:1;min-width:200px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">' + (isReel ? '✅ Reel validé' : '👀 Vidéo à valider') + '</div>' +
+      '<div class="sub" style="margin-bottom:10px;line-height:1.5">' + kind + '<br>' + (isReel
+        ? (p.status === 'approved' ? 'Sera publiée en Reel sur les réseaux cochés, à la date prévue.' : 'Valide le post (bouton vert) pour la programmer.')
+        : 'Regarde-la en entier (plans, texte, son). Si elle te plaît, valide-la : elle sera publiée en Reel à la place du carrousel.') + '</div>' +
+      '<div class="row">' + (isReel
+        ? '<button class="btn" onclick="saveFormat(\'' + p.id + '\', \'carousel\')">Revenir au carrousel</button>'
+        : '<button class="btn primary" onclick="validateReel(\'' + p.id + '\', this)">✓ ' + (p.status === 'draft' ? 'Valider ce Reel et programmer' : 'Valider ce Reel') + '</button>') +
+      '<button class="btn" onclick="openReel(\'' + p.id + '\')">↻ Refaire</button></div></div></div>';
+  }
   return line ? '<div class="sub" style="margin-top:8px">' + line + '</div>' : '';
 }
 // Suivi automatique : toutes les 20 s tant qu'une vidéo est en fabrication (réaffiche seulement si un état change)
@@ -307,7 +333,7 @@ function watchReels() {
       var d = await api('GET'), changed = false, ready = 0;
       (d.posts || []).forEach(function (n) { var s = (n.video_script || {}).status; if (s !== before[n.id]) { changed = true; if (s === 'done') ready++; } });
       if (changed) { POSTS = d.posts || POSTS; render(); }
-      if (ready) toast('🎞 Vidéo animée prête : le post sera publié en Reel', 7000);
+      if (ready) toast('🎞 Vidéo prête : regarde-la sur le post et valide-la', 8000);
     } catch (e) {}
   }, 20000);
 }

@@ -43,6 +43,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/social?cron=reels",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/social?cron=recap",
       "schedule": "30 18 * * 5"
     }
