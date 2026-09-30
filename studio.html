@@ -85,6 +85,19 @@
   </div>
 </dialog>
 
+<dialog id="dlg-reel" style="max-width:440px">
+  <h3 style="margin:0 0 6px">🎞 Vidéo animée</h3>
+  <p class="sub" style="margin:0 0 12px">L'IA écrit le script à partir du post, la voix le lit, puis la vidéo est fabriquée automatiquement (≈ 3 min). Elle apparaît ensuite sur le post, prête à publier en Reel.</p>
+  <label>Voix</label>
+  <select id="reel-voice" style="width:100%;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select>
+  <p class="sub" id="reel-info" style="margin:10px 0 0"></p>
+  <div class="row" style="justify-content:flex-end;margin-top:14px">
+    <button class="btn" onclick="document.getElementById('dlg-reel').close()">Annuler</button>
+    <button class="btn" id="btn-reel-again" onclick="createReel(true)">↻ Refaire avec le même texte</button>
+    <button class="btn primary" id="btn-reel" onclick="createReel(false)">Créer la vidéo</button>
+  </div>
+</dialog>
+
 <dialog id="dlg-actu">
   <h3 style="margin:0 0 6px">⚡ Post d'actualité</h3>
   <p class="sub" style="margin:0 0 12px">Décris l'événement en une ou deux phrases, avec les faits que tu connais. Le post explique ce que ça change pour l'épargne, sans prédiction.</p>
@@ -121,6 +134,7 @@ async function load() {
     var d = await api('GET');
     POSTS = d.posts || [];
     render();
+    watchReels();
   } catch (e) {
     document.getElementById('list').innerHTML = e.message === 'NOAUTH'
       ? '<div class="empty">Connecte-toi d\'abord avec ton compte administrateur sur <a href="/" style="color:#24e898">kapitaro.fr</a>, puis reviens sur cette page.</div>'
@@ -165,8 +179,8 @@ function render() {
       '<div><label>Hashtags</label><textarea rows="3" onchange="saveField(\'' + p.id + '\', \'hashtags\', this.value)">' + esc(p.hashtags) + '</textarea>' +
       '<label style="margin-top:10px">Réseaux</label><div class="plats">' + plats + '</div>' +
       formatBlock(p) +
-      publishStatus(p) +
-      '<div class="row" style="margin-top:14px">' + actions + '<button class="btn" onclick="makeVideo(\'' + p.id + '\', this)">🎬 Vidéo</button></div></div></div></div>';
+      publishStatus(p) + reelStatus(p) +
+      '<div class="row" style="margin-top:14px">' + actions + '<button class="btn" onclick="openReel(\'' + p.id + '\')">🎞 Vidéo animée</button><button class="btn" onclick="makeVideo(\'' + p.id + '\', this)">🎬 Vidéo diaporama</button></div></div></div></div>';
   }).join('');
   items.forEach(renderThumbs);
 }
@@ -233,6 +247,61 @@ async function useVideo(btn) {
     render();
   } catch (e) { toast(e.message || 'Envoi impossible', 7000); }
   btn.disabled = false; btn.textContent = '📤 Publier en Reel (Instagram, Facebook)';
+}
+
+// ── Vidéo animée (script IA + voix off + rendu sur GitHub Actions, voir api/_reel.js) ──
+var REEL_CFG = null, REEL_ID = null, _watch = null;
+async function openReel(id) {
+  REEL_ID = id;
+  if (!REEL_CFG) { try { REEL_CFG = await api('POST', { action: 'reel-config' }); } catch (e) { toast(e.message); return; } }
+  var v = REEL_CFG.voices;
+  document.getElementById('reel-voice').innerHTML = v.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('') +
+    (v.length > 1 ? '<option value="duo">Duo : ' + esc(v[0]) + ' + ' + esc(v[1]) + '</option>' : '');
+  document.getElementById('reel-info').innerHTML = (REEL_CFG.eleven ? '' : 'Voix gratuites en attendant ElevenLabs. ') +
+    (REEL_CFG.dispatch ? '' : '<span style="color:#fca5a5">Fabrication pas encore branchée (GITHUB_DISPATCH_TOKEN absent de Vercel) : le script sera préparé mais la vidéo ne sera pas fabriquée.</span>');
+  var s = findPost(id).video_script;
+  document.getElementById('btn-reel-again').style.display = s && s.beats && s.beats.length ? '' : 'none';
+  document.getElementById('dlg-reel').showModal();
+}
+async function createReel(again) {
+  var btn = document.getElementById(again ? 'btn-reel-again' : 'btn-reel'), label = btn.textContent;
+  btn.disabled = true; btn.textContent = again ? 'Relance…' : 'Script et voix (≈ 1 min)…';
+  try {
+    var d = await api('POST', again ? { action: 'reel-render', id: REEL_ID } : { action: 'reel-create', id: REEL_ID, voice: document.getElementById('reel-voice').value });
+    Object.assign(findPost(REEL_ID), d.post);
+    document.getElementById('dlg-reel').close();
+    render();
+    var s = d.post.video_script || {};
+    toast(s.status === 'error' ? '⚠️ ' + s.error : '🎞 Fabrication lancée : la vidéo arrive dans ≈ 3 min', 7000);
+    watchReels();
+  } catch (e) { toast(e.message, 7000); }
+  btn.disabled = false; btn.textContent = label;
+}
+function reelPending(p) { return !!(p.video_script && (p.video_script.status === 'queued' || p.video_script.status === 'rendering')); }
+function reelStatus(p) {
+  var s = p.video_script;
+  if (!s || !s.status) return '';
+  var line = '';
+  if (reelPending(p)) line = Date.now() - Date.parse(s.queued_at || 0) > 20 * 60000
+    ? '<span style="color:#fca5a5">⚠️ La vidéo animée n\'est pas arrivée après 20 min : relance-la avec 🎞 Vidéo animée.</span>'
+    : '⏳ Vidéo animée en fabrication' + (s.status === 'rendering' ? ' (rendu en cours)' : '') + '… ≈ 3 min';
+  else if (s.status === 'error') line = '<span style="color:#fca5a5">⚠️ Vidéo animée : ' + esc(s.error || 'échec') + '</span>';
+  else if (s.status === 'done') line = '🎞 Vidéo animée prête' + (s.voice ? ' · voix ' + esc(s.voice) : '');
+  return line ? '<div class="sub" style="margin-top:8px">' + line + '</div>' : '';
+}
+// Suivi automatique : toutes les 20 s tant qu'une vidéo est en fabrication (réaffiche seulement si un état change)
+function watchReels() {
+  if (_watch || !POSTS.some(reelPending)) return;
+  _watch = setInterval(async function () {
+    if (!POSTS.some(reelPending)) { clearInterval(_watch); _watch = null; return; }
+    try {
+      var before = {}; POSTS.forEach(function (p) { before[p.id] = (p.video_script || {}).status; });
+      var d = await api('GET'), changed = false, ready = 0;
+      (d.posts || []).forEach(function (n) { var s = (n.video_script || {}).status; if (s !== before[n.id]) { changed = true; if (s === 'done') ready++; } });
+      if (changed) { POSTS = d.posts || POSTS; render(); }
+      if (ready) toast('🎞 Vidéo animée prête : le post sera publié en Reel', 7000);
+    } catch (e) {}
+  }, 20000);
 }
 
 // État de la publication Instagram (réussie avec lien, erreur, ou programmée)

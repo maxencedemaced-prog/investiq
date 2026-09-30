@@ -1,0 +1,4 @@
+node_modules/
+out/
+public/seg-*.mp3
+public/music.wav

@@ -6,10 +6,14 @@
 //   POST {action:'update', id, fields}       → modifie un post (texte, date, réseaux, statut)
 //   POST {action:'upload', id, index, png}   → enregistre une image finale (PNG en base64) dans le stockage public
 //   POST {action:'delete', id}
+//   POST {action:'reel-config'}             → voix disponibles pour les vidéos animées
+//   POST {action:'reel-create', id, voice}  → script vidéo (IA) + voix off, puis fabrication sur GitHub Actions (voir api/_reel.js)
+//   POST {action:'reel-render', id}         → relance la fabrication avec le script existant
 //   GET ?cron=weekly (Authorization: Bearer CRON_SECRET) → lot automatique du dimanche
 // La clé Anthropic et la clé service Supabase ne quittent jamais le serveur.
 
 import { createClient } from '@supabase/supabase-js';
+import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender } from './_reel.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.supabase.co';
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || 'sb_publishable_3_8eb6YbCfJ04Qihdy9ivw_NsQ4H_cu';
@@ -190,12 +194,12 @@ async function fetchHeadlines() {
   } catch { return []; }
 }
 
-async function askClaude(prompt) {
+async function askClaude(prompt, system = SYSTEM) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: MODEL, max_tokens: 8000, system: SYSTEM, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 8000, system, messages: [{ role: 'user', content: prompt }] }),
   });
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error?.message || 'Erreur IA');
@@ -340,6 +344,26 @@ export default async function handler(req, res) {
       if (error) throw error;
       const { data: pub } = sb.storage.from('social').getPublicUrl(path);
       return res.status(200).json({ path, token: data.token, publicUrl: pub.publicUrl });
+    }
+    // ── Vidéos animées (Reels) ──
+    if (b.action === 'reel-config') return res.status(200).json(reelConfig());
+    if (b.action === 'reel-create' || b.action === 'reel-render') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
+      const { data: post, error } = await sb.from('social_posts').select('*').eq('id', b.id).single();
+      if (error) throw error;
+      let script = post.video_script || {};
+      if (b.action === 'reel-create') {
+        const voices = reelVoices(), duo = b.voice === 'duo' && voices.length > 1;
+        const pick = duo ? voices.slice(0, 2) : [voices[Math.min(Math.max(parseInt(b.voice, 10) || 0, 0), voices.length - 1)]];
+        const beats = await writeReelScript({ post, duo, askClaude, facts: verifiedFacts() });
+        const segments = pick[0].id ? await voiceOver({ beats, voices: pick, sb, id: post.id }) : [];
+        script = { v: 1, voice: pick.map(v => v.name).join(' + '), beats, segments, edge_voices: pick[0].id ? undefined : pick.map(v => v.edge), created_at: new Date().toISOString() };
+      } else if (!Array.isArray(script.beats) || !script.beats.length) return res.status(400).json({ error: "Aucun script vidéo : crée d'abord la vidéo animée" });
+      let status = 'queued', err = null;
+      try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
+      const { data, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
+      if (e2) throw e2;
+      return res.status(200).json({ post: data });
     }
     if (b.action === 'delete') {
       const { error } = await sb.from('social_posts').update({ status: 'rejected' }).eq('id', b.id);
