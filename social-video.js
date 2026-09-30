@@ -108,28 +108,117 @@
     ctx.textAlign = 'left';
   }
 
-  // images : adresses (data: ou https) des diapositives déjà rendues ; slides : contenu (pour les durées)
-  async function make(images, slides, opts) {
-    opts = opts || {};
-    var mime = pickMime();
-    if (!mime) throw new Error('Ce navigateur ne sait pas enregistrer de vidéo. Utilise Chrome ou Edge à jour.');
-    var imgs = await Promise.all(images.map(loadImage));
-    var logo = await loadImage('/icons/kapitaro-tile.svg').catch(function () { return null; });
+  // Chronologie : durée de chaque diapositive et dessin d'une image à l'instant t
+  function timeline(slides) {
     var durs = slides.map(slideDuration);
     durs[durs.length - 1] += 0.6;
     var starts = [], acc = 0;
     durs.forEach(function (d) { starts.push(acc); acc += d; });
-    var total = acc, FADE = 0.4;
+    return { durs: durs, starts: starts, total: acc };
+  }
+  function drawFrame(ctx, t, tl, imgs, logo) {
+    var FADE = 0.4, i = 0;
+    while (i < tl.starts.length - 1 && t >= tl.starts[i + 1]) i++;
+    var local = t - tl.starts[i], p = Math.min(1, local / tl.durs[i]);
+    drawBackground(ctx);
+    if (i > 0 && local < FADE) { drawSlide(ctx, imgs[i - 1], 1 - local / FADE, 1); drawSlide(ctx, imgs[i], local / FADE, p); }
+    else drawSlide(ctx, imgs[i], 1, p);
+    drawChrome(ctx, logo, i, p, imgs.length);
+  }
 
+  // Vérifie que la vidéo produite est lisible (sinon message clair plutôt qu'un aperçu vide)
+  function checkPlayable(blob) {
+    return new Promise(function (ok) {
+      var v = document.createElement('video'), u = URL.createObjectURL(blob), t = setTimeout(function () { done(false); }, 8000);
+      function done(r) { clearTimeout(t); URL.revokeObjectURL(u); ok(r); }
+      v.muted = true; v.preload = 'metadata';
+      v.onloadedmetadata = function () { done(v.videoWidth > 0 && (v.duration > 1 || v.duration === Infinity)); };
+      v.onerror = function () { done(false); };
+      v.src = u;
+    });
+  }
+
+  function loadScript(src) {
+    return new Promise(function (ok, ko) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { ko(new Error('Chargement impossible : ' + src)); }; document.head.appendChild(s); });
+  }
+
+  // ── Méthode principale : fabrication image par image (WebCodecs + assemblage MP4), plus rapide que le temps réel ──
+  // Ne dépend ni de la carte graphique en direct, ni de l'onglet affiché. Vidéo H.264, son AAC (si le navigateur sait l'encoder).
+  async function makeWebCodecs(imgs, logo, tl, opts) {
+    if (!window.Mp4Muxer) await loadScript('https://cdn.jsdelivr.net/npm/mp4-muxer@5/build/mp4-muxer.min.js');
+    var FPS = 30, base = { width: W, height: H, bitrate: 5000000, framerate: FPS };
+    var vconf = null, codecs = ['avc1.640028', 'avc1.4d0028', 'avc1.42e028'], prefs = ['no-preference', 'prefer-software'];
+    for (var a = 0; a < prefs.length && !vconf; a++) for (var c = 0; c < codecs.length && !vconf; c++) {
+      var cfg = Object.assign({ codec: codecs[c], hardwareAcceleration: prefs[a], avc: { format: 'avc' } }, base);
+      try { if ((await VideoEncoder.isConfigSupported(cfg)).supported) vconf = cfg; } catch (e) {}
+    }
+    if (!vconf) throw new Error('Encodage H.264 indisponible dans ce navigateur');
+
+    // Musique rendue hors temps réel, puis encodée en AAC
+    var audio = null;
+    if (opts.music !== false && window.AudioEncoder && window.OfflineAudioContext) {
+      var aconf = { codec: 'mp4a.40.2', sampleRate: 44100, numberOfChannels: 2, bitrate: 128000 };
+      try { if ((await AudioEncoder.isConfigSupported(aconf)).supported) audio = aconf; } catch (e) {}
+      if (audio) {
+        var off = new OfflineAudioContext(2, Math.ceil(tl.total * 44100), 44100);
+        startMusic(off, off.destination, tl.total);
+        audio.buffer = await off.startRendering();
+      }
+    }
+
+    var target = new Mp4Muxer.ArrayBufferTarget();
+    var muxer = new Mp4Muxer.Muxer({ target: target, fastStart: 'in-memory', firstTimestampBehavior: 'offset',
+      video: { codec: 'avc', width: W, height: H, frameRate: FPS },
+      audio: audio ? { codec: 'aac', numberOfChannels: 2, sampleRate: 44100 } : undefined });
+    var failure = null;
+    var venc = new VideoEncoder({ output: function (chunk, meta) { muxer.addVideoChunk(chunk, meta); }, error: function (e) { failure = e; } });
+    venc.configure(vconf);
+
+    var canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    var frames = Math.ceil(tl.total * FPS);
+    for (var i = 0; i < frames; i++) {
+      if (failure) throw failure;
+      drawFrame(ctx, i / FPS, tl, imgs, logo);
+      var vf = new VideoFrame(canvas, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+      venc.encode(vf, { keyFrame: i % (FPS * 2) === 0 });
+      vf.close();
+      if (opts.onProgress && i % 10 === 0) opts.onProgress(i / frames * 0.95);
+      while (venc.encodeQueueSize > 8) await new Promise(function (r) { setTimeout(r, 5); });   // laisse l'encodeur suivre
+    }
+    await venc.flush(); venc.close();
+    if (failure) throw failure;
+
+    if (audio) {
+      var aenc = new AudioEncoder({ output: function (chunk, meta) { muxer.addAudioChunk(chunk, meta); }, error: function (e) { failure = e; } });
+      aenc.configure({ codec: audio.codec, sampleRate: 44100, numberOfChannels: 2, bitrate: audio.bitrate });
+      var buf = audio.buffer, L = buf.getChannelData(0), R = buf.getChannelData(1), STEP = 4410;
+      for (var s = 0; s < buf.length; s += STEP) {
+        var n = Math.min(STEP, buf.length - s), data = new Float32Array(n * 2);
+        data.set(L.subarray(s, s + n), 0); data.set(R.subarray(s, s + n), n);
+        var ad = new AudioData({ format: 'f32-planar', sampleRate: 44100, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round(s / 44100 * 1e6), data: data });
+        aenc.encode(ad); ad.close();
+      }
+      await aenc.flush(); aenc.close();
+      if (failure) throw failure;
+    }
+    muxer.finalize();
+    if (opts.onProgress) opts.onProgress(1);
+    return new Blob([target.buffer], { type: 'video/mp4' });
+  }
+
+  // ── Méthode de secours : enregistrement en temps réel (MediaRecorder) si WebCodecs est absent ──
+  async function makeRecorder(imgs, logo, tl, opts) {
+    var mime = pickMime();
+    if (!mime) throw new Error('Ce navigateur ne sait pas créer de vidéo. Utilise Chrome ou Edge à jour.');
     var canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
     var ctx = canvas.getContext('2d');
     var stream = canvas.captureStream(30);
     var actx = new (window.AudioContext || window.webkitAudioContext)();
     await actx.resume();
     var adest = actx.createMediaStreamDestination();
-    if (opts.music !== false) startMusic(actx, adest, total);
+    if (opts.music !== false) startMusic(actx, adest, tl.total);
     adest.stream.getAudioTracks().forEach(function (t) { stream.addTrack(t); });
-
     var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 5000000, audioBitsPerSecond: 128000 });
     var chunks = [];
     rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
@@ -137,46 +226,42 @@
     var aborted = null;
     var onHide = function () { if (document.hidden) aborted = 'Enregistrement interrompu : garde l\'onglet affiché pendant la création de la vidéo.'; };
     document.addEventListener('visibilitychange', onHide);
-
-    drawBackground(ctx); drawSlide(ctx, imgs[0], 1, 0); drawChrome(ctx, logo, 0, 0, imgs.length);
+    drawFrame(ctx, 0, tl, imgs, logo);
     rec.start(250);
     var t0 = performance.now();
     await new Promise(function (resolve) {
-      function frame() {
+      (function frame() {
         var t = (performance.now() - t0) / 1000;
-        if (aborted || t >= total) { resolve(); return; }
-        var i = 0; while (i < starts.length - 1 && t >= starts[i + 1]) i++;
-        var local = t - starts[i], p = local / durs[i];
-        drawBackground(ctx);
-        if (i > 0 && local < FADE) {
-          drawSlide(ctx, imgs[i - 1], 1 - local / FADE, 1);
-          drawSlide(ctx, imgs[i], local / FADE, p);
-        } else drawSlide(ctx, imgs[i], 1, p);
-        drawChrome(ctx, logo, i, Math.min(1, p), imgs.length);
-        if (opts.onProgress) opts.onProgress(Math.min(1, t / total));
-        setTimeout(frame, 1000 / 30);   // horloge à 30 images/s (plus fiable que requestAnimationFrame pour un enregistrement)
-      }
-      frame();
+        if (aborted || t >= tl.total) { resolve(); return; }
+        drawFrame(ctx, t, tl, imgs, logo);
+        if (opts.onProgress) opts.onProgress(Math.min(1, t / tl.total));
+        setTimeout(frame, 1000 / 30);
+      })();
     });
-    rec.stop();
-    await done;
+    rec.stop(); await done;
     document.removeEventListener('visibilitychange', onHide);
     stream.getTracks().forEach(function (t) { t.stop(); });
     actx.close();
     if (aborted) throw new Error(aborted);
-    var type = mime.split(';')[0];
-    var blob = new Blob(chunks, { type: type });
-    // Vérifie que la vidéo produite est lisible (sinon message clair plutôt qu'un aperçu vide)
-    var playable = await new Promise(function (ok) {
-      var v = document.createElement('video'), u = URL.createObjectURL(blob), t = setTimeout(function () { done(false); }, 6000);
-      function done(r) { clearTimeout(t); URL.revokeObjectURL(u); ok(r); }
-      v.muted = true; v.preload = 'metadata';
-      v.onloadedmetadata = function () { done(v.videoWidth > 0 && (v.duration > 1 || v.duration === Infinity)); };
-      v.onerror = function () { done(false); };
-      v.src = u;
-    });
-    if (!playable) throw new Error('La vidéo créée est illisible (' + (blob.size / 1e6).toFixed(1).replace('.', ',') + ' Mo, format ' + mime + '). Envoie ce message à Claude avec ta version de Chrome.');
-    return { blob: blob, mp4: type === 'video/mp4', seconds: Math.round(total), mime: mime, size: blob.size };
+    return new Blob(chunks, { type: mime.split(';')[0] });
+  }
+
+  // images : adresses (data: ou https) des diapositives déjà rendues ; slides : contenu (pour les durées)
+  async function make(images, slides, opts) {
+    opts = opts || {};
+    var imgs = await Promise.all(images.map(loadImage));
+    var logo = await loadImage('/icons/kapitaro-tile.svg').catch(function () { return null; });
+    var tl = timeline(slides), blob = null, method = '', firstError = null;
+    if (window.VideoEncoder && window.VideoFrame) {
+      try { blob = await makeWebCodecs(imgs, logo, tl, opts); method = 'webcodecs'; }
+      catch (e) { firstError = e; console.warn('[vidéo] WebCodecs :', e && e.message); blob = null; }
+      if (blob && !(await checkPlayable(blob))) { firstError = new Error('vidéo WebCodecs illisible'); blob = null; }
+    }
+    if (!blob) { blob = await makeRecorder(imgs, logo, tl, opts); method = 'recorder'; }
+    if (!(await checkPlayable(blob))) {
+      throw new Error('La vidéo créée est illisible (' + (blob.size / 1e6).toFixed(1).replace('.', ',') + ' Mo, ' + method + (firstError ? ', ' + firstError.message : '') + '). Envoie ce message à Claude avec ta version de Chrome.');
+    }
+    return { blob: blob, mp4: blob.type === 'video/mp4', seconds: Math.round(tl.total), size: blob.size, method: method };
   }
 
   window.KapitaroVideo = { make: make, W: W, H: H };
