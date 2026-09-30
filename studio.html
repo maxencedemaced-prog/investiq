@@ -10,7 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="/social-templates.js?v=20260929190000"></script>
-  <script src="/social-video.js?v=20260929190000"></script>
+  <script src="/social-video.js?v=20260930100000"></script>
   <style>
     :root{--bg:#0b1120;--card:#131c33;--line:#1f2a44;--txt:#e5e7eb;--mut:#8b93a7;--green:#16a34a;--green2:#24e898}
     *{box-sizing:border-box}
@@ -200,7 +200,7 @@ async function makeVideo(id, btn, opts) {
   try {
     var images = [];
     for (var i = 0; i < p.slides.length; i++) { btn.textContent = 'Images ' + (i + 1) + '/' + p.slides.length + '…'; images.push(await slidePng(p, i)); }
-    var res = await KapitaroVideo.make(images, p.slides, { music: opts.music !== false, onProgress: function (f) { btn.textContent = 'Vidéo ' + Math.round(f * 100) + ' %… (garde l\'onglet affiché)'; } });
+    var res = await KapitaroVideo.make(images, p.slides, { music: opts.music !== false, onProgress: function (f) { btn.textContent = 'Vidéo ' + Math.round(f * 100) + ' %…'; } });
     if (VIDEO && VIDEO.url) URL.revokeObjectURL(VIDEO.url);
     VIDEO = { id: id, blob: res.blob, mp4: res.mp4, url: URL.createObjectURL(res.blob), seconds: res.seconds, muted: opts.music === false };
     var v = document.getElementById('video-preview'); v.src = VIDEO.url;
@@ -208,7 +208,7 @@ async function makeVideo(id, btn, opts) {
     document.getElementById('btn-video-use').style.display = res.mp4 ? '' : 'none';
     document.getElementById('btn-video-mute').style.display = opts.music === false ? 'none' : '';
     document.getElementById('dlg-video').showModal();
-  } catch (e) { toast(e.message, 7000); }
+  } catch (e) { alert('Création de la vidéo impossible : ' + (e && e.message ? e.message : e)); }
   btn.disabled = false; btn.textContent = label;
 }
 function downloadVideo() {
