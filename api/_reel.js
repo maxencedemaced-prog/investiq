@@ -103,7 +103,7 @@ const THEME_WORDS = [
   ['retraite', /retrait/i], ['famille', /famille|enfant/i], ['inflation', /inflation|prix|pouvoir d'achat/i], ['appli', /appli|t[ée]l[ée]phone|kapitaro/i],
   ['hesitation', /doute|h[ée]sit|stress|peur|inqui/i], ['argent', /argent|budget|euro|€/i],
 ];
-const BANNED = /compens|rattrap|finit (toujours )?par remonter|remonte(nt)? toujours|efface(nt)? (les )?(pertes|baisses)|sans (aucun )?risque|garanti(e|s)? (de|à) (gagner|gain)|argent facile|devenir riche|panique/i;
+const BANNED = /(le temps|long terme|longue dur[ée]e).{0,20}(absorbe|efface|gomme|lisse|compense|rattrape)|(long terme|longue dur[ée]e|le temps|historiquement).{0,60}(baisses?|pertes?|variations?|à-coups).{0,30}(p[èe]s|compt|s.estomp|s.att[ée]nu|absorb|lisse|moins)|(baisses?|pertes?).{0,40}(long terme|longue dur[ée]e).{0,20}(moins|p[èe]s)|compens|rattrap|finit (toujours )?par remonter|remonte(nt)? toujours|efface(nt)? (les )?(pertes|baisses)|sans (aucun )?risque|garanti(e|s)? (de|à) (gagner|gain)|argent facile|devenir riche|panique/i;
 const safeBeats = beats => beats.filter(b => !BANNED.test(b.say || '') && !BANNED.test((b.lines || []).join(' ')));
 const themeOf = say => (THEME_WORDS.find(([, re]) => re.test(say)) || ['bourse'])[0];
 

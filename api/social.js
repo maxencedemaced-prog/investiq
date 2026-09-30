@@ -70,6 +70,7 @@ RÈGLES ABSOLUES (réglementation AMF) :
 - Aucune prédiction de marché, aucune promesse de gain, aucun rendement présenté comme garanti. Tout rendement est « hypothétique ».
 - N'utilise des chiffres précis QUE s'ils figurent dans les données fournies (faits vérifiés, données de marché, agenda). N'invente jamais de statistique, d'étude, de source ni d'explication causale.
 - Pas de sensationnalisme ni de peur (pas de « krach », « tout perdre », « urgent »).
+- N'affirme jamais que le temps efface ou compense les pertes, que les hausses compensent les baisses, ou que les baisses « pèsent moins » sur longue durée : le long terme ne garantit rien.
 - N'utilise PAS la « règle des 72 », et pas plus d'une diapositive « number » par post.
 
 FORMAT : réponds UNIQUEMENT avec un tableau JSON, sans texte autour. Chaque post :
