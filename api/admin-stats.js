@@ -39,8 +39,15 @@ async function coutsIA() {
   let usdEur = 0.92;
   try { const fx = await (await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR', { signal: AbortSignal.timeout(4000) })).json(); if (fx?.rates?.EUR) usdEur = fx.rates.EUR; } catch {}
   const mois = sum(start.toISOString()), j30 = sum(since30);
-  return { mois_en_cours: mois, jours_30: j30, elevenlabs_abonnement_usd: elevenUsd, elevenlabs_credits_mois: 30000,
+  const fixes = String(process.env.FIXED_COSTS || `ElevenLabs (voix):${elevenUsd}:USD`).split(';').map(s => s.trim()).filter(Boolean).map(s => {
+    const [nom, montant, devise] = s.split(':').map(x => (x || '').trim());
+    const cur = (devise || 'EUR').toUpperCase(), amount = Number(String(montant).replace(',', '.')) || 0;
+    return { nom, montant: amount, devise: cur, eur: Math.round((cur === 'USD' ? amount * usdEur : amount) * 100) / 100 };
+  });
+  const fixesEur = fixes.reduce((s, f) => s + f.eur, 0);
+  return { mois_en_cours: mois, jours_30: j30, elevenlabs_abonnement_usd: elevenUsd, elevenlabs_credits_mois: 30000, abonnements_fixes: fixes,
     total_mois_usd: Math.round((mois.anthropic_total + elevenUsd) * 100) / 100, taux_usd_eur: usdEur,
+    total_mois_eur: Math.round((mois.anthropic_total * usdEur + fixesEur) * 100) / 100,
     note: "Studio et voix enregistrés depuis le 30/09/2026 ; ton compte et les utilisateurs depuis le début." };
 }
 
