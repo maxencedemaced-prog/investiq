@@ -61,7 +61,7 @@ function pickMusic(total) {
 // Neutralité de la marque : aucune vidéo avec signe religieux ou sujet sensible (politique, armes, alcool, tabac, argent facile…)
 const SENSITIVE = /\b(relig\w*|church|chapel|cathedral|cross|crucifix|jesus|christ\w*|bible|priest|nun|pope|rosary|pray\w*|prayer|worship|faith|god|angel|mosque|islam\w*|muslim|hijab|niqab|burqa|veil\w*|headscarf|ramadan|quran|koran|mecca|synagogue|jew\w*|kippah|torah|temple|buddh\w*|monk|hindu\w*|shrine|spiritual\w*|easter|christmas|nativity|halloween|flag|protest\w*|politic\w*|election|army|military|soldier|war|weapon|gun|rifle|police|beer|wine|alcohol\w*|drunk|cocktail|whisky|vodka|cigarette|smok\w*|cigar|casino|gambl\w*|poker|lottery|bitcoin|crypto\w*|lamborghini|ferrari|yacht|jet|bikini|lingerie|sexy)\b/i;
 // Plans non réalistes (images de synthèse, effets, abstrait) : exclus du style « vidéo réelle »
-const NOT_REAL = /\b(3d|render\w*|animation|animated|cartoon|cgi|illustration|abstract|fantasy|sci|fi|ufo|alien|spaceship|space|planet|galaxy|universe|nebula|particles?|bokeh|glitch|hologram|futuristic|neon|fractal)\b/i;
+const NOT_REAL = /\b(3d|render\w*|animation|animated|cartoon|cgi|illustration|abstract|fantasy|sci|fi|ufo|alien|spaceship|space|planet|galaxy|universe|nebula|particles?|bokeh|glitch|hologram|futuristic|neon|fractal|earth|globe|snowflakes?|stars|night sky)\b/i;
 const STOP = new Set(['a', 'an', 'the', 'of', 'at', 'on', 'in', 'with', 'and', 'to', 'for', 'close', 'up']);
 const stem = w => w.toLowerCase().replace(/(ing|ers|er|es|s)$/, '');
 async function pixabaySearch(q, need, key) {
