@@ -171,7 +171,7 @@ const REAL_FALLBACK = ['business district skyscrapers', 'stock market chart scre
 function cleanBeatReal(b, duo, i) {
   if (!b || !['shot', 'number', 'cta'].includes(b.v) || !/[\p{L}\p{N}]/u.test(b.say || '')) return null;
   const o = { v: b.v, say: clip(b.say, 180).replace(/\s+/g, ' ') };
-  o.lines = (Array.isArray(b.lines) ? b.lines : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 2).map(x => clip(x, 22));
+  o.lines = (Array.isArray(b.lines) ? b.lines : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 2).map(x => clip(x, 30));
   const theme = SHOT_THEMES[b.theme] ? b.theme : (b.v === 'cta' ? 'kapitaro' : themeOf(o.say));
   o.theme = theme; o.broll_queries = SHOT_THEMES[theme].q; o.broll = o.broll_queries[0];
   if (o.v === 'number') { o.value = clip(String(b.value || ''), 14); if (b.sub) o.sub = clip(b.sub, 60); if (!/\d/.test(o.value)) { o.v = 'shot'; delete o.value; } }
