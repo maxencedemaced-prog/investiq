@@ -60,6 +60,8 @@ function pickMusic(total) {
 // Candidats : { id, url } triés du plus adapté au moins adapté (vertical d'abord, puis horizontal recadré).
 // Neutralité de la marque : aucune vidéo avec signe religieux ou sujet sensible (politique, armes, alcool, tabac, argent facile…)
 const SENSITIVE = /\b(relig\w*|church|chapel|cathedral|cross|crucifix|jesus|christ\w*|bible|priest|nun|pope|rosary|pray\w*|prayer|worship|faith|god|angel|mosque|islam\w*|muslim|hijab|niqab|burqa|veil\w*|headscarf|ramadan|quran|koran|mecca|synagogue|jew\w*|kippah|torah|temple|buddh\w*|monk|hindu\w*|shrine|spiritual\w*|easter|christmas|nativity|halloween|flag|protest\w*|politic\w*|election|army|military|soldier|war|weapon|gun|rifle|police|beer|wine|alcohol\w*|drunk|cocktail|whisky|vodka|cigarette|smok\w*|cigar|casino|gambl\w*|poker|lottery|bitcoin|crypto\w*|lamborghini|ferrari|yacht|jet|bikini|lingerie|sexy)\b/i;
+// Plans non réalistes (images de synthèse, effets, abstrait) : exclus du style « vidéo réelle »
+const NOT_REAL = /\b(3d|render\w*|animation|animated|cartoon|cgi|illustration|abstract|fantasy|sci|fi|ufo|alien|spaceship|space|planet|galaxy|universe|nebula|particles?|bokeh|glitch|hologram|futuristic|neon|fractal)\b/i;
 const STOP = new Set(['a', 'an', 'the', 'of', 'at', 'on', 'in', 'with', 'and', 'to', 'for', 'close', 'up']);
 const stem = w => w.toLowerCase().replace(/(ing|ers|er|es|s)$/, '');
 async function pixabaySearch(q, need, key) {
@@ -74,7 +76,8 @@ async function pixabaySearch(q, need, key) {
     const hit = words.filter(w => tags.some(t => t === w || t.startsWith(w) || w.startsWith(t))).length;
     const rel = words.length ? hit / words.length : 0;
     if (rel < 0.5) continue;
-    if (SENSITIVE.test(String(h.tags || ''))) continue;
+    if (SENSITIVE.test(String(h.tags || '')) || NOT_REAL.test(String(h.tags || ''))) continue;
+    if (words.length >= 3 && hit < 2) continue;   // au moins 2 mots de la scène retrouvés
     const files = Object.values(h.videos || {}).filter(v => v && v.url && v.width);
     const portrait = files.filter(v => v.height > v.width && v.height >= 1280).sort((a, b) => a.height - b.height)[0];
     const land = files.filter(v => v.width >= 1920).sort((a, b) => a.width - b.width)[0];
