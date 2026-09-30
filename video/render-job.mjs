@@ -233,10 +233,18 @@ async function main() {
   const up = await sb.storage.from('social').upload(file, buf, { contentType: 'video/mp4', upsert: true });
   if (up.error) throw up.error;
   const { data: pub } = sb.storage.from('social').getPublicUrl(file);
+  // Couverture du Reel : l'accroche (1,5 s), texte affiché — sinon Instagram prend la 1re image, noire à cause du fondu
+  let coverUrl = null;
+  try {
+    execSync('npx remotion still src/index.js Reel out/cover.jpg --frame=45 --image-format=jpeg --jpeg-quality=90 --log=warn', { stdio: 'inherit' });
+    const cover = `${ID}/cover-${Date.now()}.jpg`;
+    const upc = await sb.storage.from('social').upload(cover, fs.readFileSync('out/cover.jpg'), { contentType: 'image/jpeg', upsert: true });
+    if (!upc.error) coverUrl = sb.storage.from('social').getPublicUrl(cover).data.publicUrl;
+  } catch (e) { console.warn('Couverture :', e.message); }
   const { data: cur } = await sb.from('social_posts').select('video_script').eq('id', ID).single();
   const { error: e2 } = await sb.from('social_posts').update({
     video_url: pub.publicUrl,
-    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', clips, done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
+    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', clips, cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
   }).eq('id', ID);
   if (e2) throw e2;
   console.log('Vidéo prête :', pub.publicUrl, (buf.length / 1e6).toFixed(1) + ' Mo');
