@@ -258,11 +258,11 @@ async function useVideo(btn) {
 var REEL_CFG = null, REEL_ID = null, _watch = null;
 async function openReel(id) {
   REEL_ID = id;
-  if (!REEL_CFG) { try { REEL_CFG = await api('POST', { action: 'reel-config' }); } catch (e) { toast(e.message); return; } }
+  try { REEL_CFG = await api('POST', { action: 'reel-config' }); } catch (e) { toast(e.message); return; }
   var v = REEL_CFG.voices;
   document.getElementById('reel-voice').innerHTML = v.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('') +
     (v.length > 1 ? '<option value="duo">Duo : ' + esc(v[0]) + ' + ' + esc(v[1]) + '</option>' : '');
-  document.getElementById('reel-info').innerHTML = (REEL_CFG.eleven ? '' : 'Voix gratuites en attendant ElevenLabs. ') +
+  document.getElementById('reel-info').innerHTML = (REEL_CFG.warning ? '<span style="color:#fca5a5">⚠️ ' + esc(REEL_CFG.warning) + '</span><br>' : '') + (REEL_CFG.eleven ? '' : (REEL_CFG.hasKey ? '' : 'Voix gratuites en attendant ElevenLabs. ')) +
     (REEL_CFG.dispatch ? '' : '<span style="color:#fca5a5">Fabrication pas encore branchée (GITHUB_DISPATCH_TOKEN absent de Vercel) : le script sera préparé mais la vidéo ne sera pas fabriquée.</span>');
   var s = findPost(id).video_script;
   document.getElementById('btn-reel-again').style.display = s && s.beats && s.beats.length ? '' : 'none';

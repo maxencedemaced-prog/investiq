@@ -12,17 +12,20 @@ const EDGE_VOICES = [{ name: 'Rémy (voix gratuite)', edge: 'fr-FR-RemyMultiling
 
 // Voix disponibles : ElevenLabs si configuré, sinon les voix Microsoft gratuites
 // Voix ElevenLabs du compte (« Mes voix », hors voix de base), dans l'ordre choisi par ELEVENLABS_VOICES si renseigné
+let voicesWarning = '';
 const nk = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 export async function reelVoices() {
   if (!process.env.ELEVENLABS_API_KEY) return EDGE_VOICES;
   const wanted = String(process.env.ELEVENLABS_VOICES || '').split(',').map(x => x.trim()).filter(Boolean);
   const explicit = wanted.map(x => { const i = x.lastIndexOf(':'); return i > 0 && /^[A-Za-z0-9]{10,40}$/.test(x.slice(i + 1).trim()) ? { name: x.slice(0, i).trim(), id: x.slice(i + 1).trim() } : null; });
-  let mine = [];
+  let mine = []; voicesWarning = '';
   try {
     const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY }, signal: AbortSignal.timeout(8000) });
     const j = await r.json();
+    if (!r.ok) voicesWarning = r.status === 401 ? 'La clé ElevenLabs n'a pas le droit « Voix : Lire » (ou elle est invalide) : modifie-la dans ElevenLabs > Clés API.' : 'ElevenLabs a répondu ' + r.status + ' : ' + String(j?.detail?.message || j?.detail || '').slice(0, 120);
+    else if (!(j.voices || []).some(v => v.category !== 'premade')) voicesWarning = 'Aucune voix dans « Mes voix » sur ElevenLabs : ajoute-les depuis la bibliothèque.';
     mine = (j.voices || []).filter(v => v.category !== 'premade').map(v => ({ name: String(v.name).split(' - ')[0].trim(), id: v.voice_id }));
-  } catch (e) { console.warn('[reel] voix ElevenLabs :', e.message); }
+  } catch (e) { voicesWarning = 'ElevenLabs injoignable : ' + e.message; console.warn('[reel] voix ElevenLabs :', e.message); }
   let list = [];
   wanted.forEach((w, k) => {
     if (explicit[k]) { list.push(explicit[k]); return; }
@@ -34,7 +37,7 @@ export async function reelVoices() {
 }
 export async function reelConfig() {
   const voices = await reelVoices();
-  return { voices: voices.map(v => v.name), eleven: !!voices[0].id, dispatch: !!process.env.GITHUB_DISPATCH_TOKEN };
+  return { voices: voices.map(v => v.name), eleven: !!voices[0].id, dispatch: !!process.env.GITHUB_DISPATCH_TOKEN, hasKey: !!process.env.ELEVENLABS_API_KEY, warning: voicesWarning };
 }
 
 export const REEL_SYSTEM = `Tu es le réalisateur des vidéos courtes (Reels Instagram, TikTok) de Kapitaro, une app française qui aide les particuliers à suivre et comprendre leurs placements.
