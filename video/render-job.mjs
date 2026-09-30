@@ -2,7 +2,7 @@
 // lit social_posts.video_script, prépare la voix (fichiers ElevenLabs déjà créés par le serveur, sinon voix Microsoft gratuite),
 // génère la musique, rend la vidéo avec Remotion, l'envoie dans le stockage public « social » et met à jour le post.
 // Variables : POST_ID, SUPABASE_SERVICE_KEY (secret GitHub), SUPABASE_URL (facultatif),
-// PEXELS_API_KEY (facultatif : vidéos d'illustration gratuites, usage commercial autorisé sans mention).
+// PIXABAY_API_KEY ou PEXELS_API_KEY (facultatifs : vidéos d'illustration gratuites, usage commercial autorisé sans mention).
 import { createClient } from '@supabase/supabase-js';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import { execSync } from 'child_process';
@@ -56,31 +56,50 @@ function pickMusic(total) {
   return 'music.wav';
 }
 
-// Vidéos d'illustration (Pexels) pour les scènes qui ont des mots-clés « broll » : format vertical, fichier HD le plus léger
+// Vidéos d'illustration pour les scènes qui ont des mots-clés « broll » (Pixabay ou Pexels, le premier configuré).
+// Candidats : { id, url } triés du plus adapté au moins adapté (vertical d'abord, puis horizontal recadré).
+async function pixabayCandidates(q, need, key) {
+  const r = await fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&safesearch=true&per_page=30`);
+  const j = await r.json();
+  const out = [];
+  for (const h of j.hits || []) {
+    if (h.duration < Math.min(need, 5)) continue;
+    const files = Object.values(h.videos || {}).filter(v => v && v.url && v.width);
+    const portrait = files.filter(v => v.height > v.width && v.height >= 1280).sort((a, b) => a.height - b.height)[0];
+    const land = files.filter(v => v.width >= 1920).sort((a, b) => a.width - b.width)[0];
+    if (portrait) out.push({ id: 'pixabay-' + h.id, url: portrait.url, score: 0 });
+    else if (land) out.push({ id: 'pixabay-' + h.id, url: land.url, score: 1 });
+  }
+  return out.sort((a, b) => a.score - b.score);
+}
+async function pexelsCandidates(q, need, key) {
+  const r = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(q)}&orientation=portrait&size=medium&per_page=15`, { headers: { Authorization: key } });
+  const j = await r.json();
+  return (j.videos || []).filter(v => v.duration >= Math.min(need, 5)).map(v => {
+    const f = (v.video_files || []).filter(x => x.file_type === 'video/mp4' && x.height >= 1280 && x.height > x.width).sort((a, b) => a.height - b.height)[0];
+    return f ? { id: 'pexels-' + v.id, url: f.link } : null;
+  }).filter(Boolean);
+}
 async function fetchBroll(beats) {
-  const key = (process.env.PEXELS_API_KEY || '').trim();
-  if (!key) return;
+  const pixabay = (process.env.PIXABAY_API_KEY || '').trim(), pexels = (process.env.PEXELS_API_KEY || '').trim();
+  if (!pixabay && !pexels) return;
   const used = new Set();
   for (let i = 0; i < beats.length; i++) {
     const q = beats[i].broll;
     if (!q) continue;
     try {
-      const r = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(q)}&orientation=portrait&size=medium&per_page=15`, { headers: { Authorization: key } });
-      const j = await r.json();
       const need = beats[i].end - beats[i].start;
-      const vids = (j.videos || []).filter(v => !used.has(v.id) && v.duration >= Math.min(need, 5));
-      for (const v of vids) {
-        const f = (v.video_files || []).filter(x => x.file_type === 'video/mp4' && x.height >= 1280 && x.height > x.width).sort((a, b) => a.height - b.height)[0];
-        if (!f) continue;
-        const res = await fetch(f.link);
+      const list = pixabay ? await pixabayCandidates(q, need, pixabay) : await pexelsCandidates(q, need, pexels);
+      for (const c of list.filter(x => !used.has(x.id))) {
+        const res = await fetch(c.url);
         if (!res.ok) continue;
         const file = `broll-${i}.mp4`;
         fs.writeFileSync(path.join('public', file), Buffer.from(await res.arrayBuffer()));
-        beats[i].broll_file = file; used.add(v.id);
-        console.log(`Illustration scène ${i + 1} : « ${q} » → Pexels ${v.id}`);
+        beats[i].broll_file = file; used.add(c.id);
+        console.log(`Illustration scène ${i + 1} : « ${q} » → ${c.id}`);
         break;
       }
-    } catch (e) { console.warn('Pexels :', e.message); }
+    } catch (e) { console.warn('Vidéo d\'illustration :', e.message); }
   }
 }
 
