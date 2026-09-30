@@ -9,7 +9,8 @@
 //   POST {action:'reel-config'}             → voix disponibles pour les vidéos animées
 //   POST {action:'reel-create', id, voice}  → script vidéo (IA) + voix off, puis fabrication sur GitHub Actions (voir api/_reel.js)
 //   POST {action:'reel-render', id}         → relance la fabrication avec le script existant
-//   GET ?cron=weekly (Authorization: Bearer CRON_SECRET) → lot automatique du dimanche
+//   GET ?cron=weekly (Authorization: Bearer CRON_SECRET) → semaine suivante préparée le dimanche (1 Reel par jour + carrousel du mercredi)
+//   GET ?cron=reels                          → crée les vidéos prévues (2 par passage, toutes les 10 min)
 // La clé Anthropic et la clé service Supabase ne quittent jamais le serveur.
 
 import { createClient } from '@supabase/supabase-js';
@@ -134,13 +135,36 @@ function nextSlots(count) {
   }
   return slots;
 }
-// Samedi suivant à 9 h 30 UTC (bilan de la semaine)
-function nextSaturday() {
-  const d = new Date();
-  d.setUTCHours(9, 30, 0, 0);
-  do { d.setUTCDate(d.getUTCDate() + 1); } while (d.getUTCDay() !== 6);
-  return d.toISOString();
+// Heure de Paris → instant UTC (heure d'été et d'hiver gérées)
+const PARIS_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Paris', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+function parisParts(ts) { const p = Object.fromEntries(PARIS_FMT.formatToParts(new Date(ts)).map(x => [x.type, x.value])); return { y: +p.year, m: +p.month, d: +p.day, h: +p.hour, mi: +p.minute }; }
+function parisISO(y, m, d, h, mi) {
+  const guess = Date.UTC(y, m - 1, d, h, mi), p = parisParts(guess);
+  const offset = Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi) - guess;
+  return new Date(guess - offset).toISOString();
 }
+// Samedi suivant à 11 h 30, heure de Paris (bilan de la semaine)
+function nextSaturday() {
+  const t = parisParts(Date.now()), base = Date.UTC(t.y, t.m - 1, t.d), dow = new Date(base).getUTCDay();
+  const dt = new Date(base + (((6 - dow + 7) % 7) || 7) * 86400000);
+  return parisISO(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate(), 11, 30);
+}
+
+// Semaine type : un Reel par jour à 18 h 30 (styles alternés), un carrousel « à enregistrer » le mercredi midi,
+// le bilan des marchés le samedi matin (préparé le vendredi soir avec les vrais chiffres).
+const WEEK_PLAN = [
+  { dow: 1, h: 18, m: 30, kind: 'agenda', reel: 'motion' },
+  { dow: 2, h: 18, m: 30, kind: 'pedago', reel: 'real' },
+  { dow: 3, h: 12, m: 30, kind: 'pedago', formats: ['checklist', 'erreurs'] },
+  { dow: 3, h: 18, m: 30, kind: 'pedago', reel: 'motion', formats: ['chiffre', 'versus'] },
+  { dow: 4, h: 18, m: 30, kind: 'pedago', reel: 'real' },
+  { dow: 5, h: 18, m: 30, kind: 'pedago', reel: 'motion' },
+  { dow: 6, h: 11, m: 30, kind: 'recap' },
+  { dow: 6, h: 18, m: 30, kind: 'pedago', reel: 'real', angle: 'le bon réflexe du week-end' },
+  { dow: 0, h: 18, m: 30, kind: 'pedago', reel: 'real', angle: 'les projets de vie et la sérénité (épargner pour un projet, se sentir serein avec son argent)' },
+];
+// Vidéo prévue : créée automatiquement par le passage « cron=reels » (duo de voix en style animé, voix principale en style réel)
+const plannedVideo = style => ({ status: 'planned', style, voice_pick: style === 'motion' ? 'duo' : '0', planned_at: new Date().toISOString() });
 
 // ── Données réelles pour les posts d'actualité (jamais de données de secours inventées) ──
 const DAYS_FR = ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'];
@@ -251,6 +275,70 @@ Faits vérifiés utilisables :\n${verifiedFacts()}`);
   return { ...p, kind: 'actu' };
 }
 
+// Posts pédagogiques pour des créneaux précis (format imposé ou angle donné), écrits par paquets de 4 en parallèle
+async function pedagogicalFor(specs, used) {
+  const subjects = shuffle(SUBJECTS);
+  const chunks = [];
+  for (let i = 0; i < specs.length; i += 4) chunks.push(specs.slice(i, i + 4).map((s, k) => ({ ...s, subject: subjects[(i + k) % subjects.length] })));
+  const out = await Promise.all(chunks.map(async ch => {
+    const plan = ch.map((s, i) => {
+      const f = FORMATS.find(x => s.formats && x.key === s.formats[Math.floor(Math.random() * s.formats.length)]) || shuffle(FORMATS)[0];
+      return `Post ${i + 1} : sujet « ${s.subject} »${s.angle ? `, angle : ${s.angle}` : ''}, format « ${f.label} » (${f.hint}).${s.reel ? ' Il servira aussi de base à une vidéo courte : une idée centrale simple et concrète.' : ''}`;
+    }).join('\n');
+    try {
+      const arr = await askClaude(`Écris ${ch.length} posts pédagogiques, dans cet ordre :\n${plan}\nChaque post doit être très différent des autres (accroche, ton, structure). Évite de refaire ces posts déjà publiés : ${used.slice(0, 25).join(' | ') || 'aucun'}.\nFaits vérifiés utilisables :\n${verifiedFacts()}`);
+      return ch.map((s, i) => cleanPost(arr[i], shuffle(COLOR_THEMES)[0]));
+    } catch (e) { console.warn('[social] pédagogie :', e.message); return ch.map(() => null); }
+  }));
+  return out.flat();
+}
+
+// Semaine suivante (lancée le dimanche) : ne remplit que les créneaux encore libres
+async function weeklyPlan() {
+  const t = parisParts(Date.now()), base = Date.UTC(t.y, t.m - 1, t.d), dow = new Date(base).getUTCDay();
+  const toMonday = ((8 - dow) % 7) || 7;
+  const slots = WEEK_PLAN.filter(s => s.kind !== 'recap').map(s => {
+    const dt = new Date(base + (toMonday + (s.dow + 6) % 7) * 86400000);
+    return { ...s, at: parisISO(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate(), s.h, s.m) };
+  });
+  const times = slots.map(s => Date.parse(s.at));
+  const { data: taken } = await sb.from('social_posts').select('scheduled_at').neq('status', 'rejected')
+    .gte('scheduled_at', new Date(Math.min(...times) - 3600000).toISOString()).lte('scheduled_at', new Date(Math.max(...times) + 3600000).toISOString());
+  const free = slots.filter(s => !(taken || []).some(p => Math.abs(Date.parse(p.scheduled_at) - Date.parse(s.at)) < 45 * 60000));
+  if (!free.length) return [];
+  const { data: recent } = await sb.from('social_posts').select('title').order('created_at', { ascending: false }).limit(40);
+  const used = (recent || []).map(r => r.title).filter(Boolean);
+  const agendaSlot = free.find(s => s.kind === 'agenda');
+  const pedSlots = free.filter(s => s.kind === 'pedago');
+  const [agenda, peds] = await Promise.all([
+    agendaSlot ? agendaPost().catch(e => { console.warn('[social] agenda :', e.message); return null; }) : null,
+    pedagogicalFor(agendaSlot ? [...pedSlots, { ...agendaSlot, kind: 'pedago', backup: true }] : pedSlots, used),
+  ]);
+  const rows = [];
+  const row = (p, s) => ({ ...p, scheduled_at: s.at, status: 'draft', ...(s.reel ? { video_script: plannedVideo(s.reel) } : {}) });
+  pedSlots.forEach((s, i) => { if (peds[i]) rows.push(row({ kind: 'weekly', ...peds[i] }, s)); });
+  if (agendaSlot) { const p = agenda || peds[pedSlots.length]; if (p) rows.push(row(agenda ? p : { kind: 'weekly', ...p }, agendaSlot)); }
+  if (!rows.length) throw new Error('Aucun post exploitable pour la semaine');
+  const { data: inserted, error } = await sb.from('social_posts').insert(rows).select();
+  if (error) throw error;
+  return inserted;
+}
+
+// Vidéo d'un post : script (IA) + voix, puis fabrication lancée sur GitHub Actions
+async function createReel(post, { voice, style }) {
+  const voices = await reelVoices(), duo = voice === 'duo' && voices.length > 1;
+  const pick = duo ? voices.slice(0, 2) : [voices[Math.min(Math.max(parseInt(voice, 10) || 0, 0), voices.length - 1)]];
+  const st = style === 'real' ? 'real' : 'motion';
+  const beats = await writeReelScript({ post, duo, askClaude, facts: verifiedFacts(), style: st });
+  const segments = pick[0].id ? await voiceOver({ beats, voices: pick, sb, id: post.id }) : [];
+  const script = { v: 1, style: st, voice: pick.map(v => v.name).join(' + '), beats, segments, edge_voices: pick[0].id ? undefined : pick.map(v => v.edge), created_at: new Date().toISOString() };
+  let status = 'queued', err = null;
+  try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
+  const { data, error } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
+  if (error) throw error;
+  return data;
+}
+
 // mode : 'weekly' (agenda + pédagogiques), 'pedago', 'agenda', 'recap', 'topic'
 async function generate({ mode = 'weekly', count = 3, topic = '' }) {
   const { data: recent } = await sb.from('social_posts').select('title').order('created_at', { ascending: false }).limit(40);
@@ -283,12 +371,25 @@ export default async function handler(req, res) {
 
   try {
     // Tâches automatiques (cron Vercel) : lot du dimanche (agenda + pédagogie), bilan des marchés du vendredi soir
-    if (req.method === 'GET' && (req.query.cron === 'weekly' || req.query.cron === 'recap')) {
+    if (req.method === 'GET' && ['weekly', 'recap', 'reels'].includes(req.query.cron)) {
       if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({ error: 'Non autorisé' });
-      const { count: pending } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('status', 'draft');
-      if ((pending || 0) >= 6) return res.status(200).json({ skipped: 'déjà assez de brouillons à valider' });
-      const posts = await generate(req.query.cron === 'recap' ? { mode: 'recap' } : { mode: 'weekly', count: 3 });
-      return res.status(200).json({ generated: posts.length });
+      if (req.query.cron === 'weekly') { const posts = await weeklyPlan(); return res.status(200).json({ generated: posts.length }); }
+      if (req.query.cron === 'recap') {
+        const at = nextSaturday();
+        const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).neq('status', 'rejected').eq('kind', 'actu').gte('scheduled_at', new Date(Date.parse(at) - 3600000).toISOString()).lte('scheduled_at', new Date(Date.parse(at) + 3600000).toISOString());
+        if (count) return res.status(200).json({ skipped: 'bilan déjà préparé' });
+        const posts = await generate({ mode: 'recap' });
+        return res.status(200).json({ generated: posts.length });
+      }
+      // Vidéos prévues : 2 par passage, les plus proches de leur date de publication d'abord
+      const { data: todo } = await sb.from('social_posts').select('*').eq('video_script->>status', 'planned').neq('status', 'rejected')
+        .order('scheduled_at', { ascending: true }).limit(2);
+      let made = 0;
+      for (const p of todo || []) {
+        try { await createReel(p, { voice: p.video_script.voice_pick || '0', style: p.video_script.style }); made++; }
+        catch (e) { await sb.from('social_posts').update({ video_script: { ...p.video_script, status: 'error', error: 'Création automatique : ' + String(e.message).slice(0, 200) } }).eq('id', p.id); }
+      }
+      return res.status(200).json({ reels: made });
     }
 
     if (!(await isAdmin(req))) return res.status(403).json({ error: 'Accès réservé.' });
@@ -351,15 +452,9 @@ export default async function handler(req, res) {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
       const { data: post, error } = await sb.from('social_posts').select('*').eq('id', b.id).single();
       if (error) throw error;
-      let script = post.video_script || {};
-      if (b.action === 'reel-create') {
-        const voices = await reelVoices(), duo = b.voice === 'duo' && voices.length > 1;
-        const pick = duo ? voices.slice(0, 2) : [voices[Math.min(Math.max(parseInt(b.voice, 10) || 0, 0), voices.length - 1)]];
-        const style = b.style === 'real' ? 'real' : 'motion';
-        const beats = await writeReelScript({ post, duo, askClaude, facts: verifiedFacts(), style });
-        const segments = pick[0].id ? await voiceOver({ beats, voices: pick, sb, id: post.id }) : [];
-        script = { v: 1, style, voice: pick.map(v => v.name).join(' + '), beats, segments, edge_voices: pick[0].id ? undefined : pick.map(v => v.edge), created_at: new Date().toISOString() };
-      } else if (!Array.isArray(script.beats) || !script.beats.length) return res.status(400).json({ error: "Aucun script vidéo : crée d'abord la vidéo animée" });
+      if (b.action === 'reel-create') return res.status(200).json({ post: await createReel(post, { voice: b.voice, style: b.style }) });
+      const script = post.video_script || {};
+      if (!Array.isArray(script.beats) || !script.beats.length) return res.status(400).json({ error: "Aucun script vidéo : crée d'abord la vidéo animée" });
       let status = 'queued', err = null;
       try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
       const { data, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();

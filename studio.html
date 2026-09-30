@@ -296,12 +296,13 @@ async function validateReel(id, btn) {
     render();
   } catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = '✓ Valider ce Reel'; }
 }
-function reelPending(p) { return !!(p.video_script && (p.video_script.status === 'queued' || p.video_script.status === 'rendering')); }
+function reelPending(p) { return !!(p.video_script && ['planned', 'queued', 'rendering'].indexOf(p.video_script.status) >= 0); }
 function reelStatus(p) {
   var s = p.video_script;
   if (!s || !s.status) return '';
   var line = '';
-  if (reelPending(p)) line = Date.now() - Date.parse(s.queued_at || 0) > 20 * 60000
+  if (s.status === 'planned') line = '🗓 Vidéo prévue (' + (s.style === 'real' ? 'vidéo réelle' : 'animé sobre') + ') : elle se crée toute seule dans les prochaines minutes';
+  else if (reelPending(p)) line = Date.now() - Date.parse(s.queued_at || 0) > 20 * 60000
     ? '<span style="color:#fca5a5">⚠️ La vidéo animée n\'est pas arrivée après 20 min : relance-la avec 🎞 Vidéo animée.</span>'
     : '⏳ Vidéo animée en fabrication' + (s.status === 'rendering' ? ' (rendu en cours)' : '') + '… ≈ 5 min, pas besoin de rester sur la page';
   else if (s.status === 'error') line = '<span style="color:#fca5a5">⚠️ Vidéo animée : ' + esc(s.error || 'échec') + '</span>';
