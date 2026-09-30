@@ -7,7 +7,10 @@
   var SLIDE = { x: 40, y: 250, w: 1000, h: 1250, r: 36 };
 
   function pickMime() {
-    var list = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'];
+    // H.264 niveau 4.0 (High, puis Main, puis Baseline) : le niveau 3.0 ne couvre pas le 1080 × 1920 et certains
+    // encodeurs matériels (carte graphique) produisent alors une vidéo vide
+    var list = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.4D0028,mp4a.40.2', 'video/mp4;codecs=avc1.42E028,mp4a.40.2',
+      'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'];
     for (var i = 0; i < list.length; i++) if (window.MediaRecorder && MediaRecorder.isTypeSupported(list[i])) return list[i];
     return null;
   }
@@ -162,7 +165,18 @@
     actx.close();
     if (aborted) throw new Error(aborted);
     var type = mime.split(';')[0];
-    return { blob: new Blob(chunks, { type: type }), mp4: type === 'video/mp4', seconds: Math.round(total) };
+    var blob = new Blob(chunks, { type: type });
+    // Vérifie que la vidéo produite est lisible (sinon message clair plutôt qu'un aperçu vide)
+    var playable = await new Promise(function (ok) {
+      var v = document.createElement('video'), u = URL.createObjectURL(blob), t = setTimeout(function () { done(false); }, 6000);
+      function done(r) { clearTimeout(t); URL.revokeObjectURL(u); ok(r); }
+      v.muted = true; v.preload = 'metadata';
+      v.onloadedmetadata = function () { done(v.videoWidth > 0 && (v.duration > 1 || v.duration === Infinity)); };
+      v.onerror = function () { done(false); };
+      v.src = u;
+    });
+    if (!playable) throw new Error('La vidéo créée est illisible (' + (blob.size / 1e6).toFixed(1).replace('.', ',') + ' Mo, format ' + mime + '). Envoie ce message à Claude avec ta version de Chrome.');
+    return { blob: blob, mp4: type === 'video/mp4', seconds: Math.round(total), mime: mime, size: blob.size };
   }
 
   window.KapitaroVideo = { make: make, W: W, H: H };
