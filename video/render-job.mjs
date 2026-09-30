@@ -1,7 +1,8 @@
 // Fabrique la vidéo animée d'un post (lancé par GitHub Actions, workflow « reel.yml ») :
 // lit social_posts.video_script, prépare la voix (fichiers ElevenLabs déjà créés par le serveur, sinon voix Microsoft gratuite),
 // génère la musique, rend la vidéo avec Remotion, l'envoie dans le stockage public « social » et met à jour le post.
-// Variables : POST_ID, SUPABASE_SERVICE_KEY (secret GitHub), SUPABASE_URL (facultatif).
+// Variables : POST_ID, SUPABASE_SERVICE_KEY (secret GitHub), SUPABASE_URL (facultatif),
+// PEXELS_API_KEY (facultatif : vidéos d'illustration gratuites, usage commercial autorisé sans mention).
 import { createClient } from '@supabase/supabase-js';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import { execSync } from 'child_process';
@@ -46,6 +47,43 @@ async function edgeVoice(beats, voices) {
   return segments;
 }
 
+// Musique : un morceau de la bibliothèque public/music (Mixkit, licence gratuite commerciale), choisi au hasard ; à défaut, musique générée
+function pickMusic(total) {
+  const dir = path.join('public', 'music');
+  const tracks = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.mp3')) : [];
+  if (tracks.length) return 'music/' + tracks[Math.floor(Math.random() * tracks.length)];
+  execSync(`node music.mjs ${Math.ceil(total + 1)} 96`, { stdio: 'inherit' });
+  return 'music.wav';
+}
+
+// Vidéos d'illustration (Pexels) pour les scènes qui ont des mots-clés « broll » : format vertical, fichier HD le plus léger
+async function fetchBroll(beats) {
+  const key = (process.env.PEXELS_API_KEY || '').trim();
+  if (!key) return;
+  const used = new Set();
+  for (let i = 0; i < beats.length; i++) {
+    const q = beats[i].broll;
+    if (!q) continue;
+    try {
+      const r = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(q)}&orientation=portrait&size=medium&per_page=15`, { headers: { Authorization: key } });
+      const j = await r.json();
+      const need = beats[i].end - beats[i].start;
+      const vids = (j.videos || []).filter(v => !used.has(v.id) && v.duration >= Math.min(need, 5));
+      for (const v of vids) {
+        const f = (v.video_files || []).filter(x => x.file_type === 'video/mp4' && x.height >= 1280 && x.height > x.width).sort((a, b) => a.height - b.height)[0];
+        if (!f) continue;
+        const res = await fetch(f.link);
+        if (!res.ok) continue;
+        const file = `broll-${i}.mp4`;
+        fs.writeFileSync(path.join('public', file), Buffer.from(await res.arrayBuffer()));
+        beats[i].broll_file = file; used.add(v.id);
+        console.log(`Illustration scène ${i + 1} : « ${q} » → Pexels ${v.id}`);
+        break;
+      }
+    } catch (e) { console.warn('Pexels :', e.message); }
+  }
+}
+
 async function main() {
   const { data: post, error } = await sb.from('social_posts').select('id, video_script').eq('id', ID).single();
   if (error) throw error;
@@ -70,8 +108,9 @@ async function main() {
   }
 
   const total = beats[beats.length - 1].end + 1.5;
-  execSync(`node music.mjs ${Math.ceil(total + 1)} 96`, { stdio: 'inherit' });
-  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ beats, segments, music: script.music !== false }));
+  const musicFile = script.music === false ? null : pickMusic(total);
+  await fetchBroll(beats);
+  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ beats, segments, musicFile }));
 
   execSync('npx remotion render src/index.js Reel out/reel.mp4 --codec=h264 --crf=20 --log=warn', { stdio: 'inherit' });
   const buf = fs.readFileSync('out/reel.mp4');

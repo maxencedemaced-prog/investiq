@@ -1,6 +1,6 @@
 # Vidéo animée (Reel) d'un post du Studio : lancée automatiquement par api/social.js (action « reel-create »).
 # Rend la vidéo avec Remotion (dossier video/), l'envoie dans le stockage Supabase et met à jour le post.
-# Secret GitHub nécessaire : SUPABASE_SERVICE_KEY (même valeur que sur Vercel).
+# Secret GitHub nécessaire : SUPABASE_SERVICE_KEY (même valeur que sur Vercel). Facultatif : PEXELS_API_KEY (vidéos d'illustration).
 name: Vidéo animée (Reel)
 on:
   workflow_dispatch:
@@ -31,4 +31,5 @@ jobs:
           POST_ID: ${{ inputs.post_id }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: node render-job.mjs

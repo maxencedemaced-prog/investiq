@@ -46,7 +46,8 @@ Types :
 - "quote" : phrase à retenir. Champs : lines (2 ou 3 lignes).
 - "market" / "agenda" : UNIQUEMENT si le post contient déjà un tableau de marchés ou un agenda (données réelles) : ne remplis pas "rows", le serveur recopie les données. Champs : lines, say.
 - "cta" : toujours la dernière scène. "say" invite à essayer gratuitement Kapitaro (lien en bio) ; lines : 2 lignes courtes, ex. ["Simule", "ton *projet*"].
-Varie les types : jamais deux fois de suite le même type (sauf les scènes chart). "icon" facultatif (au plus une scène sur trois) parmi : ${ICONS.join(', ')}.`;
+Varie les types : jamais deux fois de suite le même type (sauf les scènes chart).
+"broll" facultatif (2 à 4 mots EN ANGLAIS) : vidéo réelle en fond de scène, pour la 1re scène et au plus 2 autres scènes de type hook, title, quote ou number. Décris une image concrète et neutre liée au propos (ex. « city skyline night », « person using phone banking », « coins stack close up », « stock market screen », « calendar planning desk »). Pas de marque, pas de personne en détresse. "icon" facultatif (au plus une scène sur trois) parmi : ${ICONS.join(', ')}.`;
 
 const DUO_RULE = `
 MODE DUO : ajoute à chaque scène "voice": 0 ou 1. La voix 1 accroche et relance (questions, réactions courtes), la voix 0 explique. La 1re scène est en voix 1, la conclusion en voix 0, et chaque voix parle au moins 3 fois.`;
@@ -57,6 +58,7 @@ function cleanBeat(b, post, duo) {
   o.lines = (Array.isArray(b.lines) ? b.lines : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 3).map(x => clip(x, 24));
   if (b.sub) o.sub = clip(b.sub, 90);
   if (ICONS.includes(b.icon)) o.icon = b.icon;
+  if (typeof b.broll === 'string' && ['hook', 'title', 'quote', 'number'].includes(b.v)) { const q = b.broll.replace(/[^A-Za-z ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 50); if (q.length > 2) o.broll = q; }
   if (duo) o.voice = b.voice === 1 ? 1 : 0;
   if (o.v === 'number') {
     o.value = clip(String(b.value || ''), 14);
@@ -89,6 +91,7 @@ export async function writeReelScript({ post, duo, askClaude, facts }) {
   const content = JSON.stringify({ titre: post.title, diapositives: post.slides, legende: post.caption });
   const arr = await askClaude(`Transforme ce post en script de vidéo animée :\n${content}\n\nFaits vérifiés utilisables :\n${facts}${duo ? DUO_RULE : ''}`, REEL_SYSTEM + (duo ? DUO_RULE : ''));
   const beats = arr.map(b => cleanBeat(b, post, duo)).filter(Boolean).slice(0, 14);
+  let brolls = 0; beats.forEach(b => { if (b.broll && ++brolls > 3) delete b.broll; });
   if (beats.length < 4) throw new Error('Script vidéo inexploitable, réessaie');
   if (beats[beats.length - 1].v !== 'cta') beats.push({ v: 'cta', say: 'Simule ton projet gratuitement sur Kapitaro, lien en bio.', lines: ['Simule', 'ton *projet*'], ...(duo ? { voice: 0 } : {}) });
   return beats;

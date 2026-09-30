@@ -1,7 +1,7 @@
 // Vidéo animée Kapitaro (Reel 1080 × 1920) : style sobre « fintech », une scène par phrase de la voix.
 // Les données (texte, minutage des mots, voix) viennent de src/data.json, écrit par render-job.mjs.
 import React from 'react';
-import { AbsoluteFill, Audio, Img, Sequence, staticFile, useCurrentFrame, interpolate, random, Easing } from 'remotion';
+import { AbsoluteFill, Audio, Img, OffthreadVideo, Sequence, staticFile, useCurrentFrame, interpolate, random, Easing } from 'remotion';
 import { loadFont } from '@remotion/google-fonts/Inter';
 import data from './data.json';
 
@@ -217,6 +217,15 @@ const Cta = ({ b }) => {
   </>;
 };
 
+// Vidéo d'illustration (Pexels) en fond de scène, assombrie et légèrement zoomée pour garder le texte lisible
+const Broll = ({ file }) => {
+  const f = useCurrentFrame();
+  return <AbsoluteFill>
+    <OffthreadVideo src={staticFile(file)} muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${1.08 - f * 0.0006})` }} />
+    <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(6,11,24,.72) 0%, rgba(6,11,24,.5) 40%, rgba(6,11,24,.62) 70%, rgba(6,11,24,.92) 100%)' }} />
+  </AbsoluteFill>;
+};
+
 // Sous-titres discrets : le mot prononcé passe en vert
 const Captions = ({ b }) => {
   const t = useCurrentFrame() / FPS, words = b.words || [];
@@ -248,7 +257,7 @@ const Scene = ({ b }) => {
     case 'cta': body = <Cta b={b} />; break;
     default: body = <>{icon && <Icon3D name={icon} top={400} size={240} />}<Reveal lines={b.lines} top={icon ? 740 : 620} max={b.v === 'hook' ? 130 : 120} /><Muted text={b.sub} top={icon ? 1080 : 1000} /></>;
   }
-  return <AbsoluteFill style={{ opacity: o, filter: o < 1 ? `blur(${(1 - o) * 8}px)` : 'none', transform: `scale(${s})` }}>{body}<Captions b={b} /></AbsoluteFill>;
+  return <AbsoluteFill style={{ opacity: o, filter: o < 1 ? `blur(${(1 - o) * 8}px)` : 'none', transform: `scale(${s})` }}>{b.broll_file && <Broll file={b.broll_file} />}{body}<Captions b={b} /></AbsoluteFill>;
 };
 
 const Header = () => {
@@ -269,7 +278,7 @@ export const Reel = () => (
     <Background />
     {beats.map(b => <Sequence key={b.i} from={b.from} durationInFrames={b.dur}><Scene b={b} /></Sequence>)}
     {(data.segments || []).map((s, k) => <Sequence key={'v' + k} from={Math.round(s.start * FPS)}><Audio src={staticFile(s.file)} /></Sequence>)}
-    {data.music !== false && <Audio src={staticFile('music.wav')} volume={f => interpolate(f, [0, 15, totalFrames - 30, totalFrames], [0, 0.13, 0.13, 0], clamp)} />}
+    {data.musicFile && <Audio src={staticFile(data.musicFile)} volume={f => interpolate(f, [0, 15, totalFrames - 45, totalFrames], [0, 0.1, 0.1, 0], clamp)} />}
     <Header />
   </AbsoluteFill>
 );
