@@ -54,9 +54,11 @@
 <body>
 <div class="wrap">
   <div class="top">
-    <div><h1>🎬 Studio réseaux</h1><div class="sub">Tu relis, tu valides, c'est programmé. Chaque dimanche, 3 nouveaux posts sont préparés automatiquement.</div></div>
+    <div><h1>🎬 Studio réseaux</h1><div class="sub">Tu relis, tu valides, c'est programmé. Chaque dimanche : l'agenda de la semaine + 2 posts pédagogiques. Chaque vendredi soir : le bilan des marchés.</div></div>
     <div class="row">
       <button class="btn" id="btn-gen" onclick="generate()">✨ Préparer 3 posts</button>
+      <button class="btn" onclick="generateMode('agenda', this)">📅 Agenda de la semaine</button>
+      <button class="btn" onclick="generateMode('recap', this)">📈 Bilan des marchés</button>
       <button class="btn primary" onclick="document.getElementById('dlg-actu').showModal()">⚡ Post d'actu</button>
     </div>
   </div>
@@ -156,7 +158,7 @@ function render() {
         : (missingAuto(p).length ? '<button class="btn primary" onclick="publishNow(\'' + p.id + '\', this)">🚀 Publier sur les réseaux manquants</button>' : '') + '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button>';
     return '<div class="post" id="post-' + p.id + '">' +
       '<div class="post-h"><div class="post-t">' + esc(p.title) + (p.kind === 'actu' ? '<span class="badge">ACTU</span>' : '') + '</div>' +
-      '<div class="row"><label style="margin:0">Publication</label><input type="datetime-local" value="' + toLocalInput(p.scheduled_at) + '" onchange="saveDate(\'' + p.id + '\', this.value)" style="width:auto"></div></div>' +
+      '<div class="row">' + themeSelect(p) + '<label style="margin:0">Publication</label><input type="datetime-local" value="' + toLocalInput(p.scheduled_at) + '" onchange="saveDate(\'' + p.id + '\', this.value)" style="width:auto"></div></div>' +
       '<div class="slides" id="slides-' + p.id + '"></div>' +
       '<div id="editor-' + p.id + '"></div>' +
       '<div class="grid2"><div><label>Légende</label><textarea rows="8" onchange="saveField(\'' + p.id + '\', \'caption\', this.value)">' + esc(p.caption) + '</textarea></div>' +
@@ -286,7 +288,7 @@ function renderThumbs(p) {
 }
 
 // Édition d'une diapositive : un champ par texte présent
-var FIELDS = { kicker: 'Petit titre', title: 'Titre (*mot* = en vert)', sub: 'Sous-titre', big: 'Grand chiffre', body: 'Texte (**mot** = gras)', note: 'Note' };
+var FIELDS = { kicker: 'Petit titre', emoji: 'Emoji', title: 'Titre (*mot* = en couleur)', sub: 'Sous-titre', big: 'Grand chiffre', body: 'Texte (**mot** = gras)', myth: 'Idée reçue', fact: 'En réalité', note: 'Note' };
 function renderEditor(p) {
   var box = document.getElementById('editor-' + p.id), i = SEL[p.id];
   if (i == null) { box.innerHTML = ''; return; }
@@ -295,6 +297,15 @@ function renderEditor(p) {
     if (typeof s[k] === 'string') html += '<div><label>' + FIELDS[k] + '</label><input type="text" value="' + esc(s[k]) + '" oninput="editSlide(\'' + p.id + '\',' + i + ',\'' + k + '\',this.value)"></div>';
   });
   if (Array.isArray(s.items)) html += '<div><label>Éléments (un par ligne)</label><textarea oninput="editSlide(\'' + p.id + '\',' + i + ',\'items\',this.value)">' + esc(s.items.join('\n')) + '</textarea></div>';
+  // Comparatif en deux colonnes : titre + éléments de chaque colonne
+  ['left', 'right'].forEach(function (k) {
+    if (!s[k]) return;
+    var name = k === 'left' ? 'gauche' : 'droite';
+    html += '<div class="row"><div style="flex:1"><label>Colonne ' + name + ' : titre</label><input type="text" value="' + esc(s[k].title) + '" oninput="editCol(\'' + p.id + '\',' + i + ',\'' + k + '\',\'title\',this.value)"></div></div>' +
+      '<div><label>Colonne ' + name + ' : éléments (un par ligne)</label><textarea oninput="editCol(\'' + p.id + '\',' + i + ',\'' + k + '\',\'items\',this.value)">' + esc((s[k].items || []).join('\n')) + '</textarea></div>';
+  });
+  // Tableaux de données réelles (marchés, agenda) : seuls les libellés sont modifiables
+  if (Array.isArray(s.rows)) html += '<div class="sub">Données réelles : ' + (s.t === 'market' ? 'les variations viennent des marchés et ne sont pas modifiables.' : 'jours et heures issus du calendrier économique.') + '</div>';
   ['a', 'b'].forEach(function (k) {
     if (s[k]) html += '<div class="row"><div style="flex:1"><label>Barre ' + k.toUpperCase() + ' : libellé</label><input type="text" value="' + esc(s[k].label) + '" oninput="editBar(\'' + p.id + '\',' + i + ',\'' + k + '\',\'label\',this.value)"></div><div style="flex:1"><label>valeur affichée</label><input type="text" value="' + esc(s[k].value) + '" oninput="editBar(\'' + p.id + '\',' + i + ',\'' + k + '\',\'value\',this.value)"></div><div style="width:110px"><label>montant</label><input type="text" value="' + esc(s[k].amount) + '" oninput="editBar(\'' + p.id + '\',' + i + ',\'' + k + '\',\'amount\',this.value)"></div></div>';
   });
@@ -303,6 +314,11 @@ function renderEditor(p) {
 }
 function findPost(id) { return POSTS.find(function (p) { return p.id === id; }); }
 var _rt;
+function editCol(id, i, k, f, v) {
+  var p = findPost(id), c = p.slides[i][k] = p.slides[i][k] || { title: '', items: [] };
+  c[f] = f === 'items' ? v.split('\n').filter(function (x) { return x.trim(); }) : v;
+  clearTimeout(_rt); _rt = setTimeout(function () { renderThumbs(p); }, 250);
+}
 function editSlide(id, i, k, v) {
   var p = findPost(id); p.slides[i][k] = k === 'items' ? v.split('\n').filter(function (x) { return x.trim(); }) : v;
   clearTimeout(_rt); _rt = setTimeout(function () { renderThumbs(p); }, 250);
@@ -397,12 +413,31 @@ async function removePost(id) {
   try { await api('POST', { action: 'delete', id: id }); POSTS = POSTS.filter(function (p) { return p.id !== id; }); render(); toast('Post supprimé'); } catch (e) { toast(e.message); }
 }
 
-async function generate() {
-  var btn = document.getElementById('btn-gen');
+async function generate() { return generateMode('weekly', document.getElementById('btn-gen')); }
+// mode : 'weekly' (agenda + 2 posts pédagogiques), 'agenda' (rendez-vous éco réels), 'recap' (marchés réels de la semaine)
+async function generateMode(mode, btn) {
+  var label = btn.textContent;
   btn.disabled = true; btn.textContent = 'Écriture en cours (≈ 1 min)…';
-  try { var d = await api('POST', { action: 'generate', count: 3 }); POSTS = POSTS.concat(d.posts || []); setFilter('draft'); toast('✨ ' + (d.posts || []).length + ' posts prêts à relire'); }
-  catch (e) { toast(e.message, 6000); }
-  btn.disabled = false; btn.textContent = '✨ Préparer 3 posts';
+  try {
+    var d = await api('POST', { action: 'generate', mode: mode, count: 3 });
+    POSTS = POSTS.concat(d.posts || []); setFilter('draft');
+    toast('✨ ' + (d.posts || []).length + ' post' + ((d.posts || []).length > 1 ? 's' : '') + ' prêt' + ((d.posts || []).length > 1 ? 's' : '') + ' à relire');
+  } catch (e) { toast(e.message, 7000); }
+  btn.disabled = false; btn.textContent = label;
+}
+
+// Ambiance de couleurs du carrousel (appliquée à toutes les diapositives)
+var THEME_NAMES = { nuit: '🌙 Nuit', clair: '☀️ Clair', violet: '💜 Violet', ocean: '🌊 Océan', soleil: '🌅 Soleil', actu: '📰 Actu' };
+function themeSelect(p) {
+  var cur = (p.slides[0] && p.slides[0].theme) || 'nuit';
+  return '<select onchange="setTheme(\'' + p.id + '\', this.value)" style="font:inherit;font-size:13px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:7px 8px">' +
+    Object.keys(THEME_NAMES).map(function (k) { return '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + THEME_NAMES[k] + '</option>'; }).join('') + '</select>';
+}
+async function setTheme(id, theme) {
+  var p = findPost(id);
+  p.slides.forEach(function (s) { s.theme = theme; });
+  renderThumbs(p);
+  try { await api('POST', { action: 'update', id: id, fields: { slides: p.slides } }); toast('🎨 Ambiance enregistrée' + (p.status !== 'draft' ? ' : revalide le post pour refaire les images' : '')); } catch (e) { toast(e.message); }
 }
 async function generateActu() {
   var topic = document.getElementById('actu-topic').value.trim();
