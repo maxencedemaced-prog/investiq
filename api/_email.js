@@ -24,7 +24,7 @@ export function unsubUrl(userId) {
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Gabarit : titre, paragraphes (texte simple, **gras** autorisé), bouton, pied de page légal + désinscription
-export function renderEmail({ title, paragraphs, cta, userId }) {
+export function renderEmail({ title, paragraphs, cta, userId, extraHtml = '', extraText = '' }) {
   const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   const body = paragraphs.map(p => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1f2937">${md(p)}</p>`).join('');
   const button = cta ? `<p style="margin:22px 0 8px"><a href="${esc(cta.url)}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 22px;border-radius:10px">${esc(cta.label)}</a></p>` : '';
@@ -36,13 +36,13 @@ export function renderEmail({ title, paragraphs, cta, userId }) {
 <tr><td style="background:#080e1e;padding:18px 24px"><span style="color:#ffffff;font-weight:800;font-size:18px">Kapitaro</span></td></tr>
 <tr><td style="padding:28px 24px 12px">
 <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#0b1220">${esc(title)}</h1>
-${body}${button}
+${body}${extraHtml}${button}
 </td></tr>
 <tr><td style="padding:16px 24px 24px;border-top:1px solid #e5e7eb;font-size:11.5px;line-height:1.6;color:#6b7280">
 Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital.<br>
 Maxence De Macedo, entrepreneur individuel (Quorvia) · contact@kapitaro.fr${unsub ? `<br><a href="${esc(unsub)}" style="color:#6b7280">Ne plus recevoir ces e-mails</a>` : ''}
 </td></tr></table></td></tr></table></body></html>`;
-  const text = `${title}\n\n${paragraphs.map(p => p.replace(/\*\*/g, '')).join('\n\n')}${cta ? `\n\n${cta.label} : ${cta.url}` : ''}\n\n--\nKapitaro · contact@kapitaro.fr${unsub ? `\nNe plus recevoir ces e-mails : ${unsub}` : ''}`;
+  const text = `${title}\n\n${paragraphs.map(p => p.replace(/\*\*/g, '')).join('\n\n')}${extraText ? '\n\n' + extraText : ''}${cta ? `\n\n${cta.label} : ${cta.url}` : ''}\n\n--\nKapitaro · contact@kapitaro.fr${unsub ? `\nNe plus recevoir ces e-mails : ${unsub}` : ''}`;
   return { html, text, unsub };
 }
 
@@ -57,6 +57,8 @@ export async function sendEmail({ to, subject, html, text, unsub }) {
   if (!r.ok) throw new Error(`Resend ${r.status} : ${(await r.text()).slice(0, 200)}`);
   return r.json();
 }
+
+export { esc as escapeHtml };
 
 // Contenu des e-mails automatiques
 export const EMAILS = {

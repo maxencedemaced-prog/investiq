@@ -62,7 +62,7 @@
         <h1>Tableau de bord Kapitaro</h1>
         <div class="sub" id="ts"></div>
       </div>
-      <button class="refresh-btn" onclick="loadStats()">↻ Actualiser</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="refresh-btn" id="btn-nl" onclick="previewNewsletter()" style="background:#1e3a5f">📧 Aperçu de la lettre</button><button class="refresh-btn" onclick="loadStats()">↻ Actualiser</button></div>
     </div>
 
     <div id="loading" style="display:none">Chargement des données…</div>
@@ -144,6 +144,20 @@ async function doLogin() {
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) { err.textContent = error.message; return; }
   showDash();
+}
+
+// Envoie la lettre de la semaine à l'adresse admin seulement (aperçu)
+async function previewNewsletter() {
+  const b = document.getElementById('btn-nl'), label = b.textContent;
+  b.disabled = true; b.textContent = 'Envoi…';
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(API_BASE + '/api/email-send', { method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erreur');
+    b.textContent = d.sent ? '✓ Envoyé dans ta boîte mail' : 'Rien envoyé : ' + ((d.errors || [])[0] || 'adresse introuvable');
+  } catch (e) { b.textContent = 'Erreur : ' + e.message; }
+  setTimeout(() => { b.disabled = false; b.textContent = label; }, 6000);
 }
 
 async function showDash() {

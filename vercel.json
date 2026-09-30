@@ -35,6 +35,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/email-send?mode=newsletter",
+      "schedule": "0 8 * * 0"
+    },
+    {
       "path": "/api/social?cron=weekly",
       "schedule": "0 16 * * 0"
     },
