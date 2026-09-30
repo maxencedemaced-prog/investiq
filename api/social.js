@@ -170,9 +170,32 @@ const plannedVideo = style => ({ status: 'planned', style, voice_pick: style ===
 
 // ── Données réelles pour les posts d'actualité (jamais de données de secours inventées) ──
 const DAYS_FR = ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'];
+// Calendrier économique : FMP si la formule le permet, sinon le calendrier public ForexFactory (semaine en cours + suivante)
 async function fetchAgenda() {
+  try { return await fetchAgendaFmp(); } catch (e) { console.warn('[social] agenda FMP :', e.message); }
+  const feeds = ['thisweek', 'nextweek'].map(w => `https://nfs.faireconomy.media/ff_calendar_${w}.json`);
+  const all = [];
+  for (const u of feeds) {
+    try { const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(10000) }); const j = await r.json(); if (Array.isArray(j)) all.push(...j); } catch {}
+  }
+  const zones = { USD: 'États-Unis', EUR: 'Zone euro', GBP: 'Royaume-Uni' };
+  const now = Date.now(), until = now + 7 * 86400000;
+  const pick = level => all.filter(e => zones[e.country] && level.includes(e.impact) && Date.parse(e.date) > now && Date.parse(e.date) < until);
+  let list = pick(['High']);
+  if (list.length < 4) list = pick(['High', 'Medium']);
+  const seen = new Set();
+  const events = list.sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+    .filter(e => { const k = e.title + e.date; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 8)
+    .map(e => {
+      const p = parisParts(Date.parse(e.date)), d = new Date(Date.UTC(p.y, p.m - 1, p.d));
+      return { when: `${DAYS_FR[d.getUTCDay()]} ${String(p.h).padStart(2, '0')}h${String(p.mi).padStart(2, '0')}`, event: e.title, zone: zones[e.country], estimate: e.forecast || null, previous: e.previous || null };
+    });
+  if (!events.length) throw new Error('Aucun rendez-vous économique majeur trouvé pour les 7 prochains jours');
+  return events;
+}
+async function fetchAgendaFmp() {
   const key = process.env.FMP_API_KEY;
-  if (!key) throw new Error('FMP_API_KEY manquante : agenda indisponible');
+  if (!key) throw new Error('FMP_API_KEY manquante');
   const from = new Date(), to = new Date(Date.now() + 7 * 86400000);
   const url = `https://financialmodelingprep.com/stable/economic-calendar?from=${from.toISOString().slice(0, 10)}&to=${to.toISOString().slice(0, 10)}&apikey=${key}`;
   const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
