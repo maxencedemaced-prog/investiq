@@ -68,6 +68,43 @@ Types :
 - "cta" : toujours la dernière scène. "say" invite à essayer gratuitement Kapitaro (lien en bio) ; lines : 2 lignes courtes, ex. ["Simule", "ton *projet*"].
 Varie les types : jamais deux fois de suite le même type (sauf les scènes chart). "icon" facultatif (au plus une scène sur trois) parmi : ${ICONS.join(', ')}.`;
 
+// Bibliothèque de plans filmés : pour chaque idée, des recherches de banque de vidéos qui donnent des plans cohérents.
+// L'IA choisit le thème selon le SENS de la phrase dite ; le rendu essaie les recherches dans l'ordre et garde la vidéo la plus pertinente.
+export const SHOT_THEMES = {
+  securite:       { fr: 'sécurité, protection, filet de sécurité, havre de paix', q: ['family hugging at home', 'cozy home family evening', 'mother holding baby home', 'umbrella rain protection'] },
+  serenite:       { fr: 'sérénité, calme, esprit tranquille', q: ['woman relaxing on sofa', 'calm lake sunrise', 'man reading book relaxing', 'peaceful nature morning'] },
+  famille:        { fr: 'famille, enfants, transmission', q: ['family walking park', 'parents playing with children', 'family dinner table', 'grandparents with grandchildren'] },
+  bourse:         { fr: 'bourse, marchés financiers, cotations, actions', q: ['stock market chart screen', 'stock exchange trading screen', 'financial data monitor', 'trader looking at charts'] },
+  baisse:         { fr: 'baisse, chute, volatilité, marché qui descend', q: ['stock chart going down red', 'falling graph screen', 'stormy sky clouds timelapse', 'rough sea waves'] },
+  hausse:         { fr: 'hausse, croissance, progression, rendement', q: ['growing plant timelapse', 'rising graph screen', 'green stock chart up', 'sunrise timelapse'] },
+  temps:          { fr: 'temps, long terme, patience, années', q: ['clock time lapse', 'hourglass sand time', 'tree seasons timelapse', 'calendar pages turning'] },
+  epargne:        { fr: 'épargne, économiser, mettre de côté, livret', q: ['piggy bank coins', 'saving coins jar', 'putting coins in piggy bank', 'coins stack close up'] },
+  argent:         { fr: 'argent, budget, compter, dépenser', q: ['counting money hands', 'calculator budget planning', 'wallet cash payment', 'euro banknotes counting'] },
+  frais:          { fr: 'frais, coûts, factures, commissions', q: ['paying bills desk', 'receipt shopping bill', 'credit card payment terminal', 'man reading invoice'] },
+  appli:          { fr: 'application, téléphone, suivre ses comptes', q: ['woman using smartphone app', 'banking app on phone', 'man scrolling phone', 'hands holding smartphone'] },
+  projet:         { fr: 'projet, objectif, rêve, futur', q: ['couple planning future', 'new house keys', 'travel airplane window', 'woman writing goals notebook'] },
+  retraite:       { fr: 'retraite, plus tard, vieillir', q: ['senior couple walking beach', 'retired couple smiling', 'elderly man garden', 'grandparents relaxing'] },
+  debutant:       { fr: 'débuter, apprendre, comprendre', q: ['young woman laptop learning', 'student studying notes', 'person taking notes laptop', 'reading book library'] },
+  diversification:{ fr: 'diversification, répartition, panier, ne pas tout miser', q: ['fruit basket market', 'colorful puzzle pieces', 'assorted vegetables market stall', 'eggs in basket'] },
+  monde:          { fr: 'monde, international, économie mondiale', q: ['earth globe rotating', 'city skyline aerial', 'world map', 'airport departures'] },
+  hesitation:     { fr: 'hésitation, doute, stress, frustration', q: ['man stressed laptop', 'woman worried looking at bills', 'thoughtful man window', 'frustrated woman computer'] },
+  reussite:       { fr: 'satisfaction, réussite, bonne décision', q: ['happy woman laptop', 'man smiling phone', 'friends celebrating', 'woman satisfied coffee'] },
+  entreprises:    { fr: 'entreprises, sociétés, économie réelle', q: ['office team meeting', 'factory production line', 'business district skyscrapers', 'people working office'] },
+  immobilier:     { fr: 'immobilier, logement, maison', q: ['modern house exterior', 'apartment interior sunny', 'house keys hand', 'city apartments buildings'] },
+  inflation:      { fr: 'inflation, prix, pouvoir d\'achat, courses', q: ['supermarket shopping cart', 'grocery shopping prices', 'woman checking receipt supermarket', 'fuel pump price'] },
+  banque:         { fr: 'banque, compte, conseiller', q: ['bank building exterior', 'bank counter', 'atm cash withdrawal', 'bank card close up'] },
+  kapitaro:       { fr: 'conclusion : essayer Kapitaro sur son téléphone', q: ['smiling woman using smartphone', 'man smiling phone sofa', 'woman phone coffee shop', 'young man using phone'] },
+};
+// Secours sans IA : repère le thème d'après les mots de la phrase
+const THEME_WORDS = [
+  ['securite', /s[ée]curit|prot[ée]g|filet|pr[ée]caution|abri/i], ['baisse', /baiss|chut|descend|volatil|recul/i], ['hausse', /hauss|cro[iî]|monte|progress|rendement/i],
+  ['bourse', /bourse|march[ée]|action|cotation|indice|etf/i], ['frais', /frais|co[uû]t|commission|facture/i], ['epargne', /[ée]pargn|[ée]conom|livret|de c[ôo]t[ée]/i],
+  ['temps', /temps|long terme|ann[ée]e|patien|dur[ée]e/i], ['diversification', /diversif|r[ée]parti|panier|m[ée]lang/i], ['projet', /projet|objectif|r[êe]ve|futur/i],
+  ['retraite', /retrait/i], ['famille', /famille|enfant/i], ['inflation', /inflation|prix|pouvoir d'achat/i], ['appli', /appli|t[ée]l[ée]phone|kapitaro/i],
+  ['hesitation', /doute|h[ée]sit|stress|peur|inqui/i], ['argent', /argent|budget|euro|€/i],
+];
+const themeOf = say => (THEME_WORDS.find(([, re]) => re.test(say)) || ['bourse'])[0];
+
 // Style « vidéo réelle » : uniquement des plans filmés (banque de vidéos), texte court en surimpression
 export const REEL_SYSTEM_REAL = `Tu es le réalisateur des vidéos courtes (Reels Instagram, TikTok) de Kapitaro, une app française qui aide les particuliers à suivre et comprendre leurs placements.
 Tu transformes un post en script de VIDÉO RÉELLE de 20 à 30 secondes : chaque scène est un vrai plan filmé (banque de vidéos), avec une voix off et un texte très court en surimpression. Aucune animation, aucun graphique dessiné. Ton : élégant mais ÉNERGIQUE, qui donne envie de prendre son épargne en main : phrases courtes et percutantes, questions directes, ponctuation expressive, en tutoyant.
@@ -82,12 +119,14 @@ RÈGLES ABSOLUES (réglementation AMF) :
 - Le texte à l'écran et la phrase dite doivent correspondre au plan filmé choisi pour la scène.
 
 FORMAT : réponds UNIQUEMENT avec un tableau JSON de 7 à 10 scènes, sans texte autour. 45 à 75 mots au total dans les champs "say".
-Chaque scène : {"v": "shot" | "number" | "cta", "say": "phrase dite par la voix", "lines": ["texte à l'écran"], "broll": "plan filmé"}
+Chaque scène : {"v": "shot" | "number" | "cta", "say": "phrase dite par la voix", "lines": ["texte à l'écran"], "theme": "thème du plan filmé"}
 - "say" : UNE phrase courte (3 à 14 mots), naturelle à l'oral. Écris les nombres EN LETTRES.
 - "lines" : 1 ou 2 lignes très courtes (2 à 18 caractères chacune) qui résument la phrase. Entoure 1 mot clé d'astérisques (*mot*).
-- "broll" (obligatoire, 3 à 6 mots EN ANGLAIS) : un plan concret et filmable, tous différents d'une scène à l'autre. Exemples : « stock market chart screen », « trader monitors financial data », « business district skyscrapers », « woman checking banking app », « frustrated man looking at bills », « couple planning budget at table », « calm woman working laptop cafe », « coins stack close up », « sunny modern apartment interior », « family walking beach sunset », « elegant watch businessman city ».
+- "theme" (obligatoire) : le plan filmé qui illustre LE SENS de la phrase dite, choisi dans cette liste (clé : idée illustrée) :
+${Object.entries(SHOT_THEMES).map(([k, t]) => `  ${k} : ${t.fr}`).join('\n')}
+  Exemples : « ton épargne de sécurité » → securite ; « le marché baisse » → baisse ; « les frais grignotent ton rendement » → frais ; « sur vingt ans » → temps. Évite le même thème deux scènes de suite.
 - "number" : un chiffre marquant en surimpression. Champs en plus : "value" (max 10 car., uniquement des faits vérifiés ou du post), "sub" (max 40 car.).
-- "cta" : toujours la dernière scène, "say" invite à essayer gratuitement Kapitaro (lien en bio), "broll" montre une personne sereine avec son téléphone.`;
+- "cta" : toujours la dernière scène, "say" invite à essayer gratuitement Kapitaro (lien en bio), "theme" : kapitaro.`;
 
 const DUO_RULE = `
 MODE DUO : ajoute à chaque scène "voice": 0 ou 1. La voix 1 accroche et relance (questions, réactions courtes), la voix 0 explique. La 1re scène est en voix 1, la conclusion en voix 0, et chaque voix parle au moins 3 fois.`;
@@ -131,8 +170,8 @@ function cleanBeatReal(b, duo, i) {
   if (!b || !['shot', 'number', 'cta'].includes(b.v) || !/[\p{L}\p{N}]/u.test(b.say || '')) return null;
   const o = { v: b.v, say: clip(b.say, 180).replace(/\s+/g, ' ') };
   o.lines = (Array.isArray(b.lines) ? b.lines : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 2).map(x => clip(x, 22));
-  const q = typeof b.broll === 'string' ? b.broll.replace(/[^A-Za-z ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) : '';
-  o.broll = q.length > 2 ? q : REAL_FALLBACK[i % REAL_FALLBACK.length];
+  const theme = SHOT_THEMES[b.theme] ? b.theme : (b.v === 'cta' ? 'kapitaro' : themeOf(o.say));
+  o.theme = theme; o.broll_queries = SHOT_THEMES[theme].q; o.broll = o.broll_queries[0];
   if (o.v === 'number') { o.value = clip(String(b.value || ''), 14); if (b.sub) o.sub = clip(b.sub, 60); if (!/\d/.test(o.value)) { o.v = 'shot'; delete o.value; } }
   if (duo) o.voice = b.voice === 1 ? 1 : 0;
   return o;
@@ -144,7 +183,7 @@ export async function writeReelScript({ post, duo, askClaude, facts, style }) {
     const arr = await askClaude(`Transforme ce post en script de vidéo réelle :\n${content}\n\nFaits vérifiés utilisables :\n${facts}${duo ? DUO_RULE : ''}`, REEL_SYSTEM_REAL + (duo ? DUO_RULE : ''));
     const beats = arr.map((b, i) => cleanBeatReal(b, duo, i)).filter(Boolean).slice(0, 12);
     if (beats.length < 4) throw new Error('Script vidéo inexploitable, réessaie');
-    if (beats[beats.length - 1].v !== 'cta') beats.push({ v: 'cta', say: 'Simule ton projet gratuitement sur Kapitaro, lien en bio.', lines: ['Simule', 'ton *projet*'], broll: 'smiling woman using smartphone', ...(duo ? { voice: 0 } : {}) });
+    if (beats[beats.length - 1].v !== 'cta') beats.push({ v: 'cta', say: 'Simule ton projet gratuitement sur Kapitaro, lien en bio.', lines: ['Simule', 'ton *projet*'], theme: 'kapitaro', broll_queries: SHOT_THEMES.kapitaro.q, broll: SHOT_THEMES.kapitaro.q[0], ...(duo ? { voice: 0 } : {}) });
     return beats;
   }
   const arr = await askClaude(`Transforme ce post en script de vidéo animée :\n${content}\n\nFaits vérifiés utilisables :\n${facts}${duo ? DUO_RULE : ''}`, REEL_SYSTEM + (duo ? DUO_RULE : ''));

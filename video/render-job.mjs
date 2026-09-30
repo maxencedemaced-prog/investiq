@@ -101,11 +101,16 @@ async function fetchBroll(beats) {
   if (!pixabay && !pexels) return;
   const used = new Set();
   for (let i = 0; i < beats.length; i++) {
-    const q = beats[i].broll;
-    if (!q) continue;
+    const queries = Array.isArray(beats[i].broll_queries) && beats[i].broll_queries.length ? beats[i].broll_queries : (beats[i].broll ? [beats[i].broll] : []);
+    if (!queries.length) continue;
+    const q = queries.join(' / ');
     try {
       const need = beats[i].end - beats[i].start;
-      const list = pixabay ? await pixabayCandidates(q, need, pixabay) : await pexelsCandidates(q, need, pexels);
+      let list = [];
+      for (const one of queries) {
+        list = (pixabay ? await pixabayCandidates(one, need, pixabay) : await pexelsCandidates(one, need, pexels)).filter(x => !used.has(x.id));
+        if (list.length) break;
+      }
       for (const c of list.filter(x => !used.has(x.id))) {
         const res = await fetch(c.url);
         if (!res.ok) continue;
