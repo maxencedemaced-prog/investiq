@@ -22,7 +22,7 @@ export async function reelVoices() {
   try {
     const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY }, signal: AbortSignal.timeout(8000) });
     const j = await r.json();
-    if (!r.ok) voicesWarning = r.status === 401 ? 'La clé ElevenLabs n'a pas le droit « Voix : Lire » (ou elle est invalide) : modifie-la dans ElevenLabs > Clés API.' : 'ElevenLabs a répondu ' + r.status + ' : ' + String(j?.detail?.message || j?.detail || '').slice(0, 120);
+    if (!r.ok) voicesWarning = r.status === 401 ? "La clé ElevenLabs n'a pas le droit « Voix : Lire » (ou elle est invalide) : modifie-la dans ElevenLabs > Clés API." : 'ElevenLabs a répondu ' + r.status + ' : ' + String(j?.detail?.message || j?.detail || '').slice(0, 120);
     else if (!(j.voices || []).some(v => v.category !== 'premade')) voicesWarning = 'Aucune voix dans « Mes voix » sur ElevenLabs : ajoute-les depuis la bibliothèque.';
     mine = (j.voices || []).filter(v => v.category !== 'premade').map(v => ({ name: String(v.name).split(' - ')[0].trim(), id: v.voice_id }));
   } catch (e) { voicesWarning = 'ElevenLabs injoignable : ' + e.message; console.warn('[reel] voix ElevenLabs :', e.message); }
