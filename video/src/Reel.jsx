@@ -41,8 +41,8 @@ const Background = () => {
   const g1 = b.v === 'warn' ? '#f43f5e' : GLOWS[i % GLOWS.length], g2 = GLOWS[(i + 3) % GLOWS.length];
   return (
     <AbsoluteFill style={{ background: C.bg, overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', left: -300 + Math.sin(f / 90) * 120, top: -250 + Math.cos(f / 110) * 80, width: 1300, height: 1300, borderRadius: '50%', background: g1, opacity: 0.28, filter: 'blur(180px)' }} />
-      <div style={{ position: 'absolute', right: -420 + Math.cos(f / 100) * 120, bottom: -300 + Math.sin(f / 80) * 100, width: 1300, height: 1300, borderRadius: '50%', background: g2, opacity: 0.2, filter: 'blur(200px)' }} />
+      <div style={{ position: 'absolute', left: -700 + Math.sin(f / 90) * 120, top: -650 + Math.cos(f / 110) * 80, width: 2100, height: 2100, borderRadius: '50%', background: `radial-gradient(circle, ${g1}55 0%, ${g1}22 35%, transparent 65%)` }} />
+      <div style={{ position: 'absolute', right: -820 + Math.cos(f / 100) * 120, bottom: -700 + Math.sin(f / 80) * 100, width: 2100, height: 2100, borderRadius: '50%', background: `radial-gradient(circle, ${g2}40 0%, ${g2}18 35%, transparent 65%)` }} />
       <AbsoluteFill style={{ backgroundImage: `linear-gradient(${C.line} 1px, transparent 1px), linear-gradient(90deg, ${C.line} 1px, transparent 1px)`, backgroundSize: '90px 90px', opacity: 0.25,
         maskImage: 'radial-gradient(ellipse at 50% 45%, black 20%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at 50% 45%, black 20%, transparent 70%)' }} />
       {Array.from({ length: 16 }).map((_, k) => {
@@ -74,21 +74,26 @@ const Reveal = ({ lines, top, max = 120, weight = 700, delay = 2 }) => {
 const Muted = ({ text, top, delay = 10, size = 40 }) => {
   const f = useCurrentFrame(), p = io(f, delay, delay + 14, 0, 1);
   if (!text) return null;
-  return <div style={{ position: 'absolute', top, left: 80, right: 80, textAlign: 'center', color: C.muted, fontSize: size, fontWeight: 500, lineHeight: 1.3, opacity: p, transform: `translateY(${(1 - p) * 16}px)` }}>{text}</div>;
+  return <div style={{ position: 'absolute', top, left: 80, right: 80, textAlign: 'center', color: C.muted, fontSize: size, fontWeight: 500, lineHeight: 1.3, opacity: p, transform: `translateY(${(1 - p) * 16}px)` }}>{String(text).replace(/\*/g, '')}</div>;
 };
 const Glass = ({ top, left = 70, right = 70, children, delay = 0, style }) => {
   const f = useCurrentFrame(), p = io(f, delay, delay + 16, 0, 1);
-  return <div style={{ position: 'absolute', top, left, right, borderRadius: 40, background: C.glass, border: `1.5px solid ${C.line}`, backdropFilter: 'blur(24px)',
+  return <div style={{ position: 'absolute', top, left, right, borderRadius: 40, background: C.glass, border: `1.5px solid ${C.line}`,
     boxShadow: '0 40px 100px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12)', opacity: p, transform: `translateY(${(1 - p) * 40}px) scale(${0.97 + p * 0.03})`, ...style }}>{children}</div>;
 };
 const Icon3D = ({ name, top, size = 230, delay = 0 }) => {
   const f = useCurrentFrame(), p = io(f, delay, delay + 18, 0, 1);
   if (!ICONS.includes(name)) return null;
   return <div style={{ position: 'absolute', top, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
-    <div style={{ position: 'absolute', top: size * 0.2, width: size * 0.8, height: size * 0.8, borderRadius: '50%', background: C.green, opacity: 0.18 * p, filter: 'blur(60px)' }} />
+    <div style={{ position: 'absolute', top: -size * 0.1, width: size * 1.4, height: size * 1.4, borderRadius: '50%', background: `radial-gradient(circle, ${C.green}33 0%, transparent 65%)`, opacity: p }} />
     <Img src={staticFile(name + '.png')} style={{ width: size, height: size, opacity: p, transform: `translateY(${(1 - p) * 30 + Math.sin(f / 18) * 8}px) scale(${0.9 + p * 0.1})` }} />
   </div>;
 };
+
+// Texte court avec *mot* en couleur (étapes, listes, libellés)
+const Accent = ({ text }) => <>{String(text || '').split(/(\*[^*]+\*)/).map((part, k) => part.startsWith('*') && part.endsWith('*') && part.length > 2
+  ? <span key={k} style={{ backgroundImage: GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{part.slice(1, -1)}</span>
+  : <React.Fragment key={k}>{part.replace(/\*/g, '')}</React.Fragment>)}</>;
 
 // Grand chiffre : défile jusqu'à sa valeur s'il est numérique
 const BigNumber = ({ value, top }) => {
@@ -153,7 +158,7 @@ const Compare = ({ b, top }) => {
       const at = cueFrame(b, r.label, 0.3 + k * 1.2), p = io(f, at, at + 22, 0, 1);
       return <div key={k} style={{ margin: k ? '34px 0 0' : 0, opacity: 0.3 + 0.7 * p }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 20 }}>
-          <span style={{ color: C.text, fontSize: 42, fontWeight: 600 }}>{r.label}</span>
+          <span style={{ color: C.text, fontSize: 42, fontWeight: 600 }}><Accent text={r.label} /></span>
           <span style={{ color: k ? C.green : C.text, fontSize: 58, fontWeight: 700, whiteSpace: 'nowrap' }}>{r.value}</span>
         </div>
         <div style={{ height: 40, borderRadius: 20, background: 'rgba(255,255,255,.08)', marginTop: 14, overflow: 'hidden' }}>
@@ -172,7 +177,7 @@ const Items = ({ b, top, numbered }) => {
     const at = cueFrame(b, s, 0.3 + k * ((b.end - b.start) / (items.length + 1))) - 4;
     return <Glass key={k} top={top + k * gapY} delay={at} style={{ padding: '32px 40px', display: 'flex', alignItems: 'center', gap: 28 }}>
       <div style={{ flex: 'none', width: 80, height: 80, borderRadius: numbered ? '50%' : 24, background: k === items.length - 1 ? GRAD : 'rgba(255,255,255,.1)', color: k === items.length - 1 ? '#04120c' : C.text, fontSize: 40, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{numbered ? k + 1 : '✓'}</div>
-      <div style={{ color: C.text, fontSize: s.length > 26 ? 44 : 52, fontWeight: 700, letterSpacing: -1.2, lineHeight: 1.15 }}>{s}</div>
+      <div style={{ color: C.text, fontSize: s.length > 26 ? 44 : 52, fontWeight: 700, letterSpacing: -1.2, lineHeight: 1.15 }}><Accent text={s} /></div>
     </Glass>;
   })}</>;
 };

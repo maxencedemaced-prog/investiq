@@ -272,7 +272,8 @@ async function createReel(again) {
     document.getElementById('dlg-reel').close();
     render();
     var s = d.post.video_script || {};
-    toast(s.status === 'error' ? '⚠️ ' + s.error : '🎞 Fabrication lancée : la vidéo arrive dans ≈ 3 min', 7000);
+    toast(s.status === 'error' ? '⚠️ ' + s.error : '🎞 Script prêt, fabrication lancée : la vidéo arrive sur le post dans ≈ 5 min', 9000);
+    var el = document.getElementById('post-' + REEL_ID); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     watchReels();
   } catch (e) { toast(e.message, 7000); }
   btn.disabled = false; btn.textContent = label;
@@ -284,7 +285,7 @@ function reelStatus(p) {
   var line = '';
   if (reelPending(p)) line = Date.now() - Date.parse(s.queued_at || 0) > 20 * 60000
     ? '<span style="color:#fca5a5">⚠️ La vidéo animée n\'est pas arrivée après 20 min : relance-la avec 🎞 Vidéo animée.</span>'
-    : '⏳ Vidéo animée en fabrication' + (s.status === 'rendering' ? ' (rendu en cours)' : '') + '… ≈ 3 min';
+    : '⏳ Vidéo animée en fabrication' + (s.status === 'rendering' ? ' (rendu en cours)' : '') + '… ≈ 5 min, pas besoin de rester sur la page';
   else if (s.status === 'error') line = '<span style="color:#fca5a5">⚠️ Vidéo animée : ' + esc(s.error || 'échec') + '</span>';
   else if (s.status === 'done') line = '🎞 Vidéo animée prête' + (s.voice ? ' · voix ' + esc(s.voice) : '');
   return line ? '<div class="sub" style="margin-top:8px">' + line + '</div>' : '';

@@ -131,7 +131,7 @@ async function main() {
   await fetchBroll(beats);
   fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ beats, segments, musicFile }));
 
-  execSync('npx remotion render src/index.js Reel out/reel.mp4 --codec=h264 --crf=20 --log=warn', { stdio: 'inherit' });
+  execSync('npx remotion render src/index.js Reel out/reel.mp4 --codec=h264 --crf=20 --concurrency=100% --log=warn', { stdio: 'inherit' });
   const buf = fs.readFileSync('out/reel.mp4');
   const file = `${ID}/reel-${Date.now()}.mp4`;
   const up = await sb.storage.from('social').upload(file, buf, { contentType: 'video/mp4', upsert: true });
