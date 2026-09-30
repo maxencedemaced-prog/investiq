@@ -925,9 +925,12 @@ function _switchAuthStyle(tab) {
     signupBtn.style.fontWeight = !isLogin ? '700' : '600';
   }
 }
+// Clic sur un onglet avant la fin du chargement de l'app (téléphone lent) : on le garde et on l'applique ensuite
+if (typeof window.switchAuth !== 'function') window.switchAuth = function(tab) { window.__pendingAuthTab = tab; _switchAuthStyle(tab); };
 window.addEventListener('load', function() {
   const orig = window.switchAuth;
   if (orig) window.switchAuth = function(tab) { orig(tab); _switchAuthStyle(tab); };
+  if (window.__pendingAuthTab) { window.switchAuth(window.__pendingAuthTab); window.__pendingAuthTab = null; }
 });
 </script>
 <div id="app" style="display:none">
