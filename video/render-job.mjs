@@ -63,12 +63,12 @@ const SENSITIVE = /\b(relig\w*|church|chapel|cathedral|cross|crucifix|jesus|chri
 const STOP = new Set(['a', 'an', 'the', 'of', 'at', 'on', 'in', 'with', 'and', 'to', 'for', 'close', 'up']);
 const stem = w => w.toLowerCase().replace(/(ing|ers|er|es|s)$/, '');
 async function pixabaySearch(q, need, key) {
-  const r = await fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&safesearch=true&per_page=50`);
+  const r = await fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&video_type=film&safesearch=true&per_page=50`);
   const j = await r.json();
   const words = q.split(/\s+/).filter(w => w.length > 2 && !STOP.has(w.toLowerCase())).map(stem);
   const out = [];
   for (const h of j.hits || []) {
-    if (h.duration < Math.min(need, 5)) continue;
+    if (h.duration < need + 0.5) continue;   // jamais plus court que la scène (sinon écran vide à la fin)
     // Pertinence : part des mots de la scène retrouvés dans les mots-clés de la vidéo
     const tags = String(h.tags || '').split(',').flatMap(t => t.trim().split(/\s+/)).map(stem);
     const hit = words.filter(w => tags.some(t => t === w || t.startsWith(w) || w.startsWith(t))).length;
@@ -94,7 +94,7 @@ async function pixabayCandidates(q, need, key) {
 async function pexelsCandidates(q, need, key) {
   const r = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(q)}&orientation=portrait&size=medium&per_page=15`, { headers: { Authorization: key } });
   const j = await r.json();
-  return (j.videos || []).filter(v => v.duration >= Math.min(need, 5)).map(v => {
+  return (j.videos || []).filter(v => v.duration >= need + 0.5).map(v => {
     const f = (v.video_files || []).filter(x => x.file_type === 'video/mp4' && x.height >= 1280 && x.height > x.width).sort((a, b) => a.height - b.height)[0];
     if (SENSITIVE.test(String(v.url || '').replace(/[-/]/g, ' '))) return null;
     return f ? { id: 'pexels-' + v.id, url: f.link } : null;
