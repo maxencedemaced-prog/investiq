@@ -85,7 +85,8 @@ async function publishInstagram(p) {
     creationId = (await ig(`${userId}/media`, token, { media_type: 'STORIES', image_url: urls[0] })).id;
   } else if (reel) {
     // Reel : Instagram télécharge la vidéo depuis notre stockage puis la traite (jusqu'à ~2 min)
-    creationId = (await ig(`${userId}/media`, token, { media_type: 'REELS', video_url: p.video_url, caption: buildCaption(p), share_to_feed: 'true' })).id;
+    const cover = p.video_script && p.video_script.cover_url;   // miniature : l'accroche plutôt que la 1re image (noire)
+    creationId = (await ig(`${userId}/media`, token, { media_type: 'REELS', video_url: p.video_url, caption: buildCaption(p), share_to_feed: 'true', ...(cover ? { cover_url: cover } : { thumb_offset: '1500' }) })).id;
     await waitReady(creationId, token, 45, 'la vidéo');
   } else if (urls.length === 1) {
     creationId = (await ig(`${userId}/media`, token, { image_url: urls[0], caption: buildCaption(p) })).id;
@@ -132,6 +133,9 @@ async function publishFacebook(p) {
   if (page0) {
     // Vidéo sur la page (Facebook la télécharge depuis notre stockage)
     const v = await fb(`${page0.id}/videos`, page0.token, { file_url: p.video_url, description: buildCaption(p) });
+    // Miniature Facebook : même image de couverture (échec sans gravité)
+    const cover = p.video_script && p.video_script.cover_url;
+    if (cover) { try { await fb(`${v.id}/thumbnails`, page0.token, { source_url: cover, is_preferred: 'true' }); } catch {} }
     return { ok: true, id: v.id, permalink: `https://www.facebook.com/${v.id}`, account: page0.name };
   }
   if (!urls.length) throw new Error('Aucune image : valide le post dans le Studio');
