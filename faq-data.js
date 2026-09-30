@@ -52,7 +52,7 @@ window.KAPITARO_FAQ = [
     a: 'Tu hésites à acheter ou vendre ? Page <b>Aide à la décision</b> : choisis le titre, le montant et ton intention. Tu obtiens une analyse chiffrée pour t\'aider à réfléchir. La décision reste la tienne.',
     keys: ['aide a la decision', 'decision', 'hesite', 'analyser une action', 'analyse'] },
   { id: 'simulateurs', cat: 'Outils', q: 'Quels simulateurs sont disponibles ?',
-    a: 'Dans l\'app : <b>Simulateur DCA</b> (investir chaque mois) et <b>Scénario crise</b> (impact d\'une baisse des marchés). Sans compte : <a href="/simulateur-interets-composes">intérêts composés</a>, <a href="/calculateur-objectif-epargne">objectif d\'épargne</a>, <a href="/rendement-etf-msci-world">ETF MSCI World</a> et <a href="/epargne-de-precaution">épargne de précaution</a>.',
+    a: 'Dans l\'app : <b>Simulateur DCA</b> (investir chaque mois) et <b>Scénario crise</b> (impact d\'une baisse des marchés). Sans compte : <a href="/simulateur-interets-composes">intérêts composés</a>, <a href="/calculateur-objectif-epargne">objectif d\'épargne</a>, <a href="/rendement-etf-msci-world">ETF MSCI World</a>, <a href="/epargne-de-precaution">épargne de précaution</a>, <a href="/simulateur-investissement-programme">investissement programmé</a>, <a href="/calculateur-frais-placement">impact des frais</a> et <a href="/calculateur-inflation">inflation</a>.',
     keys: ['simulateur', 'dca', 'crise', 'scenario', 'interets composes', 'calculateur', 'simuler', 'outils gratuits'] },
   { id: 'agent', cat: 'Outils', q: 'Comment fonctionne l\'Agent IA ?',
     a: 'Onglet <b>Agent IA</b> : pose tes questions sur ton portefeuille en français. Version gratuite : <b>15 analyses offertes, puis 3 par jour</b>. Premium : analyses illimitées et Agent IA complet.',

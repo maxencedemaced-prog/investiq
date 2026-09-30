@@ -448,7 +448,7 @@ RÉFÉRENCEMENT :
 - "title" : la question ou l'expression que tape un débutant sur Google, max 65 caractères (ex. « C'est quoi un ETF ? Explication simple pour débuter »).
 - "description" : résumé accrocheur de 140 à 155 caractères.
 - "slug" : 3 à 6 mots en minuscules, sans accents, séparés par des tirets (ex. « etf-explication-simple »).
-- Intègre naturellement 1 ou 2 liens internes au format [texte du lien](/chemin) vers les outils gratuits pertinents : /simulateur-interets-composes, /calculateur-objectif-epargne, /rendement-etf-msci-world, /epargne-de-precaution, /faq.
+- Intègre naturellement 1 ou 2 liens internes au format [texte du lien](/chemin) vers les outils gratuits pertinents : /simulateur-interets-composes, /calculateur-objectif-epargne, /rendement-etf-msci-world, /epargne-de-precaution, /simulateur-investissement-programme, /calculateur-frais-placement, /calculateur-inflation, /faq.
 
 FORMAT : réponds UNIQUEMENT par un tableau JSON contenant UN seul objet :
 [{"title": "…", "description": "…", "slug": "…", "intro": ["2 paragraphes d'introduction"],

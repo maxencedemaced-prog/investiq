@@ -19,6 +19,9 @@ const TOOLS = [
   ['/calculateur-objectif-epargne', "Calculateur d'objectif d'épargne", 'Combien mettre de côté chaque mois'],
   ['/rendement-etf-msci-world', 'Combien rapporte un ETF MSCI World', "3 scénarios et l'effet des frais"],
   ['/epargne-de-precaution', "Calculateur d'épargne de précaution", "Combien garder de côté avant d'investir"],
+  ['/simulateur-investissement-programme', "Simulateur d'investissement programmé", 'Investir la même somme chaque mois'],
+  ['/calculateur-frais-placement', "Calculateur de l'impact des frais", 'Ce que les frais te coûtent dans le temps'],
+  ['/calculateur-inflation', "Calculateur d'inflation", 'Ce que valent tes euros dans le temps'],
 ];
 
 async function visibleArticles(limit = 500) {
