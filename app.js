@@ -4717,6 +4717,67 @@ function openNotifPanelByDefault() {
   document.getElementById('notif-panel')?.classList.add('open');
 }
 
+// Parrainage : lien kapitaro.fr/?parrain=CODE mémorisé 30 jours, rattaché au compte après l'inscription
+(function keepReferral() {
+  try {
+    const code = new URLSearchParams(location.search).get('parrain');
+    if (code && /^[A-Za-z0-9]{4,12}$/.test(code)) localStorage.setItem('kp_ref', JSON.stringify({ code: code.toUpperCase(), at: Date.now() }));
+  } catch (e) {}
+})();
+async function attachReferral() {
+  let ref = null;
+  try { ref = JSON.parse(localStorage.getItem('kp_ref') || 'null'); } catch (e) {}
+  if (!ref || !ref.code) return;
+  if (Date.now() - (ref.at || 0) > 30 * 86400000) { try { localStorage.removeItem('kp_ref'); } catch (e) {} return; }
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return;
+    const r = await fetch('/api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ action: 'attach', code: ref.code }) });
+    if (!r.ok) return;   // on réessaiera à la prochaine ouverture
+    const d = await r.json();
+    try { localStorage.removeItem('kp_ref'); } catch (e) {}
+    if (d.attached && typeof showToast === 'function') showToast('🎁 Invité par un ami : −50 % sur ton 1er mois Premium');
+  } catch (e) {}
+}
+async function renderReferralCard() {
+  const el = document.getElementById('ref-card');
+  if (!el || isDemo) return;
+  el.innerHTML = '<div class="set-row"><div class="set-row-main"><div class="set-row-sub">Chargement…</div></div></div>';
+  try {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch('/api/referral', { headers: { Authorization: 'Bearer ' + (data?.session?.access_token || '') } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erreur');
+    const esc2 = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    el.innerHTML = `
+      <div class="set-row"><div class="set-row-main"><div class="set-row-title">Invite tes amis, gagne des mois offerts</div>
+        <div class="set-row-sub">Ton ami a <strong>−50 % sur son 1er mois Premium</strong>. Toi, tu gagnes <strong>1 mois offert</strong> dès qu'il a payé son abonnement.</div></div></div>
+      <div class="set-row" style="gap:8px;flex-wrap:wrap">
+        <input type="text" readonly value="${esc2(d.link)}" id="ref-link" class="set-input" style="flex:1;min-width:0;width:auto" onclick="this.select()" aria-label="Ton lien de parrainage">
+        <button type="button" class="set-pill primary" onclick="copyReferral()">Copier</button>
+        ${navigator.share ? '<button type="button" class="set-pill" onclick="shareReferral()">Partager</button>' : ''}
+      </div>
+      <div class="set-row"><div class="set-row-main"><div class="set-row-sub">${d.invites} ami${d.invites > 1 ? 's' : ''} inscrit${d.invites > 1 ? 's' : ''} · ${d.abonnes} abonné${d.abonnes > 1 ? 's' : ''} · <strong>${d.mois_gagnes} mois gagné${d.mois_gagnes > 1 ? 's' : ''}</strong></div></div></div>`;
+  } catch (e) {
+    el.innerHTML = '<div class="set-row"><div class="set-row-main"><div class="set-row-sub">Parrainage indisponible pour le moment.</div></div></div>';
+  }
+}
+function copyReferral() {
+  const i = document.getElementById('ref-link');
+  if (!i) return;
+  (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(
+    () => { if (typeof showToast === 'function') showToast('Lien copié'); },
+    () => { i.select(); document.execCommand && document.execCommand('copy'); });
+  try { trackEvent('referral_copy'); } catch (e) {}
+}
+function shareReferral() {
+  const i = document.getElementById('ref-link');
+  if (!i || !navigator.share) return;
+  navigator.share({ title: 'Kapitaro', text: 'Je suis mon épargne avec Kapitaro. Avec mon lien, tu as −50 % sur ton 1er mois Premium :', url: i.value }).catch(() => {});
+  try { trackEvent('referral_share'); } catch (e) {}
+}
+
 async function initApp(user) {
   try {
   currentUser = user; isDemo = false;
@@ -4728,6 +4789,7 @@ async function initApp(user) {
   openNotifPanelByDefault();
   try { trackEvent('login'); startHeartbeat(); } catch(e) {}
   requestWelcomeEmail(user);
+  attachReferral();
   const email = user.email || '';
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
@@ -6942,7 +7004,7 @@ function nav(page, auto=false) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSettingsAccount();}catch(e){console.warn('account:',e);} try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderPushCard();}catch(e){} },
+}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSettingsAccount();}catch(e){console.warn('account:',e);} try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderReferralCard();}catch(e){} try{renderPushCard();}catch(e){} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(auto); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
 }
@@ -11022,6 +11084,18 @@ function renderSubscriptionCard() {
     return;
   }
 
+  // Premium offert (parrainage) : pas d'abonnement Stripe à gérer
+  if (status === 'gift') {
+    el.innerHTML = `
+    <div class="set-row">
+      <div class="set-row-main">
+        <div class="set-row-title">🎁 Premium offert</div>
+        <div class="set-row-sub">Grâce au parrainage, jusqu'au ${until}. Tu peux t'abonner dès maintenant : la facturation ne commencera qu'à la fin de tes mois offerts.</div>
+      </div>
+      <div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="showPlansModal()">S'abonner</button></div>
+    </div>`;
+    return;
+  }
   // Abonné
   const canceling = status === 'cancel_at_period_end';
   const pastDue = status === 'past_due';

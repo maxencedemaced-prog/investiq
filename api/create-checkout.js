@@ -52,11 +52,12 @@ export default async function handler(req, res) {
     // ── 3. RÉUTILISER LE CLIENT STRIPE EXISTANT (évite les doublons) ──
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('stripe_customer_id, is_premium')
+      .select('stripe_customer_id, is_premium, subscription_status, premium_until, stripe_subscription_id')
       .eq('id', user.id)
       .maybeSingle();
 
-    if (profile?.is_premium) {
+    const giftUntil = profile?.subscription_status === 'gift' && profile?.premium_until ? new Date(profile.premium_until).getTime() : 0;
+    if (profile?.is_premium && !(giftUntil > Date.now())) {
       return res.status(400).json({ error: 'Tu es déjà abonné à Premium.' });
     }
 
@@ -81,15 +82,29 @@ export default async function handler(req, res) {
         .eq('id', user.id);
     }
 
-    // ── 4. SESSION DE PAIEMENT ──
+    // ── 4. PARRAINAGE ──
+    // Filleul jamais abonné, formule mensuelle : −50 % sur la 1re facture (coupon créé une fois pour toutes)
+    let discounts = null;
+    if (plan === 'monthly' && !profile?.stripe_subscription_id) {
+      const { data: ref } = await supabaseAdmin.from('referrals').select('id').eq('referee_id', user.id).is('paid_at', null).maybeSingle();
+      if (ref) {
+        try { await stripe.coupons.retrieve('PARRAINAGE50'); }
+        catch (e) { if (e.code === 'resource_missing') await stripe.coupons.create({ id: 'PARRAINAGE50', percent_off: 50, duration: 'once', name: 'Parrainage : −50 % le 1er mois' }); else throw e; }
+        discounts = [{ coupon: 'PARRAINAGE50' }];
+      }
+    }
+    // Parrain qui a des mois offerts en cours : l'abonnement ne commence à être facturé qu'à leur fin
+    const trialEnd = giftUntil > Date.now() + 2 * 86400000 ? Math.floor(giftUntil / 1000) : null;
+
+    // ── 5. SESSION DE PAIEMENT ──
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       client_reference_id: user.id,
       metadata: { user_id: user.id, plan },
-      subscription_data: { metadata: { user_id: user.id, plan } },
-      allow_promotion_codes: true,
+      subscription_data: { metadata: { user_id: user.id, plan }, ...(trialEnd ? { trial_end: trialEnd } : {}) },
+      ...(discounts ? { discounts } : { allow_promotion_codes: true }),
       locale: 'fr',
       success_url: `${APP_URL}?premium=success`,
       cancel_url: `${APP_URL}?premium=cancel`,
