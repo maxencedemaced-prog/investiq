@@ -162,6 +162,8 @@ function toLocalInput(iso) {
 function render() {
   var list = document.getElementById('list');
   var items = POSTS.filter(function (p) { return p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing'); });
+  // À valider : les posts les plus récents en haut (Validés et Publiés gardent l'ordre des dates de publication)
+  if (FILTER === 'draft') items.sort(function (x, y) { return String(y.created_at || '').localeCompare(String(x.created_at || '')); });
   if (!items.length) {
     list.innerHTML = '<div class="empty">' + (FILTER === 'draft' ? 'Aucun post à valider. Clique sur « ✨ Préparer 3 posts » pour en générer.' : 'Rien ici pour l\'instant.') + '</div>';
     return;
