@@ -4724,10 +4724,14 @@ function openNotifPanelByDefault() {
     if (code && /^[A-Za-z0-9]{4,12}$/.test(code)) localStorage.setItem('kp_ref', JSON.stringify({ code: code.toUpperCase(), at: Date.now() }));
   } catch (e) {}
 })();
-async function attachReferral() {
+async function attachReferral(user) {
   let ref = null;
   try { ref = JSON.parse(localStorage.getItem('kp_ref') || 'null'); } catch (e) {}
+  const fromAccount = user && user.user_metadata && user.user_metadata.parrain;
+  if ((!ref || !ref.code) && fromAccount) ref = { code: String(fromAccount), at: Date.now() };
   if (!ref || !ref.code) return;
+  const doneKey = 'kp_ref_done_' + (user && user.id);
+  try { if (localStorage.getItem(doneKey)) return; } catch (e) {}
   if (Date.now() - (ref.at || 0) > 30 * 86400000) { try { localStorage.removeItem('kp_ref'); } catch (e) {} return; }
   try {
     const { data } = await sb.auth.getSession();
@@ -4736,7 +4740,7 @@ async function attachReferral() {
     const r = await fetch('/api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ action: 'attach', code: ref.code }) });
     if (!r.ok) return;   // on réessaiera à la prochaine ouverture
     const d = await r.json();
-    try { localStorage.removeItem('kp_ref'); } catch (e) {}
+    try { localStorage.removeItem('kp_ref'); localStorage.setItem(doneKey, '1'); } catch (e) {}
     if (d.attached && typeof showToast === 'function') showToast('🎁 Invité par un ami : −50 % sur ton 1er mois Premium');
   } catch (e) {}
 }
@@ -4789,7 +4793,7 @@ async function initApp(user) {
   openNotifPanelByDefault();
   try { trackEvent('login'); startHeartbeat(); } catch(e) {}
   requestWelcomeEmail(user);
-  attachReferral();
+  attachReferral(user);
   const email = user.email || '';
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
@@ -4952,7 +4956,9 @@ async function signup() {
   if (pass!==pass2) { setAuthMsg('Mots de passe différents.'); return; }
   if (pass.length<8) { setAuthMsg('Mot de passe trop court : au moins 8 caractères.'); return; }
   setAuthMsg('Création...', true);
-  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  let parrain = null;
+  try { const ref = JSON.parse(localStorage.getItem('kp_ref') || 'null'); if (ref && ref.code && Date.now() - (ref.at || 0) < 30 * 86400000) parrain = ref.code; } catch (e) {}
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options: parrain ? { data: { parrain } } : undefined });
   if (error) {
     const m = (error.message || '').toLowerCase();
     if (m.includes('rate limit')) setAuthMsg("Trop d'emails envoyés récemment. Réessaie dans environ 1 heure.");
