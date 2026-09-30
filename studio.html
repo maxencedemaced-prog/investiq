@@ -196,7 +196,7 @@ function goToPost(id) {
 function render() {
   var list = document.getElementById('list');
   if (FILTER === 'calendar') { renderCalendar(); return; }
-  var items = POSTS.filter(function (p) { return p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing'); });
+  var items = POSTS.filter(function (p) { return (p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing')) && !(p.format === 'story' && FILTER === 'draft'); });
   // À valider : les posts les plus récents en haut (Validés et Publiés gardent l'ordre des dates de publication)
   if (FILTER === 'draft') items.sort(function (x, y) { return String(y.created_at || '').localeCompare(String(x.created_at || '')); });
   if (!items.length) {
@@ -213,7 +213,7 @@ function render() {
         ? '<span class="sub">⏳ Publication en cours…</span>'
         : (missingAuto(p).length ? '<button class="btn primary" onclick="publishNow(\'' + p.id + '\', this)">🚀 Publier sur les réseaux manquants</button>' : '') + '<button class="btn" onclick="download(\'' + p.id + '\', this)">⬇ Télécharger</button><button class="btn" onclick="copyText(\'' + p.id + '\')">📋 Copier le texte</button>';
     return '<div class="post" id="post-' + p.id + '">' +
-      '<div class="post-h"><div class="post-t">' + esc(p.title) + (p.kind === 'actu' ? '<span class="badge">ACTU</span>' : '') + '</div>' +
+      '<div class="post-h"><div class="post-t">' + esc(p.title) + (p.kind === 'actu' ? '<span class="badge">ACTU</span>' : '') + (p.format === 'story' ? '<span class="badge" style="background:#1e3a5f;color:#93c5fd">STORY</span>' : '') + '</div>' +
       '<div class="row">' + themeSelect(p) + '<label style="margin:0">Publication</label><input type="datetime-local" value="' + toLocalInput(p.scheduled_at) + '" onchange="saveDate(\'' + p.id + '\', this.value)" style="width:auto"></div></div>' +
       '<div class="slides" id="slides-' + p.id + '"></div>' +
       '<div id="editor-' + p.id + '"></div>' +

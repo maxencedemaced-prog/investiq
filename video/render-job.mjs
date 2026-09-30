@@ -144,9 +144,58 @@ async function fetchBroll(beats) {
   return [...used];
 }
 
-async function main() {
-  const { data: post, error } = await sb.from('social_posts').select('id, video_script').eq('id', ID).single();
+// ── Story d'actualité : photo réelle du secteur (Pixabay), texte par-dessus, publication tout de suite ──
+async function storyPhoto(query) {
+  const key = (process.env.PIXABAY_API_KEY || '').trim();
+  if (!key) return null;
+  for (const q of [query, 'business district skyscrapers', 'stock market screen']) {
+    if (!q) continue;
+    const r = await fetch(`https://pixabay.com/api/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&image_type=photo&safesearch=true&per_page=40`);
+    const j = await r.json().catch(() => ({}));
+    const words = q.split(/\s+/).filter(w => w.length > 2 && !STOP.has(w.toLowerCase())).map(stem);
+    const ok = (j.hits || []).filter(h => {
+      const tags = String(h.tags || ''), toks = tags.split(',').flatMap(t => t.trim().split(/\s+/)).map(stem);
+      if (SENSITIVE.test(tags) || NOT_REAL.test(tags)) return false;
+      return words.some(w => toks.some(t => t === w || t.startsWith(w) || w.startsWith(t)));
+    }).sort((a, b) => (b.imageHeight / b.imageWidth) - (a.imageHeight / a.imageWidth)).slice(0, 6);
+    for (const h of shuffleArr(ok)) {
+      const res = await fetch(h.largeImageURL);
+      if (!res.ok) continue;
+      fs.writeFileSync(path.join('public', 'story-photo.jpg'), Buffer.from(await res.arrayBuffer()));
+      return 'story-photo.jpg';
+    }
+  }
+  return null;
+}
+async function storyJob(post) {
+  const s = (post.video_script && post.video_script.story) || {};
+  const photo = await storyPhoto(s.photo);
+  const when = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·');
+  fs.writeFileSync(path.join('src', 'story.json'), JSON.stringify({ ...s, photo, when }));
+  execSync('npx remotion still src/index.js Story out/story.jpg --image-format=jpeg --jpeg-quality=90 --log=warn', { stdio: 'inherit' });
+  const buf = fs.readFileSync('out/story.jpg');
+  const file = `${ID}/story-${Date.now()}.jpg`;
+  const up = await sb.storage.from('social').upload(file, buf, { contentType: 'image/jpeg', upsert: true });
+  if (up.error) throw up.error;
+  const url = sb.storage.from('social').getPublicUrl(file).data.publicUrl;
+  const { error } = await sb.from('social_posts').update({
+    image_urls: [url], status: 'approved', scheduled_at: new Date().toISOString(),
+    video_script: { ...post.video_script, status: 'done', done_at: new Date().toISOString(), error: null },
+  }).eq('id', ID);
   if (error) throw error;
+  console.log('Story prête :', url);
+  // Publication immédiate (même passage que la publication automatique toutes les 15 min)
+  const secret = (process.env.CRON_SECRET || '').trim(), app = (process.env.APP_URL || 'https://kapitaro.fr').trim().replace(/\/$/, '');
+  if (secret) {
+    const r = await fetch(`${app}/api/social-publish`, { headers: { Authorization: `Bearer ${secret}` } });
+    console.log('Publication :', r.status, (await r.text()).slice(0, 300));
+  }
+}
+
+async function main() {
+  const { data: post, error } = await sb.from('social_posts').select('id, format, video_script').eq('id', ID).single();
+  if (error) throw error;
+  if (post.format === 'story') return storyJob(post);
   const script = post.video_script || {};
   if (!Array.isArray(script.beats) || !script.beats.length) throw new Error('Script vidéo absent : relance la création depuis le Studio');
   await patchScript({ status: 'rendering', rendering_at: new Date().toISOString(), error: null });

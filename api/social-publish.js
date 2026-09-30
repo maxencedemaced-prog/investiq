@@ -64,6 +64,7 @@ async function waitReady(id, token, tries = 15, what = 'les images') {
   throw new Error(`Instagram met trop de temps à traiter ${what}, nouvel essai au prochain passage`);
 }
 const isReel = p => p.format === 'reel' && typeof p.video_url === 'string' && p.video_url;
+const isStory = p => p.format === 'story';
 
 function buildCaption(p) {
   const tags = String(p.hashtags || '').split(/\s+/).filter(t => t.startsWith('#')).slice(0, 30).join(' ');
@@ -79,7 +80,10 @@ async function publishInstagram(p) {
   const me = await ig('me', token, { fields: 'user_id,username' }, 'GET');
   const userId = me.user_id || me.id;
   let creationId;
-  if (reel) {
+  if (isStory(p)) {
+    // Story : une image verticale, sans légende
+    creationId = (await ig(`${userId}/media`, token, { media_type: 'STORIES', image_url: urls[0] })).id;
+  } else if (reel) {
     // Reel : Instagram télécharge la vidéo depuis notre stockage puis la traite (jusqu'à ~2 min)
     creationId = (await ig(`${userId}/media`, token, { media_type: 'REELS', video_url: p.video_url, caption: buildCaption(p), share_to_feed: 'true' })).id;
     await waitReady(creationId, token, 45, 'la vidéo');
@@ -132,6 +136,12 @@ async function publishFacebook(p) {
   }
   if (!urls.length) throw new Error('Aucune image : valide le post dans le Studio');
   const page = await fbPage();
+  if (isStory(p)) {
+    // Story de page : photo envoyée sans publication, puis mise en story
+    const photo = await fb(`${page.id}/photos`, page.token, { url: urls[0], published: 'false' });
+    const st = await fb(`${page.id}/photo_stories`, page.token, { photo_id: photo.id });
+    return { ok: true, id: st.post_id || st.id || photo.id, permalink: null, account: page.name };
+  }
   const media = [];
   for (const u of urls) media.push((await fb(`${page.id}/photos`, page.token, { url: u, published: 'false' })).id);
   const params = { message: buildCaption(p) };
