@@ -4,3 +4,4 @@ Disallow: /api/
 Disallow: /studio
 
 Sitemap: https://kapitaro.fr/sitemap.xml
+Sitemap: https://kapitaro.fr/blog-sitemap.xml

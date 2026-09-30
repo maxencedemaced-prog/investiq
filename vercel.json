@@ -43,6 +43,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/social?cron=articles",
+      "schedule": "5 * * * *"
+    },
+    {
       "path": "/api/social?cron=stories",
       "schedule": "*/30 5-21 * * *"
     },
@@ -56,6 +60,9 @@
     }
   ],
   "rewrites": [
+    { "source": "/blog", "destination": "/api/blog" },
+    { "source": "/blog/:slug", "destination": "/api/blog?slug=:slug" },
+    { "source": "/blog-sitemap.xml", "destination": "/api/blog?sitemap=1" },
     {
       "source": "/sw.js",
       "destination": "/sw.js"

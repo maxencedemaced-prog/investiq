@@ -221,7 +221,7 @@ function render() {
       '<div><label>Hashtags</label><textarea rows="3" onchange="saveField(\'' + p.id + '\', \'hashtags\', this.value)">' + esc(p.hashtags) + '</textarea>' +
       '<label style="margin-top:10px">Réseaux</label><div class="plats">' + plats + '</div>' +
       formatBlock(p) +
-      publishStatus(p) + reelStatus(p) +
+      publishStatus(p) + reelStatus(p) + articleLine(p) +
       '<div class="row" style="margin-top:14px">' + actions + '<button class="btn" onclick="openReel(\'' + p.id + '\')">🎞 Vidéo animée</button><button class="btn" onclick="makeVideo(\'' + p.id + '\', this)">🎬 Vidéo diaporama</button></div></div></div></div>';
   }).join('');
   items.forEach(renderThumbs);
@@ -330,6 +330,12 @@ async function validateReel(id, btn) {
     toast('✅ Reel validé : il sera publié à la date prévue');
     render();
   } catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = '✓ Valider ce Reel'; }
+}
+function articleLine(p) {
+  var a = p.article;
+  if (!a || p.format === 'story') return '';
+  if (a.error) return '<div class="sub" style="margin-top:6px;color:#fca5a5">⚠️ Article de blog : ' + esc(a.error) + '</div>';
+  return a.slug ? '<div class="sub" style="margin-top:6px">📝 Article de blog prêt · <a href="/blog/' + esc(a.slug) + '" target="_blank" rel="noopener" style="color:#24e898">' + esc(a.title) + '</a> (visible à la date de publication)</div>' : '';
 }
 function reelPending(p) { return !!(p.video_script && ['planned', 'queued', 'rendering'].indexOf(p.video_script.status) >= 0); }
 function reelStatus(p) {
