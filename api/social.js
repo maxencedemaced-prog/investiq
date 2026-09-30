@@ -12,6 +12,7 @@
 //   GET ?cron=weekly (Authorization: Bearer CRON_SECRET) → semaine suivante préparée le dimanche (1 Reel par jour + carrousel du mercredi)
 //   GET ?cron=reels                          → crée les vidéos prévues (2 par passage, toutes les 10 min)
 //   GET ?cron=stories                        → stories d'actualité automatiques (dépêches + mouvements d'indices, 10 par jour max)
+//   GET ?cron=articles                       → article de blog (kapitaro.fr/blog) pour chaque post validé, 3 par passage
 // La clé Anthropic et la clé service Supabase ne quittent jamais le serveur.
 
 import { createClient } from '@supabase/supabase-js';
@@ -248,7 +249,7 @@ const PRICING = { 'claude-sonnet-5': { in: 2.0, out: 10.0 }, 'claude-haiku-4-5-2
 function logStudioUsage(model, usage, system) {
   if (!usage || !sb) return;
   const p = PRICING[model] || PRICING['claude-sonnet-5'];
-  const label = system === SYSTEM ? 'studio:posts' : /^Tu es l'éditeur des stories/.test(system) ? 'studio:stories' : /^Tu es le réalisateur/.test(system) ? 'studio:videos' : 'studio:autre';
+  const label = system === SYSTEM ? 'studio:posts' : /^Tu es le rédacteur web/.test(system) ? 'studio:blog' : /^Tu es l'éditeur des stories/.test(system) ? 'studio:stories' : /^Tu es le réalisateur/.test(system) ? 'studio:videos' : 'studio:autre';
   sb.from('ai_usage_log').insert({ user_id: null, model, input_tokens: usage.input_tokens || 0, output_tokens: usage.output_tokens || 0,
     cost_usd: (usage.input_tokens || 0) / 1e6 * p.in + (usage.output_tokens || 0) / 1e6 * p.out, call_label: label }).then(() => {}, () => {});
 }
@@ -433,6 +434,60 @@ async function newsStories() {
   return { stories: made };
 }
 
+// ── Blog : un article pédagogique développé pour chaque post validé (visible sur /blog à la date de publication du post) ──
+const ARTICLE_SYSTEM = `Tu es le rédacteur web de Kapitaro, une app française qui aide les particuliers à suivre et comprendre leurs placements.
+À partir d'un post validé pour les réseaux sociaux, tu écris un ARTICLE DE BLOG pédagogique de 600 à 900 mots, en français, en tutoyant, clair et concret, pensé pour être bien trouvé sur Google par des débutants.
+
+RÈGLES ABSOLUES (réglementation AMF) :
+- Contenu éducatif uniquement. Jamais de conseil personnalisé, jamais de recommandation d'acheter ou de vendre un titre, un fonds ou une crypto précis, jamais de nom de produit financier précis.
+- Aucune prédiction, aucune promesse de gain : tout rendement est « hypothétique ». Rappelle le risque de perte en capital quand tu parles d'investir.
+- N'utilise que les chiffres du post ou des faits vérifiés fournis. N'invente aucune statistique, étude ou source.
+- N'affirme jamais que le temps efface les pertes ou que le marché finit toujours par remonter. Pas de sensationnalisme.
+
+RÉFÉRENCEMENT :
+- "title" : la question ou l'expression que tape un débutant sur Google, max 65 caractères (ex. « C'est quoi un ETF ? Explication simple pour débuter »).
+- "description" : résumé accrocheur de 140 à 155 caractères.
+- "slug" : 3 à 6 mots en minuscules, sans accents, séparés par des tirets (ex. « etf-explication-simple »).
+- Intègre naturellement 1 ou 2 liens internes au format [texte du lien](/chemin) vers les outils gratuits pertinents : /simulateur-interets-composes, /calculateur-objectif-epargne, /rendement-etf-msci-world, /epargne-de-precaution, /faq.
+
+FORMAT : réponds UNIQUEMENT par un tableau JSON contenant UN seul objet :
+[{"title": "…", "description": "…", "slug": "…", "intro": ["2 paragraphes d'introduction"],
+  "sections": [{"h2": "intertitre", "paragraphs": ["2 ou 3 paragraphes"], "bullets": ["facultatif, 3 à 5 points"]}],
+  "faq": [{"q": "question courte", "a": "réponse de 1 à 3 phrases"}]}]
+4 à 6 sections, 3 ou 4 questions de FAQ. Dans les textes, **double astérisque** pour le gras.`;
+
+const slugify = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70);
+async function writeArticle(post, takenSlugs) {
+  const content = JSON.stringify({ titre: post.title, diapositives: post.slides, legende: post.caption });
+  const [a] = await askClaude(`Écris l'article de blog à partir de ce post :\n${content}\n\nFaits vérifiés utilisables :\n${verifiedFacts()}`, ARTICLE_SYSTEM);
+  if (!a || !a.title || !Array.isArray(a.sections) || a.sections.length < 3) throw new Error('Article inexploitable');
+  const text = JSON.stringify(a);
+  if (/compens|rattrap|remonte(nt)? toujours|finit (toujours )?par remonter|sans (aucun )?risque de perte|garanti(e)? de gagner/i.test(text)) throw new Error('Article écarté (formulation interdite)');
+  let slug = slugify(a.slug || a.title) || slugify(post.title) || 'article';
+  if (takenSlugs.has(slug)) slug = slug + '-' + post.id.slice(0, 6);
+  takenSlugs.add(slug);
+  const cl = (s, n) => clip(String(s || ''), n);
+  return {
+    slug, title: cl(a.title, 90), description: cl(a.description, 170),
+    intro: (a.intro || []).slice(0, 3).map(p => cl(p, 900)),
+    sections: a.sections.slice(0, 7).map(s => ({ h2: cl(s.h2, 120), paragraphs: (s.paragraphs || []).slice(0, 4).map(p => cl(p, 1200)), bullets: (s.bullets || []).slice(0, 6).map(b => cl(b, 220)) })),
+    faq: (a.faq || []).slice(0, 5).map(f => ({ q: cl(f.q, 160), a: cl(f.a, 500) })).filter(f => f.q && f.a),
+    written_at: new Date().toISOString(),
+  };
+}
+async function articlesCron() {
+  const { data: todo } = await sb.from('social_posts').select('id, title, slides, caption').in('status', ['approved', 'publishing', 'published'])
+    .is('article', null).neq('format', 'story').order('scheduled_at', { ascending: true }).limit(3);
+  if (!todo || !todo.length) return { articles: 0 };
+  const { data: existing } = await sb.from('social_posts').select('article').not('article', 'is', null);
+  const taken = new Set((existing || []).map(p => p.article && p.article.slug).filter(Boolean));
+  const out = await Promise.all(todo.map(async p => {
+    try { const article = await writeArticle(p, taken); await sb.from('social_posts').update({ article }).eq('id', p.id); return article.slug; }
+    catch (e) { console.warn('[articles]', p.title, e.message); await sb.from('social_posts').update({ article: { error: e.message, at: new Date().toISOString() } }).eq('id', p.id); return null; }
+  }));
+  return { articles: out.filter(Boolean) };
+}
+
 // Vidéo d'un post : script (IA) + voix, puis fabrication lancée sur GitHub Actions
 async function createReel(post, { voice, style }) {
   const voices = await reelVoices(), duo = voice === 'duo' && voices.length > 1;
@@ -480,10 +535,11 @@ export default async function handler(req, res) {
 
   try {
     // Tâches automatiques (cron Vercel) : lot du dimanche (agenda + pédagogie), bilan des marchés du vendredi soir
-    if (req.method === 'GET' && ['weekly', 'recap', 'reels', 'stories'].includes(req.query.cron)) {
+    if (req.method === 'GET' && ['weekly', 'recap', 'reels', 'stories', 'articles'].includes(req.query.cron)) {
       if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({ error: 'Non autorisé' });
       if (req.query.cron === 'weekly') { const posts = await weeklyPlan(); return res.status(200).json({ generated: posts.length }); }
       if (req.query.cron === 'stories') return res.status(200).json(await newsStories());
+      if (req.query.cron === 'articles') return res.status(200).json(await articlesCron());
       if (req.query.cron === 'recap') {
         const at = nextSaturday();
         const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).neq('status', 'rejected').eq('kind', 'actu').gte('scheduled_at', new Date(Date.parse(at) - 3600000).toISOString()).lte('scheduled_at', new Date(Date.parse(at) + 3600000).toISOString());
