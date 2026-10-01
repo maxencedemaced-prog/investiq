@@ -494,6 +494,45 @@ async function articlesCron() {
 }
 
 // Vidéo d'un post : script (IA) + voix, puis fabrication lancée sur GitHub Actions
+// Vidéos pub : 3 accroches à tester sur la même suite (problème → appli → appel). Jamais publiées automatiquement
+// (statut « ad ») : téléchargées depuis le Studio puis importées dans le Gestionnaire de publicités.
+const AD_END = [
+  { v: 'app', screen: 'portfolio', lines: ['Tout ton argent,', 'au même *endroit*'], say: 'Avec Kapitaro, tu vois tout ton argent au même endroit.' },
+  { v: 'app', screen: 'score', lines: ['Un *score* sur 10'], say: "Un score sur dix te dit ce qui va bien, et ce qu'il faut améliorer." },
+  { v: 'app', screen: 'chat', lines: ['Tes questions,', '*sans jargon*'], say: "Et tu poses tes questions à l'IA, en français, sans jargon." },
+  { v: 'cta', lines: ["C'est *gratuit*"], button: 'Créer mon compte gratuit', site: 'kapitaro.fr', legal: 'Outil éducatif. Investir comporte des risques.', say: "C'est gratuit. Lance-toi en deux minutes." },
+];
+const AD_VARIANTS = [
+  { key: 'pub-a', title: 'Pub A · Tu veux investir… mais par où commencer ?', beats: [
+    { v: 'hook', lines: ['Tu veux *investir*…', 'mais par où', '*commencer* ?'], say: 'Tu veux investir… mais tu sais pas par où commencer ?' },
+    { v: 'words', lines: ['Tout le monde', 'en *parle*'], items: ['ETF', 'PEA', 'Actions', 'Frais', 'Assurance vie', 'Diversification'], say: "ETF, PEA, actions… tout le monde en parle, personne t'explique." }] },
+  { key: 'pub-b', title: 'Pub B · Ton épargne dort sur un livret ?', beats: [
+    { v: 'hook', lines: ['Ton épargne', '*dort* sur', 'un livret ?'], say: 'Ton épargne dort sur un livret ? Voilà comment y voir clair.' },
+    { v: 'words', lines: ['Par où', '*commencer* ?'], items: ['ETF', 'PEA', 'Actions', 'Frais', 'Assurance vie', 'Risque'], say: 'ETF, PEA, actions… on ne sait jamais par où commencer.' }] },
+  { key: 'pub-c', title: "Pub C · T'as un PEA… mais tu sais pas où t'en es ?", beats: [
+    { v: 'hook', lines: ["T'as un *PEA*…", 'mais tu sais pas', "où t'en *es* ?"], say: "T'as un PEA… mais tu sais pas vraiment où t'en es ?" },
+    { v: 'words', lines: ['Difficile', "d'y voir *clair*"], items: ['Lignes', 'Frais', 'Répartition', 'Performance', 'Risque', 'Courtiers'], say: "Entre les lignes, les frais et la répartition, difficile d'y voir clair." }] },
+];
+async function createAds() {
+  const voices = await reelVoices();
+  const voice = voices.find(v => /adrien/i.test(v.name)) || voices[0];
+  const made = [];
+  for (const ad of AD_VARIANTS) {
+    const beats = [...ad.beats, ...AD_END].map(b => ({ ...b, voice: 0 }));
+    const { data: row, error } = await sb.from('social_posts').insert({ kind: 'ad', format: 'ad', status: 'ad', title: ad.title, slides: [], platforms: [],
+      caption: `https://kapitaro.fr/commencer?utm_source=meta&utm_campaign=${ad.key}` }).select().single();
+    if (error) throw error;
+    const segments = voice.id ? await voiceOver({ beats, voices: [voice], sb, id: row.id, speed: 1.15 }) : [];
+    const script = { v: 1, style: 'motion', ad: ad.key, voice: voice.name, beats, segments, edge_voices: voice.id ? undefined : [voice.edge], created_at: new Date().toISOString() };
+    let status = 'queued', err = null;
+    try { await dispatchRender(row.id); } catch (e) { status = 'error'; err = e.message; }
+    const { data, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', row.id).select().single();
+    if (e2) throw e2;
+    made.push(data);
+  }
+  return made;
+}
+
 async function createReel(post, { voice, style }) {
   const voices = await reelVoices(), duo = voice === 'duo' && voices.length > 1;
   const pick = duo ? voices.slice(0, 2) : [voices[Math.min(Math.max(parseInt(voice, 10) || 0, 0), voices.length - 1)]];
@@ -619,6 +658,7 @@ export default async function handler(req, res) {
     }
     // ── Vidéos animées (Reels) ──
     if (b.action === 'reel-config') return res.status(200).json(await reelConfig());
+    if (b.action === 'ad-create') return res.status(200).json({ posts: await createAds() });
     if (b.action === 'reel-create' || b.action === 'reel-render') {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
       const { data: post, error } = await sb.from('social_posts').select('*').eq('id', b.id).single();

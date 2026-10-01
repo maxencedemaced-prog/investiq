@@ -60,6 +60,7 @@
       <button class="btn" onclick="generateMode('agenda', this)">📅 Agenda de la semaine</button>
       <button class="btn" onclick="generateMode('recap', this)">📈 Bilan des marchés</button>
       <button class="btn primary" onclick="document.getElementById('dlg-actu').showModal()">⚡ Post d'actu</button>
+      <button class="btn" onclick="openAds()">🎯 Vidéos pub</button>
     </div>
   </div>
 
@@ -114,6 +115,16 @@
   </div>
 </dialog>
 
+<dialog id="dlg-ads" style="max-width:600px">
+  <h3 style="margin:0 0 6px">🎯 Vidéos pub</h3>
+  <p class="sub" style="margin:0 0 12px">3 vidéos de 15 à 20 s pour tes publicités Meta, avec trois accroches différentes à comparer (A, B, C). Voix Adrien dynamique, écrans de l'appli animés, sous-titres incrustés. Elles ne sont jamais publiées automatiquement : télécharge-les puis importe-les dans le Gestionnaire de publicités, avec le lien de suivi indiqué.</p>
+  <div id="ads-list"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:12px">
+    <button class="btn" onclick="document.getElementById('dlg-ads').close()">Fermer</button>
+    <button class="btn primary" id="btn-ads" onclick="createAds(this)">Créer les 3 vidéos</button>
+  </div>
+</dialog>
+
 <div id="render"></div>
 <div class="toast" id="toast"></div>
 
@@ -133,6 +144,39 @@ async function api(method, body) {
   if (r.status === 403) throw new Error('Accès réservé au compte administrateur.');
   if (!r.ok) throw new Error(d.error || 'Erreur ' + r.status);
   return d;
+}
+
+// ── Vidéos pub (statut « ad ») ──
+var ADS_TIMER = null;
+function adsList() { return POSTS.filter(function (p) { return p.status === 'ad'; }).sort(function (a, b) { return Date.parse(b.created_at) - Date.parse(a.created_at); }).slice(0, 6); }
+function renderAds() {
+  var box = document.getElementById('ads-list'), ads = adsList();
+  if (!ads.length) { box.innerHTML = '<div class="empty" style="padding:14px">Aucune vidéo pub pour l\'instant.</div>'; return; }
+  box.innerHTML = ads.map(function (p) {
+    var s = p.video_script || {}, st = s.status;
+    var state = p.video_url && st === 'done' ? '' : st === 'error' ? '<div style="color:#fb7185;font-size:13px">Erreur : ' + esc(s.error || '') + '</div>' : '<div class="sub">⏳ Fabrication en cours (3 à 5 minutes)…</div>';
+    return '<div style="border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px;margin-bottom:10px">'
+      + '<div style="font-weight:700;margin-bottom:6px">' + esc(p.title) + '</div>' + state
+      + (p.video_url && st === 'done' ? '<video src="' + esc(p.video_url) + '" controls playsinline style="width:160px;border-radius:10px;display:block;margin:6px 0"></video>'
+        + '<div class="row"><a class="btn" href="' + esc(p.video_url) + '" download target="_blank" rel="noopener">⬇ Télécharger</a><button class="btn" onclick="copyAdLink(\'' + p.id + '\')">📋 Copier le lien de suivi</button></div>' : '')
+      + '<div class="sub" style="margin-top:6px;word-break:break-all">Lien de la pub : ' + esc(p.caption || '') + '</div></div>';
+  }).join('');
+}
+function copyAdLink(id) { var p = POSTS.find(function (x) { return x.id === id; }); if (p && navigator.clipboard) navigator.clipboard.writeText(p.caption || '').then(function () { toast('Lien copié'); }); }
+async function refreshAds() {
+  try { var d = await api('GET'); POSTS = d.posts || POSTS; } catch (e) {}
+  renderAds();
+  var pending = adsList().some(function (p) { var st = (p.video_script || {}).status; return st === 'queued' || st === 'rendering'; });
+  clearTimeout(ADS_TIMER);
+  if (pending && document.getElementById('dlg-ads').open) ADS_TIMER = setTimeout(refreshAds, 20000);
+}
+function openAds() { document.getElementById('dlg-ads').showModal(); renderAds(); refreshAds(); }
+async function createAds(btn) {
+  if (adsList().length && !confirm('Refabriquer 3 nouvelles vidéos pub ? (les précédentes restent disponibles)')) return;
+  btn.disabled = true; btn.textContent = 'Préparation des voix…';
+  try { var d = await api('POST', { action: 'ad-create' }); POSTS = (d.posts || []).concat(POSTS); toast('C\'est parti : les 3 vidéos arrivent dans quelques minutes'); refreshAds(); }
+  catch (e) { toast(e.message, 6000); }
+  btn.disabled = false; btn.textContent = 'Créer les 3 vidéos';
 }
 
 async function load() {
