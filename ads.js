@@ -6,7 +6,7 @@
 (function () {
   // Identifiants publics (ce ne sont pas des secrets) : à renseigner une fois les comptes publicitaires créés.
   const CONFIG = {
-    metaPixel: '1093995146609755',     // ex. '123456789012345' (Meta Business → Gestionnaire d'événements)
+    metaPixel: '29037079089229292',     // ex. '123456789012345' (Meta Business → Gestionnaire d'événements)
     googleTag: '',     // ex. 'AW-123456789' (Google Ads) ou 'G-XXXXXXX'
   };
   const CONSENT_KEY = 'kp_consent', CONSENT_VERSION = 1, CONSENT_DAYS = 180;
