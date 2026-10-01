@@ -4810,6 +4810,7 @@ async function initApp(user) {
   try { trackEvent('login'); startHeartbeat(); } catch(e) {}
   requestWelcomeEmail(user);
   attachReferral(user).then(loadReferralPromo);
+  try { if (typeof installAfterSignup === 'function') installAfterSignup(user); } catch (e) {}
   const email = user.email || '';
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
