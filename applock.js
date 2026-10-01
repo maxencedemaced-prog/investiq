@@ -98,6 +98,11 @@ async function renderLockCard() {
 
 async function lockToggle(input) {
   if (!input.checked) { lockSave(null); showToast('Verrouillage désactivé sur cet appareil'); renderLockCard(); return; }
+  if (!(await lockEnable())) input.checked = false;
+  renderLockCard();
+}
+// Crée la clé biométrique de l'appareil (doit partir d'un appui) ; true si le verrou est activé
+async function lockEnable() {
   try {
     const cred = await navigator.credentials.create({ publicKey: {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -110,11 +115,53 @@ async function lockToggle(input) {
     lockSave({ cred: lockB64(cred.rawId), delay: 60, at: Date.now() });
     showToast('🔒 Verrouillage activé sur cet appareil');
     try { trackEvent('applock_enabled'); } catch {}
+    return true;
   } catch (e) {
-    input.checked = false;
     showToast('Activation annulée');
+    return false;
   }
-  renderLockCard();
+}
+
+// Proposition du verrouillage à la 2e ouverture de l'app sur cet appareil (pas dès le début, pour rester léger).
+// Une seule fois par compte et par appareil, jamais en même temps qu'une autre fenêtre.
+function lockAskOnSecondVisit(user) {
+  try {
+    if (!user || !user.id || isDemo || window._lockAskCounted) return;
+    window._lockAskCounted = true;
+    const countKey = 'kp_opens_' + user.id, askKey = 'kp_lock_ask_' + user.id;
+    const opens = (Number(localStorage.getItem(countKey)) || 0) + 1;
+    localStorage.setItem(countKey, String(opens));
+    if (opens < 2 || localStorage.getItem(askKey) || lockConfig()) return;
+    const tryShow = async left => {
+      const busy = window._pushSheetShown || window._installSheetShown
+        || ['app-lock', 'install-sheet', 'push-sheet', 'plans-modal'].some(id => document.getElementById(id))
+        || (document.getElementById('onboarding-modal') || {}).style?.display === 'flex';
+      if (window._pushSheetShown || window._installSheetShown) return;   // déjà une proposition pendant cette visite : on attend la prochaine
+      if (busy) { if (left > 0) setTimeout(() => tryShow(left - 1), 4000); return; }
+      if (!(await lockAvailable()) || lockConfig() || document.getElementById('lock-sheet')) return;
+      try { localStorage.setItem(askKey, '1'); } catch {}
+      const o = document.createElement('div');
+      o.id = 'lock-sheet';
+      o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10006;display:flex;align-items:flex-end;justify-content:center';
+      o.onclick = e => { if (e.target === o) o.remove(); };
+      o.innerHTML = `<div style="background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:22px 22px 0 0;width:100%;max-width:480px;padding:22px 20px calc(20px + env(safe-area-inset-bottom));color:#fff">
+        <div style="font-size:30px;line-height:1;margin-bottom:10px">🔒</div>
+        <div style="font-size:17px;font-weight:900;letter-spacing:-0.02em">Protège ton portefeuille</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.72);line-height:1.55;margin:6px 0 16px">Verrouille Kapitaro avec ${lockName()} : personne d'autre ne verra tes placements si on prend ton téléphone. Modifiable à tout moment dans Paramètres.</div>
+        <button type="button" onclick="lockSheetEnable(this)" style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">Activer le verrouillage</button>
+        <button type="button" onclick="document.getElementById('lock-sheet').remove()" style="width:100%;margin-top:8px;padding:12px;background:none;border:none;color:rgba(255,255,255,0.55);font-size:14px;font-weight:600;cursor:pointer">Plus tard</button>
+      </div>`;
+      document.body.appendChild(o);
+      try { window.va && window.va('event', { name: 'lock_sheet_view' }); } catch {}
+    };
+    setTimeout(() => tryShow(60), 5000);
+  } catch {}
+}
+async function lockSheetEnable(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Vérification…'; }
+  await lockEnable();
+  document.getElementById('lock-sheet')?.remove();
+  try { renderLockCard(); } catch {}
 }
 function lockDelayChanged(v) {
   const cfg = lockConfig(); if (!cfg) return;

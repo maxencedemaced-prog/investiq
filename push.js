@@ -335,7 +335,7 @@ function pushAskOnce(user) {
     if (localStorage.getItem(key)) return;
     const tryShow = async left => {
       if (window._installSheetShown) return;   // la fenêtre de bienvenue propose déjà les notifications
-      const busy = document.getElementById('install-sheet') || document.getElementById('plans-modal') || document.getElementById('app-lock')
+      const busy = document.getElementById('install-sheet') || document.getElementById('plans-modal') || document.getElementById('app-lock') || document.getElementById('lock-sheet')
         || (document.getElementById('onboarding-modal') || {}).style?.display === 'flex'
         || (!localStorage.getItem('iq_install_sheet_' + user.id) && Date.now() - new Date(user.created_at).getTime() < 3 * 86400000
             && installMode() && (isMobileDevice() || isIOSDevice()));   // la fenêtre de bienvenue va s'afficher
@@ -343,6 +343,7 @@ function pushAskOnce(user) {
       if ((await pushState().catch(() => 'unsupported')) !== 'off') return;
       if (document.getElementById('push-sheet')) return;
       try { localStorage.setItem(key, '1'); } catch {}
+      window._pushSheetShown = true;
       const o = document.createElement('div');
       o.id = 'push-sheet';
       o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10006;display:flex;align-items:flex-end;justify-content:center';
