@@ -502,6 +502,13 @@ const AD_END = [
   { v: 'app', screen: 'chat', lines: ['Tes questions,', '*sans jargon*'], say: "Et tu poses tes questions à l'IA, en français, sans jargon." },
   { v: 'cta', lines: ["C'est *gratuit*"], button: 'Créer mon compte gratuit', site: 'kapitaro.fr', legal: 'Outil éducatif. Investir comporte des risques.', say: "C'est gratuit. Lance-toi en deux minutes." },
 ];
+const AD_END_SHORT = [
+  { v: 'app', screen: 'portfolio', lines: ['Tout ton argent,', 'au même *endroit*'], say: 'Kapitaro réunit tout ton argent au même endroit.' },
+  { v: 'app', screen: 'score', lines: ['Un *score* sur 10'], say: 'Un score sur dix te montre quoi améliorer.' },
+  { v: 'app', screen: 'chat', lines: ['Tes questions,', '*sans jargon*'], say: "Et l'IA répond à tes questions, sans jargon." },
+  { v: 'cta', lines: ["C'est *gratuit*"], button: 'Créer mon compte gratuit', site: 'kapitaro.fr', legal: 'Outil éducatif. Investir comporte des risques.', say: "C'est gratuit. Lance-toi." },
+];
+const AD_HOOKS_SHORT = { 'pub-a': 'Tu veux investir, mais par où commencer ?', 'pub-b': 'Ton épargne dort sur un livret ?', 'pub-c': "T'as un PEA, mais tu sais pas où t'en es ?" };
 const AD_VARIANTS = [
   { key: 'pub-a', title: 'Pub A · Tu veux investir… mais par où commencer ?', beats: [
     { v: 'hook', lines: ['Tu veux *investir*…', 'mais par où', '*commencer* ?'], say: 'Tu veux investir… mais tu sais pas par où commencer ?' },
@@ -513,17 +520,19 @@ const AD_VARIANTS = [
     { v: 'hook', lines: ["T'as un *PEA*…", 'mais tu sais pas', "où t'en *es* ?"], say: "T'as un PEA… mais tu sais pas vraiment où t'en es ?" },
     { v: 'words', lines: ['Difficile', "d'y voir *clair*"], items: ['Lignes', 'Frais', 'Répartition', 'Performance', 'Risque', 'Courtiers'], say: "Entre les lignes, les frais et la répartition, difficile d'y voir clair." }] },
 ];
-async function createAds() {
+async function createAds({ short = false } = {}) {
   const voices = await reelVoices();
   const voice = voices.find(v => /adrien/i.test(v.name)) || voices[0];
   const made = [];
   for (const ad of AD_VARIANTS) {
-    const beats = [...ad.beats, ...AD_END].map(b => ({ ...b, voice: 0 }));
-    const { data: row, error } = await sb.from('social_posts').insert({ kind: 'ad', format: 'ad', status: 'ad', title: ad.title, slides: [], platforms: [],
-      caption: `https://kapitaro.fr/commencer?utm_source=meta&utm_campaign=${ad.key}` }).select().single();
+    const key = short ? ad.key + '-15s' : ad.key;
+    const beats = (short ? [{ ...ad.beats[0], say: AD_HOOKS_SHORT[ad.key] }, ...AD_END_SHORT] : [...ad.beats, ...AD_END]).map(b => ({ ...b, voice: 0 }));
+    const title = short ? ad.title.replace(/^Pub ([ABC]) ·/, 'Pub $1 (15 s) ·') : ad.title;
+    const { data: row, error } = await sb.from('social_posts').insert({ kind: 'ad', format: 'ad', status: 'ad', title, slides: [], platforms: [],
+      caption: `https://kapitaro.fr/commencer?utm_source=meta&utm_campaign=${key}` }).select().single();
     if (error) throw error;
     const segments = voice.id ? await voiceOver({ beats, voices: [voice], sb, id: row.id, speed: 1.15 }) : [];
-    const script = { v: 1, style: 'motion', ad: ad.key, voice: voice.name, beats, segments, edge_voices: voice.id ? undefined : [voice.edge], created_at: new Date().toISOString() };
+    const script = { v: 1, style: 'motion', ad: key, voice: voice.name, beats, segments, edge_voices: voice.id ? undefined : [voice.edge], created_at: new Date().toISOString() };
     let status = 'queued', err = null;
     try { await dispatchRender(row.id); } catch (e) { status = 'error'; err = e.message; }
     const { data, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', row.id).select().single();
@@ -658,7 +667,7 @@ export default async function handler(req, res) {
     }
     // ── Vidéos animées (Reels) ──
     if (b.action === 'reel-config') return res.status(200).json(await reelConfig());
-    if (b.action === 'ad-create') return res.status(200).json({ posts: await createAds() });
+    if (b.action === 'ad-create') return res.status(200).json({ posts: await createAds({ short: !!b.short }) });
     if (b.action === 'reel-create' || b.action === 'reel-render') {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
       const { data: post, error } = await sb.from('social_posts').select('*').eq('id', b.id).single();
