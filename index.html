@@ -65,11 +65,9 @@
   <link rel="shortcut icon" href="/favicon.ico">
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"Kapitaro","alternateName":"kapitaro.fr","url":"https://kapitaro.fr/","inLanguage":"fr"},{"@type":"Organization","name":"Kapitaro","url":"https://kapitaro.fr/","logo":"https://kapitaro.fr/icons/icon-512.png","email":"contact@kapitaro.fr","sameAs":["https://www.instagram.com/kapitaro_app/"]}]}</script>
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260930230000">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="style.css?v=20261001100000">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -168,7 +166,6 @@
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:48px">
         <img src="icons/kapitaro-tile.svg" width="40" height="40" alt="" style="border-radius:12px;display:block">
         <span style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px">Kapitaro</span>
-        <span style="background:rgba(26,127,90,0.2);border:1px solid rgba(26,127,90,0.4);color:#4ade80;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;margin-left:4px">BETA</span>
       </div>
 
       <!-- TITRE PRINCIPAL -->
@@ -180,6 +177,13 @@
         <p style="font-size:17px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:420px;margin:0">
           Ton copilote IA pour suivre, analyser et faire grandir ton patrimoine — même en partant de zéro.
         </p>
+      </div>
+
+      <!-- APPEL À L'ACTION (téléphone : le formulaire est plus bas) -->
+      <div class="hero-cta-mobile">
+        <button type="button" class="hero-cta-main" onclick="heroStart('signup')">Créer mon compte gratuit</button>
+        <button type="button" class="hero-cta-link" onclick="heroStart('login')">J'ai déjà un compte · Se connecter</button>
+        <div class="hero-cta-note">Sans carte bancaire · prêt en 2 minutes</div>
       </div>
 
       <!-- STATS SOCIALES -->
@@ -196,7 +200,7 @@
         <div style="width:1px;background:rgba(255,255,255,0.1)"></div>
         <div>
           <div style="font-size:22px;font-weight:900;color:#a5b4fc">IA</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">signaux quotidiens</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:600">en français, 24 h/24</div>
         </div>
       </div>
 
@@ -208,7 +212,7 @@
           </div>
           <div>
             <div style="font-size:14px;font-weight:700;color:#fff">Portefeuille en temps réel</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.4)">Prix live · Signaux IA · Alertes personnalisées</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4)">Prix live · Performance · Alertes personnalisées</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px">
@@ -216,8 +220,8 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </div>
           <div>
-            <div style="font-size:14px;font-weight:700;color:#fff">Agent IA personnel</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.4)">Analyse · Conseils · Actions sur commande</div>
+            <div style="font-size:14px;font-weight:700;color:#fff">Assistant IA personnel</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4)">Analyse · Explications · Réponses à tes questions</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px">
@@ -352,21 +356,8 @@
         </div>
       </div>
 
-      <!-- INSTALLER L'APP : juste au-dessus du formulaire de connexion (affiché sur téléphone, ou sur ordinateur si le navigateur permet l'installation) -->
-      <div id="install-app-box" style="display:none;padding:12px 14px;background:rgba(22,163,74,0.12);border:1px solid rgba(22,163,74,0.35);border-radius:14px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <img src="icons/kapitaro-tile.svg" width="38" height="38" alt="" style="border-radius:10px;flex-shrink:0">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13.5px;font-weight:800;color:#fff">Installe l'app Kapitaro</div>
-            <div id="install-app-text" style="font-size:11.5px;color:rgba(255,255,255,0.6);line-height:1.45;margin-top:1px">Sur ton écran d'accueil, en plein écran, avec les notifications.</div>
-          </div>
-          <button type="button" onclick="installAppDismiss()" aria-label="Masquer" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0">✕</button>
-        </div>
-        <button type="button" id="install-app-btn" onclick="installApp()" style="display:none;width:100%;margin-top:10px;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">📲 Installer l'app — gratuit</button>
-      </div>
-
       <!-- FORMULAIRE -->
-      <div style="background:rgba(255,255,255,0.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,0.4)">
+      <div id="auth-form-card" style="scroll-margin-top:16px;background:rgba(255,255,255,0.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,0.4)">
 
         <!-- ONGLETS -->
         <div style="display:flex;background:rgba(255,255,255,0.06);border-radius:12px;padding:4px;margin-bottom:24px">
@@ -476,6 +467,19 @@
         <div style="margin-top:10px;text-align:center;font-size:11.5px;color:rgba(255,255,255,0.45)">
           Outils gratuits sans compte : <a href="/simulateur-interets-composes" style="color:#4ade80;font-weight:700">Intérêts composés</a> · <a href="/calculateur-objectif-epargne" style="color:#4ade80;font-weight:700">Objectif d'épargne</a> · <a href="/rendement-etf-msci-world" style="color:#4ade80;font-weight:700">ETF MSCI World</a> · <a href="/epargne-de-precaution" style="color:#4ade80;font-weight:700">Épargne de précaution</a>
         </div>
+      </div>
+
+      <!-- INSTALLER L'APP : sous le formulaire de connexion (affiché sur téléphone, ou sur ordinateur si le navigateur permet l'installation) -->
+      <div id="install-app-box" style="display:none;margin-top:14px;padding:12px 14px;background:rgba(22,163,74,0.12);border:1px solid rgba(22,163,74,0.35);border-radius:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="icons/kapitaro-tile.svg" width="38" height="38" alt="" style="border-radius:10px;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px;font-weight:800;color:#fff">Installe l'app Kapitaro</div>
+            <div id="install-app-text" style="font-size:11.5px;color:rgba(255,255,255,0.6);line-height:1.45;margin-top:1px">Sur ton écran d'accueil, en plein écran, avec les notifications.</div>
+          </div>
+          <button type="button" onclick="installAppDismiss()" aria-label="Masquer" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0">✕</button>
+        </div>
+        <button type="button" id="install-app-btn" onclick="installApp()" style="display:none;width:100%;margin-top:10px;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">📲 Installer l'app — gratuit</button>
       </div>
     </div>
   </div>
@@ -938,7 +942,20 @@ window.addEventListener('load', function() {
   const orig = window.switchAuth;
   if (orig) window.switchAuth = function(tab) { orig(tab); _switchAuthStyle(tab); };
   if (window.__pendingAuthTab) { window.switchAuth(window.__pendingAuthTab); window.__pendingAuthTab = null; }
+  else if (_isNewVisitor()) window.switchAuth('signup');
 });
+// Nouveau visiteur = jamais connecté sur cet appareil : on lui ouvre l'inscription plutôt que la connexion
+function _isNewVisitor() {
+  try { return !localStorage.getItem('kp_known') && !Object.keys(localStorage).some(k => k.indexOf('sb-') === 0); } catch (e) { return true; }
+}
+// Bouton du premier écran (téléphone) : ouvre le bon onglet et descend jusqu'au formulaire
+function heroStart(tab) {
+  window.switchAuth(tab);
+  const card = document.getElementById('auth-form-card');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(function() { const f = document.getElementById(tab === 'signup' ? 'signup-email' : 'login-email'); if (f) f.focus({ preventScroll: true }); }, 500);
+  try { window.va && window.va('event', { name: 'hero_cta', tab: tab }); } catch (e) {}
+}
 </script>
 <div id="app" style="display:none">
   
@@ -2116,11 +2133,11 @@ window.addEventListener('load', function() {
       </div>
     </div>
 <script src="legal-docs.js?v=20260930r"></script>
-<script src="app.js?v=20260930230000"></script>
+<script src="app.js?v=20261001130000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20260928233000"></script>
-<script src="push.js?v=20260929001500"></script>
+<script src="push.js?v=20261001130000"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->

@@ -273,6 +273,104 @@ function installHomeDismiss() {
   installAppRender();
 }
 
+// Juste après l'inscription : une proposition bien visible, une seule fois par compte, sur téléphone.
+// Attend que le tutoriel d'accueil soit fermé pour ne pas s'y superposer.
+function installAfterSignup(user) {
+  try {
+    if (!user || !user.id || isDemo) return;
+    if (Date.now() - new Date(user.created_at).getTime() > 3 * 86400000) return;
+    const key = 'iq_install_sheet_' + user.id;
+    if (localStorage.getItem(key)) return;
+    const tryShow = async left => {
+      const mode = installMode();
+      if (!mode || !(isMobileDevice() || isIOSDevice())) return;
+      const ob = document.getElementById('onboarding-modal');
+      if (ob && ob.style.display === 'flex') { if (left > 0) setTimeout(() => tryShow(left - 1), 3000); return; }
+      if (document.getElementById('install-sheet')) return;
+      try { localStorage.setItem(key, '1'); } catch {}
+      window._installSheetShown = true;
+      const canPush = (await pushState().catch(() => 'unsupported')) === 'off';
+      const o = document.createElement('div');
+      o.id = 'install-sheet';
+      o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10006;display:flex;align-items:flex-end;justify-content:center';
+      o.onclick = e => { if (e.target === o) installSheetClose(); };
+      o.innerHTML = `<div style="background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:22px 22px 0 0;width:100%;max-width:480px;padding:22px 20px calc(20px + env(safe-area-inset-bottom));color:#fff">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <img src="icons/kapitaro-tile.svg" width="46" height="46" alt="" style="border-radius:12px;flex-shrink:0">
+          <div><div style="font-size:17px;font-weight:900;letter-spacing:-0.02em">Bienvenue ! Installe l'app</div>
+          <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-top:2px">Kapitaro sur ton écran d'accueil, en plein écran</div></div>
+        </div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.55;margin-bottom:14px">Ouvre ton portefeuille en un geste et reçois ton briefing du matin. Gratuit, sans passer par un magasin d'applications.</div>
+        ${mode === 'prompt'
+          ? '<button type="button" onclick="installSheetInstall()" style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">📲 Installer l\'app</button>'
+          : `<div style="font-size:13px;line-height:1.6;background:rgba(255,255,255,0.06);border-radius:12px;padding:12px 14px">${installHowHTML(mode, '#fff')}</div>`}
+        ${canPush ? '<button type="button" id="install-sheet-push" onclick="installSheetPush()" style="width:100%;margin-top:8px;padding:13px;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.16);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">🔔 Activer les notifications</button>' : ''}
+        <button type="button" onclick="installSheetClose()" style="width:100%;margin-top:8px;padding:12px;background:none;border:none;color:rgba(255,255,255,0.55);font-size:14px;font-weight:600;cursor:pointer">Plus tard</button>
+      </div>`;
+      document.body.appendChild(o);
+      try { window.va && window.va('event', { name: 'install_sheet_view', mode }); } catch {}
+    };
+    setTimeout(() => tryShow(100), 2500);
+  } catch {}
+}
+function installSheetClose() {
+  document.getElementById('install-sheet')?.remove();
+  try { localStorage.setItem(INSTALL_HOME_DISMISS_KEY, String(Date.now())); } catch {}   // pas de bandeau en double juste après
+  installAppRender();
+}
+async function installSheetPush() {
+  const b = document.getElementById('install-sheet-push');
+  if (b) { b.disabled = true; b.textContent = 'Activation…'; }
+  await pushEnable();
+  if (b) b.remove();
+}
+
+// Notifications : le navigateur exige l'accord de la personne (impossible de les activer « par défaut »).
+// On le demande donc au bon moment, une fois par compte et par appareil : après le tutoriel, ou à la première
+// ouverture de l'app installée (seul cas où l'iPhone les autorise). Pas en même temps que la fenêtre d'installation.
+function pushAskOnce(user) {
+  try {
+    if (!user || !user.id || isDemo) return;
+    const key = 'iq_push_ask_' + user.id;
+    if (localStorage.getItem(key)) return;
+    const tryShow = async left => {
+      if (window._installSheetShown) return;   // la fenêtre de bienvenue propose déjà les notifications
+      const busy = document.getElementById('install-sheet') || document.getElementById('plans-modal')
+        || (document.getElementById('onboarding-modal') || {}).style?.display === 'flex'
+        || (!localStorage.getItem('iq_install_sheet_' + user.id) && Date.now() - new Date(user.created_at).getTime() < 3 * 86400000
+            && installMode() && (isMobileDevice() || isIOSDevice()));   // la fenêtre de bienvenue va s'afficher
+      if (busy) { if (left > 0) setTimeout(() => tryShow(left - 1), 4000); return; }
+      if ((await pushState().catch(() => 'unsupported')) !== 'off') return;
+      if (document.getElementById('push-sheet')) return;
+      try { localStorage.setItem(key, '1'); } catch {}
+      const o = document.createElement('div');
+      o.id = 'push-sheet';
+      o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10006;display:flex;align-items:flex-end;justify-content:center';
+      o.onclick = e => { if (e.target === o) o.remove(); };
+      o.innerHTML = `<div style="background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:22px 22px 0 0;width:100%;max-width:480px;padding:22px 20px calc(20px + env(safe-area-inset-bottom));color:#fff">
+        <div style="font-size:30px;line-height:1;margin-bottom:10px">🔔</div>
+        <div style="font-size:17px;font-weight:900;letter-spacing:-0.02em">Ne rate rien de ton portefeuille</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.72);line-height:1.55;margin:6px 0 16px">Un briefing chaque matin et une alerte dès qu'un prix passe sous ton seuil, même app fermée. Tu peux tout régler ou couper dans Paramètres.</div>
+        <button type="button" onclick="pushSheetEnable(this)" style="width:100%;padding:14px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">Activer les notifications</button>
+        <button type="button" onclick="document.getElementById('push-sheet').remove()" style="width:100%;margin-top:8px;padding:12px;background:none;border:none;color:rgba(255,255,255,0.55);font-size:14px;font-weight:600;cursor:pointer">Plus tard</button>
+      </div>`;
+      document.body.appendChild(o);
+      try { window.va && window.va('event', { name: 'push_sheet_view' }); } catch {}
+    };
+    setTimeout(() => tryShow(60), 6000);
+  } catch {}
+}
+async function pushSheetEnable(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Activation…'; }
+  await pushEnable();
+  document.getElementById('push-sheet')?.remove();
+}
+
+async function installSheetInstall() {
+  document.getElementById('install-sheet')?.remove();
+  await installApp();
+}
+
 window.addEventListener('kapitaro-installable', installAppRender);
 window.addEventListener('appinstalled', () => {
   window._appJustInstalled = true;

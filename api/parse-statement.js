@@ -15,6 +15,28 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.s
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || 'sb_publishable_3_8eb6YbCfJ04Qihdy9ivw_NsQ4H_cu';
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TEXT = 40_000;
+const DAILY_IMPORTS = 15;   // imports PDF par jour et par compte (chaque import est un appel IA payant)
+
+// Compteur quotidien dans la table events (clé serveur) ; sans clé serveur, on laisse passer
+async function importsToday(userId) {
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!key) return 0;
+  const since = new Date(); since.setUTCHours(0, 0, 0, 0);
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/events?select=id&user_id=eq.${userId}&type=eq.pdf_import&created_at=gte.${since.toISOString()}`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}`, Prefer: 'count=exact', Range: '0-0' },
+  });
+  const total = Number((r.headers.get('content-range') || '').split('/')[1]);
+  return Number.isFinite(total) ? total : 0;
+}
+function logImport(userId) {
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!key) return Promise.resolve();
+  return fetch(`${SUPABASE_URL}/rest/v1/events`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ user_id: userId, type: 'pdf_import' }),
+  }).catch(() => {});
+}
 
 const SYSTEM = `Tu extrais les positions d'un relevé de portefeuille de courtier (Trade Republic, XTB, Boursorama, Degiro, Fortuneo, etc.).
 Réponds UNIQUEMENT avec un tableau JSON, sans texte autour, sans bloc de code. Chaque élément :
@@ -62,6 +84,7 @@ export default async function handler(req, res) {
     if (!user?.id) return res.status(401).json({ error: 'Session invalide.' });
 
     if (rateLimited(user.id)) return res.status(429).json({ error: 'Trop d\'imports d\'un coup. Patiente une minute.' });
+    if (await importsToday(user.id).catch(() => 0) >= DAILY_IMPORTS) return res.status(429).json({ error: `Tu as atteint la limite de ${DAILY_IMPORTS} imports PDF pour aujourd'hui. Réessaie demain.` });
 
     const text = (req.body && req.body.text) || '';
     if (typeof text !== 'string' || text.trim().length < 20) return res.status(400).json({ error: 'Aucun texte lisible dans ce PDF.' });
@@ -78,6 +101,7 @@ export default async function handler(req, res) {
       }),
     });
     const data = await r.json();
+    await logImport(user.id);
     if (!r.ok || data.error) {
       console.error('[parse-statement] Anthropic:', r.status, data?.error?.message);
       return res.status(502).json({ error: 'Analyse du PDF indisponible, réessaie dans un instant.' });
