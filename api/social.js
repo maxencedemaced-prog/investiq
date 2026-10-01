@@ -667,6 +667,11 @@ export default async function handler(req, res) {
     }
     // ── Vidéos animées (Reels) ──
     if (b.action === 'reel-config') return res.status(200).json(await reelConfig());
+    if (b.action === 'ad-list') {
+      const { data, error } = await sb.from('social_posts').select('*').eq('status', 'ad').order('created_at', { ascending: false }).limit(90);
+      if (error) throw error;
+      return res.status(200).json({ posts: data });
+    }
     if (b.action === 'ad-create') return res.status(200).json({ posts: await createAds({ short: !!b.short }) });
     if (b.action === 'reel-create' || b.action === 'reel-render') {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });

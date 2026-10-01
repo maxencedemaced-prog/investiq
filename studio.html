@@ -149,11 +149,18 @@ async function api(method, body) {
 
 // ── Vidéos pub (statut « ad ») ──
 var ADS_TIMER = null;
-function adsList() { return POSTS.filter(function (p) { return p.status === 'ad'; }).sort(function (a, b) { return Date.parse(b.created_at) - Date.parse(a.created_at); }).slice(0, 9); }
+function adsList() { return POSTS.filter(function (p) { return p.status === 'ad'; }).sort(function (a, b) { return Date.parse(b.created_at) - Date.parse(a.created_at); }); }
+var ADS_OPEN = {};   // dossiers ouverts / fermés par la personne (conservé entre deux rafraîchissements)
+// Une fabrication = les vidéos créées à moins de 3 minutes d'intervalle
+function adFolders(ads) {
+  var out = [];
+  ads.forEach(function (p) { var t = Date.parse(p.created_at), g = out[out.length - 1]; if (g && g.t - t < 180000) { g.items.push(p); g.t = t; } else out.push({ key: p.id, t: t, start: t, items: [p] }); });
+  return out;
+}
 function renderAds() {
   var box = document.getElementById('ads-list'), ads = adsList();
   if (!ads.length) { box.innerHTML = '<div class="empty" style="padding:14px">Aucune vidéo pub pour l\'instant.</div>'; return; }
-  box.innerHTML = ads.map(function (p) {
+  var cards = function (list) { return list.slice().reverse().map(function (p) {
     var s = p.video_script || {}, st = s.status;
     var state = p.video_url && st === 'done' ? '' : st === 'error' ? '<div style="color:#fb7185;font-size:13px">Erreur : ' + esc(s.error || '') + '</div>' : '<div class="sub">⏳ Fabrication en cours (3 à 5 minutes)…</div>';
     return '<div style="border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px;margin-bottom:10px">'
@@ -161,11 +168,21 @@ function renderAds() {
       + (p.video_url && st === 'done' ? '<video src="' + esc(p.video_url) + '" controls playsinline style="width:160px;border-radius:10px;display:block;margin:6px 0"></video>'
         + '<div class="row"><a class="btn" href="' + esc(p.video_url) + '" download target="_blank" rel="noopener">⬇ Télécharger</a><button class="btn" onclick="copyAdLink(\'' + p.id + '\')">📋 Copier le lien de suivi</button></div>' : '')
       + '<div class="sub" style="margin-top:6px;word-break:break-all">Lien de la pub : ' + esc(p.caption || '') + '</div></div>';
+  }).join(''); };
+  box.innerHTML = adFolders(ads).map(function (g, k) {
+    var d = new Date(g.t), short = g.items.some(function (p) { return /\(15 s\)/.test(p.title || ''); });
+    var label = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    var ready = g.items.filter(function (p) { return p.video_url && (p.video_script || {}).status === 'done'; }).length;
+    var open = ADS_OPEN[g.key] != null ? ADS_OPEN[g.key] : k === 0;
+    return '<details data-k="' + g.key + '"' + (open ? ' open' : '') + ' ontoggle="ADS_OPEN[this.dataset.k]=this.open" style="border:1px solid rgba(255,255,255,.12);border-radius:14px;margin-bottom:10px;background:rgba(255,255,255,.03)">'
+      + '<summary style="cursor:pointer;padding:12px 14px;font-weight:700;list-style:none">📁 ' + esc(label.charAt(0).toUpperCase() + label.slice(1)) + ' · ' + (short ? 'courtes (15 s)' : 'longues (23 s)')
+      + ' <span class="sub" style="font-weight:500">· ' + ready + '/' + g.items.length + ' prête' + (ready > 1 ? 's' : '') + '</span></summary>'
+      + '<div style="padding:0 12px 4px">' + cards(g.items) + '</div></details>';
   }).join('');
 }
 function copyAdLink(id) { var p = POSTS.find(function (x) { return x.id === id; }); if (p && navigator.clipboard) navigator.clipboard.writeText(p.caption || '').then(function () { toast('Lien copié'); }); }
 async function refreshAds() {
-  try { var d = await api('GET'); POSTS = d.posts || POSTS; } catch (e) {}
+  try { var d = await api('POST', { action: 'ad-list' }); POSTS = POSTS.filter(function (p) { return p.status !== 'ad'; }).concat(d.posts || []); } catch (e) {}
   renderAds();
   var pending = adsList().some(function (p) { var st = (p.video_script || {}).status; return st === 'queued' || st === 'rendering'; });
   clearTimeout(ADS_TIMER);
