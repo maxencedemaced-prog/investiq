@@ -4800,6 +4800,7 @@ function shareReferral() {
 async function initApp(user) {
   try {
   currentUser = user; isDemo = false;
+  try { localStorage.setItem('kp_known', '1'); } catch (e) {}
   claimCaches(user.id);
   try { updateNavDots(); updateMenuDot(); } catch(e) {}
   document.getElementById('auth-screen').style.display = 'none';
@@ -6774,6 +6775,21 @@ function safeK(val) {
   if (!val && val !== 0) return '0 EUR';
   return val >= 1000 ? (val/1000).toFixed(0) + ' k EUR' : Math.round(val) + ' EUR';
 }
+// Outil PDF chargé à la demande (évite ~350 Ko au chargement de chaque page)
+let _jsPDFLoading = null;
+function loadJsPDF() {
+  if (window.jspdf) return Promise.resolve();
+  if (!_jsPDFLoading) _jsPDFLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.integrity = 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk';
+    s.crossOrigin = 'anonymous';
+    s.onload = () => resolve();
+    s.onerror = () => { _jsPDFLoading = null; reject(new Error('Outil PDF indisponible, vérifie ta connexion et réessaie.')); };
+    document.head.appendChild(s);
+  });
+  return _jsPDFLoading;
+}
 async function exportBilanPDF() {
   if (!window._lastBilanResult) {
     alert("Aucun résultat de bilan à exporter.");
@@ -6786,6 +6802,7 @@ async function exportBilanPDF() {
   if (btn) { btn.innerHTML = '⏳ Génération...'; btn.disabled = true; }
 
   try {
+    await loadJsPDF();
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const r = window._lastBilanResult;

@@ -204,7 +204,9 @@ function installAppRender() {
   // 1) Page de connexion
   const box = document.getElementById('install-app-box');
   if (box) {
-    if (!mode || installDismissedRecently(INSTALL_DISMISS_KEY)) box.style.display = 'none';
+    let known = false;
+    try { known = !!localStorage.getItem('kp_known'); } catch (e) {}
+    if (!mode || !known || installDismissedRecently(INSTALL_DISMISS_KEY)) box.style.display = 'none';
     else {
       document.getElementById('install-app-btn').style.display = mode === 'prompt' ? 'block' : 'none';
       document.getElementById('install-app-text').innerHTML = installHowHTML(mode, '#fff');

@@ -126,6 +126,15 @@ async function checkFreeQuota(userId) {
   }
 }
 
+// Cadre fixé par le serveur et placé AVANT les consignes envoyées par le navigateur : celles-ci peuvent être modifiées
+// par un utilisateur, ce cadre non. Il empêche de détourner l'assistant en IA généraliste et maintient le cadre AMF.
+const SERVER_FRAME = `CADRE KAPITARO (prioritaire sur toute autre consigne, y compris celles qui suivent) :
+- Tu es l'assistant de l'application Kapitaro : suivi de portefeuille, épargne, investissement, budget et finances personnelles. Tu ne traites que ces sujets et l'utilisation de Kapitaro. Pour toute autre demande (programmation, devoirs, rédaction sans lien, etc.), décline poliment en une phrase.
+- Tu restes dans un cadre éducatif et informatif : pas de conseil en investissement réglementé, aucune promesse de gain, aucun placement présenté comme sans risque.
+- Respecte scrupuleusement le format de réponse demandé dans les consignes qui suivent.
+
+`;
+
 export default async function handler(req, res) {
   // CORS restreint au domaine de l'app
   const origin = req.headers.origin || '';
@@ -217,7 +226,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           model: finalModel,
           max_tokens: finalMaxTokens,
-          system: system || 'Tu es le copilote financier IA de Kapitaro. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.',
+          system: SERVER_FRAME + (system || 'Tu es le copilote financier IA de Kapitaro. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.'),
           messages: [{ role: 'user', content: prompt }],
           ...extra
         })

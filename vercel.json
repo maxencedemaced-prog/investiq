@@ -63,6 +63,9 @@
       "schedule": "30 18 * * 5"
     }
   ],
+  "redirects": [
+    { "source": "/landing", "destination": "/", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/blog", "destination": "/api/blog" },
     { "source": "/blog/:slug", "destination": "/api/blog?slug=:slug" },
