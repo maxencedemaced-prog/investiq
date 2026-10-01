@@ -29,6 +29,13 @@
     .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
     .tab{font:inherit;font-size:13px;font-weight:700;padding:7px 13px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer}
     .tab.on{background:var(--txt);color:var(--bg);border-color:var(--txt)}
+    .folder{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;margin-bottom:10px}
+    .folder>summary{cursor:pointer;padding:13px 16px;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
+    .folder>summary::-webkit-details-marker{display:none}
+    .folder>summary::after{content:'›';margin-left:auto;font-size:20px;color:var(--mut);transition:transform .2s}
+    .folder[open]>summary::after{transform:rotate(90deg)}
+    .folder>.folder-in{padding:4px 12px 2px}
+    .ad-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:10px}
     .post{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
     .post-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
     .post-t{font-weight:800;font-size:15px}
@@ -60,7 +67,7 @@
       <button class="btn" onclick="generateMode('agenda', this)">📅 Agenda de la semaine</button>
       <button class="btn" onclick="generateMode('recap', this)">📈 Bilan des marchés</button>
       <button class="btn primary" onclick="document.getElementById('dlg-actu').showModal()">⚡ Post d'actu</button>
-      <button class="btn" onclick="openAds()">🎯 Vidéos pub</button>
+      <button class="btn" onclick="setFilter('ads')">🎯 Vidéos pub</button>
     </div>
   </div>
 
@@ -71,6 +78,7 @@
     <button class="tab" data-f="approved" onclick="setFilter('approved')">Validés</button>
     <button class="tab" data-f="published" onclick="setFilter('published')">Publiés</button>
     <button class="tab" data-f="calendar" onclick="setFilter('calendar')">📅 Planning</button>
+    <button class="tab" data-f="ads" onclick="setFilter('ads')">🎯 Vidéos pub</button>
   </div>
   <div id="list"><div class="empty">Chargement…</div></div>
 </div>
@@ -115,17 +123,6 @@
   </div>
 </dialog>
 
-<dialog id="dlg-ads" style="max-width:600px">
-  <h3 style="margin:0 0 6px">🎯 Vidéos pub</h3>
-  <p class="sub" style="margin:0 0 12px">3 vidéos de 15 à 20 s pour tes publicités Meta, avec trois accroches différentes à comparer (A, B, C). Voix Adrien dynamique, écrans de l'appli animés, sous-titres incrustés. Elles ne sont jamais publiées automatiquement : télécharge-les puis importe-les dans le Gestionnaire de publicités, avec le lien de suivi indiqué.</p>
-  <div id="ads-list"></div>
-  <div class="row" style="justify-content:flex-end;margin-top:12px">
-    <button class="btn" onclick="document.getElementById('dlg-ads').close()">Fermer</button>
-    <button class="btn" id="btn-ads-short" onclick="createAds(this, true)">Créer les 3 vidéos courtes (15 s)</button>
-    <button class="btn primary" id="btn-ads" onclick="createAds(this)">Créer les 3 vidéos (23 s)</button>
-  </div>
-</dialog>
-
 <div id="render"></div>
 <div class="toast" id="toast"></div>
 
@@ -159,13 +156,14 @@ function adFolders(ads) {
 }
 function renderAds() {
   var box = document.getElementById('ads-list'), ads = adsList();
+  if (!box) return;
   if (!ads.length) { box.innerHTML = '<div class="empty" style="padding:14px">Aucune vidéo pub pour l\'instant.</div>'; return; }
   var cards = function (list) { return list.slice().reverse().map(function (p) {
     var s = p.video_script || {}, st = s.status;
     var state = p.video_url && st === 'done' ? '' : st === 'error' ? '<div style="color:#fb7185;font-size:13px">Erreur : ' + esc(s.error || '') + '</div>' : '<div class="sub">⏳ Fabrication en cours (3 à 5 minutes)…</div>';
-    return '<div style="border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px;margin-bottom:10px">'
+    return '<div style="border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px">'
       + '<div style="font-weight:700;margin-bottom:6px">' + esc(p.title) + '</div>' + state
-      + (p.video_url && st === 'done' ? '<video src="' + esc(p.video_url) + '" controls playsinline style="width:160px;border-radius:10px;display:block;margin:6px 0"></video>'
+      + (p.video_url && st === 'done' ? '<video src="' + esc(p.video_url) + '" controls playsinline preload="metadata" style="width:100%;max-width:200px;border-radius:10px;display:block;margin:6px 0"></video>'
         + '<div class="row"><a class="btn" href="' + esc(p.video_url) + '" download target="_blank" rel="noopener">⬇ Télécharger</a><button class="btn" onclick="copyAdLink(\'' + p.id + '\')">📋 Copier le lien de suivi</button></div>' : '')
       + '<div class="sub" style="margin-top:6px;word-break:break-all">Lien de la pub : ' + esc(p.caption || '') + '</div></div>';
   }).join(''); };
@@ -173,11 +171,11 @@ function renderAds() {
     var d = new Date(g.t), short = g.items.some(function (p) { return /\(15 s\)/.test(p.title || ''); });
     var label = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     var ready = g.items.filter(function (p) { return p.video_url && (p.video_script || {}).status === 'done'; }).length;
-    var open = ADS_OPEN[g.key] != null ? ADS_OPEN[g.key] : k === 0;
-    return '<details data-k="' + g.key + '"' + (open ? ' open' : '') + ' ontoggle="ADS_OPEN[this.dataset.k]=this.open" style="border:1px solid rgba(255,255,255,.12);border-radius:14px;margin-bottom:10px;background:rgba(255,255,255,.03)">'
-      + '<summary style="cursor:pointer;padding:12px 14px;font-weight:700;list-style:none">📁 ' + esc(label.charAt(0).toUpperCase() + label.slice(1)) + ' · ' + (short ? 'courtes (15 s)' : 'longues (23 s)')
+    var open = !!ADS_OPEN[g.key];
+    return '<details class="folder" data-k="' + g.key + '"' + (open ? ' open' : '') + ' ontoggle="ADS_OPEN[this.dataset.k]=this.open">'
+      + '<summary>📁 ' + esc(label.charAt(0).toUpperCase() + label.slice(1)) + ' · ' + (short ? 'courtes (15 s)' : 'longues (23 s)')
       + ' <span class="sub" style="font-weight:500">· ' + ready + '/' + g.items.length + ' prête' + (ready > 1 ? 's' : '') + '</span></summary>'
-      + '<div style="padding:0 12px 4px">' + cards(g.items) + '</div></details>';
+      + '<div class="folder-in"><div class="ad-grid">' + cards(g.items) + '</div></div></details>';
   }).join('');
 }
 function copyAdLink(id) { var p = POSTS.find(function (x) { return x.id === id; }); if (p && navigator.clipboard) navigator.clipboard.writeText(p.caption || '').then(function () { toast('Lien copié'); }); }
@@ -186,9 +184,15 @@ async function refreshAds() {
   renderAds();
   var pending = adsList().some(function (p) { var st = (p.video_script || {}).status; return st === 'queued' || st === 'rendering'; });
   clearTimeout(ADS_TIMER);
-  if (pending && document.getElementById('dlg-ads').open) ADS_TIMER = setTimeout(refreshAds, 20000);
+  if (pending && FILTER === 'ads') ADS_TIMER = setTimeout(refreshAds, 20000);
 }
-function openAds() { document.getElementById('dlg-ads').showModal(); renderAds(); refreshAds(); }
+function renderAdsPage() {
+  document.getElementById('list').innerHTML = '<div class="post"><div class="post-t">🎯 Vidéos pub</div>'
+    + '<p class="sub" style="margin:6px 0 12px">Vidéos pour tes publicités Meta, avec trois accroches à comparer (A, B, C). Voix Adrien dynamique, écrans de l\'appli animés, sous-titres incrustés. Jamais publiées automatiquement : télécharge-les puis importe-les dans le Gestionnaire de publicités, avec le lien de suivi indiqué. Chaque fabrication est rangée dans un dossier daté : clique dessus pour l\'ouvrir.</p>'
+    + '<div class="row"><button class="btn" id="btn-ads-short" onclick="createAds(this, true)">Créer les 3 vidéos courtes (15 s)</button><button class="btn primary" id="btn-ads" onclick="createAds(this)">Créer les 3 vidéos (23 s)</button></div></div>'
+    + '<div id="ads-list"><div class="empty">Chargement…</div></div>';
+  renderAds(); refreshAds();
+}
 var ADS_BUSY = false;   // empêche un double lancement (double clic, fenêtre rouverte pendant la préparation)
 async function createAds(btn, short) {
   if (ADS_BUSY) return;
@@ -255,12 +259,13 @@ function renderCalendar() {
 function goToPost(id) {
   var p = findPost(id);
   setFilter(p.status === 'published' ? 'published' : p.status === 'draft' ? 'draft' : 'approved');
-  setTimeout(function () { var el = document.getElementById('post-' + id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  setTimeout(function () { var el = document.getElementById('post-' + id); if (!el) return; var f = el.closest('details.folder'); if (f) { f.open = true; FOLDER_OPEN[f.dataset.k] = true; } el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
 }
 
 function render() {
   var list = document.getElementById('list');
   if (FILTER === 'calendar') { renderCalendar(); return; }
+  if (FILTER === 'ads') { renderAdsPage(); return; }
   var items = POSTS.filter(function (p) { return (p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing')) && !(p.format === 'story' && FILTER === 'draft') && p.format !== 'guide'; });
   // À valider : les posts les plus récents en haut (Validés et Publiés gardent l'ordre des dates de publication)
   if (FILTER === 'draft') items.sort(function (x, y) { return String(y.created_at || '').localeCompare(String(x.created_at || '')); });
@@ -268,7 +273,7 @@ function render() {
     list.innerHTML = '<div class="empty">' + (FILTER === 'draft' ? 'Aucun post à valider. Clique sur « ✨ Préparer 3 posts » pour en générer.' : 'Rien ici pour l\'instant.') + '</div>';
     return;
   }
-  list.innerHTML = items.map(function (p) {
+  var postCard = function (p) {
     var plats = PLATFORMS.map(function (x) { return '<label><input type="checkbox" data-plat="' + x[0] + '" ' + ((p.platforms || []).indexOf(x[0]) >= 0 ? 'checked' : '') + ' onchange="savePlatforms(\'' + p.id + '\')"> ' + x[1] + '</label>'; }).join('');
     var actions = p.status === 'draft'
       ? '<button class="btn primary" onclick="approve(\'' + p.id + '\', this)">✓ Valider et programmer</button><button class="btn warn" onclick="removePost(\'' + p.id + '\')">Supprimer</button>'
@@ -288,9 +293,23 @@ function render() {
       formatBlock(p) +
       publishStatus(p) + reelStatus(p) + articleLine(p) +
       '<div class="row" style="margin-top:14px">' + actions + '<button class="btn" onclick="openReel(\'' + p.id + '\')">🎞 Vidéo animée</button><button class="btn" onclick="makeVideo(\'' + p.id + '\', this)">🎬 Vidéo diaporama</button></div></div></div></div>';
+  };
+  // Un dossier par jour : jour de création pour « À valider », jour de publication prévu ou réel sinon
+  var dayOf = function (p) { var iso = FILTER === 'draft' ? p.created_at : (p.status === 'published' && p.published_at ? p.published_at : p.scheduled_at); return iso ? new Date(iso) : null; };
+  var groups = [];
+  items.forEach(function (p) { var d = dayOf(p), key = d ? d.toDateString() : 'sans-date', g = groups.find(function (x) { return x.key === key; }); if (!g) groups.push(g = { key: key, d: d, items: [] }); g.items.push(p); });
+  // Validés : du plus proche au plus lointain ; À valider et Publiés : les plus récents en haut
+  groups.sort(function (a, b) { var x = a.d ? a.d.getTime() : 0, y = b.d ? b.d.getTime() : 0; return FILTER === 'approved' ? x - y : y - x; });
+  list.innerHTML = groups.map(function (g) {
+    var label = g.d ? g.d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Sans date';
+    var k = FILTER + ':' + g.key, n = g.items.length;
+    return '<details class="folder" data-k="' + esc(k) + '"' + (FOLDER_OPEN[k] ? ' open' : '') + ' ontoggle="FOLDER_OPEN[this.dataset.k]=this.open">'
+      + '<summary>📁 ' + esc(label.charAt(0).toUpperCase() + label.slice(1)) + ' <span class="sub" style="font-weight:500">· ' + n + ' post' + (n > 1 ? 's' : '') + '</span></summary>'
+      + '<div class="folder-in">' + g.items.map(postCard).join('') + '</div></details>';
   }).join('');
   items.forEach(renderThumbs);
 }
+var FOLDER_OPEN = {};   // dossiers ouverts par la personne, conservés entre deux affichages
 
 // ── Format de publication : carrousel d'images ou Reel (vidéo) ──
 function formatBlock(p) {
@@ -380,7 +399,7 @@ async function createReel(again) {
     render();
     var s = d.post.video_script || {};
     toast(s.status === 'error' ? '⚠️ ' + s.error : '🎞 Script prêt, fabrication lancée : la vidéo arrive sur le post dans ≈ 5 min', 9000);
-    var el = document.getElementById('post-' + REEL_ID); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var el = document.getElementById('post-' + REEL_ID); if (el) { var f = el.closest('details.folder'); if (f) { f.open = true; FOLDER_OPEN[f.dataset.k] = true; } el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     watchReels();
   } catch (e) { toast(e.message, 7000); }
   btn.disabled = false; btn.textContent = label;
