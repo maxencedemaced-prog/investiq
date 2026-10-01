@@ -39,7 +39,7 @@ function page({ title, description, canonical, jsonld, hero, body }) {
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <script src="/ads.js?v=20261001180000" defer></script>
+  <script src="/ads.js?v=20261001190000" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(description)}">
