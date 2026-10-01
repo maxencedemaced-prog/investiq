@@ -121,7 +121,8 @@
   <div id="ads-list"></div>
   <div class="row" style="justify-content:flex-end;margin-top:12px">
     <button class="btn" onclick="document.getElementById('dlg-ads').close()">Fermer</button>
-    <button class="btn primary" id="btn-ads" onclick="createAds(this)">Créer les 3 vidéos</button>
+    <button class="btn" id="btn-ads-short" onclick="createAds(this, true)">Créer les 3 vidéos courtes (15 s)</button>
+    <button class="btn primary" id="btn-ads" onclick="createAds(this)">Créer les 3 vidéos (23 s)</button>
   </div>
 </dialog>
 
@@ -148,7 +149,7 @@ async function api(method, body) {
 
 // ── Vidéos pub (statut « ad ») ──
 var ADS_TIMER = null;
-function adsList() { return POSTS.filter(function (p) { return p.status === 'ad'; }).sort(function (a, b) { return Date.parse(b.created_at) - Date.parse(a.created_at); }).slice(0, 6); }
+function adsList() { return POSTS.filter(function (p) { return p.status === 'ad'; }).sort(function (a, b) { return Date.parse(b.created_at) - Date.parse(a.created_at); }).slice(0, 9); }
 function renderAds() {
   var box = document.getElementById('ads-list'), ads = adsList();
   if (!ads.length) { box.innerHTML = '<div class="empty" style="padding:14px">Aucune vidéo pub pour l\'instant.</div>'; return; }
@@ -172,13 +173,14 @@ async function refreshAds() {
 }
 function openAds() { document.getElementById('dlg-ads').showModal(); renderAds(); refreshAds(); }
 var ADS_BUSY = false;   // empêche un double lancement (double clic, fenêtre rouverte pendant la préparation)
-async function createAds(btn) {
+async function createAds(btn, short) {
   if (ADS_BUSY) return;
-  if (adsList().length && !confirm('Refabriquer 3 nouvelles vidéos pub ? (les précédentes restent disponibles)')) return;
+  if (adsList().length && !confirm('Fabriquer 3 nouvelles vidéos pub' + (short ? ' courtes (15 s)' : '') + ' ? (les précédentes restent disponibles)')) return;
+  var label = btn.textContent;
   ADS_BUSY = true; btn.disabled = true; btn.textContent = 'Préparation des voix…';
-  try { var d = await api('POST', { action: 'ad-create' }); POSTS = (d.posts || []).concat(POSTS); toast('C\'est parti : les 3 vidéos arrivent dans quelques minutes'); refreshAds(); }
+  try { var d = await api('POST', { action: 'ad-create', short: !!short }); POSTS = (d.posts || []).concat(POSTS); toast('C\'est parti : les 3 vidéos arrivent dans quelques minutes'); refreshAds(); }
   catch (e) { toast(e.message, 6000); }
-  ADS_BUSY = false; btn.disabled = false; btn.textContent = 'Créer les 3 vidéos';
+  ADS_BUSY = false; btn.disabled = false; btn.textContent = label;
 }
 
 async function load() {
