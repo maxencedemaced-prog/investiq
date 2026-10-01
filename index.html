@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <script src="/errlog.js?v=20260929"></script>
+  <script src="/ads.js?v=20261001190000" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#080e1e">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -625,6 +626,7 @@
         <a href="/blog">Blog</a>
         <a href="/faq">FAQ</a>
         <a href="mailto:contact@kapitaro.fr">Contact</a>
+        <button type="button" onclick="window.kpAds && kpAds.openConsent()">Cookies</button>
       </div>
       <p>Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. L'éditeur n'est pas enregistré auprès de l'ORIAS ni agréé par l'AMF. Investir comporte un risque de perte en capital.</p>
       <p>© Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016</p>
@@ -943,6 +945,8 @@ window.addEventListener('load', function() {
   if (orig) window.switchAuth = function(tab) { orig(tab); _switchAuthStyle(tab); };
   if (window.__pendingAuthTab) { window.switchAuth(window.__pendingAuthTab); window.__pendingAuthTab = null; }
   else if (_isNewVisitor()) window.switchAuth('signup');
+  // Arrivée depuis la page de publicité (/commencer) : inscription ouverte directement
+  if (/[?&]inscription=1/.test(location.search) && document.getElementById('auth-screen').style.display !== 'none') setTimeout(function() { heroStart('signup'); }, 300);
 });
 // Nouveau visiteur = jamais connecté sur cet appareil : on lui ouvre l'inscription plutôt que la connexion
 function _isNewVisitor() {
@@ -2098,6 +2102,7 @@ function heroStart(tab) {
           <button type="button" class="set-row" onclick="openLegalDoc('privacy')"><div class="set-row-main"><div class="set-row-title">Politique de confidentialité</div></div><span class="set-chev">›</span></button>
           <button type="button" class="set-row" onclick="openLegalDoc('risk')"><div class="set-row-main"><div class="set-row-title">Avertissement sur les risques</div></div><span class="set-chev">›</span></button>
           <button type="button" class="set-row" onclick="openLegalDoc('mentions')"><div class="set-row-main"><div class="set-row-title">Mentions légales</div></div><span class="set-chev">›</span></button>
+          <button type="button" class="set-row" onclick="window.kpAds && kpAds.openConsent()"><div class="set-row-main"><div class="set-row-title">Cookies publicitaires</div><div class="set-row-sub">Modifier ton choix</div></div><span class="set-chev">›</span></button>
         </div>
         <div class="set-note">Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. L'éditeur n'est pas enregistré auprès de l'ORIAS ni agréé par l'AMF. Investir comporte un risque de perte en capital.</div>
 
@@ -2133,8 +2138,8 @@ function heroStart(tab) {
         </div>
       </div>
     </div>
-<script src="legal-docs.js?v=20260930r"></script>
-<script src="app.js?v=20261001160000"></script>
+<script src="legal-docs.js?v=20261001180000"></script>
+<script src="app.js?v=20261001180000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20260928233000"></script>

@@ -90,6 +90,11 @@
       </div>
 
       <div class="card">
+        <h3>D'où viennent les inscrits (90 derniers jours)</h3>
+        <div id="sources-table" class="sub">Pas encore de données : la provenance est enregistrée pour les nouveaux inscrits.</div>
+      </div>
+
+      <div class="card">
         <h3>Rétention : part des inscrits revenus après…</h3>
         <canvas id="chart-retention"></canvas>
       </div>
@@ -254,6 +259,10 @@ function render(d) {
     [{ label: 'Personnes', data: [f.inscrits || 0, f.ont_vu_offre || 0, f.ont_clique_payer || 0, f.ont_paye || 0, f.offerts || 0], color: '#16a34a' }]);
   document.getElementById('funnel-notes').textContent =
     `Renouvellements : ${f.renouvellements || 0} · Résiliations programmées : ${f.resiliations_programmees || 0} · Abonnements terminés : ${f.abonnements_termines || 0} · Paiements échoués : ${f.paiements_echoues || 0} · Abonnés mensuels : ${rev.abonnes_mensuels || 0} · annuels : ${rev.abonnes_annuels || 0}`;
+  // Provenance des inscrits : inscriptions et abonnés actuels par canal
+  const src = d.sources || [];
+  if (src.length) document.getElementById('sources-table').innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;opacity:.7"><th style="padding:6px 4px">Provenance</th><th style="padding:6px 4px;text-align:right">Inscrits</th><th style="padding:6px 4px;text-align:right">Premium</th><th style="padding:6px 4px;text-align:right">Conversion</th></tr>'
+    + src.map(s => `<tr style="border-top:1px solid rgba(127,127,127,.2)"><td style="padding:6px 4px">${esc(s.source)}</td><td style="padding:6px 4px;text-align:right">${s.inscrits}</td><td style="padding:6px 4px;text-align:right">${s.premium}</td><td style="padding:6px 4px;text-align:right">${s.inscrits ? Math.round(s.premium / s.inscrits * 100) : 0} %</td></tr>`).join('') + '</table>';
   mkChart('chart-retention', 'bar', ['J+1', 'J+7', 'J+30'],
     [{ label: '% des inscrits revenus', data: [rt.d1?.pct ?? 0, rt.d7?.pct ?? 0, rt.d30?.pct ?? 0], color: '#3b82f6' }]);
 

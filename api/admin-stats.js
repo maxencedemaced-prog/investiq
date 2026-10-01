@@ -141,6 +141,7 @@ export default async function handler(req, res) {
     const dauSet = {};        // { 'YYYY-MM-DD': Set(user_id) }
     const lastSeenByUser = {}; // user_id → dernier événement (ISO)
     const funnel = { paywall_view: new Set(), checkout_started: new Set(), premium_paid: new Set(), premium_free: new Set() };
+    const sourceUsers = {};   // provenance des inscrits (événement signup_source) → personnes
     for (const e of (events || [])) {
       const day = dayOf(e.created_at);
       byType[e.type] = (byType[e.type] || 0) + 1;
@@ -151,6 +152,7 @@ export default async function handler(req, res) {
       if (e.type === 'paywall_view') funnel.paywall_view.add(e.user_id);
       if (e.type === 'checkout_started') funnel.checkout_started.add(e.user_id);
       if (e.type === 'premium_activated') (e.meta && e.meta.amount > 0 ? funnel.premium_paid : funnel.premium_free).add(e.user_id);
+      if (e.type === 'signup_source') { const s = String((e.meta && e.meta.source) || 'direct').slice(0, 60); (sourceUsers[s] = sourceUsers[s] || new Set()).add(e.user_id); }
     }
 
     // ── Temps passé : 1 signal de présence = 2 minutes d'app ouverte (30 derniers jours) ──
@@ -245,6 +247,11 @@ export default async function handler(req, res) {
         paiements_echoues: byType.payment_failed || 0,
         renouvellements: byType.subscription_renewed || 0,
       },
+      sources: (() => {
+        const paying = new Set(payingNow.map(p => p.id));
+        return Object.entries(sourceUsers).map(([source, set]) => ({ source, inscrits: set.size, premium: [...set].filter(id => paying.has(id)).length }))
+          .sort((a, b) => b.inscrits - a.inscrits).slice(0, 15);
+      })(),
       retention,
       temps: { minutes_moyennes_par_jour_actif: avgMinutesPerActiveDay },
       events_by_type: byType,

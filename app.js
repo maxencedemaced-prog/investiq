@@ -4724,6 +4724,20 @@ function openNotifPanelByDefault() {
     if (code && /^[A-Za-z0-9]{4,12}$/.test(code)) localStorage.setItem('kp_ref', JSON.stringify({ code: code.toUpperCase(), at: Date.now() }));
   } catch (e) {}
 })();
+// Nouveau compte : provenance (tableau de bord) + conversion « inscription » pour les régies (si consentement)
+function trackSignupSource(user) {
+  try {
+    if (!user || !user.id || Date.now() - new Date(user.created_at).getTime() > 2 * 3600000) return;
+    const key = 'kp_signup_src_' + user.id;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+    const local = window.kpAds ? kpAds.source() || {} : {};
+    const source = (user.user_metadata && user.user_metadata.source) || (window.kpAds ? kpAds.sourceLabel() : 'direct');
+    trackEvent('signup_source', { source, campaign: local.campaign || null, content: local.content || null, landing: local.landing || null,
+      provider: (user.app_metadata && user.app_metadata.provider) || 'email' });
+    if (window.kpAds) kpAds.track('signup');
+  } catch (e) {}
+}
 let referralPromo = false;   // filleul jamais abonné : −50 % sur le 1er mois de la formule mensuelle
 async function loadReferralPromo() {
   try {
@@ -4814,6 +4828,7 @@ async function initApp(user) {
   try { if (typeof installAfterSignup === 'function') installAfterSignup(user); } catch (e) {}
   try { if (typeof pushAskOnce === 'function') pushAskOnce(user); } catch (e) {}
   try { if (typeof lockAskOnSecondVisit === 'function') lockAskOnSecondVisit(user); } catch (e) {}
+  trackSignupSource(user);
   const email = user.email || '';
   document.getElementById('topbar-email').textContent = email.split('@')[0];
   document.getElementById('topbar-avatar').textContent = (email[0]||'U').toUpperCase();
@@ -4978,7 +4993,10 @@ async function signup() {
   setAuthMsg('Création...', true);
   let parrain = null;
   try { const ref = JSON.parse(localStorage.getItem('kp_ref') || 'null'); if (ref && ref.code && Date.now() - (ref.at || 0) < 30 * 86400000) parrain = ref.code; } catch (e) {}
-  const { data, error } = await sb.auth.signUp({ email, password: pass, options: parrain ? { data: { parrain } } : undefined });
+  const meta = {};
+  if (parrain) meta.parrain = parrain;
+  try { if (window.kpAds) meta.source = kpAds.sourceLabel(); } catch (e) {}
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options: Object.keys(meta).length ? { data: meta } : undefined });
   if (error) {
     const m = (error.message || '').toLowerCase();
     if (m.includes('rate limit')) setAuthMsg("Trop d'emails envoyés récemment. Réessaie dans environ 1 heure.");
@@ -10958,6 +10976,7 @@ async function startCheckout(btn, plan) {
     });
     const out = await res.json();
     if (!res.ok || !out.url) throw new Error(out.error || 'Erreur inconnue');
+    try { localStorage.setItem('kp_checkout', JSON.stringify({ plan: plan === 'annual' ? 'annual' : 'monthly', promo: !!(typeof referralPromo !== 'undefined' && referralPromo), at: Date.now() })); } catch (e) {}
     // Enregistré avant de quitter la page (au plus 1 s d'attente pour ne pas retarder le paiement)
     await Promise.race([trackEvent('checkout_started', { plan: plan === 'annual' ? 'annual' : 'monthly' }), new Promise(r => setTimeout(r, 1000))]);
     window.location.href = out.url;
@@ -11188,6 +11207,12 @@ async function handleStripeReturn() {
     return;
   }
   if (premium !== 'success') return;
+  // Conversion « abonnement » pour les régies (si consentement), une seule fois par paiement
+  try {
+    const ck = JSON.parse(localStorage.getItem('kp_checkout') || 'null');
+    localStorage.removeItem('kp_checkout');
+    if (ck && Date.now() - ck.at < 3 * 3600000 && window.kpAds) kpAds.track('subscribe', { value: ck.plan === 'annual' ? 79.99 : ck.promo ? 4.99 : 9.99, ltv: ck.plan === 'annual' ? 79.99 : 9.99 * 6 });
+  } catch (e) {}
 
   // Le webhook peut mettre quelques secondes : on interroge le profil jusqu'à 5 fois
   showToast('⏳ Activation de ton abonnement...');
