@@ -196,14 +196,14 @@ export async function writeReelScript({ post, duo, askClaude, facts, style }) {
 }
 
 // ── Voix ElevenLabs avec minutage de chaque caractère → minutage de chaque mot ──
-async function elevenTts(text, voiceId) {
+async function elevenTts(text, voiceId, speed = 1.08) {
   let last = '';
   for (const model of [...new Set([process.env.ELEVENLABS_MODEL || 'eleven_v4', 'eleven_v3', 'eleven_multilingual_v2'])]) {
     // v3/v4 : stabilité « créative » (plus d'expression) ; v2 : expressivité et débit réglés finement
     const settings = model === 'eleven_multilingual_v2'
-      ? { stability: 0.32, similarity_boost: 0.8, style: 0.5, use_speaker_boost: true, speed: 1.08 }
-      : { stability: 0, speed: 1.08 };
-    for (const voice_settings of [settings, { speed: 1.08 }, null]) {
+      ? { stability: speed > 1.1 ? 0.25 : 0.32, similarity_boost: 0.8, style: speed > 1.1 ? 0.7 : 0.5, use_speaker_boost: true, speed }
+      : { stability: 0, speed };
+    for (const voice_settings of [settings, { speed }, null]) {
       const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
         method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify(voice_settings ? { text, model_id: model, voice_settings } : { text, model_id: model }), signal: AbortSignal.timeout(60000),
@@ -218,7 +218,7 @@ async function elevenTts(text, voiceId) {
 }
 
 // Regroupe les scènes consécutives d'une même voix (intonation naturelle), place les voix bout à bout, minute chaque mot
-export async function voiceOver({ beats, voices, sb, id }) {
+export async function voiceOver({ beats, voices, sb, id, speed }) {
   const groups = [];
   beats.forEach((b, i) => { const v = b.voice || 0; if (groups.length && groups[groups.length - 1].voice === v) groups[groups.length - 1].idx.push(i); else groups.push({ voice: v, idx: [i] }); });
   const segments = []; let cursor = 0.15, prevEnd = null;
@@ -226,7 +226,7 @@ export async function voiceOver({ beats, voices, sb, id }) {
     const voice = voices[groups[g].voice] || voices[0];
     let text = ''; const spans = [];
     for (const i of groups[g].idx) { if (text) text += ' '; spans.push({ i, from: text.length }); text += beats[i].say; spans[spans.length - 1].to = text.length; }
-    const { audio, al, model } = await elevenTts(text, voice.id);
+    const { audio, al, model } = await elevenTts(text, voice.id, speed);
     sb.from('ai_usage_log').insert({ user_id: null, model: 'elevenlabs:' + (model || ''), input_tokens: text.length, output_tokens: 0, cost_usd: 0, call_label: 'studio:voix' }).then(() => {}, () => {});
     const starts = al?.character_start_times_seconds || [], ends = al?.character_end_times_seconds || [];
     const exact = starts.length === text.length;
