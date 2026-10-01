@@ -4801,6 +4801,7 @@ async function initApp(user) {
   try {
   currentUser = user; isDemo = false;
   try { localStorage.setItem('kp_known', '1'); } catch (e) {}
+  try { if (typeof appLockOnStart === 'function') appLockOnStart(); } catch (e) {}   // écran verrouillé avant d'afficher quoi que ce soit
   claimCaches(user.id);
   try { updateNavDots(); updateMenuDot(); } catch(e) {}
   document.getElementById('auth-screen').style.display = 'none';
@@ -7044,7 +7045,7 @@ function nav(page, auto=false) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSettingsAccount();}catch(e){console.warn('account:',e);} try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderReferralCard();}catch(e){} try{renderPushCard();}catch(e){} },
+}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSettingsAccount();}catch(e){console.warn('account:',e);} try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderReferralCard();}catch(e){} try{renderPushCard();}catch(e){} try{renderLockCard();}catch(e){} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(auto); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
 }

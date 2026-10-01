@@ -335,7 +335,7 @@ function pushAskOnce(user) {
     if (localStorage.getItem(key)) return;
     const tryShow = async left => {
       if (window._installSheetShown) return;   // la fenêtre de bienvenue propose déjà les notifications
-      const busy = document.getElementById('install-sheet') || document.getElementById('plans-modal')
+      const busy = document.getElementById('install-sheet') || document.getElementById('plans-modal') || document.getElementById('app-lock')
         || (document.getElementById('onboarding-modal') || {}).style?.display === 'flex'
         || (!localStorage.getItem('iq_install_sheet_' + user.id) && Date.now() - new Date(user.created_at).getTime() < 3 * 86400000
             && installMode() && (isMobileDevice() || isIOSDevice()));   // la fenêtre de bienvenue va s'afficher
