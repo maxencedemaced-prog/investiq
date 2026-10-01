@@ -249,10 +249,10 @@ const Captions = ({ b }) => {
 // ── Style « vidéo réelle » : plan filmé plein écran, texte en surimpression, coupes franches ──
 const RealScene = ({ b }) => {
   const f = useCurrentFrame(), last = b.i === beats.length - 1;
-  const o = Math.min(io(f, 0, 4, 0, 1), last ? 1 : io(f, b.dur - 3, b.dur, 1, 0));
+  const o = Math.min(b.i === 0 ? 1 : io(f, 0, 4, 0, 1), last ? 1 : io(f, b.dur - 3, b.dur, 1, 0));
   const lines = b.lines && b.lines.length ? b.lines : [];
   const size = lines.length ? fitSize(lines, 110) : 100;
-  const p = io(f, 3, 16, 0, 1);
+  const p = b.i === 0 ? 1 : io(f, 3, 16, 0, 1);
   return <AbsoluteFill style={{ opacity: o }}>
     {b.broll_file && <AbsoluteFill>
       <OffthreadVideo src={staticFile(b.broll_file)} muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${1.12 - f * 0.0009})` }} />
@@ -263,7 +263,7 @@ const RealScene = ({ b }) => {
     {b.v === 'cta' ? <Cta b={b} /> : <>
       {b.v === 'number' && <div style={{ position: 'absolute', top: 820, left: 40, right: 40, textAlign: 'center', fontSize: Math.min(230, Math.floor(950 / (String(b.value).length * 0.6))), fontWeight: 800, color: '#fff', letterSpacing: -6, opacity: p, transform: `translateY(${(1 - p) * 30}px)`, textShadow: '0 10px 40px rgba(0,0,0,.5)' }}>{b.value}</div>}
       {lines.length > 0 && <div style={{ position: 'absolute', top: b.v === 'number' ? 1090 : 1030, left: 50, right: 50, textAlign: 'center' }}>
-        {lines.map((l, k) => { const q = io(f, 3 + k * 4, 16 + k * 4, 0, 1); return <div key={k} style={{ fontSize: b.v === 'number' ? Math.min(size, 64) : size, fontWeight: 800, lineHeight: 1.08, letterSpacing: -size * 0.03, color: '#fff', whiteSpace: 'nowrap', opacity: q, transform: `translateY(${(1 - q) * 24}px)`, textShadow: '0 6px 30px rgba(0,0,0,.55)' }}><Accent text={l} /></div>; })}
+        {lines.map((l, k) => { const q = b.i === 0 ? 1 : io(f, 3 + k * 4, 16 + k * 4, 0, 1); return <div key={k} style={{ fontSize: b.v === 'number' ? Math.min(size, 64) : size, fontWeight: 800, lineHeight: 1.08, letterSpacing: -size * 0.03, color: '#fff', whiteSpace: 'nowrap', opacity: q, transform: `translateY(${(1 - q) * 24}px)`, textShadow: '0 6px 30px rgba(0,0,0,.55)' }}><Accent text={l} /></div>; })}
       </div>}
       {b.v === 'number' && b.sub && <div style={{ position: 'absolute', top: 1190, left: 80, right: 80, textAlign: 'center', color: 'rgba(255,255,255,.85)', fontSize: 40, fontWeight: 600, opacity: p, textShadow: '0 4px 20px rgba(0,0,0,.6)' }}>{String(b.sub).replace(/\*/g, '')}</div>}
     </>}
@@ -366,7 +366,7 @@ const AppScene = ({ b }) => <>
 
 const Scene = ({ b }) => {
   const f = useCurrentFrame(), last = b.i === beats.length - 1;
-  const inP = io(f, 0, 8, 0, 1), outP = last ? 1 : io(f, b.dur - 5, b.dur, 1, 0, Easing.in(Easing.cubic));
+  const inP = b.i === 0 ? 1 : io(f, 0, 8, 0, 1), outP = last ? 1 : io(f, b.dur - 5, b.dur, 1, 0, Easing.in(Easing.cubic));
   const o = Math.min(inP, outP), s = 1.015 - 0.015 * inP + f * 0.0004;
   const icon = b.icon && ICONS.includes(b.icon) ? b.icon : null;
   let body;
@@ -382,7 +382,7 @@ const Scene = ({ b }) => {
     case 'cta': body = <Cta b={b} />; break;
     case 'words': body = <><Reveal lines={b.lines} top={360} max={110} /><Words b={b} /></>; break;
     case 'app': body = <AppScene b={b} />; break;
-    default: body = <>{icon && <Icon3D name={icon} top={400} size={240} />}<Reveal lines={b.lines} top={icon ? 740 : 620} max={b.v === 'hook' ? 130 : 120} /><Muted text={b.sub} top={icon ? 1080 : 1000} /></>;
+    default: body = <>{icon && <Icon3D name={icon} top={400} size={240} delay={b.i === 0 ? -30 : 0} />}<Reveal lines={b.lines} top={icon ? 740 : 620} max={b.v === 'hook' ? 130 : 120} delay={b.i === 0 ? -60 : 2} /><Muted text={b.sub} top={icon ? 1080 : 1000} /></>;
   }
   return <AbsoluteFill style={{ opacity: o, filter: o < 1 ? `blur(${(1 - o) * 8}px)` : 'none', transform: `scale(${s})` }}>{b.broll_file && <Broll file={b.broll_file} />}{body}<Captions b={b} /></AbsoluteFill>;
 };
