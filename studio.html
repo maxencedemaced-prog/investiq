@@ -171,12 +171,14 @@ async function refreshAds() {
   if (pending && document.getElementById('dlg-ads').open) ADS_TIMER = setTimeout(refreshAds, 20000);
 }
 function openAds() { document.getElementById('dlg-ads').showModal(); renderAds(); refreshAds(); }
+var ADS_BUSY = false;   // empêche un double lancement (double clic, fenêtre rouverte pendant la préparation)
 async function createAds(btn) {
+  if (ADS_BUSY) return;
   if (adsList().length && !confirm('Refabriquer 3 nouvelles vidéos pub ? (les précédentes restent disponibles)')) return;
-  btn.disabled = true; btn.textContent = 'Préparation des voix…';
+  ADS_BUSY = true; btn.disabled = true; btn.textContent = 'Préparation des voix…';
   try { var d = await api('POST', { action: 'ad-create' }); POSTS = (d.posts || []).concat(POSTS); toast('C\'est parti : les 3 vidéos arrivent dans quelques minutes'); refreshAds(); }
   catch (e) { toast(e.message, 6000); }
-  btn.disabled = false; btn.textContent = 'Créer les 3 vidéos';
+  ADS_BUSY = false; btn.disabled = false; btn.textContent = 'Créer les 3 vidéos';
 }
 
 async function load() {
