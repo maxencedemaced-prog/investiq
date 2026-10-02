@@ -1,6 +1,6 @@
 // api/email-send.js — tâche quotidienne (cron Vercel, protégée par CRON_SECRET)
 // Relances automatiques, chacune envoyée au plus une fois par personne :
-//   - nudge_empty : compte créé il y a 3 à 7 jours, e-mail confirmé, aucune position
+//   - nudge_empty : compte créé il y a 1 à 7 jours, e-mail confirmé, aucune position
 //   - winback     : aucune activité depuis 10 jours (compte de plus de 10 jours)
 // Respecte la désinscription (profiles.email_opt_out) et plafonne le nombre d'envois par jour.
 //   ?mode=newsletter (cron du dimanche) : la lettre de la semaine à tous les inscrits (articles du blog, agenda, point perso)
@@ -193,7 +193,7 @@ export default async function handler(req, res) {
     for (const u of users) {
       if (optedOut.has(u.id)) continue;
       const a = age(u);
-      if (a >= 3 * DAY && a < 7 * DAY && !hasPositions.has(u.id) && !already.has(u.id + '|nudge_empty')) {
+      if (a >= 1 * DAY && a < 7 * DAY && !hasPositions.has(u.id) && !already.has(u.id + '|nudge_empty')) {
         todo.push({ u, kind: 'nudge_empty' });
         continue;   // une seule relance par jour et par personne
       }
