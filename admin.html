@@ -90,6 +90,11 @@
       </div>
 
       <div class="card">
+        <h3>Publicité Meta (depuis le début des campagnes)</h3>
+        <div id="ads-table" class="sub">Chargement…</div>
+      </div>
+
+      <div class="card">
         <h3>D'où viennent les inscrits (90 derniers jours)</h3>
         <div id="sources-table" class="sub">Pas encore de données : la provenance est enregistrée pour les nouveaux inscrits.</div>
       </div>
@@ -210,12 +215,13 @@ function renderCosts(d) {
     var voix = /eleven/i.test(f.nom) ? ' (' + (m.voix_caracteres || 0).toLocaleString('fr-FR') + ' / ' + c.elevenlabs_credits_mois.toLocaleString('fr-FR') + ' crédits utilisés)' : '';
     rows.push(['Abonnement ' + f.nom + voix, f.montant.toLocaleString('fr-FR') + (f.devise === 'USD' ? ' $' : ' €'), f.eur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €']);
   });
+  if (c.publicite_mois_eur) rows.push(['Publicité Meta (ce mois)', c.publicite_mois_eur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €', c.publicite_mois_eur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €']);
   box.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
     rows.map(function (r) { return '<tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb">' + r[0] + '</td><td style="text-align:right;padding:8px 10px;border-bottom:1px solid #e5e7eb;white-space:nowrap">' + r[1] + '</td><td style="text-align:right;padding:8px 0;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:#6b7280">≈ ' + r[2] + '</td></tr>'; }).join('') +
     '<tr><td style="padding:10px 0;font-weight:800">Total des coûts du mois</td><td></td><td style="text-align:right;font-weight:800">≈ ' + coutEur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</td></tr></table>' +
     '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px">' +
     '<div class="kpi" style="flex:1;min-width:160px"><div class="v">' + (rev.mrr_estime || 0).toLocaleString('fr-FR') + ' €</div><div class="l">Revenu réel ce mois (' + (st.abonnes_payants ?? '—') + ' payant' + ((st.abonnes_payants || 0) > 1 ? 's' : '') + ', ' + (st.abonnes_offerts ?? 0) + ' offert' + ((st.abonnes_offerts || 0) > 1 ? 's' : '') + ')</div></div>' +
-    '<div class="kpi" style="flex:1;min-width:160px"><div class="v">≈ ' + coutEur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</div><div class="l">Coûts du mois (IA + abonnements)</div></div>' +
+    '<div class="kpi" style="flex:1;min-width:160px"><div class="v">≈ ' + coutEur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</div><div class="l">Coûts du mois (IA, abonnements' + (c.publicite_mois_eur ? ', pub' : '') + ')</div></div>' +
     '<div class="kpi" style="flex:1;min-width:160px"><div class="v" style="color:' + (marge >= 0 ? '#16a34a' : '#dc2626') + '">' + (marge >= 0 ? '+' : '') + marge.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</div><div class="l">Marge du mois</div></div></div>' +
     '<div class="sub" style="margin-top:10px">' + (st.erreur ? 'Stripe indisponible (' + st.erreur + ') : revenu estimé au prix catalogue. ' : '') + 'Conversion à ' + fx.toFixed(3) + ' € pour 1 $. ' + (c.note || '') + ' Hébergement (Vercel, Supabase) non inclus.</div>';
 }
@@ -259,6 +265,25 @@ function render(d) {
     [{ label: 'Personnes', data: [f.inscrits || 0, f.ont_vu_offre || 0, f.ont_clique_payer || 0, f.ont_paye || 0, f.offerts || 0], color: '#16a34a' }]);
   document.getElementById('funnel-notes').textContent =
     `Renouvellements : ${f.renouvellements || 0} · Résiliations programmées : ${f.resiliations_programmees || 0} · Abonnements terminés : ${f.abonnements_termines || 0} · Paiements échoués : ${f.paiements_echoues || 0} · Abonnés mensuels : ${rev.abonnes_mensuels || 0} · annuels : ${rev.abonnes_annuels || 0}`;
+  // Publicité Meta : dépense et résultats par pub, reliés aux inscrits par le lien de suivi
+  var pub = d.publicite || {}, adsBox = document.getElementById('ads-table');
+  var e2 = function (x) { return x == null ? '—' : x.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; };
+  var n0 = function (x) { return (x || 0).toLocaleString('fr-FR'); };
+  if (!pub.branche) adsBox.innerHTML = 'Pas encore branché : ajoute <b>META_ADS_TOKEN</b> et <b>META_AD_ACCOUNT_ID</b> dans les variables Vercel.';
+  else if (pub.erreur) adsBox.innerHTML = '<span style="color:#dc2626">Meta indisponible : ' + esc(pub.erreur) + '</span>';
+  else if (!(pub.pubs || []).length) adsBox.textContent = 'Aucune pub diffusée pour l\'instant.';
+  else {
+    var th = function (t, r) { return '<th style="padding:6px 4px;' + (r ? 'text-align:right;' : '') + 'white-space:nowrap">' + t + '</th>'; };
+    var td = function (t, r, b) { return '<td style="padding:6px 4px;' + (r ? 'text-align:right;' : '') + (b ? 'font-weight:800;' : '') + 'white-space:nowrap">' + t + '</td>'; };
+    var line = function (p, b) { return '<tr style="border-top:1px solid rgba(127,127,127,.2)">' + td(esc(p.nom) + (p.lien ? '<div style="opacity:.6;font-size:11px;font-weight:500">' + esc(p.lien) + '</div>' : ''), false, b)
+      + td(p.statut ? (p.statut === 'ACTIVE' ? '🟢 Active' : esc(p.statut.toLowerCase())) : '', false, b) + td(e2(p.depense), true, b) + td(n0(p.affichages), true, b) + td(n0(p.visites), true, b)
+      + td(e2(p.cout_visite), true, b) + td(n0(p.inscrits), true, b) + td(e2(p.cout_inscrit), true, b) + td(n0(p.premium), true, b) + '</tr>'; };
+    var tt = pub.total || {};
+    adsBox.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;opacity:.7">' + th('Pub') + th('Statut') + th('Dépensé', 1) + th('Affichages', 1) + th('Visites', 1) + th('Coût / visite', 1) + th('Inscrits', 1) + th('Coût / inscrit', 1) + th('Premium', 1) + '</tr>'
+      + pub.pubs.map(function (p) { return line(p); }).join('') + line({ nom: 'Total', depense: tt.depense, affichages: tt.affichages, visites: tt.visites, cout_visite: tt.cout_visite, inscrits: tt.inscrits, cout_inscrit: tt.cout_inscrit, premium: tt.premium }, true) + '</table></div>'
+      + '<div class="sub" style="margin-top:8px">Dépense pub ce mois : ' + e2(pub.depense_mois) + ' (incluse dans les coûts). « Visites » = vues de la page d\'arrivée comptées par Meta ; inscrits et Premium = comptes réellement créés avec le lien de la pub.</div>';
+  }
+
   // Provenance des inscrits : inscriptions et abonnés actuels par canal
   const src = d.sources || [];
   if (src.length) document.getElementById('sources-table').innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;opacity:.7"><th style="padding:6px 4px">Provenance</th><th style="padding:6px 4px;text-align:right">Inscrits</th><th style="padding:6px 4px;text-align:right">Premium</th><th style="padding:6px 4px;text-align:right">Conversion</th></tr>'
