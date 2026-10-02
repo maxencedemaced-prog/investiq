@@ -15,6 +15,54 @@ const supabaseAdmin = process.env.SUPABASE_SERVICE_KEY
   : null;
 
 // Coûts IA : utilisateurs, ton propre compte, Studio (posts, vidéos, stories), voix ElevenLabs (abonnement fixe)
+// ── Publicité Meta : dépenses et résultats par pub (jeton META_ADS_TOKEN en lecture seule, compte META_AD_ACCOUNT_ID) ──
+// Chaque pub est reliée à ses inscrits par le paramètre utm_campaign de son lien (provenance « meta / <campagne> »).
+async function metaAds(sources) {
+  const token = process.env.META_ADS_TOKEN, acct = String(process.env.META_AD_ACCOUNT_ID || '').replace(/^act_/, '').trim();
+  if (!token || !acct) return { branche: false };
+  const GRAPH = 'https://graph.facebook.com/' + (process.env.META_GRAPH_VERSION || 'v23.0');
+  const get = async (path, params) => {
+    const u = new URL(GRAPH + path);
+    Object.entries({ ...params, access_token: token }).forEach(([k, v]) => u.searchParams.set(k, v));
+    const r = await fetch(u, { signal: AbortSignal.timeout(9000) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error((j.error && j.error.message) || 'Meta a répondu ' + r.status);
+    return j;
+  };
+  const [ins, ads, month] = await Promise.all([
+    get(`/act_${acct}/insights`, { level: 'ad', date_preset: 'maximum', fields: 'ad_id,ad_name,campaign_name,spend,impressions,reach,inline_link_clicks,actions', limit: '200' }),
+    get(`/act_${acct}/ads`, { fields: 'name,effective_status,creative{object_story_spec,asset_feed_spec,url_tags}', limit: '200' }),
+    get(`/act_${acct}/insights`, { date_preset: 'this_month', fields: 'spend,account_currency' }),
+  ]);
+  const linkOf = cr => {
+    const s = (cr && cr.object_story_spec) || {};
+    const l = (s.video_data && s.video_data.call_to_action && s.video_data.call_to_action.value && s.video_data.call_to_action.value.link)
+      || (s.link_data && s.link_data.link) || (cr && cr.asset_feed_spec && (cr.asset_feed_spec.link_urls || [])[0] && cr.asset_feed_spec.link_urls[0].website_url) || '';
+    return l + (cr && cr.url_tags ? (l.includes('?') ? '&' : '?') + cr.url_tags : '');
+  };
+  const adInfo = {};
+  (ads.data || []).forEach(a => { const m = linkOf(a.creative).match(/utm_campaign=([^&#]+)/); adInfo[a.id] = { statut: a.effective_status, campagne: m ? decodeURIComponent(m[1]).toLowerCase() : null }; });
+  const bySource = {};
+  (sources || []).forEach(s => { bySource[s.source] = s; });
+  const r2 = x => Math.round(x * 100) / 100;
+  const pubs = (ins.data || []).map(row => {
+    const info = adInfo[row.ad_id] || {}, spend = Number(row.spend) || 0;
+    const act = t => Number(((row.actions || []).find(a => a.action_type === t) || {}).value) || 0;
+    const visites = act('landing_page_view'), clics = Number(row.inline_link_clicks) || act('link_click');
+    const src = info.campagne ? bySource['meta / ' + info.campagne] : null;
+    const inscrits = src ? src.inscrits : 0, premium = src ? src.premium : 0;
+    return { nom: row.ad_name, campagne_meta: row.campaign_name, statut: info.statut || null, lien: info.campagne, depense: r2(spend),
+      affichages: Number(row.impressions) || 0, personnes: Number(row.reach) || 0, clics, visites,
+      cout_visite: visites ? r2(spend / visites) : null, inscrits, cout_inscrit: inscrits ? r2(spend / inscrits) : null, premium, cout_premium: premium ? r2(spend / premium) : null };
+  }).sort((a, b) => b.depense - a.depense);
+  const tot = pubs.reduce((t, p) => ({ depense: t.depense + p.depense, affichages: t.affichages + p.affichages, clics: t.clics + p.clics, visites: t.visites + p.visites, inscrits: t.inscrits + p.inscrits, premium: t.premium + p.premium }),
+    { depense: 0, affichages: 0, clics: 0, visites: 0, inscrits: 0, premium: 0 });
+  tot.depense = r2(tot.depense);
+  const m = (month.data || [])[0] || {};
+  return { branche: true, devise: m.account_currency || 'EUR', depense_mois: r2(Number(m.spend) || 0), total: { ...tot,
+    cout_visite: tot.visites ? r2(tot.depense / tot.visites) : null, cout_inscrit: tot.inscrits ? r2(tot.depense / tot.inscrits) : null, cout_premium: tot.premium ? r2(tot.depense / tot.premium) : null }, pubs };
+}
+
 async function coutsIA() {
   const DAY = 86400000, start = new Date(); start.setUTCDate(1); start.setUTCHours(0, 0, 0, 0);
   const since30 = new Date(Date.now() - 30 * DAY).toISOString();
@@ -230,12 +278,24 @@ export default async function handler(req, res) {
       };
     })().catch(e => ({ disponible: false, raison: e.message }));
 
+    // Provenance des inscrits, coûts du mois et publicité (la dépense pub du mois s'ajoute aux coûts)
+    const payingIds = new Set(payingNow.map(p => p.id));
+    const sourcesList = Object.entries(sourceUsers).map(([source, set]) => ({ source, inscrits: set.size, premium: [...set].filter(id => payingIds.has(id)).length }))
+      .sort((a, b) => b.inscrits - a.inscrits);
+    const couts = await coutsIA();
+    const publicite = await metaAds(sourcesList).catch(e => ({ branche: true, erreur: e.message }));
+    if (couts && publicite.depense_mois && publicite.devise === 'EUR') {
+      couts.publicite_mois_eur = publicite.depense_mois;
+      couts.total_mois_eur = Math.round((couts.total_mois_eur + publicite.depense_mois) * 100) / 100;
+    }
+
     res.status(200).json({
       generated_at: new Date().toISOString(),
       users: { total: totalUsers, premium: payingNow.length, signups_7j: signups7, signups_30j: signups30,
                inactive_14j: users.filter(u => !lastSeenByUser[u.id] || Date.now() - new Date(lastSeenByUser[u.id]) > 14 * DAY).length },
       revenue: { mrr_estime: mrr, abonnes_mensuels: monthlySubs, abonnes_annuels: annualSubs, stripe: stripeRev },
-      couts: await coutsIA(),
+      couts,
+      publicite,
       funnel: {
         inscrits: totalUsers,
         ont_vu_offre: funnel.paywall_view.size,
@@ -247,11 +307,7 @@ export default async function handler(req, res) {
         paiements_echoues: byType.payment_failed || 0,
         renouvellements: byType.subscription_renewed || 0,
       },
-      sources: (() => {
-        const paying = new Set(payingNow.map(p => p.id));
-        return Object.entries(sourceUsers).map(([source, set]) => ({ source, inscrits: set.size, premium: [...set].filter(id => paying.has(id)).length }))
-          .sort((a, b) => b.inscrits - a.inscrits).slice(0, 15);
-      })(),
+      sources: sourcesList.slice(0, 15),
       retention,
       temps: { minutes_moyennes_par_jour_actif: avgMinutesPerActiveDay },
       events_by_type: byType,
