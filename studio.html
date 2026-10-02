@@ -683,7 +683,8 @@ async function generateActu() {
   btn.disabled = false; btn.textContent = 'Générer le post';
 }
 
-load();
+// Le Studio est réservé à l'administrateur : un visiteur non connecté est renvoyé à l'accueil
+sbClient.auth.getSession().then(({ data: { session } }) => { if (!session) { location.replace('https://kapitaro.fr/'); } else { load(); } });
 </script>
 </body>
 </html>
