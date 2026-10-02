@@ -186,6 +186,14 @@ async function loadStats() {
     if (!session) { document.getElementById('dash').style.display = 'none'; document.getElementById('login').style.display = 'block'; return; }
     const r = await fetch(API_BASE + '/api/admin-stats', { headers: { Authorization: 'Bearer ' + session.access_token } });
     const d = await r.json();
+    // Session expirée (fréquent en ouvrant le fichier copié sur le Bureau) : on revient au formulaire de connexion
+    if (r.status === 401) {
+      await sb.auth.signOut().catch(() => {});
+      loading.style.display = 'none';
+      document.getElementById('dash').style.display = 'none'; document.getElementById('login').style.display = 'block';
+      const le = document.querySelector('#login .err'); if (le) le.textContent = 'Session expirée : reconnecte-toi.';
+      return;
+    }
     if (!r.ok) throw new Error(d.error || 'Erreur serveur');
     render(d);
     loading.style.display = 'none'; content.style.display = 'block';
