@@ -6,7 +6,7 @@
   var MAX_PER_PAGE = 8, sent = 0, seen = {};
 
   // Bruit sans intérêt : extensions du navigateur, erreurs d'autres sites, coupures réseau
-  var IGNORE = /Script error\.?$|ResizeObserver loop|Failed to fetch|NetworkError|Load failed|AbortError|The operation was aborted|Network request failed/i;
+  var IGNORE = /Script error\.?$|ResizeObserver loop|Failed to fetch|NetworkError|Load failed|AbortError|The operation was aborted|Network request failed|Java object is gone|Error invoking postMessage/i;   // les 2 derniers : script injecté par le navigateur intégré d'Instagram / Facebook
   var cleanUrl = function (u) {
     if (!u) return '';
     try { var x = new URL(u, location.href); return x.origin === location.origin ? x.pathname : x.origin + x.pathname; } catch (e) { return String(u).split('?')[0]; }

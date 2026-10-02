@@ -1791,9 +1791,7 @@ async function checkAgendaUpdates() {
         renderNotifications();
         document.getElementById('notif-dot').classList.add('show');
         // Notification push
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Kapitaro — Agenda', { body: notif.texte, icon: '/icons/icon-192.png' });
-        }
+        showLocalNotification('Kapitaro — Agenda', notif.texte);
       }
     }
   } catch(e) {}
@@ -2418,6 +2416,15 @@ function recoActionsHTML(ticker, name, amount, type, dark) {
 // ===== ANALYTICS (table Supabase "events") =====
 // Base légère pour un futur tableau de bord (conversion, rétention, usage). Silencieux en cas d'échec :
 // ne doit jamais bloquer ni ralentir une action réelle de l'utilisateur.
+// Notification locale : sur Android et dans l'app installée, le navigateur interdit new Notification() ;
+// on passe par le service worker, avec repli silencieux si rien n'est possible.
+function showLocalNotification(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const opts = { body, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png' };
+  const reg = navigator.serviceWorker && navigator.serviceWorker.getRegistration ? navigator.serviceWorker.getRegistration() : Promise.resolve(null);
+  reg.then(r => { if (r && r.showNotification) return r.showNotification(title, opts); new Notification(title, opts); })
+    .catch(() => { try { new Notification(title, opts); } catch (e) {} });
+}
 function trackEvent(type, meta) {
   if (isDemo || !currentUser) return Promise.resolve();
   try {
@@ -5299,9 +5306,7 @@ function checkPriceAlerts() {
         type: 'prix'
       };
       notifications.unshift(notif);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(`Kapitaro — Alerte ${g.name}`, { body: notif.texte, icon: '/icons/icon-192.png' });
-      }
+      showLocalNotification(`Kapitaro — Alerte ${g.name}`, notif.texte);
     }
   });
 
@@ -7221,9 +7226,7 @@ async function checkAndGenerateNotifications() {
 
   const hasHigh = notifications.find(n=>n.impact==='high');
   if (notifications.length > 0) document.getElementById('notif-dot').classList.add('show');
-  if (hasHigh && 'Notification' in window && Notification.permission==='granted') {
-    new Notification('Kapitaro — Alerte importante', { body: hasHigh.texte, icon:'/icons/icon-192.png' });
-  }
+  if (hasHigh) showLocalNotification('Kapitaro — Alerte importante', hasHigh.texte);
 }
 const NOTIF_NAV = {
   'Voir Portefeuille': 'portfolio',
