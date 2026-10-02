@@ -155,25 +155,34 @@ export default async function handler(req, res) {
     const stripeRev = await (async () => {
       if (!process.env.STRIPE_SECRET_KEY) return null;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-      let reel = 0, plein = 0, payants = 0, promo = 0, total = 0;
+      // Ton propre abonnement (tests) n'est jamais compté
+      const { data: adm } = adminId ? await supabaseAdmin.from('profiles').select('stripe_customer_id').eq('id', adminId).maybeSingle() : { data: null };
+      const adminCus = adm && adm.stripe_customer_id;
+      let encaisse = 0, recurrent = 0, payants = 0, offerts = 0, resilies = 0, total = 0;
       for (const status of ['active', 'trialing', 'past_due']) {
-        for await (const sub of stripe.subscriptions.list({ status, limit: 100 })) {
+        for await (const sub of stripe.subscriptions.list({ status, limit: 100, expand: ['data.latest_invoice'] })) {
+          if (adminCus && sub.customer === adminCus) continue;
           let full = 0;
           for (const it of sub.items?.data || []) {
             const price = it.price || {}, amount = (price.unit_amount || 0) / 100 * (it.quantity || 1);
             const months = price.recurring?.interval === 'year' ? 12 * (price.recurring?.interval_count || 1) : (price.recurring?.interval_count || 1);
             full += amount / months;
           }
-          const d = sub.discount, active = d && d.coupon && (!d.end || d.end * 1000 > Date.now());
-          let now = full;
-          if (status === 'trialing') now = 0;
-          else if (active) now = d.coupon.percent_off ? full * (1 - d.coupon.percent_off / 100) : Math.max(0, full - (d.coupon.amount_off || 0) / 100);
-          total++; plein += full; reel += now;
-          if (now > 0) payants++; else promo++;
+          total++;
+          const inv = sub.latest_invoice && typeof sub.latest_invoice === 'object' ? sub.latest_invoice : null;
+          if (inv && inv.amount_paid > 0) payants++; else offerts++;
+          // Revenu récurrent : abonnés qui vont renouveler (pas de résiliation programmée), au prix normal
+          if (sub.cancel_at_period_end) resilies++; else recurrent += full;
         }
       }
+      // Encaissé ce mois : factures réellement payées depuis le 1er du mois
+      const start = new Date(); start.setUTCDate(1); start.setUTCHours(0, 0, 0, 0);
+      for await (const inv of stripe.invoices.list({ status: 'paid', created: { gte: Math.floor(start.getTime() / 1000) }, limit: 100 })) {
+        if (adminCus && inv.customer === adminCus) continue;
+        encaisse += (inv.amount_paid || 0) / 100;
+      }
       const r2 = x => Math.round(x * 100) / 100;
-      return { mrr_reel: r2(reel), mrr_apres_promos: r2(plein), abonnes_stripe: total, abonnes_payants: payants, abonnes_offerts: promo };
+      return { mrr_reel: r2(encaisse), mrr_apres_promos: r2(recurrent), abonnes_stripe: total, abonnes_payants: payants, abonnes_offerts: offerts, resiliations: resilies };
     })().catch(e => ({ erreur: e.message }));
     if (stripeRev && stripeRev.mrr_reel != null) mrr = stripeRev.mrr_reel;
 
