@@ -220,7 +220,7 @@ function renderCosts(d) {
     rows.map(function (r) { return '<tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb">' + r[0] + '</td><td style="text-align:right;padding:8px 10px;border-bottom:1px solid #e5e7eb;white-space:nowrap">' + r[1] + '</td><td style="text-align:right;padding:8px 0;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:#6b7280">≈ ' + r[2] + '</td></tr>'; }).join('') +
     '<tr><td style="padding:10px 0;font-weight:800">Total des coûts du mois</td><td></td><td style="text-align:right;font-weight:800">≈ ' + coutEur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</td></tr></table>' +
     '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px">' +
-    '<div class="kpi" style="flex:1;min-width:160px"><div class="v">' + (rev.mrr_estime || 0).toLocaleString('fr-FR') + ' €</div><div class="l">Revenu réel ce mois (' + (st.abonnes_payants ?? '—') + ' payant' + ((st.abonnes_payants || 0) > 1 ? 's' : '') + ', ' + (st.abonnes_offerts ?? 0) + ' offert' + ((st.abonnes_offerts || 0) > 1 ? 's' : '') + ')</div></div>' +
+    '<div class="kpi" style="flex:1;min-width:160px"><div class="v">' + (rev.mrr_estime || 0).toLocaleString('fr-FR') + ' €</div><div class="l">Encaissé ce mois (' + (st.abonnes_payants ?? '—') + ' payant' + ((st.abonnes_payants || 0) > 1 ? 's' : '') + ', ' + (st.abonnes_offerts ?? 0) + ' offert' + ((st.abonnes_offerts || 0) > 1 ? 's' : '') + ')</div></div>' +
     '<div class="kpi" style="flex:1;min-width:160px"><div class="v">≈ ' + coutEur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</div><div class="l">Coûts du mois (IA, abonnements' + (c.publicite_mois_eur ? ', pub' : '') + ')</div></div>' +
     '<div class="kpi" style="flex:1;min-width:160px"><div class="v" style="color:' + (marge >= 0 ? '#16a34a' : '#dc2626') + '">' + (marge >= 0 ? '+' : '') + marge.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</div><div class="l">Marge du mois</div></div></div>' +
     '<div class="sub" style="margin-top:10px">' + (st.erreur ? 'Stripe indisponible (' + st.erreur + ') : revenu estimé au prix catalogue. ' : '') + 'Conversion à ' + fx.toFixed(3) + ' € pour 1 $. ' + (c.note || '') + ' Hébergement (Vercel, Supabase) non inclus.</div>';
@@ -238,8 +238,8 @@ function render(d) {
     ['Inscrits 7 jours', d.users.signups_7j ?? '—'],
     ['Inscrits 30 jours', d.users.signups_30j ?? '—'],
     ['Premium en cours', d.users.premium],
-    ['Revenu mensuel réel', (rev.mrr_estime ?? 0).toLocaleString('fr-FR') + ' €'],
-    ['Revenu après fin des promos', rev.stripe && rev.stripe.mrr_apres_promos != null ? rev.stripe.mrr_apres_promos.toLocaleString('fr-FR') + ' €' : '—'],
+    ['Encaissé ce mois', (rev.mrr_estime ?? 0).toLocaleString('fr-FR') + ' €'],
+    ['Revenu récurrent (abonnés qui renouvellent)', rev.stripe && rev.stripe.mrr_apres_promos != null ? rev.stripe.mrr_apres_promos.toLocaleString('fr-FR') + ' €' : '—'],
     ['Conversion inscrits → payants', f.inscrits ? pct(Math.round((f.ont_paye || 0) / f.inscrits * 100)) : '—'],
     ['Revenus à J+1', pct(rt.d1?.pct)],
     ['Revenus à J+7', pct(rt.d7?.pct)],
