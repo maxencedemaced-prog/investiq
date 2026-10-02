@@ -260,7 +260,7 @@ function render(d) {
     ['Appareils avec notifs', d.usage.push_devices],
     ['Questions IA (90j)', t.ai_question || 0],
     ['Quota IA atteint (90j)', t.ai_quota_reached || 0],
-    ['Coûts du mois (IA + abonnements)', d.couts ? '≈ ' + (d.couts.total_mois_eur ?? d.couts.total_mois_usd).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + (d.couts.total_mois_eur != null ? ' €' : ' $') : '—'],
+    ['Coûts du mois (IA, abonnements, pub)', d.couts ? '≈ ' + (d.couts.total_mois_eur ?? d.couts.total_mois_usd).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + (d.couts.total_mois_eur != null ? ' €' : ' $') : '—'],
     ['Bugs dernières 24 h', d.errors?.disponible ? d.errors.total_24h : '—'],
     ['Bugs 7 jours', d.errors?.disponible ? d.errors.total_7j : '—'],
   ].map(([l, v]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
