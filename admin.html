@@ -357,7 +357,11 @@ function mkPie(id, labels, data) {
 }
 
 // Reste connecté d'une ouverture à l'autre du fichier (session Supabase stockée dans ce navigateur)
-sb.auth.getSession().then(({ data: { session } }) => { if (session) showDash(); });
+sb.auth.getSession().then(({ data: { session } }) => {
+  // Visiteur de passage sur kapitaro.fr/admin sans être connecté : on le renvoie à l'accueil (le fichier ouvert depuis le Bureau garde son formulaire)
+  if (session) { showDash(); }
+  else if (location.protocol !== 'file:') { location.replace('https://kapitaro.fr/'); }
+});
 </script>
 </body>
 </html>
