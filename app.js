@@ -7272,6 +7272,24 @@ function renderNotificationList() {
 }
 
 // ===== HOME =====
+// Première prise en main : tant qu'aucun placement n'est ajouté, une carte en haut de l'Accueil propose 3 façons de démarrer
+function activationCardHTML() {
+  const opt = (icon, title, sub, onclick, main) => `<button type="button" onclick="${onclick}" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px;border-radius:14px;cursor:pointer;font:inherit;${main ? 'background:linear-gradient(135deg,#16a34a,#059669);border:none;color:#fff;box-shadow:0 6px 22px rgba(22,163,74,0.35)' : 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff'}">
+      <span style="font-size:24px;flex-shrink:0">${icon}</span>
+      <span style="min-width:0"><span style="display:block;font-size:14.5px;font-weight:800">${title}</span><span style="display:block;font-size:12px;opacity:0.75;margin-top:2px">${sub}</span></span>
+      <span style="margin-left:auto;font-size:18px;opacity:0.6">›</span></button>`;
+  return `<div style="background:linear-gradient(135deg,#0f1f17,#0b1220);border:1px solid rgba(22,163,74,0.35);border-radius:20px;padding:22px 18px;margin-bottom:14px">
+    <div style="font-size:11.5px;font-weight:800;color:#4ade80;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Pour bien démarrer · 2 minutes</div>
+    <div style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.03em;margin-bottom:6px">Ajoute tes placements pour voir ton score</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.62);margin-bottom:16px;line-height:1.5">Ton score de santé, tes alertes et l'assistant IA se basent sur ton portefeuille. Choisis comment commencer :</div>
+    <div style="display:grid;gap:10px">
+      ${opt('📥', 'Importer le relevé de mon courtier', 'PDF, Excel ou CSV : Trade Republic, Boursorama, XTB…', "trackEvent('activation_click',{c:'import'});showCSVHelp()", true)}
+      ${opt('➕', 'Ajouter un placement à la main', 'Une action ou un ETF, en 30 secondes', "trackEvent('activation_click',{c:'manuel'});nav('ajouter')")}
+      ${opt('🌱', "Je n'ai pas encore investi", 'Construis ton premier plan à partir d\'un objectif', "trackEvent('activation_click',{c:'debutant'});showOnboarding(true)")}
+    </div>
+  </div>`;
+}
+
 async function renderHome() {
   const h = new Date().getHours();
   const greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
@@ -7502,6 +7520,9 @@ async function renderHome() {
   }
 
   if (isEmpty) {
+    html = activationCardHTML() + html;
+  }
+  if (false) {
     html += `
     <div style="background:#0f0f14;border-radius:20px;padding:32px 24px;text-align:center;margin-top:10px">
       <div style="font-size:40px;margin-bottom:12px">📈</div>
@@ -11711,19 +11732,19 @@ function buildAgentSuggestions() {
   const suggestions = [];
 
   if (positions.length === 0) {
-    suggestions.push({ label: '🚀 Par où commencer ?', q: 'Je débute en bourse, par où commencer avec mon profil ?' });
-    suggestions.push({ label: '💡 Quel ETF acheter ?', q: 'Quel ETF monde me recommandes-tu pour débuter ?' });
-    suggestions.push({ label: '🏦 Quelle plateforme ?', q: 'Trade Republic ou XTB, laquelle me conseilles-tu ?' });
+    suggestions.push({ label: '🚀 Par où commencer ?', q: 'Je débute en bourse : quelles sont les grandes étapes pour bien commencer avec mon profil ?' });
+    suggestions.push({ label: '💡 C\'est quoi un ETF ?', q: 'C\'est quoi un ETF monde et comment ça fonctionne ?' });
+    suggestions.push({ label: '🏦 Choisir un courtier', q: 'Quels critères regarder pour choisir un courtier (frais, PEA, sécurité) ?' });
   } else {
-    if (avgChg < -2) suggestions.push({ label: '📉 Marché en baisse — quoi faire ?', q: `Mon portefeuille baisse de ${Math.abs(avgChg).toFixed(1).replace(".", ",")} % aujourd'hui. Je fais quoi ?` });
-    if (pnl < 0) suggestions.push({ label: '⚠️ Mes pertes — que faire ?', q: `J'ai une perte de ${fmtK(Math.abs(pnl))} sur mon portefeuille. Dois-je couper ou tenir ?` });
+    if (avgChg < -2) suggestions.push({ label: '📉 Marché en baisse : comment réagir ?', q: `Mon portefeuille baisse de ${Math.abs(avgChg).toFixed(1).replace(".", ",")} % aujourd'hui. Comment analyser la situation sans céder à l'émotion ?` });
+    if (pnl < 0) suggestions.push({ label: '⚠️ Comprendre mes pertes', q: `J'ai une moins-value de ${fmtK(Math.abs(pnl))} sur mon portefeuille. Comment l'analyser ?` });
     if (pctObj > 0 && pctObj < 50) suggestions.push({ label: '🎯 Accélérer vers mon objectif', q: `Je suis à ${pctObj.toFixed(0)}% de mon objectif. Comment accélérer ?` });
     suggestions.push({ label: '📊 Analyse mon portefeuille', q: 'Analyse mon portefeuille et dis-moi ce que tu en penses.' });
-    suggestions.push({ label: '🔄 Dois-je rééquilibrer ?', q: 'Mon portefeuille est-il bien équilibré ou dois-je rééquilibrer ?' });
+    suggestions.push({ label: '🔄 Mon portefeuille est-il équilibré ?', q: 'Mon portefeuille est-il bien équilibré ? Qu\'est-ce que le rééquilibrage ?' });
   }
 
   // Questions générales toujours utiles
-  suggestions.push({ label: '📅 Plan ce mois-ci', q: 'Que dois-je faire avec mon argent ce mois-ci ?' });
+  suggestions.push({ label: '📅 Mes options ce mois-ci', q: 'Quelles options s\'offrent à moi pour mon épargne ce mois-ci ?' });
   suggestions.push({ label: '🧮 Simuler un scénario', q: 'Si j\'investis 200€ de plus par mois, quel impact sur mon objectif ?' });
 
   // Stocke les questions dans un objet global pour éviter les problèmes d'échappement

@@ -20,11 +20,26 @@ const TAB_HINTS = {
 
 const tabSeenKey = () => 'iq_seen_tabs_' + (currentUser?.id || 'demo');
 const tabPageOf = b => String((b && b.id) || '').replace(/^(bnav|nav)-/, '');
-function tabSeenSet() { try { return new Set(JSON.parse(localStorage.getItem(tabSeenKey()) || '[]')); } catch { return new Set(); } }
+function tabSeenSet() {
+  let s;
+  try { s = new Set(JSON.parse(localStorage.getItem(tabSeenKey()) || '[]')); } catch { s = new Set(); }
+  // Onglets déjà vus enregistrés dans le compte : valables sur tous les appareils et après chaque reconnexion
+  const remote = currentUser && currentUser.user_metadata && currentUser.user_metadata.seen_tabs;
+  if (Array.isArray(remote)) remote.forEach(p => s.add(p));
+  return s;
+}
+let _tabSeenSaveTimer = null;
+function tabSeenSaveRemote(list) {
+  if (!currentUser || (typeof isDemo !== 'undefined' && isDemo) || typeof sb === 'undefined') return;
+  currentUser.user_metadata = { ...(currentUser.user_metadata || {}), seen_tabs: list };
+  clearTimeout(_tabSeenSaveTimer);
+  _tabSeenSaveTimer = setTimeout(() => { sb.auth.updateUser({ data: { seen_tabs: list } }).catch(() => {}); }, 1500);
+}
 function tabMarkSeen(pages) {
   const s = tabSeenSet();
   [].concat(pages).forEach(p => s.add(p));
   try { localStorage.setItem(tabSeenKey(), JSON.stringify([...s])); } catch {}
+  tabSeenSaveRemote([...s]);
 }
 
 // Point rouge sur chaque onglet pas encore ouvert
@@ -78,6 +93,7 @@ function tabHintsOff() {
 // Paramètres : remet tous les points rouges et les explications
 function tabHintsReset() {
   try { localStorage.removeItem(tabSeenKey()); } catch {}
+  tabSeenSaveRemote([]);
   try { localStorage.removeItem(agentSampleSeenKey()); } catch {}   // point rouge de l'onglet « Exemple Premium » de l'Agent IA
   try { localStorage.removeItem(menuSeenKey()); } catch {}          // point rouge du bouton ☰ (menu mobile)
   updateNavDots();
