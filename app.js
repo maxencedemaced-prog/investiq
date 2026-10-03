@@ -10839,8 +10839,7 @@ function showCSVPreview(rows, filename) {
   const sub  = isDark ? '#888' : '#71717a';
 
   // Détecter la plateforme depuis le nom de fichier
-  const platform = /trade\s*republic|traderepublic/i.test(filename) ? 'Trade Republic'
-                 : /xtb/i.test(filename) ? 'XTB' : 'Autre';
+  const platform = detectPlatform(filename);
   window._csvPlatform = platform;
 
   document.getElementById('csv-preview-modal')?.remove();
@@ -10852,9 +10851,7 @@ function showCSVPreview(rows, filename) {
       <div style="font-size:17px;font-weight:800;color:${txt}">📥 ${rows.length} position${rows.length>1?'s':''} détectée${rows.length>1?'s':''}</div>
       <div style="font-size:12px;color:${sub};margin:4px 0 6px">${filename} · plateforme : 
         <select id="csv-platform-sel" style="background:transparent;border:1px solid ${bord};border-radius:6px;padding:2px 6px;color:${txt};font-size:12px">
-          <option ${platform==='Trade Republic'?'selected':''}>Trade Republic</option>
-          <option ${platform==='XTB'?'selected':''}>XTB</option>
-          <option ${platform==='Autre'?'selected':''}>Autre</option>
+          ${platformOptionsHTML(platform)}
         </select>
       </div>
       <div style="font-size:11px;color:${sub};margin-bottom:10px;line-height:1.5">Décoche ce que tu ne veux pas importer et corrige le PRU si besoin. Si tu as déjà vendu une partie d'une ligne, indique la <strong style="color:${txt}">plus-value (+) ou moins-value (−) déjà réalisée</strong> : le PRU sera recalculé pour refléter ton vrai gain. Les doublons (même nom) mettent à jour la position existante.</div>
@@ -11669,14 +11666,54 @@ async function addPosAndOpenPlatform() {
   }
 }
 
+// ═══ PLATEFORMES / COURTIERS ═══
+// Liste unique utilisée partout (formulaire d'ajout, aperçu d'import, liens directs).
+// Les plus utilisés en France pour acheter actions et ETF. 'Autre' est ajouté à la fin des menus.
+const PLATFORMS = [
+  { name: 'Trade Republic',       url: 'https://app.traderepublic.com' },
+  { name: 'Boursorama',           url: 'https://clients.boursobank.com' },
+  { name: 'Fortuneo',             url: 'https://mabanque.fortuneo.fr' },
+  { name: 'Bourse Direct',        url: 'https://www.boursedirect.fr' },
+  { name: 'XTB',                  url: 'https://xstation5.xtb.com' },
+  { name: 'Degiro',               url: 'https://trader.degiro.nl' },
+  { name: 'Trading 212',          url: 'https://app.trading212.com' },
+  { name: 'eToro',                url: 'https://www.etoro.com/login' },
+  { name: 'Interactive Brokers',  url: 'https://www.interactivebrokers.com/sso/Login' },
+  { name: 'Saxo',                 url: 'https://www.saxotrader.com' },
+  { name: 'Revolut',              url: 'https://app.revolut.com' },
+  { name: 'Scalable Capital',     url: 'https://secure.scalable.capital' },
+];
+const PLATFORM_URLS = Object.fromEntries(PLATFORMS.map(p => [p.name, p.url]));
+// Options <option> pour un menu déroulant, 'Autre' toujours en dernier
+function platformOptionsHTML(selected) {
+  const esc = s => String(s).replace(/"/g, '&quot;');
+  const opts = PLATFORMS.map(p => `<option${p.name === selected ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+  return opts + `<option${selected === 'Autre' ? ' selected' : ''}>Autre</option>`;
+}
+// Détecte la plateforme d'après le nom du fichier importé
+function detectPlatform(filename) {
+  const rx = [
+    [/trade\s*republic|traderepublic/i, 'Trade Republic'],
+    [/bourso/i, 'Boursorama'],
+    [/fortuneo/i, 'Fortuneo'],
+    [/bourse\s*direct|boursedirect/i, 'Bourse Direct'],
+    [/xtb/i, 'XTB'],
+    [/degiro/i, 'Degiro'],
+    [/trading\s*212|trading212/i, 'Trading 212'],
+    [/etoro/i, 'eToro'],
+    [/interactive\s*brokers|ibkr/i, 'Interactive Brokers'],
+    [/saxo/i, 'Saxo'],
+    [/revolut/i, 'Revolut'],
+    [/scalable/i, 'Scalable Capital'],
+  ];
+  for (const [re, name] of rx) if (re.test(filename)) return name;
+  return 'Autre';
+}
+
 // ═══ LIENS DIRECTS VERS LES PLATEFORMES ═══
 // Copie le ticker + ouvre la plateforme (colle dans la recherche pour trouver l'actif)
 function openOnPlatform(platform, ticker) {
-  const urls = {
-    'Trade Republic': 'https://app.traderepublic.com',
-    'XTB': 'https://xstation5.xtb.com',
-  };
-  const url = urls[platform];
+  const url = PLATFORM_URLS[platform];
   if (!url) return;
   try { navigator.clipboard.writeText(ticker); } catch {}
   showToast(`📋 "${ticker}" copié — colle-le dans la recherche ${platform}`);
