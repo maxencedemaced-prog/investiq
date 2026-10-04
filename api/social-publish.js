@@ -117,14 +117,16 @@ async function fb(path, token, params, method = 'POST') {
 async function fbPage() {
   const token = process.env.FACEBOOK_ACCESS_TOKEN;
   if (!token) throw new Error('clé FACEBOOK_ACCESS_TOKEN manquante ou vide dans Vercel');
+  let accountsErr = 'aucune page Facebook accessible avec ce jeton';
   try {
     // Jeton d'utilisateur (ou système) : liste des pages gérées, on prend la page Kapitaro
     const { data } = await fb('me/accounts', token, { fields: 'id,name,access_token' }, 'GET');
     const page = (data || []).find(p => /kapitaro/i.test(p.name)) || (data || [])[0];
     if (page?.access_token) return { id: page.id, name: page.name, token: page.access_token };
-  } catch {}
-  // Sinon, c'est déjà un jeton de page
-  const me = await fb('me', token, { fields: 'id,name' }, 'GET');
+  } catch (e) { accountsErr = e.message; }
+  // Sinon, c'est peut-être déjà un jeton de page (une page a une « category », un utilisateur non)
+  const me = await fb('me', token, { fields: 'id,name,category' }, 'GET');
+  if (!me.category) throw new Error('Page Facebook introuvable : ' + accountsErr);
   return { id: me.id, name: me.name, token };
 }
 async function publishFacebook(p) {
@@ -154,6 +156,15 @@ async function publishFacebook(p) {
   return { ok: true, id: post.id, permalink: `https://www.facebook.com/${post.id}`, account: page.name };
 }
 
+// Traduit les blocages Meta les plus courants (le message d'origine est conservé entre parenthèses)
+function explainError(pl, msg) {
+  const m = String(msg || '');
+  if (/api access blocked/i.test(m)) return 'Meta a bloqué temporairement l’accès automatique (souvent après beaucoup de publications rapprochées) : réessaie plus tard avec « Publier maintenant », ou regarde les alertes de l’app Meta et de ton compte Instagram. (' + m + ')';
+  if (/session has expired|error validating access token|invalid oauth/i.test(m)) return 'Clé de connexion ' + (pl === 'instagram' ? 'Instagram' : 'Facebook') + ' expirée ou invalide : à régénérer dans Meta puis à remettre dans Vercel. (' + m + ')';
+  if (/application request limit|rate limit|too many/i.test(m)) return 'Trop de demandes envoyées à Meta : nouvel essai automatique plus tard. (' + m + ')';
+  return m;
+}
+
 // Réseaux publiés automatiquement (Facebook seulement si sa clé est configurée)
 const AUTOMATED = { instagram: publishInstagram, facebook: publishFacebook };
 // Un réseau coché mais non configuré (clé absente ou vide) produit une erreur visible dans le Studio, jamais un oubli silencieux
@@ -173,7 +184,7 @@ async function publishPost(id, manual = false) {
     try {
       log[pl] = { ...(await AUTOMATED[pl](locked)), attempts, at: new Date().toISOString() };
     } catch (e) {
-      log[pl] = { ok: false, error: e.message, attempts, at: new Date().toISOString() };
+      log[pl] = { ok: false, error: explainError(pl, e.message), attempts, at: new Date().toISOString() };
     }
   }
   const allOk = targets.length > 0 && targets.every(pl => log[pl]?.ok);
