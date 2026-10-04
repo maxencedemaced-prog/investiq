@@ -888,6 +888,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
   </div>
   <div style="font-size:10px;color:${sub};padding:0 2px">Répartition indicative basée sur ton profil — pas un conseil financier réglementé. Performances passées ≠ performances futures.</div>
   `;
+  try { if (typeof positions !== 'undefined' && !positions.length) setTimeout(() => showCursorHint('#plan-addall-btn', 'plan_addall'), 500); } catch (e) {}
 }
 
 // ===== PLAN COURT TERME =====
@@ -9970,7 +9971,7 @@ function showCursorHint(selector, key, opts) {
   opts = opts || {};
   try { if (key && localStorage.getItem('kp_hint_' + key)) return; } catch (e) {}
   const el = document.querySelector(selector);
-  if (!el) { if (!opts._retried) setTimeout(() => showCursorHint(selector, key, Object.assign({}, opts, { _retried: true })), 1200); return; }
+  if (!el) { const _n = opts._tries || 0; if (_n < 6) setTimeout(() => showCursorHint(selector, key, Object.assign({}, opts, { _tries: _n + 1 })), 1000); return; }
   const r = el.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return;
   document.getElementById('kp-cursor-hint')?.remove();
@@ -10294,10 +10295,16 @@ function prUpdatePlatLabel() {
 }
 function prRecalc(i) {
   const span = document.getElementById('pr-qty-' + i);
+  const pin = document.getElementById('pr-price-' + i);
   if (!span) return;
   const amt = parseFloat(document.getElementById('pr-amt-' + i)?.value) || 0;
-  const price = parseFloat(document.getElementById('pr-price-' + i)?.value) || 0;
-  if (!price) { span.textContent = 'entre le prix pour calculer la quantité'; return; }
+  const price = parseFloat(pin && pin.value) || 0;
+  if (!price) {
+    span.innerHTML = '<span style="color:#f59e0b;font-weight:700">⚠️ prix introuvable — saisis-le à droite</span>';
+    if (pin) { pin.style.borderColor = '#f59e0b'; pin.style.background = 'rgba(245,158,11,0.12)'; pin.placeholder = '⚠️'; }
+    return;
+  }
+  if (pin) { pin.style.borderColor = ''; pin.style.background = ''; }
   if (amt <= 0) { span.textContent = '—'; return; }
   const qty = Math.round((amt / price) * 10000) / 10000;
   span.textContent = qty + ' part' + (qty > 1 ? 's' : '') + ' à ' + price.toFixed(2) + ' €';
