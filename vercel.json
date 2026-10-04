@@ -28,7 +28,7 @@
     },
     {
       "path": "/api/push-send?mode=alerts",
-      "schedule": "*/15 7-17 * * 1-5"
+      "schedule": "*/15 7-20 * * 1-5"
     },
     {
       "path": "/api/email-send",

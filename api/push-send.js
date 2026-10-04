@@ -1,7 +1,9 @@
-// api/push-send.js — v3 : envoi programmé des notifications (appelé par les crons, jamais par le navigateur)
+// api/push-send.js — v4 : envoi programmé des notifications (appelé par les crons, jamais par le navigateur)
 //   ?mode=briefing  → briefing du matin (valeur du portefeuille, variation de la dernière séance, à surveiller)
-//   ?mode=alerts    → prix passé sous le seuil d'alerte d'une position (max 1 alerte / position / 24 h)
+//   ?mode=alerts    → toutes les 15 min : annonces économiques majeures, seuils de prix, gros mouvements
 // Chaque utilisateur choisit dans ses paramètres : daily (chaque jour) · weekly (le lundi) · off (rien).
+// Les alertes sont étalées dans la journée : 1 notification max par passage et par utilisateur,
+// au moins MIN_GAP_MIN minutes entre deux alertes, MAX_ALERTS_PER_DAY par jour.
 const { createClient } = require('@supabase/supabase-js');
 const { pushReady, sendToDevice } = require('./_push');
 const { getQuotes } = require('./_quotes');
@@ -34,7 +36,7 @@ async function loadRecipients() {
     }
   }
   const users = [...byUser.values()];
-  users.forEach(u => { u.moves = u.devices.some(d => d.moves !== false); });   // au moins un appareil veut les alertes de mouvements
+  users.forEach(u => { u.moves = u.devices.some(d => d.moves !== false); });   // au moins un appareil veut les alertes de marché
   return users;
 }
 
@@ -63,6 +65,136 @@ async function notifyUser(user, payload, deviceFilter, urgency = 'normal') {
   return ok;
 }
 
+// ── Étalement des alertes ──
+// Plafond : MAX_ALERTS_PER_DAY alertes de prix / mouvements par jour, espacées d'au moins MIN_GAP_MIN minutes.
+// Les annonces économiques ne consomment pas ce plafond (rares et datées) mais comptent comme envoi du passage.
+const MAX_ALERTS_PER_DAY = 4;
+const MIN_GAP_MIN = 90;
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+async function loadAlertState(users) {
+  const state = { counts: new Map(), last: new Map(), servedThisRun: new Set() };
+  for (const part of chunk(users.map(u => u.userId), 100)) {
+    const { data, error } = await supabase.from('push_events').select('user_id, sent_at').in('user_id', part).like('event_key', `push:${todayKey()}:%`);
+    if (error) { console.warn('[push-send] plafond non appliqué (push_events) :', error.message); continue; }
+    for (const e of data || []) {
+      state.counts.set(e.user_id, (state.counts.get(e.user_id) || 0) + 1);
+      const t = e.sent_at ? new Date(e.sent_at).getTime() : 0;
+      if (t > (state.last.get(e.user_id) || 0)) state.last.set(e.user_id, t);
+    }
+  }
+  return state;
+}
+// Peut-on envoyer une alerte de prix / mouvement à cet utilisateur maintenant ?
+function canAlert(userId, state) {
+  if (state.servedThisRun.has(userId)) return false;                       // jamais deux notifications au même passage
+  if ((state.counts.get(userId) || 0) >= MAX_ALERTS_PER_DAY) return false; // plafond du jour
+  const last = state.last.get(userId) || 0;
+  return Date.now() - last >= MIN_GAP_MIN * 60000;                         // espacement minimum
+}
+async function countAlert(userId, state) {
+  const n = (state.counts.get(userId) || 0) + 1;
+  state.counts.set(userId, n);
+  state.last.set(userId, Date.now());
+  state.servedThisRun.add(userId);
+  await supabase.from('push_events').upsert({ user_id: userId, event_key: `push:${todayKey()}:${n}` }, { onConflict: 'user_id,event_key', ignoreDuplicates: true });
+}
+
+// ── Annonces économiques majeures (calendrier Financial Modeling Prep) ──
+// On ne notifie qu'un chiffre RÉELLEMENT publié (champ « actual » renseigné), jamais un événement supposé.
+const ECO_COUNTRY = { US: 'US', EA: 'EU', EMU: 'EU', EU: 'EU', FR: 'FR' };
+const ECO_ZONE = { US: 'États-Unis', EU: 'zone euro', FR: 'France' };
+const ECO_FAMILIES = [
+  { id: 'fed',   re: /fed.*interest rate decision|fomc.*rate/i,                    zones: ['US'], label: () => 'Décision de taux de la Fed' },
+  { id: 'ecb',   re: /ecb.*(interest rate|deposit facility|refinancing)|(deposit facility|main refinancing) rate/i, zones: ['EU'], label: () => 'Décision de taux de la BCE' },
+  { id: 'nfp',   re: /non[- ]?farm payrolls/i,                                     zones: ['US'], label: () => 'Créations d\'emplois US (NFP)' },
+  { id: 'unemp', re: /^unemployment rate/i,                                        zones: ['US'], label: () => 'Taux de chômage US' },
+  { id: 'cpi',   re: /^(inflation rate|cpi)\b(?!.*core)/i,                         zones: ['US', 'EU', 'FR'], label: z => `Inflation ${ECO_ZONE[z]}` },
+  { id: 'pce',   re: /core pce price index/i,                                      zones: ['US'], label: () => 'Inflation PCE sous-jacente US' },
+  { id: 'gdp',   re: /^gdp growth rate/i,                                          zones: ['US', 'EU'], label: z => `Croissance du PIB ${ECO_ZONE[z]}` },
+];
+const ECO_LOOKBACK_MIN = 120;   // un chiffre publié il y a plus de 2 h n'est plus une « nouvelle »
+const ECO_MAX_PER_DAY = 3;
+
+const fmtEco = (v, unit) => (v === null || v === undefined || v === '') ? '' : String(v).replace('.', ',') + (unit === '%' ? ' %' : unit ? ' ' + unit : '');
+// Heure de Paris d'une date UTC « AAAA-MM-JJ HH:MM:SS »
+const parisTime = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(':', 'h');
+
+// Sélection pure (testable) : les annonces majeures publiées récemment, une par famille et par zone
+function pickEconomic(rawEvents, now = new Date()) {
+  const out = new Map();
+  for (const e of rawEvents || []) {
+    const zone = ECO_COUNTRY[e.country];
+    if (!zone || e.actual === null || e.actual === undefined || e.actual === '') continue;
+    const when = new Date(String(e.date || '').replace(' ', 'T') + 'Z');
+    if (isNaN(when)) continue;
+    const ageMin = (now - when) / 60000;
+    if (ageMin < 0 || ageMin > ECO_LOOKBACK_MIN) continue;
+    const fam = ECO_FAMILIES.find(f => f.re.test(String(e.event || '')) && f.zones.includes(zone));
+    if (!fam) continue;
+    const key = `eco:${fam.id}:${zone}:${String(e.date).slice(0, 16).replace(/[^0-9]/g, '')}`;
+    const prev = out.get(key);
+    // Plusieurs lignes pour la même publication (ex. inflation sur un mois / sur un an) : on garde la variation annuelle
+    if (prev && !/yoy/i.test(e.event)) continue;
+    out.set(key, { key, label: fam.label(zone), actual: e.actual, estimate: e.estimate, previous: e.previous, unit: e.unit || '', when });
+  }
+  return [...out.values()];
+}
+
+async function fetchEconomicToday() {
+  const apiKey = process.env.FMP_API_KEY;
+  if (!apiKey) return { ok: false, reason: 'no_key', events: [] };
+  const d = new Date();
+  const from = new Date(d.getTime() - 86400000).toISOString().slice(0, 10);
+  const to = d.toISOString().slice(0, 10);
+  try {
+    const r = await fetch(`https://financialmodelingprep.com/stable/economic-calendar?from=${from}&to=${to}&apikey=${apiKey}`, { signal: AbortSignal.timeout(8000) });
+    const raw = await r.text();
+    let data; try { data = JSON.parse(raw); } catch { return { ok: false, reason: 'fmp_non_json_' + r.status, events: [] }; }
+    if (!r.ok || !Array.isArray(data)) return { ok: false, reason: 'fmp_status_' + r.status, events: [] };
+    return { ok: true, events: data };
+  } catch (e) { return { ok: false, reason: 'fmp_exception', events: [] }; }
+}
+
+async function sendEconomic(users, state) {
+  users = users.filter(u => u.moves);
+  if (!users.length) return { sent: 0, reason: 'no_users' };
+  const cal = await fetchEconomicToday();
+  if (!cal.ok) return { sent: 0, reason: cal.reason };
+  const picks = pickEconomic(cal.events);
+  if (!picks.length) return { sent: 0, reason: 'none' };
+
+  // Déjà reçues par chaque utilisateur, et nombre d'annonces envoyées aujourd'hui
+  const done = new Set(), ecoCount = new Map();
+  for (const part of chunk(users.map(u => u.userId), 100)) {
+    const { data } = await supabase.from('push_events').select('user_id, event_key, sent_at').in('user_id', part).like('event_key', 'eco:%');
+    for (const e of data || []) {
+      done.add(e.user_id + '|' + e.event_key);
+      if (String(e.sent_at || '').slice(0, 10) === todayKey()) ecoCount.set(e.user_id, (ecoCount.get(e.user_id) || 0) + 1);
+    }
+  }
+
+  let sent = 0;
+  for (const u of users) {
+    if (state.servedThisRun.has(u.userId) || (ecoCount.get(u.userId) || 0) >= ECO_MAX_PER_DAY) continue;
+    const todo = picks.filter(p => !done.has(u.userId + '|' + p.key));
+    if (!todo.length) continue;
+    const main = todo[0];
+    const est = main.estimate !== null && main.estimate !== undefined && main.estimate !== '' ? ` (prévu ${fmtEco(main.estimate, main.unit)})` : '';
+    const prev = main.previous !== null && main.previous !== undefined && main.previous !== '' ? ` · précédent ${fmtEco(main.previous, main.unit)}` : '';
+    let body = `${fmtEco(main.actual, main.unit)}${est}${prev}. Publié à ${parisTime(main.when)}.`;
+    if (todo.length > 1) body += `\nAussi : ${todo.slice(1, 3).map(p => `${p.label} ${fmtEco(p.actual, p.unit)}`).join(' · ')}`;
+    const payload = { title: `📢 ${main.label}`, body, tag: 'investiq-eco-' + main.key };
+    if (await notifyUser(u, payload, d => d.moves !== false, 'high')) {
+      sent++;
+      state.servedThisRun.add(u.userId);
+      state.last.set(u.userId, Date.now());
+      await supabase.from('push_events').upsert(todo.slice(0, 3).map(p => ({ user_id: u.userId, event_key: p.key })), { onConflict: 'user_id,event_key', ignoreDuplicates: true });
+    }
+  }
+  return { sent, reason: 'ok' };
+}
+
 // ── Alertes « ça bouge » ──
 // Seuils de variation sur la séance : action de ton portefeuille ou de ta watchlist 5 % · ETF 3 % · grande valeur du marché 6 %.
 const MOVE_STOCK = 5, MOVE_ETF = 3, MOVE_MARKET = 6, MOVE_MAX_PER_PUSH = 3, MOVE_MAX_MARKET = 2;
@@ -75,31 +207,12 @@ const MARKET_LIST = {
 };
 const sameSym = (a, b) => String(a).toUpperCase() === String(b).toUpperCase();
 
-// Plafond : 2 alertes par jour et par utilisateur (prix + mouvements confondus). Le briefing du matin n'est pas compté.
-const MAX_ALERTS_PER_DAY = 2;
-const todayKey = () => new Date().toISOString().slice(0, 10);
-
-async function loadAlertCounts(users) {
-  const counts = new Map();
-  for (const part of chunk(users.map(u => u.userId), 100)) {
-    const { data, error } = await supabase.from('push_events').select('user_id').in('user_id', part).like('event_key', `push:${todayKey()}:%`);
-    if (error) { console.warn('[push-send] plafond non appliqué (push_events) :', error.message); continue; }
-    (data || []).forEach(e => counts.set(e.user_id, (counts.get(e.user_id) || 0) + 1));
-  }
-  return counts;
-}
-async function countAlert(userId, counts) {
-  const n = (counts.get(userId) || 0) + 1;
-  counts.set(userId, n);
-  await supabase.from('push_events').upsert({ user_id: userId, event_key: `push:${todayKey()}:${n}` }, { onConflict: 'user_id,event_key', ignoreDuplicates: true });
-}
-
-async function sendMoves(users, alertCount) {
-  users = users.filter(u => (alertCount.get(u.userId) || 0) < MAX_ALERTS_PER_DAY);   // plafond du jour atteint
+async function sendMoves(users, state) {
+  users = users.filter(u => canAlert(u.userId, state));
   if (!users.length) return 0;
-  const day = new Date().toISOString().slice(0, 10);
+  const day = todayKey();
 
-  // Déjà envoyé aujourd'hui ? Si la table de suivi est absente on s'abstient (sinon on renverrait la même alerte toutes les 30 min).
+  // Déjà envoyé aujourd'hui ? Si la table de suivi est absente on s'abstient (sinon on renverrait la même alerte à chaque passage).
   const done = new Set();
   for (const part of chunk(users.map(u => u.userId), 100)) {
     const { data, error } = await supabase.from('push_events').select('user_id, event_key').in('user_id', part).like('event_key', `mv:%:${day}`);
@@ -145,14 +258,14 @@ async function sendMoves(users, alertCount) {
 
     if (await notifyUser(u, payload, d => d.moves !== false, 'high')) {
       sent++;
-      await countAlert(u.userId, alertCount);
+      await countAlert(u.userId, state);
       await supabase.from('push_events').upsert(picked.map(c => ({ user_id: u.userId, event_key: c.key })), { onConflict: 'user_id,event_key', ignoreDuplicates: true });
     }
   }
   return sent;
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   // Réservé aux crons : sans le secret, ce point d'entrée pourrait notifier n'importe qui.
   if (!process.env.CRON_SECRET || req.headers['authorization'] !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -210,38 +323,48 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ mode, users: targets.length, sent, skipped });
     }
 
-    // ── Alertes de prix ──
+    const state = await loadAlertState(recipients);   // alertes déjà envoyées aujourd'hui, heure de la dernière, par utilisateur
+
+    // ── 1. Annonces économiques majeures (prioritaires : l'information est datée) ──
+    let eco = { sent: 0, reason: 'skipped' };
+    try { eco = await sendEconomic(recipients, state); }
+    catch (err) { console.error('[push-send] annonces économiques :', err.message); eco = { sent: 0, reason: 'error' }; }
+
+    // ── 2. Alertes de prix ──
     const positions = await loadPositions(recipients.map(u => u.userId), true);
     const dayAgo = Date.now() - 24 * 3600 * 1000;
     const due = positions.filter(p => !p.alert_sent_at || new Date(p.alert_sent_at).getTime() < dayAgo);
     const quotes = await getQuotes(due.map(p => p.name));
     let sent = 0, triggeredCount = 0;
-    const alertCount = await loadAlertCounts(recipients);   // alertes déjà envoyées aujourd'hui, par utilisateur
 
     for (const u of recipients) {
       const hits = due.filter(p => p.user_id === u.userId && quotes[p.name] && quotes[p.name].price <= Number(p.alert_price));
       if (!hits.length) continue;
       triggeredCount += hits.length;
-      if ((alertCount.get(u.userId) || 0) >= MAX_ALERTS_PER_DAY) continue;   // plafond du jour atteint : pas marquée « alertée », elle repartira demain si le prix reste sous le seuil
+      if (!canAlert(u.userId, state)) continue;   // plafond, espacement ou déjà notifié à ce passage : pas marquée « alertée », elle repartira plus tard si le prix reste sous le seuil
       const first = hits[0], q = quotes[first.name];
       let body = `${first.name} est à ${q.price.toFixed(2).replace('.', ',')} € (ton seuil : ${Number(first.alert_price).toFixed(2).replace('.', ',')} €)`;
       if (hits.length > 1) body += ` · +${hits.length - 1} autre${hits.length > 2 ? 's' : ''} alerte${hits.length > 2 ? 's' : ''}`;
       const reached = await notifyUser(u, { title: `🔔 Alerte prix · ${first.name}`, body, tag: 'investiq-alert-' + first.id }, null, 'high');
       if (reached) {
         sent++;
-        await countAlert(u.userId, alertCount);
+        await countAlert(u.userId, state);
         // On ne marque « alerté » que si la notification est réellement partie : sinon on réessaiera au prochain passage
         await supabase.from('positions').update({ alert_sent_at: new Date().toISOString() }).in('id', hits.map(p => p.id));
       }
     }
-    // ── Gros mouvements : une action de ton portefeuille, de ta watchlist ou une grande valeur du marché ──
+
+    // ── 3. Gros mouvements : une action de ton portefeuille, de ta watchlist ou une grande valeur du marché ──
     let movesSent = 0;
-    try { movesSent = await sendMoves(recipients.filter(u => u.moves), alertCount); }
+    try { movesSent = await sendMoves(recipients.filter(u => u.moves), state); }
     catch (err) { console.error('[push-send] mouvements :', err.message); }
 
-    return res.status(200).json({ mode, users: recipients.length, checked: due.length, triggered: triggeredCount, sent, movesSent });
+    return res.status(200).json({ mode, users: recipients.length, ecoSent: eco.sent, eco: eco.reason, checked: due.length, triggered: triggeredCount, sent, movesSent });
   } catch (err) {
     console.error('[push-send]', err.message);
     return res.status(500).json({ error: err.message });
   }
-};
+}
+
+module.exports = handler;
+module.exports._pickEconomic = pickEconomic;   // pour les tests
