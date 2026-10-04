@@ -10008,7 +10008,7 @@ function kpTour(steps, key) {
       <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
       <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
     </div>
-    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;padding:16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
+    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:40%;display:flex;justify-content:center;padding:0 16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
   document.body.appendChild(wrap);
   const cur = document.getElementById('kp-tour-cur');
   const tip = document.getElementById('kp-tour-tip');
@@ -10021,8 +10021,8 @@ function kpTour(steps, key) {
       cur.style.left = (r.left + r.width * 0.5) + 'px';
       cur.style.top = (r.top + r.height * 0.5) + 'px';
       lift(el);
-      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; tip.style.opacity = '1'; }
-    }, 380);
+      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; const _th = (_s && _s.getBoundingClientRect().height) || 50; let _top = r.top - _th - 28; if (_top < 12) _top = r.bottom + 28; if (_top + _th > window.innerHeight - 12) _top = Math.max(12, window.innerHeight - _th - 12); tip.style.top = _top + 'px'; tip.style.opacity = '1'; }
+    }, 650);
   };
   const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => document.getElementById('kp-tour')?.remove(), 400); };
   document.getElementById('kp-tour-ov').addEventListener('click', end);
@@ -10032,8 +10032,10 @@ function kpTour(steps, key) {
     if (i >= steps.length) { setTimeout(end, 1800); return; }
     const s = steps[i];
     const el = document.querySelector(s.sel);
-    if (el) moveTo(el, s.legend);
+    const _rr = el ? el.getBoundingClientRect() : null;
     i++;
+    if (!_rr || _rr.width === 0 || _rr.height === 0) { run(); return; }
+    moveTo(el, s.legend);
     setTimeout(run, 2600);
   };
   run();
@@ -10069,7 +10071,7 @@ function showPlanTour() {
       <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
       <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
     </div>
-    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;padding:16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
+    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:40%;display:flex;justify-content:center;padding:0 16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
   document.body.appendChild(wrap);
   const cur = document.getElementById('kp-tour-cur');
   const tip = document.getElementById('kp-tour-tip');
@@ -10082,8 +10084,8 @@ function showPlanTour() {
       cur.style.left = (r.left + r.width * 0.5) + 'px';
       cur.style.top = (r.top + r.height * 0.5) + 'px';
       lift(el);
-      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; tip.style.opacity = '1'; }
-    }, 380);
+      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; const _th = (_s && _s.getBoundingClientRect().height) || 50; let _top = r.top - _th - 28; if (_top < 12) _top = r.bottom + 28; if (_top + _th > window.innerHeight - 12) _top = Math.max(12, window.innerHeight - _th - 12); tip.style.top = _top + 'px'; tip.style.opacity = '1'; }
+    }, 650);
   };
   const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => { document.getElementById('kp-tour')?.remove(); }, 400); };
   document.getElementById('kp-tour-ov').addEventListener('click', end);
@@ -10167,7 +10169,7 @@ function openQuickAdd(returnTo) {
         </div>
         <div id="qa-list" style="margin-top:16px"></div>
       </div>
-      <div style="padding:12px 18px;border-top:1px solid ${bord};display:flex;gap:10px;align-items:center">
+      <div style="padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid ${bord};display:flex;gap:10px;align-items:center">
         <div id="qa-counter" style="font-size:12.5px;color:${sub};flex:1">Aucun placement ajouté pour l'instant</div>
         <button type="button" onclick="closeQuickAdd()" style="padding:12px 22px;border:none;border-radius:12px;background:${dark ? 'rgba(255,255,255,0.12)' : '#1c1c1e'};color:#fff;font-size:14px;font-weight:800;cursor:pointer">Terminer</button>
       </div>
@@ -10387,7 +10389,7 @@ function openPlanReview(lines) {
     <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid ${bord}">
       <input type="checkbox" id="pr-chk-${i}" checked style="width:18px;height:18px;accent-color:#16a34a;flex-shrink:0">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:800;color:${txt};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(l.name || l.ticker)}</div>
+        <div style="font-size:13px;font-weight:800;color:${txt};line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${_escHtml(l.name || l.ticker)}</div>
         <div style="font-size:11px;color:${sub}">${l.ticker}${l.type ? ' · ' + l.type : ''} · <span id="pr-qty-${i}">calcul…</span></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
@@ -10414,7 +10416,7 @@ function openPlanReview(lines) {
         <select id="pr-platform" onchange="prUpdatePlatLabel()" style="width:100%;margin:3px 0 4px;padding:11px;border-radius:10px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit">${platformOptionsHTML('Trade Republic')}</select>
         ${rows}
       </div>
-      <div style="padding:12px 18px;border-top:1px solid ${bord};display:flex;flex-direction:column;gap:8px">
+      <div style="padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid ${bord};display:flex;flex-direction:column;gap:8px">
         <button type="button" onclick="prConfirm(this,false)" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer">Ajouter à mon portefeuille</button>
         <button type="button" id="pr-open-btn" onclick="prConfirm(this,true)" style="width:100%;padding:12px;border-radius:12px;border:1px solid ${bord};background:transparent;color:${txt};font-size:14px;font-weight:700;cursor:pointer">Ajouter + ouvrir <span id="pr-plat-label">Trade Republic</span> →</button>
       </div>
