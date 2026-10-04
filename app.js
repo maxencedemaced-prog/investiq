@@ -7379,8 +7379,8 @@ function setupProgressHTML() {
 // ═══════════════════════════════════════════════════════════════════════════
 const KP_LEVELS = {
   1: { label: 'Je débute', emoji: '🌱', desc: 'L\'essentiel : accueil, portefeuille, objectif et assistant IA.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan'] },
-  2: { label: 'J\'ai déjà quelques placements', emoji: '📈', desc: 'En plus : le score de santé et le calculateur de dépenses.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan', 'sante', 'depenses'] },
-  3: { label: 'Je gère un vrai portefeuille', emoji: '🚀', desc: 'Tous les outils : scénario de crise, simulateur DCA, aide à la décision, actualités.', tools: 'all' },
+  2: { label: 'J\'ai déjà quelques placements', emoji: '📈', desc: 'En plus : le score de santé, le calculateur de dépenses et les actualités.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan', 'sante', 'depenses', 'news'] },
+  3: { label: 'Je gère un vrai portefeuille', emoji: '🚀', desc: 'Tous les outils, avec en plus : scénario de crise, simulateur DCA, aide à la décision.', tools: 'all' },
 };
 const KP_ALL_TOOLS = ['home', 'portfolio', 'sante', 'objectif', 'crise', 'news', 'decision', 'dca', 'depenses', 'ai', 'bilan'];
 
