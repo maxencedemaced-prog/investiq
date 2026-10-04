@@ -888,7 +888,14 @@ function renderETFCards(etfs, containerEl, actions = []) {
   </div>
   <div style="font-size:10px;color:${sub};padding:0 2px">Répartition indicative basée sur ton profil — pas un conseil financier réglementé. Performances passées ≠ performances futures.</div>
   `;
-  try { if (typeof positions !== 'undefined' && !positions.length) setTimeout(() => showCursorHint('#plan-addall-btn', 'plan_addall'), 500); } catch (e) {}
+  try {
+    if (typeof positions !== 'undefined' && !positions.length && !localStorage.getItem('kp_tour_plan')) {
+      if ('IntersectionObserver' in window && containerEl) {
+        const _io = new IntersectionObserver((ents) => { if (ents.some(x => x.isIntersecting)) { _io.disconnect(); setTimeout(() => { try { showPlanTour(); } catch (e2) {} }, 400); } }, { threshold: 0.25 });
+        _io.observe(containerEl);
+      } else { setTimeout(() => { try { showPlanTour(); } catch (e2) {} }, 700); }
+    }
+  } catch (e) {}
 }
 
 // ===== PLAN COURT TERME =====
@@ -2420,7 +2427,7 @@ function recoActionsHTML(ticker, name, amount, type, dark) {
   const base = 'padding:6px 11px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap';
   return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
     <button type="button" onclick="event.stopPropagation();openActionFromObjectif(${a})" style="${base};background:${dark ? 'rgba(255,255,255,0.08)' : '#f4f4f5'};border:1px solid ${dark ? 'rgba(255,255,255,0.14)' : '#e4e4e7'};color:${dark ? 'rgba(255,255,255,0.85)' : '#3f3f46'}">🔍 Analyser</button>
-    <button type="button" onclick="event.stopPropagation();addToPortfolioFromDecision('${jsArg(ticker)}',${Number(amount) || 0},'${jsArg(name)}','${jsArg(type || '')}')" style="${base};background:#16a34a;border:1px solid #16a34a;color:#fff">➕ Ajouter au portefeuille</button>
+    <button type="button" class="kp-line-add" onclick="event.stopPropagation();addToPortfolioFromDecision('${jsArg(ticker)}',${Number(amount) || 0},'${jsArg(name)}','${jsArg(type || '')}')" style="${base};background:#16a34a;border:1px solid #16a34a;color:#fff">➕ Ajouter au portefeuille</button>
   </div>`;
 }
 
@@ -9967,6 +9974,44 @@ let qaSelected = null, qaCount = 0, qaReturnTo = 'objectif', qaSearchTimer = nul
 function qaJson(o) { return JSON.stringify(o).replace(/"/g, '&quot;'); }
 
 // Curseur animé qui montre où cliquer (coach mark réutilisable sur n'importe quelle page).
+// Tour guidé du plan : la page se grise, un curseur va sur "Tout ajouter" puis sur une ligne, avec des légendes.
+function showPlanTour() {
+  try { if (localStorage.getItem('kp_tour_plan')) return; } catch (e) {}
+  const allBtn = document.getElementById('plan-addall-btn');
+  if (!allBtn) return;
+  try { localStorage.setItem('kp_tour_plan', '1'); } catch (e) {}
+  document.getElementById('kp-tour')?.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'kp-tour';
+  wrap.innerHTML = `
+    <div id="kp-tour-ov" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9100;transition:opacity .35s"></div>
+    <div id="kp-tour-cur" style="position:fixed;z-index:9102;pointer-events:none;transition:left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)">
+      <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
+      <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      <div id="kp-tour-tip" style="position:absolute;right:30px;top:-6px;max-width:210px;background:#111827;color:#fff;font-size:12.5px;font-weight:700;line-height:1.35;padding:8px 11px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.45);text-align:right;opacity:0;transition:opacity .3s"></div>
+    </div>`;
+  document.body.appendChild(wrap);
+  const cur = document.getElementById('kp-tour-cur');
+  const tip = document.getElementById('kp-tour-tip');
+  const lift = (el) => { try { if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; } catch (e) {} };
+  const moveTo = (el, legend) => {
+    if (!el || !cur) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      cur.style.left = (r.left + r.width * 0.5) + 'px';
+      cur.style.top = (r.top + r.height * 0.5) + 'px';
+      lift(el);
+      if (tip) { tip.textContent = legend; tip.style.opacity = '1'; }
+    }, 380);
+  };
+  const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => { document.getElementById('kp-tour')?.remove(); }, 400); };
+  document.getElementById('kp-tour-ov').addEventListener('click', end);
+  moveTo(allBtn, 'Ajouter toutes les positions de votre plan d\'un coup');
+  setTimeout(() => { const line = document.querySelector('.kp-line-add'); if (line) moveTo(line, 'ou les ajouter une par une'); }, 3000);
+  setTimeout(end, 6800);
+}
+
 function showCursorHint(selector, key, opts) {
   opts = opts || {};
   try { if (key && localStorage.getItem('kp_hint_' + key)) return; } catch (e) {}

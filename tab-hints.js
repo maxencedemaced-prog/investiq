@@ -48,6 +48,7 @@ function updateNavDots() {
   document.querySelectorAll('.nav-btn, .bnav-btn').forEach(b => {
     const page = tabPageOf(b);
     if (!TAB_HINTS[page]) return;
+    if (page === 'settings') { const _d = b.querySelector('.nav-dot'); if (_d) _d.remove(); return; }
     const dot = b.querySelector('.nav-dot');
     if (seen.has(page)) { if (dot) dot.remove(); return; }
     if (!dot) { const d = document.createElement('i'); d.className = 'nav-dot'; d.setAttribute('aria-label', 'Nouveau'); b.appendChild(d); }
