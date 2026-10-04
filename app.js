@@ -7349,6 +7349,86 @@ function setupProgressHTML() {
 }
 
 
+// ═══════════════════════════════════════════════════════════════════════════
+// NIVEAUX — on adapte les outils du menu au niveau choisi par l'utilisateur.
+// Par défaut : niveau 3 (tout) → aucun changement pour les comptes existants.
+// ═══════════════════════════════════════════════════════════════════════════
+const KP_LEVELS = {
+  1: { label: 'Je débute', emoji: '🌱', desc: 'L\'essentiel : accueil, portefeuille, objectif et assistant IA.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan'] },
+  2: { label: 'J\'ai déjà quelques placements', emoji: '📈', desc: 'En plus : le score de santé et le calculateur de dépenses.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan', 'sante', 'depenses'] },
+  3: { label: 'Je gère un vrai portefeuille', emoji: '🚀', desc: 'Tous les outils : scénario de crise, simulateur DCA, aide à la décision, actualités.', tools: 'all' },
+};
+const KP_ALL_TOOLS = ['home', 'portfolio', 'sante', 'objectif', 'crise', 'news', 'decision', 'dca', 'depenses', 'ai', 'bilan'];
+
+function kpGetLevel() {
+  try { const v = parseInt(localStorage.getItem('kp_level'), 10); if (v >= 1 && v <= 3) return v; } catch {}
+  return 3;
+}
+
+function applyUserLevel() {
+  try {
+    const lvl = kpGetLevel();
+    const cfg = KP_LEVELS[lvl] || KP_LEVELS[3];
+    const allowed = cfg.tools === 'all' ? KP_ALL_TOOLS : cfg.tools;
+    KP_ALL_TOOLS.forEach(t => {
+      const btn = document.getElementById('nav-' + t);
+      if (btn) btn.style.display = allowed.includes(t) ? '' : 'none';
+    });
+    const outilsVisible = ['news', 'decision', 'dca', 'depenses'].some(t => allowed.includes(t));
+    const lbl = document.getElementById('navlbl-outils'); if (lbl) lbl.style.display = outilsVisible ? '' : 'none';
+    const sep = document.getElementById('navsep-outils'); if (sep) sep.style.display = outilsVisible ? '' : 'none';
+  } catch (e) {}
+}
+
+function kpSetLevel(l) {
+  try { localStorage.setItem('kp_level', String(l)); } catch {}
+  try { localStorage.setItem('kp_level_asked', '1'); } catch {}
+  try { if (typeof isDemo !== 'undefined' && !isDemo && typeof currentUser !== 'undefined' && currentUser && typeof sb !== 'undefined') sb.auth.updateUser({ data: { level: l } }).catch(() => {}); } catch {}
+  document.getElementById('kp-level-modal')?.remove();
+  applyUserLevel();
+  try { showToast('✓ Interface adaptée à ton niveau'); } catch {}
+  try { nav('home'); } catch {}
+}
+
+function showLevelChooser(fromSettings) {
+  try { localStorage.setItem('kp_level_asked', '1'); } catch {}
+  document.getElementById('kp-level-modal')?.remove();
+  const current = kpGetLevel();
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.6)' : '#71717a', bord = dark ? 'rgba(255,255,255,0.12)' : '#e4e4e7';
+  const card = (l) => {
+    const c = KP_LEVELS[l];
+    const on = l === current;
+    return `<button type="button" onclick="kpSetLevel(${l})" style="display:block;width:100%;text-align:left;padding:16px;border-radius:16px;margin-bottom:10px;cursor:pointer;font:inherit;background:${on ? 'linear-gradient(135deg,#0f1f17,#0b1220)' : (dark ? 'rgba(255,255,255,0.05)' : '#f9fafb')};border:1.5px solid ${on ? 'rgba(22,163,74,0.6)' : bord}">
+      <div style="font-size:15px;font-weight:900;color:${on ? '#fff' : txt};margin-bottom:3px">${c.emoji} ${c.label}${on ? ' · actuel' : ''}</div>
+      <div style="font-size:12.5px;color:${on ? 'rgba(255,255,255,0.72)' : sub};line-height:1.45">${c.desc}</div>
+    </button>`;
+  };
+  const o = document.createElement('div');
+  o.id = 'kp-level-modal';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10055;display:flex;align-items:center;justify-content:center;padding:18px';
+  o.innerHTML = `<div style="background:${surf};width:100%;max-width:440px;border-radius:22px;padding:22px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-size:19px;font-weight:900;color:${txt}">Où en es-tu ?</div>
+      <button type="button" onclick="document.getElementById('kp-level-modal').remove()" style="background:none;border:none;color:${sub};font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div style="font-size:13px;color:${sub};margin-bottom:16px;line-height:1.5">On adapte l'appli à ton niveau pour ne pas te noyer sous les outils. Tu pourras changer à tout moment dans « Mon niveau ».</div>
+    ${card(1)}${card(2)}${card(3)}
+  </div>`;
+  document.body.appendChild(o);
+}
+
+// Demande le niveau une seule fois, à l'arrivée (sauf pendant l'onboarding objectif).
+function maybeAskLevel() {
+  try {
+    if (localStorage.getItem('kp_level') || localStorage.getItem('kp_level_asked')) return;
+    const ob = document.getElementById('onboarding-modal');
+    if (ob && ob.style.display === 'flex') return;
+    setTimeout(() => { try { if (!document.getElementById('kp-level-modal') && !localStorage.getItem('kp_level')) showLevelChooser(false); } catch {} }, 700);
+  } catch {}
+}
+
+
 function activationCardHTML() {
   const opt = (icon, title, sub, onclick, main) => `<button type="button" onclick="${onclick}" class="${main ? 'kp-pulse' : ''}" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px;border-radius:14px;cursor:pointer;font:inherit;${main ? 'background:linear-gradient(135deg,#16a34a,#059669);border:none;color:#fff;box-shadow:0 6px 22px rgba(22,163,74,0.35)' : 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff'}">
       <span style="font-size:24px;flex-shrink:0">${icon}</span>
@@ -7613,6 +7693,8 @@ async function renderHome() {
   }
 
   document.getElementById('home-score').innerHTML = html;
+  try { applyUserLevel(); } catch (e) {}
+  try { maybeAskLevel(); } catch (e) {}
   document.getElementById('home-alerts').innerHTML = '';
   document.getElementById('home-obj').innerHTML = '';
   // renderPlatforms() supprimé — déjà dans le donut chart
