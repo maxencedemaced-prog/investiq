@@ -7100,7 +7100,7 @@ function nav(page, auto=false) {
   if (renders[page]) renders[page]();
   try {
     if (page === 'objectif' && (typeof positions === 'undefined' || !positions.length)) setTimeout(() => showCursorHint('#plan-addall-btn', 'plan_addall'), 1300);
-    if (page === 'portfolio' && (typeof positions === 'undefined' || !positions.length)) setTimeout(() => showCursorHint('#port-add-btn', 'port_add'), 700);
+    if (page === 'portfolio') setTimeout(() => { try { showPortfolioTour(); } catch (e) {} }, 700);
   } catch (e) {}
 }
 function toggleSidebar() {
@@ -9975,6 +9975,60 @@ function qaJson(o) { return JSON.stringify(o).replace(/"/g, '&quot;'); }
 
 // Curseur animé qui montre où cliquer (coach mark réutilisable sur n'importe quelle page).
 // Tour guidé du plan : la page se grise, un curseur va sur "Tout ajouter" puis sur une ligne, avec des légendes.
+// Visite guidée générique : le curseur passe sur une liste de cibles, chacune avec sa légende centrée.
+function kpTour(steps, key) {
+  try { if (key && localStorage.getItem('kp_hint_' + key)) return; } catch (e) {}
+  steps = (steps || []).filter(s => s && document.querySelector(s.sel));
+  if (!steps.length) return;
+  try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {}
+  document.getElementById('kp-tour')?.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'kp-tour';
+  wrap.innerHTML = `
+    <div id="kp-tour-ov" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9100;transition:opacity .35s"></div>
+    <div id="kp-tour-cur" style="position:fixed;z-index:9102;pointer-events:none;transition:left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)">
+      <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
+      <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
+    </div>
+    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:14%;display:flex;justify-content:center;padding:0 16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
+  document.body.appendChild(wrap);
+  const cur = document.getElementById('kp-tour-cur');
+  const tip = document.getElementById('kp-tour-tip');
+  const lift = (el) => { try { if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; } catch (e) {} };
+  const moveTo = (el, legend) => {
+    if (!el || !cur) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      cur.style.left = (r.left + r.width * 0.5) + 'px';
+      cur.style.top = (r.top + r.height * 0.5) + 'px';
+      lift(el);
+      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; tip.style.opacity = '1'; }
+    }, 380);
+  };
+  const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => document.getElementById('kp-tour')?.remove(), 400); };
+  document.getElementById('kp-tour-ov').addEventListener('click', end);
+  let i = 0;
+  const run = () => {
+    if (i >= steps.length) { setTimeout(end, 1800); return; }
+    const s = steps[i];
+    const el = document.querySelector(s.sel);
+    if (el) moveTo(el, s.legend);
+    i++;
+    setTimeout(run, 2600);
+  };
+  run();
+}
+
+function showPortfolioTour() {
+  kpTour([
+    { sel: '#port-add-btn', legend: 'Ajoute une action ou un ETF à ton portefeuille' },
+    { sel: '#btn-import-pos', legend: 'Importe ton relevé de courtier (PDF, Excel ou CSV)' },
+    { sel: '#btn-prix-live', legend: 'Mets à jour les prix en direct' },
+    { sel: '#btn-select-mode', legend: 'Sélectionne plusieurs lignes pour les gérer ensemble' },
+  ], 'tour_portfolio');
+}
+
 function showPlanTour() {
   try { if (localStorage.getItem('kp_tour_plan')) return; } catch (e) {}
   const allBtn = document.getElementById('plan-addall-btn');
