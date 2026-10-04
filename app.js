@@ -10233,6 +10233,25 @@ async function addAllPlanFromObjectif(btn) {
 }
 
 // Écran de vérification : on ajuste le montant de chaque ligne et on choisit la plateforme avant d'ajouter.
+async function kpPriceFor(ticker) {
+  try { const res = await fetch('/api/prices?symbols=' + encodeURIComponent(ticker)); const d = await res.json(); return (d.quotes && d.quotes[0] && d.quotes[0].price) || 0; } catch (e) { return 0; }
+}
+async function kpFindPlanPrice(l) {
+  let p = await kpPriceFor(l.ticker);
+  if (p) return p;
+  // Prix introuvable pour ce symbole : on retrouve le bon via le nom, puis on reprend son prix.
+  try {
+    const res = await fetch('/api/search?q=' + encodeURIComponent(l.name || l.ticker));
+    const d = await res.json();
+    const cands = (d.results || []).slice(0, 5);
+    for (const c of cands) {
+      if (!c.ticker || c.ticker.toUpperCase() === (l.ticker || '').toUpperCase()) continue;
+      const p2 = await kpPriceFor(c.ticker);
+      if (p2) { l.ticker = c.ticker; return p2; }
+    }
+  } catch (e) {}
+  return 0;
+}
 function openPlanReview(lines) {
   document.getElementById('pr-modal')?.remove();
   window._prLines = lines.map(l => ({ ticker: l.ticker, name: l.name, type: l.type || 'ETF', montant: l.montant, price: 0 }));
@@ -10277,7 +10296,7 @@ function openPlanReview(lines) {
   document.body.appendChild(o);
   try { prUpdatePlatLabel(); } catch (e) {}
   window._prLines.forEach(async (l, i) => {
-    try { const res = await fetch('/api/prices?symbols=' + encodeURIComponent(l.ticker)); const d = await res.json(); l.price = (d.quotes && d.quotes[0] && d.quotes[0].price) || 0; } catch { l.price = 0; }
+    l.price = await kpFindPlanPrice(l);
     try { const pin = document.getElementById('pr-price-' + i); if (pin && l.price) pin.value = l.price.toFixed(2); } catch (e) {}
     prRecalc(i);
   });
