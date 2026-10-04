@@ -10793,7 +10793,7 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
       window._aiQuotaHitAt = Date.now();
       updateAIQuotaBadge();
       trackEvent('ai_quota_reached');
-      if (!window._aiQuotaModalAt || Date.now() - window._aiQuotaModalAt > 30 * 60000) {
+      if (opts && opts.gate && (!window._aiQuotaModalAt || Date.now() - window._aiQuotaModalAt > 30 * 60000)) {
         window._aiQuotaModalAt = Date.now();
         showAIQuotaModal();
       }
@@ -12526,7 +12526,7 @@ RÈGLES TECHNIQUES :
   const fullPrompt = `${ctx}\n=== HISTORIQUE ===\n${histCtx}\n\n=== QUESTION ===\n${q}`;
 
   try {
-    const r = await callClaude(fullPrompt, systemPrompt);
+    const r = await callClaude(fullPrompt, systemPrompt, undefined, undefined, { gate: true });
     chatHistory.push({ role: 'assistant', content: r });
     saveChatHistory();
 
