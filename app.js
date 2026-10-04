@@ -280,7 +280,7 @@ function showValidatedChart() {
       ${positions.length === 0 ? `<div style="background:linear-gradient(135deg,#0f1f17,#0b1220);border:1px solid rgba(22,163,74,0.4);border-radius:16px;padding:16px;margin-bottom:14px">
         <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:3px">💼 Tu as déjà des placements ?</div>
         <div style="font-size:12.5px;color:rgba(255,255,255,0.65);margin-bottom:12px;line-height:1.45">Entre-les tous en quelques secondes. Ton score de santé et tes analyses s'activent dès que ton portefeuille est rempli.</div>
-        <button type="button" onclick="openQuickAdd('objectif')" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(22,163,74,0.35)">⚡ Saisir mes placements</button>
+        <button type="button" onclick="openQuickAdd('objectif')" class="kp-pulse" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(22,163,74,0.35)">⚡ Saisir mes placements<span class="kp-finger">👆</span></button>
       </div>` : ''}
 
       <!-- Le 1er mois (mois de création de l'objectif), l'investissement de départ passe en
@@ -7045,6 +7045,7 @@ function nav(page, auto=false) {
   if (!document.getElementById('sec-' + page)) page = 'home';
   // Mémorise la page pour la restaurer si Chrome recharge l'onglet (Memory Saver)
   try { sessionStorage.setItem('iq_last_page', page); } catch {}
+  try { if (page === 'sante') localStorage.setItem('kp_seen_sante', '1'); } catch {}
   if (!auto) { try { trackEvent('page_view', { page }); } catch(e) {} }
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -7279,8 +7280,77 @@ function renderNotificationList() {
 
 // ===== HOME =====
 // Première prise en main : tant qu'aucun placement n'est ajouté, une carte en haut de l'Accueil propose 3 façons de démarrer
+// ═══════════════════════════════════════════════════════════════════════════
+// MISE EN ROUTE — barre de progression gamifiée + animation d'appel à l'action.
+// But : rendre le démarrage ludique et montrer clairement la prochaine étape.
+// ═══════════════════════════════════════════════════════════════════════════
+(function kpInjectAnim() {
+  try {
+    if (document.getElementById('kp-anim')) return;
+    const st = document.createElement('style'); st.id = 'kp-anim';
+    st.textContent = '@keyframes kpPulseGlow{0%,100%{box-shadow:0 8px 24px rgba(22,163,74,0.35)}50%{box-shadow:0 10px 34px rgba(34,197,94,0.8)}}@keyframes kpFinger{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}.kp-pulse{animation:kpPulseGlow 1.6s ease-in-out infinite}.kp-finger{display:inline-block;animation:kpFinger 1s ease-in-out infinite;margin-left:6px}';
+    document.head.appendChild(st);
+  } catch (e) {}
+})();
+
+// Les 3 étapes de démarrage et leur état (fait / à faire)
+function kpSetupSteps() {
+  const objectifDone = (typeof allObjectives !== 'undefined' && allObjectives.length > 0) || (typeof objChartTarget !== 'undefined' && objChartTarget > 1000);
+  const placementsDone = positions.length > 0;
+  let scoreDone = false;
+  try { scoreDone = placementsDone && localStorage.getItem('kp_seen_sante') === '1'; } catch {}
+  return [
+    { label: 'Créer un objectif', icon: '🎯', done: objectifDone, action: "showOnboarding(true)" },
+    { label: 'Ajouter tes placements', icon: '💼', done: placementsDone, action: "openQuickAdd('home')" },
+    { label: 'Découvrir ton score de santé', icon: '❤️', done: scoreDone, action: "nav('sante')" },
+  ];
+}
+
+// Carte "Mise en route" : rendue en haut de l'accueil tant que les 3 étapes ne sont pas finies.
+function setupProgressHTML() {
+  const steps = kpSetupSteps();
+  const done = steps.filter(s => s.done).length;
+  const total = steps.length;
+  if (done >= total) {
+    // Tout est fait : on félicite une seule fois, puis la carte disparaît définitivement.
+    try {
+      if (localStorage.getItem('kp_setup_celebrated') !== '1') {
+        localStorage.setItem('kp_setup_celebrated', '1');
+        setTimeout(() => { try { qaConfetti(); showToast('🎉 Tout est en place — ton tableau de bord est prêt !'); } catch {} }, 400);
+      }
+    } catch {}
+    return '';
+  }
+  const pct = Math.round(done / total * 100);
+  const rows = steps.map((s, i) => {
+    const circle = s.done
+      ? '<span style="width:26px;height:26px;border-radius:50%;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">✓</span>'
+      : `<span style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">${i + 1}</span>`;
+    const txtStyle = s.done ? 'color:rgba(255,255,255,0.5);text-decoration:line-through' : 'color:#fff';
+    const arrow = s.done ? '' : '<span style="margin-left:auto;font-size:18px;color:#4ade80">›</span>';
+    const onclick = s.done ? '' : `onclick="${s.action}"`;
+    const bg = s.done ? '' : 'background:rgba(255,255,255,0.04);cursor:pointer';
+    return `<div ${onclick} style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;${bg}">
+      ${circle}
+      <span style="font-size:14px;font-weight:700;${txtStyle}">${s.icon} ${s.label}</span>
+      ${arrow}
+    </div>`;
+  }).join('');
+  return `<div style="background:linear-gradient(135deg,#0f1f17,#0b1220);border:1px solid rgba(22,163,74,0.35);border-radius:20px;padding:18px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:800;color:#4ade80;letter-spacing:0.4px;text-transform:uppercase">🚀 Mise en route</div>
+      <div style="font-size:12px;font-weight:800;color:#fff">${done}/${total}</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.1);border-radius:99px;height:8px;overflow:hidden;margin-bottom:14px">
+      <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#22c55e,#4ade80);border-radius:99px;transition:width 0.8s ease"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px">${rows}</div>
+  </div>`;
+}
+
+
 function activationCardHTML() {
-  const opt = (icon, title, sub, onclick, main) => `<button type="button" onclick="${onclick}" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px;border-radius:14px;cursor:pointer;font:inherit;${main ? 'background:linear-gradient(135deg,#16a34a,#059669);border:none;color:#fff;box-shadow:0 6px 22px rgba(22,163,74,0.35)' : 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff'}">
+  const opt = (icon, title, sub, onclick, main) => `<button type="button" onclick="${onclick}" class="${main ? 'kp-pulse' : ''}" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px;border-radius:14px;cursor:pointer;font:inherit;${main ? 'background:linear-gradient(135deg,#16a34a,#059669);border:none;color:#fff;box-shadow:0 6px 22px rgba(22,163,74,0.35)' : 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff'}">
       <span style="font-size:24px;flex-shrink:0">${icon}</span>
       <span style="min-width:0"><span style="display:block;font-size:14.5px;font-weight:800">${title}</span><span style="display:block;font-size:12px;opacity:0.75;margin-top:2px">${sub}</span></span>
       <span style="margin-left:auto;font-size:18px;opacity:0.6">›</span></button>`;
@@ -7528,6 +7598,7 @@ async function renderHome() {
   if (isEmpty) {
     html = activationCardHTML() + html;
   }
+  try { html = setupProgressHTML() + html; } catch (e) {}
   if (false) {
     html += `
     <div style="background:#0f0f14;border-radius:20px;padding:32px 24px;text-align:center;margin-top:10px">
