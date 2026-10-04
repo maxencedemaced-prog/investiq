@@ -7,6 +7,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { pushReady, sendToDevice } = require('./_push');
 const { getQuotes } = require('./_quotes');
+const { allEvents, parisDate, parisH } = require('./_ecocal');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -100,68 +101,19 @@ async function countAlert(userId, state) {
   await supabase.from('push_events').upsert({ user_id: userId, event_key: `push:${todayKey()}:${n}` }, { onConflict: 'user_id,event_key', ignoreDuplicates: true });
 }
 
-// ── Annonces économiques majeures (calendrier Financial Modeling Prep) ──
-// On ne notifie qu'un chiffre RÉELLEMENT publié (champ « actual » renseigné), jamais un événement supposé.
-const ECO_COUNTRY = { US: 'US', EA: 'EU', EMU: 'EU', EU: 'EU', FR: 'FR' };
-const ECO_ZONE = { US: 'États-Unis', EU: 'zone euro', FR: 'France' };
-const ECO_FAMILIES = [
-  { id: 'fed',   re: /fed.*interest rate decision|fomc.*rate/i,                    zones: ['US'], label: () => 'Décision de taux de la Fed' },
-  { id: 'ecb',   re: /ecb.*(interest rate|deposit facility|refinancing)|(deposit facility|main refinancing) rate/i, zones: ['EU'], label: () => 'Décision de taux de la BCE' },
-  { id: 'nfp',   re: /non[- ]?farm payrolls/i,                                     zones: ['US'], label: () => 'Créations d\'emplois US (NFP)' },
-  { id: 'unemp', re: /^unemployment rate/i,                                        zones: ['US'], label: () => 'Taux de chômage US' },
-  { id: 'cpi',   re: /^(inflation rate|cpi)\b(?!.*core)/i,                         zones: ['US', 'EU', 'FR'], label: z => `Inflation ${ECO_ZONE[z]}` },
-  { id: 'pce',   re: /core pce price index/i,                                      zones: ['US'], label: () => 'Inflation PCE sous-jacente US' },
-  { id: 'gdp',   re: /^gdp growth rate/i,                                          zones: ['US', 'EU'], label: z => `Croissance du PIB ${ECO_ZONE[z]}` },
-];
-const ECO_LOOKBACK_MIN = 120;   // un chiffre publié il y a plus de 2 h n'est plus une « nouvelle »
-const ECO_MAX_PER_DAY = 3;
+// ── Annonces économiques majeures (calendrier officiel : api/_ecocal.js) ──
+// On prévient ~15 min avant chaque grande annonce (Fed, BCE, inflation, emploi, PIB) : c'est là que les marchés bougent.
+const ECO_BEFORE_MIN = 20, ECO_AFTER_MIN = 5, ECO_MAX_PER_DAY = 3;
 
-const fmtEco = (v, unit) => (v === null || v === undefined || v === '') ? '' : String(v).replace('.', ',') + (unit === '%' ? ' %' : unit ? ' ' + unit : '');
-// Heure de Paris d'une date UTC « AAAA-MM-JJ HH:MM:SS »
-const parisTime = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(':', 'h');
-
-// Sélection pure (testable) : les annonces majeures publiées récemment, une par famille et par zone
-function pickEconomic(rawEvents, now = new Date()) {
-  const out = new Map();
-  for (const e of rawEvents || []) {
-    const zone = ECO_COUNTRY[e.country];
-    if (!zone || e.actual === null || e.actual === undefined || e.actual === '') continue;
-    const when = new Date(String(e.date || '').replace(' ', 'T') + 'Z');
-    if (isNaN(when)) continue;
-    const ageMin = (now - when) / 60000;
-    if (ageMin < 0 || ageMin > ECO_LOOKBACK_MIN) continue;
-    const fam = ECO_FAMILIES.find(f => f.re.test(String(e.event || '')) && f.zones.includes(zone));
-    if (!fam) continue;
-    const key = `eco:${fam.id}:${zone}:${String(e.date).slice(0, 16).replace(/[^0-9]/g, '')}`;
-    const prev = out.get(key);
-    // Plusieurs lignes pour la même publication (ex. inflation sur un mois / sur un an) : on garde la variation annuelle
-    if (prev && !/yoy/i.test(e.event)) continue;
-    out.set(key, { key, label: fam.label(zone), actual: e.actual, estimate: e.estimate, previous: e.previous, unit: e.unit || '', when });
-  }
-  return [...out.values()];
-}
-
-async function fetchEconomicToday() {
-  const apiKey = process.env.FMP_API_KEY;
-  if (!apiKey) return { ok: false, reason: 'no_key', events: [] };
-  const d = new Date();
-  const from = new Date(d.getTime() - 86400000).toISOString().slice(0, 10);
-  const to = d.toISOString().slice(0, 10);
-  try {
-    const r = await fetch(`https://financialmodelingprep.com/stable/economic-calendar?from=${from}&to=${to}&apikey=${apiKey}`, { signal: AbortSignal.timeout(8000) });
-    const raw = await r.text();
-    let data; try { data = JSON.parse(raw); } catch { return { ok: false, reason: 'fmp_non_json_' + r.status, events: [] }; }
-    if (!r.ok || !Array.isArray(data)) return { ok: false, reason: 'fmp_status_' + r.status, events: [] };
-    return { ok: true, events: data };
-  } catch (e) { return { ok: false, reason: 'fmp_exception', events: [] }; }
+// Sélection pure (testable) : annonces qui tombent dans les ECO_BEFORE_MIN prochaines minutes (ou viennent de tomber)
+function pickUpcoming(events, now = new Date()) {
+  return (events || []).filter(e => { const m = (e.utc - now) / 60000; return m <= ECO_BEFORE_MIN && m > -ECO_AFTER_MIN; });
 }
 
 async function sendEconomic(users, state) {
   users = users.filter(u => u.moves);
   if (!users.length) return { sent: 0, reason: 'no_users' };
-  const cal = await fetchEconomicToday();
-  if (!cal.ok) return { sent: 0, reason: cal.reason };
-  const picks = pickEconomic(cal.events);
+  const picks = pickUpcoming(allEvents());
   if (!picks.length) return { sent: 0, reason: 'none' };
 
   // Déjà reçues par chaque utilisateur, et nombre d'annonces envoyées aujourd'hui
@@ -177,19 +129,17 @@ async function sendEconomic(users, state) {
   let sent = 0;
   for (const u of users) {
     if (state.servedThisRun.has(u.userId) || (ecoCount.get(u.userId) || 0) >= ECO_MAX_PER_DAY) continue;
-    const todo = picks.filter(p => !done.has(u.userId + '|' + p.key));
+    const todo = picks.filter(p => !done.has(u.userId + '|eco:' + p.id));
     if (!todo.length) continue;
     const main = todo[0];
-    const est = main.estimate !== null && main.estimate !== undefined && main.estimate !== '' ? ` (prévu ${fmtEco(main.estimate, main.unit)})` : '';
-    const prev = main.previous !== null && main.previous !== undefined && main.previous !== '' ? ` · précédent ${fmtEco(main.previous, main.unit)}` : '';
-    let body = `${fmtEco(main.actual, main.unit)}${est}${prev}. Publié à ${parisTime(main.when)}.`;
-    if (todo.length > 1) body += `\nAussi : ${todo.slice(1, 3).map(p => `${p.label} ${fmtEco(p.actual, p.unit)}`).join(' · ')}`;
-    const payload = { title: `📢 ${main.label}`, body, tag: 'investiq-eco-' + main.key };
+    let body = main.desc;
+    if (todo.length > 1) body += `\nAussi : ${todo.slice(1, 3).map(p => `${p.titre} à ${parisH(p.utc)}`).join(' · ')}`;
+    const payload = { title: `⏰ ${parisH(main.utc)} : ${main.titre}`, body, tag: 'investiq-eco-' + main.id };
     if (await notifyUser(u, payload, d => d.moves !== false, 'high')) {
       sent++;
       state.servedThisRun.add(u.userId);
       state.last.set(u.userId, Date.now());
-      await supabase.from('push_events').upsert(todo.slice(0, 3).map(p => ({ user_id: u.userId, event_key: p.key })), { onConflict: 'user_id,event_key', ignoreDuplicates: true });
+      await supabase.from('push_events').upsert(todo.slice(0, 3).map(p => ({ user_id: u.userId, event_key: 'eco:' + p.id })), { onConflict: 'user_id,event_key', ignoreDuplicates: true });
     }
   }
   return { sent, reason: 'ok' };
@@ -285,6 +235,7 @@ async function handler(req, res) {
       const targets = recipients.filter(u => u.notif !== 'weekly' || isMonday);
       const positions = await loadPositions(targets.map(u => u.userId), false);
       const quotes = await getQuotes(positions.map(p => p.name));
+      const todayEco = allEvents().filter(e => parisDate(e.utc) === parisDate(new Date()));
       let sent = 0, skipped = 0;
 
       for (const u of targets) {
@@ -318,6 +269,7 @@ async function handler(req, res) {
         }
         if (inLoss) body += `\n${inLoss} position${inLoss > 1 ? 's' : ''} à plus de 10 % sous ton prix d'achat`;
 
+        if (todayEco.length) body += `\n📅 Aujourd'hui : ${todayEco.slice(0, 2).map(e => `${e.titre} à ${parisH(e.utc)}`).join(' · ')}`;
         if (await notifyUser(u, { title: '☀️ Ton briefing Kapitaro', body, tag: 'investiq-daily' })) sent++;
       }
       return res.status(200).json({ mode, users: targets.length, sent, skipped });
@@ -367,4 +319,4 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
-module.exports._pickEconomic = pickEconomic;   // pour les tests
+module.exports._pickUpcoming = pickUpcoming;   // pour les tests
