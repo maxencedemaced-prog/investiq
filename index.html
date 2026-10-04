@@ -989,6 +989,7 @@ function heroStart(tab) {
               <div class="ob-level-main">
                 <div class="ob-level-title">Débutant</div>
                 <div class="ob-level-sub">Je n'ai jamais investi</div>
+                <div style="font-size:11px;color:#16a34a;margin-top:3px;font-weight:600">🔓 Accueil · Portefeuille · Objectif · Assistant IA</div>
               </div>
               <div class="ob-profile-check" id="obpc-debutant">○</div>
             </div>
@@ -1000,6 +1001,7 @@ function heroStart(tab) {
               <div class="ob-level-main">
                 <div class="ob-level-title">Curieux</div>
                 <div class="ob-level-sub">Je connais les bases, mais je n'ai pas encore investi</div>
+                <div style="font-size:11px;color:#16a34a;margin-top:3px;font-weight:600">🔓 Accueil · Portefeuille · Objectif · Assistant IA</div>
               </div>
               <div class="ob-profile-check" id="obpc-curieux">○</div>
             </div>
@@ -1011,6 +1013,7 @@ function heroStart(tab) {
               <div class="ob-level-main">
                 <div class="ob-level-title">Initié</div>
                 <div class="ob-level-sub">J'ai déjà investi, je connais les ETF</div>
+                <div style="font-size:11px;color:#16a34a;margin-top:3px;font-weight:600">🔓 + Score de santé · Calculateur de dépenses</div>
               </div>
               <div class="ob-profile-check" id="obpc-initie">○</div>
             </div>
@@ -1022,6 +1025,7 @@ function heroStart(tab) {
               <div class="ob-level-main">
                 <div class="ob-level-title">Confirmé</div>
                 <div class="ob-level-sub">Je gère activement un portefeuille important</div>
+                <div style="font-size:11px;color:#16a34a;margin-top:3px;font-weight:600">🔓 Tous les outils (scénario de crise, DCA, aide à la décision, actualités)</div>
               </div>
               <div class="ob-profile-check" id="obpc-confirme">○</div>
             </div>
@@ -1294,14 +1298,14 @@ function heroStart(tab) {
           <button class="btn-secondary" onclick="toggleSelectMode()" id="btn-select-mode" style="display:flex;align-items:center;gap:6px;font-size:13px" title="Sélectionner plusieurs positions">
             ☑️ Sélectionner
           </button>
-          <button class="btn-secondary" onclick="showCSVHelp()" style="display:flex;align-items:center;gap:6px;font-size:13px" title="Importer tes positions depuis Trade Republic ou XTB">
+          <button class="btn-secondary" id="btn-import-pos" onclick="showCSVHelp()" style="display:flex;align-items:center;gap:6px;font-size:13px" title="Importer tes positions depuis Trade Republic ou XTB">
             📥 Importer mes positions
           </button>
-          <button class="btn-secondary" onclick="refreshPrices()" style="display:flex;align-items:center;gap:6px;font-size:13px">
+          <button class="btn-secondary" id="btn-prix-live" onclick="refreshPrices()" style="display:flex;align-items:center;gap:6px;font-size:13px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-3.6"/></svg>
             Prix live
           </button>
-          <button class="btn-add" onclick="nav('ajouter')">+ Ajouter</button>
+          <button class="btn-add" id="port-add-btn" onclick="nav('ajouter')">+ Ajouter</button>
         </div>
       </div>
       <div id="port-metrics"></div>
@@ -2110,6 +2114,7 @@ function heroStart(tab) {
 
         <!-- SUPPRESSION -->
         <div class="set-group" style="margin-top:28px">
+          <button type="button" class="set-row" onclick="resetMyAccount()"><div class="set-row-main"><div class="set-row-title">Réinitialiser mon compte</div><div class="set-row-sub">Efface placements, objectifs et transactions (garde le compte) — pour re-tester</div></div></button>
           <button type="button" class="set-row set-danger" onclick="deleteMyAccount()">
             <div class="set-row-main"><div class="set-row-title">Supprimer mon compte</div><div class="set-row-sub">Efface définitivement ton compte et toutes tes données</div></div>
           </button>
@@ -2141,12 +2146,12 @@ function heroStart(tab) {
       </div>
     </div>
 <script src="legal-docs.js?v=20261001180000"></script>
-<script src="app.js?v=20261004150000"></script>
+<script src="app.js?v=20261004300000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
-<script src="tab-hints.js?v=20261002150000"></script>
-<script src="push.js?v=20261001160000"></script>
-  <script src="applock.js?v=20261001160000"></script>
+<script src="tab-hints.js?v=20261004250000"></script>
+<script src="push.js?v=20261004170000"></script>
+  <script src="applock.js?v=20261004180000"></script>
 
 
   <!-- BOTTOM NAV MOBILE -->

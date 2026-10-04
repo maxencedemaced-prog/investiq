@@ -277,11 +277,7 @@ function showValidatedChart() {
         </div>
       </div>
 
-      ${positions.length === 0 ? `<div style="background:linear-gradient(135deg,#0f1f17,#0b1220);border:1px solid rgba(22,163,74,0.4);border-radius:16px;padding:16px;margin-bottom:14px">
-        <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:3px">💼 Tu as déjà des placements ?</div>
-        <div style="font-size:12.5px;color:rgba(255,255,255,0.65);margin-bottom:12px;line-height:1.45">Entre-les tous en quelques secondes. Ton score de santé et tes analyses s'activent dès que ton portefeuille est rempli.</div>
-        <button type="button" onclick="openQuickAdd('objectif')" class="kp-pulse" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(22,163,74,0.35)">⚡ Saisir mes placements<span class="kp-finger">👆</span></button>
-      </div>` : ''}
+      
 
       <!-- Le 1er mois (mois de création de l'objectif), l'investissement de départ passe en
            premier ; ensuite c'est le plan du mois qui est mis en avant. -->
@@ -820,6 +816,8 @@ function renderETFCards(etfs, containerEl, actions = []) {
   const text = isDark ? 'var(--color-text)' : '#09090b';
   const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
   const trackBg = isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f2';
+  const _planLines = [];
+  try { window._kpPlanLines = _planLines; } catch (e) {}
 
   containerEl.innerHTML = `
   <!-- EN-TÊTE RÉCAP -->
@@ -829,6 +827,11 @@ function renderETFCards(etfs, containerEl, actions = []) {
       ${montantCapital > 0 ? `<span style="background:${trackBg};padding:3px 9px;border-radius:7px;font-weight:700">Départ ${fmtK(montantCapital)}</span>` : ''}
       <span style="background:${trackBg};padding:3px 9px;border-radius:7px;font-weight:700">+${montantMensuel.toLocaleString('fr-FR')} €/mois</span>
     </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:2px 0 12px;flex-wrap:wrap">
+    <span style="font-size:11px;color:${sub}">Suivre le plan d'un coup :</span>
+    <button type="button" id="plan-addall-btn" onclick="addAllPlanFromObjectif(this)" style="display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border:none;border-radius:10px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(22,163,74,0.3)">⚡ Tout ajouter</button>
   </div>
 
   ${hasActions ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:2px 0 8px">🏛️ Poche ETF · ${100 - objStockPct}% du capital</div>` : ''}
@@ -843,6 +846,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
     const pctM = Math.round(pctM0 * share);
     const mCap = Math.round(montantCapital * pctC0 / 100 * share);
     const mMens = Math.round(montantMensuel * pctM0 / 100 * share);
+    try { _planLines.push({ ticker: e.ticker, name: e.name, type: isAction ? 'Action' : 'ETF', montant: mCap || mMens }); } catch (_e) {}
     const isSocle = !isAction && (e.role === 'socle' || idxInPool === 0);
     const sectionHeader = (isAction && idxInPool === 0)
       ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">📈 Poche actions · ${objStockPct}% du capital · ${actions.length} lignes pour diversifier</div>` : '';
@@ -884,6 +888,14 @@ function renderETFCards(etfs, containerEl, actions = []) {
   </div>
   <div style="font-size:10px;color:${sub};padding:0 2px">Répartition indicative basée sur ton profil — pas un conseil financier réglementé. Performances passées ≠ performances futures.</div>
   `;
+  try {
+    if (typeof positions !== 'undefined' && !positions.length && !localStorage.getItem('kp_tour_plan')) {
+      if ('IntersectionObserver' in window && containerEl) {
+        const _io = new IntersectionObserver((ents) => { if (ents.some(x => x.isIntersecting)) { _io.disconnect(); setTimeout(() => { try { showPlanTour(); } catch (e2) {} }, 400); } }, { threshold: 0.25 });
+        _io.observe(containerEl);
+      } else { setTimeout(() => { try { showPlanTour(); } catch (e2) {} }, 700); }
+    }
+  } catch (e) {}
 }
 
 // ===== PLAN COURT TERME =====
@@ -2415,7 +2427,7 @@ function recoActionsHTML(ticker, name, amount, type, dark) {
   const base = 'padding:6px 11px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap';
   return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">
     <button type="button" onclick="event.stopPropagation();openActionFromObjectif(${a})" style="${base};background:${dark ? 'rgba(255,255,255,0.08)' : '#f4f4f5'};border:1px solid ${dark ? 'rgba(255,255,255,0.14)' : '#e4e4e7'};color:${dark ? 'rgba(255,255,255,0.85)' : '#3f3f46'}">🔍 Analyser</button>
-    <button type="button" onclick="event.stopPropagation();addToPortfolioFromDecision('${jsArg(ticker)}',${Number(amount) || 0},'${jsArg(name)}','${jsArg(type || '')}')" style="${base};background:#16a34a;border:1px solid #16a34a;color:#fff">➕ Ajouter au portefeuille</button>
+    <button type="button" class="kp-line-add" onclick="event.stopPropagation();addToPortfolioFromDecision('${jsArg(ticker)}',${Number(amount) || 0},'${jsArg(name)}','${jsArg(type || '')}')" style="${base};background:#16a34a;border:1px solid #16a34a;color:#fff">➕ Ajouter au portefeuille</button>
   </div>`;
 }
 
@@ -2686,6 +2698,13 @@ let obProfileLevel = 'debutant';
 
 function obSelectProfile(level) {
   obProfileLevel = level;
+  try {
+    const toolLvl = (level === 'debutant' || level === 'curieux') ? 1 : (level === 'initie') ? 2 : 3;
+    localStorage.setItem('kp_level', String(toolLvl));
+    try { localStorage.setItem(kpAskedKey(), '1'); } catch {}
+    if (typeof currentUser !== 'undefined' && currentUser && typeof isDemo !== 'undefined' && !isDemo) { currentUser.user_metadata = Object.assign({}, currentUser.user_metadata || {}, { level: toolLvl }); if (typeof sb !== 'undefined') sb.auth.updateUser({ data: { level: toolLvl } }).catch(() => {}); }
+    if (typeof applyUserLevel === 'function') applyUserLevel();
+  } catch (e) {}
   document.getElementById('ob-profile-level').value = level;
   const p = OB_PROFILES[level];
 
@@ -2721,6 +2740,7 @@ function obSelectProfile(level) {
 function obKey() { return OB_KEY + (currentUser?.id ? '_' + currentUser.id : ''); }
 
 function showOnboarding(force) {
+  if (document.getElementById('onboarding-modal') && document.getElementById('onboarding-modal').style.display === 'flex') return;
   if (!force) {
     if (localStorage.getItem(obKey())) return;
     // Compte existant qui a déjà des positions (antérieur à ce changement) : pas de questionnaire.
@@ -4725,9 +4745,8 @@ function claimCaches(ownerId) {
 
 // Ouvre le panneau de notifications dès l'arrivée sur l'app (pas sur mobile : il y prend tout l'écran)
 function openNotifPanelByDefault() {
-  if (window.innerWidth < 768) return;
+  // On ne l'ouvre plus automatiquement (trop intrusif) : on prépare juste son contenu.
   try { renderNotifications(); } catch(e) {}
-  document.getElementById('notif-panel')?.classList.add('open');
 }
 
 // Parrainage : lien kapitaro.fr/?parrain=CODE mémorisé 30 jours, rattaché au compte après l'inscription
@@ -7046,6 +7065,7 @@ function nav(page, auto=false) {
   // Mémorise la page pour la restaurer si Chrome recharge l'onglet (Memory Saver)
   try { sessionStorage.setItem('iq_last_page', page); } catch {}
   try { if (page === 'sante') localStorage.setItem('kp_seen_sante', '1'); } catch {}
+  try { kpUnlockTool(page); } catch (e) {}
   if (!auto) { try { trackEvent('page_view', { page }); } catch(e) {} }
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -7079,6 +7099,10 @@ function nav(page, auto=false) {
 }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSettingsAccount();}catch(e){console.warn('account:',e);} try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderReferralCard();}catch(e){} try{renderPushCard();}catch(e){} try{renderLockCard();}catch(e){} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(auto); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
+  try {
+    if (page === 'objectif' && (typeof positions === 'undefined' || !positions.length)) setTimeout(() => showCursorHint('#plan-addall-btn', 'plan_addall'), 1300);
+    if (page === 'portfolio') setTimeout(() => { try { showPortfolioTour(); } catch (e) {} }, 700);
+  } catch (e) {}
 }
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -7288,7 +7312,7 @@ function renderNotificationList() {
   try {
     if (document.getElementById('kp-anim')) return;
     const st = document.createElement('style'); st.id = 'kp-anim';
-    st.textContent = '@keyframes kpPulseGlow{0%,100%{box-shadow:0 8px 24px rgba(22,163,74,0.35)}50%{box-shadow:0 10px 34px rgba(34,197,94,0.8)}}@keyframes kpFinger{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}.kp-pulse{animation:kpPulseGlow 1.6s ease-in-out infinite}.kp-finger{display:inline-block;animation:kpFinger 1s ease-in-out infinite;margin-left:6px}@keyframes kpScorePop{0%{transform:scale(0.6);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}.kp-scorepop{display:inline-block;animation:kpScorePop 0.7s cubic-bezier(0.16,1,0.3,1)}';
+    st.textContent = '@keyframes kpPulseGlow{0%,100%{box-shadow:0 8px 24px rgba(22,163,74,0.35)}50%{box-shadow:0 10px 34px rgba(34,197,94,0.8)}}@keyframes kpFinger{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}.kp-pulse{animation:kpPulseGlow 1.6s ease-in-out infinite}.kp-finger{display:inline-block;animation:kpFinger 1s ease-in-out infinite;margin-left:6px}@keyframes kpScorePop{0%{transform:scale(0.6);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}.kp-scorepop{display:inline-block;animation:kpScorePop 0.7s cubic-bezier(0.16,1,0.3,1)}@keyframes kpTap{0%{transform:scale(.5);opacity:.7}100%{transform:scale(1.7);opacity:0}}@keyframes kpBob{0%,100%{transform:translate(0,0)}50%{transform:translate(-3px,-3px)}}';
     document.head.appendChild(st);
   } catch (e) {}
 })();
@@ -7361,15 +7385,39 @@ const KP_LEVELS = {
 const KP_ALL_TOOLS = ['home', 'portfolio', 'sante', 'objectif', 'crise', 'news', 'decision', 'dca', 'depenses', 'ai', 'bilan'];
 
 function kpGetLevel() {
+  try { const m = currentUser && currentUser.user_metadata && currentUser.user_metadata.level; if (m >= 1 && m <= 3) return m; } catch {}
   try { const v = parseInt(localStorage.getItem('kp_level'), 10); if (v >= 1 && v <= 3) return v; } catch {}
   return 3;
 }
+function kpLevelChosen() {
+  try { const m = currentUser && currentUser.user_metadata && currentUser.user_metadata.level; if (m >= 1 && m <= 3) return true; } catch {}
+  try { if (localStorage.getItem('kp_level')) return true; } catch {}
+  return false;
+}
+function kpUnlockKey() { try { return 'kp_unlocked_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch (e) { return 'kp_unlocked_anon'; } }
+// Ouvrir un outil masqué par le niveau le débloque dans le menu (progression ludique)
+function kpUnlockTool(page) {
+  try {
+    if (!KP_ALL_TOOLS.includes(page)) return;
+    const cfg = KP_LEVELS[kpGetLevel()] || KP_LEVELS[3];
+    if (cfg.tools === 'all' || cfg.tools.includes(page)) return;
+    const u = JSON.parse(localStorage.getItem(kpUnlockKey()) || '[]');
+    if (u.includes(page)) return;
+    u.push(page);
+    localStorage.setItem(kpUnlockKey(), JSON.stringify(u));
+    applyUserLevel();
+    const names = { sante: 'Santé', depenses: 'Mes dépenses', crise: 'Scénario crise', dca: 'Simulateur DCA', decision: 'Aide décision', news: 'Actualités' };
+    showToast('🔓 ' + (names[page] || page) + ' ajouté à ton menu');
+  } catch (e) {}
+}
+function kpAskedKey() { try { return 'kp_level_asked_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch { return 'kp_level_asked_anon'; } }
 
 function applyUserLevel() {
   try {
     const lvl = kpGetLevel();
     const cfg = KP_LEVELS[lvl] || KP_LEVELS[3];
-    const allowed = cfg.tools === 'all' ? KP_ALL_TOOLS : cfg.tools;
+    const allowed = cfg.tools === 'all' ? KP_ALL_TOOLS.slice() : cfg.tools.slice();
+    try { const _u = JSON.parse(localStorage.getItem(kpUnlockKey()) || '[]'); if (Array.isArray(_u)) _u.forEach(t => { if (!allowed.includes(t)) allowed.push(t); }); } catch (e) {}
     KP_ALL_TOOLS.forEach(t => {
       const btn = document.getElementById('nav-' + t);
       if (btn) btn.style.display = allowed.includes(t) ? '' : 'none';
@@ -7382,8 +7430,8 @@ function applyUserLevel() {
 
 function kpSetLevel(l) {
   try { localStorage.setItem('kp_level', String(l)); } catch {}
-  try { localStorage.setItem('kp_level_asked', '1'); } catch {}
-  try { if (typeof isDemo !== 'undefined' && !isDemo && typeof currentUser !== 'undefined' && currentUser && typeof sb !== 'undefined') sb.auth.updateUser({ data: { level: l } }).catch(() => {}); } catch {}
+  try { localStorage.setItem(kpAskedKey(), '1'); } catch {}
+  try { if (typeof isDemo !== 'undefined' && !isDemo && typeof currentUser !== 'undefined' && currentUser && typeof sb !== 'undefined') { currentUser.user_metadata = Object.assign({}, currentUser.user_metadata || {}, { level: l }); sb.auth.updateUser({ data: { level: l } }).catch(() => {}); } } catch {}
   document.getElementById('kp-level-modal')?.remove();
   applyUserLevel();
   try { showToast('✓ Interface adaptée à ton niveau'); } catch {}
@@ -7391,15 +7439,15 @@ function kpSetLevel(l) {
 }
 
 function showLevelChooser(fromSettings) {
-  try { localStorage.setItem('kp_level_asked', '1'); } catch {}
+  try { localStorage.setItem(kpAskedKey(), '1'); } catch {}
   document.getElementById('kp-level-modal')?.remove();
-  const current = kpGetLevel();
+  const current = kpLevelChosen() ? kpGetLevel() : 0;
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.6)' : '#71717a', bord = dark ? 'rgba(255,255,255,0.12)' : '#e4e4e7';
   const card = (l) => {
     const c = KP_LEVELS[l];
     const on = l === current;
-    return `<button type="button" onclick="kpSetLevel(${l})" style="display:block;width:100%;text-align:left;padding:16px;border-radius:16px;margin-bottom:10px;cursor:pointer;font:inherit;background:${on ? 'linear-gradient(135deg,#0f1f17,#0b1220)' : (dark ? 'rgba(255,255,255,0.05)' : '#f9fafb')};border:1.5px solid ${on ? 'rgba(22,163,74,0.6)' : bord}">
+    return `<button type="button" onclick="kpSetLevel(${l})" style="display:block;width:100%;text-align:left;padding:16px;border-radius:16px;margin-bottom:10px;cursor:pointer;font:inherit;background:${on ? 'linear-gradient(135deg,#0f1f17,#0b1220)' : (dark ? 'rgba(255,255,255,0.05)' : '#f9fafb')};border:1.5px solid ${on ? 'rgba(22,163,74,0.6)' : bord}" onmouseover="if(!${on})this.style.borderColor='#16a34a'" onmouseout="if(!${on})this.style.borderColor='${bord}'">
       <div style="font-size:15px;font-weight:900;color:${on ? '#fff' : txt};margin-bottom:3px">${c.emoji} ${c.label}${on ? ' · actuel' : ''}</div>
       <div style="font-size:12.5px;color:${on ? 'rgba(255,255,255,0.72)' : sub};line-height:1.45">${c.desc}</div>
     </button>`;
@@ -7421,11 +7469,14 @@ function showLevelChooser(fromSettings) {
 // Demande le niveau une seule fois, à l'arrivée (sauf pendant l'onboarding objectif).
 function maybeAskLevel() {
   try {
-    if (localStorage.getItem('kp_level') || localStorage.getItem('kp_level_asked')) return;
+    if (kpLevelChosen()) return false;
+    if (localStorage.getItem(kpAskedKey())) return false;
     const ob = document.getElementById('onboarding-modal');
-    if (ob && ob.style.display === 'flex') return;
-    setTimeout(() => { try { if (!document.getElementById('kp-level-modal') && !localStorage.getItem('kp_level')) showLevelChooser(false); } catch {} }, 700);
-  } catch {}
+    if (ob && ob.style.display === 'flex') return false;
+    if (document.getElementById('kp-level-modal')) return true;
+    showLevelChooser(false);
+    return true;
+  } catch { return false; }
 }
 
 
@@ -7694,7 +7745,6 @@ async function renderHome() {
 
   document.getElementById('home-score').innerHTML = html;
   try { applyUserLevel(); } catch (e) {}
-  try { maybeAskLevel(); } catch (e) {}
   document.getElementById('home-alerts').innerHTML = '';
   document.getElementById('home-obj').innerHTML = '';
   // renderPlatforms() supprimé — déjà dans le donut chart
@@ -8321,6 +8371,16 @@ function openDecisionFromPos(name, action) {
   }, 50);
 }
 
+function markFieldError(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.border = '1.5px solid #ef4444';
+  el.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
+  const clear = () => { el.style.border = ''; el.style.boxShadow = ''; el.removeEventListener('input', clear); el.removeEventListener('change', clear); };
+  el.addEventListener('input', clear); el.addEventListener('change', clear);
+  try { el.focus(); } catch (e) {}
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+}
 async function addPos() {
   const name = document.getElementById('f-name').value.trim();
   const qty = parseFloat(document.getElementById('f-qty').value);
@@ -8332,10 +8392,10 @@ async function addPos() {
   const platform = document.getElementById('f-platform').value || 'Autre';
 
   // Validation avec messages clairs
-  if (!name) { showToast('⚠ Recherche et sélectionne une action'); return; }
-  if (isNaN(qty) || qty <= 0) { showToast('⚠ Indique une quantité valide'); return; }
-  if (isNaN(pru) || pru <= 0) { showToast('⚠ Indique ton prix de revient (PRU)'); return; }
-  if (isNaN(price) || price <= 0) { showToast('⚠ Indique le prix actuel'); return; }
+  if (!name) { showToast('⚠ Recherche et sélectionne une action'); markFieldError('f-search'); return false; }
+  if (isNaN(qty) || qty <= 0) { showToast('⚠ Indique une quantité valide'); markFieldError('f-qty'); return false; }
+  if (isNaN(pru) || pru <= 0) { showToast('⚠ Indique ton prix de revient (PRU)'); markFieldError('f-pru'); return false; }
+  if (isNaN(price) || price <= 0) { showToast('⚠ Indique le prix actuel'); markFieldError('f-price'); return false; }
 
   const pos = { name, qty, pru, price, type, sector, platform, alert_price: alertPrice };
 
@@ -8352,14 +8412,14 @@ async function addPos() {
       const { error } = await sb.from('positions')
         .update({ qty: existing.qty, pru: existing.pru, price: existing.price, alert_price: existing.alert_price })
         .eq('id', existing.id);
-      if (error) { showToast('Erreur: ' + error.message); return; }
+      if (error) { showToast('Erreur: ' + error.message); return false; }
       await addTransaction(name, 'achat', qty, pru, 'Renforcement de position');
       trackEvent('position_added', { type, renforcement: true });
     }
     acClear();
     nav('portfolio');
     showToast(`✓ ${displayName(name)} renforcé — ${existing.qty} parts, PRU moyen ${existing.pru.toFixed(2)} €`);
-    return;
+    return true;
   }
 
   if (isDemo) {
@@ -8367,11 +8427,11 @@ async function addPos() {
     acClear();
     nav('portfolio');
     showToast('✓ Position ajoutée !');
-    return;
+    return true;
   }
 
   const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
-  if (error) { showToast('Erreur: ' + error.message); return; }
+  if (error) { showToast('Erreur: ' + error.message); return false; }
   if (data) {
     positions.push(data);
     await addTransaction(name, 'achat', qty, pru, 'Ouverture de position');
@@ -8379,6 +8439,7 @@ async function addPos() {
     acClear();
     nav('portfolio');
     showToast('✓ ' + name + ' ajouté au portefeuille !');
+    return true;
   }
 }
 async function delPos(id) {
@@ -9930,6 +9991,132 @@ let qaSelected = null, qaCount = 0, qaReturnTo = 'objectif', qaSearchTimer = nul
 
 function qaJson(o) { return JSON.stringify(o).replace(/"/g, '&quot;'); }
 
+// Curseur animé qui montre où cliquer (coach mark réutilisable sur n'importe quelle page).
+// Tour guidé du plan : la page se grise, un curseur va sur "Tout ajouter" puis sur une ligne, avec des légendes.
+// Visite guidée générique : le curseur passe sur une liste de cibles, chacune avec sa légende centrée.
+function kpTour(steps, key) {
+  try { if (key && localStorage.getItem('kp_hint_' + key)) return; } catch (e) {}
+  steps = (steps || []).filter(s => s && document.querySelector(s.sel));
+  if (!steps.length) return;
+  try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {}
+  document.getElementById('kp-tour')?.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'kp-tour';
+  wrap.innerHTML = `
+    <div id="kp-tour-ov" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9100;transition:opacity .35s"></div>
+    <div id="kp-tour-cur" style="position:fixed;z-index:9102;pointer-events:none;transition:left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)">
+      <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
+      <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
+    </div>
+    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:40%;display:flex;justify-content:center;padding:0 16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
+  document.body.appendChild(wrap);
+  const cur = document.getElementById('kp-tour-cur');
+  const tip = document.getElementById('kp-tour-tip');
+  const lift = (el) => { try { if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; } catch (e) {} };
+  const moveTo = (el, legend) => {
+    if (!el || !cur) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      cur.style.left = (r.left + r.width * 0.5) + 'px';
+      cur.style.top = (r.top + r.height * 0.5) + 'px';
+      lift(el);
+      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; const _th = (_s && _s.getBoundingClientRect().height) || 50; let _top = r.top - _th - 28; if (_top < 12) _top = r.bottom + 28; if (_top + _th > window.innerHeight - 12) _top = Math.max(12, window.innerHeight - _th - 12); tip.style.top = _top + 'px'; tip.style.opacity = '1'; }
+    }, 650);
+  };
+  const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => document.getElementById('kp-tour')?.remove(), 400); };
+  document.getElementById('kp-tour-ov').addEventListener('click', end);
+  try { cur.style.transition = 'none'; cur.style.left = (window.innerWidth / 2) + 'px'; cur.style.top = (window.innerHeight / 2) + 'px'; void cur.offsetWidth; cur.style.transition = 'left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)'; } catch (e) {}
+  let i = 0;
+  const run = () => {
+    if (i >= steps.length) { setTimeout(end, 1800); return; }
+    const s = steps[i];
+    const el = document.querySelector(s.sel);
+    const _rr = el ? el.getBoundingClientRect() : null;
+    i++;
+    if (!_rr || _rr.width === 0 || _rr.height === 0) { run(); return; }
+    moveTo(el, s.legend);
+    setTimeout(run, 2600);
+  };
+  run();
+}
+
+function showPortfolioTour() {
+  if (document.getElementById('tab-hint')) { showPortfolioTour._w = (showPortfolioTour._w || 0) + 1; if (showPortfolioTour._w < 40) setTimeout(showPortfolioTour, 500); return; }
+  kpTour([
+    { sel: '#port-add-btn', legend: 'Ajoute une action ou un ETF à ton portefeuille' },
+    { sel: '#btn-import-pos', legend: 'Importe ton relevé de courtier (PDF, Excel ou CSV)' },
+    { sel: '#btn-prix-live', legend: 'Mets à jour les prix en direct' },
+    { sel: '#btn-select-mode', legend: 'Sélectionne plusieurs lignes pour les gérer ensemble' },
+  ], 'tour_portfolio');
+}
+
+function showGoToPortfolioHint() {
+  const cand = ['#bnav-portfolio', '#nav-portfolio'];
+  let sel = '#nav-portfolio';
+  for (const s of cand) { const el = document.querySelector(s); if (el) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) { sel = s; break; } } }
+  kpTour([{ sel: sel, legend: 'Va voir les actions que tu as rentrées dans ton portefeuille' }], 'goto_portfolio');
+}
+function showPlanTour() {
+  try { if (localStorage.getItem('kp_tour_plan')) return; } catch (e) {}
+  const allBtn = document.getElementById('plan-addall-btn');
+  if (!allBtn) return;
+  try { localStorage.setItem('kp_tour_plan', '1'); } catch (e) {}
+  document.getElementById('kp-tour')?.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'kp-tour';
+  wrap.innerHTML = `
+    <div id="kp-tour-ov" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9100;transition:opacity .35s"></div>
+    <div id="kp-tour-cur" style="position:fixed;z-index:9102;pointer-events:none;transition:left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)">
+      <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
+      <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
+    </div>
+    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:40%;display:flex;justify-content:center;padding:0 16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
+  document.body.appendChild(wrap);
+  const cur = document.getElementById('kp-tour-cur');
+  const tip = document.getElementById('kp-tour-tip');
+  const lift = (el) => { try { if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; } catch (e) {} };
+  const moveTo = (el, legend) => {
+    if (!el || !cur) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      cur.style.left = (r.left + r.width * 0.5) + 'px';
+      cur.style.top = (r.top + r.height * 0.5) + 'px';
+      lift(el);
+      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; const _th = (_s && _s.getBoundingClientRect().height) || 50; let _top = r.top - _th - 28; if (_top < 12) _top = r.bottom + 28; if (_top + _th > window.innerHeight - 12) _top = Math.max(12, window.innerHeight - _th - 12); tip.style.top = _top + 'px'; tip.style.opacity = '1'; }
+    }, 650);
+  };
+  const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => { document.getElementById('kp-tour')?.remove(); }, 400); };
+  document.getElementById('kp-tour-ov').addEventListener('click', end);
+  try { cur.style.transition = 'none'; cur.style.left = (window.innerWidth / 2) + 'px'; cur.style.top = (window.innerHeight / 2) + 'px'; void cur.offsetWidth; cur.style.transition = 'left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)'; } catch (e) {}
+  moveTo(allBtn, 'Ajouter toutes les positions de votre plan d\'un coup');
+  setTimeout(() => { const line = document.querySelector('.kp-line-add'); if (line) moveTo(line, 'ou les ajouter une par une'); }, 3000);
+  setTimeout(end, 6800);
+}
+
+function showCursorHint(selector, key, opts) {
+  opts = opts || {};
+  try { if (key && localStorage.getItem('kp_hint_' + key)) return; } catch (e) {}
+  const el = document.querySelector(selector);
+  if (!el) { const _n = opts._tries || 0; if (_n < 6) setTimeout(() => showCursorHint(selector, key, Object.assign({}, opts, { _tries: _n + 1 })), 1000); return; }
+  const r = el.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return;
+  document.getElementById('kp-cursor-hint')?.remove();
+  const hint = document.createElement('div');
+  hint.id = 'kp-cursor-hint';
+  hint.style.cssText = 'position:fixed;z-index:9000;pointer-events:none;transition:opacity .3s;width:48px;height:48px';
+  hint.innerHTML = '<span style="position:absolute;left:2px;top:2px;width:34px;height:34px;border-radius:50%;background:rgba(22,163,74,0.45);animation:kpTap 1.1s ease-out infinite"></span><svg width="30" height="30" viewBox="0 0 24 24" style="position:absolute;left:8px;top:8px;animation:kpBob 1.1s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.45))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+  document.body.appendChild(hint);
+  const place = () => { const rr = el.getBoundingClientRect(); hint.style.left = (rr.left + rr.width * 0.5) + 'px'; hint.style.top = (rr.top + rr.height * 0.55) + 'px'; };
+  place();
+  const onMove = () => place();
+  window.addEventListener('scroll', onMove, true); window.addEventListener('resize', onMove);
+  const done = () => { try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {} window.removeEventListener('scroll', onMove, true); window.removeEventListener('resize', onMove); hint.remove(); };
+  try { el.addEventListener('click', done, { once: true }); } catch (e) {}
+  setTimeout(() => { hint.style.opacity = '0'; setTimeout(done, 300); }, opts.duration || 8000);
+}
+
 function openQuickAdd(returnTo) {
   qaReturnTo = returnTo || 'objectif';
   qaSelected = null; qaCount = 0;
@@ -9982,7 +10169,7 @@ function openQuickAdd(returnTo) {
         </div>
         <div id="qa-list" style="margin-top:16px"></div>
       </div>
-      <div style="padding:12px 18px;border-top:1px solid ${bord};display:flex;gap:10px;align-items:center">
+      <div style="padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid ${bord};display:flex;gap:10px;align-items:center">
         <div id="qa-counter" style="font-size:12.5px;color:${sub};flex:1">Aucun placement ajouté pour l'instant</div>
         <button type="button" onclick="closeQuickAdd()" style="padding:12px 22px;border:none;border-radius:12px;background:${dark ? 'rgba(255,255,255,0.12)' : '#1c1c1e'};color:#fff;font-size:14px;font-weight:800;cursor:pointer">Terminer</button>
       </div>
@@ -10159,6 +10346,183 @@ function qaConfetti() {
     } catch {}
     setTimeout(() => c.remove(), dur + 120);
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AJOUTER TOUT LE PLAN DE L'OBJECTIF EN UNE FOIS
+// Le bouton au-dessus des lignes du plan ajoute toutes les actions/ETF proposés,
+// aux montants de l'objectif, puis revient à l'objectif.
+// ═══════════════════════════════════════════════════════════════════════════
+async function addAllPlanFromObjectif(btn) {
+  const lines = (window._kpPlanLines || []).filter(l => l && l.ticker && l.montant > 0);
+  if (!lines.length) { showToast('Aucune ligne de plan à ajouter pour le moment'); return; }
+  openPlanReview(lines);
+}
+
+// Écran de vérification : on ajuste le montant de chaque ligne et on choisit la plateforme avant d'ajouter.
+async function kpPriceFor(ticker) {
+  try { const res = await fetch('/api/prices?symbols=' + encodeURIComponent(ticker)); const d = await res.json(); return (d.quotes && d.quotes[0] && d.quotes[0].price) || 0; } catch (e) { return 0; }
+}
+async function kpFindPlanPrice(l) {
+  let p = await kpPriceFor(l.ticker);
+  if (p) return p;
+  // Prix introuvable pour ce symbole : on retrouve le bon via le nom, puis on reprend son prix.
+  try {
+    const res = await fetch('/api/search?q=' + encodeURIComponent(l.name || l.ticker));
+    const d = await res.json();
+    const cands = (d.results || []).slice(0, 5);
+    for (const c of cands) {
+      if (!c.ticker || c.ticker.toUpperCase() === (l.ticker || '').toUpperCase()) continue;
+      const p2 = await kpPriceFor(c.ticker);
+      if (p2) { l.ticker = c.ticker; return p2; }
+    }
+  } catch (e) {}
+  return 0;
+}
+function openPlanReview(lines) {
+  document.getElementById('pr-modal')?.remove();
+  window._prLines = lines.map(l => ({ ticker: l.ticker, name: l.name, type: l.type || 'ETF', montant: l.montant, price: 0 }));
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.6)' : '#71717a', bord = dark ? 'rgba(255,255,255,0.14)' : '#e4e4e7', field = dark ? 'rgba(255,255,255,0.06)' : '#f9fafb';
+  const rows = window._prLines.map((l, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid ${bord}">
+      <input type="checkbox" id="pr-chk-${i}" checked style="width:18px;height:18px;accent-color:#16a34a;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800;color:${txt};line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${_escHtml(l.name || l.ticker)}</div>
+        <div style="font-size:11px;color:${sub}">${l.ticker}${l.type ? ' · ' + l.type : ''} · <span id="pr-qty-${i}">calcul…</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+        <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:${sub};justify-content:flex-end">Montant
+          <input type="number" step="any" inputmode="decimal" id="pr-amt-${i}" value="${Math.round(l.montant)}" oninput="prRecalc(${i})" style="width:68px;padding:7px;border-radius:8px;border:1px solid ${bord};background:${field};color:${txt};font-size:13px;font-family:inherit;text-align:right;box-sizing:border-box">€</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:${sub};justify-content:flex-end">Prix
+          <input type="number" step="any" inputmode="decimal" id="pr-price-${i}" placeholder="—" oninput="prRecalc(${i})" style="width:68px;padding:7px;border-radius:8px;border:1px solid ${bord};background:${field};color:${txt};font-size:13px;font-family:inherit;text-align:right;box-sizing:border-box">€</label>
+      </div>
+    </div>`).join('');
+  const o = document.createElement('div');
+  o.id = 'pr-modal';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10052;display:flex;align-items:flex-end;justify-content:center';
+  o.innerHTML = `
+    <div style="background:${surf};width:100%;max-width:560px;border-radius:22px 22px 0 0;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 -10px 40px rgba(0,0,0,0.3)">
+      <div style="padding:18px 18px 10px;border-bottom:1px solid ${bord}">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:17px;font-weight:900;color:${txt}">Vérifie avant d'ajouter</div>
+          <button type="button" onclick="document.getElementById('pr-modal').remove()" style="background:none;border:none;color:${sub};font-size:22px;cursor:pointer;line-height:1">✕</button>
+        </div>
+        <div style="font-size:12.5px;color:${sub};margin-top:2px;line-height:1.4">Ajuste les montants et choisis où tu as acheté (ou vas acheter). Les quantités sont calculées au prix du jour.</div>
+      </div>
+      <div style="padding:14px 18px;overflow-y:auto;flex:1">
+        <label style="font-size:11px;color:${sub};font-weight:700">Plateforme</label>
+        <select id="pr-platform" onchange="prUpdatePlatLabel()" style="width:100%;margin:3px 0 4px;padding:11px;border-radius:10px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit">${platformOptionsHTML('Trade Republic')}</select>
+        ${rows}
+      </div>
+      <div style="padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid ${bord};display:flex;flex-direction:column;gap:8px">
+        <button type="button" onclick="prConfirm(this,false)" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer">Ajouter à mon portefeuille</button>
+        <button type="button" id="pr-open-btn" onclick="prConfirm(this,true)" style="width:100%;padding:12px;border-radius:12px;border:1px solid ${bord};background:transparent;color:${txt};font-size:14px;font-weight:700;cursor:pointer">Ajouter + ouvrir <span id="pr-plat-label">Trade Republic</span> →</button>
+      </div>
+    </div>`;
+  document.body.appendChild(o);
+  try { prUpdatePlatLabel(); } catch (e) {}
+  window._prLines.forEach(async (l, i) => {
+    l.price = await kpFindPlanPrice(l);
+    try { const pin = document.getElementById('pr-price-' + i); if (pin && l.price) pin.value = l.price.toFixed(2); } catch (e) {}
+    prRecalc(i);
+  });
+}
+
+function prUpdatePlatLabel() {
+  try {
+    const sel = document.getElementById('pr-platform');
+    const lbl = document.getElementById('pr-plat-label');
+    const btn = document.getElementById('pr-open-btn');
+    const v = sel ? sel.value : 'Autre';
+    if (lbl) lbl.textContent = v;
+    if (btn) btn.style.display = (v === 'Autre') ? 'none' : '';
+  } catch (e) {}
+}
+function prRecalc(i) {
+  const span = document.getElementById('pr-qty-' + i);
+  const pin = document.getElementById('pr-price-' + i);
+  if (!span) return;
+  const amt = parseFloat(document.getElementById('pr-amt-' + i)?.value) || 0;
+  const price = parseFloat(pin && pin.value) || 0;
+  if (!price) {
+    span.innerHTML = '<span style="color:#f59e0b;font-weight:700">⚠️ prix introuvable — saisis-le à droite</span>';
+    if (pin) { pin.style.borderColor = '#f59e0b'; pin.style.background = 'rgba(245,158,11,0.12)'; pin.placeholder = '⚠️'; }
+    return;
+  }
+  if (pin) { pin.style.borderColor = ''; pin.style.background = ''; }
+  if (amt <= 0) { span.textContent = '—'; return; }
+  const qty = Math.round((amt / price) * 10000) / 10000;
+  span.textContent = qty + ' part' + (qty > 1 ? 's' : '') + ' à ' + price.toFixed(2) + ' €';
+}
+
+async function prConfirm(btn, openAfter) {
+  const lines = window._prLines || [];
+  const platform = document.getElementById('pr-platform')?.value || 'Autre';
+  const orig = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = '⏳ Ajout en cours…'; }
+  let added = 0, skipped = 0;
+  try {
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      const chk = document.getElementById('pr-chk-' + i);
+      if (chk && !chk.checked) continue;
+      const amt = parseFloat(document.getElementById('pr-amt-' + i)?.value) || 0;
+      const price = parseFloat(document.getElementById('pr-price-' + i)?.value) || l.price || 0;
+      if (amt <= 0 || !price) { skipped++; continue; }
+      l.price = price;
+      const qty = Math.round((amt / price) * 10000) / 10000;
+      if (qty <= 0) { skipped++; continue; }
+      const existing = positions.find(p => (p.name || '').toUpperCase() === l.ticker.toUpperCase());
+      if (existing) { skipped++; continue; }
+      const pos = { name: l.ticker, qty, pru: Math.round(price * 100) / 100, price: price, type: l.type || 'ETF', sector: '', platform, alert_price: null };
+      if (typeof isDemo !== 'undefined' && isDemo) { positions.push({ id: 'd' + Date.now() + '_' + i, ...pos }); added++; }
+      else if (currentUser) {
+        const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
+        if (!error && data) { positions.push(data); added++; try { await addTransaction(l.ticker, 'achat', qty, l.price, 'Plan de l\'objectif'); } catch {} }
+        else { skipped++; }
+      } else { positions.push({ id: 'local_' + Date.now() + '_' + i, ...pos }); added++; }
+    }
+    try { trackEvent('plan_added_all', { count: added }); } catch {}
+    document.getElementById('pr-modal')?.remove();
+    try { renderPortfolio(); } catch {}
+    try { renderHome(); } catch {}
+    if (added > 0) {
+      try { qaConfetti(); } catch {}
+      showToast('🎉 ' + added + ' ligne' + (added > 1 ? 's' : '') + ' ajoutée' + (added > 1 ? 's' : '') + ' !');
+      if (openAfter && platform !== 'Autre') { try { openOnPlatform(platform, (lines[0] && lines[0].ticker) || ''); } catch {} }
+      try { nav('objectif'); } catch {}
+      try { setTimeout(() => { try { showGoToPortfolioHint(); } catch (e) {} }, 1200); } catch (e) {}
+    } else {
+      showToast('Rien ajouté — vérifie les montants.');
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = orig || 'Ajouter à mon portefeuille'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RÉINITIALISER LE COMPTE — pour re-tester le parcours sans recréer un compte.
+// Efface placements / objectifs / transactions et les réglages locaux ; garde le compte.
+// ═══════════════════════════════════════════════════════════════════════════
+async function resetMyAccount() {
+  if (typeof isDemo !== 'undefined' && isDemo) { showToast('Indisponible en mode démo'); return; }
+  if (!currentUser) { showToast('Tu dois être connecté'); return; }
+  if (!confirm('Réinitialiser ton compte ?\n\nCela efface tes placements, objectifs et transactions. Ton compte et ton e-mail sont conservés. Utile pour re-tester le parcours depuis le début.')) return;
+  try {
+    await sb.from('positions').delete().eq('user_id', currentUser.id);
+    await sb.from('transactions').delete().eq('user_id', currentUser.id);
+    await sb.from('objectives').delete().eq('user_id', currentUser.id);
+  } catch (e) { showToast('Erreur : ' + (e.message || e)); return; }
+  try {
+    const kill = [];
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && (/^iq_/.test(k) || /^kp_/.test(k) || /etf_plan|court_actions/i.test(k))) kill.push(k); }
+    kill.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  } catch {}
+  try { await sb.auth.updateUser({ data: { level: null, seen_tabs: [] } }); } catch {}
+  showToast('✓ Compte réinitialisé — rechargement…');
+  setTimeout(() => { try { location.reload(); } catch {} }, 900);
 }
 
 
@@ -10558,7 +10922,7 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
       window._aiQuotaHitAt = Date.now();
       updateAIQuotaBadge();
       trackEvent('ai_quota_reached');
-      if (!window._aiQuotaModalAt || Date.now() - window._aiQuotaModalAt > 30 * 60000) {
+      if (opts && opts.gate && (!window._aiQuotaModalAt || Date.now() - window._aiQuotaModalAt > 30 * 60000)) {
         window._aiQuotaModalAt = Date.now();
         showAIQuotaModal();
       }
@@ -11523,6 +11887,7 @@ function plansComparisonHTML(lapsed) {
 // opts (facultatif) : { feature, subtitle, benefits } → bandeau de contexte quand la fenêtre
 // s'ouvre parce qu'une fonctionnalité est réservée à Premium (ou que le quota IA est atteint).
 function showPlansModal(opts) {
+  try { const _ob = document.getElementById('onboarding-modal'); if (_ob && _ob.style.display === 'flex') return; } catch (e) {}
   trackEvent('paywall_view', { feature: (opts && opts.feature) || 'offre' });
   document.getElementById('premium-gate')?.remove();
   document.getElementById('plans-modal')?.remove();
@@ -12064,8 +12429,8 @@ function updateAddButtons() {
 async function addPosAndOpenPlatform() {
   const platform = document.getElementById('f-platform')?.value || 'Autre';
   const ticker = document.getElementById('f-name')?.value || document.getElementById('f-search')?.value || '';
-  await addPos();
-  if (platform !== 'Autre' && ticker) {
+  const _ok = await addPos();
+  if (_ok && platform !== 'Autre' && ticker) {
     setTimeout(() => openOnPlatform(platform, ticker), 400);
   }
 }
@@ -12290,7 +12655,7 @@ RÈGLES TECHNIQUES :
   const fullPrompt = `${ctx}\n=== HISTORIQUE ===\n${histCtx}\n\n=== QUESTION ===\n${q}`;
 
   try {
-    const r = await callClaude(fullPrompt, systemPrompt);
+    const r = await callClaude(fullPrompt, systemPrompt, undefined, undefined, { gate: true });
     chatHistory.push({ role: 'assistant', content: r });
     saveChatHistory();
 
