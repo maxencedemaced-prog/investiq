@@ -7065,6 +7065,7 @@ function nav(page, auto=false) {
   // Mémorise la page pour la restaurer si Chrome recharge l'onglet (Memory Saver)
   try { sessionStorage.setItem('iq_last_page', page); } catch {}
   try { if (page === 'sante') localStorage.setItem('kp_seen_sante', '1'); } catch {}
+  try { kpUnlockTool(page); } catch (e) {}
   if (!auto) { try { trackEvent('page_view', { page }); } catch(e) {} }
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -7393,13 +7394,30 @@ function kpLevelChosen() {
   try { if (localStorage.getItem('kp_level')) return true; } catch {}
   return false;
 }
+function kpUnlockKey() { try { return 'kp_unlocked_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch (e) { return 'kp_unlocked_anon'; } }
+// Ouvrir un outil masqué par le niveau le débloque dans le menu (progression ludique)
+function kpUnlockTool(page) {
+  try {
+    if (!KP_ALL_TOOLS.includes(page)) return;
+    const cfg = KP_LEVELS[kpGetLevel()] || KP_LEVELS[3];
+    if (cfg.tools === 'all' || cfg.tools.includes(page)) return;
+    const u = JSON.parse(localStorage.getItem(kpUnlockKey()) || '[]');
+    if (u.includes(page)) return;
+    u.push(page);
+    localStorage.setItem(kpUnlockKey(), JSON.stringify(u));
+    applyUserLevel();
+    const names = { sante: 'Santé', depenses: 'Mes dépenses', crise: 'Scénario crise', dca: 'Simulateur DCA', decision: 'Aide décision', news: 'Actualités' };
+    showToast('🔓 ' + (names[page] || page) + ' ajouté à ton menu');
+  } catch (e) {}
+}
 function kpAskedKey() { try { return 'kp_level_asked_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch { return 'kp_level_asked_anon'; } }
 
 function applyUserLevel() {
   try {
     const lvl = kpGetLevel();
     const cfg = KP_LEVELS[lvl] || KP_LEVELS[3];
-    const allowed = cfg.tools === 'all' ? KP_ALL_TOOLS : cfg.tools;
+    const allowed = cfg.tools === 'all' ? KP_ALL_TOOLS.slice() : cfg.tools.slice();
+    try { const _u = JSON.parse(localStorage.getItem(kpUnlockKey()) || '[]'); if (Array.isArray(_u)) _u.forEach(t => { if (!allowed.includes(t)) allowed.push(t); }); } catch (e) {}
     KP_ALL_TOOLS.forEach(t => {
       const btn = document.getElementById('nav-' + t);
       if (btn) btn.style.display = allowed.includes(t) ? '' : 'none';
