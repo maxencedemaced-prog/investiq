@@ -820,6 +820,8 @@ function renderETFCards(etfs, containerEl, actions = []) {
   const text = isDark ? 'var(--color-text)' : '#09090b';
   const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
   const trackBg = isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f2';
+  const _planLines = [];
+  try { window._kpPlanLines = _planLines; } catch (e) {}
 
   containerEl.innerHTML = `
   <!-- EN-TÊTE RÉCAP -->
@@ -830,6 +832,9 @@ function renderETFCards(etfs, containerEl, actions = []) {
       <span style="background:${trackBg};padding:3px 9px;border-radius:7px;font-weight:700">+${montantMensuel.toLocaleString('fr-FR')} €/mois</span>
     </div>
   </div>
+
+  <button type="button" onclick="addAllPlanFromObjectif(this)" class="kp-pulse" style="width:100%;margin:2px 0 14px;padding:14px;border:none;border-radius:13px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:14.5px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(22,163,74,0.35)">⚡ Tout ajouter à mon portefeuille</button>
+  <div style="font-size:11px;color:${sub};text-align:center;margin:-8px 0 14px">Ajoute d'un coup les lignes ci-dessous aux montants proposés. Tu pourras tout modifier ensuite.</div>
 
   ${hasActions ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:2px 0 8px">🏛️ Poche ETF · ${100 - objStockPct}% du capital</div>` : ''}
   ${[...etfs.map(e => ({ e, kind: 'etf', share: etfShare })), ...actions.map(e => ({ e, kind: 'action', share: stockShare }))].map(({ e, kind, share }, i, all) => {
@@ -843,6 +848,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
     const pctM = Math.round(pctM0 * share);
     const mCap = Math.round(montantCapital * pctC0 / 100 * share);
     const mMens = Math.round(montantMensuel * pctM0 / 100 * share);
+    try { _planLines.push({ ticker: e.ticker, name: e.name, type: isAction ? 'Action' : 'ETF', montant: mCap || mMens }); } catch (_e) {}
     const isSocle = !isAction && (e.role === 'socle' || idxInPool === 0);
     const sectionHeader = (isAction && idxInPool === 0)
       ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">📈 Poche actions · ${objStockPct}% du capital · ${actions.length} lignes pour diversifier</div>` : '';
@@ -4874,7 +4880,7 @@ async function initApp(user) {
     })); } catch {}
   }
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
-  setTimeout(() => showOnboarding(), 500);
+  setTimeout(() => { try { if (!maybeAskLevel()) showOnboarding(); } catch (e) { try { showOnboarding(); } catch {} } }, 500);
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
@@ -7361,9 +7367,16 @@ const KP_LEVELS = {
 const KP_ALL_TOOLS = ['home', 'portfolio', 'sante', 'objectif', 'crise', 'news', 'decision', 'dca', 'depenses', 'ai', 'bilan'];
 
 function kpGetLevel() {
+  try { const m = currentUser && currentUser.user_metadata && currentUser.user_metadata.level; if (m >= 1 && m <= 3) return m; } catch {}
   try { const v = parseInt(localStorage.getItem('kp_level'), 10); if (v >= 1 && v <= 3) return v; } catch {}
   return 3;
 }
+function kpLevelChosen() {
+  try { const m = currentUser && currentUser.user_metadata && currentUser.user_metadata.level; if (m >= 1 && m <= 3) return true; } catch {}
+  try { if (localStorage.getItem('kp_level')) return true; } catch {}
+  return false;
+}
+function kpAskedKey() { try { return 'kp_level_asked_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch { return 'kp_level_asked_anon'; } }
 
 function applyUserLevel() {
   try {
@@ -7382,16 +7395,17 @@ function applyUserLevel() {
 
 function kpSetLevel(l) {
   try { localStorage.setItem('kp_level', String(l)); } catch {}
-  try { localStorage.setItem('kp_level_asked', '1'); } catch {}
-  try { if (typeof isDemo !== 'undefined' && !isDemo && typeof currentUser !== 'undefined' && currentUser && typeof sb !== 'undefined') sb.auth.updateUser({ data: { level: l } }).catch(() => {}); } catch {}
+  try { localStorage.setItem(kpAskedKey(), '1'); } catch {}
+  try { if (typeof isDemo !== 'undefined' && !isDemo && typeof currentUser !== 'undefined' && currentUser && typeof sb !== 'undefined') { currentUser.user_metadata = Object.assign({}, currentUser.user_metadata || {}, { level: l }); sb.auth.updateUser({ data: { level: l } }).catch(() => {}); } } catch {}
   document.getElementById('kp-level-modal')?.remove();
   applyUserLevel();
   try { showToast('✓ Interface adaptée à ton niveau'); } catch {}
   try { nav('home'); } catch {}
+  try { setTimeout(() => { try { showOnboarding(); } catch {} }, 350); } catch {}
 }
 
 function showLevelChooser(fromSettings) {
-  try { localStorage.setItem('kp_level_asked', '1'); } catch {}
+  try { localStorage.setItem(kpAskedKey(), '1'); } catch {}
   document.getElementById('kp-level-modal')?.remove();
   const current = kpGetLevel();
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -7421,11 +7435,14 @@ function showLevelChooser(fromSettings) {
 // Demande le niveau une seule fois, à l'arrivée (sauf pendant l'onboarding objectif).
 function maybeAskLevel() {
   try {
-    if (localStorage.getItem('kp_level') || localStorage.getItem('kp_level_asked')) return;
+    if (kpLevelChosen()) return false;
+    if (localStorage.getItem(kpAskedKey())) return false;
     const ob = document.getElementById('onboarding-modal');
-    if (ob && ob.style.display === 'flex') return;
-    setTimeout(() => { try { if (!document.getElementById('kp-level-modal') && !localStorage.getItem('kp_level')) showLevelChooser(false); } catch {} }, 700);
-  } catch {}
+    if (ob && ob.style.display === 'flex') return false;
+    if (document.getElementById('kp-level-modal')) return true;
+    showLevelChooser(false);
+    return true;
+  } catch { return false; }
 }
 
 
@@ -7694,7 +7711,6 @@ async function renderHome() {
 
   document.getElementById('home-score').innerHTML = html;
   try { applyUserLevel(); } catch (e) {}
-  try { maybeAskLevel(); } catch (e) {}
   document.getElementById('home-alerts').innerHTML = '';
   document.getElementById('home-obj').innerHTML = '';
   // renderPlatforms() supprimé — déjà dans le donut chart
@@ -10159,6 +10175,77 @@ function qaConfetti() {
     } catch {}
     setTimeout(() => c.remove(), dur + 120);
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AJOUTER TOUT LE PLAN DE L'OBJECTIF EN UNE FOIS
+// Le bouton au-dessus des lignes du plan ajoute toutes les actions/ETF proposés,
+// aux montants de l'objectif, puis revient à l'objectif.
+// ═══════════════════════════════════════════════════════════════════════════
+async function addAllPlanFromObjectif(btn) {
+  const lines = (window._kpPlanLines || []).filter(l => l && l.ticker && l.montant > 0);
+  if (!lines.length) { showToast('Aucune ligne de plan à ajouter pour le moment'); return; }
+  if (!confirm('Ajouter les ' + lines.length + ' ligne(s) du plan à ton portefeuille, avec les montants proposés ?')) return;
+  const orig = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = '⏳ Ajout en cours…'; }
+  let added = 0, skipped = 0;
+  try {
+    for (const l of lines) {
+      let price = 0;
+      try { const res = await fetch('/api/prices?symbols=' + encodeURIComponent(l.ticker)); const d = await res.json(); price = (d.quotes && d.quotes[0] && d.quotes[0].price) || 0; } catch {}
+      if (!price) { skipped++; continue; }
+      const qty = Math.round((l.montant / price) * 10000) / 10000;
+      if (qty <= 0) { skipped++; continue; }
+      const existing = positions.find(p => (p.name || '').toUpperCase() === l.ticker.toUpperCase());
+      if (existing) { skipped++; continue; }
+      const pos = { name: l.ticker, qty, pru: Math.round(price * 100) / 100, price, type: l.type || 'ETF', sector: '', platform: 'Autre', alert_price: null };
+      if (typeof isDemo !== 'undefined' && isDemo) {
+        positions.push({ id: 'd' + Date.now() + '_' + added, ...pos }); added++;
+      } else if (currentUser) {
+        const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
+        if (!error && data) { positions.push(data); added++; try { await addTransaction(l.ticker, 'achat', qty, price, 'Plan de l\'objectif'); } catch {} }
+        else { skipped++; }
+      } else {
+        positions.push({ id: 'local_' + Date.now() + '_' + added, ...pos }); added++;
+      }
+    }
+    try { trackEvent('plan_added_all', { count: added }); } catch {}
+    try { renderPortfolio(); } catch {}
+    try { renderHome(); } catch {}
+    if (added > 0) {
+      try { qaConfetti(); } catch {}
+      showToast('🎉 ' + added + ' ligne' + (added > 1 ? 's' : '') + ' du plan ajoutée' + (added > 1 ? 's' : '') + (skipped ? ' · ' + skipped + ' ignorée(s)' : '') + ' !');
+      try { nav('objectif'); } catch {}
+    } else {
+      showToast(skipped ? 'Déjà dans ton portefeuille, ou prix indisponibles.' : 'Rien à ajouter.');
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = orig || '⚡ Tout ajouter à mon portefeuille'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RÉINITIALISER LE COMPTE — pour re-tester le parcours sans recréer un compte.
+// Efface placements / objectifs / transactions et les réglages locaux ; garde le compte.
+// ═══════════════════════════════════════════════════════════════════════════
+async function resetMyAccount() {
+  if (typeof isDemo !== 'undefined' && isDemo) { showToast('Indisponible en mode démo'); return; }
+  if (!currentUser) { showToast('Tu dois être connecté'); return; }
+  if (!confirm('Réinitialiser ton compte ?\n\nCela efface tes placements, objectifs et transactions. Ton compte et ton e-mail sont conservés. Utile pour re-tester le parcours depuis le début.')) return;
+  try {
+    await sb.from('positions').delete().eq('user_id', currentUser.id);
+    await sb.from('transactions').delete().eq('user_id', currentUser.id);
+    await sb.from('objectives').delete().eq('user_id', currentUser.id);
+  } catch (e) { showToast('Erreur : ' + (e.message || e)); return; }
+  try {
+    const kill = [];
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && (/^iq_/.test(k) || /^kp_/.test(k) || /etf_plan|court_actions/i.test(k))) kill.push(k); }
+    kill.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  } catch {}
+  try { await sb.auth.updateUser({ data: { level: null, seen_tabs: [] } }); } catch {}
+  showToast('✓ Compte réinitialisé — rechargement…');
+  setTimeout(() => { try { location.reload(); } catch {} }, 900);
 }
 
 
