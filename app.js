@@ -10008,6 +10008,7 @@ function kpTour(steps, key) {
   };
   const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => document.getElementById('kp-tour')?.remove(), 400); };
   document.getElementById('kp-tour-ov').addEventListener('click', end);
+  try { cur.style.transition = 'none'; cur.style.left = (window.innerWidth / 2) + 'px'; cur.style.top = (window.innerHeight / 2) + 'px'; void cur.offsetWidth; cur.style.transition = 'left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)'; } catch (e) {}
   let i = 0;
   const run = () => {
     if (i >= steps.length) { setTimeout(end, 1800); return; }
@@ -10029,6 +10030,12 @@ function showPortfolioTour() {
   ], 'tour_portfolio');
 }
 
+function showGoToPortfolioHint() {
+  const cand = ['#bnav-portfolio', '#nav-portfolio'];
+  let sel = '#nav-portfolio';
+  for (const s of cand) { const el = document.querySelector(s); if (el) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) { sel = s; break; } } }
+  kpTour([{ sel: sel, legend: 'Va voir les actions que tu as rentrées dans ton portefeuille' }], 'goto_portfolio');
+}
 function showPlanTour() {
   try { if (localStorage.getItem('kp_tour_plan')) return; } catch (e) {}
   const allBtn = document.getElementById('plan-addall-btn');
@@ -10061,6 +10068,7 @@ function showPlanTour() {
   };
   const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => { document.getElementById('kp-tour')?.remove(); }, 400); };
   document.getElementById('kp-tour-ov').addEventListener('click', end);
+  try { cur.style.transition = 'none'; cur.style.left = (window.innerWidth / 2) + 'px'; cur.style.top = (window.innerHeight / 2) + 'px'; void cur.offsetWidth; cur.style.transition = 'left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)'; } catch (e) {}
   moveTo(allBtn, 'Ajouter toutes les positions de votre plan d\'un coup');
   setTimeout(() => { const line = document.querySelector('.kp-line-add'); if (line) moveTo(line, 'ou les ajouter une par une'); }, 3000);
   setTimeout(end, 6800);
@@ -10464,6 +10472,7 @@ async function prConfirm(btn, openAfter) {
       showToast('🎉 ' + added + ' ligne' + (added > 1 ? 's' : '') + ' ajoutée' + (added > 1 ? 's' : '') + ' !');
       if (openAfter && platform !== 'Autre') { try { openOnPlatform(platform, (lines[0] && lines[0].ticker) || ''); } catch {} }
       try { nav('objectif'); } catch {}
+      try { setTimeout(() => { try { showGoToPortfolioHint(); } catch (e) {} }, 1200); } catch (e) {}
     } else {
       showToast('Rien ajouté — vérifie les montants.');
     }
