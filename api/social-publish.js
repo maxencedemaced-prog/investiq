@@ -226,6 +226,9 @@ export default async function handler(req, res) {
     // Cron : posts validés dont l'heure est passée, pas encore en échec définitif
     if (req.method === 'GET') {
       if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({ error: 'Non autorisé' });
+      // Interrupteur de pause (ligne « social_pause » = 1 dans app_tokens) : aucun envoi automatique tant qu'elle existe
+      const { data: pause } = await sb.from('app_tokens').select('value').eq('name', 'social_pause').maybeSingle();
+      if (pause?.value === '1') return res.status(200).json({ processed: 0, paused: true });
       // Débloque un post resté « en cours » (publication interrompue par un délai dépassé)
       await sb.from('social_posts').update({ status: 'approved' }).eq('status', 'publishing').lt('locked_at', new Date(Date.now() - 10 * 60000).toISOString());
       const { data: due } = await sb.from('social_posts').select('id, publish_log, platforms')
