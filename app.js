@@ -829,8 +829,10 @@ function renderETFCards(etfs, containerEl, actions = []) {
     </div>
   </div>
 
-  <button type="button" onclick="addAllPlanFromObjectif(this)" class="kp-pulse" style="width:100%;margin:2px 0 14px;padding:14px;border:none;border-radius:13px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:14.5px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(22,163,74,0.35)">⚡ Tout ajouter à mon portefeuille</button>
-  <div style="font-size:11px;color:${sub};text-align:center;margin:-8px 0 14px">Ajoute d'un coup les lignes ci-dessous aux montants proposés. Tu pourras tout modifier ensuite.</div>
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:2px 0 12px;flex-wrap:wrap">
+    <span style="font-size:11px;color:${sub}">Suivre le plan d'un coup :</span>
+    <button type="button" id="plan-addall-btn" onclick="addAllPlanFromObjectif(this)" style="display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border:none;border-radius:10px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(22,163,74,0.3)">⚡ Tout ajouter</button>
+  </div>
 
   ${hasActions ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:2px 0 8px">🏛️ Poche ETF · ${100 - objStockPct}% du capital</div>` : ''}
   ${[...etfs.map(e => ({ e, kind: 'etf', share: etfShare })), ...actions.map(e => ({ e, kind: 'action', share: stockShare }))].map(({ e, kind, share }, i, all) => {
@@ -2730,6 +2732,7 @@ function obSelectProfile(level) {
 function obKey() { return OB_KEY + (currentUser?.id ? '_' + currentUser.id : ''); }
 
 function showOnboarding(force) {
+  if (document.getElementById('onboarding-modal') && document.getElementById('onboarding-modal').style.display === 'flex') return;
   if (!force) {
     if (localStorage.getItem(obKey())) return;
     // Compte existant qui a déjà des positions (antérieur à ce changement) : pas de questionnaire.
@@ -7087,6 +7090,10 @@ function nav(page, auto=false) {
 }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSettingsAccount();}catch(e){console.warn('account:',e);} try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderReferralCard();}catch(e){} try{renderPushCard();}catch(e){} try{renderLockCard();}catch(e){} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(auto); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
+  try {
+    if (page === 'objectif' && (typeof positions === 'undefined' || !positions.length)) setTimeout(() => showCursorHint('#plan-addall-btn', 'plan_addall'), 1300);
+    if (page === 'portfolio' && (typeof positions === 'undefined' || !positions.length)) setTimeout(() => showCursorHint('#port-add-btn', 'port_add'), 700);
+  } catch (e) {}
 }
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -7296,7 +7303,7 @@ function renderNotificationList() {
   try {
     if (document.getElementById('kp-anim')) return;
     const st = document.createElement('style'); st.id = 'kp-anim';
-    st.textContent = '@keyframes kpPulseGlow{0%,100%{box-shadow:0 8px 24px rgba(22,163,74,0.35)}50%{box-shadow:0 10px 34px rgba(34,197,94,0.8)}}@keyframes kpFinger{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}.kp-pulse{animation:kpPulseGlow 1.6s ease-in-out infinite}.kp-finger{display:inline-block;animation:kpFinger 1s ease-in-out infinite;margin-left:6px}@keyframes kpScorePop{0%{transform:scale(0.6);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}.kp-scorepop{display:inline-block;animation:kpScorePop 0.7s cubic-bezier(0.16,1,0.3,1)}';
+    st.textContent = '@keyframes kpPulseGlow{0%,100%{box-shadow:0 8px 24px rgba(22,163,74,0.35)}50%{box-shadow:0 10px 34px rgba(34,197,94,0.8)}}@keyframes kpFinger{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}.kp-pulse{animation:kpPulseGlow 1.6s ease-in-out infinite}.kp-finger{display:inline-block;animation:kpFinger 1s ease-in-out infinite;margin-left:6px}@keyframes kpScorePop{0%{transform:scale(0.6);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}.kp-scorepop{display:inline-block;animation:kpScorePop 0.7s cubic-bezier(0.16,1,0.3,1)}@keyframes kpTap{0%{transform:scale(.5);opacity:.7}100%{transform:scale(1.7);opacity:0}}@keyframes kpBob{0%,100%{transform:translate(0,0)}50%{transform:translate(-3px,-3px)}}';
     document.head.appendChild(st);
   } catch (e) {}
 })();
@@ -9958,6 +9965,29 @@ let qaSelected = null, qaCount = 0, qaReturnTo = 'objectif', qaSearchTimer = nul
 
 function qaJson(o) { return JSON.stringify(o).replace(/"/g, '&quot;'); }
 
+// Curseur animé qui montre où cliquer (coach mark réutilisable sur n'importe quelle page).
+function showCursorHint(selector, key, opts) {
+  opts = opts || {};
+  try { if (key && localStorage.getItem('kp_hint_' + key)) return; } catch (e) {}
+  const el = document.querySelector(selector);
+  if (!el) { if (!opts._retried) setTimeout(() => showCursorHint(selector, key, Object.assign({}, opts, { _retried: true })), 1200); return; }
+  const r = el.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return;
+  document.getElementById('kp-cursor-hint')?.remove();
+  const hint = document.createElement('div');
+  hint.id = 'kp-cursor-hint';
+  hint.style.cssText = 'position:fixed;z-index:9000;pointer-events:none;transition:opacity .3s;width:48px;height:48px';
+  hint.innerHTML = '<span style="position:absolute;left:2px;top:2px;width:34px;height:34px;border-radius:50%;background:rgba(22,163,74,0.45);animation:kpTap 1.1s ease-out infinite"></span><svg width="30" height="30" viewBox="0 0 24 24" style="position:absolute;left:8px;top:8px;animation:kpBob 1.1s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.45))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+  document.body.appendChild(hint);
+  const place = () => { const rr = el.getBoundingClientRect(); hint.style.left = (rr.left + rr.width * 0.5) + 'px'; hint.style.top = (rr.top + rr.height * 0.55) + 'px'; };
+  place();
+  const onMove = () => place();
+  window.addEventListener('scroll', onMove, true); window.addEventListener('resize', onMove);
+  const done = () => { try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {} window.removeEventListener('scroll', onMove, true); window.removeEventListener('resize', onMove); hint.remove(); };
+  try { el.addEventListener('click', done, { once: true }); } catch (e) {}
+  setTimeout(() => { hint.style.opacity = '0'; setTimeout(done, 300); }, opts.duration || 8000);
+}
+
 function openQuickAdd(returnTo) {
   qaReturnTo = returnTo || 'objectif';
   qaSelected = null; qaCount = 0;
@@ -10214,9 +10244,11 @@ function openPlanReview(lines) {
         <div style="font-size:13px;font-weight:800;color:${txt};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(l.name || l.ticker)}</div>
         <div style="font-size:11px;color:${sub}">${l.ticker}${l.type ? ' · ' + l.type : ''} · <span id="pr-qty-${i}">calcul…</span></div>
       </div>
-      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        <input type="number" step="any" inputmode="decimal" id="pr-amt-${i}" value="${Math.round(l.montant)}" oninput="prRecalc(${i})" style="width:80px;padding:9px;border-radius:9px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit;text-align:right;box-sizing:border-box">
-        <span style="font-size:13px;color:${sub}">€</span>
+      <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+        <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:${sub};justify-content:flex-end">Montant
+          <input type="number" step="any" inputmode="decimal" id="pr-amt-${i}" value="${Math.round(l.montant)}" oninput="prRecalc(${i})" style="width:68px;padding:7px;border-radius:8px;border:1px solid ${bord};background:${field};color:${txt};font-size:13px;font-family:inherit;text-align:right;box-sizing:border-box">€</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:${sub};justify-content:flex-end">Prix
+          <input type="number" step="any" inputmode="decimal" id="pr-price-${i}" placeholder="—" oninput="prRecalc(${i})" style="width:68px;padding:7px;border-radius:8px;border:1px solid ${bord};background:${field};color:${txt};font-size:13px;font-family:inherit;text-align:right;box-sizing:border-box">€</label>
       </div>
     </div>`).join('');
   const o = document.createElement('div');
@@ -10245,6 +10277,7 @@ function openPlanReview(lines) {
   try { prUpdatePlatLabel(); } catch (e) {}
   window._prLines.forEach(async (l, i) => {
     try { const res = await fetch('/api/prices?symbols=' + encodeURIComponent(l.ticker)); const d = await res.json(); l.price = (d.quotes && d.quotes[0] && d.quotes[0].price) || 0; } catch { l.price = 0; }
+    try { const pin = document.getElementById('pr-price-' + i); if (pin && l.price) pin.value = l.price.toFixed(2); } catch (e) {}
     prRecalc(i);
   });
 }
@@ -10260,14 +10293,14 @@ function prUpdatePlatLabel() {
   } catch (e) {}
 }
 function prRecalc(i) {
-  const l = (window._prLines || [])[i];
   const span = document.getElementById('pr-qty-' + i);
-  if (!l || !span) return;
+  if (!span) return;
   const amt = parseFloat(document.getElementById('pr-amt-' + i)?.value) || 0;
-  if (!l.price) { span.textContent = 'prix indisponible'; return; }
+  const price = parseFloat(document.getElementById('pr-price-' + i)?.value) || 0;
+  if (!price) { span.textContent = 'entre le prix pour calculer la quantité'; return; }
   if (amt <= 0) { span.textContent = '—'; return; }
-  const qty = Math.round((amt / l.price) * 10000) / 10000;
-  span.textContent = qty + ' part' + (qty > 1 ? 's' : '') + ' à ' + l.price.toFixed(2) + ' €';
+  const qty = Math.round((amt / price) * 10000) / 10000;
+  span.textContent = qty + ' part' + (qty > 1 ? 's' : '') + ' à ' + price.toFixed(2) + ' €';
 }
 
 async function prConfirm(btn, openAfter) {
@@ -10282,12 +10315,14 @@ async function prConfirm(btn, openAfter) {
       const chk = document.getElementById('pr-chk-' + i);
       if (chk && !chk.checked) continue;
       const amt = parseFloat(document.getElementById('pr-amt-' + i)?.value) || 0;
-      if (amt <= 0 || !l.price) { skipped++; continue; }
-      const qty = Math.round((amt / l.price) * 10000) / 10000;
+      const price = parseFloat(document.getElementById('pr-price-' + i)?.value) || l.price || 0;
+      if (amt <= 0 || !price) { skipped++; continue; }
+      l.price = price;
+      const qty = Math.round((amt / price) * 10000) / 10000;
       if (qty <= 0) { skipped++; continue; }
       const existing = positions.find(p => (p.name || '').toUpperCase() === l.ticker.toUpperCase());
       if (existing) { skipped++; continue; }
-      const pos = { name: l.ticker, qty, pru: Math.round(l.price * 100) / 100, price: l.price, type: l.type || 'ETF', sector: '', platform, alert_price: null };
+      const pos = { name: l.ticker, qty, pru: Math.round(price * 100) / 100, price: price, type: l.type || 'ETF', sector: '', platform, alert_price: null };
       if (typeof isDemo !== 'undefined' && isDemo) { positions.push({ id: 'd' + Date.now() + '_' + i, ...pos }); added++; }
       else if (currentUser) {
         const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
@@ -11697,6 +11732,7 @@ function plansComparisonHTML(lapsed) {
 // opts (facultatif) : { feature, subtitle, benefits } → bandeau de contexte quand la fenêtre
 // s'ouvre parce qu'une fonctionnalité est réservée à Premium (ou que le quota IA est atteint).
 function showPlansModal(opts) {
+  try { const _ob = document.getElementById('onboarding-modal'); if (_ob && _ob.style.display === 'flex') return; } catch (e) {}
   trackEvent('paywall_view', { feature: (opts && opts.feature) || 'offre' });
   document.getElementById('premium-gate')?.remove();
   document.getElementById('plans-modal')?.remove();
