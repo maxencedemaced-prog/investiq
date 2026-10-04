@@ -277,6 +277,12 @@ function showValidatedChart() {
         </div>
       </div>
 
+      ${positions.length === 0 ? `<div style="background:linear-gradient(135deg,#0f1f17,#0b1220);border:1px solid rgba(22,163,74,0.4);border-radius:16px;padding:16px;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:3px">💼 Tu as déjà des placements ?</div>
+        <div style="font-size:12.5px;color:rgba(255,255,255,0.65);margin-bottom:12px;line-height:1.45">Entre-les tous en quelques secondes. Ton score de santé et tes analyses s'activent dès que ton portefeuille est rempli.</div>
+        <button type="button" onclick="openQuickAdd('objectif')" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(22,163,74,0.35)">⚡ Saisir mes placements</button>
+      </div>` : ''}
+
       <!-- Le 1er mois (mois de création de l'objectif), l'investissement de départ passe en
            premier ; ensuite c'est le plan du mois qui est mis en avant. -->
       <div id="obj-smart-alerts"></div>
@@ -7284,7 +7290,7 @@ function activationCardHTML() {
     <div style="font-size:13px;color:rgba(255,255,255,0.62);margin-bottom:16px;line-height:1.5">Ton score de santé, tes alertes et l'assistant IA se basent sur ton portefeuille. Choisis comment commencer :</div>
     <div style="display:grid;gap:10px">
       ${opt('📥', 'Importer le relevé de mon courtier', 'PDF, Excel ou CSV : Trade Republic, Boursorama, XTB…', "trackEvent('activation_click',{c:'import'});showCSVHelp()", true)}
-      ${opt('➕', 'Ajouter un placement à la main', 'Une action ou un ETF, en 30 secondes', "trackEvent('activation_click',{c:'manuel'});nav('ajouter')")}
+      ${opt('⚡', 'Ajouter mes placements', 'Plusieurs d\'un coup, sans se perdre', "trackEvent('activation_click',{c:'rapide'});openQuickAdd('home')")}
       ${opt('🌱', "Je n'ai pas encore investi", 'Construis ton premier plan à partir d\'un objectif', "trackEvent('activation_click',{c:'debutant'});showOnboarding(true)")}
     </div>
   </div>`;
@@ -9757,6 +9763,247 @@ async function addToPortfolioFromDecision(ticker, amount, name, type) {
     showToast('✅ Indique la quantité achetée et valide');
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SAISIE RAPIDE — ajouter plusieurs placements d'affilée, sans quitter l'écran.
+// Objectif : qu'une personne qui a déjà des actions les entre toutes d'un coup,
+// puis revienne à son objectif (et non au portefeuille) pour ne pas se perdre.
+// ═══════════════════════════════════════════════════════════════════════════
+let qaSelected = null, qaCount = 0, qaReturnTo = 'objectif', qaSearchTimer = null;
+
+function qaJson(o) { return JSON.stringify(o).replace(/"/g, '&quot;'); }
+
+function openQuickAdd(returnTo) {
+  qaReturnTo = returnTo || 'objectif';
+  qaSelected = null; qaCount = 0;
+  document.getElementById('qa-modal')?.remove();
+  if (!document.getElementById('qa-style')) {
+    const st = document.createElement('style'); st.id = 'qa-style';
+    st.textContent = '@keyframes qaIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}';
+    document.head.appendChild(st);
+  }
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = dark ? '#0f1629' : '#fff';
+  const txt  = dark ? '#fff' : '#09090b';
+  const sub  = dark ? 'rgba(255,255,255,0.6)' : '#71717a';
+  const bord = dark ? 'rgba(255,255,255,0.12)' : '#e4e4e7';
+  const field= dark ? 'rgba(255,255,255,0.06)' : '#f9fafb';
+  const o = document.createElement('div');
+  o.id = 'qa-modal';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10050;display:flex;align-items:flex-end;justify-content:center';
+  o.innerHTML = `
+    <div style="background:${surf};width:100%;max-width:560px;border-radius:22px 22px 0 0;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 -10px 40px rgba(0,0,0,0.3)">
+      <div style="padding:18px 18px 10px;border-bottom:1px solid ${bord}">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:17px;font-weight:900;color:${txt}">⚡ Saisie rapide</div>
+          <button type="button" onclick="closeQuickAdd()" style="background:none;border:none;color:${sub};font-size:22px;cursor:pointer;padding:0 4px;line-height:1">✕</button>
+        </div>
+        <div style="font-size:12.5px;color:${sub};margin-top:2px;line-height:1.4">Ajoute tes placements l'un après l'autre — rien ne te renvoie ailleurs. Quand tu as fini, « Terminer » te ramène à ton objectif.</div>
+      </div>
+      <div style="padding:16px 18px;overflow-y:auto;flex:1">
+        <div style="position:relative">
+          <input id="qa-search" type="text" autocomplete="off" placeholder="🔎 Cherche une action ou un ETF (LVMH, IWDA, Apple…)" oninput="qaOnSearch(this.value)"
+            style="width:100%;padding:13px 14px;border-radius:12px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit;box-sizing:border-box">
+          <div id="qa-drop" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);background:${surf};border:1px solid ${bord};border-radius:12px;max-height:240px;overflow-y:auto;z-index:5;box-shadow:0 12px 30px rgba(0,0,0,0.25)"></div>
+        </div>
+        <div id="qa-fields" style="display:none;margin-top:12px">
+          <div id="qa-chosen" style="font-size:13px;font-weight:800;color:${txt};margin-bottom:10px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;color:${sub};font-weight:700">Quantité (nb de parts)</label>
+              <input id="qa-qty" type="number" step="any" inputmode="decimal" placeholder="Ex : 10" oninput="qaUpdateTotal()"
+                style="width:100%;padding:11px;border-radius:10px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit;box-sizing:border-box;margin-top:3px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:${sub};font-weight:700">Prix d'achat (PRU, €)</label>
+              <input id="qa-pru" type="number" step="any" inputmode="decimal" placeholder="Prix moyen payé" oninput="qaUpdateTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();qaAddLine();}"
+                style="width:100%;padding:11px;border-radius:10px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit;box-sizing:border-box;margin-top:3px">
+            </div>
+          </div>
+          <div id="qa-total" style="font-size:12px;color:${sub};margin-top:8px"></div>
+          <button type="button" onclick="qaAddLine(this)" style="width:100%;margin-top:12px;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer">➕ Ajouter à mon portefeuille</button>
+        </div>
+        <div id="qa-list" style="margin-top:16px"></div>
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid ${bord};display:flex;gap:10px;align-items:center">
+        <div id="qa-counter" style="font-size:12.5px;color:${sub};flex:1">Aucun placement ajouté pour l'instant</div>
+        <button type="button" onclick="closeQuickAdd()" style="padding:12px 22px;border:none;border-radius:12px;background:${dark ? 'rgba(255,255,255,0.12)' : '#1c1c1e'};color:#fff;font-size:14px;font-weight:800;cursor:pointer">Terminer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(o);
+  setTimeout(() => document.getElementById('qa-search')?.focus(), 120);
+}
+
+function qaOnSearch(q) {
+  clearTimeout(qaSearchTimer);
+  const drop = document.getElementById('qa-drop');
+  if (!drop) return;
+  q = (q || '').trim();
+  if (q.length < 1) { drop.style.display = 'none'; return; }
+  qaSearchTimer = setTimeout(async () => {
+    let results = [];
+    try {
+      const res = await fetch('/api/search?q=' + encodeURIComponent(q));
+      const data = await res.json();
+      results = data.results || [];
+    } catch {}
+    if (!results.length && typeof AC_DB !== 'undefined') {
+      const ql = q.toLowerCase();
+      results = AC_DB.filter(a => a.ticker.toLowerCase().includes(ql) || (a.name || '').toLowerCase().includes(ql)).slice(0, 8);
+    }
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.55)' : '#71717a';
+    const line = dark ? 'rgba(255,255,255,0.06)' : '#f0f0f2';
+    const av = dark ? 'rgba(255,255,255,0.08)' : '#f0f0f2';
+    if (!results.length) {
+      drop.innerHTML = `<div onclick="qaPick(${qaJson({ ticker: q.toUpperCase(), name: q.toUpperCase(), type: 'Action', sector: '' })})" style="padding:12px 14px;cursor:pointer;font-size:13px;color:${txt}">Utiliser « ${_escHtml(q.toUpperCase())} » comme ticker →</div>`;
+    } else {
+      drop.innerHTML = results.map(r => `<div onclick="qaPick(${qaJson(r)})" style="padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid ${line}">
+        <div style="width:32px;height:32px;border-radius:8px;background:${av};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${txt};flex-shrink:0">${(r.ticker || '').slice(0, 2)}</div>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:700;color:${txt};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(r.name || r.ticker)}</div>
+          <div style="font-size:11px;color:${sub}">${r.ticker || ''}${r.type ? ' · ' + r.type : ''}${r.sector ? ' · ' + r.sector : ''}</div>
+        </div></div>`).join('');
+    }
+    drop.style.display = 'block';
+  }, 250);
+}
+
+async function qaPick(company) {
+  qaSelected = { ticker: company.ticker, name: company.name || company.ticker, type: company.type || 'Action', sector: company.sector || '', price: 0 };
+  const drop = document.getElementById('qa-drop'); if (drop) drop.style.display = 'none';
+  const search = document.getElementById('qa-search'); if (search) search.value = qaSelected.name;
+  const fields = document.getElementById('qa-fields'); if (fields) fields.style.display = 'block';
+  const chosen = document.getElementById('qa-chosen'); if (chosen) chosen.textContent = '✓ ' + qaSelected.name + (qaSelected.ticker ? ' · ' + qaSelected.ticker : '');
+  const qtyEl = document.getElementById('qa-qty'); if (qtyEl) qtyEl.value = '';
+  const pruEl = document.getElementById('qa-pru'); if (pruEl) { pruEl.value = ''; pruEl.placeholder = '⏳ Prix…'; }
+  const totalEl = document.getElementById('qa-total'); if (totalEl) totalEl.textContent = '';
+  setTimeout(() => document.getElementById('qa-qty')?.focus(), 60);
+  try {
+    const res = await fetch('/api/prices?symbols=' + encodeURIComponent(qaSelected.ticker));
+    const data = await res.json();
+    const p = data.quotes && data.quotes[0] && data.quotes[0].price;
+    const pru = document.getElementById('qa-pru');
+    if (p) {
+      qaSelected.price = p;
+      if (pru) { if (!pru.value) pru.value = p.toFixed(2); pru.placeholder = p.toFixed(2); }
+      qaUpdateTotal();
+    } else if (pru) { pru.placeholder = 'Prix payé (€)'; }
+  } catch { const pru = document.getElementById('qa-pru'); if (pru) pru.placeholder = 'Prix payé (€)'; }
+}
+
+function qaUpdateTotal() {
+  const qty = parseFloat(document.getElementById('qa-qty')?.value) || 0;
+  const pru = parseFloat(document.getElementById('qa-pru')?.value) || 0;
+  const el = document.getElementById('qa-total');
+  if (!el) return;
+  el.textContent = (qty > 0 && pru > 0) ? 'Investi : ' + (qty * pru).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €' : '';
+}
+
+async function qaAddLine(btn) {
+  if (!qaSelected) { showToast('⚠ Choisis d\'abord une action ou un ETF'); return; }
+  const qty = parseFloat(document.getElementById('qa-qty')?.value);
+  const pru = parseFloat(document.getElementById('qa-pru')?.value);
+  if (isNaN(qty) || qty <= 0) { showToast('⚠ Indique la quantité'); return; }
+  if (isNaN(pru) || pru <= 0) { showToast('⚠ Indique le prix d\'achat'); return; }
+  const name = qaSelected.ticker || qaSelected.name;
+  const label = qaSelected.name || name;
+  const price = qaSelected.price > 0 ? qaSelected.price : pru;
+  const type = qaSelected.type || 'Action';
+  const sector = qaSelected.sector || '';
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  try {
+    const existing = positions.find(p => (p.name || '').toUpperCase() === name.toUpperCase());
+    if (existing) {
+      const totalQty = existing.qty + qty;
+      const newPru = (existing.qty * existing.pru + qty * pru) / totalQty;
+      existing.qty = Math.round(totalQty * 10000) / 10000;
+      existing.pru = Math.round(newPru * 100) / 100;
+      existing.price = price;
+      if (!isDemo && currentUser) {
+        const { error } = await sb.from('positions').update({ qty: existing.qty, pru: existing.pru, price: existing.price }).eq('id', existing.id);
+        if (error) { showToast('Erreur : ' + error.message); return; }
+        try { await addTransaction(name, 'achat', qty, pru, 'Saisie rapide'); } catch {}
+      }
+    } else {
+      const pos = { name, qty: Math.round(qty * 10000) / 10000, pru: Math.round(pru * 100) / 100, price, type, sector, platform: 'Autre', alert_price: null };
+      if (isDemo) {
+        positions.push({ id: 'd' + Date.now(), ...pos });
+      } else if (currentUser) {
+        const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
+        if (error) { showToast('Erreur : ' + error.message); return; }
+        if (data) positions.push(data);
+        try { await addTransaction(name, 'achat', qty, pru, 'Saisie rapide'); } catch {}
+      } else {
+        positions.push({ id: 'local_' + Date.now(), ...pos });
+      }
+    }
+    try { trackEvent('position_added', { type, source: 'saisie_rapide' }); } catch {}
+    qaCount++;
+    qaPushListItem(label, qty, pru);
+    qaSelected = null;
+    const s = document.getElementById('qa-search'); if (s) s.value = '';
+    const f = document.getElementById('qa-fields'); if (f) f.style.display = 'none';
+    qaUpdateCounter();
+    if (s) s.focus();
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
+function qaPushListItem(label, qty, pru) {
+  const list = document.getElementById('qa-list');
+  if (!list) return;
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.55)' : '#71717a';
+  const row = document.createElement('div');
+  row.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px 12px;background:${dark ? 'rgba(34,197,94,0.1)' : '#f0fdf4'};border:1px solid ${dark ? 'rgba(34,197,94,0.25)' : '#bbf7d0'};border-radius:12px;margin-bottom:8px;animation:qaIn 0.25s ease`;
+  row.innerHTML = `<span style="color:#16a34a;font-size:16px">✓</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:800;color:${txt};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(label)}</div>
+      <div style="font-size:11px;color:${sub}">${qty} × ${pru.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € = ${(qty * pru).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</div>
+    </div>`;
+  list.prepend(row);
+}
+
+function qaUpdateCounter() {
+  const el = document.getElementById('qa-counter');
+  if (!el) return;
+  el.textContent = qaCount === 0
+    ? 'Aucun placement ajouté pour l\'instant'
+    : qaCount + ' placement' + (qaCount > 1 ? 's' : '') + ' ajouté' + (qaCount > 1 ? 's' : '') + ' ✓';
+}
+
+function closeQuickAdd() {
+  document.getElementById('qa-modal')?.remove();
+  try { renderPortfolio(); } catch {}
+  try { renderHome(); } catch {}
+  if (qaCount > 0) {
+    try { qaConfetti(); } catch {}
+    showToast('🎉 ' + qaCount + ' placement' + (qaCount > 1 ? 's' : '') + ' enregistré' + (qaCount > 1 ? 's' : '') + ' !');
+  }
+  try { nav(qaReturnTo || 'objectif'); } catch {}
+}
+
+function qaConfetti() {
+  const colors = ['#22c55e', '#16a34a', '#4ade80', '#f59e0b', '#6366f1', '#ec4899'];
+  for (let i = 0; i < 44; i++) {
+    const c = document.createElement('div');
+    const size = 6 + Math.random() * 6;
+    c.style.cssText = `position:fixed;top:-20px;left:${Math.random() * 100}vw;width:${size}px;height:${size}px;background:${colors[i % colors.length]};z-index:10060;border-radius:2px;pointer-events:none`;
+    document.body.appendChild(c);
+    const dur = 1200 + Math.random() * 1200;
+    const xEnd = (Math.random() - 0.5) * 220;
+    try {
+      c.animate([
+        { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+        { transform: `translate(${xEnd}px, ${window.innerHeight + 40}px) rotate(${Math.random() * 720}deg)`, opacity: 0.9 }
+      ], { duration: dur, easing: 'cubic-bezier(.2,.6,.4,1)' });
+    } catch {}
+    setTimeout(() => c.remove(), dur + 120);
+  }
+}
+
 
 // ===== DCA =====
 let dcaChartInstance = null;
