@@ -113,6 +113,7 @@ document.addEventListener('click', e => {
   if (document.getElementById('app')?.style.display === 'none') return;
   tabMarkSeen(page);
   updateNavDots();
+  if (page === 'settings') return;
   if (page === 'bilan' && typeof isPremiumUser === 'function' && !isPremiumUser()) return;   // la fenêtre des offres l'explique déjà
   setTimeout(() => showTabHint(page), 300);
 });
