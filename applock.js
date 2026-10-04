@@ -127,6 +127,7 @@ async function lockEnable() {
 function lockAskOnSecondVisit(user) {
   try {
     if (!user || !user.id || isDemo || window._lockAskCounted) return;
+    try { if (typeof isMobileDevice === 'function' && !isMobileDevice() && !(typeof isIOSDevice === 'function' && isIOSDevice())) return; } catch (e) {}
     window._lockAskCounted = true;
     const countKey = 'kp_opens_' + user.id, askKey = 'kp_lock_ask_' + user.id;
     const opens = (Number(localStorage.getItem(countKey)) || 0) + 1;

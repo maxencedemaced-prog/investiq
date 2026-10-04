@@ -277,11 +277,7 @@ function showValidatedChart() {
         </div>
       </div>
 
-      ${positions.length === 0 ? `<div style="background:linear-gradient(135deg,#0f1f17,#0b1220);border:1px solid rgba(22,163,74,0.4);border-radius:16px;padding:16px;margin-bottom:14px">
-        <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:3px">💼 Tu as déjà des placements ?</div>
-        <div style="font-size:12.5px;color:rgba(255,255,255,0.65);margin-bottom:12px;line-height:1.45">Entre-les tous en quelques secondes. Ton score de santé et tes analyses s'activent dès que ton portefeuille est rempli.</div>
-        <button type="button" onclick="openQuickAdd('objectif')" class="kp-pulse" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(22,163,74,0.35)">⚡ Saisir mes placements<span class="kp-finger">👆</span></button>
-      </div>` : ''}
+      
 
       <!-- Le 1er mois (mois de création de l'objectif), l'investissement de départ passe en
            premier ; ensuite c'est le plan du mois qui est mis en avant. -->
@@ -8342,6 +8338,16 @@ function openDecisionFromPos(name, action) {
   }, 50);
 }
 
+function markFieldError(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.border = '1.5px solid #ef4444';
+  el.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
+  const clear = () => { el.style.border = ''; el.style.boxShadow = ''; el.removeEventListener('input', clear); el.removeEventListener('change', clear); };
+  el.addEventListener('input', clear); el.addEventListener('change', clear);
+  try { el.focus(); } catch (e) {}
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+}
 async function addPos() {
   const name = document.getElementById('f-name').value.trim();
   const qty = parseFloat(document.getElementById('f-qty').value);
@@ -8353,10 +8359,10 @@ async function addPos() {
   const platform = document.getElementById('f-platform').value || 'Autre';
 
   // Validation avec messages clairs
-  if (!name) { showToast('⚠ Recherche et sélectionne une action'); return; }
-  if (isNaN(qty) || qty <= 0) { showToast('⚠ Indique une quantité valide'); return; }
-  if (isNaN(pru) || pru <= 0) { showToast('⚠ Indique ton prix de revient (PRU)'); return; }
-  if (isNaN(price) || price <= 0) { showToast('⚠ Indique le prix actuel'); return; }
+  if (!name) { showToast('⚠ Recherche et sélectionne une action'); markFieldError('f-search'); return false; }
+  if (isNaN(qty) || qty <= 0) { showToast('⚠ Indique une quantité valide'); markFieldError('f-qty'); return false; }
+  if (isNaN(pru) || pru <= 0) { showToast('⚠ Indique ton prix de revient (PRU)'); markFieldError('f-pru'); return false; }
+  if (isNaN(price) || price <= 0) { showToast('⚠ Indique le prix actuel'); markFieldError('f-price'); return false; }
 
   const pos = { name, qty, pru, price, type, sector, platform, alert_price: alertPrice };
 
@@ -8373,14 +8379,14 @@ async function addPos() {
       const { error } = await sb.from('positions')
         .update({ qty: existing.qty, pru: existing.pru, price: existing.price, alert_price: existing.alert_price })
         .eq('id', existing.id);
-      if (error) { showToast('Erreur: ' + error.message); return; }
+      if (error) { showToast('Erreur: ' + error.message); return false; }
       await addTransaction(name, 'achat', qty, pru, 'Renforcement de position');
       trackEvent('position_added', { type, renforcement: true });
     }
     acClear();
     nav('portfolio');
     showToast(`✓ ${displayName(name)} renforcé — ${existing.qty} parts, PRU moyen ${existing.pru.toFixed(2)} €`);
-    return;
+    return true;
   }
 
   if (isDemo) {
@@ -8388,11 +8394,11 @@ async function addPos() {
     acClear();
     nav('portfolio');
     showToast('✓ Position ajoutée !');
-    return;
+    return true;
   }
 
   const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
-  if (error) { showToast('Erreur: ' + error.message); return; }
+  if (error) { showToast('Erreur: ' + error.message); return false; }
   if (data) {
     positions.push(data);
     await addTransaction(name, 'achat', qty, pru, 'Ouverture de position');
@@ -8400,6 +8406,7 @@ async function addPos() {
     acClear();
     nav('portfolio');
     showToast('✓ ' + name + ' ajouté au portefeuille !');
+    return true;
   }
 }
 async function delPos(id) {
@@ -10226,20 +10233,32 @@ function openPlanReview(lines) {
       </div>
       <div style="padding:14px 18px;overflow-y:auto;flex:1">
         <label style="font-size:11px;color:${sub};font-weight:700">Plateforme</label>
-        <select id="pr-platform" style="width:100%;margin:3px 0 4px;padding:11px;border-radius:10px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit">${platformOptionsHTML('Trade Republic')}</select>
+        <select id="pr-platform" onchange="prUpdatePlatLabel()" style="width:100%;margin:3px 0 4px;padding:11px;border-radius:10px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit">${platformOptionsHTML('Trade Republic')}</select>
         ${rows}
       </div>
-      <div style="padding:12px 18px;border-top:1px solid ${bord}">
-        <button type="button" onclick="prConfirm(this)" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer">Ajouter à mon portefeuille</button>
+      <div style="padding:12px 18px;border-top:1px solid ${bord};display:flex;flex-direction:column;gap:8px">
+        <button type="button" onclick="prConfirm(this,false)" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer">Ajouter à mon portefeuille</button>
+        <button type="button" id="pr-open-btn" onclick="prConfirm(this,true)" style="width:100%;padding:12px;border-radius:12px;border:1px solid ${bord};background:transparent;color:${txt};font-size:14px;font-weight:700;cursor:pointer">Ajouter + ouvrir <span id="pr-plat-label">Trade Republic</span> →</button>
       </div>
     </div>`;
   document.body.appendChild(o);
+  try { prUpdatePlatLabel(); } catch (e) {}
   window._prLines.forEach(async (l, i) => {
     try { const res = await fetch('/api/prices?symbols=' + encodeURIComponent(l.ticker)); const d = await res.json(); l.price = (d.quotes && d.quotes[0] && d.quotes[0].price) || 0; } catch { l.price = 0; }
     prRecalc(i);
   });
 }
 
+function prUpdatePlatLabel() {
+  try {
+    const sel = document.getElementById('pr-platform');
+    const lbl = document.getElementById('pr-plat-label');
+    const btn = document.getElementById('pr-open-btn');
+    const v = sel ? sel.value : 'Autre';
+    if (lbl) lbl.textContent = v;
+    if (btn) btn.style.display = (v === 'Autre') ? 'none' : '';
+  } catch (e) {}
+}
 function prRecalc(i) {
   const l = (window._prLines || [])[i];
   const span = document.getElementById('pr-qty-' + i);
@@ -10251,7 +10270,7 @@ function prRecalc(i) {
   span.textContent = qty + ' part' + (qty > 1 ? 's' : '') + ' à ' + l.price.toFixed(2) + ' €';
 }
 
-async function prConfirm(btn) {
+async function prConfirm(btn, openAfter) {
   const lines = window._prLines || [];
   const platform = document.getElementById('pr-platform')?.value || 'Autre';
   const orig = btn ? btn.innerHTML : '';
@@ -10283,6 +10302,7 @@ async function prConfirm(btn) {
     if (added > 0) {
       try { qaConfetti(); } catch {}
       showToast('🎉 ' + added + ' ligne' + (added > 1 ? 's' : '') + ' ajoutée' + (added > 1 ? 's' : '') + ' !');
+      if (openAfter && platform !== 'Autre') { try { openOnPlatform(platform, (lines[0] && lines[0].ticker) || ''); } catch {} }
       try { nav('objectif'); } catch {}
     } else {
       showToast('Rien ajouté — vérifie les montants.');
@@ -12218,8 +12238,8 @@ function updateAddButtons() {
 async function addPosAndOpenPlatform() {
   const platform = document.getElementById('f-platform')?.value || 'Autre';
   const ticker = document.getElementById('f-name')?.value || document.getElementById('f-search')?.value || '';
-  await addPos();
-  if (platform !== 'Autre' && ticker) {
+  const _ok = await addPos();
+  if (_ok && platform !== 'Autre' && ticker) {
     setTimeout(() => openOnPlatform(platform, ticker), 400);
   }
 }
