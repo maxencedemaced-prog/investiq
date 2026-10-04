@@ -1,4 +1,5 @@
-// Redéploiement forcé pour prendre en compte FMP_API_KEY
+// Calendrier économique (Financial Modeling Prep). En cas d'échec, on renvoie une liste vide marquée
+// « unavailable » avec un code de cause — jamais d'événements inventés.
 const ALLOWED_ORIGINS = [
   'https://kapitaro.fr',
   'https://www.kapitaro.fr',
@@ -33,12 +34,12 @@ export default async function handler(req, res) {
 
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
 
+  let reason = 'exception';
   try {
     // Récupère le calendrier économique via Financial Modeling Prep
     const apiKey = process.env.FMP_API_KEY;
-    if (!apiKey) throw new Error('FMP_API_KEY manquante');
-    // Au-delà du quota, on ne tape pas FMP — on sert directement le fallback ci-dessous
-    if (rateLimited(ip)) throw new Error('rate-limit local atteint');
+    if (!apiKey) { reason = 'no_key'; throw new Error('FMP_API_KEY manquante'); }
+    if (rateLimited(ip)) { reason = 'rate_limit'; throw new Error('rate-limit local atteint'); }
 
     const now = new Date();
     const from = now.toISOString().split('T')[0];
@@ -50,11 +51,13 @@ export default async function handler(req, res) {
     let data;
     try { data = JSON.parse(raw); } catch {
       console.error('[api/agenda] FMP non-JSON:', resp.status, raw.slice(0, 300));
+      reason = 'fmp_non_json_' + resp.status;
       throw new Error('FMP indisponible (réponse non-JSON)');
     }
 
     if (!resp.ok || !Array.isArray(data)) {
       console.error('[api/agenda] FMP error:', resp.status, JSON.stringify(data).slice(0, 300));
+      reason = 'fmp_status_' + resp.status;
       throw new Error('FMP indisponible');
     }
 
@@ -78,33 +81,12 @@ export default async function handler(req, res) {
       .sort((a, b) => (a.date + a.heure).localeCompare(b.date + b.heure))
       .slice(0, 60);
 
-    return res.status(200).json({ events });
+    res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json({ events, source: 'fmp' });
 
   } catch (err) {
     console.error('[api/agenda]', err.message);
-    // Fallback : données statiques pour la démo
-    const now = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    const dateStr = (offset) => {
-      const d = new Date(now.getTime() + offset * 86400000);
-      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    };
-
-    return res.status(200).json({
-      events: [
-        { id:'1', date: dateStr(0), heure:'14:30', titre:'Taux directeurs BCE', pays:'EU', impact:'high', prevision:'2.5%', precedent:'2.5%' },
-        { id:'2', date: dateStr(1), heure:'14:30', titre:'Inflation US (CPI)', pays:'US', impact:'high', prevision:'3.2%', precedent:'3.4%' },
-        { id:'3', date: dateStr(2), heure:'16:00', titre:'Ventes au détail US', pays:'US', impact:'medium', prevision:'+0.3%', precedent:'-0.1%' },
-        { id:'4', date: dateStr(3), heure:'08:45', titre:'PMI manufacturier France', pays:'FR', impact:'medium', prevision:'46.5', precedent:'45.8' },
-        { id:'5', date: dateStr(4), heure:'14:30', titre:'NFP (Emplois non-agricoles)', pays:'US', impact:'high', prevision:'+185K', precedent:'+175K' },
-        { id:'6', date: dateStr(5), heure:'10:00', titre:'Indice de confiance ZEW', pays:'DE', impact:'medium', prevision:'12.5', precedent:'11.3' },
-        { id:'7', date: dateStr(7), heure:'20:00', titre:'Minutes FOMC Fed', pays:'US', impact:'high', prevision:null, precedent:null },
-        { id:'8', date: dateStr(8), heure:'14:30', titre:'PIB US (révision)', pays:'US', impact:'high', prevision:'+2.1%', precedent:'+2.3%' },
-        { id:'9', date: dateStr(9), heure:'09:00', titre:'Taux chômage Zone Euro', pays:'EU', impact:'medium', prevision:'6.4%', precedent:'6.5%' },
-        { id:'10', date: dateStr(10), heure:'14:30', titre:'Inflation PCE US', pays:'US', impact:'high', prevision:'2.7%', precedent:'2.8%' },
-        { id:'11', date: dateStr(12), heure:'09:30', titre:'Indice PMI services UK', pays:'UK', impact:'medium', prevision:'53.2', precedent:'52.9' },
-        { id:'12', date: dateStr(14), heure:'14:30', titre:'Décision taux Fed', pays:'US', impact:'high', prevision:'4.25%', precedent:'4.25%' },
-      ]
-    });
+    res.setHeader('Cache-Control', 's-maxage=300');
+    return res.status(200).json({ events: [], unavailable: true, reason });
   }
 }
