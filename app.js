@@ -2692,6 +2692,13 @@ let obProfileLevel = 'debutant';
 
 function obSelectProfile(level) {
   obProfileLevel = level;
+  try {
+    const toolLvl = (level === 'debutant' || level === 'curieux') ? 1 : (level === 'initie') ? 2 : 3;
+    localStorage.setItem('kp_level', String(toolLvl));
+    try { localStorage.setItem(kpAskedKey(), '1'); } catch {}
+    if (typeof currentUser !== 'undefined' && currentUser && typeof isDemo !== 'undefined' && !isDemo) { currentUser.user_metadata = Object.assign({}, currentUser.user_metadata || {}, { level: toolLvl }); if (typeof sb !== 'undefined') sb.auth.updateUser({ data: { level: toolLvl } }).catch(() => {}); }
+    if (typeof applyUserLevel === 'function') applyUserLevel();
+  } catch (e) {}
   document.getElementById('ob-profile-level').value = level;
   const p = OB_PROFILES[level];
 
@@ -4731,9 +4738,8 @@ function claimCaches(ownerId) {
 
 // Ouvre le panneau de notifications dès l'arrivée sur l'app (pas sur mobile : il y prend tout l'écran)
 function openNotifPanelByDefault() {
-  if (window.innerWidth < 768) return;
+  // On ne l'ouvre plus automatiquement (trop intrusif) : on prépare juste son contenu.
   try { renderNotifications(); } catch(e) {}
-  document.getElementById('notif-panel')?.classList.add('open');
 }
 
 // Parrainage : lien kapitaro.fr/?parrain=CODE mémorisé 30 jours, rattaché au compte après l'inscription
@@ -4880,7 +4886,7 @@ async function initApp(user) {
     })); } catch {}
   }
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
-  setTimeout(() => { try { if (!maybeAskLevel()) showOnboarding(); } catch (e) { try { showOnboarding(); } catch {} } }, 500);
+  setTimeout(() => showOnboarding(), 500);
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
@@ -7401,19 +7407,18 @@ function kpSetLevel(l) {
   applyUserLevel();
   try { showToast('✓ Interface adaptée à ton niveau'); } catch {}
   try { nav('home'); } catch {}
-  try { setTimeout(() => { try { showOnboarding(); } catch {} }, 350); } catch {}
 }
 
 function showLevelChooser(fromSettings) {
   try { localStorage.setItem(kpAskedKey(), '1'); } catch {}
   document.getElementById('kp-level-modal')?.remove();
-  const current = kpGetLevel();
+  const current = kpLevelChosen() ? kpGetLevel() : 0;
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.6)' : '#71717a', bord = dark ? 'rgba(255,255,255,0.12)' : '#e4e4e7';
   const card = (l) => {
     const c = KP_LEVELS[l];
     const on = l === current;
-    return `<button type="button" onclick="kpSetLevel(${l})" style="display:block;width:100%;text-align:left;padding:16px;border-radius:16px;margin-bottom:10px;cursor:pointer;font:inherit;background:${on ? 'linear-gradient(135deg,#0f1f17,#0b1220)' : (dark ? 'rgba(255,255,255,0.05)' : '#f9fafb')};border:1.5px solid ${on ? 'rgba(22,163,74,0.6)' : bord}">
+    return `<button type="button" onclick="kpSetLevel(${l})" style="display:block;width:100%;text-align:left;padding:16px;border-radius:16px;margin-bottom:10px;cursor:pointer;font:inherit;background:${on ? 'linear-gradient(135deg,#0f1f17,#0b1220)' : (dark ? 'rgba(255,255,255,0.05)' : '#f9fafb')};border:1.5px solid ${on ? 'rgba(22,163,74,0.6)' : bord}" onmouseover="if(!${on})this.style.borderColor='#16a34a'" onmouseout="if(!${on})this.style.borderColor='${bord}'">
       <div style="font-size:15px;font-weight:900;color:${on ? '#fff' : txt};margin-bottom:3px">${c.emoji} ${c.label}${on ? ' · actuel' : ''}</div>
       <div style="font-size:12.5px;color:${on ? 'rgba(255,255,255,0.72)' : sub};line-height:1.45">${c.desc}</div>
     </button>`;
@@ -10186,42 +10191,104 @@ function qaConfetti() {
 async function addAllPlanFromObjectif(btn) {
   const lines = (window._kpPlanLines || []).filter(l => l && l.ticker && l.montant > 0);
   if (!lines.length) { showToast('Aucune ligne de plan à ajouter pour le moment'); return; }
-  if (!confirm('Ajouter les ' + lines.length + ' ligne(s) du plan à ton portefeuille, avec les montants proposés ?')) return;
+  openPlanReview(lines);
+}
+
+// Écran de vérification : on ajuste le montant de chaque ligne et on choisit la plateforme avant d'ajouter.
+function openPlanReview(lines) {
+  document.getElementById('pr-modal')?.remove();
+  window._prLines = lines.map(l => ({ ticker: l.ticker, name: l.name, type: l.type || 'ETF', montant: l.montant, price: 0 }));
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.6)' : '#71717a', bord = dark ? 'rgba(255,255,255,0.14)' : '#e4e4e7', field = dark ? 'rgba(255,255,255,0.06)' : '#f9fafb';
+  const rows = window._prLines.map((l, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid ${bord}">
+      <input type="checkbox" id="pr-chk-${i}" checked style="width:18px;height:18px;accent-color:#16a34a;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800;color:${txt};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(l.name || l.ticker)}</div>
+        <div style="font-size:11px;color:${sub}">${l.ticker}${l.type ? ' · ' + l.type : ''} · <span id="pr-qty-${i}">calcul…</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <input type="number" step="any" inputmode="decimal" id="pr-amt-${i}" value="${Math.round(l.montant)}" oninput="prRecalc(${i})" style="width:80px;padding:9px;border-radius:9px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit;text-align:right;box-sizing:border-box">
+        <span style="font-size:13px;color:${sub}">€</span>
+      </div>
+    </div>`).join('');
+  const o = document.createElement('div');
+  o.id = 'pr-modal';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10052;display:flex;align-items:flex-end;justify-content:center';
+  o.innerHTML = `
+    <div style="background:${surf};width:100%;max-width:560px;border-radius:22px 22px 0 0;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 -10px 40px rgba(0,0,0,0.3)">
+      <div style="padding:18px 18px 10px;border-bottom:1px solid ${bord}">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:17px;font-weight:900;color:${txt}">Vérifie avant d'ajouter</div>
+          <button type="button" onclick="document.getElementById('pr-modal').remove()" style="background:none;border:none;color:${sub};font-size:22px;cursor:pointer;line-height:1">✕</button>
+        </div>
+        <div style="font-size:12.5px;color:${sub};margin-top:2px;line-height:1.4">Ajuste les montants et choisis où tu as acheté (ou vas acheter). Les quantités sont calculées au prix du jour.</div>
+      </div>
+      <div style="padding:14px 18px;overflow-y:auto;flex:1">
+        <label style="font-size:11px;color:${sub};font-weight:700">Plateforme</label>
+        <select id="pr-platform" style="width:100%;margin:3px 0 4px;padding:11px;border-radius:10px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit">${platformOptionsHTML('Trade Republic')}</select>
+        ${rows}
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid ${bord}">
+        <button type="button" onclick="prConfirm(this)" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;cursor:pointer">Ajouter à mon portefeuille</button>
+      </div>
+    </div>`;
+  document.body.appendChild(o);
+  window._prLines.forEach(async (l, i) => {
+    try { const res = await fetch('/api/prices?symbols=' + encodeURIComponent(l.ticker)); const d = await res.json(); l.price = (d.quotes && d.quotes[0] && d.quotes[0].price) || 0; } catch { l.price = 0; }
+    prRecalc(i);
+  });
+}
+
+function prRecalc(i) {
+  const l = (window._prLines || [])[i];
+  const span = document.getElementById('pr-qty-' + i);
+  if (!l || !span) return;
+  const amt = parseFloat(document.getElementById('pr-amt-' + i)?.value) || 0;
+  if (!l.price) { span.textContent = 'prix indisponible'; return; }
+  if (amt <= 0) { span.textContent = '—'; return; }
+  const qty = Math.round((amt / l.price) * 10000) / 10000;
+  span.textContent = qty + ' part' + (qty > 1 ? 's' : '') + ' à ' + l.price.toFixed(2) + ' €';
+}
+
+async function prConfirm(btn) {
+  const lines = window._prLines || [];
+  const platform = document.getElementById('pr-platform')?.value || 'Autre';
   const orig = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = '⏳ Ajout en cours…'; }
   let added = 0, skipped = 0;
   try {
-    for (const l of lines) {
-      let price = 0;
-      try { const res = await fetch('/api/prices?symbols=' + encodeURIComponent(l.ticker)); const d = await res.json(); price = (d.quotes && d.quotes[0] && d.quotes[0].price) || 0; } catch {}
-      if (!price) { skipped++; continue; }
-      const qty = Math.round((l.montant / price) * 10000) / 10000;
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      const chk = document.getElementById('pr-chk-' + i);
+      if (chk && !chk.checked) continue;
+      const amt = parseFloat(document.getElementById('pr-amt-' + i)?.value) || 0;
+      if (amt <= 0 || !l.price) { skipped++; continue; }
+      const qty = Math.round((amt / l.price) * 10000) / 10000;
       if (qty <= 0) { skipped++; continue; }
       const existing = positions.find(p => (p.name || '').toUpperCase() === l.ticker.toUpperCase());
       if (existing) { skipped++; continue; }
-      const pos = { name: l.ticker, qty, pru: Math.round(price * 100) / 100, price, type: l.type || 'ETF', sector: '', platform: 'Autre', alert_price: null };
-      if (typeof isDemo !== 'undefined' && isDemo) {
-        positions.push({ id: 'd' + Date.now() + '_' + added, ...pos }); added++;
-      } else if (currentUser) {
+      const pos = { name: l.ticker, qty, pru: Math.round(l.price * 100) / 100, price: l.price, type: l.type || 'ETF', sector: '', platform, alert_price: null };
+      if (typeof isDemo !== 'undefined' && isDemo) { positions.push({ id: 'd' + Date.now() + '_' + i, ...pos }); added++; }
+      else if (currentUser) {
         const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
-        if (!error && data) { positions.push(data); added++; try { await addTransaction(l.ticker, 'achat', qty, price, 'Plan de l\'objectif'); } catch {} }
+        if (!error && data) { positions.push(data); added++; try { await addTransaction(l.ticker, 'achat', qty, l.price, 'Plan de l\'objectif'); } catch {} }
         else { skipped++; }
-      } else {
-        positions.push({ id: 'local_' + Date.now() + '_' + added, ...pos }); added++;
-      }
+      } else { positions.push({ id: 'local_' + Date.now() + '_' + i, ...pos }); added++; }
     }
     try { trackEvent('plan_added_all', { count: added }); } catch {}
+    document.getElementById('pr-modal')?.remove();
     try { renderPortfolio(); } catch {}
     try { renderHome(); } catch {}
     if (added > 0) {
       try { qaConfetti(); } catch {}
-      showToast('🎉 ' + added + ' ligne' + (added > 1 ? 's' : '') + ' du plan ajoutée' + (added > 1 ? 's' : '') + (skipped ? ' · ' + skipped + ' ignorée(s)' : '') + ' !');
+      showToast('🎉 ' + added + ' ligne' + (added > 1 ? 's' : '') + ' ajoutée' + (added > 1 ? 's' : '') + ' !');
       try { nav('objectif'); } catch {}
     } else {
-      showToast(skipped ? 'Déjà dans ton portefeuille, ou prix indisponibles.' : 'Rien à ajouter.');
+      showToast('Rien ajouté — vérifie les montants.');
     }
   } finally {
-    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = orig || '⚡ Tout ajouter à mon portefeuille'; }
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = orig || 'Ajouter à mon portefeuille'; }
   }
 }
 

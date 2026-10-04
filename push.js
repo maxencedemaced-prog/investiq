@@ -340,6 +340,7 @@ function pushAskOnce(user) {
         || (!localStorage.getItem('iq_install_sheet_' + user.id) && Date.now() - new Date(user.created_at).getTime() < 3 * 86400000
             && installMode() && (isMobileDevice() || isIOSDevice()));   // la fenêtre de bienvenue va s'afficher
       if (busy) { if (left > 0) setTimeout(() => tryShow(left - 1), 4000); return; }
+      if (typeof positions === 'undefined' || !positions.length) { if (left > 0) setTimeout(() => tryShow(left - 1), 6000); return; }
       if ((await pushState().catch(() => 'unsupported')) !== 'off') return;
       if (document.getElementById('push-sheet')) return;
       try { localStorage.setItem(key, '1'); } catch {}
