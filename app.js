@@ -7288,7 +7288,7 @@ function renderNotificationList() {
   try {
     if (document.getElementById('kp-anim')) return;
     const st = document.createElement('style'); st.id = 'kp-anim';
-    st.textContent = '@keyframes kpPulseGlow{0%,100%{box-shadow:0 8px 24px rgba(22,163,74,0.35)}50%{box-shadow:0 10px 34px rgba(34,197,94,0.8)}}@keyframes kpFinger{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}.kp-pulse{animation:kpPulseGlow 1.6s ease-in-out infinite}.kp-finger{display:inline-block;animation:kpFinger 1s ease-in-out infinite;margin-left:6px}';
+    st.textContent = '@keyframes kpPulseGlow{0%,100%{box-shadow:0 8px 24px rgba(22,163,74,0.35)}50%{box-shadow:0 10px 34px rgba(34,197,94,0.8)}}@keyframes kpFinger{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}.kp-pulse{animation:kpPulseGlow 1.6s ease-in-out infinite}.kp-finger{display:inline-block;animation:kpFinger 1s ease-in-out infinite;margin-left:6px}@keyframes kpScorePop{0%{transform:scale(0.6);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}.kp-scorepop{display:inline-block;animation:kpScorePop 0.7s cubic-bezier(0.16,1,0.3,1)}';
     document.head.appendChild(st);
   } catch (e) {}
 })();
@@ -8497,9 +8497,13 @@ async function renderSante() {
     <div class="sante-score-grid" style="display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center">
       <!-- Score gauche -->
       <div>
-        <div style="font-size:56px;font-weight:900;color:${scoreColor};letter-spacing:-0.05em;line-height:1">${score.toFixed(1).replace(".", ",")}</div>
+        <div class="kp-scorepop" style="font-size:56px;font-weight:900;color:${scoreColor};letter-spacing:-0.05em;line-height:1">${score.toFixed(1).replace(".", ",")}</div>
         <div style="font-size:16px;color:${isDark?'rgba(255,255,255,0.4)':textSec};font-weight:400;margin-bottom:8px">/10</div>
         <div style="font-size:14px;font-weight:700;color:${scoreColor}">${scoreLabel}</div>
+        ${(() => {
+          const tier = score >= 7 ? { n: 'Or', e: '🥇', c: '#f59e0b', bg: 'rgba(245,158,11,0.14)', next: 'Palier maximum atteint 🎉' } : score >= 5 ? { n: 'Argent', e: '🥈', c: '#9ca3af', bg: 'rgba(156,163,175,0.18)', next: 'Atteins 7/10 pour passer 🥇 Or' } : { n: 'Bronze', e: '🥉', c: '#b45309', bg: 'rgba(180,83,9,0.16)', next: 'Atteins 5/10 pour passer 🥈 Argent' };
+          return `<div style="margin-top:10px;display:inline-flex;align-items:center;gap:7px;background:${tier.bg};border:1px solid ${tier.c}66;border-radius:99px;padding:5px 12px"><span style="font-size:15px">${tier.e}</span><span style="font-size:12px;font-weight:800;color:${tier.c}">Palier ${tier.n}</span></div><div style="font-size:11px;color:${isDark ? 'rgba(255,255,255,0.5)' : textSec};margin-top:7px">${tier.next}</div>`;
+        })()}
         <div style="margin-top:10px;display:flex;align-items:center;gap:7px;background:${isDark?'rgba(63,185,80,0.1)':'rgba(22,163,74,0.08)'};border-radius:10px;padding:8px 12px;border:1px solid ${isDark?'rgba(63,185,80,0.2)':'rgba(22,163,74,0.2)'}">
           <span style="font-size:13px">✓</span>
           <span style="font-size:11px;color:${isDark?'rgba(255,255,255,0.6)':textSec};font-weight:500">${score>=7?'Votre portefeuille est en excellente santé générale.':score>=5?'Quelques améliorations possibles.':'Des actions correctives recommandées.'}</span>
