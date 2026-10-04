@@ -9988,8 +9988,8 @@ function showPlanTour() {
     <div id="kp-tour-cur" style="position:fixed;z-index:9102;pointer-events:none;transition:left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)">
       <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
       <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
-      <div id="kp-tour-tip" style="position:absolute;right:30px;top:-6px;max-width:210px;background:#111827;color:#fff;font-size:12.5px;font-weight:700;line-height:1.35;padding:8px 11px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.45);text-align:right;opacity:0;transition:opacity .3s"></div>
-    </div>`;
+    </div>
+    <div id="kp-tour-tip" style="position:fixed;left:50%;top:15%;transform:translateX(-50%);max-width:340px;width:max-content;background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center;opacity:0;transition:opacity .3s;z-index:9103"></div>`;
   document.body.appendChild(wrap);
   const cur = document.getElementById('kp-tour-cur');
   const tip = document.getElementById('kp-tour-tip');
