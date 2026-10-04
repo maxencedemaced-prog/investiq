@@ -9990,7 +9990,7 @@ function kpTour(steps, key) {
       <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
       <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
     </div>
-    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:14%;display:flex;justify-content:center;padding:0 16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
+    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;padding:16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
   document.body.appendChild(wrap);
   const cur = document.getElementById('kp-tour-cur');
   const tip = document.getElementById('kp-tour-tip');
@@ -10022,6 +10022,7 @@ function kpTour(steps, key) {
 }
 
 function showPortfolioTour() {
+  if (document.getElementById('tab-hint')) { showPortfolioTour._w = (showPortfolioTour._w || 0) + 1; if (showPortfolioTour._w < 40) setTimeout(showPortfolioTour, 500); return; }
   kpTour([
     { sel: '#port-add-btn', legend: 'Ajoute une action ou un ETF à ton portefeuille' },
     { sel: '#btn-import-pos', legend: 'Importe ton relevé de courtier (PDF, Excel ou CSV)' },
@@ -10050,7 +10051,7 @@ function showPlanTour() {
       <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
       <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
     </div>
-    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:14%;display:flex;justify-content:center;padding:0 16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
+    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;padding:16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
   document.body.appendChild(wrap);
   const cur = document.getElementById('kp-tour-cur');
   const tip = document.getElementById('kp-tour-tip');
