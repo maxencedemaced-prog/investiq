@@ -53,8 +53,21 @@ export default async function handler(req, res) {
   res.status(200).json({ quotes });
 }
 
+let _fx = { v: 0, t: 0 };
+async function usdPerEur() {
+  if (_fx.v && Date.now() - _fx.t < 10 * 60000) return _fx.v;
+  try {
+    const r = await fetch('https://query2.finance.yahoo.com/v8/finance/chart/EURUSD=X?interval=1d&range=1d', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+    const v = (await r.json())?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (v > 0) { _fx = { v, t: Date.now() }; return v; }
+  } catch {}
+  if (_fx.v) return _fx.v;                       // dernier taux connu
+  throw new Error('taux EUR/USD indisponible');   // pas de prix plutôt qu'un prix faux
+}
+
 function getSymbolAttempts(symbol) {
-  if (/^[A-Z0-9]{2,12}-EUR$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol }];   // crypto en euros
+  if (/^[A-Z0-9]{2,20}-EUR$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol }];   // crypto en euros
+  if (/^[A-Z0-9]{2,20}-USD$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // crypto en dollars, convertie en euros
   const nameToYahoo = {
     'LVMH': 'MC.PA', 'Air Liquide': 'AI.PA', 'TotalEnergies': 'TTE.PA',
     'BNP Paribas': 'BNP.PA', 'Veolia': 'VIE.PA', 'Veolia Environnement': 'VIE.PA',
@@ -101,11 +114,12 @@ async function fetchQuote(attempt, originalSymbol, apiKey) {
     const d = await r.json();
     const meta = d?.chart?.result?.[0]?.meta;
     if (meta?.regularMarketPrice && meta.regularMarketPrice > 0) {
+      const k = attempt.fx ? 1 / (await usdPerEur()) : 1;   // dollars -> euros
       const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
       const changePct = prev && prev !== meta.regularMarketPrice
         ? ((meta.regularMarketPrice - prev) / prev * 100)
         : (meta.regularMarketChangePercent || 0);
-      return { symbol: originalSymbol, price: meta.regularMarketPrice, changePct, change: meta.regularMarketPrice - prev, source: 'yahoo' };
+      return { symbol: originalSymbol, price: meta.regularMarketPrice * k, changePct, change: (meta.regularMarketPrice - prev) * k, source: 'yahoo' };
     }
   }
   return null;
