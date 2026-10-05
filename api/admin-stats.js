@@ -103,10 +103,10 @@ export default async function handler(req, res) {
   // Page ouverte en local (file://) ou depuis le site : pas de cookies impliqués, seulement un
   // jeton Bearer vérifié ci-dessous, donc une origine ouverte ne crée pas de risque ici.
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   if (!supabaseAdmin) {
     return res.status(500).json({ error: 'SUPABASE_SERVICE_KEY manquante côté serveur' });
@@ -125,6 +125,19 @@ export default async function handler(req, res) {
     const user = await authRes.json();
     if (!user?.email || user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
       return res.status(403).json({ error: 'Accès réservé.' });
+    }
+
+    // Bouton « ✓ Réglé » du tableau de bord : efface toutes les occurrences de ce bug (il réapparaîtra s'il revient)
+    if (req.method === 'POST') {
+      const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      const g = b.resolve;
+      if (!g || !g.message) return res.status(400).json({ error: 'Bug manquant.' });
+      let q = supabaseAdmin.from('client_errors').delete().eq('message', g.message);
+      q = g.source ? q.eq('source', g.source) : q.is('source', null);
+      q = g.line ? q.eq('line', g.line) : q.is('line', null);
+      const { error } = await q;
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ ok: true });
     }
 
     const DAY = 24 * 3600 * 1000;
@@ -264,6 +277,24 @@ export default async function handler(req, res) {
         .select('created_at, user_id, kind, message, source, line, page, app_version, user_agent, stack')
         .gte('created_at', since30).order('created_at', { ascending: false }).limit(5000);
       if (error) return { disponible: false, raison: error.message };
+      // Bugs réglés : un bug qui n'est plus revenu depuis la dernière mise à jour de l'app (et depuis 3 jours) est effacé tout seul
+      const current = await fetch('https://' + (req.headers.host || 'kapitaro.fr') + '/', { signal: AbortSignal.timeout(5000) })
+        .then(r => r.text()).then(t => ((t.match(/\/app\.js\?v=(\d+)/) || [])[1]) || '').catch(() => '');
+      const keyOf = r => `${r.message}|${r.source || ''}|${r.line || ''}`;
+      const live = {};
+      for (const r of rows || []) {
+        const k = keyOf(r), seenNew = current && r.app_version && r.app_version >= current, recent = Date.now() - new Date(r.created_at) < 3 * DAY;
+        live[k] = live[k] || !current || seenNew || recent;
+      }
+      const fixed = (rows || []).filter(r => !live[keyOf(r)]);
+      for (const k of new Set(fixed.map(keyOf))) {
+        const r = fixed.find(x => keyOf(x) === k);
+        let q = supabaseAdmin.from('client_errors').delete().eq('message', r.message).lt('created_at', new Date(Date.now() - 3 * DAY).toISOString());
+        q = r.source ? q.eq('source', r.source) : q.is('source', null);
+        q = r.line ? q.eq('line', r.line) : q.is('line', null);
+        await q.then(() => {}, () => {});
+      }
+      rows.splice(0, rows.length, ...rows.filter(r => live[keyOf(r)]));
       const groups = {};
       const daily = {};
       for (const r of rows || []) {
