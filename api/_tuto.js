@@ -30,6 +30,7 @@ export const TUTOS = {
       { say: 'Voici ton accueil : en un coup d’œil, la valeur totale de tes placements et leur évolution.', do: [{ js: "nav('home')" }, { wait: 500 }, { point: '#home-metrics' }] },
       { say: 'Juste en dessous, ton score de santé et les alertes du jour te montrent ce qui mérite ton attention.', do: [{ scroll: '#home-score' }, { point: '#home-score, #home-alerts' }] },
       { say: 'Et ici, ta progression vers ton objectif, calculée avec les vrais cours.', do: [{ scroll: '#home-obj, #home-metrics' }, { point: '#home-obj, #home-metrics' }] },
+      { say: 'Bon à savoir : Kapitaro ne garde pas ton argent et ne passe aucun ordre. Pour investir, tu passes par ta banque ou ton courtier ; Kapitaro t’aide à tout suivre au même endroit.', do: [{ scroll: '#home-platforms-wrap, #home-metrics' }, { point: '#home-platforms-wrap, #home-metrics' }] },
       { say: 'Reviens chaque jour : le briefing du matin te résume l’essentiel en quelques secondes.', do: [{ scroll: '#home-metrics' }, { point: '#home-metrics' }] },
     ],
   },
