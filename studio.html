@@ -416,7 +416,11 @@ function renderTutosPage() {
     + '<select id="tuto-variant" style="width:100%;max-width:520px;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px;margin-bottom:12px"><option value="both">📱 + 🖥 Les deux (téléphone et ordinateur)</option><option value="mobile">📱 Téléphone seulement</option><option value="desktop">🖥 Ordinateur seulement</option></select>'
     + '<div class="row" style="justify-content:flex-end;margin:0 0 10px"><button class="btn" id="btn-tuto-stop" onclick="stopAllTutos(this)" style="display:none;border-color:#7f1d1d;color:#fca5a5">⏹ Arrêter toutes les fabrications</button></div>'
     + '<div id="tuto-msg" style="display:none;margin:0 0 12px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5"></div>'
-    + '<div id="tuto-list"><div class="empty">Chargement…</div></div></div>';
+    + '<div id="tuto-list"><div class="empty">Chargement…</div></div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin:22px 0 8px"><h3 style="margin:0">🗂 Anciennes versions</h3><button class="btn" onclick="renderTutoArchives()">↻ Actualiser</button></div>'
+    + '<p class="sub" style="margin:0 0 10px">Avant chaque remplacement, la version précédente est mise de côté ici. Remets-la en ligne si tu préfères l’ancienne, ou supprime-la quand tu n’en as plus besoin.</p>'
+    + '<div id="tuto-archives"><div class="empty">Chargement…</div></div></div>';
+  renderTutoArchives();
   renderTutos(true);
   clearInterval(TUTO_TIMER); TUTO_TIMER = setInterval(function () { if (FILTER === 'tutos') renderTutos(false); else clearInterval(TUTO_TIMER); }, 15000);
 }
@@ -484,6 +488,33 @@ async function listenTutoVoice() {
     tutoMsg('🔊 Voix : ' + r.voice, 'ok');
   } catch (e) { tutoMsg(e.message, 'err'); btn.textContent = '▶ Écouter'; }
   btn.disabled = false;
+}
+// ── Anciennes versions des tutoriels : revoir, remettre en ligne, supprimer ──
+async function renderTutoArchives() {
+  var box = document.getElementById('tuto-archives'); if (!box) return;
+  var d; try { d = await api('POST', { action: 'tuto-archive-list' }); } catch (e) { box.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  var ids = Object.keys(d.archives || {});
+  if (!ids.length) { box.innerHTML = '<div class="empty">Aucune ancienne version pour l’instant : elles apparaîtront ici dès qu’une vidéo sera refaite.</div>'; return; }
+  box.innerHTML = ids.map(function (id) {
+    var desk = /__desktop$/.test(id);
+    return d.archives[id].map(function (a) {
+      return '<div style="display:flex;gap:12px;align-items:center;border:1px solid #1f2a44;border-radius:12px;padding:10px;margin-bottom:8px;flex-wrap:wrap">'
+        + '<video controls playsinline preload="none" poster="' + esc(a.poster || '') + '" src="' + esc(a.url) + '" style="width:' + (desk ? '200px' : '90px') + ';border-radius:8px;background:#000"></video>'
+        + '<div style="flex:1;min-width:180px"><b>' + esc(a.title || id) + '</b> <span class="sub">' + (desk ? '🖥 Ordinateur' : '📱 Téléphone') + '</span><div class="sub">Voix : ' + esc(a.voice || '?') + ' · ' + (a.duration || '?') + ' s · faite le ' + (a.at ? new Date(a.at).toLocaleString('fr-FR') : '?') + '</div></div>'
+        + '<div class="row" style="gap:6px"><button class="btn" onclick="tutoArchiveAct(\'restore\', \'' + id + '\', \'' + a.stamp + '\', this)">↩ Remettre en ligne</button><button class="btn" style="border-color:#7f1d1d;color:#fca5a5" onclick="tutoArchiveAct(\'delete\', \'' + id + '\', \'' + a.stamp + '\', this)">🗑 Supprimer</button></div></div>';
+    }).join('');
+  }).join('');
+}
+async function tutoArchiveAct(kind, id, stamp, btn) {
+  if (!confirm(kind === 'delete' ? 'Supprimer définitivement cette ancienne version ?' : 'Remettre cette version en ligne ? La version actuelle sera mise de côté dans les anciennes versions.')) return;
+  btn.disabled = true;
+  try {
+    await api('POST', { action: kind === 'delete' ? 'tuto-archive-delete' : 'tuto-archive-restore', id: id, stamp: stamp });
+    tutoMsg(kind === 'delete' ? '🗑 Ancienne version supprimée.' : '↩ Version remise en ligne : elle est visible dans l’appli d’ici une minute.', 'ok');
+  } catch (e) { tutoMsg(e.message, 'err'); }
+  btn.disabled = false;
+  renderTutoArchives();
+  var le = document.getElementById('tuto-list'); if (le) { le.dataset.sig = ''; renderTutos(false); }
 }
 async function rerenderTuto(id, btn) {
   btn.disabled = true; var l = btn.textContent; btn.textContent = 'Relance…';

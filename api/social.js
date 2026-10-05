@@ -754,6 +754,55 @@ export default async function handler(req, res) {
       }
       return res.status(502).json({ error: 'Écoute impossible : ' + last });
     }
+    // ── Archives des vidéos tutoriels (anciennes versions) ──
+    if (b.action === 'tuto-archive-list') {
+      const out = {};
+      for (const id of Object.keys(TUTOS).flatMap(k => [k, k + '__desktop'])) {
+        const { data: files } = await sb.storage.from('social').list('tuto/archive/' + id, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+        const metas = (files || []).filter(f => /\.json$/.test(f.name));
+        if (!metas.length) continue;
+        out[id] = [];
+        for (const f of metas) { try { const { data } = await sb.storage.from('social').download('tuto/archive/' + id + '/' + f.name); if (data) out[id].push({ stamp: f.name.replace(/\.json$/, ''), ...JSON.parse(await data.text()) }); } catch (e) {} }
+      }
+      return res.status(200).json({ archives: out });
+    }
+    if (b.action === 'tuto-archive-delete' || b.action === 'tuto-archive-restore') {
+      const id = String(b.id || ''), stamp = String(b.stamp || '');
+      if (!/^[a-z]+(__desktop)?$/.test(id) || !TUTOS[id.replace('__desktop', '')] || !/^[0-9TZ-]+$/.test(stamp)) return res.status(400).json({ error: 'Version invalide' });
+      const dir = 'tuto/archive/' + id + '/' + stamp;
+      if (b.action === 'tuto-archive-delete') {
+        const { error } = await sb.storage.from('social').remove([dir + '.mp4', dir + '.jpg', dir + '.json']);
+        if (error) throw error;
+        return res.status(200).json({ ok: true });
+      }
+      // remise en ligne : la version actuelle est d'abord archivée à son tour, puis l'ancienne revient
+      const { data: am } = await sb.storage.from('social').download(dir + '.json');
+      if (!am) return res.status(404).json({ error: 'Version introuvable' });
+      const arch = JSON.parse(await am.text());
+      const { data: cm } = await sb.storage.from('social').download('tuto/meta/' + id + '.json');
+      if (cm) {
+        const cur = JSON.parse(await cm.text());
+        const cs = String(cur.at || new Date().toISOString()).replace(/[:.]/g, '-'), cdir = 'tuto/archive/' + id + '/' + cs;
+        if (cdir !== dir) {
+          await sb.storage.from('social').copy('tuto/' + id + '.mp4', cdir + '.mp4');
+          await sb.storage.from('social').copy('tuto/' + id + '.jpg', cdir + '.jpg');
+          const pa = n => sb.storage.from('social').getPublicUrl(n).data.publicUrl;
+          await sb.storage.from('social').upload(cdir + '.json', Buffer.from(JSON.stringify({ ...cur, url: pa(cdir + '.mp4'), poster: pa(cdir + '.jpg'), archived_at: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+        }
+      }
+      await sb.storage.from('social').remove(['tuto/' + id + '.mp4', 'tuto/' + id + '.jpg']);
+      await sb.storage.from('social').copy(dir + '.mp4', 'tuto/' + id + '.mp4');
+      await sb.storage.from('social').copy(dir + '.jpg', 'tuto/' + id + '.jpg');
+      const v = Date.now(), pub = n => sb.storage.from('social').getPublicUrl(n).data.publicUrl;
+      const meta = { title: arch.title, page: arch.page, variant: arch.variant, url: pub('tuto/' + id + '.mp4') + '?v=' + v, poster: pub('tuto/' + id + '.jpg') + '?v=' + v, duration: arch.duration, voice: arch.voice, at: new Date().toISOString(), restored_from: stamp };
+      await sb.storage.from('social').upload('tuto/meta/' + id + '.json', Buffer.from(JSON.stringify(meta)), { contentType: 'application/json', upsert: true });
+      // manifest.json reconstruit à partir de toutes les descriptions
+      const { data: files } = await sb.storage.from('social').list('tuto/meta', { limit: 200 });
+      const manifest = {};
+      for (const f of files || []) { if (!/\.json$/.test(f.name)) continue; try { const { data } = await sb.storage.from('social').download('tuto/meta/' + f.name); if (data) manifest[f.name.replace(/\.json$/, '')] = JSON.parse(await data.text()); } catch (e) {} }
+      await sb.storage.from('social').upload('tuto/manifest.json', Buffer.from(JSON.stringify(manifest)), { contentType: 'application/json', upsert: true, cacheControl: '60' });
+      return res.status(200).json({ ok: true });
+    }
     // Relance seulement le tournage, avec la voix déjà fabriquée (pas de nouveaux caractères ElevenLabs)
     if (b.action === 'tuto-render') {
       if (!TUTOS[b.id]) return res.status(400).json({ error: 'Tutoriel inconnu' });

@@ -273,6 +273,22 @@ async function run() {
 
   // envoi + manifest
   await setStatus('recording', { pct: 94, step: 'Envoi de la vidéo' });
+  // l'ancienne version (si elle existe) est copiée dans tuto/archive/<id>/ : rien n'est perdu, tu supprimes toi-même depuis le Studio
+  try {
+    const { data: om } = await sb.storage.from('social').download('tuto/meta/' + ID + '.json');
+    if (om) {
+      const old = JSON.parse(await om.text());
+      const stamp = String(old.at || new Date().toISOString()).replace(/[:.]/g, '-');
+      const dir = 'tuto/archive/' + ID + '/' + stamp;
+      const c1 = await sb.storage.from('social').copy('tuto/' + ID + '.mp4', dir + '.mp4');
+      if (!c1.error) {
+        await sb.storage.from('social').copy('tuto/' + ID + '.jpg', dir + '.jpg');
+        const pubA = n => sb.storage.from('social').getPublicUrl(n).data.publicUrl;
+        await sb.storage.from('social').upload(dir + '.json', Buffer.from(JSON.stringify({ ...old, url: pubA(dir + '.mp4'), poster: pubA(dir + '.jpg'), archived_at: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+        console.log('Ancienne version archivée :', dir);
+      }
+    }
+  } catch (e) { console.log('archive :', e.message); }
   for (const [f, type] of [[mp4, 'video/mp4'], [poster, 'image/jpeg']]) {
     const up = await sb.storage.from('social').upload('tuto/' + path.basename(f), fs.readFileSync(f), { contentType: type, upsert: true, cacheControl: '60' });
     if (up.error) throw up.error;
