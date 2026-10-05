@@ -463,7 +463,7 @@ const PLAN_ETFS = [['IWDA.L','iShares Core MSCI World','ETF actions monde dével
 
 // Cours réels sur 1 an : performances, baisse maximale, volatilité (+ PER, marge, dividende pour les valeurs américaines)
 async function fetchPlanMarketData() {
-  const held = apos().filter(p => /^[A-Z0-9.\-]{1,14}$/.test(String(p.name))).map(p => p.name);
+  const held = apos().map(p => kpTickerOf(p.name)).filter(t => /^[A-Z0-9.\-]{1,14}$/.test(t));
   const syms = [...new Set([...PLAN_UNIVERSE.map(u => u[0]), ...PLAN_ETFS.map(e => e[0]), ...held])].slice(0, 60);
   const names = [...PLAN_UNIVERSE.map(u => u[0] + ':' + u[1]), ...held.filter(h => !PLAN_UNIVERSE.some(u => u[0] === h)).map(h => h + ':' + displayName(h))];
   const r = await fetch('/api/market-data?symbols=' + encodeURIComponent(syms.join(',')) + '&names=' + encodeURIComponent(names.join(',')));
@@ -501,7 +501,7 @@ function planCandidateTable(md) {
   const row = c => c.t + ' | ' + c.name + ' | ' + c.sector + ' | ' + c.zone + ' | 1 an ' + kpSigned(c.m.p1y) + ' | 6 mois ' + kpSigned(c.m.p6m) + ' | 1 mois ' + kpSigned(c.m.p1m) + ' | baisse max 1 an ' + kpSigned(c.m.dd) + ' | volatilité ' + String(c.m.vol).replace('.', ',') + ' %' + (c.m.pe != null ? ' | PER ' + String(c.m.pe).replace('.', ',') : '') + (c.m.margin != null ? ' | marge nette ' + String(c.m.margin).replace('.', ',') + ' %' : '') + (c.m.divYield != null ? ' | dividende ' + String(c.m.divYield).replace('.', ',') + ' %' : '');
   const etf = PLAN_ETFS.filter(e => md[e[0]]).map(e => e[0] + ' | ' + e[1] + ' | ' + e[2] + ' | 1 an ' + kpSigned(md[e[0]].p1y) + ' | baisse max 1 an ' + kpSigned(md[e[0]].dd) + ' | volatilité ' + String(md[e[0]].vol).replace('.', ',') + ' %');
   const heldRows = []; const seenH = new Set();
-  apos().forEach(p => { const k = String(p.name).toUpperCase(); if (seenH.has(k) || !md[k]) return; seenH.add(k); heldRows.push(assetMetricRow(displayName(p.name), k, md[k])); });
+  apos().forEach(p => { const k = kpTickerOf(p.name); if (seenH.has(k) || !md[k]) return; seenH.add(k); heldRows.push(assetMetricRow(displayName(p.name), k, md[k])); });
   return { ok, out, heldText: heldRows.join('\n'), text: ok.map(row).join('\n'), etfText: etf.join('\n') || PLAN_ETFS.map(e => e[0] + ' | ' + e[1] + ' | ' + e[2]).join('\n') };
 }
 // Secteurs déjà présents dans le portefeuille de l'utilisateur
@@ -583,7 +583,7 @@ function assetMetricRow(label, sym, m) {
 const KP_DATA_RULE = "RÈGLE : appuie-toi sur ces données et cite-les. N'invente AUCUN chiffre, résultat d'entreprise, actualité ou évènement absent des données ci-dessus ; si une donnée manque, dis-le franchement. Les performances passées ne préjugent pas des performances futures.";
 // items : [{ t: ticker, name }]. Ne lève jamais d'erreur : { ok, text } (text décrit aussi l'absence de données)
 async function fetchContextBlock(items) {
-  const list = (items || []).map(x => ({ t: String(x.t || '').toUpperCase(), name: String(x.name || x.t || '') })).filter(x => /^[A-Z0-9.\-]{1,14}$/.test(x.t));
+  const list = (items || []).map(x => ({ t: kpTickerOf(x.t), name: String(x.name || x.t || '') })).filter(x => /^[A-Z0-9.\-]{1,14}$/.test(x.t));
   const seen = new Set(), uniq = list.filter(x => !seen.has(x.t) && seen.add(x.t)).slice(0, 40);
   const none = { ok: false, text: "DONNÉES DE MARCHÉ : aucune donnée disponible actuellement. N'avance AUCUN chiffre de cours ou de performance ni aucune actualité ; reste général, prudent, et dis que les données de marché ne sont pas disponibles." };
   if (!uniq.length) return none;
@@ -628,6 +628,16 @@ async function planDataSuffix(riskLabel) {
 }
 // ═══ GRAPHIQUES DE COURS (bibliothèque libre « Lightweight Charts » de TradingView, données Yahoo via /api/chart) ═══
 // Information seulement : aucun signal d'achat ou de vente, aucun outil de dessin.
+// Positions saisies avec le NOM de l'entreprise (« Air Liquide ») : on retrouve le vrai ticker avant d'interroger les cours
+const KP_NAME_ALIAS = { 'LVMH': 'MC.PA', 'AIR LIQUIDE': 'AI.PA', 'TOTALENERGIES': 'TTE.PA', 'TOTAL ENERGIES': 'TTE.PA', 'BNP PARIBAS': 'BNP.PA', 'VEOLIA': 'VIE.PA', 'VEOLIA ENVIRONNEMENT': 'VIE.PA', 'PORSCHE': 'PAH3.DE', 'PORSCHE HOLDING': 'PAH3.DE', 'PORSCHE AUTOMOBIL HOLDING': 'PAH3.DE', 'LOREAL': 'OR.PA', "L'ORÉAL": 'OR.PA', 'AIRBUS': 'AIR.PA', 'SCHNEIDER ELECTRIC': 'SU.PA', 'SANOFI': 'SAN.PA', 'AXA': 'CS.PA', 'FDJ UNITED': 'FDJU.PA', 'FDJ.PA': 'FDJU.PA', 'STELLANTIS': 'STLA' };
+function kpTickerOf(n) {
+  const up = String(n || '').trim().toUpperCase();
+  if (!up) return '';
+  if (KP_NAME_ALIAS[up]) return KP_NAME_ALIAS[up];
+  if (/^[A-Z0-9.\-=]{1,20}$/.test(up)) return up;
+  try { for (const [t, nm] of Object.entries(COMPANY_NAMES)) if (String(nm).toUpperCase() === up) return t.toUpperCase(); } catch (e) {}
+  return up;
+}
 let _kpChartLibPromise = null;
 function kpLoadChartLib() {
   if (window.LightweightCharts) return Promise.resolve(window.LightweightCharts);
@@ -662,6 +672,7 @@ function kpSMA(pts, n) {
 function kpChartMount(host, ticker, name, opts) {
   if (!host) return;
   opts = opts || {};
+  const symbol = kpTickerOf(ticker) || ticker;
   const st = { range: '1y', type: 'candle', ma50: false, ma200: false, vol: true };
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const C = dark
@@ -693,7 +704,7 @@ function kpChartMount(host, ticker, name, opts) {
   async function draw() {
     const msg = $('kpc-msg');
     try {
-      const [L, data] = await Promise.all([kpLoadChartLib(), kpFetchChart(ticker, st.range)]);
+      const [L, data] = await Promise.all([kpLoadChartLib(), kpFetchChart(symbol, st.range)]);
       const pts = data.points || [];
       const cv = $('kpc-canvas');
       if (chart) { try { chart.remove(); } catch (e) {} chart = null; }

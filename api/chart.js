@@ -30,7 +30,7 @@ const RANGES = {
 };
 const METAL_GRAM = { 'XAU-G': 'GC=F', 'XAG-G': 'SI=F', 'XPT-G': 'PL=F' };
 // Positions saisies avec un nom ou un ancien ticker
-const ALIAS = { 'LVMH': 'MC.PA', 'FDJ.PA': 'FDJU.PA', 'FDJ': 'FDJU.PA', 'TOTALENERGIES': 'TTE.PA', 'AIRBUS': 'AIR.PA', 'SANOFI': 'SAN.PA', 'AXA': 'CS.PA', 'VEOLIA': 'VIE.PA', 'AGGH.L': 'AGGH.AS', 'AGGH.DE': 'AGGH.AS' };
+const ALIAS = { 'AIR LIQUIDE': 'AI.PA', 'BNP PARIBAS': 'BNP.PA', 'SCHNEIDER ELECTRIC': 'SU.PA', 'VEOLIA ENVIRONNEMENT': 'VIE.PA', 'PORSCHE': 'PAH3.DE', 'PORSCHE HOLDING': 'PAH3.DE', 'PORSCHE AUTOMOBIL HOLDING': 'PAH3.DE', 'FDJ UNITED': 'FDJU.PA', 'LOREAL': 'OR.PA', 'STELLANTIS': 'STLA', 'LVMH': 'MC.PA', 'FDJ.PA': 'FDJU.PA', 'FDJ': 'FDJU.PA', 'TOTALENERGIES': 'TTE.PA', 'AIRBUS': 'AIR.PA', 'SANOFI': 'SAN.PA', 'AXA': 'CS.PA', 'VEOLIA': 'VIE.PA', 'AGGH.L': 'AGGH.AS', 'AGGH.DE': 'AGGH.AS' };
 
 function planFor(symbol) {
   if (/^CUR-[A-Z]{3}$/.test(symbol)) return { ticker: 'EUR' + symbol.slice(4) + '=X', inv: true, cur: 'EUR' };
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
 
   const symbol = String(req.query?.symbol || '').trim().toUpperCase();
   const cfg = RANGES[String(req.query?.range || '1y')] || RANGES['1y'];
-  if (!/^[A-Z0-9.\-=]{1,20}$/.test(symbol)) return res.status(400).json({ error: 'symbole invalide', points: [] });
+  if (!/^[A-Z0-9.\-= ]{1,30}$/.test(symbol)) return res.status(400).json({ error: 'symbole invalide', points: [] });
 
   try {
     const plan = planFor(symbol);
