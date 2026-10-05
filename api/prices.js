@@ -53,13 +53,32 @@ export default async function handler(req, res) {
   res.status(200).json({ quotes });
 }
 
+const METAL_GRAM = { 'XAU-G': 'GC=F', 'XAG-G': 'SI=F', 'XPT-G': 'PL=F' };
+let _fx = { v: 0, t: 0 };
+async function usdPerEur() {
+  if (_fx.v && Date.now() - _fx.t < 10 * 60000) return _fx.v;
+  try {
+    const r = await fetch('https://query2.finance.yahoo.com/v8/finance/chart/EURUSD=X?interval=1d&range=1d', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+    const v = (await r.json())?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (v > 0) { _fx = { v, t: Date.now() }; return v; }
+  } catch {}
+  if (_fx.v) return _fx.v;                       // dernier taux connu
+  throw new Error('taux EUR/USD indisponible');   // pas de prix plutôt qu'un prix faux
+}
+
 function getSymbolAttempts(symbol) {
+  if (/^CUR-[A-Z]{3}$/.test(symbol)) return [{ type: 'yahoo', ticker: 'EUR' + symbol.slice(4) + '=X', inv: true }];   // devise : valeur en euros d'une unité
+  if (/^[A-Z0-9]{2,20}-EUR$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol }];   // crypto en euros
+  if (/^[A-Z0-9]{2,20}-USD$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // crypto en dollars, convertie en euros
+  if (/^[A-Z]{1,3}=F$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // matière première (cours en dollars), convertie en euros
+  if (METAL_GRAM[symbol]) return [{ type: 'yahoo', ticker: METAL_GRAM[symbol], fx: true, per: 31.1034768 }];   // métal physique : euros par gramme (1 once troy = 31,1035 g)
   const nameToYahoo = {
     'LVMH': 'MC.PA', 'Air Liquide': 'AI.PA', 'TotalEnergies': 'TTE.PA',
     'BNP Paribas': 'BNP.PA', 'Veolia': 'VIE.PA', 'Veolia Environnement': 'VIE.PA',
     'Stellantis': 'STLA', 'Porsche': 'PAH3.DE', 'Porsche Automobil Holding': 'PAH3.DE',
     'Porsche Automobil': 'PAH3.DE', 'LOreal': 'OR.PA', 'Airbus': 'AIR.PA',
     'Schneider Electric': 'SU.PA', 'Sanofi': 'SAN.PA', 'AXA': 'CS.PA',
+    'AGGH.L': 'AGGH.AS', 'AGGH.DE': 'AGGH.AS',   // ancien ticker introuvable : le bon est sur Euronext Amsterdam
   };
 
   const yahooTicker = nameToYahoo[symbol];
@@ -100,11 +119,13 @@ async function fetchQuote(attempt, originalSymbol, apiKey) {
     const d = await r.json();
     const meta = d?.chart?.result?.[0]?.meta;
     if (meta?.regularMarketPrice && meta.regularMarketPrice > 0) {
+      const k = (attempt.fx ? 1 / (await usdPerEur()) : 1) / (attempt.per || 1);   // dollars -> euros (puis par gramme si métal)
       const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
       const changePct = prev && prev !== meta.regularMarketPrice
         ? ((meta.regularMarketPrice - prev) / prev * 100)
         : (meta.regularMarketChangePercent || 0);
-      return { symbol: originalSymbol, price: meta.regularMarketPrice, changePct, change: meta.regularMarketPrice - prev, source: 'yahoo' };
+      if (attempt.inv) { const pr = 1 / meta.regularMarketPrice, pv = 1 / prev; return { symbol: originalSymbol, price: pr, changePct: (pr - pv) / pv * 100, change: pr - pv, source: 'yahoo' }; }   // taux inversé : euros par unité
+      return { symbol: originalSymbol, price: meta.regularMarketPrice * k, changePct, change: (meta.regularMarketPrice - prev) * k, source: 'yahoo' };
     }
   }
   return null;

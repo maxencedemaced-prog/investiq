@@ -198,7 +198,7 @@ export default async function handler(req, res) {
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'Prompt manquant.' });
     }
-    if (prompt.length > 20_000 || (system && system.length > 10_000)) {
+    if (prompt.length > 45_000 || (system && system.length > 12_000)) {   // les analyses avec données de marché (cours, indices, actualités) dépassent 20 000 caractères
       return res.status(400).json({ error: 'Prompt trop long.' });
     }
     // Plafond réglable par appel (ex: le fil d'actualités a besoin de plus de place

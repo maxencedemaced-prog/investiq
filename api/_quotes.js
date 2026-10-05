@@ -19,7 +19,25 @@ function toFinnhubSymbol(t) {
   return t;
 }
 
+const METAL_GRAM = { 'XAU-G': 'GC=F', 'XAG-G': 'SI=F', 'XPT-G': 'PL=F' };
+let _fx = { v: 0, t: 0 };
+async function usdPerEur() {
+  if (_fx.v && Date.now() - _fx.t < 10 * 60000) return _fx.v;
+  try {
+    const r = await fetch('https://query2.finance.yahoo.com/v8/finance/chart/EURUSD=X?interval=1d&range=1d', { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+    const v = (await r.json())?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (v > 0) { _fx = { v, t: Date.now() }; return v; }
+  } catch {}
+  if (_fx.v) return _fx.v;                       // dernier taux connu
+  throw new Error('taux EUR/USD indisponible');   // pas de prix plutôt qu'un prix faux
+}
+
 function attemptsFor(symbol) {
+  if (/^CUR-[A-Z]{3}$/.test(symbol)) return [{ type: 'yahoo', ticker: 'EUR' + symbol.slice(4) + '=X', inv: true }];   // devise : valeur en euros d'une unité
+  if (/^[A-Z0-9]{2,20}-EUR$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol }];   // crypto en euros
+  if (/^[A-Z0-9]{2,20}-USD$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // crypto en dollars, convertie en euros
+  if (/^[A-Z]{1,3}=F$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // matière première (cours en dollars), convertie en euros
+  if (METAL_GRAM[symbol]) return [{ type: 'yahoo', ticker: METAL_GRAM[symbol], fx: true, per: 31.1034768 }];   // métal physique : euros par gramme (1 once troy = 31,1035 g)
   const y = NAME_TO_YAHOO[symbol];
   if (y) return [{ type: 'yahoo', ticker: y }, { type: 'finnhub', ticker: toFinnhubSymbol(y) }];
   const a = [{ type: 'finnhub', ticker: toFinnhubSymbol(symbol) }, { type: 'yahoo', ticker: symbol }];
@@ -45,7 +63,9 @@ async function fetchOne(at) {
   const m = d?.chart?.result?.[0]?.meta;
   if (m?.regularMarketPrice > 0) {
     const prev = m.chartPreviousClose || m.previousClose || m.regularMarketPrice;
-    return { price: m.regularMarketPrice, changePct: prev && prev !== m.regularMarketPrice ? (m.regularMarketPrice - prev) / prev * 100 : (m.regularMarketChangePercent || 0) };
+    const k = (at.fx ? 1 / (await usdPerEur()) : 1) / (at.per || 1);   // dollars -> euros (puis par gramme si métal)
+    if (at.inv) { const pr = 1 / m.regularMarketPrice, pv = 1 / prev; return { price: pr, changePct: (pr - pv) / pv * 100 }; }   // taux inversé : euros par unité
+    return { price: m.regularMarketPrice * k, changePct: prev && prev !== m.regularMarketPrice ? (m.regularMarketPrice - prev) / prev * 100 : (m.regularMarketChangePercent || 0) };
   }
   return null;
 }
