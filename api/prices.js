@@ -78,6 +78,7 @@ function getSymbolAttempts(symbol) {
     'Stellantis': 'STLA', 'Porsche': 'PAH3.DE', 'Porsche Automobil Holding': 'PAH3.DE',
     'Porsche Automobil': 'PAH3.DE', 'LOreal': 'OR.PA', 'Airbus': 'AIR.PA',
     'Schneider Electric': 'SU.PA', 'Sanofi': 'SAN.PA', 'AXA': 'CS.PA',
+    'AGGH.L': 'AGGH.AS', 'AGGH.DE': 'AGGH.AS',   // ancien ticker introuvable : le bon est sur Euronext Amsterdam
   };
 
   const yahooTicker = nameToYahoo[symbol];
