@@ -31,7 +31,7 @@ export const TUTOS = {
       { say: 'Voici ton accueil : en un coup d’œil, la valeur totale de tes placements et leur évolution.', do: [{ js: "nav('home')" }, { wait: 500 }, { point: '#home-metrics' }] },
       { say: 'Juste en dessous, ton score de santé et les alertes du jour te montrent ce qui mérite ton attention.', do: [{ scroll: '#home-score' }, { point: '#home-score, #home-alerts' }] },
       { say: 'Et ici, ta progression vers ton objectif, calculée avec les vrais cours.', do: [{ scroll: '#home-obj, #home-metrics' }, { point: '#home-obj, #home-metrics' }] },
-      { say: 'Bon à savoir : Kapitaro ne garde pas ton argent et ne passe aucun ordre. Pour investir, tu passes par ta banque ou ton courtier ; Kapitaro t’aide à tout suivre au même endroit.', do: [{ scroll: '#home-platforms-wrap, #home-metrics' }, { point: '#home-platforms-wrap, #home-metrics' }] },
+      { say: 'Une question, ou tu ne sais pas où aller ? Touche la bulle verte en bas à droite : l’assistant d’aide te répond tout de suite.', do: [{ js: "var h = document.getElementById('kp-help-btn'); if (h) h.style.setProperty('display', 'flex', 'important');" }, { wait: 300 }, { click: '#kp-help-btn' }, { wait: 1800 }, { js: "var p = document.getElementById('kp-help'); if (p) p.classList.remove('open'); var h = document.getElementById('kp-help-btn'); if (h) h.style.removeProperty('display');" }] },
       { say: 'Reviens chaque jour : le briefing du matin te résume l’essentiel en quelques secondes.', do: [{ scroll: '#home-metrics' }, { point: '#home-metrics' }] },
     ],
   },
