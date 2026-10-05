@@ -69,6 +69,37 @@ async function one(symbol) {
   } catch { return null; }
 }
 
+// Grands indices : la tendance d'ensemble du marché (sert de contexte à l'analyse)
+const INDICES = [['^FCHI', 'CAC 40'], ['^STOXX50E', 'Euro Stoxx 50'], ['^GSPC', 'S&P 500'], ['^IXIC', 'Nasdaq'], ['^VIX', 'VIX (indice de peur, niveau)']];
+
+const decode = (s) => String(s || '')
+  .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+  .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+  .replace(/&#0?39;|&apos;/g, "'").replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+// Derniers titres de presse sur une entreprise (flux RSS public Google Actualités, 14 derniers jours).
+// On ne garde que : titre, source, date. Jamais le texte des articles.
+async function newsFor(name) {
+  try {
+    const q = encodeURIComponent(name + ' action bourse when:14d');
+    const r = await fetch(`https://news.google.com/rss/search?q=${q}&hl=fr&gl=FR&ceid=FR:fr`, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Kapitaro)' }, signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return [];
+    const xml = await r.text();
+    const out = [];
+    for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+      const pick = (t) => { const x = m[1].match(new RegExp('<' + t + '[^>]*>([\\s\\S]*?)</' + t + '>')); return x ? decode(x[1]) : ''; };
+      let title = pick('title'), source = pick('source');
+      if (source && title.endsWith(' - ' + source)) title = title.slice(0, -(source.length + 3));
+      const ts = Date.parse(pick('pubDate'));
+      if (!title || !ts) continue;
+      if (/cours (de l[’']?)?action|cotation|objectif de cours|cours\s+\S+\s+bourse|consensus des analystes|\|\s*cours/i.test(title)) continue;   // simples pages de cours : aucune information
+      out.push({ title: title.slice(0, 140), source: source.slice(0, 40), ts });
+      if (out.length >= 3) break;
+    }
+    return out;
+  } catch { return []; }
+}
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || '';
   if (ALLOWED_ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
@@ -87,6 +118,20 @@ export default async function handler(req, res) {
     while (i < symbols.length) { const s = symbols[i++]; const v = await one(s); if (v) data[s] = v; }
   }));
 
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
-  return res.status(200).json({ data, asOf: new Date().toISOString(), requested: symbols.length });
+  // tendance des grands indices
+  const market = [];
+  await Promise.all(INDICES.map(async ([sym, label]) => { const v = await one(sym); if (v) market.push({ symbol: sym, label, ...v }); }));
+  market.sort((a, b) => INDICES.findIndex(i => i[0] === a.symbol) - INDICES.findIndex(i => i[0] === b.symbol));
+
+  // actualités récentes de chaque entreprise (paramètre names=TICKER:Nom,TICKER:Nom)
+  const names = String(req.query?.names || '').split(',').map(x => x.split(':')).filter(p => p.length === 2)
+    .map(([t, n]) => [t.trim().toUpperCase(), n.replace(/[^\p{L}\p{N} &'.\-]/gu, '').trim().slice(0, 40)]).filter(([t, n]) => /^[A-Z0-9.\-]{1,14}$/.test(t) && n).slice(0, 45);
+  const news = {};
+  let j = 0;
+  await Promise.all(Array.from({ length: 8 }, async () => {
+    while (j < names.length) { const [t, n] = names[j++]; const items = await newsFor(n); if (items.length) news[t] = items; }
+  }));
+
+  res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
+  return res.status(200).json({ data, market, news, asOf: new Date().toISOString(), requested: symbols.length });
 }
