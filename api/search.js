@@ -52,9 +52,9 @@ export default async function handler(req, res) {
     const quotes = data.quotes || [];
 
     const yahooCrypto = quotes
-      .filter(q => q.symbol && q.quoteType === 'CRYPTOCURRENCY' && /-EUR$/.test(q.symbol))   // seulement les paires en euros : le prix affiché est en €
+      .filter(q => q.symbol && req.query.crypto === '1' && q.quoteType === 'CRYPTOCURRENCY' && /-EUR$/.test(q.symbol))   // seulement les paires en euros : le prix affiché est en €
       .map(q => ({ ticker: q.symbol, name: q.longname || q.shortname || q.symbol, type: 'Crypto', sector: 'Crypto', exchange: 'Cryptomonnaie' }));
-    const cryptoAll = [...cryptoMatches(req.query.q), ...yahooCrypto].filter((c, i, a) => a.findIndex(x => x.ticker === c.ticker) === i).slice(0, 4);
+    const cryptoAll = [...(req.query.crypto === '1' ? cryptoMatches(req.query.q) : []), ...yahooCrypto].filter((c, i, a) => a.findIndex(x => x.ticker === c.ticker) === i).slice(0, 4);
     const stocks = quotes
       .filter(q => q.symbol && ['EQUITY','ETF','MUTUALFUND'].includes(q.quoteType))
       .slice(0, 8)
@@ -107,6 +107,6 @@ export default async function handler(req, res) {
       .filter(c => c.name.toLowerCase().includes(q_lower) || c.ticker.toLowerCase().includes(q_lower))
       .slice(0, 6);
 
-    return res.status(200).json({ results: [...cryptoMatches(q), ...results].slice(0, 8) });
+    return res.status(200).json({ results: [...(req.query.crypto === '1' ? cryptoMatches(q) : []), ...results].slice(0, 8) });
   }
 }

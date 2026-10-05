@@ -184,7 +184,7 @@ async function sendMoves(users, state) {
       if (done.has(`${u.userId}|mv:${k}:${day}`)) return;
       cands.push({ key: `mv:${k}:${day}`, label, where, pct: q.changePct, rank });
     };
-    for (const p of positions.filter(p => p.user_id === u.userId)) add(p.name, p.name, 'dans ton portefeuille', /etf/i.test(p.type || '') ? MOVE_ETF : MOVE_STOCK, 0);
+    for (const p of positions.filter(p => p.user_id === u.userId && !/crypto/i.test(p.type || ''))) add(p.name, p.name, 'dans ton portefeuille', /etf/i.test(p.type || '') ? MOVE_ETF : MOVE_STOCK, 0);
     for (const w of u.watchlist) add(w.ticker, w.name || w.ticker, 'dans ta watchlist', MOVE_STOCK, 1);
     for (const [sym, name] of Object.entries(MARKET_LIST)) {
       if (!positions.some(p => p.user_id === u.userId && sameSym(p.name, sym)) && !u.watchlist.some(w => sameSym(w.ticker, sym))) add(sym, name, 'sur le marché', MOVE_MARKET, 2);
@@ -251,13 +251,13 @@ async function handler(req, res) {
           value += v; cost += p.pru * p.qty;
           if (q && q.changePct) {
             dayDelta += v - v / (1 + q.changePct / 100);
-            movers.push({ name: p.name, pct: q.changePct });
+            if (!/crypto/i.test(p.type || '')) movers.push({ name: p.name, pct: q.changePct });   // cryptos : valeur comptée, jamais commentée
           }
         }
         const prevValue = value - dayDelta;
         const dayPct = prevValue > 0 ? dayDelta / prevValue * 100 : 0;
         const totalPct = cost > 0 ? (value - cost) / cost * 100 : 0;
-        const inLoss = mine.filter(p => p.pru > 0 && ((quotes[p.name]?.price ?? p.price) - p.pru) / p.pru * 100 < -10).length;
+        const inLoss = mine.filter(p => !/crypto/i.test(p.type || '') && p.pru > 0 && ((quotes[p.name]?.price ?? p.price) - p.pru) / p.pru * 100 < -10).length;
 
         let body = movers.length
           ? `${fmtEur(value)} · ${fmtPct(dayPct)} à la dernière séance · ${fmtPct(totalPct)} depuis l'achat`

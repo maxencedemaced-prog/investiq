@@ -8,6 +8,7 @@ Tu es le copilote financier personnel de l'utilisateur — comme un ami compéte
 - Sois concret et chiffré ("IWDA pèse 30% de ton portefeuille") plutôt qu'abstrait ("concentration élevée").
 - Quand tu recommandes, assume ("À ta place, je réduirais légèrement") tout en rappelant que la décision lui revient.
 - Explique le jargon en une phrase quand tu l'utilises. Pas de listes à puces interminables : va à l'essentiel.
+- CRYPTOMONNAIES : tu ne fais AUCUNE analyse, aucun avis, aucune prévision, aucune comparaison ni aucun conseil sur les cryptos (Bitcoin, Ethereum…), même si on te le demande. Tu peux seulement rappeler que Kapitaro suit leur cours, sans les analyser, et que ce sont des actifs très risqués non couverts par tes analyses.
 - Exemple du ton attendu — au lieu de "Concentration élevée sur IWDA", dis : "Ton portefeuille tient bien la route. Un point d'attention : IWDA commence à peser lourd (30%). En réduire un peu améliorerait ta diversification sans sacrifier ta performance."
 Tu ne fournis pas de conseil financier réglementé et tu le rappelles avec légèreté quand c'est pertinent.`;
 
@@ -492,8 +493,8 @@ async function generateMonthlyPlan(force = false) {
     </div>
   </div>`;
 
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
-  const held = positions.slice(0, 12).map(p => {
+  const tv = apos().reduce((a,p)=>a+p.qty*p.price, 0);
+  const held = apos().slice(0, 12).map(p => {
     const pnl = p.pru>0 ? ((p.price-p.pru)/p.pru*100).toFixed(1) : '0';
     return `${displayName(p.name)} (${p.name}) : ${(p.qty*p.price/tv*100||0).toFixed(0)}% du portef., P&L ${pnl>=0?'+':''}${pnl}%${planLineBlocked(p.name) ? ' — EFFONDRÉE, NE PAS RENFORCER' : ''}`;
   }).join('\n');
@@ -540,7 +541,7 @@ La somme des montants doit faire exactement ${budget}.`;
       ((await r.json()).quotes || []).forEach(q => { if (q.symbol) live[q.symbol.toUpperCase()] = parseFloat(q.price) || 0; });
     } catch {}
     data.lignes.forEach(l => {
-      const p = positions.find(x => x.name === l.ticker || x.ticker === l.ticker);
+      const p = apos().find(x => x.name === l.ticker || x.ticker === l.ticker);
       l._price = live[String(l.ticker).toUpperCase()] || p?.price || null;
     });
     sanitizePlanLines(data, budget, live);
@@ -1912,7 +1913,7 @@ async function acSearchYahoo(query) {
   const drop = document.getElementById('ac-drop');
   if (!drop) return;
   try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&crypto=1`);
     const data = await res.json();
     const results = data.results || [];
     if (!results.length) {
@@ -1944,6 +1945,10 @@ async function acSearchYahoo(query) {
 // ===== AUTO REFRESH PRICES =====
 // Simple manual refresh only - no auto loop
 
+
+// Cryptos : suivies (cours, valeur) mais JAMAIS analysées. apos() = positions analysables (sans cryptos).
+function isCrypto(p) { return !!p && p.type === 'Crypto'; }
+function apos() { return positions.filter(p => !isCrypto(p)); }
 
 // ===== AUTOCOMPLETE ADD POSITION =====
 const AC_DB = [
@@ -2159,7 +2164,7 @@ function decisionAcSearch(query) {
       </div>
       <div class="ac-item-type ${r.type==='ETF'?'etf':''}">${_escHtml(r.type || '')}</div>
     </div>`;
-  const local = AC_DB.filter(c => c.ticker.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)).slice(0, 7);
+  const local = AC_DB.filter(c => c.type !== 'Crypto' && (c.ticker.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))).slice(0, 7);
   drop.style.display = 'block';
   if (local.length) { drop.innerHTML = local.map(item).join(''); return; }
   drop.innerHTML = '<div class="ac-no-result"><div style="font-size:13px;color:#8e8e93;font-weight:600">Recherche en cours...</div></div>';
@@ -4233,7 +4238,7 @@ async function renderSignaux() {
   }
 
   function signalCard(s, isMine) {
-    const myPos = positions.find(p => p.name === s.ticker);
+    const myPos = apos().find(p => p.name === s.ticker);
     const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const surf = isDark ? 'var(--color-surface)' : '#fff';
@@ -4343,7 +4348,7 @@ Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`;
   }
 
   const date = new Date().toLocaleDateString('fr-FR');
-  const myTickers = [...new Set(positions.map(p => p.name))].slice(0, 6); // max 6 = 2 batches
+  const myTickers = [...new Set(apos().map(p => p.name))].slice(0, 6); // max 6 = 2 batches
   
   // L'IA choisit elle-même les meilleures opportunités du jour
   async function getOppoTickers() {
@@ -6398,8 +6403,8 @@ async function generateBilanIA() {
     if (icon) icon.textContent = '✓';
   }
 
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const tv = apos().reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = apos().reduce((a,p)=>a+p.qty*p.pru,0);
   const pnl = tv - ti;
   const capacite = bilanData.capaciteEpargne || 0;
   const revenu = parseFloat(bilanData.revenu||0);
@@ -6428,7 +6433,7 @@ ${typeof bilanFactsText === 'function' ? bilanFactsText() : ''}
 ${bilanData.commentaires ? 'NOTES : ' + bilanData.commentaires : ''}
 
 PORTEFEUILLE ACTUEL :
-${positions.slice(0,8).map(p=>`${p.name}: ${(p.qty*p.price).toLocaleString('fr-FR',{maximumFractionDigits:0})}€ (${((p.qty*p.price/tv)*100).toFixed(1).replace(".", ",")} %)`).join('\n')}
+${apos().slice(0,8).map(p=>`${p.name}: ${(p.qty*p.price).toLocaleString('fr-FR',{maximumFractionDigits:0})}€ (${((p.qty*p.price/tv)*100).toFixed(1).replace(".", ",")} %)`).join('\n')}
 
 Génère un rapport structuré en JSON :
 {
@@ -7188,36 +7193,36 @@ function fmtI(n) { return Math.round(n).toLocaleString('fr-FR'); }
 
 // ===== NOTIFICATIONS =====
 async function checkAndGenerateNotifications() {
-  if (!positions.length) return;
+  if (!apos().length) return;
   const newNotifs = [];
 
   // ── 1. ALERTES PRIX — gérées exclusivement par checkPriceAlerts() ──
   // (pas de duplication ici)
 
   // ── 2. RÉÉQUILIBRAGE ──
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const tv = apos().reduce((a,p)=>a+p.qty*p.price,0);
   if (tv > 0) {
-    const etfs = positions.filter(p=>p.type==='ETF');
+    const etfs = apos().filter(p=>p.type==='ETF');
     const etfVal = etfs.reduce((a,p)=>a+p.qty*p.price,0);
     const etfPct = etfVal/tv*100;
     // Si ETF > 80% ou < 50% d'un portefeuille mixte avec actions
-    const hasActions = positions.some(p=>p.type==='Action'||p.type==='action');
+    const hasActions = apos().some(p=>p.type==='Action'||p.type==='action');
     if (hasActions && etfPct > 80) {
       newNotifs.push({ titre:'⚖️ Rééquilibrage conseillé', texte:`Tes ETF représentent ${etfPct.toFixed(0)}% du portefeuille. Tu pourrais réduire légèrement pour garder un bon équilibre.`, action:'Voir Santé du portefeuille', impact:'medium', heure:'Analyse', type:'reequilibrage' });
     } else if (hasActions && etfPct < 40) {
       newNotifs.push({ titre:'⚖️ Trop concentré en actions', texte:`Tes ETF ne représentent que ${etfPct.toFixed(0)}% — tu prends plus de risque que nécessaire. Pense à renforcer tes ETF.`, action:'Aide à la décision', impact:'medium', heure:'Analyse', type:'reequilibrage' });
     }
     // Position trop dominante (>40% du portefeuille)
-    positions.forEach(p => {
+    apos().forEach(p => {
       const pct = p.qty*p.price/tv*100;
-      if (pct > 40 && positions.length > 2) {
+      if (pct > 40 && apos().length > 2) {
         newNotifs.push({ titre:`📊 ${p.name} trop dominant`, texte:`${p.name} représente ${pct.toFixed(0)}% de ton portefeuille. Une forte concentration augmente ton risque.`, action:`Analyser ${p.name}`, impact:'medium', heure:'Analyse', type:'concentration' });
       }
     });
   }
 
   // ── 3. MARCHÉ EN BAISSE — opportunité DCA ──
-  const avgChange = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
   if (avgChange < -3) {
     newNotifs.push({ titre:'📉 Marché en baisse — opportunité !', texte:`Ton portefeuille baisse de ${Math.abs(avgChange).toFixed(1).replace(".", ",")} % aujourd'hui. Historiquement, c'est le bon moment pour renforcer en DCA, pas pour vendre.`, action:'Simulateur DCA', impact:'medium', heure:"Aujourd'hui", type:'marche' });
   } else if (avgChange < -1.5) {
@@ -7235,22 +7240,22 @@ async function checkAndGenerateNotifications() {
   }
 
   // ── 5. ANNIVERSAIRE INVESTISSEUR ──
-  if (positions.length > 0) {
-    const oldest = positions.reduce((min, p) => {
+  if (apos().length > 0) {
+    const oldest = apos().reduce((min, p) => {
       const d = new Date(p.created_at || Date.now());
       return d < min ? d : min;
     }, new Date());
     const daysSince = Math.floor((Date.now() - oldest) / 86400000);
     if (daysSince === 365 || daysSince === 730 || daysSince === 180) {
       const label = daysSince >= 365 ? `${Math.floor(daysSince/365)} an${daysSince>=730?'s':''}` : '6 mois';
-      const gain = tv - positions.reduce((a,p)=>a+p.qty*p.pru,0);
+      const gain = tv - apos().reduce((a,p)=>a+p.qty*p.pru,0);
       newNotifs.push({ titre:`🎉 ${label} d'investissement !`, texte:`Ça fait ${label} que tu investis ! Plus-value actuelle : ${gain>=0?'+':''}${fmtK(gain)}. Continue comme ça !`, action:'Voir Portefeuille', impact:'low', heure:'Anniversaire', type:'anniversaire' });
     }
   }
 
   // ── 6. INACTIVITÉ (pas de position récente) ──
-  if (profile.bankroll > 0 && positions.length > 0) {
-    const lastAdded = positions.reduce((max, p) => {
+  if (profile.bankroll > 0 && apos().length > 0) {
+    const lastAdded = apos().reduce((max, p) => {
       const d = new Date(p.created_at || 0);
       return d > max ? d : max;
     }, new Date(0));
@@ -7583,8 +7588,8 @@ async function renderHome() {
   const pnlBg = tpnl >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)';
   const chgColor = avgChange >= 0 ? '#4ade80' : '#f87171';
   const mainSparkData = isEmpty ? Array(30).fill(50) : genSparkData(avgChange > 0 ? 1 : -1, 30);
-  const scoreTxt = isEmpty ? '—' : score.toFixed(1).replace(".", ",");
-  const scoreShownColor = isEmpty ? '#8e8e93' : scoreColor;
+  const scoreTxt = (isEmpty || !apos().length) ? '—' : score.toFixed(1).replace(".", ",");
+  const scoreShownColor = (isEmpty || !apos().length) ? '#8e8e93' : scoreColor;
   const stripItems = (isEmpty || !scoreItems.length)
     ? ['Diversification','Concentration max','Part ETF','Performance'].map(label => ({label, score:0}))
     : scoreItems;
@@ -7813,12 +7818,12 @@ async function renderHome() {
 
 
 function buildAlertsData() {
-  const tv = positions.reduce((a,p) => a + p.qty*p.price, 0);
+  const tv = apos().reduce((a,p) => a + p.qty*p.price, 0);
   if (!tv) return [];
 
   // Grouper par ticker pour éviter les doublons
   const grouped = {};
-  positions.forEach(p => {
+  apos().forEach(p => {
     if (!grouped[p.name]) {
       grouped[p.name] = { name: p.name, type: p.type, val: 0, alert_price: p.alert_price, price: p.price };
     }
@@ -7845,7 +7850,7 @@ function buildAlertsData() {
     }
   });
 
-  const etfPct = positions.filter(p => p.type==='ETF').reduce((a,p) => a+p.qty*p.price, 0) / tv * 100;
+  const etfPct = apos().filter(p => p.type==='ETF').reduce((a,p) => a+p.qty*p.price, 0) / tv * 100;
   if (etfPct < 30) alerts.push({type:'warn', msg:`Seulement ${etfPct.toFixed(0)}% d'ETF — vise 60–80%`});
   if (!alerts.length) alerts.push({type:'ok', msg:'✅ Portefeuille bien équilibré'});
   return alerts;
@@ -7865,16 +7870,16 @@ function renderPlatforms() {
 
 // ===== SCORE =====
 function calcScore() {
-  if (!positions.length) return {score:0,items:[]};
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
+  if (!apos().length) return {score:0,items:[]};
+  const tv = apos().reduce((a,p)=>a+p.qty*p.price,0);
   const maxW = Math.max(...positions.map(p=>p.qty*p.price/tv*100));
-  const etfPct = positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/tv*100;
-  const pnl = positions.reduce((a,p)=>a+(p.qty*p.price-p.qty*p.pru),0);
+  const etfPct = apos().filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/tv*100;
+  const pnl = apos().reduce((a,p)=>a+(p.qty*p.price-p.qty*p.pru),0);
   // Seuils alignés sur les repères déjà affichés ailleurs dans la page Santé
   // (Min conseillé : 8 positions · Concentration max idéale : 25% · Part ETF idéale : 60%+)
   // pour qu'un score "Excellent" corresponde vraiment à un portefeuille qui respecte ces repères.
   const items=[
-    {label:'Diversification',score:Math.min(10,positions.length*1.25),tip:positions.length<8?`${positions.length} positions — vise 8+`:''},
+    {label:'Diversification',score:Math.min(10,apos().length*1.25),tip:apos().length<8?`${apos().length} positions — vise 8+`:''},
     {label:'Concentration max',score:maxW>50?1:maxW>40?3:maxW>25?5:maxW>15?8:10,tip:maxW>25?`Position dominante ${maxW.toFixed(0)}% — vise <25%`:''},
     {label:'Part ETF',score:etfPct>=70?10:etfPct>=60?9:etfPct>=45?6:etfPct>=25?4:2,tip:etfPct<60?`ETF = ${etfPct.toFixed(0)}% — vise 60%+`:''},
     {label:'Performance',score:pnl>=0?8:pnl>-tv*0.1?6:4,tip:''},
@@ -7896,9 +7901,9 @@ const SMART_LOSS_MAX = -20;  // % de perte vs PRU à partir duquel on alerte
 function _escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function computeRuleAlerts() {
-  if (!positions.length) return [];
+  if (!apos().length) return [];
   const grouped = {};
-  positions.forEach(p => {
+  apos().forEach(p => {
     const g = grouped[p.name] || (grouped[p.name] = { name: p.name, type: p.type, val: 0, cost: 0 });
     g.val += p.qty * p.price; g.cost += p.qty * p.pru;
   });
@@ -7923,8 +7928,8 @@ async function getSmartAdvice(a) {
   const cacheKey = 'iq_smart_' + (currentUser?.id || 'x') + '_' + a.key + '_' + week + '_' + Math.round(a.pct / 5) + '_' + Math.round(a.perf / 5);
   try { const c = JSON.parse(localStorage.getItem(cacheKey) || 'null'); if (c) return c; } catch {}
 
-  const tv = positions.reduce((s, p) => s + p.qty * p.price, 0);
-  const held = [...new Set(positions.map(p => p.name))].slice(0, 15).join(', ');
+  const tv = apos().reduce((s, p) => s + p.qty * p.price, 0);
+  const held = [...new Set(apos().map(p => p.name))].slice(0, 15).join(', ');
   const facts = a.kind === 'concentration'
     ? `${a.name} (${a.ticker}) représente ${a.pct.toFixed(0)}% du portefeuille (seuil conseillé : ${SMART_CONC_MAX}%).`
     : `${a.name} (${a.ticker}) est à ${a.perf.toFixed(0)}% par rapport à ton prix de revient et pèse ${a.pct.toFixed(0)}% du portefeuille.`;
@@ -8015,18 +8020,18 @@ function buildScore() {
   return html;
 }
 function buildAlerts() {
-  const tv=positions.reduce((a,p)=>a+p.qty*p.price,0);
+  const tv=apos().reduce((a,p)=>a+p.qty*p.price,0);
   if (!tv) return emptyMsg();
   let alerts=[];
-  positions.forEach(p=>{
+  apos().forEach(p=>{
     const w=p.qty*p.price/tv*100;
     if(w>40) alerts.push({type:'err',msg:`<strong>${p.name}</strong> = ${w.toFixed(0)}% — concentration excessive.`});
     else if(w>25) alerts.push({type:'warn',msg:`<strong>${p.name}</strong> = ${w.toFixed(0)}% — surveille.`});
     if(p.alert_price&&p.price<=p.alert_price) alerts.push({type:'err',msg:`<strong>${p.name}</strong> sous ton alerte prix de ${fmt(p.alert_price)}€ !`});
   });
-  const etfPct=positions.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/tv*100;
+  const etfPct=apos().filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/tv*100;
   if(etfPct<30) alerts.push({type:'warn',msg:`Seulement ${etfPct.toFixed(0)}% d'ETF — vise 60–80%.`});
-  if(positions.length<3) alerts.push({type:'warn',msg:`${positions.length} position(s) — diversifie avec 3–5 actifs.`});
+  if(apos().length<3) alerts.push({type:'warn',msg:`${apos().length} position(s) — diversifie avec 3–5 actifs.`});
   if(!alerts.length) alerts.push({type:'ok',msg:'Portefeuille bien équilibré — aucune alerte !'});
   const icons={ok:'✓',warn:'⚠',err:'✕'};
   return alerts.map(a=>`<div class="alert alert-${a.type}"><span class="alert-icon">${icons[a.type]}</span><div>${a.msg}</div></div>`).join('');
@@ -8277,7 +8282,7 @@ function renderPortfolio(auto=false) {
   // silencieuse à chaque ouverture d'app. Ils se génèreront au prochain vrai clic
   // sur "Portefeuille" (nav() sans auto).
   if (!auto) {
-    const needSignal = positions.filter(p => !posSignals[p.id]).slice(0, 6);
+    const needSignal = apos().filter(p => !posSignals[p.id]).slice(0, 6);
     needSignal.forEach((p, i) => setTimeout(() => generatePosSignal(p), i * 800));
   }
 }
@@ -8372,11 +8377,15 @@ function togglePos(id) {
       ${p.alert_price ? `<span>🔔 Alerte <strong style="color:var(--color-text)">${fmt(p.alert_price)} €</strong></span>` : ''}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="event.stopPropagation();openDecisionFromPos('${p.name.replace(/'/g,"\\'")}', 'garder')" style="padding:7px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser</button>
-      <button onclick="event.stopPropagation();sq('Que penses-tu de ma position ${p.name.replace(/'/g,"\\'")} ?');nav('ai')" style="padding:7px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;color:#16a34a;cursor:pointer">💬 Demander à l'IA</button>
+      <button data-an="1" onclick="event.stopPropagation();openDecisionFromPos('${p.name.replace(/'/g,"\\'")}', 'garder')" style="padding:7px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser</button>
+      <button data-an="1" onclick="event.stopPropagation();sq('Que penses-tu de ma position ${p.name.replace(/'/g,"\\'")} ?');nav('ai')" style="padding:7px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;color:#16a34a;cursor:pointer">💬 Demander à l'IA</button>
       <button onclick="event.stopPropagation();openEditPos('${p.id}')" style="padding:7px 13px;background:var(--color-bg-subtle,#f5f5f5);border:1px solid var(--color-border,#e4e4e7);border-radius:9px;font-size:12px;font-weight:700;color:var(--color-text-secondary);cursor:pointer">✏️ Modifier</button>
       ${p.platform && p.platform !== 'Autre' && PLATFORM_URLS[p.platform] ? `<button onclick="event.stopPropagation();openOnPlatform('${p.platform}','${(p.name||'').replace(/'/g,"\\'")}')" style="padding:7px 13px;background:${p.platform==='Trade Republic'?'#eef2ff':'#fff7ed'};border:1px solid ${p.platform==='Trade Republic'?'#c7d2fe':'#fed7aa'};border-radius:9px;font-size:12px;font-weight:700;color:${p.platform==='Trade Republic'?'#4f46e5':'#ea580c'};cursor:pointer">🔗 ${p.platform}</button>` : ''}
     </div>`;
+  if (isCrypto(p)) {
+    panel.querySelectorAll('[data-an]').forEach(b => b.remove());
+    panel.insertAdjacentHTML('beforeend', '<div style="font-size:12px;color:' + sub + ';margin-top:8px">ℹ️ Suivi du cours uniquement : Kapitaro n’analyse pas les cryptomonnaies.</div>');
+  }
   row.after(panel);
 }
 
@@ -8517,12 +8526,17 @@ function exportPDF() {
 async function renderSante() {
   // Dédupliquer les positions
   const dedupMap = {};
-  positions.forEach(p => {
+  apos().forEach(p => {
     const key = p.name + '|' + (p.platform||'');
     if (!dedupMap[key]) dedupMap[key] = {...p};
     else dedupMap[key].qty += p.qty;
   });
   const dedupPos = Object.values(dedupMap);
+  if (!dedupPos.length && positions.some(isCrypto)) {
+    const _e = document.getElementById('sante-content');
+    if (_e) _e.innerHTML = '<div style="padding:28px 18px;text-align:center;color:var(--color-text-secondary,#71717a);line-height:1.6"><div style="font-size:30px;margin-bottom:8px">🪙</div><div style="font-size:15px;font-weight:800;color:var(--color-text,#1c1c1e);margin-bottom:4px">Rien à analyser pour l’instant</div>Tes cryptomonnaies sont suivies dans ton portefeuille, mais Kapitaro ne les analyse pas. Ajoute des actions ou des ETF pour obtenir ton score de santé.</div>';
+    return;
+  }
 
   const {score, details} = calcScore();
   const tv = dedupPos.reduce((a,p)=>a+p.qty*p.price,0);
@@ -8577,7 +8591,8 @@ async function renderSante() {
 
   const COLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
 
-  const html = `
+  const cryptoNote = positions.some(isCrypto) ? '<div style="font-size:12px;color:' + textSec + ';margin:0 0 10px;padding:9px 12px;border-radius:10px;border:1px dashed ' + border + '">ℹ️ Tes cryptomonnaies sont suivies dans ton portefeuille mais ne sont pas incluses dans ce score.</div>' : '';
+  const html = cryptoNote + `
   <!-- SCORE DE SANTÉ -->
   <div style="background:linear-gradient(135deg,${isDark?'#080c10,#0d1520':'#f0fdf4,#ecfdf5'});border:1px solid ${isDark?'rgba(63,185,80,0.2)':' rgba(22,163,74,0.2)'};border-radius:20px;padding:24px;margin-bottom:14px;position:relative;overflow:hidden">
     <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(63,185,80,0.12),transparent);pointer-events:none"></div>
@@ -8943,7 +8958,7 @@ async function generateObjPlan() {
 
   setProgress('Enregistrement...');
 
-  const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
+  const tv = apos().reduce((a,p) => a+p.qty*p.price, 0);
   const capital = parseFloat(document.getElementById('obj-capital').value) || 0;
   const monthly = parseFloat(document.getElementById('obj-monthly').value) || 200;
   const target = parseFloat(document.getElementById('obj-target').value) || 100000;
@@ -9029,7 +9044,7 @@ async function generateObjPlan() {
       Génération de ton plan personnalisé...
     </div>`;
 
-  const portfolioCtx = positions.length ? `Portefeuille actuel : ${positions.map(p=>`${p.name}(${p.type},${p.qty}parts,PRU ${p.pru}€)`).join(', ')}.` : 'Pas encore de positions.';
+  const portfolioCtx = apos().length ? `Portefeuille actuel : ${apos().map(p=>`${p.name}(${p.type},${p.qty}parts,PRU ${p.pru}€)`).join(', ')}.` : 'Pas encore de positions.';
   const prompt = `Tu es le copilote financier IA de Kapitaro (tutoiement, ton chaleureux et concret). Génère un plan d'investissement ultra-personnalisé, formulé comme un ami compétent qui explique simplement.
 
 PROFIL :
@@ -9313,7 +9328,7 @@ function showCriseMethodology() {
 }
 
 function renderCrise() {
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+  const tv = apos().reduce((a,p)=>a+p.qty*p.price, 0);
   const monthly = objChartMonthly || 200;
   const years = objChartYears || 10;
   const capital = objChartCapital || tv;
@@ -9845,9 +9860,9 @@ function setDecisionIntent(intent) { selectIntent(intent); } // alias compat
 async function resolveDecisionText(text) {
   const t = text.trim().toLowerCase();
   if (t.length < 2) return null;
-  const exact = AC_DB.find(c => c.ticker.toLowerCase() === t || c.ticker.toLowerCase().split('.')[0] === t);
+  const exact = AC_DB.find(c => c.type !== 'Crypto' && (c.ticker.toLowerCase() === t || c.ticker.toLowerCase().split('.')[0] === t));
   if (exact) return exact;
-  const byName = AC_DB.find(c => c.name.toLowerCase().startsWith(t)) || AC_DB.find(c => c.name.toLowerCase().includes(t));
+  const byName = AC_DB.find(c => c.type !== 'Crypto' && c.name.toLowerCase().startsWith(t)) || AC_DB.find(c => c.type !== 'Crypto' && c.name.toLowerCase().includes(t));
   if (byName) return byName;
   if (positions.some(p => p.name.toLowerCase() === t)) return null;   // déjà un symbole connu du portefeuille
   try {
@@ -10214,7 +10229,7 @@ function qaOnSearch(q) {
   qaSearchTimer = setTimeout(async () => {
     let results = [];
     try {
-      const res = await fetch('/api/search?q=' + encodeURIComponent(q));
+      const res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&crypto=1');
       const data = await res.json();
       results = data.results || [];
     } catch {}
@@ -11186,7 +11201,7 @@ function getCachedVerdict() {
 
 async function generateKapitaroVerdict(force = false) {
   const el = document.getElementById('agent-verdict');
-  if (!el || !positions.length) { if (el) el.innerHTML = ''; return; }
+  if (!el || !apos().length) { if (el) el.innerHTML = ''; return; }
 
   // Cache 24h (sauf actualisation manuelle)
   const cached = getCachedVerdict();
@@ -11201,10 +11216,10 @@ async function generateKapitaroVerdict(force = false) {
 
   renderVerdictLoading();
 
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
+  const tv = apos().reduce((a,p)=>a+p.qty*p.price, 0);
   // Regrouper par nom (les doublons multi-plateformes) et garder les 8 plus grosses lignes
   const grouped = {};
-  positions.forEach(p => {
+  apos().forEach(p => {
     if (!grouped[p.name]) grouped[p.name] = { name: p.name, ticker: p.ticker||p.name, qty: 0, cost: 0, price: p.price, type: p.type };
     grouped[p.name].qty += p.qty;
     grouped[p.name].cost += p.qty * p.pru;
@@ -12304,7 +12319,7 @@ function bulkAskAI() {
     return;
   }
   const names = ids.map(id => {
-    const p = positions.find(x => String(x.id) === String(id));
+    const p = apos().find(x => String(x.id) === String(id));
     return p ? `${displayName(p.name)} (${p.name})` : '';
   }).filter(Boolean);
   toggleSelectMode(false);
@@ -12542,8 +12557,8 @@ function buildAgentContext() {
   // Barre de contexte — résumé de la situation actuelle
   const bar = document.getElementById('agent-context-bar');
   if (!bar) return;
-  const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
-  const ti = positions.reduce((a,p) => a+p.qty*p.pru, 0);
+  const tv = apos().reduce((a,p) => a+p.qty*p.price, 0);
+  const ti = apos().reduce((a,p) => a+p.qty*p.pru, 0);
   const pnl = tv - ti;
   const pct = ti > 0 ? (pnl/ti*100).toFixed(1) : 0;
   const chips = [];
@@ -12559,15 +12574,15 @@ function buildAgentSuggestions() {
   const el = document.getElementById('agent-suggestions');
   if (!el) return;
 
-  const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
-  const pnl = tv - positions.reduce((a,p) => a+p.qty*p.pru, 0);
-  const avgChg = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const tv = apos().reduce((a,p) => a+p.qty*p.price, 0);
+  const pnl = tv - apos().reduce((a,p) => a+p.qty*p.pru, 0);
+  const avgChg = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
   const pctObj = objChartTarget > 0 ? (tv/objChartTarget*100) : 0;
 
   // Suggestions dynamiques selon le contexte
   const suggestions = [];
 
-  if (positions.length === 0) {
+  if (apos().length === 0) {
     suggestions.push({ label: '🚀 Par où commencer ?', q: 'Je débute en bourse : quelles sont les grandes étapes pour bien commencer avec mon profil ?' });
     suggestions.push({ label: '💡 C\'est quoi un ETF ?', q: 'C\'est quoi un ETF monde et comment ça fonctionne ?' });
     suggestions.push({ label: '🏦 Choisir un courtier', q: 'Quels critères regarder pour choisir un courtier (frais, PEA, sécurité) ?' });
@@ -12598,19 +12613,19 @@ function buildAgentSuggestions() {
 
 function getFullContext() {
   // Contexte complet pour l'agent
-  const tv = positions.reduce((a,p) => a+p.qty*p.price, 0);
-  const ti = positions.reduce((a,p) => a+p.qty*p.pru, 0);
+  const tv = apos().reduce((a,p) => a+p.qty*p.price, 0);
+  const ti = apos().reduce((a,p) => a+p.qty*p.pru, 0);
   const pnl = tv - ti;
   const pct = ti > 0 ? (pnl/ti*100).toFixed(1) : 0;
-  const avgChg = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const avgChg = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
 
   let ctx = `=== CONTEXTE UTILISATEUR ===
-Portefeuille : ${positions.length} positions · Valeur ${fmtK(tv)} · P&L ${pnl>=0?'+':''}${fmtK(pnl)} (${pct}%) · Variation aujourd'hui : ${avgChg>=0?'+':''}${avgChg.toFixed(1).replace(".", ",")} %
+Portefeuille : ${apos().length} positions · Valeur ${fmtK(tv)} · P&L ${pnl>=0?'+':''}${fmtK(pnl)} (${pct}%) · Variation aujourd'hui : ${avgChg>=0?'+':''}${avgChg.toFixed(1).replace(".", ",")} %
 Profil : horizon ${profile.horizon || 'moyen'} · risque ${profile.risk || 'faible'} · bankroll ${profile.bankroll || 5000}€
 `;
 
-  if (positions.length) {
-    ctx += `Positions : ${positions.map(p => {
+  if (apos().length) {
+    ctx += `Positions : ${apos().map(p => {
       const known = AC_DB.find(c => c.ticker.toUpperCase() === p.name.toUpperCase());
       const fullName = known ? `${p.name} (${known.name})` : p.name;
       const ppnl = ((p.price-p.pru)/p.pru*100).toFixed(1);
@@ -12990,14 +13005,14 @@ function renderAgentDashboard() {
     clearAgentSample();   // Premium : dashboard complet, aucune trace de l'exemple
   }
   const name = userFirstName();
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
-  const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
+  const tv = apos().reduce((a,p)=>a+p.qty*p.price, 0);
+  const ti = apos().reduce((a,p)=>a+p.qty*p.pru, 0);
   const tpnl = tv - ti;
-  const avgChange = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
   const {score, items: scoreItems} = calcScore();
   const scoreColor = score>=7?'#16a34a':score>=5?'#f59e0b':'#dc2626';
-  const sorted = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
-  const topByWeight = [...positions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
+  const sorted = [...apos()].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
+  const topByWeight = [...apos()].sort((a,b)=>b.qty*b.price - a.qty*a.price);
   const pnlColor = tpnl >= 0 ? '#4ade80' : '#f87171';
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const surf = isDark ? 'var(--color-surface-raised)' : '#fff';
@@ -13018,7 +13033,7 @@ function renderAgentDashboard() {
   // ── HERO ──
   const heroEl = document.getElementById('agent-hero');
   if (heroEl) {
-    if (!positions.length) {
+    if (!apos().length) {
       heroEl.innerHTML = agentEmptyHeroHTML(false);
     } else {
       heroEl.innerHTML = `
@@ -13073,7 +13088,7 @@ function renderAgentDashboard() {
     }
   }
 
-  if (!positions.length) {
+  if (!apos().length) {
     ['agent-hier','agent-alertes','agent-recos','agent-banner','agent-priorites','agent-right','agent-footer-cards'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = '';
@@ -13251,12 +13266,12 @@ function renderAgentDashboard() {
         <span style="background:#f0fdf4;color:#16a34a;font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px">LIVE</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
-        <span style="color:${sub}">Confiance IA</span><span style="font-weight:800;color:#16a34a">${Math.min(95,65+positions.length*3)}%</span>
+        <span style="color:${sub}">Confiance IA</span><span style="font-weight:800;color:#16a34a">${Math.min(95,65+apos().length*3)}%</span>
       </div>
       <div style="background:${bord};border-radius:99px;height:5px;overflow:hidden;margin-bottom:4px">
-        <div style="height:100%;background:#16a34a;width:${Math.min(95,65+positions.length*3)}%;border-radius:99px"></div>
+        <div style="height:100%;background:#16a34a;width:${Math.min(95,65+apos().length*3)}%;border-radius:99px"></div>
       </div>
-      <div style="font-size:9px;color:${sub}">Basée sur ${positions.length} positions analysées</div>
+      <div style="font-size:9px;color:${sub}">Basée sur ${apos().length} positions analysées</div>
     </div>
 
     ${worst && (worst.change_pct||0) < 0 ? `
@@ -13317,7 +13332,7 @@ function renderAgentDashboard() {
         ['Valeur totale', fmtK(tv), txt],
         ['P&L global', `${tpnl>=0?'+':''}${fmtI(tpnl)} €`, tpnl>=0?'#16a34a':'#dc2626'],
         ['Perf. moyenne jour', `${avgChange>=0?'+':''}${avgChange.toFixed(2).replace(".", ",")} %`, avgChange>=0?'#16a34a':'#dc2626'],
-        ['Positions', positions.length, txt],
+        ['Positions', apos().length, txt],
       ].map(([l,v,c]) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${bord}">
         <span style="font-size:10px;color:${sub}">${l}</span>
@@ -13361,15 +13376,15 @@ async function generateDailyBrief() {
     Analyse de ton portefeuille...
   </div>`;
 
-  const tv = positions.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti = positions.reduce((a,p)=>a+p.qty*p.pru,0);
+  const tv = apos().reduce((a,p)=>a+p.qty*p.price,0);
+  const ti = apos().reduce((a,p)=>a+p.qty*p.pru,0);
   const pnl = tv - ti;
-  const avgChg = positions.length ? positions.reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const avgChg = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
   const pctObj = objChartTarget > 0 ? (tv/objChartTarget*100).toFixed(1) : null;
-  const sorted = [...positions].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
+  const sorted = [...apos()].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
   const best = sorted[0], worst = sorted[sorted.length-1];
 
-  if (!positions.length) {
+  if (!apos().length) {
     renderDailyBrief([
       { icon:'👋', text:'Bienvenue ! Ajoute tes premières positions pour recevoir un briefing personnalisé.', color:'#a5b4fc', type:'info' }
     ]);
@@ -13379,7 +13394,7 @@ async function generateDailyBrief() {
 
   const prompt = `Tu es le copilote financier IA de l'utilisateur. Génère son briefing du jour — ULTRA court, ton chaleureux et direct (tutoiement), comme un ami compétent qui le met au courant en 10 secondes.
 Valeur: ${fmtK(tv)} · P&L: ${pnl>=0?'+':''}${fmtK(pnl)} · Variation auj: ${avgChg>=0?'+':''}${avgChg.toFixed(1).replace(".", ",")} %
-Positions: ${positions.slice(0,6).map(p=>`${p.name}(${(p.change_pct||0).toFixed(1).replace(".", ",")} %)`).join(', ')}
+Positions: ${apos().slice(0,6).map(p=>`${p.name}(${(p.change_pct||0).toFixed(1).replace(".", ",")} %)`).join(', ')}
 ${pctObj ? `Objectif: ${pctObj}% atteint` : ''}
 
 Génère exactement 3 points courts. Format JSON UNIQUEMENT:
