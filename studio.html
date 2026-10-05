@@ -148,66 +148,6 @@ async function api(method, body) {
   return d;
 }
 
-// ── Vidéos pub (statut « ad ») ──
-var ADS_TIMER = null;
-function adsList() { return POSTS.filter(function (p) { return p.status === 'ad'; }).sort(function (a, b) { return Date.parse(b.created_at) - Date.parse(a.created_at); }); }
-var ADS_OPEN = {};   // dossiers ouverts / fermés par la personne (conservé entre deux rafraîchissements)
-// Une fabrication = les vidéos créées à moins de 3 minutes d'intervalle
-function adFolders(ads) {
-  var out = [];
-  ads.forEach(function (p) { var t = Date.parse(p.created_at), g = out[out.length - 1]; if (g && g.t - t < 180000) { g.items.push(p); g.t = t; } else out.push({ key: p.id, t: t, start: t, items: [p] }); });
-  return out;
-}
-function renderAds() {
-  var box = document.getElementById('ads-list'), ads = adsList();
-  if (!box) return;
-  if (!ads.length) { box.innerHTML = '<div class="empty" style="padding:14px">Aucune vidéo pub pour l\'instant.</div>'; return; }
-  var cards = function (list) { return list.slice().reverse().map(function (p) {
-    var s = p.video_script || {}, st = s.status;
-    var state = p.video_url && st === 'done' ? '' : st === 'error' ? '<div style="color:#fb7185;font-size:13px">Erreur : ' + esc(s.error || '') + '</div>' : '<div class="sub">⏳ Fabrication en cours (3 à 5 minutes)…</div>';
-    return '<div style="border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px">'
-      + '<div style="font-weight:700;margin-bottom:6px">' + esc(p.title) + '</div>' + state
-      + (p.video_url && st === 'done' ? '<video src="' + esc(p.video_url) + '" controls playsinline preload="metadata" style="width:100%;max-width:200px;border-radius:10px;display:block;margin:6px 0"></video>'
-        + '<div class="row"><a class="btn" href="' + esc(p.video_url) + '" download target="_blank" rel="noopener">⬇ Télécharger</a><button class="btn" onclick="copyAdLink(\'' + p.id + '\')">📋 Copier le lien de suivi</button></div>' : '')
-      + '<div class="sub" style="margin-top:6px;word-break:break-all">Lien de la pub : ' + esc(p.caption || '') + '</div></div>';
-  }).join(''); };
-  box.innerHTML = adFolders(ads).map(function (g, k) {
-    var d = new Date(g.t), short = g.items.some(function (p) { return /\(15 s\)/.test(p.title || ''); });
-    var label = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    var ready = g.items.filter(function (p) { return p.video_url && (p.video_script || {}).status === 'done'; }).length;
-    var open = !!ADS_OPEN[g.key];
-    return '<details class="folder" data-k="' + g.key + '"' + (open ? ' open' : '') + ' ontoggle="ADS_OPEN[this.dataset.k]=this.open">'
-      + '<summary>📁 ' + esc(label.charAt(0).toUpperCase() + label.slice(1)) + ' · ' + (short ? 'courtes (15 s)' : 'longues (23 s)')
-      + ' <span class="sub" style="font-weight:500">· ' + ready + '/' + g.items.length + ' prête' + (ready > 1 ? 's' : '') + '</span></summary>'
-      + '<div class="folder-in"><div class="ad-grid">' + cards(g.items) + '</div></div></details>';
-  }).join('');
-}
-function copyAdLink(id) { var p = POSTS.find(function (x) { return x.id === id; }); if (p && navigator.clipboard) navigator.clipboard.writeText(p.caption || '').then(function () { toast('Lien copié'); }); }
-async function refreshAds() {
-  try { var d = await api('POST', { action: 'ad-list' }); POSTS = POSTS.filter(function (p) { return p.status !== 'ad'; }).concat(d.posts || []); } catch (e) {}
-  renderAds();
-  var pending = adsList().some(function (p) { var st = (p.video_script || {}).status; return st === 'queued' || st === 'rendering'; });
-  clearTimeout(ADS_TIMER);
-  if (pending && FILTER === 'ads') ADS_TIMER = setTimeout(refreshAds, 20000);
-}
-function renderAdsPage() {
-  document.getElementById('list').innerHTML = '<div class="post"><div class="post-t">🎯 Vidéos pub</div>'
-    + '<p class="sub" style="margin:6px 0 12px">Vidéos pour tes publicités Meta, avec trois accroches à comparer (A, B, C). Voix Adrien dynamique, écrans de l\'appli animés, sous-titres incrustés. Jamais publiées automatiquement : télécharge-les puis importe-les dans le Gestionnaire de publicités, avec le lien de suivi indiqué. Chaque fabrication est rangée dans un dossier daté : clique dessus pour l\'ouvrir.</p>'
-    + '<div class="row"><button class="btn" id="btn-ads-short" onclick="createAds(this, true)">Créer les 3 vidéos courtes (15 s)</button><button class="btn primary" id="btn-ads" onclick="createAds(this)">Créer les 3 vidéos (23 s)</button></div></div>'
-    + '<div id="ads-list"><div class="empty">Chargement…</div></div>';
-  renderAds(); refreshAds();
-}
-var ADS_BUSY = false;   // empêche un double lancement (double clic, fenêtre rouverte pendant la préparation)
-async function createAds(btn, short) {
-  if (ADS_BUSY) return;
-  if (adsList().length && !confirm('Fabriquer 3 nouvelles vidéos pub' + (short ? ' courtes (15 s)' : '') + ' ? (les précédentes restent disponibles)')) return;
-  var label = btn.textContent;
-  ADS_BUSY = true; btn.disabled = true; btn.textContent = 'Préparation des voix…';
-  try { var d = await api('POST', { action: 'ad-create', short: !!short }); POSTS = (d.posts || []).concat(POSTS); toast('C\'est parti : les 3 vidéos arrivent dans quelques minutes'); refreshAds(); }
-  catch (e) { toast(e.message, 6000); }
-  ADS_BUSY = false; btn.disabled = false; btn.textContent = label;
-}
-
 // ── Bouton général « Tout arrêter » / « Reprendre » ──
 var STUDIO_PAUSED = false;
 function paintStudioPause() {
@@ -288,8 +228,7 @@ function goToPost(id) {
 function render() {
   var list = document.getElementById('list');
   if (FILTER === 'calendar') { renderCalendar(); return; }
-  if (FILTER === 'ads') { renderAdsPage(); return; }
-  if (FILTER === 'tutos') { renderTutosPage(); return; }
+  if (FILTER === 'ads' || FILTER === 'tutos') { renderTutosPage(FILTER); return; }
   clearInterval(TUTO_TIMER);
   var items = POSTS.filter(function (p) { return (p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing')) && !(p.format === 'story' && FILTER === 'draft') && p.format !== 'guide'; });
   // À valider : les posts les plus récents en haut (Validés et Publiés gardent l'ordre des dates de publication)
@@ -404,16 +343,22 @@ async function useVideo(btn) {
 var TUTO_TIMER = null;
 function openTutos() { setFilter('tutos'); }
 // Page « Tutoriels » (onglet) : n'est construite qu'une fois tant qu'on reste sur l'onglet (une vidéo en lecture n'est pas coupée)
-function renderTutosPage() {
+var TUTO_MODE = 'tutos';
+function renderTutosPage(mode) {
+  mode = mode === 'ads' ? 'ads' : 'tutos';
   var list = document.getElementById('list');
-  if (document.getElementById('tuto-list')) return;
+  if (document.getElementById('tuto-list') && TUTO_MODE === mode) return;
+  TUTO_MODE = mode;
+  var ads = mode === 'ads';
   list.innerHTML = '<div style="max-width:720px">'
-    + '<h3 style="margin:4px 0 6px">🎓 Vidéos tutoriels de l’appli</h3>'
-    + '<p class="sub" style="margin:0 0 14px">La voix lit le texte, puis l’appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l’appli.</p>'
+    + (ads ? '<h3 style="margin:4px 0 6px">🎯 Vidéos pub (appli filmée, format vertical 9:16)</h3>'
+      + '<p class="sub" style="margin:0 0 14px">≈ 25 s chacune, trois accroches à comparer. La voix lit le texte, puis l’appli est filmée en mode démo avec le curseur et de gros sous-titres, et se termine sur « Essaie gratuitement · kapitaro.fr » avec la mention de risque. Jamais publiées automatiquement et absentes de l’appli : télécharge-les puis importe-les dans le Gestionnaire de publicités Meta. Fabrique-les une par une.</p>'
+      : '<h3 style="margin:4px 0 6px">🎓 Vidéos tutoriels de l’appli</h3>'
+      + '<p class="sub" style="margin:0 0 14px">La voix lit le texte, puis l’appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l’appli.</p>')
     + '<label>Voix</label>'
     + '<div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:nowrap;max-width:520px"><select id="tuto-voice" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select><button class="btn" id="btn-tuto-listen" onclick="listenTutoVoice()" style="white-space:nowrap">▶ Écouter</button></div>'
-    + '<label>Version à fabriquer</label>'
-    + '<select id="tuto-variant" style="width:100%;max-width:520px;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px;margin-bottom:12px"><option value="both">📱 + 🖥 Les deux (téléphone et ordinateur)</option><option value="mobile">📱 Téléphone seulement</option><option value="desktop">🖥 Ordinateur seulement</option></select>'
+    + '<label' + (ads ? ' style="display:none"' : '') + '>Version à fabriquer</label>'
+    + '<select id="tuto-variant" style="' + (ads ? 'display:none;' : '') + 'width:100%;max-width:520px;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px;margin-bottom:12px"><option value="both">📱 + 🖥 Les deux (téléphone et ordinateur)</option><option value="mobile">📱 Téléphone seulement</option><option value="desktop">🖥 Ordinateur seulement</option></select>'
     + '<div class="row" style="justify-content:flex-end;margin:0 0 10px"><button class="btn" id="btn-tuto-stop" onclick="stopAllTutos(this)" style="display:none;border-color:#7f1d1d;color:#fca5a5">⏹ Arrêter toutes les fabrications</button></div>'
     + '<div id="tuto-msg" style="display:none;margin:0 0 12px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5"></div>'
     + '<div id="tuto-list"><div class="empty">Chargement…</div></div>'
@@ -422,7 +367,7 @@ function renderTutosPage() {
     + '<div id="tuto-archives"><div class="empty">Chargement…</div></div></div>';
   renderTutoArchives();
   renderTutos(true);
-  clearInterval(TUTO_TIMER); TUTO_TIMER = setInterval(function () { if (FILTER === 'tutos') renderTutos(false); else clearInterval(TUTO_TIMER); }, 15000);
+  clearInterval(TUTO_TIMER); TUTO_TIMER = setInterval(function () { if (FILTER === TUTO_MODE && document.getElementById('tuto-list')) renderTutos(false); else clearInterval(TUTO_TIMER); }, 15000);
 }
 async function renderTutos(fillVoices) {
   var d; try { d = await api('POST', { action: 'tuto-list' }); } catch (e) { document.getElementById('tuto-list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
@@ -432,7 +377,7 @@ async function renderTutos(fillVoices) {
     if (!d.eleven) sel.insertAdjacentHTML('afterend', '<p class="sub" style="color:#fca5a5;margin:-6px 0 10px">Voix ElevenLabs indisponible : vérifie la clé dans Vercel.</p>');
   }
   // On ne redessine la liste que si quelque chose a changé, et jamais pendant qu'une vidéo est lue (sinon elle repart à zéro)
-  var sig = JSON.stringify([d.manifest, d.status]);
+  var sig = JSON.stringify([TUTO_MODE, d.manifest, d.status]);
   var listEl = document.getElementById('tuto-list');
   if (!fillVoices && listEl.dataset.sig === sig) return;
   if (!fillVoices && [].some.call(listEl.querySelectorAll('video'), function (v) { return !v.paused && !v.ended; })) return;
@@ -440,7 +385,8 @@ async function renderTutos(fillVoices) {
   var lbl = { queued: '⏳ En attente…', recording: '🎬 En cours de fabrication…', done: '✅ Prête', error: '❌ Erreur', cancelled: '⏹ Arrêtée' };
   var busy = Object.keys(d.status).some(function (k) { var s = d.status[k]; return s && (s.state === 'queued' || s.state === 'recording'); });
   var stopBtn = document.getElementById('btn-tuto-stop'); if (stopBtn) stopBtn.style.display = busy ? '' : 'none';
-  listEl.innerHTML = d.tutos.map(function (t) {
+  var ADS = TUTO_MODE === 'ads';
+  listEl.innerHTML = d.tutos.filter(function (t) { return !!t.ad === ADS; }).map(function (t) {
     var m = d.manifest[t.id], st = d.status[t.id], md = d.manifest[t.id + '__desktop'], sd = d.status[t.id + '__desktop'];
     return '<div style="border:1px solid #1f2a44;border-radius:12px;padding:12px;margin-bottom:10px">'
       + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + esc(t.title) + '</b><span class="sub">' + (st ? lbl[st.state] || esc(st.state) : (m ? '✅ Prête' : 'Pas encore fabriquée')) + '</span></div>'
@@ -450,7 +396,7 @@ async function renderTutos(fillVoices) {
       + (st && st.state === 'error' ? '<p class="sub" style="color:#fca5a5;margin:6px 0 0">' + esc(st.error || '') + '</p>' : '')
       + '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Texte de la voix (' + t.beats.length + ' scènes)</summary><ol class="sub" style="margin:6px 0 0 18px;padding:0">' + t.beats.map(function (x) { return '<li style="margin-bottom:3px">' + esc(x) + '</li>'; }).join('') + '</ol></details>'
       + (md ? '<div class="sub" style="margin-top:8px">🖥 Version ordinateur</div><video controls playsinline preload="none" poster="' + esc(md.poster || '') + '" src="' + esc(md.url) + '" style="width:100%;max-width:480px;border-radius:12px;background:#000;margin-top:4px;display:block"></video>' : '')
-      + (m ? '<div class="sub" style="margin-top:8px">📱 Version téléphone</div><video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:4px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' : '')
+      + (m ? '<div class="sub" style="margin-top:8px">📱 Version téléphone</div><video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:4px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' + (ADS ? '<a class="btn" href="' + esc(m.url) + '" download="' + t.id + '.mp4" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px">⬇ Télécharger</a>' : '') : '')
       + '<div class="row" style="justify-content:flex-end;margin-top:8px;gap:8px">' + ((m || st) ? '<button class="btn" onclick="rerenderTuto(\'' + t.id + '\', this)" title="Refait seulement le tournage (téléphone + ordinateur), avec la voix déjà fabriquée">▶ Relancer le tournage (même voix)</button>' : '') + '<button class="btn primary" onclick="makeTuto(\'' + t.id + '\', this)">' + (m ? '↻ Refaire la vidéo' : '🎬 Fabriquer la vidéo') + '</button></div></div>';
   }).join('');
 }
@@ -493,7 +439,7 @@ async function listenTutoVoice() {
 async function renderTutoArchives() {
   var box = document.getElementById('tuto-archives'); if (!box) return;
   var d; try { d = await api('POST', { action: 'tuto-archive-list' }); } catch (e) { box.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
-  var ids = Object.keys(d.archives || {});
+  var ids = Object.keys(d.archives || {}).filter(function (id) { return /^pub_/.test(id) === (TUTO_MODE === 'ads'); });   // pubs et tutoriels chacun dans leur onglet
   if (!ids.length) { box.innerHTML = '<div class="empty">Aucune ancienne version pour l’instant : elles apparaîtront ici dès qu’une vidéo sera refaite.</div>'; return; }
   box.innerHTML = ids.map(function (id) {
     var desk = /__desktop$/.test(id);
