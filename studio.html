@@ -68,8 +68,10 @@
       <button class="btn" onclick="generateMode('recap', this)">📈 Bilan des marchés</button>
       <button class="btn primary" onclick="document.getElementById('dlg-actu').showModal()">⚡ Post d'actu</button>
       <button class="btn" onclick="setFilter('ads')">🎯 Vidéos pub</button>
+      <button class="btn" id="btn-stop-all" onclick="studioStopToggle(this)" style="border-color:#7f1d1d;color:#fca5a5">⏹ Tout arrêter</button>
     </div>
   </div>
+  <div class="notice" id="studio-paused" style="display:none;border-color:#7f1d1d;background:rgba(127,29,29,0.18)">⏸ <b>Studio en pause.</b> Plus aucune création automatique (stories, vidéos, articles, posts de la semaine) tant que tu n’as pas cliqué sur « ▶ Reprendre ». Tu peux toujours créer à la main.</div>
 
   <div class="notice" id="notice">📸 <b>Publication automatique : Instagram et Facebook.</b> Un post validé part tout seul à l'heure prévue (vérification toutes les 15 min), ou tout de suite avec <b>🚀 Publier maintenant</b>.<br>LinkedIn et TikTok : pas encore automatiques. Utilise <b>Télécharger</b> et <b>Copier le texte</b> pour les publier à la main.</div>
 
@@ -206,7 +208,26 @@ async function createAds(btn, short) {
   ADS_BUSY = false; btn.disabled = false; btn.textContent = label;
 }
 
+// ── Bouton général « Tout arrêter » / « Reprendre » ──
+var STUDIO_PAUSED = false;
+function paintStudioPause() {
+  var b = document.getElementById('btn-stop-all'), n = document.getElementById('studio-paused');
+  if (b) { b.textContent = STUDIO_PAUSED ? '▶ Reprendre' : '⏹ Tout arrêter'; b.style.borderColor = STUDIO_PAUSED ? '#14532d' : '#7f1d1d'; b.style.color = STUDIO_PAUSED ? '#86efac' : '#fca5a5'; }
+  if (n) n.style.display = STUDIO_PAUSED ? '' : 'none';
+}
+async function loadStudioPause() { try { var r = await api('POST', { action: 'studio-state' }); STUDIO_PAUSED = !!r.paused; paintStudioPause(); } catch (e) {} }
+async function studioStopToggle(btn) {
+  if (!STUDIO_PAUSED && !confirm('Tout arrêter ?\n\n• Les vidéos en cours de fabrication (Reels et tutoriels) sont annulées.\n• Les créations automatiques (stories, vidéos, articles, posts de la semaine) sont mises en pause jusqu’à « Reprendre ».\n\nLes posts déjà créés ne sont pas supprimés.')) return;
+  btn.disabled = true;
+  try {
+    if (STUDIO_PAUSED) { await api('POST', { action: 'studio-resume' }); STUDIO_PAUSED = false; toast('▶ Studio relancé : les créations automatiques reprennent.', 6000); }
+    else { var r = await api('POST', { action: 'studio-stop' }); STUDIO_PAUSED = true; toast('⏹ Tout est arrêté : ' + r.cancelled + ' fabrication' + (r.cancelled > 1 ? 's' : '') + ' annulée' + (r.cancelled > 1 ? 's' : '') + (r.warning ? ' · ' + r.warning : ''), 8000); }
+  } catch (e) { toast(e.message, 8000); }
+  btn.disabled = false; paintStudioPause();
+  try { var le = document.getElementById('tuto-list'); if (le) { le.dataset.sig = ''; renderTutos(false); } } catch (e) {}
+}
 async function load() {
+  loadStudioPause();
   try {
     var d = await api('GET');
     POSTS = d.posts || [];
