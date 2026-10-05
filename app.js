@@ -9441,7 +9441,7 @@ function renderPlatforms() {
 
 // ===== SCORE =====
 function calcScore() {
-  if (!apos().length) return {score:0,items:[]};
+  if (!apos().length) return {score:0,items:[],details:{diversity:0,concentration:0,etfRatio:0,performance:0}};
   const tv = apos().reduce((a,p)=>a+p.qty*p.price,0);
   const maxW = Math.max(0, ...apos().filter(p=>p.type!=='ETF').map(p=>p.qty*p.price/tv*100));   // hors ETF larges et hors cryptos
   const etfPct = apos().filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/tv*100;
