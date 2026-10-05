@@ -11465,10 +11465,10 @@ function qaJson(o) { return JSON.stringify(o).replace(/"/g, '&quot;'); }
 // Tour guidé du plan : la page se grise, un curseur va sur "Tout ajouter" puis sur une ligne, avec des légendes.
 // Visite guidée générique : le curseur passe sur une liste de cibles, chacune avec sa légende centrée.
 function kpTour(steps, key) {
+  if (document.getElementById('kp-tour')) { setTimeout(() => kpTour(steps, key), 3000); return; }   // une visite en cours n'est jamais interrompue
   try { if (key && localStorage.getItem('kp_hint_' + key)) return; } catch (e) {}
   steps = (steps || []).filter(s => s && document.querySelector(s.sel));
   if (!steps.length) return;
-  try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {}
   document.getElementById('kp-tour')?.remove();
   const wrap = document.createElement('div');
   wrap.id = 'kp-tour';
@@ -11482,7 +11482,9 @@ function kpTour(steps, key) {
   document.body.appendChild(wrap);
   const cur = document.getElementById('kp-tour-cur');
   const tip = document.getElementById('kp-tour-tip');
-  const lift = (el) => { try { if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; } catch (e) {} };
+  const _lifted = [];
+  const lift = (el) => { try { if (_lifted.some(x => x.el === el)) return; _lifted.push({ el, pos: el.style.position, z: el.style.zIndex, pe: el.style.pointerEvents }); if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; el.style.pointerEvents = 'none'; } catch (e) {} };
+  const _unlift = () => { _lifted.forEach(x => { try { x.el.style.position = x.pos; x.el.style.zIndex = x.z; x.el.style.pointerEvents = x.pe; } catch (e) {} }); };
   const moveTo = (el, legend) => {
     if (!el || !cur) return;
     try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
@@ -11494,8 +11496,8 @@ function kpTour(steps, key) {
       if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; const _th = (_s && _s.getBoundingClientRect().height) || 50; let _top = r.top - _th - 28; if (_top < 12) _top = r.bottom + 28; if (_top + _th > window.innerHeight - 12) _top = Math.max(12, window.innerHeight - _th - 12); tip.style.top = _top + 'px'; tip.style.opacity = '1'; }
     }, 650);
   };
-  const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => document.getElementById('kp-tour')?.remove(), 400); };
-  document.getElementById('kp-tour-ov').addEventListener('click', end);
+  const end = () => { _unlift(); try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {} const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => document.getElementById('kp-tour')?.remove(), 400); };
+  { const _ov = document.getElementById('kp-tour-ov'); const _stop = e => { e.preventDefault(); e.stopPropagation(); }; ['click', 'mousedown', 'touchstart', 'wheel', 'touchmove'].forEach(t => _ov.addEventListener(t, _stop, { passive: false })); _ov.style.touchAction = 'none'; }
   try { cur.style.transition = 'none'; cur.style.left = (window.innerWidth / 2) + 'px'; cur.style.top = (window.innerHeight / 2) + 'px'; void cur.offsetWidth; cur.style.transition = 'left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)'; } catch (e) {}
   let i = 0;
   const run = () => {
@@ -11509,6 +11511,7 @@ function kpTour(steps, key) {
     setTimeout(run, 2600);
   };
   run();
+  setTimeout(() => { if (document.getElementById('kp-tour')) end(); }, steps.length * 2600 + 9000);
 }
 
 function showPortfolioTour() {
@@ -11539,7 +11542,6 @@ function showPlanTour() {
   try { if (localStorage.getItem('kp_tour_plan')) return; } catch (e) {}
   const allBtn = document.getElementById('plan-addall-btn');
   if (!allBtn) return;
-  try { localStorage.setItem('kp_tour_plan', '1'); } catch (e) {}
   document.getElementById('kp-tour')?.remove();
   const wrap = document.createElement('div');
   wrap.id = 'kp-tour';
@@ -11553,7 +11555,9 @@ function showPlanTour() {
   document.body.appendChild(wrap);
   const cur = document.getElementById('kp-tour-cur');
   const tip = document.getElementById('kp-tour-tip');
-  const lift = (el) => { try { if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; } catch (e) {} };
+  const _lifted = [];
+  const lift = (el) => { try { if (_lifted.some(x => x.el === el)) return; _lifted.push({ el, pos: el.style.position, z: el.style.zIndex, pe: el.style.pointerEvents }); if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; el.style.pointerEvents = 'none'; } catch (e) {} };
+  const _unlift = () => { _lifted.forEach(x => { try { x.el.style.position = x.pos; x.el.style.zIndex = x.z; x.el.style.pointerEvents = x.pe; } catch (e) {} }); };
   const moveTo = (el, legend) => {
     if (!el || !cur) return;
     try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
@@ -11565,8 +11569,8 @@ function showPlanTour() {
       if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; const _th = (_s && _s.getBoundingClientRect().height) || 50; let _top = r.top - _th - 28; if (_top < 12) _top = r.bottom + 28; if (_top + _th > window.innerHeight - 12) _top = Math.max(12, window.innerHeight - _th - 12); tip.style.top = _top + 'px'; tip.style.opacity = '1'; }
     }, 650);
   };
-  const end = () => { const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => { document.getElementById('kp-tour')?.remove(); }, 400); };
-  document.getElementById('kp-tour-ov').addEventListener('click', end);
+  const end = () => { _unlift(); try { localStorage.setItem('kp_tour_plan', '1'); } catch (e) {} const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => { document.getElementById('kp-tour')?.remove(); }, 400); };
+  { const _ov = document.getElementById('kp-tour-ov'); const _stop = e => { e.preventDefault(); e.stopPropagation(); }; ['click', 'mousedown', 'touchstart', 'wheel', 'touchmove'].forEach(t => _ov.addEventListener(t, _stop, { passive: false })); _ov.style.touchAction = 'none'; }
   try { cur.style.transition = 'none'; cur.style.left = (window.innerWidth / 2) + 'px'; cur.style.top = (window.innerHeight / 2) + 'px'; void cur.offsetWidth; cur.style.transition = 'left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)'; } catch (e) {}
   moveTo(allBtn, 'Ajouter toutes les positions de votre plan d\'un coup');
   setTimeout(() => { const line = document.querySelector('.kp-line-add'); if (line) moveTo(line, 'ou les ajouter une par une'); }, 3000);
