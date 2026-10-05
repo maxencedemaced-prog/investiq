@@ -528,6 +528,7 @@ function planAnalysisRulesText(riskLabel) {
   return "ANALYSE OBLIGATOIRE : tu disposes de VRAIES données (cours sur 1 an, tendance des indices, actualité). Tu choisis UNIQUEMENT parmi les valeurs et ETF listés ci-dessus (tickers exacts), jamais une autre. Tu n'as AUCUNE autre donnée : n'invente ni résultats d'entreprise, ni valorisation, ni actualité absente des données.\n"
     + "- Tiens compte de (1) l'historique chiffré, (2) la tendance du marché pour ajuster la prudence, (3) l'actualité récente : si elle est clairement négative (enquête, avertissement sur résultats, procès, chute brutale), écarte la valeur ou signale-le.\n"
     + "- CHAQUE justification (champ \"pourquoi\" / \"raison\" ou phrase) doit citer un chiffre réel du tableau (ex : \"baisse max 1 an −10 %, volatilité 18 %\") ou un fait du portefeuille. INTERDIT : \"secteur absent\" ou \"diversifie\" comme seule raison ; INTERDIT de vanter une valeur parce qu'elle \"a bien monté\" ; INTERDIT de la dire \"défensive\" ou \"stable\" si ses chiffres (baisse max, volatilité) disent le contraire.\n"
+    + "- N'invente AUCUNE moyenne sectorielle ni comparaison absente des données (ex : « inférieur à la moyenne du secteur »).\n"
     + "- Adapte le niveau de risque au profil " + riskLabel + " : ne présente jamais comme prudente une ligne très volatile.";
 }
 // Contexte réel d'un actif : cours sur 1 an, tendance des indices, actualités récentes. Lève une erreur si le service est injoignable.
@@ -566,7 +567,7 @@ async function fetchContextBlock(items) {
   const none = { ok: false, text: "DONNÉES DE MARCHÉ : aucune donnée disponible actuellement. N'avance AUCUN chiffre de cours ou de performance ni aucune actualité ; reste général, prudent, et dis que les données de marché ne sont pas disponibles." };
   if (!uniq.length) return none;
   try {
-    const nm = x => x.name.replace(/[^\p{L}\p{N} &'.\-]/gu, '').slice(0, 40) || x.t;
+    const nm = x => displayName(x.name || x.t).replace(/[^\p{L}\p{N} &'.\-]/gu, '').slice(0, 40) || x.t;
     const r = await fetch('/api/market-data?symbols=' + encodeURIComponent(uniq.map(x => x.t).join(',')) + '&names=' + encodeURIComponent(uniq.map(x => x.t + ':' + nm(x)).join(',')));
     if (!r.ok) return none;
     const j = await r.json();
@@ -904,6 +905,7 @@ async function generateETFPlan(objId) {
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || localStorage.getItem(CACHE_ETF_PLAN) || 'null');
     if (cached && cached.etfs && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk && cached.stockPct === objStockPct && cached.sig === sig) {
+      window._etfMeta = cached.meta ? { ...cached.meta, ts: cached.ts } : null;
       renderETFCards(cached.etfs, el, cached.actions || []);
       return;
     }
@@ -911,6 +913,8 @@ async function generateETFPlan(objId) {
 
   // Analyse réelle d'abord : sans données de marché, pas de plan « à l'aveugle »
   _etfPlanBusy = true;
+  const _lm = t => { const m = document.getElementById('etf-load-msg'); if (m) m.textContent = t; };
+  el.innerHTML = '<div style="border:1px solid var(--color-border,#e4e4e7);border-radius:14px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span id="etf-load-msg" style="font-size:13px;font-weight:600;color:var(--color-text-secondary,#71717a)">Étape 1/3 · Lecture des cours réels du marché…</span></div>';
   let _md = {};
   try { _md = await fetchPlanMarketData(); } catch (e) { _md = {}; }
   if (Object.keys(_md).length < 12) {
@@ -918,6 +922,7 @@ async function generateETFPlan(objId) {
     (document.getElementById('obj-etf-plan') || el).innerHTML = '<div style="border:1px solid var(--color-border,#e4e4e7);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px"><span style="font-size:12px;color:var(--color-text-secondary,#71717a)">Les cours du marché ne sont pas disponibles pour l’instant : Kapitaro ne génère pas de répartition sans analyse. Réessaie dans quelques minutes.</span><button onclick="generateETFPlan()" style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:7px 13px;border-radius:9px;cursor:pointer;flex-shrink:0">Réessayer</button></div>';
     return;
   }
+  _lm('Étape 2/3 · Lecture de la tendance du marché et des actualités des entreprises…');
   const cand = planCandidateTable(_md);
   const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
 
@@ -946,6 +951,7 @@ Réponds UNIQUEMENT en JSON valide sans markdown, sous cette forme exacte :
 Utilise les tickers EXACTS des tableaux. Couleurs hex variées.`;
 
   _etfPlanBusy = true;
+  _lm('Étape 3/3 · Construction de la répartition adaptée à ton profil…');
   try {
     const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.', 4000);
     const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
@@ -967,7 +973,7 @@ Utilise les tickers EXACTS des tableaux. Couleurs hex variées.`;
     if (Array.isArray(etfs) && etfs.length > 0) {
       actions = actions.slice(0, sizing.nbStocks);
       try {
-        const cacheData = JSON.stringify({ etfs, actions, sig, risk: objRisk, stockPct: objStockPct, ts: Date.now() });
+        const cacheData = JSON.stringify({ etfs, actions, sig, risk: objRisk, stockPct: objStockPct, ts: Date.now(), meta: { n: cand.ok.length + PLAN_ETFS.filter(e => _md[e[0]]).length } });
         localStorage.setItem(cacheKey, cacheData);
         localStorage.setItem(CACHE_ETF_PLAN, cacheData);
         // Sauvegarde aussi avec l'activeObjId si différent
@@ -977,6 +983,7 @@ Utilise les tickers EXACTS des tableaux. Couleurs hex variées.`;
       } catch {}
       _etfPlanBusy = false;
       // La page a pu être redessinée pendant l'appel IA : on écrit dans le bloc actuellement affiché
+      window._etfMeta = { n: cand.ok.length + PLAN_ETFS.filter(e => _md[e[0]]).length, ts: Date.now() };
       renderETFCards(etfs, document.getElementById('obj-etf-plan') || el, actions);
       return;
     }
@@ -1136,7 +1143,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
     <span style="font-size:12px;color:${isDark?'rgba(255,255,255,0.55)':sub}">💡 Clique sur un ETF pour l'analyser en détail avec l'IA</span>
     <button onclick="event.stopPropagation();sq('Explique-moi mon plan ETF : pourquoi cette répartition socle/satellites ?');nav('ai')" style="padding:6px 13px;background:#16a34a;border:none;border-radius:8px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0">Comprendre le plan →</button>
   </div>
-  <div style="font-size:10px;color:${sub};padding:0 2px">Répartition indicative basée sur ton profil — pas un conseil financier réglementé. Performances passées ≠ performances futures.</div>
+  <div style="font-size:10px;color:${sub};padding:0 2px">${window._etfMeta ? 'Analyse du ' + new Date(window._etfMeta.ts).toLocaleDateString('fr-FR') + ' : ' + window._etfMeta.n + ' valeurs étudiées (cours sur 1 an, tendance du marché, actualités). ' : ''}Répartition indicative basée sur ton profil — pas un conseil financier réglementé. Performances passées ≠ performances futures.</div>
   `;
   if (goldShow) { try { _planLines.push({ ticker: '4GLD.DE', name: 'Xetra-Gold (or physique)', type: 'Matière première', montant: goldAmt, optional: true }); } catch (e) {} }
   try {
