@@ -372,8 +372,8 @@ function renderAllocSlider(containerId, prefix, stockPct = 30, glide = false) {
 
     <!-- Valeurs actions / ETF -->
     <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-      <div><span id="${prefix}-stock-val" style="font-size:20px;font-weight:900;color:var(--color-text)">${stockPct}%</span> <span style="font-size:12px;color:var(--color-text-secondary)">actions</span></div>
-      <div style="text-align:right"><span id="${prefix}-etf-val" style="font-size:20px;font-weight:900;color:var(--color-text)">${100-stockPct}%</span> <span style="font-size:12px;color:var(--color-text-secondary)">ETF</span></div>
+      <div><span id="${prefix}-stock-val" style="font-size:20px;font-weight:900;color:var(--color-text)">${stockPct}%</span> <span style="font-size:12px;color:var(--color-text-secondary)">actions</span><span class="kp-tip" role="button" tabindex="0" data-k="action">?</span></div>
+      <div style="text-align:right"><span id="${prefix}-etf-val" style="font-size:20px;font-weight:900;color:var(--color-text)">${100-stockPct}%</span> <span style="font-size:12px;color:var(--color-text-secondary)">ETF</span><span class="kp-tip" role="button" tabindex="0" data-k="etf">?</span></div>
     </div>
 
     <!-- Slider -->
@@ -388,14 +388,14 @@ function renderAllocSlider(containerId, prefix, stockPct = 30, glide = false) {
     <!-- Label + description -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <span id="${prefix}-risk-label" style="font-size:12px;font-weight:800;padding:3px 10px;border-radius:7px;background:${r.color}1a;color:${r.color}">${r.label}</span>
-      <span id="${prefix}-risk-desc" style="font-size:11px;color:var(--color-text-secondary)">${r.desc}</span>
+      <span id="${prefix}-risk-desc" style="font-size:11px;color:var(--color-text-secondary)">${r.desc}</span><span class="kp-tip" role="button" tabindex="0" data-k="profil">?</span>
     </div>
 
     <!-- Option glide path -->
     <label style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--color-bg-subtle,#f7f7f8);border:1px solid var(--color-border);border-radius:11px;cursor:pointer">
       <input type="checkbox" id="${prefix}-glide" ${glide?'checked':''} style="width:17px;height:17px;accent-color:var(--color-primary,#16a34a);flex-shrink:0">
       <div>
-        <div style="font-size:12px;font-weight:700;color:var(--color-text)">Devenir plus prudent avec le temps</div>
+        <div style="font-size:12px;font-weight:700;color:var(--color-text)">Devenir plus prudent avec le temps <span class="kp-tip" role="button" tabindex="0" data-k="glide">?</span></div>
         <div style="font-size:10.5px;color:var(--color-text-secondary);margin-top:1px">Réduit progressivement la part d'actions à l'approche de ton objectif</div>
       </div>
     </label>`;
@@ -1114,7 +1114,7 @@ function renderMonthlyPlan(plan, isNew) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:relative">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:7px;text-transform:capitalize">📅 ${monthLabel()}</span>
-        <span style="font-size:14px;font-weight:900;color:#fff">Ton plan du mois</span>
+        <span style="font-size:14px;font-weight:900;color:#fff">Ton plan du mois</span><span class="kp-tip" role="button" tabindex="0" data-k="dca">?</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px"><button type="button" id="monthly-addall-btn" onclick="monthlyAddAll()" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:none;border-radius:9px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(22,163,74,0.3)">⚡ Tout ajouter</button><button onclick="generateMonthlyPlan(true)" title="Régénérer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button></div>
     </div>
@@ -1160,7 +1160,7 @@ function renderMonthlyPlan(plan, isNew) {
     </div>` : ''}
 
     <div style="display:flex;align-items:center;justify-content:space-between;position:relative">
-      <span style="font-size:10px;color:rgba(255,255,255,0.3)">Budget ${budget} €/mois · généré le ${generated}${plan.analysis ? ` · ${plan.analysis.n} valeurs analysées : cours sur 1 an${plan.analysis.indices ? ', tendance du marché' : ''}${plan.analysis.news ? ', actualités' : ''}` : ''}</span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.3)">📊 performance 1 an · baisse max <span class="kp-tip" role="button" tabindex="0" data-k="baissemax">?</span> · volatilité <span class="kp-tip" role="button" tabindex="0" data-k="volatilite">?</span><br>Budget ${budget} €/mois · généré le ${generated}${plan.analysis ? ` · ${plan.analysis.n} valeurs analysées : cours sur 1 an${plan.analysis.indices ? ', tendance du marché' : ''}${plan.analysis.news ? ', actualités' : ''}` : ''}</span>
       <span style="font-size:10px;color:rgba(255,255,255,0.3)">Suivi à J+7 dans l'historique IA</span>
     </div>
   </div>`;
@@ -1403,7 +1403,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
     <button type="button" id="plan-addall-btn" onclick="addAllPlanFromObjectif(this)" style="display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border:none;border-radius:10px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(22,163,74,0.3)">⚡ Tout ajouter</button>
   </div>
 
-  ${hasActions ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:2px 0 8px">🏛️ Poche ETF · ${100 - objStockPct}% du capital</div>` : ''}
+  ${hasActions ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:2px 0 8px">🏛️ Poche ETF · ${100 - objStockPct}% du capital <span class="kp-tip" role="button" tabindex="0" data-k="etf">?</span></div>` : ''}
   ${[...etfs.map(e => ({ e, kind: 'etf', share: etfShare })), ...actions.map(e => ({ e, kind: 'action', share: stockShare }))].map(({ e, kind, share }, i, all) => {
     const isAction = kind === 'action';
     const pool = isAction ? actions : etfs;
@@ -1418,7 +1418,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
     try { _planLines.push({ ticker: e.ticker, name: e.name, type: isAction ? 'Action' : 'ETF', montant: mCap || mMens }); } catch (_e) {}
     const isSocle = !isAction && (e.role === 'socle' || idxInPool === 0);
     const sectionHeader = (isAction && idxInPool === 0)
-      ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">📈 Poche actions · ${objStockPct}% du capital · ${actions.length} lignes pour diversifier</div>` : '';
+      ? `<div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">📈 Poche actions <span class="kp-tip" role="button" tabindex="0" data-k="action">?</span> · ${objStockPct}% du capital · ${actions.length} lignes pour diversifier</div>` : '';
     return sectionHeader + `
     <div onclick="openActionFromObjectif('${e.ticker}','${(e.name||'').replace(/'/g,"\\'")}',${mCap||mMens})" style="background:${surface};border:1px solid ${border};border-radius:14px;padding:14px 16px;margin-bottom:9px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden"
       onmouseover="this.style.borderColor='${e.color}'" onmouseout="this.style.borderColor='${border}'">
@@ -1429,7 +1429,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
             <span style="font-size:13px;font-weight:800;color:${text}">${e.name}</span>
             <span style="font-size:9px;color:${sub};background:${trackBg};padding:1px 6px;border-radius:4px;font-weight:600">${e.ticker||''}</span>
-            <span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:5px;background:${isAction?'rgba(245,158,11,0.14)':isSocle?'rgba(26,127,90,0.12)':'rgba(99,102,241,0.12)'};color:${isAction?'#b45309':isSocle?'#1a7f5a':'#6366f1'}">${isAction?('📈 ACTION' + (e.secteur ? ' · ' + String(e.secteur).toUpperCase() : '')):isSocle?'🏛️ SOCLE':'🛰️ SATELLITE'}</span>
+            <span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:5px;background:${isAction?'rgba(245,158,11,0.14)':isSocle?'rgba(26,127,90,0.12)':'rgba(99,102,241,0.12)'};color:${isAction?'#b45309':isSocle?'#1a7f5a':'#6366f1'}">${isAction?('📈 ACTION' + (e.secteur ? ' · ' + String(e.secteur).toUpperCase() : '')):isSocle?'🏛️ SOCLE':'🛰️ SATELLITE'}</span>${isAction ? '' : (isSocle ? kpTip('socle') : kpTip('satellite'))}
           </div>
           <div style="font-size:11px;color:${sub};margin-top:3px">${e.desc||''}</div>
           <div style="font-size:11px;color:${sub};margin-top:2px;font-style:italic">${e.pourquoi||''}</div>
