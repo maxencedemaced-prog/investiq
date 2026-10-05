@@ -16,7 +16,8 @@ const LIVE = String(process.env.APP_URL || 'https://kapitaro.fr').trim().replace
 const sb = createClient((process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.supabase.co').trim(), (process.env.SUPABASE_SERVICE_KEY || '').trim());   // même valeur par défaut que video/render-job.mjs
 const ROOT = path.resolve('..');
 const OUT = path.resolve('out');
-const W = DESK ? 1280 : 390, H = DESK ? 800 : 844;
+let W = DESK ? 1280 : 390, H = DESK ? 800 : 844;   // pub : 405 × 720 (9:16), réglé après lecture de timing.json
+let AD = false;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Un fichier d'état par vidéo : plusieurs fabrications en parallèle ne s'écrasent pas
@@ -114,6 +115,26 @@ const SETUP = () => {
     document.body.appendChild(d); requestAnimationFrame(() => { d.style.opacity = '1'; });
     const cu = document.getElementById('tt-cur'); if (cu) cu.style.opacity = '0';
   };
+  // pub : grosse accroche en haut de l'écran pendant la 1re scène
+  window.__tutoAdHook = txt => {
+    document.getElementById('tt-hook')?.remove();
+    if (!txt) return;
+    const d = document.createElement('div');
+    d.id = 'tt-hook';
+    d.style.cssText = 'position:fixed;left:14px;right:14px;top:70px;z-index:2147483630;background:#0b1220;color:#fff;border-radius:20px;padding:18px 16px;text-align:center;font:900 30px/1.15 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:-.02em;box-shadow:0 14px 40px rgba(0,0,0,.35);transform:scale(.85);opacity:0;transition:all .35s cubic-bezier(.2,1.4,.4,1)';
+    d.textContent = txt;
+    document.body.appendChild(d); requestAnimationFrame(() => { d.style.transform = 'scale(1)'; d.style.opacity = '1'; });
+  };
+  // pub : carte de fin avec l'appel à l'action et la mention de risque
+  window.__tutoAdEnd = () => {
+    document.getElementById('tt-hook')?.remove();
+    const cap = document.getElementById('tt-cap'); if (cap) cap.style.setProperty('display', 'none', 'important');   // la carte affiche déjà le message
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;inset:0;z-index:2147483640;background:linear-gradient(160deg,#0b1220,#0f1f17);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 24px;text-align:center;opacity:0;transition:opacity .5s';
+    d.innerHTML = '<img src="icons/kapitaro-tile.svg" width="96" height="96" style="border-radius:22px"><div style="color:#fff;font:900 36px/1 system-ui;letter-spacing:-.03em">Kapitaro</div><div style="color:#cbd5e1;font:700 17px/1.35 system-ui">Kapitaro ne touche pas à ton argent :<br>tu gardes la main.</div><div style="margin-top:6px;background:#22c55e;color:#052e16;font:900 20px system-ui;padding:14px 26px;border-radius:999px">Essaie gratuitement</div><div style="color:#4ade80;font:800 22px system-ui">kapitaro.fr</div><div style="max-width:330px;margin-top:4px;color:#94a3b8;font:600 11px/1.4 system-ui">Outil pédagogique, pas un conseil en investissement. Investir comporte un risque de perte en capital.</div>';
+    document.body.appendChild(d); requestAnimationFrame(() => { d.style.opacity = '1'; });
+    const cu = document.getElementById('tt-cur'); if (cu) cu.style.opacity = '0';
+  };
   // bouton « lecture » de démonstration sur la page Portefeuille
   const hdr = document.querySelector('#sec-portfolio .page-header h1');
   if (hdr && !document.querySelector('.kp-tuto-btn')) hdr.insertAdjacentHTML('beforeend', ' <button type="button" class="kp-tuto-btn" style="vertical-align:middle;margin-left:6px;padding:4px 10px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:800 12px system-ui">▶ C’est quoi ?</button>');
@@ -171,11 +192,12 @@ async function run() {
   const { data: tf, error } = await sb.storage.from('social').download('tuto/' + TID + '/timing.json');
   if (error || !tf) throw new Error('timing.json introuvable : relance la fabrication depuis le Studio');
   const timing = JSON.parse(await tf.text());
+  if (timing.ad && !DESK) { AD = true; W = 405; H = 720; }
   fs.mkdirSync(path.join(OUT, 'raw'), { recursive: true });
 
   const srv = await serve(4173);
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DESK ? 1.5 : 2, isMobile: !DESK, hasTouch: !DESK, locale: 'fr-FR', timezoneId: 'Europe/Paris', colorScheme: 'light' });
+  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DESK ? 1.5 : AD ? 8 / 3 : 2, isMobile: !DESK, hasTouch: !DESK, locale: 'fr-FR', timezoneId: 'Europe/Paris', colorScheme: 'light' });
   await ctx.addInitScript(lvl => { window.__ttLevel = lvl; }, ['sante', 'depenses', 'news'].includes(timing.page) ? '3' : '1');
   await ctx.addInitScript(() => {
     try {
@@ -196,6 +218,7 @@ async function run() {
   await page.goto('http://localhost:4173/', { waitUntil: 'load' });
   await sleep(1500);
   await page.evaluate(SETUP);
+  if (AD) await page.addStyleTag({ content: '#tt-cap{bottom:96px!important}#tt-cap .box{font-size:21px!important;max-width:380px!important;padding:12px 16px!important}' });
   if (DESK) await page.addStyleTag({ content: '#tt-cap{bottom:28px!important}#tt-cap .box{font-size:22px!important;max-width:820px!important;padding:12px 20px!important}' });
   await sleep(2500);   // prix, logos et graphiques chargés
 
@@ -210,7 +233,7 @@ async function run() {
     } catch (e) {}
     try { await cdp.send('Page.screencastFrameAck', { sessionId: ev.sessionId }); } catch (e) {}
   });
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: Math.round(W * (DESK ? 1.5 : 2)), maxHeight: Math.round(H * (DESK ? 1.5 : 2)), everyNthFrame: 1 });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: Math.round(W * (DESK ? 1.5 : AD ? 8 / 3 : 2)), maxHeight: Math.round(H * (DESK ? 1.5 : AD ? 8 / 3 : 2)), everyNthFrame: 1 });
   await sleep(400);
   // petit mouvement invisible pour obtenir une première image à l'instant 0
   start = Date.now();
@@ -269,7 +292,7 @@ async function run() {
   const delays = segs.map((s, k) => `[${k + 1}:a]adelay=${Math.round(s.start * 1000)}|${Math.round(s.start * 1000)}[a${k}]`);
   const mix = segs.length > 1 ? `;${segs.map((_, k) => `[a${k}]`).join('')}amix=inputs=${segs.length}:normalize=0[a]` : '';
   args.push('-filter_complex', delays.join(';') + mix, '-map', '0:v', '-map', segs.length > 1 ? '[a]' : '[a0]', '-t', total.toFixed(2),
-    '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : 'scale=720:-2') + ':flags=lanczos',
+    '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : AD ? 'scale=1080:1920' : 'scale=720:-2') + ':flags=lanczos',
     '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4);
   execFileSync('ffmpeg', args, { stdio: 'inherit' });
   execFileSync('ffmpeg', ['-y', '-ss', '1.2', '-i', mp4, '-frames:v', '1', '-q:v', '4', poster], { stdio: 'inherit' });
