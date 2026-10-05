@@ -101,6 +101,7 @@
   <p class="sub" style="margin:0 0 12px">La voix lit le texte, puis l'appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l'appli.</p>
   <label>Voix</label>
   <div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:nowrap"><select id="tuto-voice" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select><button class="btn" id="btn-tuto-listen" onclick="listenTutoVoice()" style="white-space:nowrap">▶ Écouter</button></div>
+  <div id="tuto-msg" style="display:none;margin:0 0 12px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5"></div>
   <div id="tuto-list"><div class="empty">Chargement…</div></div>
   <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeTutos()">Fermer</button></div>
 </dialog>
@@ -411,26 +412,31 @@ async function renderTutos(fillVoices) {
       + '<div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn primary" onclick="makeTuto(\'' + t.id + '\', this)">' + (m ? '↻ Refaire la vidéo' : '🎬 Fabriquer la vidéo') + '</button></div></div>';
   }).join('');
 }
+// Messages affichés DANS la fenêtre (un toast passerait derrière la boîte de dialogue)
+function tutoMsg(text, kind) { var m = document.getElementById('tuto-msg'); if (!text) { m.style.display = 'none'; return; } m.style.display = 'block'; m.style.background = kind === 'err' ? 'rgba(220,38,38,0.15)' : kind === 'ok' ? 'rgba(22,163,74,0.15)' : 'rgba(255,255,255,0.06)'; m.style.color = kind === 'err' ? '#fca5a5' : kind === 'ok' ? '#86efac' : '#e5e7eb'; m.textContent = text; }
 var TUTO_AUDIO = null;
 async function listenTutoVoice() {
   var btn = document.getElementById('btn-tuto-listen'), sel = document.getElementById('tuto-voice');
   if (TUTO_AUDIO) { try { TUTO_AUDIO.pause(); } catch (e) {} TUTO_AUDIO = null; }
   btn.disabled = true; btn.textContent = '…';
+  tutoMsg('Préparation de l’écoute (quelques secondes)…');
   try {
     var r = await api('POST', { action: 'tuto-voice-preview', voice: sel.value });
     TUTO_AUDIO = new Audio(r.audio);
     TUTO_AUDIO.onended = function () { btn.textContent = '▶ Écouter'; };
-    await TUTO_AUDIO.play();
+    try { await TUTO_AUDIO.play(); } catch (pe) { throw new Error('Le navigateur bloque la lecture du son : vérifie que l’onglet n’est pas en sourdine. (' + pe.message + ')'); }
     btn.textContent = '🔊 ' + r.voice;
-  } catch (e) { toast(e.message, 8000); btn.textContent = '▶ Écouter'; }
+    tutoMsg('🔊 Voix : ' + r.voice, 'ok');
+  } catch (e) { tutoMsg(e.message, 'err'); btn.textContent = '▶ Écouter'; }
   btn.disabled = false;
 }
 async function makeTuto(id, btn) {
   btn.disabled = true; var l = btn.textContent; btn.textContent = 'Voix en préparation (≈ 30 s)…';
+  tutoMsg('Préparation de la voix off (≈ 30 s), ne ferme pas la fenêtre…');
   try {
     var r = await api('POST', { action: 'tuto-create', id: id, voice: document.getElementById('tuto-voice').value });
-    toast('🎙 Voix prête (' + r.voice + ', ' + r.duration + ' s). Enregistrement de l’appli lancé : ≈ 4 min.', 7000);
-  } catch (e) { toast(e.message, 8000); }
+    tutoMsg('🎙 Voix prête (' + r.voice + ', ' + r.duration + ' s). Enregistrement de l’appli lancé sur GitHub : ≈ 4 min, l’état se met à jour ici.', 'ok');
+  } catch (e) { tutoMsg(e.message, 'err'); }
   btn.disabled = false; btn.textContent = l;
   renderTutos(false);
 }
