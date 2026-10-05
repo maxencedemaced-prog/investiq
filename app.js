@@ -224,8 +224,13 @@ async function loadValidatedObjectif() {
   // 2. Recharge depuis Supabase si connecté
   if (!isDemo && currentUser) {
     try {
-      const { data } = await sb.from('objectives').select('*').eq('user_id', currentUser.id).maybeSingle();
+      const { data: _rows, error: _err } = await sb.from('objectives').select('*').eq('user_id', currentUser.id);
+      const data = (_rows || [])[0] || null;
       console.log('[loadValidatedObjectif] Supabase data:', JSON.stringify(data));
+      if (!_err && Array.isArray(_rows) && _rows.length === 0) {   // plus aucun objectif sur le compte : la copie locale est un fantôme (impossible à supprimer)
+        try { localStorage.removeItem(OBJ_STORAGE); } catch {}
+        return false;
+      }
       if (data && hasValidObj(data)) {
         applyObjData(data);
         try { localStorage.setItem(OBJ_STORAGE, JSON.stringify({...data, validatedAt: data.validated_at})); } catch {}
@@ -1839,7 +1844,10 @@ async function deleteObjective(id) {
   }
   allObjectives = allObjectives.filter(o => o.id !== id);
   if (activeObjId === id) activeObjId = allObjectives[0]?.id || null;
+  try { localStorage.removeItem(MONTHLY_PLAN_KEY); localStorage.removeItem(CACHE_ETF_PLAN); localStorage.removeItem(CACHE_ETF_PLAN + '_' + id); localStorage.removeItem(CACHE_ACTIONS); localStorage.removeItem(CACHE_ACTIONS + '_' + id); } catch {}
   if (allObjectives.length === 0) {
+    try { localStorage.removeItem(OBJ_STORAGE); } catch {}
+    objChartTarget = 0; objChartCapital = 0;
     // Plus d'objectifs — retour au wizard
     const el = document.getElementById('obj-results');
     const wizard = document.getElementById('obj-wizard');
@@ -6230,7 +6238,9 @@ async function loadObjective() {
         glide: d.glide || false,
         color: OBJ_COLORS[i % OBJ_COLORS.length],
         validated_at: d.validated_at,
-        updated_at: d.updated_at || d.created_at || null
+        updated_at: d.updated_at || d.created_at || null,
+        etf_plan: d.etf_plan || null,
+        monthly_plan: d.monthly_plan || null
       }));
       activeObjId = allObjectives[0].id;
       applyObjData(allObjectives[0]);
