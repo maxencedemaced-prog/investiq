@@ -626,6 +626,159 @@ async function planDataSuffix(riskLabel) {
   } catch (e) {}
   return "\n\nDONNÉES DE MARCHÉ : aucune donnée disponible actuellement. Ne cite AUCUN chiffre de cours, de performance ni aucune actualité ; propose uniquement des ETF larges et diversifiés (IWDA.L, VWCE.DE, AGGH.AS), sans sélection d'actions individuelles, et dis que l'analyse détaillée n'est pas disponible pour l'instant." + planUserTail();
 }
+// ═══ GRAPHIQUES DE COURS (bibliothèque libre « Lightweight Charts » de TradingView, données Yahoo via /api/chart) ═══
+// Information seulement : aucun signal d'achat ou de vente, aucun outil de dessin.
+let _kpChartLibPromise = null;
+function kpLoadChartLib() {
+  if (window.LightweightCharts) return Promise.resolve(window.LightweightCharts);
+  if (_kpChartLibPromise) return _kpChartLibPromise;
+  _kpChartLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js';
+    s.onload = () => window.LightweightCharts ? resolve(window.LightweightCharts) : reject(new Error('lib'));
+    s.onerror = () => { _kpChartLibPromise = null; reject(new Error('chargement')); };
+    document.head.appendChild(s);
+  });
+  return _kpChartLibPromise;
+}
+const KP_CHART_RANGES = [['1w', '1S'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1A'], ['5y', '5A'], ['max', 'Max']];
+const _kpChartCache = {};
+async function kpFetchChart(symbol, range) {
+  const key = symbol + '|' + range;
+  const hit = _kpChartCache[key];
+  if (hit && Date.now() - hit.ts < 5 * 60 * 1000) return hit.data;
+  const r = await fetch('/api/chart?symbol=' + encodeURIComponent(symbol) + '&range=' + encodeURIComponent(range));
+  if (!r.ok) throw new Error('chart ' + r.status);
+  const data = await r.json();
+  if (data.points && data.points.length) _kpChartCache[key] = { ts: Date.now(), data };
+  return data;
+}
+function kpSMA(pts, n) {
+  const out = []; let sum = 0;
+  for (let i = 0; i < pts.length; i++) { sum += pts[i].c; if (i >= n) sum -= pts[i - n].c; if (i >= n - 1) out.push({ time: pts[i].t, value: Math.round(sum / n * 1e4) / 1e4 }); }
+  return out;
+}
+// Monte un graphique complet (barre d'outils + graphique) dans un élément. opts : { pru, height }
+function kpChartMount(host, ticker, name, opts) {
+  if (!host) return;
+  opts = opts || {};
+  const st = { range: '1y', type: 'candle', ma50: false, ma200: false, vol: true };
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const C = dark
+    ? { bg: '#0f1629', txt: 'rgba(255,255,255,0.75)', grid: 'rgba(255,255,255,0.06)', line: 'rgba(255,255,255,0.14)', sub: 'rgba(255,255,255,0.55)', chip: 'rgba(255,255,255,0.07)', chipTxt: '#fff' }
+    : { bg: '#ffffff', txt: '#3f3f46', grid: '#f1f1f4', line: '#e4e4e7', sub: '#71717a', chip: '#f4f4f5', chipTxt: '#09090b' };
+  const chipCss = on => 'padding:5px 10px;border-radius:8px;border:1px solid ' + (on ? '#16a34a' : 'transparent') + ';background:' + (on ? 'rgba(22,163,74,0.14)' : C.chip) + ';color:' + (on ? '#16a34a' : C.chipTxt) + ';font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap';
+  const h = opts.height || (window.innerWidth < 640 ? 300 : 380);
+  host.innerHTML = '<div class="kp-chart" style="background:' + C.bg + ';border-radius:14px">'
+    + '<div id="kpc-head" style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px"><div><span id="kpc-price" style="font-size:22px;font-weight:900;color:' + C.chipTxt + '">—</span> <span id="kpc-chg" style="font-size:13px;font-weight:800"></span></div><div id="kpc-ohlc" style="font-size:11px;color:' + C.sub + '"></div></div>'
+    + '<div id="kpc-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center"></div>'
+    + '<div id="kpc-canvas" style="width:100%;height:' + h + 'px;position:relative"><div id="kpc-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Chargement du graphique…</div></div>'
+    + '<div id="kpc-foot" style="font-size:10.5px;color:' + C.sub + ';margin-top:6px;line-height:1.5"></div></div>';
+  const $ = id => host.querySelector('#' + id);
+  let chart = null, ro = null;
+
+  const bar = () => {
+    $('kpc-bar').innerHTML = KP_CHART_RANGES.map(([k, l]) => '<button type="button" data-r="' + k + '" style="' + chipCss(st.range === k) + '">' + l + '</button>').join('')
+      + '<span style="width:1px;height:18px;background:' + C.line + ';margin:0 2px"></span>'
+      + '<button type="button" data-t="candle" style="' + chipCss(st.type === 'candle') + '">Bougies</button><button type="button" data-t="line" style="' + chipCss(st.type === 'line') + '">Ligne</button>'
+      + '<span style="width:1px;height:18px;background:' + C.line + ';margin:0 2px"></span>'
+      + '<button type="button" data-m="ma50" style="' + chipCss(st.ma50) + '">MM 50</button><button type="button" data-m="ma200" style="' + chipCss(st.ma200) + '">MM 200</button><button type="button" data-m="vol" style="' + chipCss(st.vol) + '">Volume</button>';
+    $('kpc-bar').querySelectorAll('button').forEach(b => b.onclick = () => {
+      if (b.dataset.r) st.range = b.dataset.r; else if (b.dataset.t) st.type = b.dataset.t; else if (b.dataset.m) st[b.dataset.m] = !st[b.dataset.m];
+      bar(); draw();
+    });
+  };
+  const fmtP = x => (typeof kpPriceStr === 'function') ? kpPriceStr(x) : fmt(x);
+
+  async function draw() {
+    const msg = $('kpc-msg');
+    try {
+      const [L, data] = await Promise.all([kpLoadChartLib(), kpFetchChart(ticker, st.range)]);
+      const pts = data.points || [];
+      const cv = $('kpc-canvas');
+      if (chart) { try { chart.remove(); } catch (e) {} chart = null; }
+      if (ro) { try { ro.disconnect(); } catch (e) {} ro = null; }
+      cv.innerHTML = '';
+      if (pts.length < 2) { cv.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Pas d’historique disponible pour cet actif.</div>'; $('kpc-price').textContent = '—'; $('kpc-chg').textContent = ''; return; }
+      const cur = data.currency || '';
+      const sym = cur === 'EUR' ? ' €' : cur ? ' ' + cur : '';
+      const intraday = data.interval && /m$/.test(data.interval) && data.interval !== '1mo';
+      chart = L.createChart(cv, {
+        width: cv.clientWidth, height: h,
+        layout: { background: { type: 'solid', color: C.bg }, textColor: C.txt, fontFamily: 'inherit' },
+        grid: { vertLines: { color: C.grid }, horzLines: { color: C.grid } },
+        rightPriceScale: { borderColor: C.line }, timeScale: { borderColor: C.line, timeVisible: intraday, secondsVisible: false },
+        crosshair: { mode: 0 },
+        localization: { locale: 'fr-FR', priceFormatter: p => fmtP(p) },
+      });
+      let main;
+      if (st.type === 'candle') {
+        main = chart.addCandlestickSeries({ upColor: '#16a34a', downColor: '#dc2626', borderUpColor: '#16a34a', borderDownColor: '#dc2626', wickUpColor: '#16a34a', wickDownColor: '#dc2626' });
+        main.setData(pts.map(p => ({ time: p.t, open: p.o, high: p.h, low: p.l, close: p.c })));
+      } else {
+        const up = pts[pts.length - 1].c >= pts[0].c;
+        main = chart.addAreaSeries({ lineColor: up ? '#16a34a' : '#dc2626', topColor: up ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.22)', bottomColor: 'rgba(0,0,0,0)', lineWidth: 2 });
+        main.setData(pts.map(p => ({ time: p.t, value: p.c })));
+      }
+      if (st.vol && pts.some(p => p.v > 0)) {
+        const vs = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '', lastValueVisible: false, priceLineVisible: false });
+        vs.priceScale().applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+        vs.setData(pts.map(p => ({ time: p.t, value: p.v, color: p.c >= p.o ? 'rgba(22,163,74,0.35)' : 'rgba(220,38,38,0.35)' })));
+      }
+      const maNote = [];
+      if (!intraday) {
+        if (st.ma50) { const d = kpSMA(pts, 50); if (d.length) chart.addLineSeries({ color: '#f59e0b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(d); else maNote.push('MM 50 : pas assez d’historique'); }
+        if (st.ma200) { const d = kpSMA(pts, 200); if (d.length) chart.addLineSeries({ color: '#6366f1', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(d); else maNote.push('MM 200 : pas assez d’historique sur cette période'); }
+      } else if (st.ma50 || st.ma200) maNote.push('Moyennes mobiles disponibles à partir de 1 mois');
+      let pruNote = '';
+      if (opts.pru > 0) {
+        if (cur === 'EUR') main.createPriceLine({ price: opts.pru, color: '#6366f1', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Mon PRU' });
+        else pruNote = ' Ton prix de revient n’est pas tracé : cet actif est coté en ' + (cur || 'devise étrangère') + '.';
+      }
+      chart.timeScale().fitContent();
+      const last = pts[pts.length - 1], first = pts[0], chg = (last.c / first.o - 1) * 100;
+      $('kpc-price').textContent = fmtP(last.c) + sym;
+      const ce = $('kpc-chg'); ce.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace('.', ',') + ' % sur la période'; ce.style.color = chg >= 0 ? '#16a34a' : '#dc2626';
+      chart.subscribeCrosshairMove(param => {
+        const o = $('kpc-ohlc'); if (!o) return;
+        const d = param && param.seriesData && param.seriesData.get(main);
+        if (!d) { o.textContent = ''; return; }
+        o.textContent = ('open' in d) ? ('O ' + fmtP(d.open) + ' · H ' + fmtP(d.high) + ' · B ' + fmtP(d.low) + ' · C ' + fmtP(d.close)) : ('Cours ' + fmtP(d.value));
+      });
+      if (window.ResizeObserver) { ro = new ResizeObserver(() => { try { chart.applyOptions({ width: cv.clientWidth }); } catch (e) {} }); ro.observe(cv); }
+      $('kpc-foot').innerHTML = (maNote.length ? maNote.join(' · ') + '. ' : '') + 'Cours en ' + (cur || 'devise locale') + (data.interval === '1d' ? ', une bougie par jour' : data.interval === '1wk' ? ', une bougie par semaine' : data.interval === '1mo' ? ', une bougie par mois' : '') + '.' + pruNote
+        + ' Information uniquement, ni conseil ni signal : les performances passées ne préjugent pas des performances futures. Graphique : <a href="https://www.tradingview.com/" target="_blank" rel="noopener" style="color:inherit">TradingView Lightweight Charts™</a>';
+    } catch (e) {
+      const cv = $('kpc-canvas'); if (cv) cv.innerHTML = '<div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Le graphique n’a pas pu être chargé.<button type="button" id="kpc-retry" style="' + chipCss(true) + '">Réessayer</button></div>';
+      const rb = $('kpc-retry'); if (rb) rb.onclick = () => { cv.innerHTML = ''; draw(); };
+    }
+  }
+  bar(); draw();
+}
+// Fenêtre plein écran sur mobile
+function openChart(ticker, name, pru) {
+  document.getElementById('kp-chart-modal')?.remove();
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.6)' : '#71717a';
+  const o = document.createElement('div');
+  o.id = 'kp-chart-modal';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10054;display:flex;align-items:center;justify-content:center;padding:' + (window.innerWidth < 640 ? '0' : '18px');
+  o.onclick = e => { if (e.target === o) o.remove(); };
+  o.innerHTML = '<div role="dialog" aria-label="Graphique" style="background:' + surf + ';width:100%;max-width:880px;' + (window.innerWidth < 640 ? 'height:100%;border-radius:0' : 'border-radius:20px;max-height:94vh') + ';padding:16px;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px"><div style="min-width:0"><div style="font-size:18px;font-weight:900;color:' + txt + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📈 ' + _escHtml(displayName(name || ticker)) + '</div><div style="font-size:12px;color:' + sub + '">' + _escHtml(ticker) + '</div></div>'
+    + '<button type="button" onclick="document.getElementById(\'kp-chart-modal\').remove()" aria-label="Fermer" style="background:none;border:none;color:' + sub + ';font-size:24px;cursor:pointer;line-height:1">✕</button></div><div id="kp-chart-host"></div></div>';
+  document.body.appendChild(o);
+  kpChartMount(document.getElementById('kp-chart-host'), ticker, name || ticker, { pru: Number(pru) || 0 });
+}
+function kpChartKey(e) { if (e.key === 'Escape') document.getElementById('kp-chart-modal')?.remove(); }
+document.addEventListener('keydown', kpChartKey);
+function openChartFromDecision() {
+  const t = (typeof getDecisionTicker === 'function') ? getDecisionTicker() : '';
+  if (!t) { showToast('Choisis d’abord un actif'); return; }
+  const held = positions.find(p => String(p.name).toUpperCase() === String(t).toUpperCase());
+  openChart(t, displayName(t), held ? held.pru : 0);
+}
+
 let _monthlyPlanBusy = false; // verrou anti-boucle
 
 // Ligne détenue qui a perdu plus de 60 % : la renforcer n'a pas de sens (c'est aussi ce que dit l'analyse)
@@ -5492,6 +5645,7 @@ function renderTrackOnlyCompany(ticker, name, kind) {
       <div class="metric-card"><div class="metric-label">Variation aujourd'hui</div><div class="metric-val" id="co-change">—</div></div>
       <div class="metric-card"><div class="metric-label">Dans mon portf.</div><div class="metric-val" style="font-size:16px">${inPf ? '✓ Oui' : '—'}</div></div>
     </div>
+    <div class="card"><div class="card-head"><div class="card-title">📈 Graphique du cours</div></div><div id="co-chart"></div></div>
     <div class="card">
       <div style="padding:6px 2px">
         <div style="font-size:15px;font-weight:800;color:#1c1c1e;margin-bottom:6px">${crypto ? '🪙' : '💱'} Analyse indisponible</div>
@@ -5502,6 +5656,7 @@ function renderTrackOnlyCompany(ticker, name, kind) {
       </div>
     </div>`;
   fetchCompanyPrice(ticker);
+  try { kpChartMount(document.getElementById('co-chart'), ticker, name, { pru: ((positions.find(p => p.name === ticker)) || {}).pru }); } catch (e) {}
 }
 
 function renderUnknownCompany(ticker) {
@@ -5568,6 +5723,9 @@ async function openCompany(ticker, name, sector) {
       <div class="metric-card"><div class="metric-label">Dans mon portf.</div><div class="metric-val" id="co-portfolio" style="font-size:16px">${positions.find(p=>p.name===ticker)?'✓ Oui':'—'}</div></div>
     </div>
 
+    <!-- GRAPHIQUE -->
+    <div class="card"><div class="card-head"><div class="card-title">📈 Graphique</div></div><div id="co-chart"></div></div>
+
     <!-- AI ANALYSIS -->
     <div class="card">
       <div class="card-head"><div class="card-title"><div class="card-icon dark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>Analyse IA complète</div></div>
@@ -5587,6 +5745,7 @@ async function openCompany(ticker, name, sector) {
 
   // Fetch price and analysis in parallel
   fetchCompanyPrice(ticker);
+  try { kpChartMount(document.getElementById('co-chart'), ticker, name, { pru: ((positions.find(p => p.name === ticker)) || {}).pru }); } catch (e) {}
   loadCompanyDetail(ticker, name, sector);
 }
 
@@ -6872,6 +7031,7 @@ function updateDecisionCTA() {
   const name = document.getElementById('d-name')?.value.trim();
   const amount = document.getElementById('d-amount-display')?.dataset.amount || 500;
   const intentLbl = { garder: 'Que faire ?', acheter: 'Acheter', vendre: 'Vendre' }[decisionIntention || 'garder'];
+  { const cb = document.getElementById('d-chart-btn'); if (cb) cb.style.display = name ? 'block' : 'none'; }
   const _kind = decisionTrackOnlyKind(name);
   setDecisionNotice(_kind);
   if (_kind) {
@@ -9545,6 +9705,7 @@ function togglePos(id) {
       ${p.alert_price ? `<span>🔔 Alerte <strong style="color:var(--color-text)">${fmt(p.alert_price)} €</strong></span>` : ''}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="event.stopPropagation();openChart('${p.name.replace(/'/g,"\\'")}', '${(displayName(p.name) || p.name).replace(/'/g,"\\'")}', ${Number(p.pru) || 0})" style="padding:7px 13px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;font-size:12px;font-weight:700;color:#c2410c;cursor:pointer">📈 Graphique</button>
       <button data-an="1" onclick="event.stopPropagation();openDecisionFromPos('${p.name.replace(/'/g,"\\'")}', 'garder')" style="padding:7px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser</button>
       <button data-an="1" onclick="event.stopPropagation();sq('Que penses-tu de ma position ${p.name.replace(/'/g,"\\'")} ?');nav('ai')" style="padding:7px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;color:#16a34a;cursor:pointer">💬 Demander à l'IA</button>
       <button onclick="event.stopPropagation();openEditPos('${p.id}')" style="padding:7px 13px;background:var(--color-bg-subtle,#f5f5f5);border:1px solid var(--color-border,#e4e4e7);border-radius:9px;font-size:12px;font-weight:700;color:var(--color-text-secondary);cursor:pointer">✏️ Modifier</button>
