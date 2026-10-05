@@ -59,6 +59,7 @@ async function notifyUser(user, payload, deviceFilter, urgency = 'normal') {
   for (const d of user.devices) {
     if (deviceFilter && !deviceFilter(d)) continue;
     const r = await sendToDevice(d, payload, urgency);
+    try { await supabase.from('push_devices').update({ last_push_at: new Date().toISOString(), last_push_ok: r.ok, last_push_error: r.ok ? null : String(r.error || '').slice(0, 200) }).eq('endpoint', d.endpoint); } catch (e) {}   // diagnostic : dernier résultat par appareil
     if (r.ok) ok++;
     else if (r.gone) await supabase.from('push_devices').delete().eq('endpoint', d.endpoint);
     else console.error('[push-send] échec pour', user.userId, ':', r.error);

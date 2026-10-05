@@ -552,6 +552,55 @@ function planAnalysisRulesText(riskLabel) {
     + "- N'invente AUCUNE moyenne sectorielle ni comparaison absente des données (ex : « inférieur à la moyenne du secteur »).\n"
     + "- Adapte le niveau de risque au profil " + riskLabel + " : ne présente jamais comme prudente une ligne très volatile.";
 }
+// ═══ DOUBLONS : un même actif saisi sous deux noms (ex. « Air Liquide » et « AI.PA ») sur la même plateforme ═══
+function kpDupGroups() {
+  const g = {};
+  positions.forEach(p => { const k = kpTickerOf(p.name) + '|' + (p.platform || ''); (g[k] = g[k] || []).push(p); });
+  return Object.values(g).filter(arr => arr.length > 1);
+}
+function kpRenderDupBanner() {
+  try {
+    document.getElementById('dup-banner')?.remove();
+    const sec = document.getElementById('sec-portfolio'); const hdr = sec && sec.querySelector('.page-header');
+    const groups = kpDupGroups();
+    if (!hdr || !groups.length) return;
+    const names = groups.map(arr => arr.map(p => displayName(p.name) + (p.name !== displayName(p.name) ? ' (' + _escHtml(p.name) + ')' : '')).join(' + ')).join(' · ');
+    const b = document.createElement('div');
+    b.id = 'dup-banner';
+    b.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:12px 16px;margin:0 0 14px;color:#78350f;font-size:13px;line-height:1.5';
+    b.innerHTML = '<div>🔁 <strong>Doublon dans ton portefeuille</strong> : ' + names + '. C’est le même actif, saisi sous deux noms.</div><button type="button" onclick="kpMergeDuplicates()" style="padding:8px 14px;border:none;border-radius:10px;background:#f59e0b;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">Fusionner</button>';
+    hdr.after(b);
+  } catch (e) {}
+}
+async function kpMergeDuplicates() {
+  const groups = kpDupGroups();
+  if (!groups.length) return;
+  if (!confirm('Fusionner les doublons ?\n\nLes quantités sont additionnées et le prix de revient recalculé en moyenne. Ton historique d’achats est conservé.')) return;
+  let merged = 0;
+  for (const arr of groups) {
+    const sorted = [...arr].sort((x, y) => (Number(y.qty) * Number(y.price)) - (Number(x.qty) * Number(x.price)));
+    const keep = sorted[0], others = sorted.slice(1);
+    const qty = arr.reduce((s, p) => s + Number(p.qty), 0);
+    const cost = arr.reduce((s, p) => s + Number(p.qty) * Number(p.pru), 0);
+    const upd = { qty: Math.round(qty * 1e8) / 1e8, pru: qty > 0 ? Math.round(cost / qty * 100) / 100 : keep.pru, alert_price: keep.alert_price || (others.find(p => p.alert_price) || {}).alert_price || null };
+    if (!isDemo && currentUser) {
+      const { error } = await sb.from('positions').update(upd).eq('id', keep.id);
+      if (error) { showToast('Erreur : ' + error.message); return; }
+      for (const o of others) {
+        try { await sb.from('transactions').update({ position_name: keep.name }).eq('user_id', currentUser.id).eq('position_name', o.name); } catch (e) {}
+        await sb.from('positions').delete().eq('id', o.id);
+      }
+    }
+    Object.assign(keep, upd);
+    others.forEach(o => { const i = positions.findIndex(p => p.id === o.id); if (i >= 0) positions.splice(i, 1); });
+    merged++;
+  }
+  try { renderPortfolio(); } catch (e) {}
+  try { renderHome(); } catch (e) {}
+  kpRenderDupBanner();
+  showToast('✓ ' + merged + ' doublon' + (merged > 1 ? 's' : '') + ' fusionné' + (merged > 1 ? 's' : ''));
+}
+
 // Contexte réel d'un actif : cours sur 1 an, tendance des indices, actualités récentes. Lève une erreur si le service est injoignable.
 async function fetchAssetContext(ticker, label) {
   const sym = String(ticker || '').toUpperCase();
@@ -843,7 +892,7 @@ document.addEventListener('keydown', kpChartKey);
 function openChartFromDecision() {
   const t = (typeof getDecisionTicker === 'function') ? getDecisionTicker() : '';
   if (!t) { showToast('Choisis d’abord un actif'); return; }
-  const held = positions.find(p => String(p.name).toUpperCase() === String(t).toUpperCase());
+  const held = positions.find(p => kpTickerOf(p.name) === kpTickerOf(t));
   openChart(t, displayName(t), held ? held.pru : 0);
 }
 
@@ -8466,6 +8515,7 @@ function nav(page, auto=false) {
   try {
     if (page === 'objectif' && (typeof positions === 'undefined' || !positions.length)) setTimeout(() => showCursorHint('#plan-addall-btn', 'plan_addall'), 1300);
     if (page === 'portfolio') setTimeout(() => { try { showPortfolioTour(); } catch (e) {} }, 700);
+    if (page === 'portfolio') setTimeout(() => kpRenderDupBanner(), 350);
   } catch (e) {}
 }
 function toggleSidebar() {
@@ -8839,7 +8889,7 @@ function showLevelChooser(fromSettings) {
 
 // ═══ NOUVEAUTÉS : message unique pour les utilisateurs déjà inscrits (pas pour les nouveaux arrivants), à rouvrir depuis le menu ═══
 const KP_NEWS_ID = '2026-10-06';
-const KP_NEWS_RELEASE = Date.parse('2026-10-06T11:30:00Z');   // un compte créé après cette date démarre directement avec la dernière version
+const KP_NEWS_RELEASE = Date.parse('2026-10-05T13:38:00Z');   // un compte créé après cette date démarre directement avec la dernière version
 function kpNewsKey() { try { return 'kp_news_seen_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch (e) { return 'kp_news_seen_anon'; } }
 function kpNewsSeen() {
   try { if (localStorage.getItem(kpNewsKey()) === KP_NEWS_ID) return true; } catch (e) {}
@@ -9834,7 +9884,7 @@ async function addPos() {
   const pos = { name, qty, pru, price, type, sector, platform, alert_price: alertPrice };
 
   // ── FUSION : si la position existe déjà, on cumule les parts et on recalcule le PRU moyen pondéré ──
-  const existing = positions.find(p => p.name.toUpperCase() === name.toUpperCase());
+  const existing = positions.find(p => kpTickerOf(p.name) === kpTickerOf(name));
   if (existing) {
     const totalQty = existing.qty + qty;
     const newPru = (existing.qty * existing.pru + qty * pru) / totalQty;
@@ -11739,7 +11789,7 @@ async function qaAddLine(btn) {
   const sector = qaSelected.sector || '';
   if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
   try {
-    const existing = positions.find(p => (p.name || '').toUpperCase() === name.toUpperCase());
+    const existing = positions.find(p => kpTickerOf(p.name) === kpTickerOf(name));
     if (existing) {
       const totalQty = existing.qty + qty;
       const newPru = (existing.qty * existing.pru + qty * pru) / totalQty;
@@ -11838,7 +11888,7 @@ function qaConfetti() {
 // ═══════════════════════════════════════════════════════════════════════════
 // Plan du mois : « Tout ajouter ». Contrairement au plan de départ, les lignes déjà détenues sont RENFORCÉES (quantité ajoutée, prix de revient recalculé).
 function kpPlanLineType(ticker) {
-  const held = positions.find(p => String(p.name).toUpperCase() === String(ticker).toUpperCase());
+  const held = positions.find(p => kpTickerOf(p.name) === kpTickerOf(ticker));
   if (held && held.type) return held.type;
   if (String(ticker).toUpperCase() === '4GLD.DE') return 'Matière première';
   if (PLAN_ETFS.some(e => e[0] === String(ticker).toUpperCase())) return 'ETF';
@@ -11972,7 +12022,7 @@ async function prConfirm(btn, openAfter) {
       l.price = price;
       const qty = Math.round((amt / price) * 1e8) / 1e8;
       if (qty <= 0) { skipped++; continue; }
-      const existing = positions.find(p => (p.name || '').toUpperCase() === l.ticker.toUpperCase());
+      const existing = positions.find(p => kpTickerOf(p.name) === kpTickerOf(l.ticker));
       if (existing) {
         if (!(window._prOpts && window._prOpts.merge)) { skipped++; continue; }
         const tq = existing.qty + qty;
@@ -13214,7 +13264,7 @@ async function confirmCSVImport() {
 
   let added = 0, updated = 0;
   for (let r of rows) {
-    const existing = positions.find(p => p.name.toUpperCase() === r.name.toUpperCase());
+    const existing = positions.find(p => kpTickerOf(p.name) === kpTickerOf(r.name));
     const basePru = r.pru > 0 ? r.pru : (existing ? existing.pru : r.price);
     r = { ...r, pru: basePru > 0 ? csvRowPru({ ...r, pru: basePru }) : 0 };
     if (existing) {

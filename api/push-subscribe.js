@@ -53,7 +53,8 @@ module.exports = async function handler(req, res) {
           title: '🔔 Notifications activées',
           body: 'Tu recevras ton briefing du matin et une alerte quand un prix tombe sous ton seuil.',
           tag: 'investiq-test',
-        });
+        }, 'high');
+        try { await supabase.from('push_devices').update({ last_push_at: new Date().toISOString(), last_push_ok: r.ok, last_push_error: r.ok ? null : String(r.error || '').slice(0, 200) }).eq('endpoint', d.endpoint); } catch (e) {}
         if (r.ok) sent++;
         else { lastErr = r.error; if (r.gone) await supabase.from('push_devices').delete().eq('endpoint', d.endpoint); }
       }
