@@ -401,8 +401,14 @@ async function renderTutos(fillVoices) {
     sel.innerHTML = d.voices.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('');
     if (!d.eleven) sel.insertAdjacentHTML('afterend', '<p class="sub" style="color:#fca5a5;margin:-6px 0 10px">Voix ElevenLabs indisponible : vérifie la clé dans Vercel.</p>');
   }
+  // On ne redessine la liste que si quelque chose a changé, et jamais pendant qu'une vidéo est lue (sinon elle repart à zéro)
+  var sig = JSON.stringify([d.manifest, d.status]);
+  var listEl = document.getElementById('tuto-list');
+  if (!fillVoices && listEl.dataset.sig === sig) return;
+  if (!fillVoices && [].some.call(listEl.querySelectorAll('video'), function (v) { return !v.paused && !v.ended; })) return;
+  listEl.dataset.sig = sig;
   var lbl = { recording: '⏳ En cours de fabrication…', done: '✅ Prête', error: '❌ Erreur' };
-  document.getElementById('tuto-list').innerHTML = d.tutos.map(function (t) {
+  listEl.innerHTML = d.tutos.map(function (t) {
     var m = d.manifest[t.id], st = d.status[t.id];
     return '<div style="border:1px solid #1f2a44;border-radius:12px;padding:12px;margin-bottom:10px">'
       + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + esc(t.title) + '</b><span class="sub">' + (st ? lbl[st.state] || esc(st.state) : (m ? '✅ Prête' : 'Pas encore fabriquée')) + '</span></div>'
