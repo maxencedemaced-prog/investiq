@@ -31,6 +31,9 @@ const LEGAL_DOCS = {
 <h3>Article 3 — Propriété intellectuelle</h3>
 <p>L'ensemble des éléments composant Kapitaro (marque, interface, textes, code) est protégé par le droit de la propriété intellectuelle et demeure la propriété exclusive de l'éditeur. Toute reproduction ou exploitation non autorisée est interdite.</p>
 
+<h3>Article 3 bis — Crédits et licences</h3>
+<p>Les graphiques de cours utilisent la bibliothèque libre <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> (© TradingView, Inc., licence Apache 2.0). Les logos de cryptomonnaies proviennent de CoinGecko et les drapeaux de FlagCDN. Les cours et historiques sont fournis par Yahoo Finance et Finnhub, à titre indicatif et parfois avec un retard de cotation imposé par les places de marché.</p>
+
 <h3>Article 4 — Statut réglementaire</h3>
 <p><strong>Kapitaro n'est pas un prestataire de services d'investissement.</strong> Le service ne dispose pas du statut de Conseiller en Investissements Financiers (CIF) et n'est enregistré ni auprès de l'ORIAS, ni agréé par l'Autorité des Marchés Financiers (AMF).</p>
 <p>Kapitaro est un <strong>outil pédagogique d'aide à la décision</strong>. Les analyses, scores et suggestions générés — y compris par intelligence artificielle — constituent des informations à caractère général et non des recommandations personnalisées au sens de l'article D. 321-1 du Code monétaire et financier.</p>

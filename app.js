@@ -463,7 +463,7 @@ const PLAN_ETFS = [['IWDA.L','iShares Core MSCI World','ETF actions monde dével
 
 // Cours réels sur 1 an : performances, baisse maximale, volatilité (+ PER, marge, dividende pour les valeurs américaines)
 async function fetchPlanMarketData() {
-  const held = apos().filter(p => /^[A-Z0-9.\-]{1,14}$/.test(String(p.name))).map(p => p.name);
+  const held = apos().map(p => kpTickerOf(p.name)).filter(t => /^[A-Z0-9.\-]{1,14}$/.test(t));
   const syms = [...new Set([...PLAN_UNIVERSE.map(u => u[0]), ...PLAN_ETFS.map(e => e[0]), ...held])].slice(0, 60);
   const names = [...PLAN_UNIVERSE.map(u => u[0] + ':' + u[1]), ...held.filter(h => !PLAN_UNIVERSE.some(u => u[0] === h)).map(h => h + ':' + displayName(h))];
   const r = await fetch('/api/market-data?symbols=' + encodeURIComponent(syms.join(',')) + '&names=' + encodeURIComponent(names.join(',')));
@@ -501,7 +501,7 @@ function planCandidateTable(md) {
   const row = c => c.t + ' | ' + c.name + ' | ' + c.sector + ' | ' + c.zone + ' | 1 an ' + kpSigned(c.m.p1y) + ' | 6 mois ' + kpSigned(c.m.p6m) + ' | 1 mois ' + kpSigned(c.m.p1m) + ' | baisse max 1 an ' + kpSigned(c.m.dd) + ' | volatilité ' + String(c.m.vol).replace('.', ',') + ' %' + (c.m.pe != null ? ' | PER ' + String(c.m.pe).replace('.', ',') : '') + (c.m.margin != null ? ' | marge nette ' + String(c.m.margin).replace('.', ',') + ' %' : '') + (c.m.divYield != null ? ' | dividende ' + String(c.m.divYield).replace('.', ',') + ' %' : '');
   const etf = PLAN_ETFS.filter(e => md[e[0]]).map(e => e[0] + ' | ' + e[1] + ' | ' + e[2] + ' | 1 an ' + kpSigned(md[e[0]].p1y) + ' | baisse max 1 an ' + kpSigned(md[e[0]].dd) + ' | volatilité ' + String(md[e[0]].vol).replace('.', ',') + ' %');
   const heldRows = []; const seenH = new Set();
-  apos().forEach(p => { const k = String(p.name).toUpperCase(); if (seenH.has(k) || !md[k]) return; seenH.add(k); heldRows.push(assetMetricRow(displayName(p.name), k, md[k])); });
+  apos().forEach(p => { const k = kpTickerOf(p.name); if (seenH.has(k) || !md[k]) return; seenH.add(k); heldRows.push(assetMetricRow(displayName(p.name), k, md[k])); });
   return { ok, out, heldText: heldRows.join('\n'), text: ok.map(row).join('\n'), etfText: etf.join('\n') || PLAN_ETFS.map(e => e[0] + ' | ' + e[1] + ' | ' + e[2]).join('\n') };
 }
 // Secteurs déjà présents dans le portefeuille de l'utilisateur
@@ -583,7 +583,7 @@ function assetMetricRow(label, sym, m) {
 const KP_DATA_RULE = "RÈGLE : appuie-toi sur ces données et cite-les. N'invente AUCUN chiffre, résultat d'entreprise, actualité ou évènement absent des données ci-dessus ; si une donnée manque, dis-le franchement. Les performances passées ne préjugent pas des performances futures.";
 // items : [{ t: ticker, name }]. Ne lève jamais d'erreur : { ok, text } (text décrit aussi l'absence de données)
 async function fetchContextBlock(items) {
-  const list = (items || []).map(x => ({ t: String(x.t || '').toUpperCase(), name: String(x.name || x.t || '') })).filter(x => /^[A-Z0-9.\-]{1,14}$/.test(x.t));
+  const list = (items || []).map(x => ({ t: kpTickerOf(x.t), name: String(x.name || x.t || '') })).filter(x => /^[A-Z0-9.\-]{1,14}$/.test(x.t));
   const seen = new Set(), uniq = list.filter(x => !seen.has(x.t) && seen.add(x.t)).slice(0, 40);
   const none = { ok: false, text: "DONNÉES DE MARCHÉ : aucune donnée disponible actuellement. N'avance AUCUN chiffre de cours ou de performance ni aucune actualité ; reste général, prudent, et dis que les données de marché ne sont pas disponibles." };
   if (!uniq.length) return none;
@@ -626,6 +626,227 @@ async function planDataSuffix(riskLabel) {
   } catch (e) {}
   return "\n\nDONNÉES DE MARCHÉ : aucune donnée disponible actuellement. Ne cite AUCUN chiffre de cours, de performance ni aucune actualité ; propose uniquement des ETF larges et diversifiés (IWDA.L, VWCE.DE, AGGH.AS), sans sélection d'actions individuelles, et dis que l'analyse détaillée n'est pas disponible pour l'instant." + planUserTail();
 }
+// ═══ GRAPHIQUES DE COURS (bibliothèque libre « Lightweight Charts » de TradingView, données Yahoo via /api/chart) ═══
+// Information seulement : aucun signal d'achat ou de vente, aucun outil de dessin.
+// Positions saisies avec le NOM de l'entreprise (« Air Liquide ») : on retrouve le vrai ticker avant d'interroger les cours
+const KP_NAME_ALIAS = { 'LVMH': 'MC.PA', 'AIR LIQUIDE': 'AI.PA', 'TOTALENERGIES': 'TTE.PA', 'TOTAL ENERGIES': 'TTE.PA', 'BNP PARIBAS': 'BNP.PA', 'VEOLIA': 'VIE.PA', 'VEOLIA ENVIRONNEMENT': 'VIE.PA', 'PORSCHE': 'PAH3.DE', 'PORSCHE HOLDING': 'PAH3.DE', 'PORSCHE AUTOMOBIL HOLDING': 'PAH3.DE', 'LOREAL': 'OR.PA', "L'ORÉAL": 'OR.PA', 'AIRBUS': 'AIR.PA', 'SCHNEIDER ELECTRIC': 'SU.PA', 'SANOFI': 'SAN.PA', 'AXA': 'CS.PA', 'FDJ UNITED': 'FDJU.PA', 'FDJ.PA': 'FDJU.PA', 'STELLANTIS': 'STLA' };
+function kpTickerOf(n) {
+  const up = String(n || '').trim().toUpperCase();
+  if (!up) return '';
+  if (KP_NAME_ALIAS[up]) return KP_NAME_ALIAS[up];
+  if (/^[A-Z0-9.\-=]{1,20}$/.test(up)) return up;
+  try { for (const [t, nm] of Object.entries(COMPANY_NAMES)) if (String(nm).toUpperCase() === up) return t.toUpperCase(); } catch (e) {}
+  return up;
+}
+let _kpChartLibPromise = null;
+function kpLoadChartLib() {
+  if (window.LightweightCharts) return Promise.resolve(window.LightweightCharts);
+  if (_kpChartLibPromise) return _kpChartLibPromise;
+  _kpChartLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js';
+    s.onload = () => window.LightweightCharts ? resolve(window.LightweightCharts) : reject(new Error('lib'));
+    s.onerror = () => { _kpChartLibPromise = null; reject(new Error('chargement')); };
+    document.head.appendChild(s);
+  });
+  return _kpChartLibPromise;
+}
+const KP_CHART_RANGES = [['1w', '1S'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1A'], ['5y', '5A'], ['max', 'Max']];
+const _kpChartCache = {};
+async function kpFetchChart(symbol, range) {
+  const key = symbol + '|' + range;
+  const hit = _kpChartCache[key];
+  if (hit && Date.now() - hit.ts < 5 * 60 * 1000) return hit.data;
+  const r = await fetch('/api/chart?symbol=' + encodeURIComponent(symbol) + '&range=' + encodeURIComponent(range));
+  if (!r.ok) throw new Error('chart ' + r.status);
+  const data = await r.json();
+  if (data.points && data.points.length) _kpChartCache[key] = { ts: Date.now(), data };
+  return data;
+}
+function kpSMA(pts, n) {
+  const out = []; let sum = 0;
+  for (let i = 0; i < pts.length; i++) { sum += pts[i].c; if (i >= n) sum -= pts[i - n].c; if (i >= n - 1) out.push({ time: pts[i].t, value: Math.round(sum / n * 1e4) / 1e4 }); }
+  return out;
+}
+// Monte un graphique complet (barre d'outils + graphique) dans un élément. opts : { pru, height }
+function kpChartMount(host, ticker, name, opts) {
+  if (!host) return;
+  opts = opts || {};
+  const symbol = kpTickerOf(ticker) || ticker;
+  const st = { range: '1y', type: 'candle', ma50: false, ma200: false, vol: true };
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const C = dark
+    ? { bg: '#0f1629', txt: 'rgba(255,255,255,0.75)', grid: 'rgba(255,255,255,0.06)', line: 'rgba(255,255,255,0.14)', sub: 'rgba(255,255,255,0.55)', chip: 'rgba(255,255,255,0.07)', chipTxt: '#fff' }
+    : { bg: '#ffffff', txt: '#3f3f46', grid: '#f1f1f4', line: '#e4e4e7', sub: '#71717a', chip: '#f4f4f5', chipTxt: '#09090b' };
+  const chipCss = on => 'padding:5px 10px;border-radius:8px;border:1px solid ' + (on ? '#16a34a' : 'transparent') + ';background:' + (on ? 'rgba(22,163,74,0.14)' : C.chip) + ';color:' + (on ? '#16a34a' : C.chipTxt) + ';font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap';
+  const h = opts.height || (window.innerWidth < 640 ? 300 : 380);
+  host.innerHTML = '<div class="kp-chart" style="background:' + C.bg + ';border-radius:14px">'
+    + '<div id="kpc-head" style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px"><div><span id="kpc-price" style="font-size:22px;font-weight:900;color:' + C.chipTxt + '">—</span> <span id="kpc-chg" style="font-size:13px;font-weight:800"></span> <span id="kpc-live" style="font-size:11px;color:' + C.sub + '"></span></div><div id="kpc-ohlc" style="font-size:11px;color:' + C.sub + '"></div></div>'
+    + '<div id="kpc-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center"></div>'
+    + '<div id="kpc-canvas" style="width:100%;height:' + h + 'px;position:relative"><div id="kpc-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Chargement du graphique…</div></div>'
+    + '<div id="kpc-foot" style="font-size:10.5px;color:' + C.sub + ';margin-top:6px;line-height:1.5"></div></div>';
+  const $ = id => host.querySelector('#' + id);
+  let chart = null, ro = null, live = null, timer = null, ws = null;
+
+  const bar = () => {
+    $('kpc-bar').innerHTML = KP_CHART_RANGES.map(([k, l]) => '<button type="button" data-r="' + k + '" style="' + chipCss(st.range === k) + '">' + l + '</button>').join('')
+      + '<span style="width:1px;height:18px;background:' + C.line + ';margin:0 2px"></span>'
+      + '<button type="button" data-t="candle" style="' + chipCss(st.type === 'candle') + '">Bougies</button><button type="button" data-t="line" style="' + chipCss(st.type === 'line') + '">Ligne</button>'
+      + '<span style="width:1px;height:18px;background:' + C.line + ';margin:0 2px"></span>'
+      + '<button type="button" data-m="ma50" style="' + chipCss(st.ma50) + '">MM 50</button><button type="button" data-m="ma200" style="' + chipCss(st.ma200) + '">MM 200</button><button type="button" data-m="vol" style="' + chipCss(st.vol) + '">Volume</button>';
+    $('kpc-bar').querySelectorAll('button').forEach(b => b.onclick = () => {
+      if (b.dataset.r) st.range = b.dataset.r; else if (b.dataset.t) st.type = b.dataset.t; else if (b.dataset.m) st[b.dataset.m] = !st[b.dataset.m];
+      bar(); draw();
+    });
+  };
+  const fmtP = x => (typeof kpPriceStr === 'function') ? kpPriceStr(x) : fmt(x);
+
+  async function draw() {
+    const msg = $('kpc-msg');
+    try {
+      const [L, data] = await Promise.all([kpLoadChartLib(), kpFetchChart(symbol, st.range)]);
+      const pts = data.points || [];
+      const cv = $('kpc-canvas');
+      if (chart) { try { chart.remove(); } catch (e) {} chart = null; }
+      if (ro) { try { ro.disconnect(); } catch (e) {} ro = null; }
+      cv.innerHTML = '';
+      if (pts.length < 2) { cv.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Pas d’historique disponible pour cet actif.</div>'; $('kpc-price').textContent = '—'; $('kpc-chg').textContent = ''; return; }
+      const cur = data.currency || '';
+      const sym = cur === 'EUR' ? ' €' : cur ? ' ' + cur : '';
+      const intraday = data.interval && /m$/.test(data.interval) && data.interval !== '1mo';
+      chart = L.createChart(cv, {
+        width: cv.clientWidth, height: h,
+        layout: { background: { type: 'solid', color: C.bg }, textColor: C.txt, fontFamily: 'inherit' },
+        grid: { vertLines: { color: C.grid }, horzLines: { color: C.grid } },
+        rightPriceScale: { borderColor: C.line }, timeScale: { borderColor: C.line, timeVisible: intraday, secondsVisible: false },
+        crosshair: { mode: 0 },
+        localization: { locale: 'fr-FR', priceFormatter: p => fmtP(p) },
+      });
+      let main;
+      if (st.type === 'candle') {
+        main = chart.addCandlestickSeries({ upColor: '#16a34a', downColor: '#dc2626', borderUpColor: '#16a34a', borderDownColor: '#dc2626', wickUpColor: '#16a34a', wickDownColor: '#dc2626' });
+        main.setData(pts.map(p => ({ time: p.t, open: p.o, high: p.h, low: p.l, close: p.c })));
+      } else {
+        const up = pts[pts.length - 1].c >= pts[0].c;
+        main = chart.addAreaSeries({ lineColor: up ? '#16a34a' : '#dc2626', topColor: up ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.22)', bottomColor: 'rgba(0,0,0,0)', lineWidth: 2 });
+        main.setData(pts.map(p => ({ time: p.t, value: p.c })));
+      }
+      if (st.vol && pts.some(p => p.v > 0)) {
+        const vs = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '', lastValueVisible: false, priceLineVisible: false });
+        vs.priceScale().applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+        vs.setData(pts.map(p => ({ time: p.t, value: p.v, color: p.c >= p.o ? 'rgba(22,163,74,0.35)' : 'rgba(220,38,38,0.35)' })));
+      }
+      const maNote = [];
+      if (!intraday) {
+        if (st.ma50) { const d = kpSMA(pts, 50); if (d.length) chart.addLineSeries({ color: '#f59e0b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(d); else maNote.push('MM 50 : pas assez d’historique'); }
+        if (st.ma200) { const d = kpSMA(pts, 200); if (d.length) chart.addLineSeries({ color: '#6366f1', lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(d); else maNote.push('MM 200 : pas assez d’historique sur cette période'); }
+      } else if (st.ma50 || st.ma200) maNote.push('Moyennes mobiles disponibles à partir de 1 mois');
+      let pruNote = '';
+      if (opts.pru > 0) {
+        if (cur === 'EUR') main.createPriceLine({ price: opts.pru, color: '#6366f1', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Mon PRU' });
+        else pruNote = ' Ton prix de revient n’est pas tracé : cet actif est coté en ' + (cur || 'devise étrangère') + '.';
+      }
+      chart.timeScale().fitContent();
+      const last = pts[pts.length - 1], first = pts[0], chg = (last.c / first.o - 1) * 100;
+      live = Object.assign(live && live.ws ? { ws: true, wsAt: live.wsAt } : {}, { series: main, last: { ...last }, first, sym, step: data.interval === '30m' ? 1800 : 0, age: null });
+      $('kpc-price').textContent = fmtP(last.c) + sym;
+      const ce = $('kpc-chg'); ce.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace('.', ',') + ' % sur la période'; ce.style.color = chg >= 0 ? '#16a34a' : '#dc2626';
+      chart.subscribeCrosshairMove(param => {
+        const o = $('kpc-ohlc'); if (!o) return;
+        const d = param && param.seriesData && param.seriesData.get(main);
+        if (!d) { o.textContent = ''; return; }
+        o.textContent = ('open' in d) ? ('O ' + fmtP(d.open) + ' · H ' + fmtP(d.high) + ' · B ' + fmtP(d.low) + ' · C ' + fmtP(d.close)) : ('Cours ' + fmtP(d.value));
+      });
+      if (window.ResizeObserver) { ro = new ResizeObserver(() => { try { chart.applyOptions({ width: cv.clientWidth }); } catch (e) {} }); ro.observe(cv); }
+      $('kpc-foot').innerHTML = (maNote.length ? maNote.join(' · ') + '. ' : '') + 'Cours en ' + (cur || 'devise locale') + (data.interval === '1d' ? ', une bougie par jour' : data.interval === '1wk' ? ', une bougie par semaine' : data.interval === '1mo' ? ', une bougie par mois' : '') + '.' + pruNote
+        + ' Information uniquement, ni conseil ni signal : les performances passées ne préjugent pas des performances futures.';
+    } catch (e) {
+      const cv = $('kpc-canvas'); if (cv) cv.innerHTML = '<div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Le graphique n’a pas pu être chargé.<button type="button" id="kpc-retry" style="' + chipCss(true) + '">Réessayer</button></div>';
+      const rb = $('kpc-retry'); if (rb) rb.onclick = () => { cv.innerHTML = ''; draw(); };
+    }
+  }
+  // ── EN DIRECT ──
+  // Actions US, cryptos, devises : cours en temps réel (rafraîchi toutes les 3 s ; cryptos en euros : flux continu de la bourse Binance).
+  // Actions européennes : les sources gratuites ont environ 15 min de retard (règle des bourses) : le graphique l'indique.
+  const badge = () => {
+    const le = $('kpc-live'); if (!le || !live) return;
+    const wsOn = live.ws && Date.now() - (live.wsAt || 0) < 8000;
+    if (wsOn || (live.age != null && live.age <= 2)) { le.textContent = '● En direct'; le.style.color = '#16a34a'; return; }
+    if (live.age == null) { le.textContent = ''; return; }
+    if (live.age > 40) { le.textContent = '◔ Marché fermé · dernier cours à ' + new Date(live.ts * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+    else { le.textContent = '◔ Cours différé d’environ ' + live.age + ' min (règle de la bourse)'; }
+    le.style.color = C.sub;
+  };
+  const applyLive = (p, tsSec) => {
+    if (!live || !p || !isFinite(p)) return;
+    let L = live.last;
+    if (Math.abs(p / L.c - 1) > 0.05) return;   // autre devise ou donnée incohérente : on ne touche pas au graphique
+    const nt = live.step && tsSec ? Math.floor(tsSec / live.step) * live.step : 0;
+    if (nt > L.t) { L = live.last = { t: nt, o: p, h: p, l: p, c: p }; }   // nouvelle bougie (graphique de la semaine)
+    else { L.h = Math.max(L.h, p); L.l = Math.min(L.l, p); L.c = p; }
+    try { live.series.update(st.type === 'candle' ? { time: L.t, open: L.o, high: L.h, low: L.l, close: L.c } : { time: L.t, value: L.c }); } catch (e) { return; }
+    const pe = $('kpc-price'); if (pe) pe.textContent = fmtP(p) + live.sym;
+    const ce = $('kpc-chg'); if (ce) { const chg = (p / live.first.o - 1) * 100; ce.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace('.', ',') + ' % sur la période'; ce.style.color = chg >= 0 ? '#16a34a' : '#dc2626'; }
+  };
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } if (ws) { try { ws.close(); } catch (e) {} ws = null; } };
+  const tick = async () => {
+    if (!document.body.contains(host)) { stop(); return; }
+    if (document.hidden || !live) return;
+    try {
+      const d = await (await fetch('/api/live?symbol=' + encodeURIComponent(symbol))).json();
+      if (d && d.price) {
+        live.age = d.ageMin; live.ts = d.ts;
+        if (!(live.ws && Date.now() - (live.wsAt || 0) < 5000)) applyLive(d.price, d.ts);
+        badge();
+      }
+    } catch (e) {}
+  };
+  // Cryptos en euros : flux continu (bourse Binance, public), repli automatique sur le rafraîchissement toutes les 3 s
+  const cm = /^([A-Z0-9]{2,10})-EUR$/.exec(symbol);
+  if (cm && 'WebSocket' in window) {
+    try {
+      const w = new WebSocket('wss://stream.binance.com:9443/ws/' + cm[1].toLowerCase() + 'eur@trade');
+      let pend = 0, pending = false;
+      w.onmessage = ev => {
+        try {
+          if (!document.body.contains(host)) { stop(); return; }   // graphique fermé : on coupe le flux tout de suite
+          const p = parseFloat(JSON.parse(ev.data).p);
+          if (!(p > 0)) return;
+          pend = p;
+          if (!pending) pending = !!setTimeout(() => { pending = false; if (live && pend && document.body.contains(host)) { live.ws = true; live.wsAt = Date.now(); applyLive(pend, Math.floor(Date.now() / 1000)); badge(); } }, 250);
+        } catch (e) {}
+      };
+      w.onerror = w.onclose = () => { if (live) live.ws = false; };
+      ws = w;
+    } catch (e) {}
+  }
+  timer = setInterval(tick, 3000);
+  bar(); draw().then(() => tick());
+}
+// Fenêtre plein écran sur mobile
+function openChart(ticker, name, pru) {
+  document.getElementById('kp-chart-modal')?.remove();
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.6)' : '#71717a';
+  const o = document.createElement('div');
+  o.id = 'kp-chart-modal';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10054;display:flex;align-items:center;justify-content:center;padding:' + (window.innerWidth < 640 ? '0' : '18px');
+  o.onclick = e => { if (e.target === o) o.remove(); };
+  o.innerHTML = '<div role="dialog" aria-label="Graphique" style="background:' + surf + ';width:100%;max-width:880px;' + (window.innerWidth < 640 ? 'height:100%;border-radius:0' : 'border-radius:20px;max-height:94vh') + ';padding:16px;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px"><div style="min-width:0"><div style="font-size:18px;font-weight:900;color:' + txt + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📈 ' + _escHtml(displayName(name || ticker)) + '</div><div style="font-size:12px;color:' + sub + '">' + _escHtml(ticker) + '</div></div>'
+    + '<button type="button" onclick="document.getElementById(\'kp-chart-modal\').remove()" aria-label="Fermer" style="background:none;border:none;color:' + sub + ';font-size:24px;cursor:pointer;line-height:1">✕</button></div><div id="kp-chart-host"></div></div>';
+  document.body.appendChild(o);
+  kpChartMount(document.getElementById('kp-chart-host'), ticker, name || ticker, { pru: Number(pru) || 0 });
+}
+function kpChartKey(e) { if (e.key === 'Escape') document.getElementById('kp-chart-modal')?.remove(); }
+document.addEventListener('keydown', kpChartKey);
+function openChartFromDecision() {
+  const t = (typeof getDecisionTicker === 'function') ? getDecisionTicker() : '';
+  if (!t) { showToast('Choisis d’abord un actif'); return; }
+  const held = positions.find(p => String(p.name).toUpperCase() === String(t).toUpperCase());
+  openChart(t, displayName(t), held ? held.pru : 0);
+}
+
 let _monthlyPlanBusy = false; // verrou anti-boucle
 
 // Ligne détenue qui a perdu plus de 60 % : la renforcer n'a pas de sens (c'est aussi ce que dit l'analyse)
@@ -3108,6 +3329,7 @@ async function acSelect(company) {
         <div style="font-size:14px;font-weight:800;color:#1c1c1e">${company.name}</div>
         <div style="font-size:12px;color:#8e8e93;font-weight:500">${company.ticker} · ${company.type} · ${company.sector}</div>
       </div>
+      <button type="button" onclick="openChart('${jsArg(company.ticker)}','${jsArg(company.name)}',0)" style="margin-left:8px;padding:6px 11px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;font-size:12px;font-weight:700;color:#c2410c;cursor:pointer;white-space:nowrap">📈 Graphique</button>
     </div>`;
 
   // Crypto : rappel de risque
@@ -5492,6 +5714,7 @@ function renderTrackOnlyCompany(ticker, name, kind) {
       <div class="metric-card"><div class="metric-label">Variation aujourd'hui</div><div class="metric-val" id="co-change">—</div></div>
       <div class="metric-card"><div class="metric-label">Dans mon portf.</div><div class="metric-val" style="font-size:16px">${inPf ? '✓ Oui' : '—'}</div></div>
     </div>
+    <div class="card"><div class="card-head"><div class="card-title">📈 Graphique du cours</div></div><div id="co-chart"></div></div>
     <div class="card">
       <div style="padding:6px 2px">
         <div style="font-size:15px;font-weight:800;color:#1c1c1e;margin-bottom:6px">${crypto ? '🪙' : '💱'} Analyse indisponible</div>
@@ -5502,6 +5725,7 @@ function renderTrackOnlyCompany(ticker, name, kind) {
       </div>
     </div>`;
   fetchCompanyPrice(ticker);
+  try { kpChartMount(document.getElementById('co-chart'), ticker, name, { pru: ((positions.find(p => p.name === ticker)) || {}).pru }); } catch (e) {}
 }
 
 function renderUnknownCompany(ticker) {
@@ -5568,6 +5792,9 @@ async function openCompany(ticker, name, sector) {
       <div class="metric-card"><div class="metric-label">Dans mon portf.</div><div class="metric-val" id="co-portfolio" style="font-size:16px">${positions.find(p=>p.name===ticker)?'✓ Oui':'—'}</div></div>
     </div>
 
+    <!-- GRAPHIQUE -->
+    <div class="card"><div class="card-head"><div class="card-title">📈 Graphique</div></div><div id="co-chart"></div></div>
+
     <!-- AI ANALYSIS -->
     <div class="card">
       <div class="card-head"><div class="card-title"><div class="card-icon dark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>Analyse IA complète</div></div>
@@ -5587,6 +5814,7 @@ async function openCompany(ticker, name, sector) {
 
   // Fetch price and analysis in parallel
   fetchCompanyPrice(ticker);
+  try { kpChartMount(document.getElementById('co-chart'), ticker, name, { pru: ((positions.find(p => p.name === ticker)) || {}).pru }); } catch (e) {}
   loadCompanyDetail(ticker, name, sector);
 }
 
@@ -5997,6 +6225,7 @@ async function initApp(user) {
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   try { kpApplyMainPlatform(true); } catch (e) {}
   setTimeout(() => showOnboarding(), 500);
+  try { kpUpdateNewsDot(); setTimeout(() => kpMaybeWhatsNew(0), 5000); } catch (e) {}
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
@@ -6871,6 +7100,7 @@ function updateDecisionCTA() {
   const name = document.getElementById('d-name')?.value.trim();
   const amount = document.getElementById('d-amount-display')?.dataset.amount || 500;
   const intentLbl = { garder: 'Que faire ?', acheter: 'Acheter', vendre: 'Vendre' }[decisionIntention || 'garder'];
+  { const cb = document.getElementById('d-chart-btn'); if (cb) cb.style.display = name ? 'block' : 'none'; }
   const _kind = decisionTrackOnlyKind(name);
   setDecisionNotice(_kind);
   if (_kind) {
@@ -8607,6 +8837,58 @@ function showLevelChooser(fromSettings) {
   document.body.appendChild(o);
 }
 
+// ═══ NOUVEAUTÉS : message unique pour les utilisateurs déjà inscrits (pas pour les nouveaux arrivants), à rouvrir depuis le menu ═══
+const KP_NEWS_ID = '2026-10-06';
+const KP_NEWS_RELEASE = Date.parse('2026-10-06T11:30:00Z');   // un compte créé après cette date démarre directement avec la dernière version
+function kpNewsKey() { try { return 'kp_news_seen_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch (e) { return 'kp_news_seen_anon'; } }
+function kpNewsSeen() {
+  try { if (localStorage.getItem(kpNewsKey()) === KP_NEWS_ID) return true; } catch (e) {}
+  try { const m = currentUser && currentUser.user_metadata && currentUser.user_metadata.news_seen; if (m === KP_NEWS_ID) return true; } catch (e) {}
+  return false;
+}
+function kpMarkNewsSeen() {
+  try { localStorage.setItem(kpNewsKey(), KP_NEWS_ID); } catch (e) {}
+  try { if (typeof isDemo !== 'undefined' && !isDemo && currentUser && typeof sb !== 'undefined') { currentUser.user_metadata = Object.assign({}, currentUser.user_metadata || {}, { news_seen: KP_NEWS_ID }); sb.auth.updateUser({ data: { news_seen: KP_NEWS_ID } }).catch(() => {}); } } catch (e) {}
+  const dot = document.getElementById('nav-news-dot'); if (dot) dot.style.display = 'none';
+  try { updateMenuDot(); } catch (e) {}
+}
+function kpShowWhatsNew(manual) {
+  document.getElementById('kp-news-modal')?.remove();
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.65)' : '#52525b', bord = dark ? 'rgba(255,255,255,0.12)' : '#e4e4e7', soft = dark ? 'rgba(255,255,255,0.05)' : '#f4f4f5';
+  const item = (icon, title, body) => '<div style="display:flex;gap:12px;padding:12px;border-radius:14px;background:' + soft + ';margin-bottom:9px"><div style="font-size:22px;line-height:1.2;flex-shrink:0">' + icon + '</div><div><div style="font-size:14px;font-weight:800;color:' + txt + ';margin-bottom:2px">' + title + '</div><div style="font-size:12.5px;color:' + sub + ';line-height:1.5">' + body + '</div></div></div>';
+  const o = document.createElement('div');
+  o.id = 'kp-news-modal';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10056;display:flex;align-items:center;justify-content:center;padding:18px';
+  o.onclick = e => { if (e.target === o) kpCloseWhatsNew(); };
+  o.innerHTML = '<div role="dialog" aria-label="Nouveautés Kapitaro" style="background:' + surf + ';width:100%;max-width:460px;border-radius:22px;padding:22px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:20px;font-weight:900;color:' + txt + '">✨ Nouveautés Kapitaro</div><button type="button" onclick="kpCloseWhatsNew()" aria-label="Fermer" style="background:none;border:none;color:' + sub + ';font-size:22px;cursor:pointer;line-height:1">✕</button></div>'
+    + '<div style="font-size:13px;color:' + sub + ';margin-bottom:14px;line-height:1.5">Voici ce qui change dans l’appli.</div>'
+    + item('🪙', 'Cryptos, devises et matières premières', 'Ajoute-les depuis « Ajouter », avec des onglets par catégorie. <b>Cryptos et devises : suivi du cours seulement</b>, sans analyse. <b>Matières premières</b> : or, argent, platine, pétrole, gaz, cuivre (en direct ou via des ETC), avec analyse et un nouvel onglet dans Actualités.')
+    + item('🔎', 'Des analyses sur données réelles', 'Plans, signaux et conseils s’appuient désormais sur les vrais cours, la tendance du marché et les actualités des entreprises.')
+    + item('⚡', 'Plan du mois : « Tout ajouter »', 'Ajoute toutes les lignes du plan en un clic (les lignes que tu détiens déjà sont renforcées). Tes plans sont enregistrés sur ton compte, identiques sur tous tes appareils.')
+    + item('🎚️', 'Règle ton niveau', 'Débutant, curieux, initié ou confirmé : l’appli adapte ses outils. Les Actualités (avec les matières premières) apparaissent dès le niveau 2.')
+    + '<div style="display:flex;gap:8px;margin-top:14px"><button type="button" onclick="kpCloseWhatsNew();showLevelChooser(true)" style="flex:1;padding:12px;border-radius:12px;border:1px solid ' + bord + ';background:transparent;color:' + txt + ';font:inherit;font-size:13px;font-weight:800;cursor:pointer">🎚️ Régler mon niveau</button><button type="button" onclick="kpCloseWhatsNew()" style="flex:1;padding:12px;border-radius:12px;border:none;background:#16a34a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">Compris</button></div>'
+    + '</div>';
+  document.body.appendChild(o);
+  kpMarkNewsSeen();
+}
+function kpCloseWhatsNew() { document.getElementById('kp-news-modal')?.remove(); }
+// À l'arrivée : seulement pour les comptes créés avant cette version ; jamais pendant un autre écran (tutoriel, niveau, conditions…)
+function kpMaybeWhatsNew(tries) {
+  try {
+    if (typeof isDemo !== 'undefined' && isDemo) return;
+    if (!currentUser || kpNewsSeen()) return;
+    const created = Date.parse(currentUser.created_at || '');
+    if (created && created >= KP_NEWS_RELEASE) { kpMarkNewsSeen(); return; }   // nouvel arrivant : pas de message, il découvre la version actuelle
+    const ob = document.getElementById('onboarding-modal');
+    const busy = (ob && ob.style.display === 'flex') || document.getElementById('kp-level-modal') || document.getElementById('legal-accept') || document.getElementById('pr-modal') || document.getElementById('kp-news-modal');
+    if (busy) { if ((tries || 0) < 6) setTimeout(() => kpMaybeWhatsNew((tries || 0) + 1), 10000); return; }
+    kpShowWhatsNew(false);
+  } catch (e) {}
+}
+function kpUpdateNewsDot() { const dot = document.getElementById('nav-news-dot'); if (dot) dot.style.display = kpNewsSeen() ? 'none' : 'inline-block'; }
+
 // Demande le niveau une seule fois, à l'arrivée (sauf pendant l'onboarding objectif).
 function maybeAskLevel() {
   try {
@@ -9301,7 +9583,7 @@ function renderPortfolio(auto=false) {
           <div style="font-size:10px;color:${chgColor}">${chg>=0?'+':''}${chg.toFixed(2).replace(".", ",")} % auj.</div>
         </div>
         <!-- Sparkline -->
-        <div style="display:flex;align-items:center">${miniSparkline(chg>0?1:-1, pnl>=0?'#3fb950':'#f87171')}</div>
+        <div class="kp-row-spark" role="button" tabindex="0" title="Voir le graphique" aria-label="Ouvrir le graphique de ${jsArg(displayName(p.name) || p.name)}" onclick="event.stopPropagation();openChart('${jsArg(p.name)}','${jsArg(displayName(p.name) || p.name)}',${Number(p.pru) || 0})" onkeydown="if(event.key==='Enter'){event.stopPropagation();this.click()}" style="display:flex;align-items:center;cursor:pointer">${miniSparkline(chg>0?1:-1, pnl>=0?'#3fb950':'#f87171')}</div>
         <!-- Menu -->
         <div style="display:flex;align-items:center;justify-content:center">
           <button onclick="event.stopPropagation();showPosMenu('${p.id}', event)" style="background:none;border:none;cursor:pointer;color:${subCol};font-size:16px;padding:4px;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='rgba(128,128,128,0.1)'" onmouseout="this.style.background='none'">⋯</button>
@@ -9492,6 +9774,7 @@ function togglePos(id) {
       ${p.alert_price ? `<span>🔔 Alerte <strong style="color:var(--color-text)">${fmt(p.alert_price)} €</strong></span>` : ''}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="event.stopPropagation();openChart('${p.name.replace(/'/g,"\\'")}', '${(displayName(p.name) || p.name).replace(/'/g,"\\'")}', ${Number(p.pru) || 0})" style="padding:7px 13px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;font-size:12px;font-weight:700;color:#c2410c;cursor:pointer">📈 Graphique</button>
       <button data-an="1" onclick="event.stopPropagation();openDecisionFromPos('${p.name.replace(/'/g,"\\'")}', 'garder')" style="padding:7px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser</button>
       <button data-an="1" onclick="event.stopPropagation();sq('Que penses-tu de ma position ${p.name.replace(/'/g,"\\'")} ?');nav('ai')" style="padding:7px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;color:#16a34a;cursor:pointer">💬 Demander à l'IA</button>
       <button onclick="event.stopPropagation();openEditPos('${p.id}')" style="padding:7px 13px;background:var(--color-bg-subtle,#f5f5f5);border:1px solid var(--color-border,#e4e4e7);border-radius:9px;font-size:12px;font-weight:700;color:var(--color-text-secondary);cursor:pointer">✏️ Modifier</button>
@@ -11230,11 +11513,19 @@ function kpTour(steps, key) {
 
 function showPortfolioTour() {
   if (document.getElementById('tab-hint')) { showPortfolioTour._w = (showPortfolioTour._w || 0) + 1; if (showPortfolioTour._w < 40) setTimeout(showPortfolioTour, 500); return; }
+  const chartStep = { sel: '.kp-row-spark', legend: 'Appuie sur un mini-graphique pour ouvrir le graphique complet' };
+  let firstTime = true; try { firstTime = !localStorage.getItem('kp_hint_tour_portfolio'); } catch (e) {}
+  if (!firstTime) {   // l'ancienne visite a déjà été vue : on ne montre que la nouveauté, une seule fois
+    setTimeout(() => { try { if (!document.getElementById('kp-tour')) kpTour([chartStep], 'tour_chart'); } catch (e) {} }, 900);
+    return;
+  }
+  try { localStorage.setItem('kp_hint_tour_chart', '1'); } catch (e) {}   // intégrée à la visite complète
   kpTour([
     { sel: '#port-add-btn', legend: 'Ajoute une action ou un ETF à ton portefeuille' },
     { sel: '#btn-import-pos', legend: 'Importe ton relevé de courtier (PDF, Excel ou CSV)' },
     { sel: '#btn-prix-live', legend: 'Mets à jour les prix en direct' },
     { sel: '#btn-select-mode', legend: 'Sélectionne plusieurs lignes pour les gérer ensemble' },
+    chartStep,
   ], 'tour_portfolio');
 }
 
