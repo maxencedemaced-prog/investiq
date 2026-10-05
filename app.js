@@ -1946,6 +1946,11 @@ async function acSearchYahoo(query) {
 // Simple manual refresh only - no auto loop
 
 
+// Quantité affichée : « 31,1 g » pour un métal au gramme, « unité(s) » pour une crypto, « part(s) » sinon
+function qtyLabel(p) {
+  if (/^X(AU|AG|PT)-G$/.test(String(p.name || ''))) return p.qty + ' g';
+  return p.qty + ' ' + (p.type === 'Crypto' ? 'unité' : 'part') + (p.qty > 1 ? 's' : '');
+}
 // Cryptos : suivies (cours, valeur) mais JAMAIS analysées. apos() = positions analysables (sans cryptos).
 function isCrypto(p) { return !!p && p.type === 'Crypto'; }
 function apos() { return positions.filter(p => !isCrypto(p)); }
@@ -1953,15 +1958,14 @@ function apos() { return positions.filter(p => !isCrypto(p)); }
 // Nom lisible d'une crypto (« SUI20947-USD » -> « Sui (SUI) »)
 function cryptoLabel(t) {
   const k = String(t || '').toUpperCase();
-  if (!/-(EUR|USD)$/.test(k)) return '';
-  const e = AC_DB.find(c => c.type === 'Crypto' && c.ticker.toUpperCase() === k);
+  if (!/-(EUR|USD|G)$/.test(k)) return '';
+  const e = AC_DB.find(c => (c.type === 'Crypto' || c.type === 'Matière première') && c.ticker.toUpperCase() === k);
   return e ? e.name : '';
 }
 
 // ===== AUTOCOMPLETE ADD POSITION =====
 const AC_DB = [
   // ===== CRYPTOMONNAIES (357 ; prix en euros, convertis depuis le dollar si besoin) =====
-  {ticker:"USDA35965-USD",name:"USDa (USDA)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
   {ticker:"BTC-EUR",name:"Bitcoin (BTC)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
   {ticker:"ETH-EUR",name:"Ethereum (ETH)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
   {ticker:"USDT-EUR",name:"Tether (USDT)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
@@ -2318,6 +2322,11 @@ const AC_DB = [
   {ticker:"NOCK-USD",name:"Nockchain (NOCK)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
   {ticker:"NIL35702-USD",name:"Nillion (NIL)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
   {ticker:"AURORA14803-USD",name:"Aurora (AURORA)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:"USDA35965-USD",name:"USDa (USDA)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  // ===== MÉTAUX PHYSIQUES (cours au gramme, en euros) =====
+  {ticker:"XAU-G",name:"Or physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
+  {ticker:"XAG-G",name:"Argent physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
+  {ticker:"XPT-G",name:"Platine physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
   // ===== ETF MONDE =====
   {ticker:'IWDA.L',name:'iShares Core MSCI World ETF',type:'ETF',sector:'Monde',exchange:'LSE'},
   {ticker:'VWCE.DE',name:'Vanguard FTSE All-World UCITS ETF',type:'ETF',sector:'Monde',exchange:'XETRA'},
@@ -2630,6 +2639,12 @@ async function acSelect(company) {
       w.id = 'crypto-warn';
       w.style.cssText = 'margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#92400e;font-size:12px;line-height:1.5';
       w.textContent = '⚠️ Les cryptomonnaies sont très volatiles et peu régulées : tu peux perdre tout ou partie de ta mise. Kapitaro t’aide à suivre ce que tu détiens déjà, il ne conseille pas d’en acheter.';
+      badge.insertAdjacentElement('afterend', w);
+    } else if (company.type === 'Matière première') {
+      const w = document.createElement('div');
+      w.id = 'crypto-warn';
+      w.style.cssText = 'margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.35);color:#1e40af;font-size:12px;line-height:1.5';
+      w.textContent = 'ℹ️ Indique la quantité en grammes (1 once = 31,1 g). Le prix affiché est le cours mondial du métal, hors prime des pièces et lingots.';
       badge.insertAdjacentElement('afterend', w);
     }
   } catch (e) {}
@@ -3895,6 +3910,7 @@ function renderNewsPage(auto=false) {
       <button class="filter-pill" id="news-fil-entreprises" onclick="setNewsFilter('entreprises',this)" style="white-space:nowrap;flex-shrink:0">🏢 Entreprises</button>
       <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)" style="white-space:nowrap;flex-shrink:0">⭐ Favoris${watchlist.length > 0 ? ` <span style="background:#f59e0b;color:#fff;border-radius:99px;font-size:10px;font-weight:800;padding:1px 6px;margin-left:2px">${watchlist.length}</span>` : ''}</button>
       <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)" style="white-space:nowrap;flex-shrink:0">📅 Agenda</button>
+      <button class="filter-pill" id="news-fil-matieres" onclick="setNewsFilter('matieres',this)" style="white-space:nowrap;flex-shrink:0">🛢️ Matières premières</button>
     </div>
 
     <!-- FILTER PILLS LIGNE 2 : filtres catégories (visibles seulement sur "Toutes") -->
@@ -4800,7 +4816,7 @@ function setNewsFilter(filter, el) {
   // Titre dynamique de la section
   const titleMap = {
     tous:'Actualités du marché', signaux:'⚡ Signaux IA', entreprises:'🏢 Actualités entreprises',
-    favoris:'⭐ Mes favoris', agenda:'📅 Agenda économique',
+    favoris:'⭐ Mes favoris', agenda:'📅 Agenda économique', matieres:'🛢️ Matières premières',
     macro:'🌍 Macro-économie', banque:'🏦 Banques centrales', marche:'📈 Marchés', geo:'⚡ Géopolitique', secteur:'🏢 Secteurs'
   };
   const titleEl = document.getElementById('news-section-title');
@@ -4820,6 +4836,8 @@ function setNewsFilter(filter, el) {
   } else if (filter === 'agenda') {
     if (isCacheValid('agenda')) { restoreFromCache('agenda'); return; }
     renderAgenda();
+  } else if (filter === 'matieres') {
+    renderMatieres();
   } else {
     // tous / macro / banque / marche / geo / secteur → renderNewsList filtre
     renderNewsList();
@@ -4828,6 +4846,87 @@ function setNewsFilter(filter, el) {
 
 
 
+
+// ===== MATIÈRES PREMIÈRES (onglet de l'Actualité) =====
+// Cours en direct convertis en euros + repère des gros mouvements + vrais titres d'actualité (liens vers la source).
+const MATIERES = [
+  { sym: 'BZ=F', nom: 'Pétrole Brent', emoji: '🛢️', unite: 'baril', seuil: 3 },
+  { sym: 'CL=F', nom: 'Pétrole WTI', emoji: '🛢️', unite: 'baril', seuil: 3 },
+  { sym: 'GC=F', nom: 'Or', emoji: '🥇', unite: 'once', gramme: true, seuil: 1.5 },
+  { sym: 'SI=F', nom: 'Argent', emoji: '🥈', unite: 'once', gramme: true, seuil: 3 },
+  { sym: 'PL=F', nom: 'Platine', emoji: '⚪', unite: 'once', gramme: true, seuil: 3 },
+  { sym: 'NG=F', nom: 'Gaz naturel', emoji: '🔥', unite: 'MMBtu', seuil: 4 },
+  { sym: 'HG=F', nom: 'Cuivre', emoji: '🟠', unite: 'livre', seuil: 2.5 },
+];
+
+function kpAgo(ts) {
+  const m = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  if (m < 60) return 'il y a ' + Math.max(1, m) + ' min';
+  const h = Math.round(m / 60);
+  if (h < 24) return 'il y a ' + h + ' h';
+  const d = Math.round(h / 24);
+  return 'il y a ' + d + ' j';
+}
+
+function startMatieresTimer() {
+  clearInterval(window._matTimer);
+  window._matTimer = setInterval(() => {
+    const visible = document.getElementById('sec-news')?.classList.contains('active');
+    if (newsFilter !== 'matieres' || !visible) { clearInterval(window._matTimer); return; }
+    renderMatieres(true);
+  }, 120000);
+}
+
+async function renderMatieres(silent) {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = dark ? 'var(--color-surface-raised, #151a24)' : '#fff';
+  const bord = dark ? 'var(--color-border, rgba(255,255,255,0.12))' : '#f0f0f0';
+  const txt = dark ? 'var(--color-text, #fff)' : '#1c1c1e';
+  const sub = dark ? 'var(--color-text-secondary, rgba(255,255,255,0.6))' : '#8e8e93';
+  if (!silent) list.innerHTML = '<div style="text-align:center;padding:30px;color:' + sub + '"><div style="font-size:28px;margin-bottom:8px">🛢️</div><div style="font-size:13px">Chargement des cours…</div></div>';
+
+  let quotes = {}, news = [], newsDown = false;
+  try {
+    const [pr, nw] = await Promise.all([
+      fetch('/api/prices?symbols=' + encodeURIComponent(MATIERES.map(m => m.sym).join(','))).then(r => r.json()).catch(() => ({})),
+      fetch('/api/commodity-news').then(r => r.json()).catch(() => ({ unavailable: true })),
+    ]);
+    (pr.quotes || []).forEach(q => { if (q && q.price) quotes[q.symbol] = q; });
+    news = nw.news || []; newsDown = !!nw.unavailable || !news.length;
+  } catch (e) {}
+  if (newsFilter !== 'matieres') return;   // l'utilisateur a changé d'onglet pendant le chargement
+
+  const cards = MATIERES.map(m => {
+    const q = quotes[m.sym];
+    if (!q) return '<div style="background:' + surf + ';border:1.5px solid ' + bord + ';border-radius:14px;padding:12px"><div style="font-size:13px;font-weight:800;color:' + txt + '">' + m.emoji + ' ' + m.nom + '</div><div style="font-size:12px;color:' + sub + ';margin-top:6px">Cours indisponible</div></div>';
+    const chg = q.changePct || 0, big = Math.abs(chg) >= m.seuil, up = chg >= 0;
+    const col = up ? '#16a34a' : '#dc2626';
+    const pct = (up ? '+' : '−') + Math.abs(chg).toFixed(1).replace('.', ',') + ' %';
+    const question = 'Pourquoi le ' + m.nom + ' ' + (up ? 'monte' : 'baisse') + ' de ' + Math.abs(chg).toFixed(1).replace('.', ',') + ' % aujourd’hui ? Explique le contexte et les risques, sans me dire d’acheter ou de vendre.';
+    return '<div style="background:' + surf + ';border:1.5px solid ' + (big ? col : bord) + ';border-radius:14px;padding:12px' + (big ? ';box-shadow:0 0 0 3px ' + col + '22' : '') + '">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><div style="font-size:13px;font-weight:800;color:' + txt + '">' + m.emoji + ' ' + m.nom + '</div>'
+      + '<div style="font-size:12px;font-weight:800;color:' + col + '">' + pct + '</div></div>'
+      + '<div style="font-size:20px;font-weight:900;color:' + txt + ';letter-spacing:-0.03em;margin-top:6px">' + fmt(q.price) + ' €</div>'
+      + '<div style="font-size:11px;color:' + sub + '">par ' + m.unite + (m.gramme ? ' · ' + fmt(q.price / 31.1034768) + ' €/g' : '') + '</div>'
+      + (big ? '<div style="margin-top:8px;font-size:11.5px;font-weight:800;color:' + col + '">⚡ Gros mouvement aujourd’hui</div><button type="button" onclick="askAgentFrom(\'' + jsArg(question) + '\')" style="margin-top:6px;width:100%;padding:7px;border-radius:9px;border:1px solid ' + bord + ';background:transparent;color:' + txt + ';font-size:12px;font-weight:700;cursor:pointer">💬 Comprendre</button>' : '')
+      + '</div>';
+  }).join('');
+
+  const articles = newsDown
+    ? '<div style="padding:16px;border-radius:14px;border:1px dashed ' + bord + ';color:' + sub + ';font-size:13px;text-align:center">Les actualités sont momentanément indisponibles. Réessaie dans quelques minutes.</div>'
+    : news.map(n => '<a href="' + _escHtml(n.link) + '" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;background:' + surf + ';border:1.5px solid ' + bord + ';border-radius:14px;padding:12px 14px;margin-bottom:8px">'
+      + '<div style="font-size:14px;font-weight:700;color:' + txt + ';line-height:1.4">' + _escHtml(n.title) + '</div>'
+      + '<div style="font-size:11.5px;color:' + sub + ';margin-top:5px">' + _escHtml(n.source) + (n.ts ? ' · ' + kpAgo(n.ts) : '') + ' · ouvrir l’article ↗</div></a>').join('');
+
+  list.innerHTML = '<div style="font-size:12px;color:' + sub + ';margin-bottom:12px;line-height:1.5">Cours en direct, convertis en euros, mis à jour toutes les 2 minutes. Information uniquement : Kapitaro ne dit ni d’acheter ni de vendre.</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:18px">' + cards + '</div>'
+    + '<div style="font-size:12px;font-weight:800;color:' + sub + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">À la une</div>'
+    + articles
+    + (newsDown ? '' : '<div style="font-size:10.5px;color:' + sub + ';margin-top:4px">Titres et articles © Investing.com, ouverts depuis leur site d’origine.</div>');
+  startMatieresTimer();
+}
 
 // ===== COMPANY DETAIL PAGE =====
 async function openCompany(ticker, name, sector) {
@@ -8522,7 +8621,7 @@ function renderPortfolio(auto=false) {
           ${getCompanyLogo(p.name, p.fullName||p.name, 36, 10)}
           <div>
             <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${displayName(p.name)}</div>
-            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.name} · ${p.type||'Action'} · ${p.qty} ${p.type==='Crypto'?'unité':'part'}${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
+            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.name} · ${p.type||'Action'} · ${qtyLabel(p)} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
           </div>
         </div>
         <!-- Investi -->
@@ -10016,6 +10115,7 @@ function renderNewsList() {
   if (newsFilter === 'signaux') { if (isCacheValid('signaux')) { restoreFromCache('signaux'); } else { renderSignaux(); } return; }
   if (newsFilter === 'entreprises') { if (isCacheValid('entreprises')) { restoreFromCache('entreprises'); } else { renderEntreprises(); } return; }
   if (newsFilter === 'agenda') { if (isCacheValid('agenda')) { restoreFromCache('agenda'); } else { renderAgenda(); } return; }
+  if (newsFilter === 'matieres') { renderMatieres(); return; }
 
   if (newsData === null) {
     if (aiJustHitQuota()) { list.innerHTML = `<div style="padding:8px 0">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }

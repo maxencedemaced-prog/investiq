@@ -53,6 +53,7 @@ export default async function handler(req, res) {
   res.status(200).json({ quotes });
 }
 
+const METAL_GRAM = { 'XAU-G': 'GC=F', 'XAG-G': 'SI=F', 'XPT-G': 'PL=F' };
 let _fx = { v: 0, t: 0 };
 async function usdPerEur() {
   if (_fx.v && Date.now() - _fx.t < 10 * 60000) return _fx.v;
@@ -68,6 +69,8 @@ async function usdPerEur() {
 function getSymbolAttempts(symbol) {
   if (/^[A-Z0-9]{2,20}-EUR$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol }];   // crypto en euros
   if (/^[A-Z0-9]{2,20}-USD$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // crypto en dollars, convertie en euros
+  if (/^[A-Z]{1,3}=F$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // matière première (cours en dollars), convertie en euros
+  if (METAL_GRAM[symbol]) return [{ type: 'yahoo', ticker: METAL_GRAM[symbol], fx: true, per: 31.1034768 }];   // métal physique : euros par gramme (1 once troy = 31,1035 g)
   const nameToYahoo = {
     'LVMH': 'MC.PA', 'Air Liquide': 'AI.PA', 'TotalEnergies': 'TTE.PA',
     'BNP Paribas': 'BNP.PA', 'Veolia': 'VIE.PA', 'Veolia Environnement': 'VIE.PA',
@@ -114,7 +117,7 @@ async function fetchQuote(attempt, originalSymbol, apiKey) {
     const d = await r.json();
     const meta = d?.chart?.result?.[0]?.meta;
     if (meta?.regularMarketPrice && meta.regularMarketPrice > 0) {
-      const k = attempt.fx ? 1 / (await usdPerEur()) : 1;   // dollars -> euros
+      const k = (attempt.fx ? 1 / (await usdPerEur()) : 1) / (attempt.per || 1);   // dollars -> euros (puis par gramme si métal)
       const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
       const changePct = prev && prev !== meta.regularMarketPrice
         ? ((meta.regularMarketPrice - prev) / prev * 100)

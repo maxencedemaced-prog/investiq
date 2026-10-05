@@ -155,6 +155,9 @@ const MARKET_LIST = {
   'AAPL': 'Apple', 'MSFT': 'Microsoft', 'NVDA': 'NVIDIA', 'GOOGL': 'Alphabet', 'AMZN': 'Amazon', 'META': 'Meta', 'TSLA': 'Tesla',
   'JPM': 'JPMorgan', 'V': 'Visa', 'NFLX': 'Netflix', 'AMD': 'AMD',
 };
+// Matières premières : seuils de « gros mouvement » sur la séance (alerte aux détenteurs de matières premières)
+const COMMO = { 'BZ=F': ['Pétrole Brent', 4], 'CL=F': ['Pétrole WTI', 4], 'GC=F': ['Or', 2.5], 'SI=F': ['Argent', 4], 'PL=F': ['Platine', 4], 'NG=F': ['Gaz naturel', 6], 'HG=F': ['Cuivre', 3.5] };
+const holdsCommo = (positions, userId) => positions.some(p => p.user_id === userId && /mati[èe]re/i.test(p.type || ''));
 const sameSym = (a, b) => String(a).toUpperCase() === String(b).toUpperCase();
 
 async function sendMoves(users, state) {
@@ -171,7 +174,7 @@ async function sendMoves(users, state) {
   }
 
   const positions = await loadPositions(users.map(u => u.userId), false);
-  const symbols = [...Object.keys(MARKET_LIST), ...positions.map(p => p.name), ...users.flatMap(u => u.watchlist.map(w => w.ticker))];
+  const symbols = [...Object.keys(MARKET_LIST), ...(users.some(u => holdsCommo(positions, u.userId)) ? Object.keys(COMMO) : []), ...positions.map(p => p.name), ...users.flatMap(u => u.watchlist.map(w => w.ticker))];
   const quotes = await getQuotes(symbols, { preferYahoo: true });
   let sent = 0;
 
@@ -186,6 +189,7 @@ async function sendMoves(users, state) {
     };
     for (const p of positions.filter(p => p.user_id === u.userId && !/crypto/i.test(p.type || ''))) add(p.name, p.name, 'dans ton portefeuille', /etf/i.test(p.type || '') ? MOVE_ETF : MOVE_STOCK, 0);
     for (const w of u.watchlist) add(w.ticker, w.name || w.ticker, 'dans ta watchlist', MOVE_STOCK, 1);
+    if (holdsCommo(positions, u.userId)) for (const [sym, [label, thr]] of Object.entries(COMMO)) add(sym, label, 'sur les matières premières', thr, 1);
     for (const [sym, name] of Object.entries(MARKET_LIST)) {
       if (!positions.some(p => p.user_id === u.userId && sameSym(p.name, sym)) && !u.watchlist.some(w => sameSym(w.ticker, sym))) add(sym, name, 'sur le marché', MOVE_MARKET, 2);
     }
