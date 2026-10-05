@@ -681,12 +681,12 @@ function kpChartMount(host, ticker, name, opts) {
   const chipCss = on => 'padding:5px 10px;border-radius:8px;border:1px solid ' + (on ? '#16a34a' : 'transparent') + ';background:' + (on ? 'rgba(22,163,74,0.14)' : C.chip) + ';color:' + (on ? '#16a34a' : C.chipTxt) + ';font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap';
   const h = opts.height || (window.innerWidth < 640 ? 300 : 380);
   host.innerHTML = '<div class="kp-chart" style="background:' + C.bg + ';border-radius:14px">'
-    + '<div id="kpc-head" style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px"><div><span id="kpc-price" style="font-size:22px;font-weight:900;color:' + C.chipTxt + '">—</span> <span id="kpc-chg" style="font-size:13px;font-weight:800"></span></div><div id="kpc-ohlc" style="font-size:11px;color:' + C.sub + '"></div></div>'
+    + '<div id="kpc-head" style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px"><div><span id="kpc-price" style="font-size:22px;font-weight:900;color:' + C.chipTxt + '">—</span> <span id="kpc-chg" style="font-size:13px;font-weight:800"></span> <span id="kpc-live" style="font-size:11px;color:' + C.sub + '"></span></div><div id="kpc-ohlc" style="font-size:11px;color:' + C.sub + '"></div></div>'
     + '<div id="kpc-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center"></div>'
     + '<div id="kpc-canvas" style="width:100%;height:' + h + 'px;position:relative"><div id="kpc-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Chargement du graphique…</div></div>'
     + '<div id="kpc-foot" style="font-size:10.5px;color:' + C.sub + ';margin-top:6px;line-height:1.5"></div></div>';
   const $ = id => host.querySelector('#' + id);
-  let chart = null, ro = null;
+  let chart = null, ro = null, live = null, timer = null;
 
   const bar = () => {
     $('kpc-bar').innerHTML = KP_CHART_RANGES.map(([k, l]) => '<button type="button" data-r="' + k + '" style="' + chipCss(st.range === k) + '">' + l + '</button>').join('')
@@ -748,6 +748,7 @@ function kpChartMount(host, ticker, name, opts) {
       }
       chart.timeScale().fitContent();
       const last = pts[pts.length - 1], first = pts[0], chg = (last.c / first.o - 1) * 100;
+      live = { series: main, last: { ...last }, first, sym };
       $('kpc-price').textContent = fmtP(last.c) + sym;
       const ce = $('kpc-chg'); ce.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace('.', ',') + ' % sur la période'; ce.style.color = chg >= 0 ? '#16a34a' : '#dc2626';
       chart.subscribeCrosshairMove(param => {
@@ -764,6 +765,26 @@ function kpChartMount(host, ticker, name, opts) {
       const rb = $('kpc-retry'); if (rb) rb.onclick = () => { cv.innerHTML = ''; draw(); };
     }
   }
+  // Mise à jour en direct : toutes les 20 s tant que le graphique est affiché, la dernière bougie suit le cours du moment
+  const tick = async () => {
+    if (!document.body.contains(host)) { clearInterval(timer); timer = null; return; }
+    if (document.hidden || !live) return;
+    try {
+      const r = await fetch('/api/prices?symbols=' + encodeURIComponent(symbol));
+      const d = await r.json();
+      const q = d && d.quotes && d.quotes[0];
+      const p = q ? Number(q.price) : 0;
+      if (!p || !isFinite(p)) return;
+      const lc = live.last;
+      if (Math.abs(p / lc.c - 1) > 0.05) return;   // autre devise ou donnée incohérente : on ne touche pas au graphique
+      lc.h = Math.max(lc.h, p); lc.l = Math.min(lc.l, p); const moved = lc.c !== p; lc.c = p;
+      live.series.update(st.type === 'candle' ? { time: lc.t, open: lc.o, high: lc.h, low: lc.l, close: p } : { time: lc.t, value: p });
+      const pe = $('kpc-price'); if (pe) pe.textContent = fmtP(p) + live.sym;
+      const ce = $('kpc-chg'); if (ce) { const chg = (p / live.first.o - 1) * 100; ce.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace('.', ',') + ' % sur la période'; ce.style.color = chg >= 0 ? '#16a34a' : '#dc2626'; }
+      const le = $('kpc-live'); if (le) { const t = new Date(); le.textContent = '● mis à jour ' + t.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + (moved ? '' : ' · cours inchangé'); }
+    } catch (e) {}
+  };
+  timer = setInterval(tick, 20000);
   bar(); draw();
 }
 // Fenêtre plein écran sur mobile

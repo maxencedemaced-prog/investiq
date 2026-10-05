@@ -20,8 +20,8 @@ function rateLimited(key, max = 40, windowMs = 60_000) {
 }
 
 const RANGES = {
-  '1w':  { range: '5d',  interval: '30m', ttl: 300 },
-  '1m':  { range: '1mo', interval: '1d',  ttl: 900 },
+  '1w':  { range: '5d',  interval: '30m', ttl: 120 },
+  '1m':  { range: '1mo', interval: '1d',  ttl: 300 },
   '3m':  { range: '3mo', interval: '1d',  ttl: 1800 },
   '6m':  { range: '6mo', interval: '1d',  ttl: 1800 },
   '1y':  { range: '1y',  interval: '1d',  ttl: 3600 },
