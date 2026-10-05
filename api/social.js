@@ -691,7 +691,7 @@ export default async function handler(req, res) {
       try { const { data } = await sb.storage.from('social').download('tuto/status.json'); if (data) status = JSON.parse(await data.text()); } catch (e) {}   // ancien format
       await Promise.all(Object.keys(TUTOS).flatMap(id => [id, id + '__desktop']).map(async id => { try { const { data } = await sb.storage.from('social').download('tuto/status/' + id + '.json'); if (data) status[id] = JSON.parse(await data.text()); } catch (e) {} }));
       const voices = await tutoVoices();
-      return res.status(200).json({ tutos: Object.entries(TUTOS).map(([id, t]) => ({ id, title: t.title, page: t.page, beats: t.beats.map(x => x.say) })), manifest, status, voices: voices.map(v => v.name), eleven: voices.some(v => v.id) });
+      return res.status(200).json({ tutos: Object.entries(TUTOS).map(([id, t]) => ({ id, title: t.title, page: t.page, ad: !!t.ad, beats: t.beats.map(x => x.say) })), manifest, status, voices: voices.map(v => v.name), eleven: voices.some(v => v.id) });
     }
     // ── Bouton général du Studio : tout arrêter (vidéos en fabrication + créations automatiques) / reprendre ──
     if (b.action === 'studio-state') {
@@ -809,7 +809,7 @@ export default async function handler(req, res) {
       const { data: tf } = await sb.storage.from('social').download('tuto/' + b.id + '/timing.json');
       if (!tf) return res.status(400).json({ error: 'Pas encore de voix pour cette vidéo : utilise « Fabriquer la vidéo ».' });
       const timing = JSON.parse(await tf.text());
-      const variants = b.variant === 'desktop' ? ['desktop'] : b.variant === 'mobile' ? ['mobile'] : ['mobile', 'desktop'];
+      const variants = TUTOS[b.id].ad ? ['mobile'] : b.variant === 'desktop' ? ['desktop'] : b.variant === 'mobile' ? ['mobile'] : ['mobile', 'desktop'];   // pub : format vertical seulement
       for (const v of variants) {
         const sid = v === 'desktop' ? b.id + '__desktop' : b.id;
         await sb.storage.from('social').upload('tuto/status/' + sid + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
@@ -824,12 +824,12 @@ export default async function handler(req, res) {
       if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
       const voice = voices[Math.max(0, Math.min(voices.length - 1, parseInt(b.voice, 10) || 0))];
       const beats = t.beats.map(x => ({ say: x.say }));
-      const segments = await voiceOver({ beats, voices: [voice], sb, id: 'tuto/' + b.id, speed: 1.0 });
-      const timing = { id: b.id, title: t.title, page: t.page || null, voice: voice.name, at: new Date().toISOString(), segments, beats: beats.map((x, i) => ({ say: x.say, start: x.start, end: x.end, words: x.words, do: t.beats[i].do || [] })) };
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: 'tuto/' + b.id, speed: t.speed || 1.0 });
+      const timing = { id: b.id, title: t.title, page: t.page || null, ad: !!t.ad, voice: voice.name, at: new Date().toISOString(), segments, beats: beats.map((x, i) => ({ say: x.say, start: x.start, end: x.end, words: x.words, do: t.beats[i].do || [] })) };
       const up = await sb.storage.from('social').upload('tuto/' + b.id + '/timing.json', Buffer.from(JSON.stringify(timing)), { contentType: 'application/json', upsert: true });
       if (up.error) throw up.error;
       let ref = '';
-      for (const v of (b.variant === 'desktop' ? ['desktop'] : b.variant === 'mobile' ? ['mobile'] : ['mobile', 'desktop'])) {
+      for (const v of (t.ad ? ['mobile'] : b.variant === 'desktop' ? ['desktop'] : b.variant === 'mobile' ? ['mobile'] : ['mobile', 'desktop'])) {
         const sid = v === 'desktop' ? b.id + '__desktop' : b.id;
         await sb.storage.from('social').upload('tuto/status/' + sid + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
         ref = await dispatchWorkflow('tuto.yml', { tuto_id: b.id, variant: v });

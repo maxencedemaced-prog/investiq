@@ -8,6 +8,17 @@
 //   { wait: 800 }             pause en millisecondes
 //   { type: ['#champ', 'texte'] }  écrit dans un champ, lettre par lettre
 // Règles de fond : aucune promesse de gain, ni « achète » ni « vends », ton pédagogique, tutoiement.
+// Pubs : l'accroche change, la suite est commune (aucune promesse de gain : règles AMF et Meta sur la finance)
+function adBeats(hook, hookShort) {
+  return [
+    { say: hook, do: [{ js: "nav('home')" }, { js: 'window.__tutoAdHook && window.__tutoAdHook(' + JSON.stringify(hookShort) + ')' }, { wait: 300 }, { point: '#home-metrics' }] },
+    { say: 'Kapitaro réunit tous tes placements au même endroit, avec leur valeur à jour.', do: [{ js: 'window.__tutoAdHook && window.__tutoAdHook(null)' }, { click: '#bnav-portfolio' }, { wait: 1100 }, { scroll: '.pos-row:nth-of-type(3)' }] },
+    { say: 'Tu fixes ton objectif, et chaque mois, un plan te montre comment avancer.', do: [{ click: '#bnav-objectif' }, { wait: 1000 }, { point: '#obj-results canvas, #obj-results' }] },
+    { say: 'Une question ? L’assistant IA te répond, simplement.', do: [{ click: '#bnav-ai' }, { wait: 700 }, { js: 'window.__tutoAiDemo && window.__tutoAiDemo()' }] },
+    { say: 'Kapitaro ne touche pas à ton argent : tu gardes la main. Essaie gratuitement sur kapitaro point f r.', do: [{ js: 'window.__tutoAdEnd && window.__tutoAdEnd()' }] },
+  ];
+}
+
 export const TUTOS = {
   presentation: {
     title: 'Kapitaro, c’est quoi ?',
@@ -24,6 +35,10 @@ export const TUTOS = {
       { say: 'Kapitaro est un outil pédagogique : il ne remplace pas un conseiller agréé, et investir comporte un risque de perte en capital.', do: [{ js: 'window.__tutoEndCard && window.__tutoEndCard()' }] },
     ],
   },
+  // ── Pubs (≈ 25 s, format vertical 9:16, version téléphone seulement) : même vidéo, 3 accroches à tester ──
+  pub_epargne: { title: '📣 Pub · Épargne qui dort', page: null, ad: true, speed: 1.08, beats: adBeats('Tu as de l’épargne qui dort, mais tu ne sais pas par où commencer ?', 'Ton épargne dort ? 😴') },
+  pub_bourse: { title: '📣 Pub · La bourse, rien compris', page: null, ad: true, speed: 1.08, beats: adBeats('La bourse, tu n’y comprends rien ? Normal : personne ne te l’a jamais expliquée simplement.', 'La bourse ? 🤯 Rien compris') },
+  pub_eparpille: { title: '📣 Pub · Placements éparpillés', page: null, ad: true, speed: 1.08, beats: adBeats('Actions, ETF, cryptos… tu t’y perds entre toutes tes applis ?', 'Tes placements ? 🧩 Éparpillés partout') },
   accueil: {
     title: 'L’accueil',
     page: 'home',
