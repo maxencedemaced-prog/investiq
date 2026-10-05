@@ -1972,10 +1972,12 @@ function isCrypto(p) { return !!p && p.type === 'Crypto'; }
 function isTrackOnly(p) { return !!p && (p.type === 'Crypto' || p.type === 'Devise'); }   // suivies, jamais analysées
 function apos() { return positions.filter(p => !isTrackOnly(p)); }
 
+// ETC matières premières proposés dans l'appli (cotés en euros, sans levier)
+const ETC_TICKERS = ['4GLD.DE', 'BRNT.PA', 'CRUD.MI', 'NGASP.PA', 'COPAP.PA'];
 // Nom lisible d'une crypto (« SUI20947-USD » -> « Sui (SUI) »)
 function cryptoLabel(t) {
   const k = String(t || '').toUpperCase();
-  if (!/-(EUR|USD|G)$/.test(k) && !/^CUR-/.test(k) && k !== '4GLD.DE') return '';
+  if (!/-(EUR|USD|G)$/.test(k) && !/^CUR-/.test(k) && !ETC_TICKERS.includes(k)) return '';
   const e = AC_DB.find(c => (c.type === 'Crypto' || c.type === 'Matière première' || c.type === 'Devise') && c.ticker.toUpperCase() === k);
   return e ? e.name : '';
 }
@@ -1999,9 +2001,16 @@ const AC_CATS = {
   Action: { label: 'Rechercher une action *', ph: 'Ex : Apple, NVIDIA, LVMH, Air Liquide…', empty: 'Recherche une action ci-dessus', sub: 'Par nom ou par code (ex : AAPL, MC.PA)', hint: '' },
   ETF: { label: 'Rechercher un ETF *', ph: 'Ex : MSCI World, S&P 500, IWDA, VWCE…', empty: 'Recherche un ETF ci-dessus', sub: 'Par nom ou par code (ex : IWDA.L, VWCE.DE)', hint: '' },
   Crypto: { label: 'Rechercher une cryptomonnaie *', ph: 'Ex : Bitcoin, Ethereum, Solana…', empty: 'Recherche une cryptomonnaie ci-dessus', sub: '357 cryptos disponibles, avec le cours en euros', hint: '🪙 Suivi du cours uniquement : Kapitaro n’analyse pas les cryptomonnaies.', warn: true },
-  'Matière première': { label: 'Rechercher une matière première *', ph: 'Ex : or, argent, platine…', empty: 'Recherche une matière première ci-dessus', sub: 'Or, argent et platine au gramme, ou un ETC sur l’or', hint: '🥇 L’or, l’argent et le platine physiques se saisissent en grammes. Pour le pétrole ou le gaz, cherche un ETC ou un ETF dans l’onglet ETF ; leur cours se suit dans Actualités › Matières premières.' },
+  'Matière première': { label: 'Rechercher une matière première *', ph: 'Ex : or, argent, platine…', empty: 'Recherche une matière première ci-dessus', sub: 'Or, argent, platine au gramme, ou un ETC (or, pétrole, gaz, cuivre)', hint: '🥇 L’or, l’argent et le platine physiques se saisissent en grammes. Le pétrole, le gaz et le cuivre se détiennent via des ETC (produits cotés) : ils sont dans cet onglet. Leur cours se suit dans Actualités › Matières premières.' },
   Devise: { label: 'Rechercher une devise *', ph: 'Ex : dollar, livre, franc suisse, dirham…', empty: 'Recherche une devise ci-dessus', sub: '32 devises, valeur en euros au taux du jour', hint: '💱 Suivi du taux de change uniquement : Kapitaro n’analyse pas les devises.' },
 };
+// Recherche tolérante : sans accents, et « euro/usd » ou « usd/eur » retrouvent le dollar
+function kpNorm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+function kpFxCode(q) {
+  const s = kpNorm(q);
+  const m = s.match(/^(?:euros?|eur)\s*[\/\-: ]?\s*([a-z]{3})$/) || s.match(/^([a-z]{3})\s*[\/\-: ]?\s*(?:euros?|eur)$/);
+  return m ? m[1].toUpperCase() : '';
+}
 function acMatchesCat(r) { return acCat === 'all' || (r && r.type === acCat); }
 function acManualBtn(q) {
   if (acCat !== 'all' && acCat !== 'Action' && acCat !== 'ETF') return '';
@@ -2022,7 +2031,7 @@ function acRenderPopular() {
   if (!grid || !dyn) return;
   const lists = {
     Crypto: ['BTC-EUR', 'ETH-EUR', 'SOL-EUR', 'XRP-EUR', 'BNB-EUR', 'ADA-EUR', 'DOGE-EUR', 'LINK-EUR'],
-    'Matière première': ['XAU-G', 'XAG-G', 'XPT-G', '4GLD.DE'],
+    'Matière première': ['XAU-G', 'XAG-G', 'XPT-G', '4GLD.DE', 'BRNT.PA', 'CRUD.MI', 'NGASP.PA', 'COPAP.PA'],
     Devise: ['CUR-USD', 'CUR-GBP', 'CUR-CHF', 'CUR-JPY', 'CUR-CAD', 'CUR-MAD', 'CUR-TND', 'CUR-AED'],
   }[acCat];
   if (lists) {
@@ -2438,6 +2447,10 @@ const AC_DB = [
   {ticker:"USDA35965-USD",name:"USDa (USDA)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
   // ===== MÉTAUX PHYSIQUES (cours au gramme, en euros) =====
   {ticker:"4GLD.DE",name:"Xetra-Gold (ETC or physique)",type:'Matière première',sector:'Matières premières',exchange:'XETRA'},
+  {ticker:"BRNT.PA",name:"WisdomTree Brent Crude Oil (ETC pétrole Brent)",type:'Matière première',sector:'Matières premières',exchange:"Euronext Paris",alias:"petrole petrol oil brent crude baril"},
+  {ticker:"CRUD.MI",name:"WisdomTree WTI Crude Oil (ETC pétrole WTI)",type:'Matière première',sector:'Matières premières',exchange:"Borsa Italiana",alias:"petrole petrol oil wti crude baril"},
+  {ticker:"NGASP.PA",name:"WisdomTree Natural Gas (ETC gaz naturel)",type:'Matière première',sector:'Matières premières',exchange:"Euronext Paris",alias:"gaz gas naturel natural"},
+  {ticker:"COPAP.PA",name:"WisdomTree Copper (ETC cuivre)",type:'Matière première',sector:'Matières premières',exchange:"Euronext Paris",alias:"cuivre copper"},
   {ticker:"XAU-G",name:"Or physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
   {ticker:"XAG-G",name:"Argent physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
   {ticker:"XPT-G",name:"Platine physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
@@ -2728,10 +2741,10 @@ function acSearch(query) {
   }
   if (clearBtn) clearBtn.style.display = 'block';
   const q = query.toLowerCase();
+  const qn = kpNorm(query), qd = kpFxCode(query);
   const results = AC_DB.filter(c =>
-    c.ticker.toLowerCase().includes(q) ||
-    c.name.toLowerCase().includes(q) ||
-    c.sector.toLowerCase().includes(q)
+    kpNorm(c.ticker + ' ' + c.name + ' ' + c.sector + ' ' + (c.alias || '')).includes(qn) ||
+    (qd && c.ticker === 'CUR-' + qd)
   ).filter(acMatchesCat).slice(0, 7);
 
   if (!results.length) {
@@ -2793,7 +2806,9 @@ async function acSelect(company) {
       w.style.cssText = 'margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.35);color:#1e40af;font-size:12px;line-height:1.5';
       w.textContent = company.type === 'Devise'
         ? 'ℹ️ Indique le montant que tu détiens dans cette devise (par exemple 2 000 pour 2 000 $). Le cours est le taux de change face à l’euro. Kapitaro suit la valeur, sans l’analyser.'
-        : 'ℹ️ Indique la quantité en grammes (1 once = 31,1 g). Le prix affiché est le cours mondial du métal, hors prime des pièces et lingots.';
+        : ETC_TICKERS.includes(company.ticker)
+          ? 'ℹ️ Cet ETC suit des contrats à terme : sa performance peut s’écarter du cours affiché dans Actualités, et il convient mal à un placement long terme. Produit risqué : tu peux perdre une partie importante de ta mise.'
+          : 'ℹ️ Indique la quantité en grammes (1 once = 31,1 g). Le prix affiché est le cours mondial du métal, hors prime des pièces et lingots.';
       badge.insertAdjacentElement('afterend', w);
     }
   } catch (e) {}
