@@ -11093,7 +11093,7 @@ async function qaAddLine(btn) {
         try { await addTransaction(name, 'achat', qty, pru, 'Saisie rapide'); } catch {}
       }
     } else {
-      const pos = { name, qty: Math.round(qty * 1e8) / 1e8, pru: Math.round(pru * 100) / 100, price, type, sector, platform: kpMainPlatform() || 'Autre', alert_price: null };
+      const pos = { name, qty: Math.round(qty * 1e8) / 1e8, pru: Math.round(pru * 100) / 100, price, type, sector, platform: kpPlatformFor(type), alert_price: null };
       if (isDemo) {
         positions.push({ id: 'd' + Date.now(), ...pos });
       } else if (currentUser) {
@@ -13319,6 +13319,40 @@ function kpMainPlatformOptionsHTML(selected) {
   const one = n => '<option value="' + esc(n) + '"' + (n === selected ? ' selected' : '') + '>' + esc(n) + '</option>';
   return '<option value=""' + (!selected ? ' selected' : '') + '>Aucune pour l’instant</option>' + PLATFORMS.map(p => one(p.name)).join('') + CRYPTO_PLATFORMS.map(one).join('') + '<option value="Autre"' + (selected === 'Autre' ? ' selected' : '') + '>Une autre plateforme</option>';
 }
+// Une plateforme ne propose pas tous les actifs : on ne suggère la principale que si elle convient au type d'actif
+const KP_CRYPTO_BROKERS = ['eToro', 'Revolut'];   // courtiers qui proposent aussi des cryptos
+function kpPlatformFits(platform, type) {
+  if (!platform || platform === 'Autre') return true;
+  const isCryptoPlat = CRYPTO_PLATFORMS.includes(platform);
+  if (type === 'Crypto') return isCryptoPlat || KP_CRYPTO_BROKERS.includes(platform);
+  return !isCryptoPlat;   // une plateforme crypto ne vend ni actions, ni ETF, ni devises, ni matières
+}
+// Plateforme à proposer pour ce type d'actif : la principale si elle convient, sinon une plateforme spécialisée
+function kpPlatformFor(type) {
+  const mp = kpMainPlatform();
+  if (!mp || mp === 'Autre') return 'Autre';   // « Aucune » : on ne suggère rien
+  if (kpPlatformFits(mp, type)) return mp;
+  if (type === 'Crypto') {
+    // celle où l'utilisateur détient déjà des cryptos, sinon la première plateforme spécialisée
+    try {
+      const cnt = {};
+      (positions || []).filter(p => p.type === 'Crypto' && CRYPTO_PLATFORMS.includes(p.platform)).forEach(p => { cnt[p.platform] = (cnt[p.platform] || 0) + 1; });
+      const best = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0];
+      if (best) return best;
+    } catch (e) {}
+    return CRYPTO_PLATFORMS[0];
+  }
+  if (mp && mp !== 'Autre') {
+    // la principale est une plateforme crypto : on reprend un courtier déjà utilisé pour les autres actifs
+    try {
+      const cnt = {};
+      (positions || []).filter(p => p.type !== 'Crypto' && PLATFORMS.some(x => x.name === p.platform)).forEach(p => { cnt[p.platform] = (cnt[p.platform] || 0) + 1; });
+      const best = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0];
+      if (best) return best;
+    } catch (e) {}
+  }
+  return 'Autre';
+}
 function kpSetMainPlatform(v) {
   v = String(v || '');
   const valid = v === '' || v === 'Autre' || PLATFORMS.some(p => p.name === v) || CRYPTO_PLATFORMS.includes(v);
@@ -13333,7 +13367,7 @@ function kpApplyMainPlatform(force) {
   try {
     const sel = document.getElementById('f-platform');
     if (!sel || (!force && sel.dataset.touched)) return;
-    const mp = kpMainPlatform();
+    const mp = kpPlatformFor(typeof acSelected !== 'undefined' && acSelected ? acSelected.type : '');
     sel.value = (mp && [...sel.options].some(o => o.value === mp)) ? mp : 'Autre';
     if (typeof updateAddButtons === 'function') updateAddButtons();
   } catch (e) {}
