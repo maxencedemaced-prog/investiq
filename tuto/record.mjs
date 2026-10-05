@@ -63,6 +63,8 @@ const SETUP = () => {
   try { enterDemo(); } catch (e) {}
   // une crypto et de l'or, pour illustrer « tous tes placements »
   try { positions.push({ id: 'd5', name: 'BTC-EUR', qty: 0.012, pru: 61000, price: 76800, type: 'Crypto', sector: 'Crypto', platform: 'Binance', alert_price: null }, { id: 'd6', name: 'XAU-G', qty: 8, pru: 104, price: 119.6, type: 'Matière première', sector: 'Or', platform: 'Portefeuille personnel', alert_price: null }); } catch (e) {}
+  // une ligne un peu trop lourde, pour que la zone « À surveiller » ait quelque chose à montrer
+  try { const lv = positions.find(p => p.name === 'LVMH'); if (lv) lv.qty = 4; } catch (e) {}
   const ob = document.getElementById('onboarding-modal'); if (ob) ob.style.display = 'none';
   // objectif d'exemple
   objChartCapital = 5000; objChartMonthly = 300; objChartTarget = 50000; objChartYears = 10; objChartRate = 7; objRisk = 'equilibre'; objStockPct = 30; objGlide = false;
@@ -88,7 +90,8 @@ const SETUP = () => {
   window.generateETFPlan = async () => { const el = document.getElementById('obj-etf-plan'); if (el) renderETFCards(ETFS, el, ACTIONS); };
   window.generateMonthlyPlan = async () => { renderMonthlyPlan(PLAN, false); };
   window.isPremiumUser = () => true;   // le bilan (Premium) doit pouvoir s'ouvrir pendant le tournage
-  window.kpOpenTuto = () => {};   // pendant le tournage, le bouton « ▶ C'est quoi ? » ne lance pas une vidéo dans la vidéo
+  window.kpOpenTuto = () => {};
+  window.getSmartAdvice = async a => ({ verdict: a.kind === 'loss' ? 'garder' : 'alléger', raison: a.kind === 'loss' ? 'Cette ligne a beaucoup baissé, mais elle pèse peu : pas d’urgence, garde un œil sur son évolution.' : (a.name + ' pèse ' + Math.round(a.pct) + ' % de ton portefeuille, au-dessus du repère de 25 % : orienter tes prochains versements vers ton socle ETF rééquilibrerait l’ensemble.'), remplacement: a.kind === 'loss' ? null : { ticker: 'VWCE.DE', name: 'Vanguard FTSE All-World', raison: 'socle monde très diversifié' } });   // exemple pour le tournage   // pendant le tournage, le bouton « ▶ C'est quoi ? » ne lance pas une vidéo dans la vidéo
   window.showPlanTour = () => {}; window.showPortfolioTour = () => {}; window.kpTour = () => {}; window.kpMaybeWhatsNew = () => {}; window.maybeAskLevel = () => false;
   // réponse d'exemple de l'assistant
   window.__tutoAiDemo = async () => {
