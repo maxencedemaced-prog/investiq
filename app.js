@@ -1939,7 +1939,7 @@ async function acSearchYahoo(query) {
     }
     drop.innerHTML = results.map(r => `
       <div class="ac-item" onclick="acSelect(${JSON.stringify(r).replace(/"/g,'&quot;')})">
-        <div class="ac-item-avatar">${r.ticker.slice(0,2)}</div>
+        ${getCompanyLogo(r.ticker, r.name, 36, 10)}
         <div class="ac-item-info">
           <div class="ac-item-name">${r.name}</div>
           <div class="ac-item-meta">${r.ticker} · ${r.type} · ${r.sector} · ${r.exchange}</div>
@@ -2013,36 +2013,46 @@ function kpFxCode(q) {
 }
 function acMatchesCat(r) { return acCat === 'all' || (r && r.type === acCat); }
 function acManualBtn(q) {
+  if (acCat === 'Devise') return '<div style="font-size:12px;color:#8e8e93;margin-top:6px;line-height:1.5">Choisis une devise étrangère (dollar, livre, franc suisse…) : l’euro est la devise de référence de Kapitaro.</div>';
   if (acCat !== 'all' && acCat !== 'Action' && acCat !== 'ETF') return '';
   return '<button class="ac-manual-btn" onclick="acSelectManual(\'' + jsArg(q.toUpperCase()) + '\')">Utiliser "' + _escHtml(q.toUpperCase()) + '" comme ticker →</button>';
 }
 function acChipHTML(c) {
-  const base = c.type === 'Crypto' ? c.ticker.replace(/\d{3,}-(EUR|USD)$/, '').replace(/-(EUR|USD)$/, '') : c.type === 'Devise' ? c.ticker.replace('CUR-', '') : c.ticker.slice(0, 2);
-  const col = c.type === 'Crypto' ? '#f59e0b' : c.type === 'Devise' ? '#0d9488' : '#ca8a04';
   const nm = c.name.replace(/\s*\(.*\)$/, '');
+  const sub = (c.type === 'Action' || c.type === 'ETF') ? c.ticker + ' · ' + c.type : c.type;
   return '<div onclick="acSelect(' + JSON.stringify(c).replace(/"/g, '&quot;') + ')" class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">'
-    + '<div style="width:26px;height:26px;border-radius:7px;background:' + col + ';color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + _escHtml(base.slice(0, 4)) + '</div>'
-    + '<div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(nm) + '</div><div style="font-size:10px;color:#8e8e93">' + _escHtml(c.type) + '</div></div></div>';
+    + getCompanyLogo(c.ticker, c.name, 28, 8)
+    + '<div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(nm) + '</div><div style="font-size:10px;color:#8e8e93">' + _escHtml(sub) + '</div></div></div>';
 }
 function acRenderPopular() {
   const wrap = document.getElementById('ac-popular');
   if (!wrap) return;
   const grid = wrap.querySelector('[data-pop="default"]'), dyn = document.getElementById('ac-pop-dyn');
-  if (!grid || !dyn) return;
+  if (!dyn) return;
   const lists = {
+    all: ['IWDA.L', 'VWCE.DE', 'AAPL', 'NVDA', 'MC.PA', 'BTC-EUR', 'XAU-G', 'CUR-USD'],
+    Action: ['AAPL', 'MSFT', 'NVDA', 'MC.PA', 'TSLA', 'AI.PA', 'OR.PA', 'TTE.PA'],
+    ETF: ['IWDA.L', 'VWCE.DE', 'CSPX.L', 'VUSA.L'],
     Crypto: ['BTC-EUR', 'ETH-EUR', 'SOL-EUR', 'XRP-EUR', 'BNB-EUR', 'ADA-EUR', 'DOGE-EUR', 'LINK-EUR'],
     'Matière première': ['XAU-G', 'XAG-G', 'XPT-G', '4GLD.DE', 'BRNT.PA', 'CRUD.MI', 'NGASP.PA', 'COPAP.PA'],
     Devise: ['CUR-USD', 'CUR-GBP', 'CUR-CHF', 'CUR-JPY', 'CUR-CAD', 'CUR-MAD', 'CUR-TND', 'CUR-AED'],
-  }[acCat];
-  if (lists) {
-    grid.style.display = 'none'; dyn.style.display = 'grid';
-    dyn.innerHTML = lists.map(t => AC_DB.find(c => c.ticker === t)).filter(Boolean).map(acChipHTML).join('');
-  } else {
-    dyn.style.display = 'none'; grid.style.display = 'grid';
-    [...grid.children].forEach(ch => { const o = ch.getAttribute('onclick') || ''; ch.style.display = (acCat === 'all' || o.indexOf('"type":"' + acCat + '"') !== -1) ? '' : 'none'; });
-  }
+  }[acCat] || [];
+  if (grid) grid.style.display = 'none';
+  dyn.style.display = 'grid';
+  dyn.innerHTML = lists.map(t => AC_DB.find(c => c.ticker === t)).filter(Boolean).map(acChipHTML).join('');
+}
+// Efface la sélection (formulaire, avertissements) sans toucher au texte tapé
+function acResetSelection() {
+  acSelected = null;
+  document.getElementById('crypto-warn')?.remove();
+  const sel = document.getElementById('ac-selected'); if (sel) sel.style.display = 'none';
+  const ff = document.getElementById('f-fields'); if (ff) ff.style.display = 'none';
+  const es = document.getElementById('f-empty-state'); if (es) es.style.display = 'block';
+  const nm = document.getElementById('f-name'); if (nm) nm.value = '';
+  ['f-qty', 'f-pru', 'f-price', 'f-sector', 'f-alert'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 }
 function setAcCat(cat) {
+  if (acSelected) acClear();   // l'ancien formulaire ne doit pas rester affiché sous un autre onglet
   acCat = AC_CATS[cat] ? cat : 'all';
   const c = AC_CATS[acCat];
   document.querySelectorAll('#ac-cats .ac-cat').forEach(b => b.classList.toggle('on', b.dataset.cat === acCat));
@@ -2061,6 +2071,8 @@ function setAcCat(cat) {
   const drop = document.getElementById('ac-drop'); if (drop) drop.style.display = 'none';
   if (inp && !acSelected && inp.value.trim().length >= 2) acSearch(inp.value.trim());
 }
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { try { acRenderPopular(); } catch (e) {} }); else { try { acRenderPopular(); } catch (e) {} }
 
 // ═══ « Aide à la décision » : pas d'analyse des cryptos ni des devises, et jamais d'actif inventé ═══
 function decisionTrackOnlyKind(text) {
@@ -2676,7 +2688,7 @@ function decisionAcSearch(query) {
   const q = (query || '').trim().toLowerCase();
   if (q.length < 2) { drop.style.display = 'none'; return; }
   const item = r => `<div class="ac-item" onclick="decisionAcPick('${jsArg(r.ticker)}','${jsArg(r.name)}')">
-      <div class="ac-item-avatar ${r.type==='ETF'?'etf':''}">${_escHtml(r.ticker.slice(0,2))}</div>
+      ${getCompanyLogo(r.ticker, r.name, 36, 10)}
       <div class="ac-item-info">
         <div class="ac-item-name">${_escHtml(r.name)}</div>
         <div class="ac-item-meta">${_escHtml([r.ticker, r.type, r.sector, r.exchange].filter(Boolean).join(' · '))}</div>
@@ -2732,6 +2744,7 @@ function getDecisionTicker() {
 }
 
 function acSearch(query) {
+  if (acSelected) acResetSelection();   // on retape une recherche : l'ancien choix disparaît
   const drop = document.getElementById('ac-drop');
   const clearBtn = document.getElementById('ac-clear');
   if (!query || query.length < 2) {
@@ -2758,7 +2771,7 @@ function acSearch(query) {
   drop.style.display = 'block';
   drop.innerHTML = results.map(r => `
     <div class="ac-item" onclick="acSelect(${JSON.stringify(r).replace(/"/g,'&quot;')})">
-      <div class="ac-item-avatar ${r.type==='ETF'?'etf':''}">${r.ticker.slice(0,2)}</div>
+      ${getCompanyLogo(r.ticker, r.name, 36, 10)}
       <div class="ac-item-info">
         <div class="ac-item-name">${r.name}</div>
         <div class="ac-item-meta">${r.ticker} · ${r.type} · ${r.sector} · ${r.exchange}</div>
@@ -2784,7 +2797,7 @@ async function acSelect(company) {
   badge.style.display = 'flex';
   badgeContent.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px">
-      <div class="ac-item-avatar ${company.type==='ETF'?'etf':''}" style="width:36px;height:36px;font-size:12px">${company.ticker.slice(0,2)}</div>
+      ${getCompanyLogo(company.ticker, company.name, 36, 10)}
       <div>
         <div style="font-size:14px;font-weight:800;color:#1c1c1e">${company.name}</div>
         <div style="font-size:12px;color:#8e8e93;font-weight:500">${company.ticker} · ${company.type} · ${company.sector}</div>
@@ -6330,8 +6343,29 @@ async function _resolveLogoDomain(ticker, name) {
   }
 }
 
+// ═══ LOGOS des cryptos, devises et matières premières (hébergés avec l'appli : /icons/crypto et /icons/flags) ═══
+const CRYPTO_EXT = {"HYPE32196-USD":"jpg","USDS33039-USD":"webp","NEAR-USD":"jpg","XLM-EUR":"jpg","QNT-EUR":"jpg","TAO22974-USD":"jpg","PUMP36507-USD":"jpg","WLD-USD":"jpg","SKY33038-USD":"jpg","DOT-EUR":"jpg","PEPE24478-USD":"jpg","U39120-USD":"jpg","USDD-USD":"jpg","ARB11841-USD":"jpg","ZRO26997-USD":"jpg","JST-USD":"jpg","ETHFI-USD":"jpg","RAY-EUR":"jpg","GRASS32956-USD":"jpg","TIA-USD":"jpg","BONK-USD":"jpg","AR-EUR":"jpg","ENS-USD":"jpg","ZBCN-USD":"jpg","JASMY-USD":"jpg","WIF-USD":"jpg","CRVUSD-USD":"jpg","CARDS38283-USD":"jpg","SAND-EUR":"jpg","TRAC-USD":"jpg","XCN18679-USD":"jpg","FARTCOIN-USD":"jpg","B-USD":"jpg","CASHCAT-USD":"jpg","BTSE-USD":"jpg","1INCH-EUR":"jpg","RAIL-USD":"jpg","GUSD38330-USD":"jpg","JPYC40123-USD":"jpg","SN64-USD":"jpg","SKR39377-USD":"jpg","FORM23635-USD":"jpg","RLB-USD":"jpg","SOSO-USD":"jpg","PROS39682-USD":"jpg","KSM-EUR":"jpg","YFI-EUR":"jpg","KAITO-USD":"jpg","ORBIO42040-USD":"jpg","BABYDOGE-USD":"jpg","ESP39548-USD":"jpg","MUBARAK-USD":"jpg","NOS-USD":"jpg","LINEA-USD":"jpg","ARC34926-USD":"jpg","BONER-USD":"jpg","XPR-USD":"jpg","MERL-USD":"jpg","BIO34812-USD":"jpg","AXL17799-USD":"jpg","BAN33881-USD":"jpg","GAL11877-USD":"jpg","CELO-EUR":"jpg","SN44-USD":"jpg","POD42398-USD":"jpg","ANSEM-USD":"jpg","SN120-USD":"jpg","MEGA38770-USD":"jpg","XVS-USD":"jpg","JELLYJELLY-USD":"webp","BIM-USD":"jpg","XVG-EUR":"jpg","RAVE38967-USD":"jpg","RON14101-USD":"jpg","CFG-USD":"jpg","NIL35702-USD":"jpg","AURORA14803-USD":"jpg","NOCK-USD":"jpg"};   // extension du logo quand ce n'est pas du png
+const CUR_FLAG = {"USD":"us","GBP":"gb","CHF":"ch","JPY":"jp","CAD":"ca","AUD":"au","NZD":"nz","SEK":"se","NOK":"no","DKK":"dk","PLN":"pl","CZK":"cz","HUF":"hu","RON":"ro","TRY":"tr","CNY":"cn","HKD":"hk","SGD":"sg","INR":"in","BRL":"br","MXN":"mx","ZAR":"za","MAD":"ma","TND":"tn","AED":"ae","SAR":"sa","ILS":"il","KRW":"kr","THB":"th","DZD":"dz","XPF":"pf","XOF":"sn"};
+const MP_BADGE = { 'XAU-G': ['🥇', '#fef3c7'], 'XAG-G': ['🥈', '#e5e7eb'], 'XPT-G': ['⚪', '#e0e7ff'], '4GLD.DE': ['🥇', '#fef3c7'], 'BRNT.PA': ['🛢️', '#e5e7eb'], 'CRUD.MI': ['🛢️', '#e5e7eb'], 'NGASP.PA': ['🔥', '#ffedd5'], 'COPAP.PA': ['🟠', '#ffedd5'] };
+function kpTrackedLogo(ticker, size, radius) {
+  const t = String(ticker || '').toUpperCase();
+  const s = size || 36, r = radius || 10;
+  const box = 'width:' + s + 'px;height:' + s + 'px;border-radius:' + r + 'px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden';
+  const cur = t.match(/^CUR-([A-Z]{3})$/);
+  if (cur) { const cc = CUR_FLAG[cur[1]]; return cc ? '<div style="' + box + ';background:#f4f4f5"><img src="/icons/flags/' + cc + '.png" alt="' + cur[1] + '" style="width:100%;height:100%;object-fit:cover"></div>' : ''; }
+  if (MP_BADGE[t]) return '<div style="' + box + ';background:' + MP_BADGE[t][1] + ';font-size:' + Math.round(s * 0.55) + 'px">' + MP_BADGE[t][0] + '</div>';
+  if (/^[A-Z0-9]{2,20}-(EUR|USD)$/.test(t)) {
+    const base = t.replace(/\d{3,}-(EUR|USD)$/, '').replace(/-(EUR|USD)$/, '').slice(0, 4);
+    const ext = CRYPTO_EXT[t] || 'png';
+    return '<div style="' + box + ';background:#f4f4f5;color:#1c1c1e;font-size:' + Math.max(8, Math.round(s * 0.3)) + 'px;font-weight:800"><img src="/icons/crypto/' + t + '.' + ext + '" alt="' + base + '" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(document.createTextNode(\'' + base + '\'))"></div>';
+  }
+  return '';
+}
+
 function getCompanyLogo(ticker, name, size, radius) {
   size = size || 36; radius = radius || 10;
+  const _tk = kpTrackedLogo(ticker, size, radius);
+  if (_tk) return _tk;
   const domainMap = {
     'AAPL':'apple.com','MSFT':'microsoft.com','GOOGL':'google.com','GOOG':'google.com',
     'AMZN':'amazon.com','TSLA':'tesla.com','NVDA':'nvidia.com','META':'meta.com',
