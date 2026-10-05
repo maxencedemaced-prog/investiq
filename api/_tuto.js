@@ -38,9 +38,11 @@ export const TUTOS = {
     page: 'portfolio',
     beats: [
       { say: 'Le portefeuille réunit tous tes placements, avec leur valeur à jour et ta plus-value.', do: [{ click: '#bnav-portfolio' }, { wait: 900 }, { point: '#port-metrics' }] },
-      { say: 'Pour ajouter un placement, touche Ajouter. Tu peux aussi importer le relevé de ton courtier, en PDF, Excel ou CSV.', do: [{ point: '#port-add-btn' }, { wait: 1200 }, { point: '#btn-import-pos' }] },
-      { say: 'Touche une ligne pour voir son détail : prix de revient, performance et raccourcis.', do: [{ click: '.pos-row' }, { wait: 600 }] },
-      { say: 'Et le bouton Graphique ouvre l’évolution complète du cours, en direct.', do: [{ click: '[id^="posdetail-"] button' }, { wait: 2500 }] },
+      { say: 'Pour ajouter une action, touche Ajouter, puis cherche-la par son nom.', do: [{ click: '#port-add-btn' }, { wait: 900 }, { click: '#f-search' }, { type: ['#f-search', 'Apple'] }, { wait: 1500 }] },
+      { say: 'Choisis-la dans la liste et indique ta quantité : le prix se remplit tout seul. Il ne reste qu’à l’ajouter au portefeuille.', do: [{ click: '#ac-drop .ac-item' }, { wait: 1500 }, { click: '#f-qty' }, { type: ['#f-qty', '5'] }, { wait: 600 }, { click: 'button[onclick="addPos()"]' }] },
+      { say: 'Le bouton Importer charge le relevé de ton courtier, en PDF, Excel ou CSV, pour tout ajouter d’un coup.', do: [{ js: "nav('portfolio')" }, { wait: 700 }, { point: '#btn-import-pos' }] },
+      { say: 'Prix live met les cours à jour, et Sélectionner permet de gérer plusieurs lignes à la fois.', do: [{ point: '#btn-prix-live' }, { wait: 1500 }, { point: '#btn-select-mode' }] },
+      { say: 'Enfin, touche une ligne pour voir son détail : graphique, analyse, question à l’IA ou modification.', do: [{ click: '.pos-row' }, { wait: 800 }, { point: '[id^="posdetail-"] button' }] },
     ],
   },
   objectif: {
@@ -57,9 +59,10 @@ export const TUTOS = {
     title: 'L’assistant IA',
     page: 'ai',
     beats: [
-      { say: 'L’assistant IA connaît ton portefeuille, ton objectif et ton profil.', do: [{ click: '#bnav-ai' }, { wait: 900 }, { point: '#agent-hero, #agent-verdict, #ai-chat' }] },
-      { say: 'Pose-lui une question comme à un ami qui s’y connaît, par exemple : mon portefeuille est-il bien diversifié ?', do: [{ scroll: '#ai-in' }, { point: '#ai-in' }, { js: 'window.__tutoAiDemo && window.__tutoAiDemo()' }] },
-      { say: 'Il s’appuie sur les vrais cours et l’actualité, sans jamais te dire d’acheter ou de vendre : il t’explique, tu décides.', do: [{ point: '#ai-chat' }] },
+      { say: 'L’assistant IA connaît ton portefeuille, ton objectif et ton profil.', do: [{ js: 'window.isPremiumUser = () => false' }, { click: '#bnav-ai' }, { wait: 900 }, { point: '#ai-chat' }] },
+      { say: 'Pose-lui une question comme à un ami qui s’y connaît : il t’explique avec les vrais cours et l’actualité, et c’est toi qui décides.', do: [{ scroll: '#ai-in' }, { point: '#ai-in' }, { js: 'window.__tutoAiDemo && window.__tutoAiDemo()' }] },
+      { say: 'En version gratuite, tu as quinze questions offertes, puis trois par jour.', do: [{ point: '#ai-chat' }] },
+      { say: 'Avec Premium, les questions sont illimitées, et l’agent travaille pour toi chaque jour : verdict sur ton portefeuille, alertes, priorités et signaux IA.', do: [{ js: "try { renderAgentTabs(); setAgentView('sample'); } catch (e) {}" }, { wait: 900 }, { scroll: '#agent-tabs' }, { point: '#agent-tabs button:nth-child(2), #agent-tabs' }, { wait: 1200 }, { scroll: '#agent-verdict' }, { point: '#agent-verdict' }] },
     ],
   },
   bilan: {
@@ -84,9 +87,10 @@ export const TUTOS = {
     title: 'Mes dépenses',
     page: 'depenses',
     beats: [
-      { say: 'Le calculateur de dépenses t’aide à savoir combien tu peux mettre de côté chaque mois.', do: [{ js: "nav('depenses')" }, { wait: 900 }, { point: '#dep-root' }] },
-      { say: 'Indique tes revenus et tes dépenses principales, ou importe ton relevé bancaire.', do: [{ scroll: '#dep-q' }, { point: '#dep-q' }] },
-      { say: 'Kapitaro calcule ton épargne possible, que tu peux ensuite utiliser pour ton objectif.', do: [{ scroll: '#dep-savings' }, { point: '#dep-savings' }] },
+      { say: 'Mes dépenses te montre où part ton argent chaque mois. Cette fonction fait partie de Premium.', do: [{ js: "nav('depenses')" }, { wait: 900 }, { point: '#dep-root' }] },
+      { say: 'Importe simplement le relevé de ta banque, en CSV, Excel ou PDF.', do: [{ scroll: '#dep-root label:has(input[type=file])' }, { click: '#dep-root label:has(input[type=file])' }, { upload: ['#dep-root input[type=file]', 'releve-exemple.csv'] }, { wait: 1500 }] },
+      { say: 'Kapitaro retrouve tes abonnements et classe tes dépenses : ce qui est vital, et ce qui ne l’est pas.', do: [{ js: 'window.scrollTo(0, 0)' }, { wait: 400 }, { point: '#dep-pie, #dep-root' }] },
+      { say: 'Tu vois aussi combien tu économiserais en réduisant certaines dépenses, et ce que cela donnerait une fois investi.', do: [{ scroll: '#dep-savings' }, { point: '#dep-savings' }] },
     ],
   },
   actualites: {
