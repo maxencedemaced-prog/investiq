@@ -8921,7 +8921,7 @@ async function kpOpenTuto(id, opts) {
   const finish = () => { if (done) return; done = true; const o = document.getElementById('kp-tuto-modal'); if (o) { const vd = o.querySelector('video'); try { vd.pause(); } catch (e) {} o.remove(); } try { localStorage.setItem(kpTutoSeenKey(id), '1'); } catch (e) {} if (opts.onDone) setTimeout(opts.onDone, 200); };
   const o = document.createElement('div');
   o.id = 'kp-tuto-modal';
-  o.style.cssText = 'position:fixed;inset:0;z-index:10060;background:rgba(5,8,15,0.88);display:flex;align-items:center;justify-content:center;padding:14px';
+  o.style.cssText = 'position:fixed;inset:0;z-index:10090;background:rgba(5,8,15,0.88);display:flex;align-items:center;justify-content:center;padding:14px';
   o.innerHTML = '<div style="position:relative;' + (wide ? 'width:min(100%,calc(80vh * 1.6),1100px)' : 'width:min(100%,calc(86vh * 0.4615));max-width:420px') + '">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#fff"><div style="font-size:15px;font-weight:800">🎬 ' + _escHtml(v.title || 'Kapitaro') + '</div>'
     + (opts.skippable ? '<button type="button" id="kp-tuto-skip" style="padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.08);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">Passer ›</button>' : '<button type="button" id="kp-tuto-skip" aria-label="Fermer" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1">✕</button>')
@@ -13590,6 +13590,7 @@ function showPlansModal(opts) {
   const ctx = opts && opts.feature ? `
       <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:10px 14px;margin-bottom:14px">
         <div style="font-size:13px;font-weight:700;color:#fff">${_escHtml(opts.feature)}${opts.subtitle ? ` <span style="font-weight:600;color:rgba(255,255,255,0.55)">· ${_escHtml(opts.subtitle)}</span>` : ''}</div>
+        ${({ 'Bilan patrimonial complet': 'bilan', 'Mes dépenses': 'depenses' })[opts.feature] ? `<button type="button" onclick="kpOpenTuto('${({ 'Bilan patrimonial complet': 'bilan', 'Mes dépenses': 'depenses' })[opts.feature]}')" style="margin-top:8px;padding:7px 12px;border-radius:999px;border:1px solid rgba(74,222,128,0.4);background:rgba(74,222,128,0.1);color:#4ade80;font:inherit;font-size:12px;font-weight:800;cursor:pointer">▶ Voir comment ça marche (vidéo)</button>` : ''}
         ${(opts.benefits || []).length ? `<div style="margin-top:4px;display:flex;flex-direction:column;gap:2px">${opts.benefits.slice(0, 2).map(b => `<div style="font-size:12px;color:rgba(255,255,255,0.75);line-height:1.5">• ${_escHtml(b)}</div>`).join('')}</div>` : ''}
       </div>` : '';
   o.innerHTML = `
