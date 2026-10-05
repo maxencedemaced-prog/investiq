@@ -289,4 +289,23 @@ export async function dispatchWorkflow(file, inputs) {
   return ref;
 }
 
+// Annule toutes les fabrications en attente ou en cours d'un workflow (ex. tuto.yml). Renvoie le nombre annulé.
+export async function cancelWorkflowRuns(file) {
+  const token = process.env.GITHUB_DISPATCH_TOKEN;
+  if (!token) throw new Error('GITHUB_DISPATCH_TOKEN absent de Vercel');
+  const repo = process.env.GITHUB_REPO || 'maxencedemaced-prog/investiq';
+  const h = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'kapitaro-studio' };
+  let n = 0, errors = [];
+  for (const status of ['queued', 'in_progress', 'waiting', 'pending', 'requested']) {
+    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${file}/runs?status=${status}&per_page=50`, { headers: h });
+    if (!r.ok) { errors.push(status + ' ' + r.status); continue; }
+    for (const run of (await r.json()).workflow_runs || []) {
+      const c = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${run.id}/cancel`, { method: 'POST', headers: h });
+      if (c.status === 202) n++; else errors.push(run.id + ' ' + c.status);
+    }
+  }
+  if (!n && errors.length) throw new Error('Annulation refusée par GitHub (' + errors.slice(0, 3).join(', ') + ') : le jeton GitHub doit avoir le droit « Actions : lecture et écriture ».');
+  return n;
+}
+
 export { EDGE_VOICES };

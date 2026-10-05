@@ -391,6 +391,7 @@ function renderTutosPage() {
     + '<p class="sub" style="margin:0 0 14px">La voix lit le texte, puis l’appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l’appli.</p>'
     + '<label>Voix</label>'
     + '<div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:nowrap;max-width:520px"><select id="tuto-voice" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select><button class="btn" id="btn-tuto-listen" onclick="listenTutoVoice()" style="white-space:nowrap">▶ Écouter</button></div>'
+    + '<div class="row" style="justify-content:flex-end;margin:0 0 10px"><button class="btn" id="btn-tuto-stop" onclick="stopAllTutos(this)" style="display:none;border-color:#7f1d1d;color:#fca5a5">⏹ Arrêter toutes les fabrications</button></div>'
     + '<div id="tuto-msg" style="display:none;margin:0 0 12px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5"></div>'
     + '<div id="tuto-list"><div class="empty">Chargement…</div></div></div>';
   renderTutos(true);
@@ -409,7 +410,9 @@ async function renderTutos(fillVoices) {
   if (!fillVoices && listEl.dataset.sig === sig) return;
   if (!fillVoices && [].some.call(listEl.querySelectorAll('video'), function (v) { return !v.paused && !v.ended; })) return;
   listEl.dataset.sig = sig;
-  var lbl = { queued: '⏳ En attente…', recording: '🎬 En cours de fabrication…', done: '✅ Prête', error: '❌ Erreur' };
+  var lbl = { queued: '⏳ En attente…', recording: '🎬 En cours de fabrication…', done: '✅ Prête', error: '❌ Erreur', cancelled: '⏹ Arrêtée' };
+  var busy = d.tutos.some(function (t) { var s = d.status[t.id]; return s && (s.state === 'queued' || s.state === 'recording'); });
+  var stopBtn = document.getElementById('btn-tuto-stop'); if (stopBtn) stopBtn.style.display = busy ? '' : 'none';
   listEl.innerHTML = d.tutos.map(function (t) {
     var m = d.manifest[t.id], st = d.status[t.id];
     return '<div style="border:1px solid #1f2a44;border-radius:12px;padding:12px;margin-bottom:10px">'
@@ -430,6 +433,15 @@ function tutoBar(st) {
   var note = st.state === 'queued' ? (mins >= 3 ? ' · depuis ' + mins + ' min (GitHub est parfois lent à démarrer)' : '') : '';
   return '<div style="margin-top:8px"><div style="height:8px;border-radius:99px;background:#1f2a44;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width .6s"></div></div>'
     + '<div class="sub" style="margin-top:4px;display:flex;justify-content:space-between"><span>' + esc(st.step || '') + note + '</span><span>' + pct + ' %</span></div></div>';
+}
+async function stopAllTutos(btn) {
+  if (!confirm('Arrêter toutes les fabrications de tutoriels en cours ou en attente ?')) return;
+  btn.disabled = true; var l = btn.textContent; btn.textContent = 'Arrêt…';
+  try { var r = await api('POST', { action: 'tuto-cancel' }); tutoMsg('⏹ ' + r.cancelled + ' fabrication' + (r.cancelled > 1 ? 's' : '') + ' arrêtée' + (r.cancelled > 1 ? 's' : '') + ' sur GitHub.', 'ok'); }
+  catch (e) { tutoMsg(e.message, 'err'); }
+  btn.disabled = false; btn.textContent = l;
+  var le = document.getElementById('tuto-list'); if (le) le.dataset.sig = '';
+  renderTutos(false);
 }
 var TUTO_AUDIO = null;
 async function listenTutoVoice() {

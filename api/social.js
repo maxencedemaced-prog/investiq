@@ -16,7 +16,7 @@
 // La clé Anthropic et la clé service Supabase ne quittent jamais le serveur.
 
 import { createClient } from '@supabase/supabase-js';
-import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow } from './_reel.js';
+import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns } from './_reel.js';
 import { TUTOS } from './_tuto.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
@@ -691,6 +691,22 @@ export default async function handler(req, res) {
       await Promise.all(Object.keys(TUTOS).map(async id => { try { const { data } = await sb.storage.from('social').download('tuto/status/' + id + '.json'); if (data) status[id] = JSON.parse(await data.text()); } catch (e) {} }));
       const voices = await tutoVoices();
       return res.status(200).json({ tutos: Object.entries(TUTOS).map(([id, t]) => ({ id, title: t.title, page: t.page, beats: t.beats.map(x => x.say) })), manifest, status, voices: voices.map(v => v.name), eleven: voices.some(v => v.id) });
+    }
+    // Arrêt général : annule toutes les fabrications de tutoriels en attente ou en cours
+    if (b.action === 'tuto-cancel') {
+      const cancelled = await cancelWorkflowRuns('tuto.yml');
+      let marked = 0;
+      await Promise.all(Object.keys(TUTOS).map(async id => {
+        try {
+          const { data } = await sb.storage.from('social').download('tuto/status/' + id + '.json');
+          const st = data ? JSON.parse(await data.text()) : null;
+          if (st && (st.state === 'queued' || st.state === 'recording')) {
+            await sb.storage.from('social').upload('tuto/status/' + id + '.json', Buffer.from(JSON.stringify({ state: 'cancelled', step: 'Arrêtée', at: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+            marked++;
+          }
+        } catch (e) {}
+      }));
+      return res.status(200).json({ cancelled, marked });
     }
     // Écoute d'essai d'une voix (phrase courte, rien n'est enregistré)
     if (b.action === 'tuto-voice-preview') {
