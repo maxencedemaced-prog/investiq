@@ -5997,6 +5997,7 @@ async function initApp(user) {
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   try { kpApplyMainPlatform(true); } catch (e) {}
   setTimeout(() => showOnboarding(), 500);
+  try { kpUpdateNewsDot(); setTimeout(() => kpMaybeWhatsNew(0), 5000); } catch (e) {}
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
   setTimeout(() => showPriceTicker(), 1000); // show immediately from stored prices
@@ -8606,6 +8607,58 @@ function showLevelChooser(fromSettings) {
   </div>`;
   document.body.appendChild(o);
 }
+
+// ═══ NOUVEAUTÉS : message unique pour les utilisateurs déjà inscrits (pas pour les nouveaux arrivants), à rouvrir depuis le menu ═══
+const KP_NEWS_ID = '2026-10-06';
+const KP_NEWS_RELEASE = Date.parse('2026-10-06T11:30:00Z');   // un compte créé après cette date démarre directement avec la dernière version
+function kpNewsKey() { try { return 'kp_news_seen_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch (e) { return 'kp_news_seen_anon'; } }
+function kpNewsSeen() {
+  try { if (localStorage.getItem(kpNewsKey()) === KP_NEWS_ID) return true; } catch (e) {}
+  try { const m = currentUser && currentUser.user_metadata && currentUser.user_metadata.news_seen; if (m === KP_NEWS_ID) return true; } catch (e) {}
+  return false;
+}
+function kpMarkNewsSeen() {
+  try { localStorage.setItem(kpNewsKey(), KP_NEWS_ID); } catch (e) {}
+  try { if (typeof isDemo !== 'undefined' && !isDemo && currentUser && typeof sb !== 'undefined') { currentUser.user_metadata = Object.assign({}, currentUser.user_metadata || {}, { news_seen: KP_NEWS_ID }); sb.auth.updateUser({ data: { news_seen: KP_NEWS_ID } }).catch(() => {}); } } catch (e) {}
+  const dot = document.getElementById('nav-news-dot'); if (dot) dot.style.display = 'none';
+  try { updateMenuDot(); } catch (e) {}
+}
+function kpShowWhatsNew(manual) {
+  document.getElementById('kp-news-modal')?.remove();
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.65)' : '#52525b', bord = dark ? 'rgba(255,255,255,0.12)' : '#e4e4e7', soft = dark ? 'rgba(255,255,255,0.05)' : '#f4f4f5';
+  const item = (icon, title, body) => '<div style="display:flex;gap:12px;padding:12px;border-radius:14px;background:' + soft + ';margin-bottom:9px"><div style="font-size:22px;line-height:1.2;flex-shrink:0">' + icon + '</div><div><div style="font-size:14px;font-weight:800;color:' + txt + ';margin-bottom:2px">' + title + '</div><div style="font-size:12.5px;color:' + sub + ';line-height:1.5">' + body + '</div></div></div>';
+  const o = document.createElement('div');
+  o.id = 'kp-news-modal';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10056;display:flex;align-items:center;justify-content:center;padding:18px';
+  o.onclick = e => { if (e.target === o) kpCloseWhatsNew(); };
+  o.innerHTML = '<div role="dialog" aria-label="Nouveautés Kapitaro" style="background:' + surf + ';width:100%;max-width:460px;border-radius:22px;padding:22px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:20px;font-weight:900;color:' + txt + '">✨ Nouveautés Kapitaro</div><button type="button" onclick="kpCloseWhatsNew()" aria-label="Fermer" style="background:none;border:none;color:' + sub + ';font-size:22px;cursor:pointer;line-height:1">✕</button></div>'
+    + '<div style="font-size:13px;color:' + sub + ';margin-bottom:14px;line-height:1.5">Voici ce qui change dans l’appli.</div>'
+    + item('🪙', 'Cryptos, devises et matières premières', 'Ajoute-les depuis « Ajouter », avec des onglets par catégorie. <b>Cryptos et devises : suivi du cours seulement</b>, sans analyse. <b>Matières premières</b> : or, argent, platine, pétrole, gaz, cuivre (en direct ou via des ETC), avec analyse et un nouvel onglet dans Actualités.')
+    + item('🔎', 'Des analyses sur données réelles', 'Plans, signaux et conseils s’appuient désormais sur les vrais cours, la tendance du marché et les actualités des entreprises.')
+    + item('⚡', 'Plan du mois : « Tout ajouter »', 'Ajoute toutes les lignes du plan en un clic (les lignes que tu détiens déjà sont renforcées). Tes plans sont enregistrés sur ton compte, identiques sur tous tes appareils.')
+    + item('🎚️', 'Règle ton niveau', 'Débutant, curieux, initié ou confirmé : l’appli adapte ses outils. Les Actualités (avec les matières premières) apparaissent dès le niveau 2.')
+    + '<div style="display:flex;gap:8px;margin-top:14px"><button type="button" onclick="kpCloseWhatsNew();showLevelChooser(true)" style="flex:1;padding:12px;border-radius:12px;border:1px solid ' + bord + ';background:transparent;color:' + txt + ';font:inherit;font-size:13px;font-weight:800;cursor:pointer">🎚️ Régler mon niveau</button><button type="button" onclick="kpCloseWhatsNew()" style="flex:1;padding:12px;border-radius:12px;border:none;background:#16a34a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">Compris</button></div>'
+    + '</div>';
+  document.body.appendChild(o);
+  kpMarkNewsSeen();
+}
+function kpCloseWhatsNew() { document.getElementById('kp-news-modal')?.remove(); }
+// À l'arrivée : seulement pour les comptes créés avant cette version ; jamais pendant un autre écran (tutoriel, niveau, conditions…)
+function kpMaybeWhatsNew(tries) {
+  try {
+    if (typeof isDemo !== 'undefined' && isDemo) return;
+    if (!currentUser || kpNewsSeen()) return;
+    const created = Date.parse(currentUser.created_at || '');
+    if (created && created >= KP_NEWS_RELEASE) { kpMarkNewsSeen(); return; }   // nouvel arrivant : pas de message, il découvre la version actuelle
+    const ob = document.getElementById('onboarding-modal');
+    const busy = (ob && ob.style.display === 'flex') || document.getElementById('kp-level-modal') || document.getElementById('legal-accept') || document.getElementById('pr-modal') || document.getElementById('kp-news-modal');
+    if (busy) { if ((tries || 0) < 6) setTimeout(() => kpMaybeWhatsNew((tries || 0) + 1), 10000); return; }
+    kpShowWhatsNew(false);
+  } catch (e) {}
+}
+function kpUpdateNewsDot() { const dot = document.getElementById('nav-news-dot'); if (dot) dot.style.display = kpNewsSeen() ? 'none' : 'inline-block'; }
 
 // Demande le niveau une seule fois, à l'arrivée (sauf pendant l'onboarding objectif).
 function maybeAskLevel() {
