@@ -79,6 +79,7 @@
     <button class="tab" data-f="published" onclick="setFilter('published')">Publiés</button>
     <button class="tab" data-f="calendar" onclick="setFilter('calendar')">📅 Planning</button>
     <button class="tab" data-f="ads" onclick="setFilter('ads')">🎯 Vidéos pub</button>
+    <button class="tab" onclick="openTutos()">🎓 Tutoriels</button>
   </div>
   <div id="list"><div class="empty">Chargement…</div></div>
 </div>
@@ -93,6 +94,15 @@
     <button class="btn" onclick="downloadVideo()">⬇ Télécharger</button>
     <button class="btn primary" id="btn-video-use" onclick="useVideo(this)">📤 Publier en Reel (Instagram, Facebook)</button>
   </div>
+</dialog>
+
+<dialog id="dlg-tuto" style="max-width:520px;width:94vw">
+  <h3 style="margin:0 0 6px">🎓 Vidéos tutoriels de l'appli</h3>
+  <p class="sub" style="margin:0 0 12px">La voix lit le texte, puis l'appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l'appli.</p>
+  <label>Voix</label>
+  <select id="tuto-voice" style="width:100%;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px;margin-bottom:12px"></select>
+  <div id="tuto-list"><div class="empty">Chargement…</div></div>
+  <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeTutos()">Fermer</button></div>
 </dialog>
 
 <dialog id="dlg-reel" style="max-width:440px">
@@ -373,6 +383,42 @@ async function useVideo(btn) {
     render();
   } catch (e) { toast(e.message || 'Envoi impossible', 7000); }
   btn.disabled = false; btn.textContent = '📤 Publier en Reel (Instagram, Facebook)';
+}
+
+// ── Vidéos tutoriels (api/_tuto.mjs → voix → tuto/record.mjs sur GitHub Actions) ──
+var TUTO_TIMER = null;
+async function openTutos() {
+  document.getElementById('dlg-tuto').showModal();
+  await renderTutos(true);
+  clearInterval(TUTO_TIMER); TUTO_TIMER = setInterval(function () { renderTutos(false); }, 15000);
+}
+function closeTutos() { clearInterval(TUTO_TIMER); document.getElementById('dlg-tuto').close(); }
+async function renderTutos(fillVoices) {
+  var d; try { d = await api('POST', { action: 'tuto-list' }); } catch (e) { document.getElementById('tuto-list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  if (fillVoices) {
+    var sel = document.getElementById('tuto-voice');
+    sel.innerHTML = d.voices.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('');
+    if (!d.eleven) sel.insertAdjacentHTML('afterend', '<p class="sub" style="color:#fca5a5;margin:-6px 0 10px">Voix ElevenLabs indisponible : vérifie la clé dans Vercel.</p>');
+  }
+  var lbl = { recording: '⏳ En cours de fabrication…', done: '✅ Prête', error: '❌ Erreur' };
+  document.getElementById('tuto-list').innerHTML = d.tutos.map(function (t) {
+    var m = d.manifest[t.id], st = d.status[t.id];
+    return '<div style="border:1px solid #1f2a44;border-radius:12px;padding:12px;margin-bottom:10px">'
+      + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + esc(t.title) + '</b><span class="sub">' + (st ? lbl[st.state] || esc(st.state) : (m ? '✅ Prête' : 'Pas encore fabriquée')) + '</span></div>'
+      + (st && st.state === 'error' ? '<p class="sub" style="color:#fca5a5;margin:6px 0 0">' + esc(st.error || '') + '</p>' : '')
+      + '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Texte de la voix (' + t.beats.length + ' scènes)</summary><ol class="sub" style="margin:6px 0 0 18px;padding:0">' + t.beats.map(function (x) { return '<li style="margin-bottom:3px">' + esc(x) + '</li>'; }).join('') + '</ol></details>'
+      + (m ? '<video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:8px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' : '')
+      + '<div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn primary" onclick="makeTuto(\'' + t.id + '\', this)">' + (m ? '↻ Refaire la vidéo' : '🎬 Fabriquer la vidéo') + '</button></div></div>';
+  }).join('');
+}
+async function makeTuto(id, btn) {
+  btn.disabled = true; var l = btn.textContent; btn.textContent = 'Voix en préparation (≈ 30 s)…';
+  try {
+    var r = await api('POST', { action: 'tuto-create', id: id, voice: document.getElementById('tuto-voice').value });
+    toast('🎙 Voix prête (' + r.voice + ', ' + r.duration + ' s). Enregistrement de l’appli lancé : ≈ 4 min.', 7000);
+  } catch (e) { toast(e.message, 8000); }
+  btn.disabled = false; btn.textContent = l;
+  renderTutos(false);
 }
 
 // ── Vidéo animée (script IA + voix off + rendu sur GitHub Actions, voir api/_reel.js) ──

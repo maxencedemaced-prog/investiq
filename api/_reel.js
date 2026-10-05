@@ -269,4 +269,19 @@ export async function dispatchRender(id) {
   if (r.status !== 204) throw new Error(`GitHub a refusé le lancement (${r.status}) : ${(await r.text()).slice(0, 160)}`);
 }
 
+// Lance un autre workflow GitHub (ex. tuto.yml) sur la branche de ce déploiement
+export async function dispatchWorkflow(file, inputs) {
+  const token = process.env.GITHUB_DISPATCH_TOKEN;
+  if (!token) throw new Error('Fabrication non branchée : ajoute GITHUB_DISPATCH_TOKEN dans Vercel');
+  const repo = process.env.GITHUB_REPO || 'maxencedemaced-prog/investiq';
+  const ref = process.env.VERCEL_GIT_COMMIT_REF || 'main';
+  const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${file}/dispatches`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'kapitaro-studio', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ref, inputs }),
+  });
+  if (r.status !== 204) throw new Error(`GitHub a refusé le lancement (${r.status}) : ${(await r.text()).slice(0, 160)}`);
+  return ref;
+}
+
 export { EDGE_VOICES };
