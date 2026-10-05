@@ -686,7 +686,7 @@ function kpChartMount(host, ticker, name, opts) {
     + '<div id="kpc-canvas" style="width:100%;height:' + h + 'px;position:relative"><div id="kpc-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Chargement du graphique…</div></div>'
     + '<div id="kpc-foot" style="font-size:10.5px;color:' + C.sub + ';margin-top:6px;line-height:1.5"></div></div>';
   const $ = id => host.querySelector('#' + id);
-  let chart = null, ro = null, live = null, timer = null;
+  let chart = null, ro = null, live = null, timer = null, ws = null;
 
   const bar = () => {
     $('kpc-bar').innerHTML = KP_CHART_RANGES.map(([k, l]) => '<button type="button" data-r="' + k + '" style="' + chipCss(st.range === k) + '">' + l + '</button>').join('')
@@ -748,7 +748,7 @@ function kpChartMount(host, ticker, name, opts) {
       }
       chart.timeScale().fitContent();
       const last = pts[pts.length - 1], first = pts[0], chg = (last.c / first.o - 1) * 100;
-      live = { series: main, last: { ...last }, first, sym };
+      live = Object.assign(live && live.ws ? { ws: true, wsAt: live.wsAt } : {}, { series: main, last: { ...last }, first, sym, step: data.interval === '30m' ? 1800 : 0, age: null });
       $('kpc-price').textContent = fmtP(last.c) + sym;
       const ce = $('kpc-chg'); ce.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace('.', ',') + ' % sur la période'; ce.style.color = chg >= 0 ? '#16a34a' : '#dc2626';
       chart.subscribeCrosshairMove(param => {
@@ -759,33 +759,69 @@ function kpChartMount(host, ticker, name, opts) {
       });
       if (window.ResizeObserver) { ro = new ResizeObserver(() => { try { chart.applyOptions({ width: cv.clientWidth }); } catch (e) {} }); ro.observe(cv); }
       $('kpc-foot').innerHTML = (maNote.length ? maNote.join(' · ') + '. ' : '') + 'Cours en ' + (cur || 'devise locale') + (data.interval === '1d' ? ', une bougie par jour' : data.interval === '1wk' ? ', une bougie par semaine' : data.interval === '1mo' ? ', une bougie par mois' : '') + '.' + pruNote
-        + ' Information uniquement, ni conseil ni signal : les performances passées ne préjugent pas des performances futures. Graphique : <a href="https://www.tradingview.com/" target="_blank" rel="noopener" style="color:inherit">TradingView Lightweight Charts™</a>';
+        + ' Information uniquement, ni conseil ni signal : les performances passées ne préjugent pas des performances futures.';
     } catch (e) {
       const cv = $('kpc-canvas'); if (cv) cv.innerHTML = '<div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Le graphique n’a pas pu être chargé.<button type="button" id="kpc-retry" style="' + chipCss(true) + '">Réessayer</button></div>';
       const rb = $('kpc-retry'); if (rb) rb.onclick = () => { cv.innerHTML = ''; draw(); };
     }
   }
-  // Mise à jour en direct : toutes les 20 s tant que le graphique est affiché, la dernière bougie suit le cours du moment
+  // ── EN DIRECT ──
+  // Actions US, cryptos, devises : cours en temps réel (rafraîchi toutes les 3 s ; cryptos en euros : flux continu de la bourse Binance).
+  // Actions européennes : les sources gratuites ont environ 15 min de retard (règle des bourses) : le graphique l'indique.
+  const badge = () => {
+    const le = $('kpc-live'); if (!le || !live) return;
+    const wsOn = live.ws && Date.now() - (live.wsAt || 0) < 8000;
+    if (wsOn || (live.age != null && live.age <= 2)) { le.textContent = '● En direct'; le.style.color = '#16a34a'; return; }
+    if (live.age == null) { le.textContent = ''; return; }
+    if (live.age > 40) { le.textContent = '◔ Marché fermé · dernier cours à ' + new Date(live.ts * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+    else { le.textContent = '◔ Cours différé d’environ ' + live.age + ' min (règle de la bourse)'; }
+    le.style.color = C.sub;
+  };
+  const applyLive = (p, tsSec) => {
+    if (!live || !p || !isFinite(p)) return;
+    let L = live.last;
+    if (Math.abs(p / L.c - 1) > 0.05) return;   // autre devise ou donnée incohérente : on ne touche pas au graphique
+    const nt = live.step && tsSec ? Math.floor(tsSec / live.step) * live.step : 0;
+    if (nt > L.t) { L = live.last = { t: nt, o: p, h: p, l: p, c: p }; }   // nouvelle bougie (graphique de la semaine)
+    else { L.h = Math.max(L.h, p); L.l = Math.min(L.l, p); L.c = p; }
+    try { live.series.update(st.type === 'candle' ? { time: L.t, open: L.o, high: L.h, low: L.l, close: L.c } : { time: L.t, value: L.c }); } catch (e) { return; }
+    const pe = $('kpc-price'); if (pe) pe.textContent = fmtP(p) + live.sym;
+    const ce = $('kpc-chg'); if (ce) { const chg = (p / live.first.o - 1) * 100; ce.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace('.', ',') + ' % sur la période'; ce.style.color = chg >= 0 ? '#16a34a' : '#dc2626'; }
+  };
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } if (ws) { try { ws.close(); } catch (e) {} ws = null; } };
   const tick = async () => {
-    if (!document.body.contains(host)) { clearInterval(timer); timer = null; return; }
+    if (!document.body.contains(host)) { stop(); return; }
     if (document.hidden || !live) return;
     try {
-      const r = await fetch('/api/prices?symbols=' + encodeURIComponent(symbol));
-      const d = await r.json();
-      const q = d && d.quotes && d.quotes[0];
-      const p = q ? Number(q.price) : 0;
-      if (!p || !isFinite(p)) return;
-      const lc = live.last;
-      if (Math.abs(p / lc.c - 1) > 0.05) return;   // autre devise ou donnée incohérente : on ne touche pas au graphique
-      lc.h = Math.max(lc.h, p); lc.l = Math.min(lc.l, p); const moved = lc.c !== p; lc.c = p;
-      live.series.update(st.type === 'candle' ? { time: lc.t, open: lc.o, high: lc.h, low: lc.l, close: p } : { time: lc.t, value: p });
-      const pe = $('kpc-price'); if (pe) pe.textContent = fmtP(p) + live.sym;
-      const ce = $('kpc-chg'); if (ce) { const chg = (p / live.first.o - 1) * 100; ce.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace('.', ',') + ' % sur la période'; ce.style.color = chg >= 0 ? '#16a34a' : '#dc2626'; }
-      const le = $('kpc-live'); if (le) { const t = new Date(); le.textContent = '● mis à jour ' + t.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + (moved ? '' : ' · cours inchangé'); }
+      const d = await (await fetch('/api/live?symbol=' + encodeURIComponent(symbol))).json();
+      if (d && d.price) {
+        live.age = d.ageMin; live.ts = d.ts;
+        if (!(live.ws && Date.now() - (live.wsAt || 0) < 5000)) applyLive(d.price, d.ts);
+        badge();
+      }
     } catch (e) {}
   };
-  timer = setInterval(tick, 20000);
-  bar(); draw();
+  // Cryptos en euros : flux continu (bourse Binance, public), repli automatique sur le rafraîchissement toutes les 3 s
+  const cm = /^([A-Z0-9]{2,10})-EUR$/.exec(symbol);
+  if (cm && 'WebSocket' in window) {
+    try {
+      const w = new WebSocket('wss://stream.binance.com:9443/ws/' + cm[1].toLowerCase() + 'eur@trade');
+      let pend = 0, pending = false;
+      w.onmessage = ev => {
+        try {
+          if (!document.body.contains(host)) { stop(); return; }   // graphique fermé : on coupe le flux tout de suite
+          const p = parseFloat(JSON.parse(ev.data).p);
+          if (!(p > 0)) return;
+          pend = p;
+          if (!pending) pending = !!setTimeout(() => { pending = false; if (live && pend && document.body.contains(host)) { live.ws = true; live.wsAt = Date.now(); applyLive(pend, Math.floor(Date.now() / 1000)); badge(); } }, 250);
+        } catch (e) {}
+      };
+      w.onerror = w.onclose = () => { if (live) live.ws = false; };
+      ws = w;
+    } catch (e) {}
+  }
+  timer = setInterval(tick, 3000);
+  bar(); draw().then(() => tick());
 }
 // Fenêtre plein écran sur mobile
 function openChart(ticker, name, pru) {
