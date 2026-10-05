@@ -832,6 +832,7 @@ function renderMonthlyPlan(plan, isNew) {
   const el = document.getElementById('obj-monthly-plan');
   if (!el) return;
   setTimeout(() => { try { renderNextPlanCard(false); } catch {} }, 0);   // la carte « prochain plan » passe à « ton plan du mois est affiché »
+  window._kpMonthlyPlan = plan;   // sert au bouton « Tout ajouter »
   const d = plan.data;
   const budget = plan.budget;
   const generated = new Date(plan.ts).toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
@@ -845,7 +846,7 @@ function renderMonthlyPlan(plan, isNew) {
         <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:7px;text-transform:capitalize">📅 ${monthLabel()}</span>
         <span style="font-size:14px;font-weight:900;color:#fff">Ton plan du mois</span>
       </div>
-      <button onclick="generateMonthlyPlan(true)" title="Régénérer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button>
+      <div style="display:flex;align-items:center;gap:6px"><button type="button" id="monthly-addall-btn" onclick="monthlyAddAll()" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:none;border-radius:9px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(22,163,74,0.3)">⚡ Tout ajouter</button><button onclick="generateMonthlyPlan(true)" title="Régénérer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button></div>
     </div>
 
     ${plan.changes ? `
@@ -11540,6 +11541,21 @@ function qaConfetti() {
 // Le bouton au-dessus des lignes du plan ajoute toutes les actions/ETF proposés,
 // aux montants de l'objectif, puis revient à l'objectif.
 // ═══════════════════════════════════════════════════════════════════════════
+// Plan du mois : « Tout ajouter ». Contrairement au plan de départ, les lignes déjà détenues sont RENFORCÉES (quantité ajoutée, prix de revient recalculé).
+function kpPlanLineType(ticker) {
+  const held = positions.find(p => String(p.name).toUpperCase() === String(ticker).toUpperCase());
+  if (held && held.type) return held.type;
+  if (String(ticker).toUpperCase() === '4GLD.DE') return 'Matière première';
+  if (PLAN_ETFS.some(e => e[0] === String(ticker).toUpperCase())) return 'ETF';
+  return 'Action';
+}
+function monthlyAddAll() {
+  const plan = window._kpMonthlyPlan || getCachedMonthlyPlan();
+  const lines = ((plan && plan.data && plan.data.lignes) || []).filter(l => l && l.ticker && Number(l.montant) > 0)
+    .map(l => ({ ticker: l.ticker, name: l.name, type: kpPlanLineType(l.ticker), montant: Number(l.montant) }));
+  if (!lines.length) { showToast('Aucune ligne dans le plan du mois'); return; }
+  openPlanReview(lines, { merge: true, label: 'Plan du mois' });
+}
 async function addAllPlanFromObjectif(btn) {
   const lines = (window._kpPlanLines || []).filter(l => l && l.ticker && l.montant > 0);
   if (!lines.length) { showToast('Aucune ligne de plan à ajouter pour le moment'); return; }
@@ -11566,7 +11582,8 @@ async function kpFindPlanPrice(l) {
   } catch (e) {}
   return 0;
 }
-function openPlanReview(lines) {
+function openPlanReview(lines, opts) {
+  window._prOpts = opts || null;
   document.getElementById('pr-modal')?.remove();
   window._prLines = lines.map(l => ({ ticker: l.ticker, name: l.name, type: l.type || 'ETF', montant: l.montant, price: 0, optional: !!l.optional }));
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -11661,12 +11678,23 @@ async function prConfirm(btn, openAfter) {
       const qty = Math.round((amt / price) * 1e8) / 1e8;
       if (qty <= 0) { skipped++; continue; }
       const existing = positions.find(p => (p.name || '').toUpperCase() === l.ticker.toUpperCase());
-      if (existing) { skipped++; continue; }
+      if (existing) {
+        if (!(window._prOpts && window._prOpts.merge)) { skipped++; continue; }
+        const tq = existing.qty + qty;
+        const newPru = (existing.qty * existing.pru + qty * price) / tq;
+        existing.qty = Math.round(tq * 1e8) / 1e8; existing.pru = Math.round(newPru * 100) / 100; existing.price = price;
+        if (typeof isDemo !== 'undefined' && isDemo) { added++; }
+        else if (currentUser) {
+          const { error } = await sb.from('positions').update({ qty: existing.qty, pru: existing.pru, price: existing.price }).eq('id', existing.id);
+          if (!error) { added++; try { await addTransaction(l.ticker, 'achat', qty, price, window._prOpts.label || 'Plan du mois'); } catch {} } else { skipped++; }
+        } else { added++; }
+        continue;
+      }
       const pos = { name: l.ticker, qty, pru: Math.round(price * 100) / 100, price: price, type: l.type || 'ETF', sector: '', platform, alert_price: null };
       if (typeof isDemo !== 'undefined' && isDemo) { positions.push({ id: 'd' + Date.now() + '_' + i, ...pos }); added++; }
       else if (currentUser) {
         const { data, error } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
-        if (!error && data) { positions.push(data); added++; try { await addTransaction(l.ticker, 'achat', qty, l.price, 'Plan de l\'objectif'); } catch {} }
+        if (!error && data) { positions.push(data); added++; try { await addTransaction(l.ticker, 'achat', qty, l.price, ((window._prOpts && window._prOpts.label) || 'Plan de l\'objectif')); } catch {} }
         else { skipped++; }
       } else { positions.push({ id: 'local_' + Date.now() + '_' + i, ...pos }); added++; }
     }
