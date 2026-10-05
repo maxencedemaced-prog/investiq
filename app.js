@@ -9515,7 +9515,7 @@ function renderPortfolio(auto=false) {
           <div style="font-size:10px;color:${chgColor}">${chg>=0?'+':''}${chg.toFixed(2).replace(".", ",")} % auj.</div>
         </div>
         <!-- Sparkline -->
-        <div style="display:flex;align-items:center">${miniSparkline(chg>0?1:-1, pnl>=0?'#3fb950':'#f87171')}</div>
+        <div class="kp-row-spark" role="button" tabindex="0" title="Voir le graphique" aria-label="Ouvrir le graphique de ${jsArg(displayName(p.name) || p.name)}" onclick="event.stopPropagation();openChart('${jsArg(p.name)}','${jsArg(displayName(p.name) || p.name)}',${Number(p.pru) || 0})" onkeydown="if(event.key==='Enter'){event.stopPropagation();this.click()}" style="display:flex;align-items:center;cursor:pointer">${miniSparkline(chg>0?1:-1, pnl>=0?'#3fb950':'#f87171')}</div>
         <!-- Menu -->
         <div style="display:flex;align-items:center;justify-content:center">
           <button onclick="event.stopPropagation();showPosMenu('${p.id}', event)" style="background:none;border:none;cursor:pointer;color:${subCol};font-size:16px;padding:4px;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='rgba(128,128,128,0.1)'" onmouseout="this.style.background='none'">⋯</button>
@@ -11445,11 +11445,19 @@ function kpTour(steps, key) {
 
 function showPortfolioTour() {
   if (document.getElementById('tab-hint')) { showPortfolioTour._w = (showPortfolioTour._w || 0) + 1; if (showPortfolioTour._w < 40) setTimeout(showPortfolioTour, 500); return; }
+  const chartStep = { sel: '.kp-row-spark', legend: 'Appuie sur un mini-graphique pour ouvrir le graphique complet' };
+  let firstTime = true; try { firstTime = !localStorage.getItem('kp_hint_tour_portfolio'); } catch (e) {}
+  if (!firstTime) {   // l'ancienne visite a déjà été vue : on ne montre que la nouveauté, une seule fois
+    setTimeout(() => { try { if (!document.getElementById('kp-tour')) kpTour([chartStep], 'tour_chart'); } catch (e) {} }, 900);
+    return;
+  }
+  try { localStorage.setItem('kp_hint_tour_chart', '1'); } catch (e) {}   // intégrée à la visite complète
   kpTour([
     { sel: '#port-add-btn', legend: 'Ajoute une action ou un ETF à ton portefeuille' },
     { sel: '#btn-import-pos', legend: 'Importe ton relevé de courtier (PDF, Excel ou CSV)' },
     { sel: '#btn-prix-live', legend: 'Mets à jour les prix en direct' },
     { sel: '#btn-select-mode', legend: 'Sélectionne plusieurs lignes pour les gérer ensemble' },
+    chartStep,
   ], 'tour_portfolio');
 }
 
