@@ -1,0 +1,36 @@
+# Vidéo tutoriel : lancée depuis le Studio (action « tuto-create » de api/social.js, après la voix off ElevenLabs).
+# Enregistre l'appli de cette branche en mode démo (Playwright, format téléphone), ajoute la voix, envoie le MP4 dans le stockage Supabase.
+# Secrets GitHub utilisés : SUPABASE_URL, SUPABASE_SERVICE_KEY, APP_URL (déjà présents pour les Reels).
+name: Vidéo tutoriel
+on:
+  workflow_dispatch:
+    inputs:
+      tuto_id:
+        description: Identifiant du tutoriel (api/_tuto.mjs)
+        required: true
+concurrency:
+  group: tuto-${{ inputs.tuto_id }}
+  cancel-in-progress: true
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tuto
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Polices (emojis) et ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji fonts-dejavu ffmpeg
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Enregistrement de la vidéo
+        env:
+          TUTO_ID: ${{ inputs.tuto_id }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: node record.mjs

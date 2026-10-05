@@ -16,7 +16,8 @@
 // La clé Anthropic et la clé service Supabase ne quittent jamais le serveur.
 
 import { createClient } from '@supabase/supabase-js';
-import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender } from './_reel.js';
+import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow } from './_reel.js';
+import { TUTOS } from './_tuto.mjs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.supabase.co';
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || 'sb_publishable_3_8eb6YbCfJ04Qihdy9ivw_NsQ4H_cu';
@@ -664,6 +665,28 @@ export default async function handler(req, res) {
       if (error) throw error;
       const { data: pub } = sb.storage.from('social').getPublicUrl(path);
       return res.status(200).json({ path, token: data.token, publicUrl: pub.publicUrl });
+    }
+    // ── Vidéos tutoriels (enregistrement de l'appli en mode démo, voir api/_tuto.mjs et tuto/record.mjs) ──
+    if (b.action === 'tuto-list') {
+      let manifest = {}, status = {};
+      try { const { data } = await sb.storage.from('social').download('tuto/manifest.json'); if (data) manifest = JSON.parse(await data.text()); } catch (e) {}
+      try { const { data } = await sb.storage.from('social').download('tuto/status.json'); if (data) status = JSON.parse(await data.text()); } catch (e) {}
+      const voices = await reelVoices();
+      return res.status(200).json({ tutos: Object.entries(TUTOS).map(([id, t]) => ({ id, title: t.title, page: t.page, beats: t.beats.map(x => x.say) })), manifest, status, voices: voices.map(v => v.name), eleven: voices.some(v => v.id) });
+    }
+    if (b.action === 'tuto-create') {
+      const t = TUTOS[b.id];
+      if (!t) return res.status(400).json({ error: 'Tutoriel inconnu' });
+      const voices = (await reelVoices()).filter(v => v.id);
+      if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
+      const voice = voices[Math.max(0, Math.min(voices.length - 1, parseInt(b.voice, 10) || 0))];
+      const beats = t.beats.map(x => ({ say: x.say }));
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: 'tuto/' + b.id, speed: 1.0 });
+      const timing = { id: b.id, title: t.title, page: t.page || null, voice: voice.name, at: new Date().toISOString(), segments, beats: beats.map((x, i) => ({ say: x.say, start: x.start, end: x.end, words: x.words, do: t.beats[i].do || [] })) };
+      const up = await sb.storage.from('social').upload('tuto/' + b.id + '/timing.json', Buffer.from(JSON.stringify(timing)), { contentType: 'application/json', upsert: true });
+      if (up.error) throw up.error;
+      const ref = await dispatchWorkflow('tuto.yml', { tuto_id: b.id });
+      return res.status(200).json({ ok: true, ref, voice: voice.name, duration: Math.round((beats[beats.length - 1].end || 0) * 10) / 10 });
     }
     // ── Vidéos animées (Reels) ──
     if (b.action === 'reel-config') return res.status(200).json(await reelConfig());

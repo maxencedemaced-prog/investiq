@@ -6283,7 +6283,7 @@ async function initApp(user) {
   }
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
   try { kpApplyMainPlatform(true); } catch (e) {}
-  setTimeout(() => showOnboarding(), 500);
+  setTimeout(() => kpMaybePresentation(), 500);
   try { kpUpdateNewsDot(); setTimeout(() => kpMaybeWhatsNew(0), 5000); } catch (e) {}
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
@@ -8897,6 +8897,59 @@ function showLevelChooser(fromSettings) {
   document.body.appendChild(o);
 }
 
+// ═══ VIDÉOS TUTORIELS (fabriquées depuis le Studio : api/_tuto.mjs → tuto/record.mjs) ═══
+const KP_TUTO_BASE = 'https://soyyznyceqzimhoaffaw.supabase.co/storage/v1/object/public/social/tuto/';
+let _kpTutoManifest = null, _kpTutoAt = 0;
+async function kpTutoManifest() {
+  if (_kpTutoManifest && Date.now() - _kpTutoAt < 10 * 60 * 1000) return _kpTutoManifest;
+  try { const r = await fetch(KP_TUTO_BASE + 'manifest.json?t=' + Math.floor(Date.now() / 600000)); _kpTutoManifest = r.ok ? await r.json() : (_kpTutoManifest || {}); }
+  catch (e) { _kpTutoManifest = _kpTutoManifest || {}; }
+  _kpTutoAt = Date.now();
+  return _kpTutoManifest;
+}
+function kpTutoSeenKey(id) { try { return 'kp_tuto_seen_' + id + '_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch (e) { return 'kp_tuto_seen_' + id; } }
+// opts : { auto (lancée seule : démarre sans le son), skippable (bouton « Passer »), onDone }
+async function kpOpenTuto(id, opts) {
+  opts = opts || {};
+  const m = await kpTutoManifest();
+  const v = m && m[id];
+  if (!v || !v.url) { if (!opts.auto) showToast('Vidéo bientôt disponible'); if (opts.onDone) opts.onDone(); return; }
+  document.getElementById('kp-tuto-modal')?.remove();
+  let done = false;
+  const finish = () => { if (done) return; done = true; const o = document.getElementById('kp-tuto-modal'); if (o) { const vd = o.querySelector('video'); try { vd.pause(); } catch (e) {} o.remove(); } try { localStorage.setItem(kpTutoSeenKey(id), '1'); } catch (e) {} if (opts.onDone) setTimeout(opts.onDone, 200); };
+  const o = document.createElement('div');
+  o.id = 'kp-tuto-modal';
+  o.style.cssText = 'position:fixed;inset:0;z-index:10060;background:rgba(5,8,15,0.88);display:flex;align-items:center;justify-content:center;padding:14px';
+  o.innerHTML = '<div style="position:relative;width:min(100%,calc(86vh * 0.4615));max-width:420px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#fff"><div style="font-size:15px;font-weight:800">🎬 ' + _escHtml(v.title || 'Kapitaro') + '</div>'
+    + (opts.skippable ? '<button type="button" id="kp-tuto-skip" style="padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.08);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">Passer ›</button>' : '<button type="button" id="kp-tuto-skip" aria-label="Fermer" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1">✕</button>')
+    + '</div>'
+    + '<div style="position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:390/844;box-shadow:0 20px 60px rgba(0,0,0,0.5)">'
+    + '<video playsinline controls preload="auto" poster="' + _escHtml(v.poster || '') + '" src="' + _escHtml(v.url) + '" style="width:100%;height:100%;display:block;object-fit:contain"></video>'
+    + (opts.auto ? '<button type="button" id="kp-tuto-sound" style="position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 14px;border-radius:999px;border:none;background:#16a34a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.35)">🔊 Activer le son</button>' : '')
+    + '</div></div>';
+  document.body.appendChild(o);
+  const vd = o.querySelector('video');
+  vd.muted = !!opts.auto;
+  vd.addEventListener('ended', finish);
+  o.querySelector('#kp-tuto-skip').onclick = finish;
+  const sb2 = o.querySelector('#kp-tuto-sound');
+  if (sb2) sb2.onclick = () => { vd.muted = false; try { vd.currentTime = 0; } catch (e) {} vd.play().catch(() => {}); sb2.remove(); };
+  vd.addEventListener('volumechange', () => { if (!vd.muted && sb2 && sb2.isConnected) sb2.remove(); });
+  vd.play().catch(() => { vd.muted = true; vd.play().catch(() => {}); });
+  try { trackEvent('tuto_open', { id, auto: !!opts.auto }); } catch (e) {}
+}
+// Première ouverture d'un nouveau compte : la présentation passe avant le tutoriel (on peut la passer)
+async function kpMaybePresentation() {
+  try {
+    const willOnboard = !localStorage.getItem(obKey()) && (isDemo || positions.length === 0);
+    if (!willOnboard || isDemo || localStorage.getItem(kpTutoSeenKey('presentation'))) return showOnboarding();
+    const m = await kpTutoManifest();
+    if (!m || !m.presentation) return showOnboarding();
+    kpOpenTuto('presentation', { auto: true, skippable: true, onDone: () => showOnboarding() });
+  } catch (e) { showOnboarding(); }
+}
+
 // ═══ NOUVEAUTÉS : liste datée + petit point sur « Nouveautés » (menu) et sur le bouton du menu quand il y a du nouveau ═══
 // Pour annoncer une nouveauté : ajouter une entrée EN HAUT de KP_NEWS (n = numéro suivant, at = heure de mise en ligne en UTC).
 // - un petit point s'allume pour les comptes créés AVANT cette heure, jusqu'à l'ouverture de « Nouveautés » ;
@@ -8981,7 +9034,7 @@ function kpMaybeWhatsNew(tries) {
     kpUpdateNewsDot();
     if (!un.some(e => e.popup)) return;
     const ob = document.getElementById('onboarding-modal');
-    const busy = (ob && ob.style.display === 'flex') || document.getElementById('kp-level-modal') || document.getElementById('legal-accept') || document.getElementById('pr-modal') || document.getElementById('kp-news-modal') || document.getElementById('kp-tour');
+    const busy = (ob && ob.style.display === 'flex') || document.getElementById('kp-level-modal') || document.getElementById('legal-accept') || document.getElementById('pr-modal') || document.getElementById('kp-news-modal') || document.getElementById('kp-tour') || document.getElementById('kp-tuto-modal');
     if (busy) { if ((tries || 0) < 6) setTimeout(() => kpMaybeWhatsNew((tries || 0) + 1), 10000); return; }
     kpShowWhatsNew(false);
   } catch (e) {}

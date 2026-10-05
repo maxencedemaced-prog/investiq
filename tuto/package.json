@@ -1,0 +1,10 @@
+{
+  "name": "kapitaro-tuto",
+  "private": true,
+  "type": "module",
+  "description": "Enregistrement automatique des vidéos tutoriels (Playwright + ffmpeg), lancé par .github/workflows/tuto.yml",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "playwright": "^1.48.0"
+  }
+}
