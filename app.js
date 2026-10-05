@@ -468,7 +468,7 @@ function planMarketText() {
 }
 function planNewsText(tickers) {
   const lines = [];
-  tickers.forEach(t => { const items = (_planCtx.news || {})[t]; if (items && items.length) lines.push(t + ' : ' + items.map(n => '« ' + n.title.replace(/[«»]/g, '') + ' » (' + (n.source || 'presse') + ', ' + kpAgoDays(n.ts) + ')').join(' ; ')); });
+  tickers.forEach(t => { const items = (_planCtx.news || {})[t]; if (items && items.length) lines.push(t + ' : ' + items.slice(0, 2).map(n => '« ' + n.title.replace(/[«»]/g, '').slice(0, 100) + ' » (' + (n.source || 'presse') + ', ' + kpAgoDays(n.ts) + ')').join(' ; ')); });
   return lines.length ? lines.join('\n') : 'Aucune actualité récupérée.';
 }
 const kpSigned = (n, suffix) => (n == null || !Number.isFinite(n)) ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '') + String(Math.abs(n)).replace('.', ',') + (suffix || ' %');
@@ -997,7 +997,9 @@ Utilise les tickers EXACTS des tableaux. Couleurs hex variées.`;
         { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Diversification maximale' },
         { ticker:'AGGH.AS',  name:'iShares Global Aggregate',   desc:'Obligations mondiales stables',      role:'satellite', type:'ETF Obligations', pct_capital:40, pct_mensuel:40, color:'#0ea5e9', pourquoi:'Stabilité et protection du capital' },
       ];
-  renderETFCards(fallback, document.getElementById('obj-etf-plan') || el, fallbackStocks(sizing.nbStocks));
+  // Plus de plan de secours « à l'aveugle » présenté comme une vraie analyse : on le dit et on propose de réessayer
+  try { localStorage.removeItem(cacheKey); } catch {}
+  (document.getElementById('obj-etf-plan') || el).innerHTML = '<div style="border:1px solid var(--color-border,#e4e4e7);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px"><span style="font-size:12px;color:var(--color-text-secondary,#71717a)">La répartition n’a pas pu être générée pour l’instant (analyse indisponible). Kapitaro ne propose pas de plan sans analyse : réessaie dans un instant.</span><button onclick="generateETFPlan()" style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:7px 13px;border-radius:9px;cursor:pointer;flex-shrink:0">Réessayer</button></div>';
 }
 
 // Combien d'actions différentes proposer : plus on investit en actions, plus on diversifie.
