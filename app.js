@@ -210,7 +210,7 @@ function applyObjData(d) {
     objStockPct = localAlloc.stock_pct;
     objGlide = localAlloc.glide || false;
   } else {
-    objStockPct = objRisk==='agressif'?60:objRisk==='prudent'?15:30;
+    objStockPct = kpDefaultStockPct(objRisk);
     objGlide = false;
   }
 }
@@ -255,7 +255,7 @@ function showValidatedChart() {
   document.getElementById('obj-results').style.display = 'block';
 
   const active = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
-  const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
+  const riskLabel = kpRiskLabel(objRisk);
   const color = active ? active.color : '#1a7f5a';
   // 1er mois = mois de validation de l'objectif (sans date connue, on ne réordonne pas)
   let objStartMonth = active && active.validated_at ? String(active.validated_at).slice(0,7) : null;
@@ -344,6 +344,10 @@ function showValidatedChart() {
 // ═══════════════════════════════════════════════════════════
 
 // Déduit le profil de risque à partir du % d'actions
+// Les 4 profils proposés au tutoriel. Avant, « dynamique » était traité comme « prudent » partout.
+const KP_RISK_LABELS = { prudent: 'Prudent', equilibre: 'Équilibré', dynamique: 'Dynamique', agressif: 'Agressif' };
+function kpRiskLabel(k) { return KP_RISK_LABELS[k] || 'Équilibré'; }
+function kpDefaultStockPct(k) { return k === 'agressif' ? 70 : k === 'dynamique' ? 55 : k === 'prudent' ? 15 : 30; }
 function riskFromStockPct(stockPct) {
   if (stockPct <= 15) return { key:'prudent',   label:'Prudent',   color:'#16a34a', rate:5, desc:'Capital protégé, croissance douce' };
   if (stockPct <= 40) return { key:'equilibre', label:'Équilibré', color:'#84cc16', rate:7, desc:'Bon compromis risque/rendement' };
@@ -699,7 +703,7 @@ async function generateMonthlyPlan(force = false) {
     const pnl = p.pru>0 ? ((p.price-p.pru)/p.pru*100).toFixed(1) : '0';
     return `${displayName(p.name)} (${p.name}) : ${(p.qty*p.price/tv*100||0).toFixed(0)}% du portef., P&L ${pnl>=0?'+':''}${pnl}%${planLineBlocked(p.name) ? ' — EFFONDRÉE, NE PAS RENFORCER' : ''}`;
   }).join('\n');
-  const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
+  const riskLabel = kpRiskLabel(objRisk);
 
   const prompt = `On est en ${monthLabel()}. L'utilisateur investit ${budget}€ ce mois-ci (profil ${riskLabel}, horizon ${objChartYears||10} ans).
 
@@ -735,7 +739,7 @@ ${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (o
 - INTERDIT : renforcer une ligne marquée "EFFONDRÉE" (perte de plus de 60 %) ; une ligne qui pèse peu parce qu'elle s'est effondrée n'est PAS sous-pondérée.
 - Choisis uniquement des grandes entreprises solides et liquides (grandes capitalisations) et de grands ETF UCITS. JAMAIS d'action à moins de 1 €, de "penny stock", de petite valeur spéculative ou d'entreprise en difficulté financière (redressement, liquidation).
 - La somme des montants "actions" doit représenter ~${objStockPct}% du budget, et les ETF ~${100-objStockPct}%.
-${objStockPct < 100 ? `POCHE ETF : UN SEUL ETF actions monde (MSCI World OU All-World, jamais les deux : ils se recoupent presque totalement). ${objRisk === 'agressif' ? '' : objRisk === 'equilibre' ? 'Ajoute un ETF obligataire pour environ 20 % de la poche ETF.' : 'Profil PRUDENT : ajoute un ETF obligataire (type Global Aggregate) pour environ 30 à 40 % de la poche ETF, comme dans son plan de départ.'} Aucune ligne inférieure à 20 €.` : ''}
+${objStockPct < 100 ? `POCHE ETF : UN SEUL ETF actions monde (MSCI World OU All-World, jamais les deux : ils se recoupent presque totalement). ${objRisk === 'agressif' ? '' : objRisk === 'dynamique' ? 'Profil DYNAMIQUE : ajoute éventuellement un petit ETF obligataire (10 à 15 % de la poche ETF) pour amortir les secousses.' : objRisk === 'equilibre' ? 'Ajoute un ETF obligataire pour environ 20 % de la poche ETF.' : 'Profil PRUDENT : ajoute un ETF obligataire (type Global Aggregate) pour environ 30 à 40 % de la poche ETF, comme dans son plan de départ.'} Aucune ligne inférieure à 20 €.` : ''}
 ${objRisk !== 'agressif' && objStockPct < 100 && budget >= 400 ? `OPTION DIVERSIFIANTE (facultative) : tu peux prélever jusqu'à 5 % du budget sur la poche ETF pour UN SEUL ETC sur l'or physique, ticker 4GLD.DE (Xetra-Gold), role "diversifiant". Jamais d'autre matière première (pétrole, argent…), jamais plus d'une telle ligne, et seulement si ça ne casse pas la règle des 20 € minimum par ligne.` : ''}
 
 Réponds UNIQUEMENT en JSON valide sans backticks :
@@ -934,7 +938,7 @@ async function generateETFPlan(objId) {
 
   // Signature du contexte : le nombre d'actions proposées dépend du capital et du versement
   const sizing = planSizing(objChartCapital, objChartMonthly, objStockPct);
-  const sig = [objChartCapital, objChartMonthly, sizing.nbStocks].join('|');
+  const sig = [objChartCapital, objChartMonthly, sizing.nbStocks, objChartYears, objGlide ? 'g' : ''].join('|');
 
   // Vérifie le cache — d'abord par ID, puis global
   try {
@@ -961,11 +965,11 @@ async function generateETFPlan(objId) {
   }
   _lm('Étape 2/3 · Lecture de la tendance du marché et des actualités des entreprises…');
   const cand = planCandidateTable(_md);
-  const riskLabel = objRisk === 'agressif' ? 'Agressif' : objRisk === 'equilibre' ? 'Équilibré' : 'Prudent';
+  const riskLabel = kpRiskLabel(objRisk);
 
-  const socleMin = objRisk === 'agressif' ? 55 : objRisk === 'equilibre' ? 70 : 60;
+  const socleMin = objRisk === 'agressif' ? 55 : objRisk === 'dynamique' ? 65 : objRisk === 'equilibre' ? 70 : 60;
   const wantStocks = sizing.nbStocks > 0;
-  const prompt = `Conseiller financier long terme. L'utilisateur vise ${objStockPct}% actions / ${100-objStockPct}% ETF sur ${objChartYears} ans, profil ${riskLabel}. Capital de départ : ${objChartCapital}€ · Versement mensuel : ${objChartMonthly}€.
+  const prompt = `Conseiller financier long terme. L'utilisateur vise ${objStockPct}% actions / ${100-objStockPct}% ETF sur ${objChartYears} ans, profil ${riskLabel}. Capital de départ : ${objChartCapital}€ · Versement mensuel : ${objChartMonthly}€.${objGlide ? ' Il a choisi une répartition qui devient plus PRUDENTE à l\'approche de l\'objectif : privilégie dès maintenant des valeurs peu volatiles et à faible baisse maximale.' : ''}
 
 ${planDataPromptBlock(cand)}
 
@@ -1199,6 +1203,7 @@ async function getAIActionRecommendations(risk, capital) {
   // Nombre d'actions selon capital
   const nbActions = capital < 2000 ? 3 : capital < 5000 ? 4 : capital < 10000 ? 5 : 6;
   const profil = risk === 'agressif' || risk === 'eleve' ? 'agressif (accepte forte volatilité)'
+    : risk === 'dynamique' ? 'dynamique (croissance visée, volatilité assumée mais maîtrisée)'
     : risk === 'equilibre' || risk === 'modere' ? 'équilibré (mix rendement/sécurité)'
     : 'prudent (préfère stabilité et dividendes)';
 
@@ -6256,7 +6261,7 @@ async function loadObjective() {
         years: d.years || 10,
         rate: d.rate || 7,
         risk: d.risk || 'equilibre',
-        stock_pct: (d.stock_pct !== null && d.stock_pct !== undefined) ? d.stock_pct : (d.risk==='agressif'?60:d.risk==='prudent'?15:30),
+        stock_pct: (d.stock_pct !== null && d.stock_pct !== undefined) ? d.stock_pct : kpDefaultStockPct(d.risk),
         glide: d.glide || false,
         color: OBJ_COLORS[i % OBJ_COLORS.length],
         validated_at: d.validated_at,
@@ -10276,7 +10281,7 @@ function calcNeededYears(capital, monthly, target, annualRate) {
 //  les 3 leviers (épargne, durée, rendement). Utilisé pendant la saisie
 //  (aperçu live) et sur la page Objectif une fois l'objectif créé.
 // ═══════════════════════════════════════════════════════════
-const OBJ_RISK_RATES = { prudent: 4.5, equilibre: 7, agressif: 11 };
+const OBJ_RISK_RATES = { prudent: 4.5, equilibre: 7, dynamique: 8, agressif: 11 };
 
 function objFeasibility(capital, monthly, target, years, ratePct) {
   const r = ratePct / 100 / 12, n = years * 12;
