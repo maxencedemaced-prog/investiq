@@ -424,7 +424,9 @@ function monthLabel() {
 
 function getCachedMonthlyPlan() {
   try {
-    const c = JSON.parse(localStorage.getItem(MONTHLY_PLAN_KEY) || 'null');
+    let c = JSON.parse(localStorage.getItem(MONTHLY_PLAN_KEY) || 'null');
+    const acc = planFromAccount(activeObjId, 'monthly_plan');   // le plan du compte est la référence (identique sur tous les appareils)
+    if (acc && acc.month === currentMonthId() && acc.objId === activeObjId && acc.stockPct === objStockPct) { c = acc; try { localStorage.setItem(MONTHLY_PLAN_KEY, JSON.stringify(acc)); } catch {} }
     // Valide seulement si même mois, même objectif ET même répartition (sinon on régénère)
     const sameContext = c && c.month === currentMonthId()
       && c.objId === activeObjId
@@ -781,6 +783,7 @@ La somme des montants doit faire exactement ${budget}.`;
       }
     }
     try { localStorage.setItem(MONTHLY_PLAN_KEY, JSON.stringify(plan)); } catch {}
+    savePlanToAccount(activeObjId, 'monthly_plan', plan);
 
     // Enregistrer dans le tracking (chaque ligne = un "renforcer" évalué à J+7)
     if (typeof saveAIRecommendations === 'function') {
@@ -876,10 +879,23 @@ function renderMonthlyPlan(plan, isNew) {
 
 const CACHE_ETF_PLAN = 'iq_etf_plan_v4'; // v3 : poche ETF + poche actions diversifiée
 const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // plus utilisé pour expirer le plan : il reste identique jusqu'à un nouveau plan
-// Nouvelle analyse voulue par l'utilisateur : on oublie le plan enregistré et on refait toute l'analyse
-function refreshEtfPlan() {
+// Les plans sont aussi enregistrés sur le compte (colonnes etf_plan / monthly_plan de l'objectif) : même plan sur tous les appareils
+async function savePlanToAccount(objId, field, value) {
+  try {
+    if (!objId || (typeof isDemo !== 'undefined' && isDemo) || !currentUser) return;
+    const o = (typeof allObjectives !== 'undefined' ? allObjectives : []).find(x => x.id === objId);
+    if (o) o[field] = value;
+    await sb.from('objectives').update({ [field]: value }).eq('id', objId);
+  } catch (e) {}
+}
+function planFromAccount(objId, field) {
+  try { const o = (typeof allObjectives !== 'undefined' ? allObjectives : []).find(x => x.id === objId); return (o && o[field]) || null; } catch (e) { return null; }
+}
+// Nouvelle analyse voulue par l'utilisateur : on oublie le plan enregistré (appareil + compte) et on refait toute l'analyse
+async function refreshEtfPlan() {
   try { localStorage.removeItem(CACHE_ETF_PLAN); if (activeObjId) localStorage.removeItem(CACHE_ETF_PLAN + '_' + activeObjId); } catch (e) {}
   window._etfMeta = null;
+  await savePlanToAccount(activeObjId, 'etf_plan', null);
   generateETFPlan();
 }
 
@@ -909,7 +925,9 @@ async function generateETFPlan(objId) {
 
   // Vérifie le cache — d'abord par ID, puis global
   try {
-    const cached = JSON.parse(localStorage.getItem(cacheKey) || localStorage.getItem(CACHE_ETF_PLAN) || 'null');
+    let cached = JSON.parse(localStorage.getItem(cacheKey) || localStorage.getItem(CACHE_ETF_PLAN) || 'null');
+    const _acc = planFromAccount(effectiveId, 'etf_plan');   // le plan enregistré sur le compte est la référence
+    if (_acc && _acc.etfs && _acc.risk === objRisk && _acc.stockPct === objStockPct && _acc.sig === sig) { cached = _acc; try { localStorage.setItem(cacheKey, JSON.stringify(_acc)); } catch {} }
     if (cached && cached.etfs && cached.risk === objRisk && cached.stockPct === objStockPct && cached.sig === sig) {
       window._etfMeta = cached.meta ? { ...cached.meta, ts: cached.ts } : null;
       renderETFCards(cached.etfs, el, cached.actions || []);
@@ -982,6 +1000,7 @@ Utilise les tickers EXACTS des tableaux. Couleurs hex variées.`;
         const cacheData = JSON.stringify({ etfs, actions, sig, risk: objRisk, stockPct: objStockPct, ts: Date.now(), meta: { n: cand.ok.length + PLAN_ETFS.filter(e => _md[e[0]]).length } });
         localStorage.setItem(cacheKey, cacheData);
         localStorage.setItem(CACHE_ETF_PLAN, cacheData);
+        savePlanToAccount(effectiveId, 'etf_plan', JSON.parse(cacheData));
         // Sauvegarde aussi avec l'activeObjId si différent
         if (activeObjId && activeObjId !== effectiveId) {
           localStorage.setItem(CACHE_ETF_PLAN + '_' + activeObjId, cacheData);
@@ -9909,6 +9928,7 @@ async function saveAllocEdit() {
     localStorage.removeItem(CACHE_ETF_PLAN);
     if (activeObjId) localStorage.removeItem(CACHE_ETF_PLAN + '_' + activeObjId);
   } catch(e) {}
+  savePlanToAccount(activeObjId, 'etf_plan', null); savePlanToAccount(activeObjId, 'monthly_plan', null);
   showToast('✓ Répartition mise à jour — plan recalculé');
   // showValidatedChart re-render le titre ET rappelle generateETFPlan + generateMonthlyPlan
   try { showValidatedChart(); } catch(e) {}
