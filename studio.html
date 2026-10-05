@@ -442,7 +442,7 @@ async function renderTutos(fillVoices) {
       + (st && st.state === 'error' ? '<p class="sub" style="color:#fca5a5;margin:6px 0 0">' + esc(st.error || '') + '</p>' : '')
       + '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Texte de la voix (' + t.beats.length + ' scènes)</summary><ol class="sub" style="margin:6px 0 0 18px;padding:0">' + t.beats.map(function (x) { return '<li style="margin-bottom:3px">' + esc(x) + '</li>'; }).join('') + '</ol></details>'
       + (m ? '<video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:8px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' : '')
-      + '<div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn primary" onclick="makeTuto(\'' + t.id + '\', this)">' + (m ? '↻ Refaire la vidéo' : '🎬 Fabriquer la vidéo') + '</button></div></div>';
+      + '<div class="row" style="justify-content:flex-end;margin-top:8px;gap:8px">' + (st && (st.state === 'error' || st.state === 'cancelled' || (st.state === 'queued' && st.since && Date.now() - Date.parse(st.since) > 20 * 60000)) ? '<button class="btn" onclick="rerenderTuto(\'' + t.id + '\', this)" title="Refait seulement le tournage, avec la voix déjà fabriquée">▶ Relancer le tournage (même voix)</button>' : '') + '<button class="btn primary" onclick="makeTuto(\'' + t.id + '\', this)">' + (m ? '↻ Refaire la vidéo' : '🎬 Fabriquer la vidéo') + '</button></div></div>';
   }).join('');
 }
 // Messages affichés DANS la fenêtre (un toast passerait derrière la boîte de dialogue)
@@ -451,7 +451,7 @@ function tutoMsg(text, kind) { var m = document.getElementById('tuto-msg'); if (
 function tutoBar(st) {
   var pct = Math.max(3, Math.min(99, st.pct || 10));
   var mins = st.since ? Math.round((Date.now() - Date.parse(st.since)) / 60000) : 0;
-  var note = st.state === 'queued' ? (mins >= 3 ? ' · depuis ' + mins + ' min (GitHub est parfois lent à démarrer)' : '') : '';
+  var note = st.state === 'queued' ? (mins >= 20 ? ' · depuis ' + mins + ' min : probablement bloquée, relance le tournage' : mins >= 3 ? ' · depuis ' + mins + ' min (GitHub est parfois lent à démarrer)' : '') : '';
   return '<div style="margin-top:8px"><div style="height:8px;border-radius:99px;background:#1f2a44;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width .6s"></div></div>'
     + '<div class="sub" style="margin-top:4px;display:flex;justify-content:space-between"><span>' + esc(st.step || '') + note + '</span><span>' + pct + ' %</span></div></div>';
 }
@@ -479,6 +479,14 @@ async function listenTutoVoice() {
     tutoMsg('🔊 Voix : ' + r.voice, 'ok');
   } catch (e) { tutoMsg(e.message, 'err'); btn.textContent = '▶ Écouter'; }
   btn.disabled = false;
+}
+async function rerenderTuto(id, btn) {
+  btn.disabled = true; var l = btn.textContent; btn.textContent = 'Relance…';
+  try { var r = await api('POST', { action: 'tuto-render', id: id }); tutoMsg('▶ Tournage relancé avec la voix ' + r.voice + ' (aucun caractère ElevenLabs en plus).', 'ok'); }
+  catch (e) { tutoMsg(e.message, 'err'); }
+  btn.disabled = false; btn.textContent = l;
+  var le = document.getElementById('tuto-list'); if (le) le.dataset.sig = '';
+  renderTutos(false);
 }
 async function makeTuto(id, btn) {
   btn.disabled = true; var l = btn.textContent; btn.textContent = 'Voix en préparation (≈ 30 s)…';

@@ -754,6 +754,16 @@ export default async function handler(req, res) {
       }
       return res.status(502).json({ error: 'Écoute impossible : ' + last });
     }
+    // Relance seulement le tournage, avec la voix déjà fabriquée (pas de nouveaux caractères ElevenLabs)
+    if (b.action === 'tuto-render') {
+      if (!TUTOS[b.id]) return res.status(400).json({ error: 'Tutoriel inconnu' });
+      const { data: tf } = await sb.storage.from('social').download('tuto/' + b.id + '/timing.json');
+      if (!tf) return res.status(400).json({ error: 'Pas encore de voix pour cette vidéo : utilise « Fabriquer la vidéo ».' });
+      const timing = JSON.parse(await tf.text());
+      await sb.storage.from('social').upload('tuto/status/' + b.id + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+      await dispatchWorkflow('tuto.yml', { tuto_id: b.id });
+      return res.status(200).json({ ok: true, voice: timing.voice });
+    }
     if (b.action === 'tuto-create') {
       const t = TUTOS[b.id];
       if (!t) return res.status(400).json({ error: 'Tutoriel inconnu' });

@@ -1,6 +1,6 @@
 # Vidéo tutoriel : lancée depuis le Studio (action « tuto-create » de api/social.js, après la voix off ElevenLabs).
 # Enregistre l'appli de cette branche en mode démo (Playwright, format téléphone), ajoute la voix, envoie le MP4 dans le stockage Supabase.
-# Secrets GitHub utilisés : SUPABASE_URL, SUPABASE_SERVICE_KEY, APP_URL (déjà présents pour les Reels).
+# Secrets GitHub utilisés : SUPABASE_SERVICE_KEY, APP_URL (SUPABASE_URL facultatif).
 name: Vidéo tutoriel
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ concurrency:
 jobs:
   record:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: tuto
@@ -23,10 +23,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Les installations réessaient : pendant un incident GitHub, un téléchargement peut échouer une première fois
       - name: Polices (emojis) et ffmpeg
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji fonts-dejavu ffmpeg
-      - run: npm install --no-audit --no-fund
-      - run: npx playwright install --with-deps chromium
+        run: for i in 1 2 3; do sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji fonts-dejavu ffmpeg && break || sleep 20; done
+      - name: Dépendances
+        run: for i in 1 2 3; do npm install --no-audit --no-fund && break || sleep 20; done
+      - name: Navigateur
+        run: for i in 1 2 3; do npx playwright install --with-deps chromium && break || sleep 20; done
       - name: Enregistrement de la vidéo
         env:
           TUTO_ID: ${{ inputs.tuto_id }}
@@ -34,3 +37,18 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           APP_URL: ${{ secrets.APP_URL }}
         run: node record.mjs
+      # Échec avant ou pendant l'enregistrement : on l'écrit dans le Studio (sinon il afficherait « en attente » indéfiniment)
+      - name: Signaler l'échec au Studio
+        if: failure() || cancelled()
+        env:
+          TUTO_ID: ${{ inputs.tuto_id }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          BASE="${SUPABASE_URL:-https://soyyznyceqzimhoaffaw.supabase.co}"
+          STATE=error; MSG="La fabrication a échoué sur GitHub (souvent un incident passager). Relance le tournage : la voix est conservée."
+          [ "$OUTCOME" = "cancelled" ] && { STATE=cancelled; MSG="Arrêtée"; }
+          printf '{"state":"%s","step":"%s","error":"%s","run":"%s","at":"%s"}' "$STATE" "$MSG" "$MSG" "$RUN_URL" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/st.json
+          curl -s -X POST "$BASE/storage/v1/object/social/tuto/status/$TUTO_ID.json" -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" -H "apikey: $SUPABASE_SERVICE_KEY" -H "x-upsert: true" -H "Content-Type: application/json" --data-binary @/tmp/st.json
