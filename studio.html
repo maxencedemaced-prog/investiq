@@ -79,7 +79,7 @@
     <button class="tab" data-f="published" onclick="setFilter('published')">Publiés</button>
     <button class="tab" data-f="calendar" onclick="setFilter('calendar')">📅 Planning</button>
     <button class="tab" data-f="ads" onclick="setFilter('ads')">🎯 Vidéos pub</button>
-    <button class="tab" onclick="openTutos()">🎓 Tutoriels</button>
+    <button class="tab" data-f="tutos" onclick="setFilter('tutos')">🎓 Tutoriels</button>
   </div>
   <div id="list"><div class="empty">Chargement…</div></div>
 </div>
@@ -96,15 +96,6 @@
   </div>
 </dialog>
 
-<dialog id="dlg-tuto" style="max-width:520px;width:94vw">
-  <h3 style="margin:0 0 6px">🎓 Vidéos tutoriels de l'appli</h3>
-  <p class="sub" style="margin:0 0 12px">La voix lit le texte, puis l'appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l'appli.</p>
-  <label>Voix</label>
-  <div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:nowrap"><select id="tuto-voice" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select><button class="btn" id="btn-tuto-listen" onclick="listenTutoVoice()" style="white-space:nowrap">▶ Écouter</button></div>
-  <div id="tuto-msg" style="display:none;margin:0 0 12px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5"></div>
-  <div id="tuto-list"><div class="empty">Chargement…</div></div>
-  <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeTutos()">Fermer</button></div>
-</dialog>
 
 <dialog id="dlg-reel" style="max-width:440px">
   <h3 style="margin:0 0 6px">🎞 Vidéo animée</h3>
@@ -277,6 +268,8 @@ function render() {
   var list = document.getElementById('list');
   if (FILTER === 'calendar') { renderCalendar(); return; }
   if (FILTER === 'ads') { renderAdsPage(); return; }
+  if (FILTER === 'tutos') { renderTutosPage(); return; }
+  clearInterval(TUTO_TIMER);
   var items = POSTS.filter(function (p) { return (p.status === FILTER || (FILTER === 'approved' && p.status === 'publishing')) && !(p.format === 'story' && FILTER === 'draft') && p.format !== 'guide'; });
   // À valider : les posts les plus récents en haut (Validés et Publiés gardent l'ordre des dates de publication)
   if (FILTER === 'draft') items.sort(function (x, y) { return String(y.created_at || '').localeCompare(String(x.created_at || '')); });
@@ -388,12 +381,21 @@ async function useVideo(btn) {
 
 // ── Vidéos tutoriels (api/_tuto.js → voix → tuto/record.mjs sur GitHub Actions) ──
 var TUTO_TIMER = null;
-async function openTutos() {
-  document.getElementById('dlg-tuto').showModal();
-  await renderTutos(true);
-  clearInterval(TUTO_TIMER); TUTO_TIMER = setInterval(function () { renderTutos(false); }, 15000);
+function openTutos() { setFilter('tutos'); }
+// Page « Tutoriels » (onglet) : n'est construite qu'une fois tant qu'on reste sur l'onglet (une vidéo en lecture n'est pas coupée)
+function renderTutosPage() {
+  var list = document.getElementById('list');
+  if (document.getElementById('tuto-list')) return;
+  list.innerHTML = '<div style="max-width:720px">'
+    + '<h3 style="margin:4px 0 6px">🎓 Vidéos tutoriels de l’appli</h3>'
+    + '<p class="sub" style="margin:0 0 14px">La voix lit le texte, puis l’appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l’appli.</p>'
+    + '<label>Voix</label>'
+    + '<div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:nowrap;max-width:520px"><select id="tuto-voice" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select><button class="btn" id="btn-tuto-listen" onclick="listenTutoVoice()" style="white-space:nowrap">▶ Écouter</button></div>'
+    + '<div id="tuto-msg" style="display:none;margin:0 0 12px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5"></div>'
+    + '<div id="tuto-list"><div class="empty">Chargement…</div></div></div>';
+  renderTutos(true);
+  clearInterval(TUTO_TIMER); TUTO_TIMER = setInterval(function () { if (FILTER === 'tutos') renderTutos(false); else clearInterval(TUTO_TIMER); }, 15000);
 }
-function closeTutos() { clearInterval(TUTO_TIMER); document.getElementById('dlg-tuto').close(); }
 async function renderTutos(fillVoices) {
   var d; try { d = await api('POST', { action: 'tuto-list' }); } catch (e) { document.getElementById('tuto-list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
   if (fillVoices) {
