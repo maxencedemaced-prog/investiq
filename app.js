@@ -12846,8 +12846,10 @@ const PLATFORMS = [
   { name: 'Scalable Capital',     url: 'https://secure.scalable.capital' },
 ];
 const PLATFORM_URLS = Object.fromEntries(PLATFORMS.map(p => [p.name, p.url]));
-// Où l'utilisateur détient ses cryptos : mémorisé pour le suivi, sans lien ni recommandation
-const CRYPTO_PLATFORMS = ['Binance', 'Coinbase', 'Kraken', 'Bitpanda', 'Crypto.com', 'Portefeuille personnel'];
+// Où l'utilisateur détient ses cryptos (même fonctionnement que les courtiers : bouton « ouvrir la plateforme »)
+const CRYPTO_SITES = { 'Binance': 'https://www.binance.com/fr', 'Coinbase': 'https://www.coinbase.com/fr', 'Kraken': 'https://www.kraken.com', 'Bitpanda': 'https://www.bitpanda.com/fr', 'Crypto.com': 'https://crypto.com', 'Portefeuille personnel': '' };
+const CRYPTO_PLATFORMS = Object.keys(CRYPTO_SITES);
+Object.entries(CRYPTO_SITES).forEach(([n, u]) => { if (u) PLATFORM_URLS[n] = u; });   // liens « ouvrir la plateforme », comme pour les courtiers
 // Options <option> pour un menu déroulant, 'Autre' toujours en dernier
 function platformOptionsHTML(selected) {
   const esc = s => String(s).replace(/"/g, '&quot;');
@@ -12880,6 +12882,7 @@ function detectPlatform(filename) {
 function openOnPlatform(platform, ticker) {
   const url = PLATFORM_URLS[platform];
   if (!url) return;
+  ticker = String(ticker || '').replace(/^(.+?)(\d{3,})?-(EUR|USD)$/, '$1');   // crypto : « SUI20947-USD » -> « SUI », le sigle à chercher sur le site
   try { navigator.clipboard.writeText(ticker); } catch {}
   showToast(`📋 "${ticker}" copié — colle-le dans la recherche ${platform}`);
   window.open(url, '_blank');
