@@ -8913,7 +8913,8 @@ function kpTutoSeenKey(id) { try { return 'kp_tuto_seen_' + id + '_' + ((current
 async function kpOpenTuto(id, opts) {
   opts = opts || {};
   const m = await kpTutoManifest();
-  const v = m && m[id];
+  const wide = window.innerWidth >= 900 && m && m[id + '__desktop'] && m[id + '__desktop'].url;   // grand écran : version ordinateur si elle existe
+  const v = m && (wide ? m[id + '__desktop'] : m[id]);
   if (!v || !v.url) { if (!opts.auto) showToast('Vidéo bientôt disponible'); if (opts.onDone) opts.onDone(); return; }
   document.getElementById('kp-tuto-modal')?.remove();
   let done = false;
@@ -8921,11 +8922,11 @@ async function kpOpenTuto(id, opts) {
   const o = document.createElement('div');
   o.id = 'kp-tuto-modal';
   o.style.cssText = 'position:fixed;inset:0;z-index:10060;background:rgba(5,8,15,0.88);display:flex;align-items:center;justify-content:center;padding:14px';
-  o.innerHTML = '<div style="position:relative;width:min(100%,calc(86vh * 0.4615));max-width:420px">'
+  o.innerHTML = '<div style="position:relative;' + (wide ? 'width:min(100%,calc(80vh * 1.6),1100px)' : 'width:min(100%,calc(86vh * 0.4615));max-width:420px') + '">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#fff"><div style="font-size:15px;font-weight:800">🎬 ' + _escHtml(v.title || 'Kapitaro') + '</div>'
     + (opts.skippable ? '<button type="button" id="kp-tuto-skip" style="padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.08);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">Passer ›</button>' : '<button type="button" id="kp-tuto-skip" aria-label="Fermer" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1">✕</button>')
     + '</div>'
-    + '<div style="position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:390/844;box-shadow:0 20px 60px rgba(0,0,0,0.5)">'
+    + '<div style="position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:' + (wide ? '1280/800' : '390/844') + ';box-shadow:0 20px 60px rgba(0,0,0,0.5)">'
     + '<video playsinline controls preload="auto" poster="' + _escHtml(v.poster || '') + '" src="' + _escHtml(v.url) + '" style="width:100%;height:100%;display:block;object-fit:contain"></video>'
     + (opts.auto ? '<button type="button" id="kp-tuto-sound" style="position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 14px;border-radius:999px;border:none;background:#16a34a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.35)">🔊 Activer le son</button>' : '')
     + '</div></div>';
@@ -8944,7 +8945,7 @@ async function kpOpenTuto(id, opts) {
 async function kpTutoForPage(page) {
   try {
     const m = await kpTutoManifest();
-    const id = Object.keys(m || {}).find(k => m[k] && m[k].page === page && m[k].url);
+    const id = Object.keys(m || {}).find(k => !k.includes('__') && m[k] && m[k].page === page && m[k].url);
     const sec = document.getElementById('sec-' + page);
     const h1 = sec && sec.querySelector('h1');
     if (!id || !h1) return;

@@ -432,17 +432,20 @@ async function renderTutos(fillVoices) {
   if (!fillVoices && [].some.call(listEl.querySelectorAll('video'), function (v) { return !v.paused && !v.ended; })) return;
   listEl.dataset.sig = sig;
   var lbl = { queued: '⏳ En attente…', recording: '🎬 En cours de fabrication…', done: '✅ Prête', error: '❌ Erreur', cancelled: '⏹ Arrêtée' };
-  var busy = d.tutos.some(function (t) { var s = d.status[t.id]; return s && (s.state === 'queued' || s.state === 'recording'); });
+  var busy = Object.keys(d.status).some(function (k) { var s = d.status[k]; return s && (s.state === 'queued' || s.state === 'recording'); });
   var stopBtn = document.getElementById('btn-tuto-stop'); if (stopBtn) stopBtn.style.display = busy ? '' : 'none';
   listEl.innerHTML = d.tutos.map(function (t) {
-    var m = d.manifest[t.id], st = d.status[t.id];
+    var m = d.manifest[t.id], st = d.status[t.id], md = d.manifest[t.id + '__desktop'], sd = d.status[t.id + '__desktop'];
     return '<div style="border:1px solid #1f2a44;border-radius:12px;padding:12px;margin-bottom:10px">'
       + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + esc(t.title) + '</b><span class="sub">' + (st ? lbl[st.state] || esc(st.state) : (m ? '✅ Prête' : 'Pas encore fabriquée')) + '</span></div>'
-      + (st && (st.state === 'queued' || st.state === 'recording') ? tutoBar(st) : '')
+      + (st && (st.state === 'queued' || st.state === 'recording') ? '<div class="sub" style="margin-top:6px">📱 Téléphone</div>' + tutoBar(st) : '')
+      + (sd && (sd.state === 'queued' || sd.state === 'recording') ? '<div class="sub" style="margin-top:6px">🖥 Ordinateur</div>' + tutoBar(sd) : '')
+      + (sd && sd.state === 'error' ? '<p class="sub" style="color:#fca5a5;margin:6px 0 0">🖥 ' + esc(sd.error || 'Erreur') + '</p>' : '')
       + (st && st.state === 'error' ? '<p class="sub" style="color:#fca5a5;margin:6px 0 0">' + esc(st.error || '') + '</p>' : '')
       + '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Texte de la voix (' + t.beats.length + ' scènes)</summary><ol class="sub" style="margin:6px 0 0 18px;padding:0">' + t.beats.map(function (x) { return '<li style="margin-bottom:3px">' + esc(x) + '</li>'; }).join('') + '</ol></details>'
-      + (m ? '<video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:8px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' : '')
-      + '<div class="row" style="justify-content:flex-end;margin-top:8px;gap:8px">' + (st && (st.state === 'error' || st.state === 'cancelled' || (st.state === 'queued' && st.since && Date.now() - Date.parse(st.since) > 20 * 60000)) ? '<button class="btn" onclick="rerenderTuto(\'' + t.id + '\', this)" title="Refait seulement le tournage, avec la voix déjà fabriquée">▶ Relancer le tournage (même voix)</button>' : '') + '<button class="btn primary" onclick="makeTuto(\'' + t.id + '\', this)">' + (m ? '↻ Refaire la vidéo' : '🎬 Fabriquer la vidéo') + '</button></div></div>';
+      + (md ? '<div class="sub" style="margin-top:8px">🖥 Version ordinateur</div><video controls playsinline preload="none" poster="' + esc(md.poster || '') + '" src="' + esc(md.url) + '" style="width:100%;max-width:480px;border-radius:12px;background:#000;margin-top:4px;display:block"></video>' : '')
+      + (m ? '<div class="sub" style="margin-top:8px">📱 Version téléphone</div><video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:4px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' : '')
+      + '<div class="row" style="justify-content:flex-end;margin-top:8px;gap:8px">' + ((m || st) ? '<button class="btn" onclick="rerenderTuto(\'' + t.id + '\', this)" title="Refait seulement le tournage (téléphone + ordinateur), avec la voix déjà fabriquée">▶ Relancer le tournage (même voix)</button>' : '') + '<button class="btn primary" onclick="makeTuto(\'' + t.id + '\', this)">' + (m ? '↻ Refaire la vidéo' : '🎬 Fabriquer la vidéo') + '</button></div></div>';
   }).join('');
 }
 // Messages affichés DANS la fenêtre (un toast passerait derrière la boîte de dialogue)
