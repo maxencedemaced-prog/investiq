@@ -1194,7 +1194,7 @@ function heroStart(tab) {
       <button class="menu-btn" onclick="toggleSidebar()" aria-label="Ouvrir le menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <div class="topbar-logo" style="display:flex;align-items:center;gap:8px">
+      <div class="topbar-logo" onclick="nav('home')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nav('home')}" role="link" tabindex="0" aria-label="Retour à l’accueil Kapitaro" style="display:flex;align-items:center;gap:8px;cursor:pointer">
         <img src="icons/kapitaro-tile.svg" width="30" height="30" alt="" style="border-radius:8px;display:block">
         <span style="font-size:16px;font-weight:800;color:var(--color-text);letter-spacing:-0.05em">Kapitaro</span>
       </div>
@@ -1225,7 +1225,7 @@ function heroStart(tab) {
 
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo" style="display:flex;align-items:center;gap:8px">
+    <div class="sidebar-logo" onclick="nav('home')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nav('home')}" role="link" tabindex="0" aria-label="Retour à l’accueil Kapitaro" style="display:flex;align-items:center;gap:8px;cursor:pointer">
       <img src="icons/kapitaro-tile.svg" width="30" height="30" alt="" style="border-radius:8px;display:block">
       <span style="font-size:15px;font-weight:800;color:var(--color-text);letter-spacing:-0.05em">Kapitaro</span>
     </div>
