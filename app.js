@@ -2828,6 +2828,7 @@ async function acSelect(company) {
 
   // Show form fields
   document.getElementById('f-fields').style.display = 'block';
+  kpApplyMainPlatform();
   try { updateAddButtons(); } catch(e) {}
   try { updateAddPreview(); } catch(e) {}
   document.getElementById('f-empty-state').style.display = 'none';
@@ -2911,6 +2912,7 @@ function updatePosTotal() {
 function acClear() {
   acSelected = null;
   document.getElementById('crypto-warn')?.remove();
+  { const _pf = document.getElementById('f-platform'); if (_pf) delete _pf.dataset.touched; }
   document.getElementById('f-search').value = '';
   document.getElementById('ac-drop').style.display = 'none';
   document.getElementById('ac-clear').style.display = 'none';
@@ -3328,6 +3330,7 @@ function showOnboarding(force) {
   const skipBtn = document.getElementById('ob-btn-skip');
   if (skipBtn) skipBtn.textContent = isDemo ? 'Démo' : 'Passer';
   document.getElementById('onboarding-modal').style.display = 'flex';
+  try { const ms = document.getElementById('ob-main-platform'); if (ms) ms.innerHTML = kpMainPlatformOptionsHTML(kpMainPlatform()); } catch (e) {}
 }
 
 function obNext(step) {
@@ -5657,6 +5660,7 @@ async function initApp(user) {
     })); } catch {}
   }
   setTimeout(() => { checkPriceAlerts(); checkAndGenerateNotifications(); }, 2000);
+  try { kpApplyMainPlatform(true); } catch (e) {}
   setTimeout(() => showOnboarding(), 500);
   startSmartRefresh();
   setTimeout(() => { refreshPrices(); }, 2000);
@@ -7858,6 +7862,7 @@ function nav(page, auto=false) {
   try { sessionStorage.setItem('iq_last_page', page); } catch {}
   try { if (page === 'sante') localStorage.setItem('kp_seen_sante', '1'); } catch {}
   try { kpUnlockTool(page); } catch (e) {}
+  try { if (page === 'ajouter') kpApplyMainPlatform(); } catch (e) {}
   if (!auto) { try { trackEvent('page_view', { page }); } catch(e) {} }
   document.querySelectorAll('.sec').forEach(s => { s.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -10307,6 +10312,7 @@ function renderSettingsAccount() {
   set('set-pass-sub', viaGoogle ? 'Tu te connectes avec Google : tu peux aussi définir un mot de passe' : 'Modifier ton mot de passe');
   const emailSw = document.getElementById('s-email-opt');
   if (emailSw) { emailSw.checked = !profile?.email_opt_out; emailSw.disabled = isDemo; }
+  try { const mps = document.getElementById('s-main-platform'); if (mps) mps.innerHTML = kpMainPlatformOptionsHTML(kpMainPlatform()); } catch (e) {}
   syncThemeSeg();
 }
 
@@ -11087,7 +11093,7 @@ async function qaAddLine(btn) {
         try { await addTransaction(name, 'achat', qty, pru, 'Saisie rapide'); } catch {}
       }
     } else {
-      const pos = { name, qty: Math.round(qty * 1e8) / 1e8, pru: Math.round(pru * 100) / 100, price, type, sector, platform: 'Autre', alert_price: null };
+      const pos = { name, qty: Math.round(qty * 1e8) / 1e8, pru: Math.round(pru * 100) / 100, price, type, sector, platform: kpMainPlatform() || 'Autre', alert_price: null };
       if (isDemo) {
         positions.push({ id: 'd' + Date.now(), ...pos });
       } else if (currentUser) {
@@ -11230,7 +11236,7 @@ function openPlanReview(lines) {
       </div>
       <div style="padding:14px 18px;overflow-y:auto;flex:1">
         <label style="font-size:11px;color:${sub};font-weight:700">Plateforme</label>
-        <select id="pr-platform" onchange="prUpdatePlatLabel()" style="width:100%;margin:3px 0 4px;padding:11px;border-radius:10px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit">${platformOptionsHTML('Trade Republic')}</select>
+        <select id="pr-platform" onchange="prUpdatePlatLabel()" style="width:100%;margin:3px 0 4px;padding:11px;border-radius:10px;border:1px solid ${bord};background:${field};color:${txt};font-size:14px;font-family:inherit">${platformOptionsHTML(kpMainPlatform() || 'Autre')}</select>
         ${rows}
       </div>
       <div style="padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid ${bord};display:flex;flex-direction:column;gap:8px">
@@ -12424,7 +12430,8 @@ function showCSVPreview(rows, filename) {
   const sub  = isDark ? '#888' : '#71717a';
 
   // Détecter la plateforme depuis le nom de fichier
-  const platform = detectPlatform(filename);
+  const _dp = detectPlatform(filename);
+  const platform = _dp !== 'Autre' ? _dp : (kpMainPlatform() || 'Autre');   // fichier non reconnu : plateforme principale
   window._csvPlatform = platform;
 
   document.getElementById('csv-preview-modal')?.remove();
@@ -13279,7 +13286,7 @@ function platformOptionsHTML(selected) {
   const esc = s => String(s).replace(/"/g, '&quot;');
   const opts = PLATFORMS.map(p => `<option${p.name === selected ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
   const cryptoOpts = CRYPTO_PLATFORMS.map(n => `<option${n === selected ? ' selected' : ''}>${esc(n)}</option>`).join('');
-  return opts + cryptoOpts + `<option${selected === 'Autre' ? ' selected' : ''}>Autre</option>`;
+  return opts + cryptoOpts + `<option value="Autre"${selected === 'Autre' ? ' selected' : ''}>Aucune / autre</option>`;
 }
 // Détecte la plateforme d'après le nom du fichier importé
 function detectPlatform(filename) {
@@ -13299,6 +13306,37 @@ function detectPlatform(filename) {
   ];
   for (const [re, name] of rx) if (re.test(filename)) return name;
   return 'Autre';
+}
+
+// ═══ PLATEFORME PRINCIPALE : demandée au tutoriel, proposée par défaut à chaque ajout (facultative) ═══
+function kpMainPlatformKey() { return 'kp_main_platform_' + ((typeof currentUser !== 'undefined' && currentUser && currentUser.id) ? currentUser.id : 'anon'); }
+function kpMainPlatform() {
+  try { const m = currentUser && currentUser.user_metadata && currentUser.user_metadata.main_platform; if (typeof m === 'string') return m; } catch (e) {}
+  try { return localStorage.getItem(kpMainPlatformKey()) || ''; } catch (e) { return ''; }
+}
+function kpMainPlatformOptionsHTML(selected) {
+  const esc = s => String(s).replace(/"/g, '&quot;');
+  const one = n => '<option value="' + esc(n) + '"' + (n === selected ? ' selected' : '') + '>' + esc(n) + '</option>';
+  return '<option value=""' + (!selected ? ' selected' : '') + '>Aucune pour l’instant</option>' + PLATFORMS.map(p => one(p.name)).join('') + CRYPTO_PLATFORMS.map(one).join('') + '<option value="Autre"' + (selected === 'Autre' ? ' selected' : '') + '>Une autre plateforme</option>';
+}
+function kpSetMainPlatform(v) {
+  v = String(v || '');
+  const valid = v === '' || v === 'Autre' || PLATFORMS.some(p => p.name === v) || CRYPTO_PLATFORMS.includes(v);
+  if (!valid) return;
+  try { localStorage.setItem(kpMainPlatformKey(), v); } catch (e) {}
+  try { if (typeof isDemo !== 'undefined' && !isDemo && currentUser && typeof sb !== 'undefined') { currentUser.user_metadata = Object.assign({}, currentUser.user_metadata || {}, { main_platform: v }); sb.auth.updateUser({ data: { main_platform: v } }).catch(() => {}); } } catch (e) {}
+  ['ob-main-platform', 's-main-platform'].forEach(id => { const el = document.getElementById(id); if (el && el.value !== v) el.value = v; });
+  kpApplyMainPlatform(true);
+}
+// Pré-sélectionne la plateforme principale dans le formulaire d'ajout (sauf si l'utilisateur en a déjà choisi une autre)
+function kpApplyMainPlatform(force) {
+  try {
+    const sel = document.getElementById('f-platform');
+    if (!sel || (!force && sel.dataset.touched)) return;
+    const mp = kpMainPlatform();
+    sel.value = (mp && [...sel.options].some(o => o.value === mp)) ? mp : 'Autre';
+    if (typeof updateAddButtons === 'function') updateAddButtons();
+  } catch (e) {}
 }
 
 // ═══ LIENS DIRECTS VERS LES PLATEFORMES ═══
