@@ -1990,7 +1990,7 @@ function cryptoLabel(t) {
     st.textContent = '.ac-cats{display:flex;gap:8px;overflow-x:auto;margin:0 0 16px;padding:2px 2px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.ac-cats::-webkit-scrollbar{display:none}'
       + '.ac-cat{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:1.5px solid var(--color-border,#e4e4e7);background:var(--color-surface,#fff);color:var(--color-text,#09090b);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s}'
       + '.ac-cat:hover{border-color:#16a34a}.ac-cat.on{background:var(--color-text,#09090b);color:var(--color-surface,#fff);border-color:var(--color-text,#09090b)}'
-      + '.ac-cat-hint{display:none;margin:0 0 14px;padding:10px 12px;border-radius:12px;font-size:12.5px;line-height:1.5}';
+      + '.ac-cat-hint{display:none;margin:0 0 14px;padding:10px 12px;border-radius:12px;font-size:12.5px;line-height:1.5}[hidden]{display:none!important}';
     document.head.appendChild(st);
   } catch (e) {}
 })();
@@ -5093,10 +5093,112 @@ async function renderMatieres(silent) {
 }
 
 // ===== COMPANY DETAIL PAGE =====
+// ═══ Page d'un actif de l'Actualité : crypto/devise = information seulement, texte inconnu = pas d'analyse inventée ═══
+function companyTrackOnlyKind(ticker, name, type) {
+  if (type === 'Crypto' || type === 'Devise') return type;
+  const k = String(ticker || '').toUpperCase();
+  const known = AC_DB.find(c => c.ticker.toUpperCase() === k);
+  if (known) return (known.type === 'Crypto' || known.type === 'Devise') ? known.type : '';
+  if (/^[A-Z0-9]{2,20}-(EUR|USD)$/.test(k)) return 'Crypto';   // paire crypto de Yahoo absente de notre liste
+  const byName = decisionTrackOnlyKind(name) || decisionTrackOnlyKind(ticker);
+  if (byName) return byName;
+  if (/bitcoin|ethereum|crypto/i.test(String(name || '') + ' ' + String(ticker || ''))) return 'Crypto';
+  return '';
+}
+
+// Texte tapé dans la recherche d'Actualités : un vrai symbole, un titre connu de Yahoo, ou rien (introuvable)
+async function resolveCustomCompany(text) {
+  const t = String(text || '').trim();
+  let failed = 0;
+  try {
+    const r = await fetch('/api/prices?symbols=' + encodeURIComponent(t.toUpperCase()));
+    const d = await r.json(); const q = d.quotes && d.quotes[0];
+    if (q && q.price > 0) return { company: { ticker: t.toUpperCase(), name: t.toUpperCase(), sector: '', type: 'Action' } };
+  } catch (e) { failed++; }
+  try {
+    const r = await fetch('/api/search?q=' + encodeURIComponent(t) + '&crypto=1');
+    const d = await r.json(); const x = (d.results || [])[0];
+    if (x) return { company: x };
+  } catch (e) { failed++; }
+  if (failed === 2) return { company: { ticker: t.toUpperCase(), name: t.toUpperCase(), sector: '', type: 'Action' } };   // réseau en panne : on ne bloque pas à tort
+  return { unknown: true };
+}
+
+function renderCompanyHeader(name, sub) {
+  return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <button class="btn-secondary" style="padding:8px 14px;font-size:13px" onclick="renderNewsPage()">← Retour</button>
+    <div style="flex:1"><div style="font-size:22px;font-weight:800;color:#1c1c1e;letter-spacing:-0.5px">${_escHtml(name)}</div>
+    <div style="font-size:13px;color:#8e8e93;font-weight:500">${_escHtml(sub)}</div></div>
+  </div>`;
+}
+
+function renderTrackOnlyCompany(ticker, name, kind) {
+  activeCompany = { ticker, name, sector: kind };
+  const main = document.getElementById('news-page-content');
+  if (!main) return;
+  const crypto = kind === 'Crypto';
+  const inPf = positions.find(p => p.name === ticker);
+  main.innerHTML = renderCompanyHeader(name, ticker + ' · ' + (crypto ? 'Cryptomonnaie' : 'Devise')) + `
+    <div class="metrics-grid">
+      <div class="metric-card"><div class="metric-label">Cours</div><div class="metric-val" id="co-price">—</div></div>
+      <div class="metric-card"><div class="metric-label">Variation aujourd'hui</div><div class="metric-val" id="co-change">—</div></div>
+      <div class="metric-card"><div class="metric-label">Dans mon portf.</div><div class="metric-val" style="font-size:16px">${inPf ? '✓ Oui' : '—'}</div></div>
+    </div>
+    <div class="card">
+      <div style="padding:6px 2px">
+        <div style="font-size:15px;font-weight:800;color:#1c1c1e;margin-bottom:6px">${crypto ? '🪙' : '💱'} Analyse indisponible</div>
+        <div style="font-size:13px;color:#3c3c43;line-height:1.6;margin-bottom:14px">${crypto
+          ? 'Analyse indisponible pour les cryptomonnaies : ce sont des actifs trop risqués. Kapitaro te permet seulement de suivre leur cours dans ton portefeuille, sans avis ni analyse.'
+          : 'Analyse indisponible pour les devises. Kapitaro te permet seulement de suivre leur valeur dans ton portefeuille, sans avis ni analyse.'}</div>
+        <button class="btn-primary" style="font-size:13px;padding:10px 16px" onclick="addCompanyToPortfolio('${jsArg(ticker)}','${jsArg(name)}','${kind}')">➕ Ajouter au portefeuille</button>
+      </div>
+    </div>`;
+  fetchCompanyPrice(ticker);
+}
+
+function renderUnknownCompany(ticker) {
+  activeCompany = { ticker, name: ticker, sector: '' };
+  const main = document.getElementById('news-page-content');
+  if (!main) return;
+  main.innerHTML = renderCompanyHeader(ticker, 'Actif introuvable') + `
+    <div class="card">
+      <div style="padding:6px 2px">
+        <div style="font-size:15px;font-weight:800;color:#1c1c1e;margin-bottom:6px">🔎 Actif introuvable</div>
+        <div style="font-size:13px;color:#3c3c43;line-height:1.6;margin-bottom:14px">Kapitaro ne trouve « ${_escHtml(ticker)} » dans ses sources de cours (actions, ETF, cryptos, matières premières, devises). Il ne peut donc ni suivre son cours ni l’analyser : aucune analyse n’est générée pour un actif non vérifié.</div>
+        <div style="font-size:12.5px;color:#8e8e93;margin-bottom:10px">Tu le détiens quand même ? Ajoute-le à la main (tu saisis toi-même le prix) :</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" style="font-size:13px;padding:10px 16px" onclick="addCompanyToPortfolio('${jsArg(ticker)}','${jsArg(ticker)}','Crypto')">🪙 C’est une crypto</button>
+          <button class="btn-secondary" style="font-size:13px;padding:10px 16px" onclick="addCompanyToPortfolio('${jsArg(ticker)}','${jsArg(ticker)}','Action')">🏢 Action ou ETF</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function addCompanyToPortfolio(ticker, name, type) {
+  nav('ajouter');
+  await new Promise(r => setTimeout(r, 150));
+  try { acClear(); } catch (e) {}
+  const known = AC_DB.find(c => c.ticker.toUpperCase() === String(ticker).toUpperCase());
+  const company = known || { ticker, name: name || ticker, type: type || 'Action', sector: type === 'Crypto' ? 'Crypto' : type === 'Devise' ? 'Devises' : '', exchange: '' };
+  if (type === 'Crypto' || type === 'Devise') { try { setAcCat(type); } catch (e) {} }
+  await acSelect(company);
+}
+
 async function openCompany(ticker, name, sector) {
   activeCompany = { ticker, name, sector };
   const main = document.getElementById('news-page-content');
   if (!main) return;
+  // Crypto ou devise : information seulement. Texte inconnu : aucune analyse inventée.
+  let kind = companyTrackOnlyKind(ticker, name);
+  if (!kind && sector === 'Recherche personnalisée') {
+    main.innerHTML = renderCompanyHeader(name || ticker, 'Recherche en cours…');
+    const r = await resolveCustomCompany(ticker);
+    if (r.unknown) { renderUnknownCompany(ticker); return; }
+    ticker = r.company.ticker; name = r.company.name || ticker; sector = r.company.sector || '';
+    kind = companyTrackOnlyKind(ticker, name, r.company.type);
+  }
+  if (kind) { renderTrackOnlyCompany(ticker, name, kind); return; }
+  activeCompany = { ticker, name, sector };
 
   main.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
@@ -5153,7 +5255,7 @@ async function fetchCompanyPrice(ticker) {
     if (q) {
       const priceEl = document.getElementById('co-price');
       const changeEl = document.getElementById('co-change');
-      if (priceEl) { priceEl.textContent = q.price ? q.price.toFixed(2) + ' €' : '—'; }
+      if (priceEl) { priceEl.textContent = q.price ? fmt(q.price) + ' €' : '—'; }
       if (changeEl) {
         const chg = q.changePct || 0;
         changeEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2).replace(".", ",") + ' %';
@@ -5264,6 +5366,10 @@ function searchCompany(query) {
     p.ticker.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
   ).slice(0, 6);
 
+  const qn = kpNorm(query);
+  AC_DB.filter(c => (c.type === 'Crypto' || c.type === 'Devise') && kpNorm(c.ticker + ' ' + c.name).includes(qn)).slice(0, 3)
+    .forEach(c => { if (!results.find(r => r.ticker === c.ticker)) results.push({ ticker: c.ticker, name: c.name, sector: c.type === 'Crypto' ? 'Cryptomonnaie' : 'Devise' }); });
+
   // Add custom entry if not found
   if (!results.find(r => r.ticker.toLowerCase() === q)) {
     results.push({ ticker: query.toUpperCase(), name: query.toUpperCase(), sector: 'Recherche personnalisée', custom: true });
@@ -5278,7 +5384,7 @@ function searchCompany(query) {
           <div class="sr-name">${r.name}</div>
           <div class="sr-ticker">${r.ticker} · ${r.sector}</div>
         </div>
-        <button class="btn-follow sm ${isFavorite(r.ticker)?'following':''}" onclick="event.stopPropagation();toggleFavorite('${jsArg(r.ticker)}','${jsArg(r.name)}','${jsArg(r.sector)}')" style="margin-left:auto">
+        <button ${companyTrackOnlyKind(r.ticker, r.name) ? 'hidden ' : ''}class="btn-follow sm ${isFavorite(r.ticker)?'following':''}" onclick="event.stopPropagation();toggleFavorite('${jsArg(r.ticker)}','${jsArg(r.name)}','${jsArg(r.sector)}')" style="margin-left:auto">
           ${isFavorite(r.ticker) ? '★' : '☆'}
         </button>
       </div>`).join('');

@@ -188,7 +188,7 @@ async function sendMoves(users, state) {
       cands.push({ key: `mv:${k}:${day}`, label, where, pct: q.changePct, rank });
     };
     for (const p of positions.filter(p => p.user_id === u.userId && !/crypto|devise/i.test(p.type || ''))) add(p.name, p.name, 'dans ton portefeuille', /etf/i.test(p.type || '') ? MOVE_ETF : MOVE_STOCK, 0);
-    for (const w of u.watchlist) add(w.ticker, w.name || w.ticker, 'dans ta watchlist', MOVE_STOCK, 1);
+    for (const w of u.watchlist.filter(w => !/-(EUR|USD)$|^CUR-/.test(w.ticker))) add(w.ticker, w.name || w.ticker, 'dans ta watchlist', MOVE_STOCK, 1);   // pas de crypto ni de devise
     if (holdsCommo(positions, u.userId)) for (const [sym, [label, thr]] of Object.entries(COMMO)) add(sym, label, 'sur les matières premières', thr, 1);
     for (const [sym, name] of Object.entries(MARKET_LIST)) {
       if (!positions.some(p => p.user_id === u.userId && sameSym(p.name, sym)) && !u.watchlist.some(w => sameSym(w.ticker, sym))) add(sym, name, 'sur le marché', MOVE_MARKET, 2);
