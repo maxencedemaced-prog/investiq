@@ -3261,6 +3261,7 @@ async function acSelect(company) {
         <div style="font-size:14px;font-weight:800;color:#1c1c1e">${company.name}</div>
         <div style="font-size:12px;color:#8e8e93;font-weight:500">${company.ticker} · ${company.type} · ${company.sector}</div>
       </div>
+      <button type="button" onclick="openChart('${jsArg(company.ticker)}','${jsArg(company.name)}',0)" style="margin-left:8px;padding:6px 11px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;font-size:12px;font-weight:700;color:#c2410c;cursor:pointer;white-space:nowrap">📈 Graphique</button>
     </div>`;
 
   // Crypto : rappel de risque
