@@ -346,6 +346,8 @@ function showValidatedChart() {
 // Déduit le profil de risque à partir du % d'actions
 // Les 4 profils proposés au tutoriel. Avant, « dynamique » était traité comme « prudent » partout.
 const KP_RISK_LABELS = { prudent: 'Prudent', equilibre: 'Équilibré', dynamique: 'Dynamique', agressif: 'Agressif' };
+// Tolérance au risque (réglage Paramètres : faible / modérée / élevée) dérivée du profil choisi au tutoriel. Avant, on y enregistrait « dynamique », valeur invalide.
+function kpTolerance(r) { return { faible:'faible', modere:'modere', eleve:'eleve', prudent:'faible', equilibre:'modere', dynamique:'eleve', agressif:'eleve' }[r] || 'modere'; }
 function kpRiskLabel(k) { return KP_RISK_LABELS[k] || 'Équilibré'; }
 function kpDefaultStockPct(k) { return k === 'agressif' ? 70 : k === 'dynamique' ? 55 : k === 'prudent' ? 15 : 30; }
 function riskFromStockPct(stockPct) {
@@ -3834,7 +3836,7 @@ async function obFinishSilent() {
   objRisk = alloc.risk;
   objChartRate = alloc.rate;
   profile.bankroll = bankroll;
-  profile.risk     = risk;
+  profile.risk     = kpTolerance(risk);
   profile.horizon  = horizon === 'mixte' ? 'moyen' : horizon;
   if (!isDemo) await saveProfile();
 }
@@ -3989,7 +3991,7 @@ async function obFinish(action) {
   }
 
   profile.bankroll = bankroll;
-  profile.risk     = risk;
+  profile.risk     = kpTolerance(risk);
   profile.horizon  = horizon === 'mixte' ? 'moyen' : horizon;
 
   if (document.getElementById('s-bankroll')) document.getElementById('s-bankroll').value = bankroll;
@@ -6214,7 +6216,7 @@ async function loadProfile() {
   const { data } = await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   if (data) {
     applyAccountReset(data.data_reset_at);
-    profile = { bankroll: data.bankroll||5000, horizon: data.horizon||'moyen', risk: data.risk||'faible', notif: data.notif||'daily',
+    profile = { bankroll: data.bankroll||5000, horizon: data.horizon||'moyen', risk: kpTolerance(data.risk||'faible'), notif: data.notif||'daily',
                 is_premium: data.is_premium || data.premium || false,
                 premium_until: data.premium_until || data.subscription_end || null,
                 subscription_status: data.subscription_status || null,
@@ -8321,7 +8323,7 @@ async function checkAndGenerateNotifications() {
     // Position trop dominante (>40% du portefeuille)
     apos().forEach(p => {
       const pct = p.qty*p.price/tv*100;
-      if (pct > 40 && apos().length > 2) {
+      if (pct > 40 && apos().length > 2 && p.type !== 'ETF') {
         newNotifs.push({ titre:`📊 ${p.name} trop dominant`, texte:`${p.name} représente ${pct.toFixed(0)}% de ton portefeuille. Une forte concentration augmente ton risque.`, action:`Analyser ${p.name}`, impact:'medium', heure:'Analyse', type:'concentration' });
       }
     });
@@ -8949,7 +8951,7 @@ function buildAlertsData() {
     if (seenAlerts.has(key)) return;
     seenAlerts.add(key);
 
-    if (w > 40) alerts.push({type:'err', msg:`⚡ <strong>${g.name}</strong> = ${w.toFixed(0)}% — concentration excessive`});
+    if (g.type === 'ETF') { /* un ETF large n'est pas un risque de concentration */ } else if (w > 40) alerts.push({type:'err', msg:`⚡ <strong>${g.name}</strong> = ${w.toFixed(0)}% — concentration excessive`});
     else if (w > 25) alerts.push({type:'warn', msg:`<strong>${g.name}</strong> = ${w.toFixed(0)}% — surveille`});
     if (g.alert_price && g.price <= g.alert_price) {
       alerts.push({type:'err', msg:`🔔 <strong>${g.name}</strong> sous ton alerte ${fmt(g.alert_price)}€`});
@@ -8978,7 +8980,7 @@ function renderPlatforms() {
 function calcScore() {
   if (!apos().length) return {score:0,items:[]};
   const tv = apos().reduce((a,p)=>a+p.qty*p.price,0);
-  const maxW = Math.max(...positions.map(p=>p.qty*p.price/tv*100));
+  const maxW = Math.max(0, ...apos().filter(p=>p.type!=='ETF').map(p=>p.qty*p.price/tv*100));   // hors ETF larges et hors cryptos
   const etfPct = apos().filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0)/tv*100;
   const pnl = apos().reduce((a,p)=>a+(p.qty*p.price-p.qty*p.pru),0);
   // Seuils alignés sur les repères déjà affichés ailleurs dans la page Santé
@@ -9110,7 +9112,7 @@ async function renderSmartAlerts(containerId) {
     const vColor = adv.verdict === 'vendre' ? '#f87171' : adv.verdict === 'alléger' ? '#fbbf24' : '#4ade80';
     advEl.innerHTML = `
       <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px">
-        <div style="font-size:11px;font-weight:800;color:${vColor};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conseil IA : ${_escHtml(adv.verdict)}</div>
+        <div style="font-size:11px;font-weight:800;color:${vColor};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conseil IA : ${_escHtml(({vendre:'réduire fortement', 'alléger':'alléger', garder:'conserver'})[adv.verdict] || adv.verdict)}</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.5">${_escHtml(adv.raison)}</div>
         ${adv.remplacement && adv.remplacement.ticker ? `<div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ À la place : <strong style="color:#fff">${_escHtml(adv.remplacement.name || adv.remplacement.ticker)}</strong> <span style="opacity:.6">${_escHtml(adv.remplacement.ticker)}</span> — ${_escHtml(adv.remplacement.raison || '')}</div>` : ''}
       </div>`;
@@ -9134,7 +9136,7 @@ function buildAlerts() {
   let alerts=[];
   apos().forEach(p=>{
     const w=p.qty*p.price/tv*100;
-    if(w>40) alerts.push({type:'err',msg:`<strong>${p.name}</strong> = ${w.toFixed(0)}% — concentration excessive.`});
+    if(p.type==='ETF'){} else if(w>40) alerts.push({type:'err',msg:`<strong>${p.name}</strong> = ${w.toFixed(0)}% — concentration excessive.`});
     else if(w>25) alerts.push({type:'warn',msg:`<strong>${p.name}</strong> = ${w.toFixed(0)}% — surveille.`});
     if(p.alert_price&&p.price<=p.alert_price) alerts.push({type:'err',msg:`<strong>${p.name}</strong> sous ton alerte prix de ${fmt(p.alert_price)}€ !`});
   });
@@ -9268,7 +9270,7 @@ function renderPortfolio(auto=false) {
       const initials = p.name.replace(/[^A-Z0-9]/g,'').slice(0,2)||p.name.slice(0,2).toUpperCase();
       const sig = posSignals[p.id];
       const sigColor = sig?.signal==='BUY'?'#3fb950':sig?.signal==='SELL'?'#f87171':'#f59e0b';
-      const sigLabel = sig?.signal==='BUY'?'Renforcer':sig?.signal==='SELL'?'Vendre':'Garder';
+      const sigLabel = sig?.signal==='BUY'?'Favorable':sig?.signal==='SELL'?'Prudence':'Neutre';
       const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
       return `
       <div id="row-${p.id}" class="pos-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
@@ -9675,7 +9677,8 @@ async function renderSante() {
   const etfCount = dedupPos.filter(p=>p.type==='ETF').length;
   const etfVal = dedupPos.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0);
   const etfPct = tv>0?(etfVal/tv*100).toFixed(0):0;
-  const maxPos = dedupPos.length>0?dedupPos.reduce((a,p)=>p.qty*p.price>a.qty*a.price?p:a,dedupPos[0]):null;
+  const _nonEtf = dedupPos.filter(p=>p.type!=='ETF');   // la concentration ne compte pas les ETF larges
+  const maxPos = _nonEtf.length>0?_nonEtf.reduce((a,p)=>p.qty*p.price>a.qty*a.price?p:a,_nonEtf[0]):null;
   const maxPct = maxPos&&tv>0?(maxPos.qty*maxPos.price/tv*100).toFixed(0):0;
   const nbPos = dedupPos.length;
 
@@ -11081,7 +11084,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
           <div style="font-size:48px">${d.emoji}</div>
           <div>
             <div style="font-size:11px;font-weight:700;color:${recoColor};text-transform:uppercase;letter-spacing:1px">${_escHtml(displayName(name))} · ${['garder','acheter','vendre'].includes(intent) ? {garder:'Analyse générale',acheter:'Acheter ?',vendre:'Vendre ?'}[intent] : 'Analyse'}</div>
-            <div style="font-size:24px;font-weight:900;color:${recoColor}">${d.recommandation}</div>
+            <div style="font-size:24px;font-weight:900;color:${recoColor}">${({ACHETER:'FAVORABLE',ATTENDRE:'NEUTRE',VENDRE:'PRUDENCE',EVITER:'RISQUÉ'})[d.recommandation] || d.recommandation}</div>
             <div style="font-size:15px;font-weight:600;color:#1c1c1e;margin-top:2px">${d.phrase_cle}</div>
           </div>
         </div>
