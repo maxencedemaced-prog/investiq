@@ -42,9 +42,13 @@ function indicators(closes) {
   };
 }
 
+// Positions saisies avec un nom ou un ancien ticker : on les ramène au vrai ticker Yahoo (la réponse reste indexée par le symbole demandé)
+const ALIAS = { 'LVMH': 'MC.PA', 'FDJ.PA': 'FDJU.PA', 'FDJ': 'FDJU.PA', 'TOTALENERGIES': 'TTE.PA', 'AIRBUS': 'AIR.PA', 'SANOFI': 'SAN.PA', 'AXA': 'CS.PA', 'VEOLIA': 'VIE.PA', 'AIR LIQUIDE': 'AI.PA', 'AGGH.L': 'AGGH.AS', 'AGGH.DE': 'AGGH.AS' };
+
 async function one(symbol) {
   try {
-    const r = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1y`,
+    const y = ALIAS[symbol] || symbol;
+    const r = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(y)}?interval=1d&range=1y`,
       { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(6000) });
     if (!r.ok) return null;
     const j = await r.json();
@@ -53,7 +57,7 @@ async function one(symbol) {
     if (!ind) return null;
     ind.cur = res.meta?.currency || null;
     const key = process.env.FINNHUB_API_KEY;
-    if (key && !symbol.includes('.')) {   // fondamentaux : fiables seulement pour les valeurs américaines en offre gratuite
+    if (key && !y.includes('.')) {   // fondamentaux : fiables seulement pour les valeurs américaines en offre gratuite
       try {
         const f = await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${key}`, { signal: AbortSignal.timeout(4000) });
         if (f.ok) {
@@ -77,9 +81,26 @@ const decode = (s) => String(s || '')
   .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
   .replace(/&#0?39;|&apos;/g, "'").replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
+// Un titre n'est gardé que s'il parle bien de l'entreprise (évite qu'une actualité d'« Air Liquide » serve pour « Airbus »)
+const strip = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const SKIPW = new Set(['groupe', 'group', 'societe', 'the', 'sa', 'se', 'ag', 'plc', 'holding', 'united', 'de', 'du', 'la', 'le', 'les', 'et', 'and']);
+const nameWords = (name) => strip(name).split(/[^a-z0-9]+/).filter(w => w && !SKIPW.has(w));
+function isAbout(title, name) {
+  const words = nameWords(name);
+  if (!words.length) return true;
+  const t = ' ' + strip(title).replace(/[^a-z0-9]+/g, ' ') + ' ';
+  const has = (w) => t.includes(' ' + w + ' ') || t.includes(' ' + w + 's ') || (w.length >= 5 && t.includes(' ' + w));
+  if (/europacific/.test(strip(title)) && !/europacific/.test(strip(name))) return false;   // l'embouteilleur n'est pas Coca-Cola
+  if (words.length > 1 && new Set(words).size === 1) return strip(title).includes(strip(name)) || /\bj&j\b/.test(strip(title));   // « Johnson & Johnson » : pas « Johnson Matthey »
+  return words[0].length >= 4 ? has(words[0]) : words.every(has);
+}
+// Les ETF / ETC n'ont pas d'actualité d'entreprise : aucun titre (évite les articles sans rapport)
+const isFund = (name) => /etf|ishares|vanguard|amundi|spdr|lyxor|xtrackers|xetra|msci|s&p|aggregate|bond|world|gold/i.test(name);
+
 // Derniers titres de presse sur une entreprise (flux RSS public Google Actualités, 14 derniers jours).
 // On ne garde que : titre, source, date. Jamais le texte des articles.
 async function newsFor(name) {
+  if (isFund(name)) return [];
   try {
     const q = encodeURIComponent(name + ' action bourse when:14d');
     const r = await fetch(`https://news.google.com/rss/search?q=${q}&hl=fr&gl=FR&ceid=FR:fr`, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Kapitaro)' }, signal: AbortSignal.timeout(5000) });
@@ -92,7 +113,8 @@ async function newsFor(name) {
       if (source && title.endsWith(' - ' + source)) title = title.slice(0, -(source.length + 3));
       const ts = Date.parse(pick('pubDate'));
       if (!title || !ts) continue;
-      if (/cours (de l[’']?)?action|cotation|objectif de cours|cours\s+\S+\s+bourse|consensus des analystes|\|\s*cours/i.test(title)) continue;   // simples pages de cours : aucune information
+      if (/cours (de l[’']?)?action|cotation|objectif de cours|cours\s+\S+\s+bourse|consensus des analystes|\|\s*cours|actionnariat|secteur d.activit/i.test(title)) continue;
+      if (!isAbout(title, name)) continue;   // simples pages de cours : aucune information
       out.push({ title: title.slice(0, 140), source: source.slice(0, 40), ts });
       if (out.length >= 3) break;
     }
