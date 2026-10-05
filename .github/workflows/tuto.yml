@@ -42,9 +42,10 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           APP_URL: ${{ secrets.APP_URL }}
         run: node record.mjs
-      # Échec avant ou pendant l'enregistrement : on l'écrit dans le Studio (sinon il afficherait « en attente » indéfiniment)
+      # Échec avant ou pendant l'enregistrement : on l'écrit dans le Studio (sinon il afficherait « en attente » indéfiniment).
+      # Une annulation n'écrit rien : c'est souvent un nouveau clic qui remplace celle-ci, et elle effacerait l'état de la nouvelle.
       - name: Signaler l'échec au Studio
-        if: failure() || cancelled()
+        if: failure()
         env:
           TUTO_ID: ${{ inputs.variant == 'desktop' && format('{0}__desktop', inputs.tuto_id) || inputs.tuto_id }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -54,6 +55,5 @@ jobs:
         run: |
           BASE="${SUPABASE_URL:-https://soyyznyceqzimhoaffaw.supabase.co}"
           STATE=error; MSG="La fabrication a échoué sur GitHub (souvent un incident passager). Relance le tournage : la voix est conservée."
-          [ "$OUTCOME" = "cancelled" ] && { STATE=cancelled; MSG="Arrêtée"; }
           printf '{"state":"%s","step":"%s","error":"%s","run":"%s","at":"%s"}' "$STATE" "$MSG" "$MSG" "$RUN_URL" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/st.json
           curl -s -X POST "$BASE/storage/v1/object/social/tuto/status/$TUTO_ID.json" -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" -H "apikey: $SUPABASE_SERVICE_KEY" -H "x-upsert: true" -H "Content-Type: application/json" --data-binary @/tmp/st.json
