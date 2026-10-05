@@ -8,7 +8,7 @@ Tu es le copilote financier personnel de l'utilisateur — comme un ami compéte
 - Sois concret et chiffré ("IWDA pèse 30% de ton portefeuille") plutôt qu'abstrait ("concentration élevée").
 - Quand tu recommandes, assume ("À ta place, je réduirais légèrement") tout en rappelant que la décision lui revient.
 - Explique le jargon en une phrase quand tu l'utilises. Pas de listes à puces interminables : va à l'essentiel.
-- CRYPTOMONNAIES : tu ne fais AUCUNE analyse, aucun avis, aucune prévision, aucune comparaison ni aucun conseil sur les cryptos (Bitcoin, Ethereum…), même si on te le demande. Tu peux seulement rappeler que Kapitaro suit leur cours, sans les analyser, et que ce sont des actifs très risqués non couverts par tes analyses.
+- CRYPTOMONNAIES ET DEVISES : tu ne fais AUCUNE analyse, aucun avis, aucune prévision, aucune comparaison ni aucun conseil sur les cryptos (Bitcoin, Ethereum…) ni sur les devises et taux de change (dollar, livre, yen…), même si on te le demande. Tu peux seulement rappeler que Kapitaro suit leur cours, sans les analyser, et que ce sont des actifs très risqués non couverts par tes analyses.
 - Exemple du ton attendu — au lieu de "Concentration élevée sur IWDA", dis : "Ton portefeuille tient bien la route. Un point d'attention : IWDA commence à peser lourd (30%). En réduire un peu améliorerait ta diversification sans sacrifier ta performance."
 Tu ne fournis pas de conseil financier réglementé et tu le rappelles avec légèreté quand c'est pertinent.`;
 
@@ -517,6 +517,7 @@ ${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (o
 - Choisis uniquement des grandes entreprises solides et liquides (grandes capitalisations) et de grands ETF UCITS. JAMAIS d'action à moins de 1 €, de "penny stock", de petite valeur spéculative ou d'entreprise en difficulté financière (redressement, liquidation).
 - La somme des montants "actions" doit représenter ~${objStockPct}% du budget, et les ETF ~${100-objStockPct}%.
 ${objStockPct < 100 ? `POCHE ETF : UN SEUL ETF actions monde (MSCI World OU All-World, jamais les deux : ils se recoupent presque totalement). ${objRisk === 'agressif' ? '' : objRisk === 'equilibre' ? 'Ajoute un ETF obligataire pour environ 20 % de la poche ETF.' : 'Profil PRUDENT : ajoute un ETF obligataire (type Global Aggregate) pour environ 30 à 40 % de la poche ETF, comme dans son plan de départ.'} Aucune ligne inférieure à 20 €.` : ''}
+${objRisk !== 'agressif' && objStockPct < 100 && budget >= 400 ? `OPTION DIVERSIFIANTE (facultative) : tu peux prélever jusqu'à 5 % du budget sur la poche ETF pour UN SEUL ETC sur l'or physique, ticker 4GLD.DE (Xetra-Gold), role "diversifiant". Jamais d'autre matière première (pétrole, argent…), jamais plus d'une telle ligne, et seulement si ça ne casse pas la règle des 20 € minimum par ligne.` : ''}
 
 Réponds UNIQUEMENT en JSON valide sans backticks :
 {
@@ -819,6 +820,16 @@ function renderETFCards(etfs, containerEl, actions = []) {
   const trackBg = isDark ? 'rgba(255,255,255,0.08)' : '#f0f0f2';
   const _planLines = [];
   try { window._kpPlanLines = _planLines; } catch (e) {}
+  // Option diversifiante : un peu d'or (ETC européen adossé à de l'or physique), jamais imposée
+  const goldBase = montantCapital > 0 ? montantCapital : montantMensuel;
+  const goldAmt = Math.round(goldBase * 0.05);
+  const goldShow = objStockPct < 95 && goldAmt >= 20;
+  const goldBlock = goldShow ? `<div style="background:${surface};border:1px dashed ${border};border-radius:14px;padding:14px 16px;margin:12px 0 9px">
+    <div style="font-size:11px;font-weight:800;color:${sub};text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🥇 Option diversifiante · or</div>
+    <div style="font-size:13px;font-weight:800;color:${text}">Xetra-Gold <span style="font-size:9px;color:${sub};background:${trackBg};padding:1px 6px;border-radius:4px;font-weight:600">4GLD.DE</span></div>
+    <div style="font-size:11.5px;color:${sub};margin-top:3px;line-height:1.5">Un ETC adossé à de l’or physique (1 part ≈ 1 g d’or). Tu peux y consacrer jusqu’à 5 % de ton plan (~${goldAmt} €), à prélever sur ta poche ETF. L’or ne verse ni dividende ni intérêt et son cours peut baisser : c’est une option pédagogique, pas un conseil.</div>
+    ${recoActionsHTML('4GLD.DE', 'Xetra-Gold (or physique)', goldAmt, 'Matière première', isDark)}
+  </div>` : '';
 
   containerEl.innerHTML = `
   <!-- EN-TÊTE RÉCAP -->
@@ -880,6 +891,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
     </div>`;
   }).join('')}
 
+  ${goldBlock}
   ${(objStockPct > 0 && !hasActions) ? `<div style="font-size:11.5px;color:${sub};background:${trackBg};border-radius:10px;padding:9px 12px;margin-bottom:9px">📈 Les ${objStockPct}% d'actions de ta cible ne sont pas détaillés ici : ton plan du mois te dit lesquelles acheter.</div>` : ''}
 
   <!-- CTA + disclaimer -->
@@ -889,6 +901,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
   </div>
   <div style="font-size:10px;color:${sub};padding:0 2px">Répartition indicative basée sur ton profil — pas un conseil financier réglementé. Performances passées ≠ performances futures.</div>
   `;
+  if (goldShow) { try { _planLines.push({ ticker: '4GLD.DE', name: 'Xetra-Gold (or physique)', type: 'Matière première', montant: goldAmt, optional: true }); } catch (e) {} }
   try {
     if (typeof positions !== 'undefined' && !positions.length && !localStorage.getItem('kp_tour_plan')) {
       if ('IntersectionObserver' in window && containerEl) {
@@ -1949,17 +1962,20 @@ async function acSearchYahoo(query) {
 // Quantité affichée : « 31,1 g » pour un métal au gramme, « unité(s) » pour une crypto, « part(s) » sinon
 function qtyLabel(p) {
   if (/^X(AU|AG|PT)-G$/.test(String(p.name || ''))) return p.qty + ' g';
+  const cm = String(p.name || '').match(/^CUR-([A-Z]{3})$/);
+  if (cm) return p.qty + ' ' + cm[1];
   return p.qty + ' ' + (p.type === 'Crypto' ? 'unité' : 'part') + (p.qty > 1 ? 's' : '');
 }
 // Cryptos : suivies (cours, valeur) mais JAMAIS analysées. apos() = positions analysables (sans cryptos).
 function isCrypto(p) { return !!p && p.type === 'Crypto'; }
-function apos() { return positions.filter(p => !isCrypto(p)); }
+function isTrackOnly(p) { return !!p && (p.type === 'Crypto' || p.type === 'Devise'); }   // suivies, jamais analysées
+function apos() { return positions.filter(p => !isTrackOnly(p)); }
 
 // Nom lisible d'une crypto (« SUI20947-USD » -> « Sui (SUI) »)
 function cryptoLabel(t) {
   const k = String(t || '').toUpperCase();
-  if (!/-(EUR|USD|G)$/.test(k)) return '';
-  const e = AC_DB.find(c => (c.type === 'Crypto' || c.type === 'Matière première') && c.ticker.toUpperCase() === k);
+  if (!/-(EUR|USD|G)$/.test(k) && !/^CUR-/.test(k)) return '';
+  const e = AC_DB.find(c => (c.type === 'Crypto' || c.type === 'Matière première' || c.type === 'Devise') && c.ticker.toUpperCase() === k);
   return e ? e.name : '';
 }
 
@@ -2327,6 +2343,39 @@ const AC_DB = [
   {ticker:"XAU-G",name:"Or physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
   {ticker:"XAG-G",name:"Argent physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
   {ticker:"XPT-G",name:"Platine physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
+  // ===== DEVISES (suivi du taux de change, valeur en euros) =====
+  {ticker:"CUR-USD",name:"Dollar américain (USD)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-GBP",name:"Livre sterling (GBP)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-CHF",name:"Franc suisse (CHF)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-JPY",name:"Yen japonais (JPY)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-CAD",name:"Dollar canadien (CAD)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-AUD",name:"Dollar australien (AUD)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-NZD",name:"Dollar néo-zélandais (NZD)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-SEK",name:"Couronne suédoise (SEK)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-NOK",name:"Couronne norvégienne (NOK)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-DKK",name:"Couronne danoise (DKK)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-PLN",name:"Zloty polonais (PLN)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-CZK",name:"Couronne tchèque (CZK)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-HUF",name:"Forint hongrois (HUF)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-RON",name:"Leu roumain (RON)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-TRY",name:"Livre turque (TRY)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-CNY",name:"Yuan chinois (CNY)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-HKD",name:"Dollar de Hong Kong (HKD)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-SGD",name:"Dollar de Singapour (SGD)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-INR",name:"Roupie indienne (INR)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-BRL",name:"Réal brésilien (BRL)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-MXN",name:"Peso mexicain (MXN)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-ZAR",name:"Rand sud-africain (ZAR)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-MAD",name:"Dirham marocain (MAD)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-TND",name:"Dinar tunisien (TND)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-AED",name:"Dirham des Émirats (AED)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-SAR",name:"Riyal saoudien (SAR)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-ILS",name:"Shekel israélien (ILS)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-KRW",name:"Won sud-coréen (KRW)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-THB",name:"Baht thaïlandais (THB)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-DZD",name:"Dinar algérien (DZD)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-XOF",name:"Franc CFA (Afrique de l’Ouest) (XOF)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
+  {ticker:"CUR-XPF",name:"Franc Pacifique (CFP) (XPF)",type:'Devise',sector:'Devises',exchange:'Taux de change'},
   // ===== ETF MONDE =====
   {ticker:'IWDA.L',name:'iShares Core MSCI World ETF',type:'ETF',sector:'Monde',exchange:'LSE'},
   {ticker:'VWCE.DE',name:'Vanguard FTSE All-World UCITS ETF',type:'ETF',sector:'Monde',exchange:'XETRA'},
@@ -2640,11 +2689,13 @@ async function acSelect(company) {
       w.style.cssText = 'margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#92400e;font-size:12px;line-height:1.5';
       w.textContent = '⚠️ Les cryptomonnaies sont très volatiles et peu régulées : tu peux perdre tout ou partie de ta mise. Kapitaro t’aide à suivre ce que tu détiens déjà, il ne conseille pas d’en acheter.';
       badge.insertAdjacentElement('afterend', w);
-    } else if (company.type === 'Matière première') {
+    } else if (company.type === 'Matière première' || company.type === 'Devise') {
       const w = document.createElement('div');
       w.id = 'crypto-warn';
       w.style.cssText = 'margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.35);color:#1e40af;font-size:12px;line-height:1.5';
-      w.textContent = 'ℹ️ Indique la quantité en grammes (1 once = 31,1 g). Le prix affiché est le cours mondial du métal, hors prime des pièces et lingots.';
+      w.textContent = company.type === 'Devise'
+        ? 'ℹ️ Indique le montant que tu détiens dans cette devise (par exemple 2 000 pour 2 000 $). Le cours est le taux de change face à l’euro. Kapitaro suit la valeur, sans l’analyser.'
+        : 'ℹ️ Indique la quantité en grammes (1 once = 31,1 g). Le prix affiché est le cours mondial du métal, hors prime des pièces et lingots.';
       badge.insertAdjacentElement('afterend', w);
     }
   } catch (e) {}
@@ -2667,15 +2718,15 @@ async function acSelect(company) {
     const q = data.quotes?.[0];
     if (q && q.price) {
       if (priceInput) {
-        priceInput.value = q.price.toFixed(2);
-        priceInput.placeholder = q.price.toFixed(2);
+        priceInput.value = kpPriceStr(q.price);
+        priceInput.placeholder = kpPriceStr(q.price);
         priceInput.style.color = '#1c1c1e';
       }
       if (liveLabel) liveLabel.style.display = 'inline';
       // Pré-remplit le PRU avec le prix actuel (modifiable par l'utilisateur)
       const pruInput = document.getElementById('f-pru');
       if (pruInput && !pruInput.value) {
-        pruInput.value = q.price.toFixed(2);
+        pruInput.value = kpPriceStr(q.price);
       }
       // Met à jour le total
       updatePosTotal();
@@ -7628,6 +7679,12 @@ document.addEventListener('keydown', e => {
 });
 
 // ===== FORMATTERS =====
+// Prix pour un champ de saisie : 2 décimales au-dessus de 1 €, sinon 4 chiffres significatifs (0,8916 ; 0,000004043)
+function kpPriceStr(p) {
+  const v = Number(p);
+  if (!(v > 0)) return '';
+  return v >= 1 ? v.toFixed(2) : Number(v.toPrecision(4)).toFixed(12).replace(/0+$/, '').replace(/\.$/, '');
+}
 // Petits prix (cryptos à quelques millièmes d’euro) : plus de décimales, sinon « 0,00 € »
 function fmt(n) { const v = Number(n), x = Math.abs(v), d = x > 0 && x < 0.01 ? 8 : x > 0 && x < 1 ? 4 : 2; return v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:d}); }
 function fmtK(n) { return n>=1000?(n/1000).toFixed(1).replace('.', ',')+' k€':fmt(n)+' €'; }
@@ -8832,9 +8889,9 @@ function togglePos(id) {
       <button onclick="event.stopPropagation();openEditPos('${p.id}')" style="padding:7px 13px;background:var(--color-bg-subtle,#f5f5f5);border:1px solid var(--color-border,#e4e4e7);border-radius:9px;font-size:12px;font-weight:700;color:var(--color-text-secondary);cursor:pointer">✏️ Modifier</button>
       ${p.platform && p.platform !== 'Autre' && PLATFORM_URLS[p.platform] ? `<button onclick="event.stopPropagation();openOnPlatform('${p.platform}','${(p.name||'').replace(/'/g,"\\'")}')" style="padding:7px 13px;background:${p.platform==='Trade Republic'?'#eef2ff':'#fff7ed'};border:1px solid ${p.platform==='Trade Republic'?'#c7d2fe':'#fed7aa'};border-radius:9px;font-size:12px;font-weight:700;color:${p.platform==='Trade Republic'?'#4f46e5':'#ea580c'};cursor:pointer">🔗 ${p.platform}</button>` : ''}
     </div>`;
-  if (isCrypto(p)) {
+  if (isTrackOnly(p)) {
     panel.querySelectorAll('[data-an]').forEach(b => b.remove());
-    panel.insertAdjacentHTML('beforeend', '<div style="font-size:12px;color:' + sub + ';margin-top:8px">ℹ️ Suivi du cours uniquement : Kapitaro n’analyse pas les cryptomonnaies.</div>');
+    panel.insertAdjacentHTML('beforeend', '<div style="font-size:12px;color:' + sub + ';margin-top:8px">ℹ️ Suivi du cours uniquement : Kapitaro n’analyse pas les ' + (p.type === 'Devise' ? 'devises' : 'cryptomonnaies') + '.</div>');
   }
   row.after(panel);
 }
@@ -8982,9 +9039,9 @@ async function renderSante() {
     else dedupMap[key].qty += p.qty;
   });
   const dedupPos = Object.values(dedupMap);
-  if (!dedupPos.length && positions.some(isCrypto)) {
+  if (!dedupPos.length && positions.some(isTrackOnly)) {
     const _e = document.getElementById('sante-content');
-    if (_e) _e.innerHTML = '<div style="padding:28px 18px;text-align:center;color:var(--color-text-secondary,#71717a);line-height:1.6"><div style="font-size:30px;margin-bottom:8px">🪙</div><div style="font-size:15px;font-weight:800;color:var(--color-text,#1c1c1e);margin-bottom:4px">Rien à analyser pour l’instant</div>Tes cryptomonnaies sont suivies dans ton portefeuille, mais Kapitaro ne les analyse pas. Ajoute des actions ou des ETF pour obtenir ton score de santé.</div>';
+    if (_e) _e.innerHTML = '<div style="padding:28px 18px;text-align:center;color:var(--color-text-secondary,#71717a);line-height:1.6"><div style="font-size:30px;margin-bottom:8px">🪙</div><div style="font-size:15px;font-weight:800;color:var(--color-text,#1c1c1e);margin-bottom:4px">Rien à analyser pour l’instant</div>Tes cryptomonnaies et devises sont suivies dans ton portefeuille, mais Kapitaro ne les analyse pas. Ajoute des actions ou des ETF pour obtenir ton score de santé.</div>';
     return;
   }
 
@@ -9041,7 +9098,7 @@ async function renderSante() {
 
   const COLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
 
-  const cryptoNote = positions.some(isCrypto) ? '<div style="font-size:12px;color:' + textSec + ';margin:0 0 10px;padding:9px 12px;border-radius:10px;border:1px dashed ' + border + '">ℹ️ Tes cryptomonnaies sont suivies dans ton portefeuille mais ne sont pas incluses dans ce score.</div>' : '';
+  const cryptoNote = positions.some(isTrackOnly) ? '<div style="font-size:12px;color:' + textSec + ';margin:0 0 10px;padding:9px 12px;border-radius:10px;border:1px dashed ' + border + '">ℹ️ Tes cryptomonnaies et devises sont suivies dans ton portefeuille mais ne sont pas incluses dans ce score.</div>' : '';
   const html = cryptoNote + `
   <!-- SCORE DE SANTÉ -->
   <div style="background:linear-gradient(135deg,${isDark?'#080c10,#0d1520':'#f0fdf4,#ecfdf5'});border:1px solid ${isDark?'rgba(63,185,80,0.2)':' rgba(22,163,74,0.2)'};border-radius:20px;padding:24px;margin-bottom:14px;position:relative;overflow:hidden">
@@ -10723,7 +10780,7 @@ async function qaPick(company) {
     const pru = document.getElementById('qa-pru');
     if (p) {
       qaSelected.price = p;
-      if (pru) { if (!pru.value) pru.value = p.toFixed(2); pru.placeholder = p.toFixed(2); }
+      if (pru) { if (!pru.value) pru.value = kpPriceStr(p); pru.placeholder = kpPriceStr(p); }
       qaUpdateTotal();
     } else if (pru) { pru.placeholder = 'Prix payé (€)'; }
   } catch { const pru = document.getElementById('qa-pru'); if (pru) pru.placeholder = 'Prix payé (€)'; }
@@ -10875,14 +10932,14 @@ async function kpFindPlanPrice(l) {
 }
 function openPlanReview(lines) {
   document.getElementById('pr-modal')?.remove();
-  window._prLines = lines.map(l => ({ ticker: l.ticker, name: l.name, type: l.type || 'ETF', montant: l.montant, price: 0 }));
+  window._prLines = lines.map(l => ({ ticker: l.ticker, name: l.name, type: l.type || 'ETF', montant: l.montant, price: 0, optional: !!l.optional }));
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const surf = dark ? '#0f1629' : '#fff', txt = dark ? '#fff' : '#09090b', sub = dark ? 'rgba(255,255,255,0.6)' : '#71717a', bord = dark ? 'rgba(255,255,255,0.14)' : '#e4e4e7', field = dark ? 'rgba(255,255,255,0.06)' : '#f9fafb';
   const rows = window._prLines.map((l, i) => `
     <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid ${bord}">
-      <input type="checkbox" id="pr-chk-${i}" checked style="width:18px;height:18px;accent-color:#16a34a;flex-shrink:0">
+      <input type="checkbox" id="pr-chk-${i}" ${l.optional ? '' : 'checked'} style="width:18px;height:18px;accent-color:#16a34a;flex-shrink:0">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:800;color:${txt};line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${_escHtml(l.name || l.ticker)}</div>
+        <div style="font-size:13px;font-weight:800;color:${txt};line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${_escHtml(l.name || l.ticker)}${l.optional ? ' · option' : ''}</div>
         <div style="font-size:11px;color:${sub}">${l.ticker}${l.type ? ' · ' + l.type : ''} · <span id="pr-qty-${i}">calcul…</span></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">

@@ -33,6 +33,7 @@ async function usdPerEur() {
 }
 
 function attemptsFor(symbol) {
+  if (/^CUR-[A-Z]{3}$/.test(symbol)) return [{ type: 'yahoo', ticker: 'EUR' + symbol.slice(4) + '=X', inv: true }];   // devise : valeur en euros d'une unité
   if (/^[A-Z0-9]{2,20}-EUR$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol }];   // crypto en euros
   if (/^[A-Z0-9]{2,20}-USD$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // crypto en dollars, convertie en euros
   if (/^[A-Z]{1,3}=F$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // matière première (cours en dollars), convertie en euros
@@ -63,6 +64,7 @@ async function fetchOne(at) {
   if (m?.regularMarketPrice > 0) {
     const prev = m.chartPreviousClose || m.previousClose || m.regularMarketPrice;
     const k = (at.fx ? 1 / (await usdPerEur()) : 1) / (at.per || 1);   // dollars -> euros (puis par gramme si métal)
+    if (at.inv) { const pr = 1 / m.regularMarketPrice, pv = 1 / prev; return { price: pr, changePct: (pr - pv) / pv * 100 }; }   // taux inversé : euros par unité
     return { price: m.regularMarketPrice * k, changePct: prev && prev !== m.regularMarketPrice ? (m.regularMarketPrice - prev) / prev * 100 : (m.regularMarketChangePercent || 0) };
   }
   return null;
