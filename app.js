@@ -8897,7 +8897,7 @@ function showLevelChooser(fromSettings) {
   document.body.appendChild(o);
 }
 
-// ═══ VIDÉOS TUTORIELS (fabriquées depuis le Studio : api/_tuto.mjs → tuto/record.mjs) ═══
+// ═══ VIDÉOS TUTORIELS (fabriquées depuis le Studio : api/_tuto.js → tuto/record.mjs) ═══
 const KP_TUTO_BASE = 'https://soyyznyceqzimhoaffaw.supabase.co/storage/v1/object/public/social/tuto/';
 let _kpTutoManifest = null, _kpTutoAt = 0;
 async function kpTutoManifest() {

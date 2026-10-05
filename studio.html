@@ -385,7 +385,7 @@ async function useVideo(btn) {
   btn.disabled = false; btn.textContent = '📤 Publier en Reel (Instagram, Facebook)';
 }
 
-// ── Vidéos tutoriels (api/_tuto.mjs → voix → tuto/record.mjs sur GitHub Actions) ──
+// ── Vidéos tutoriels (api/_tuto.js → voix → tuto/record.mjs sur GitHub Actions) ──
 var TUTO_TIMER = null;
 async function openTutos() {
   document.getElementById('dlg-tuto').showModal();
