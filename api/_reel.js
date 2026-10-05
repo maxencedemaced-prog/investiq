@@ -204,10 +204,15 @@ async function elevenTts(text, voiceId, speed = 1.08) {
       ? { stability: speed > 1.1 ? 0.25 : 0.32, similarity_boost: 0.8, style: speed > 1.1 ? 0.7 : 0.5, use_speaker_boost: true, speed }
       : { stability: 0, speed };
     for (const voice_settings of [settings, { speed }, null]) {
-      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
+      let r;
+      for (let k = 0; k < 4; k++) {   // trop de voix demandées en même temps (429) : on patiente et on réessaie
+        r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
         method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(voice_settings ? { text, model_id: model, voice_settings } : { text, model_id: model }), signal: AbortSignal.timeout(60000),
-      });
+          body: JSON.stringify(voice_settings ? { text, model_id: model, voice_settings } : { text, model_id: model }), signal: AbortSignal.timeout(60000),
+        });
+        if (r.status !== 429) break;
+        await new Promise(res => setTimeout(res, 3000 * (k + 1)));
+      }
       if (r.ok) { const j = await r.json(); return { audio: Buffer.from(j.audio_base64, 'base64'), al: j.alignment || j.normalized_alignment, model }; }
       last = (await r.text()).slice(0, 200);
       if (r.status === 401 || r.status === 402) throw new Error('Voix ElevenLabs indisponible : ' + last);
@@ -282,6 +287,25 @@ export async function dispatchWorkflow(file, inputs) {
   });
   if (r.status !== 204) throw new Error(`GitHub a refusé le lancement (${r.status}) : ${(await r.text()).slice(0, 160)}`);
   return ref;
+}
+
+// Annule toutes les fabrications en attente ou en cours d'un workflow (ex. tuto.yml). Renvoie le nombre annulé.
+export async function cancelWorkflowRuns(file) {
+  const token = process.env.GITHUB_DISPATCH_TOKEN;
+  if (!token) throw new Error('GITHUB_DISPATCH_TOKEN absent de Vercel');
+  const repo = process.env.GITHUB_REPO || 'maxencedemaced-prog/investiq';
+  const h = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'kapitaro-studio' };
+  let n = 0, errors = [];
+  for (const status of ['queued', 'in_progress', 'waiting', 'pending', 'requested']) {
+    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${file}/runs?status=${status}&per_page=50`, { headers: h });
+    if (!r.ok) { errors.push(status + ' ' + r.status); continue; }
+    for (const run of (await r.json()).workflow_runs || []) {
+      const c = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${run.id}/cancel`, { method: 'POST', headers: h });
+      if (c.status === 202) n++; else errors.push(run.id + ' ' + c.status);
+    }
+  }
+  if (!n && errors.length) throw new Error('Annulation refusée par GitHub (' + errors.slice(0, 3).join(', ') + ') : le jeton GitHub doit avoir le droit « Actions : lecture et écriture ».');
+  return n;
 }
 
 export { EDGE_VOICES };

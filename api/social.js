@@ -16,7 +16,7 @@
 // La clé Anthropic et la clé service Supabase ne quittent jamais le serveur.
 
 import { createClient } from '@supabase/supabase-js';
-import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow } from './_reel.js';
+import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns } from './_reel.js';
 import { TUTOS } from './_tuto.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
@@ -608,6 +608,7 @@ export default async function handler(req, res) {
     // Tâches automatiques (cron Vercel) : lot du dimanche (agenda + pédagogie), bilan des marchés du vendredi soir
     if (req.method === 'GET' && ['weekly', 'recap', 'reels', 'stories', 'articles'].includes(req.query.cron)) {
       if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({ error: 'Non autorisé' });
+      { const { data: sp } = await sb.from('app_tokens').select('value').eq('name', 'studio_pause').maybeSingle(); if (sp?.value === '1') return res.status(200).json({ paused: true }); }   // bouton « Tout arrêter » du Studio
       if (req.query.cron === 'weekly') { const posts = await weeklyPlan(); return res.status(200).json({ generated: posts.length }); }
       if (req.query.cron === 'stories') return res.status(200).json(await newsStories());
       if (req.query.cron === 'articles') return res.status(200).json(await articlesCron());
@@ -692,6 +693,48 @@ export default async function handler(req, res) {
       const voices = await tutoVoices();
       return res.status(200).json({ tutos: Object.entries(TUTOS).map(([id, t]) => ({ id, title: t.title, page: t.page, beats: t.beats.map(x => x.say) })), manifest, status, voices: voices.map(v => v.name), eleven: voices.some(v => v.id) });
     }
+    // ── Bouton général du Studio : tout arrêter (vidéos en fabrication + créations automatiques) / reprendre ──
+    if (b.action === 'studio-state') {
+      const { data } = await sb.from('app_tokens').select('name, value').in('name', ['studio_pause', 'social_pause']);
+      const v = n => (data || []).find(x => x.name === n)?.value === '1';
+      return res.status(200).json({ paused: v('studio_pause'), publishPaused: v('social_pause') });
+    }
+    if (b.action === 'studio-stop') {
+      await sb.from('app_tokens').upsert({ name: 'studio_pause', value: '1', updated_at: new Date().toISOString() }, { onConflict: 'name' });
+      let cancelled = 0, warn = '';
+      for (const wf of ['reel.yml', 'tuto.yml']) { try { cancelled += await cancelWorkflowRuns(wf); } catch (e) { warn = e.message; } }
+      // états : tutoriels et vidéos des posts marqués « arrêtée »
+      await Promise.all(Object.keys(TUTOS).map(async id => {
+        try {
+          const { data } = await sb.storage.from('social').download('tuto/status/' + id + '.json');
+          const st = data ? JSON.parse(await data.text()) : null;
+          if (st && (st.state === 'queued' || st.state === 'recording')) await sb.storage.from('social').upload('tuto/status/' + id + '.json', Buffer.from(JSON.stringify({ state: 'cancelled', step: 'Arrêtée', at: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+        } catch (e) {}
+      }));
+      const { data: busy } = await sb.from('social_posts').select('id, video_script').in('video_script->>status', ['queued', 'rendering']);
+      for (const p of busy || []) await sb.from('social_posts').update({ video_script: { ...p.video_script, status: 'error', error: 'Arrêtée depuis le Studio (Tout arrêter)' } }).eq('id', p.id);
+      return res.status(200).json({ cancelled, posts: (busy || []).length, warning: warn || null });
+    }
+    if (b.action === 'studio-resume') {
+      await sb.from('app_tokens').upsert({ name: 'studio_pause', value: '0', updated_at: new Date().toISOString() }, { onConflict: 'name' });
+      return res.status(200).json({ paused: false });
+    }
+    // Arrêt général : annule toutes les fabrications de tutoriels en attente ou en cours
+    if (b.action === 'tuto-cancel') {
+      const cancelled = await cancelWorkflowRuns('tuto.yml');
+      let marked = 0;
+      await Promise.all(Object.keys(TUTOS).map(async id => {
+        try {
+          const { data } = await sb.storage.from('social').download('tuto/status/' + id + '.json');
+          const st = data ? JSON.parse(await data.text()) : null;
+          if (st && (st.state === 'queued' || st.state === 'recording')) {
+            await sb.storage.from('social').upload('tuto/status/' + id + '.json', Buffer.from(JSON.stringify({ state: 'cancelled', step: 'Arrêtée', at: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+            marked++;
+          }
+        } catch (e) {}
+      }));
+      return res.status(200).json({ cancelled, marked });
+    }
     // Écoute d'essai d'une voix (phrase courte, rien n'est enregistré)
     if (b.action === 'tuto-voice-preview') {
       const voices = await tutoVoices();
@@ -722,7 +765,7 @@ export default async function handler(req, res) {
       const timing = { id: b.id, title: t.title, page: t.page || null, voice: voice.name, at: new Date().toISOString(), segments, beats: beats.map((x, i) => ({ say: x.say, start: x.start, end: x.end, words: x.words, do: t.beats[i].do || [] })) };
       const up = await sb.storage.from('social').upload('tuto/' + b.id + '/timing.json', Buffer.from(JSON.stringify(timing)), { contentType: 'application/json', upsert: true });
       if (up.error) throw up.error;
-      await sb.storage.from('social').upload('tuto/status/' + b.id + '.json', Buffer.from(JSON.stringify({ state: 'recording', at: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+      await sb.storage.from('social').upload('tuto/status/' + b.id + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
       const ref = await dispatchWorkflow('tuto.yml', { tuto_id: b.id });
       return res.status(200).json({ ok: true, ref, voice: voice.name, duration: Math.round((beats[beats.length - 1].end || 0) * 10) / 10 });
     }
