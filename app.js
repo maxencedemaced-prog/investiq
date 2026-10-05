@@ -446,7 +446,7 @@ const PLAN_UNIVERSE = [
   ['AMZN','Amazon','Consommation','États-Unis'], ['JNJ','Johnson & Johnson','Santé','États-Unis'], ['JPM','JPMorgan','Finance','États-Unis'], ['V','Visa','Finance','États-Unis'],
   ['KO','Coca-Cola','Consommation de base','États-Unis'], ['PG','Procter & Gamble','Consommation de base','États-Unis'], ['XOM','ExxonMobil','Énergie','États-Unis'],
 ];
-const PLAN_ETFS = [['IWDA.L','iShares Core MSCI World','ETF actions monde développées'], ['VWCE.DE','Vanguard FTSE All-World','ETF actions monde entier'], ['EIMI.L','iShares Core MSCI EM IMI','ETF marchés émergents'], ['WSML.L','iShares MSCI World Small Cap','ETF petites capitalisations'], ['AGGH.AS','iShares Core Global Aggregate Bond (EUR couvert)','ETF obligataire'], ['4GLD.DE','Xetra-Gold','ETC or physique']];
+const PLAN_ETFS = [['IWDA.L','iShares Core MSCI World','ETF actions monde développées'], ['VWCE.DE','Vanguard FTSE All-World','ETF actions monde entier'], ['EIMI.L','iShares Core MSCI EM IMI','ETF marchés émergents'], ['WSML.L','iShares MSCI World Small Cap','ETF petites capitalisations'], ['AGGH.AS','iShares Core Global Aggregate Bond (EUR couvert)','ETF obligataire'], ['SXR8.DE','iShares Core S&P 500','ETF actions États-Unis'], ['4GLD.DE','Xetra-Gold','ETC or physique']];
 
 // Cours réels sur 1 an : performances, baisse maximale, volatilité (+ PER, marge, dividende pour les valeurs américaines)
 async function fetchPlanMarketData() {
@@ -1096,27 +1096,38 @@ async function getAIActionRecommendations(risk, capital) {
     : risk === 'equilibre' || risk === 'modere' ? 'équilibré (mix rendement/sécurité)'
     : 'prudent (préfère stabilité et dividendes)';
 
-  const prompt = `Tu es un conseiller en investissement ÉDUCATIF et RESPONSABLE. Aujourd'hui ${new Date().toLocaleDateString('fr-FR')}, propose exactement ${nbActions} actifs RÉALISTES pour un investisseur ${profil} avec ${capital}€.
+  // Analyse réelle d'abord (cours, tendance, actualités) ; sans données, on retombe sur la sélection de base ci-dessous
+  let _md = {};
+  try { _md = await fetchPlanMarketData(); } catch (e) { _md = {}; }
+  const haveData = Object.keys(_md).length >= 12;
+  const cand = haveData ? planCandidateTable(_md) : null;
+  const dataBlock = haveData ? '\n\n' + planDataPromptBlock(cand) + '\n\n' + planAnalysisRulesText(profil) + '\n' : '';
+
+  const prompt = `Tu es un conseiller en investissement ÉDUCATIF et RESPONSABLE. Aujourd'hui ${new Date().toLocaleDateString('fr-FR')}, propose exactement ${nbActions} actifs pour un investisseur ${profil} avec ${capital}€.${dataBlock}
 
 RÈGLES ABSOLUES DE RÉALISME :
-- Gains attendus RÉALISTES uniquement : prudent +3-6%/an, équilibré +5-10%/an, agressif +8-15%/an MAX
-- JAMAIS de gains > 20% sauf mention explicite "très spéculatif" avec avertissement
-- Privilégie les ETF (IWDA, VWCE, SP500) et les grandes caps stables (AAPL, MSFT, LVMH, TTE.PA)
+- NE DONNE AUCUNE prévision de gain : mets "gain":"" (Kapitaro affichera la performance passée réelle)
+- Choisis UNIQUEMENT parmi les valeurs et ETF listés dans les données, avec leurs tickers exacts
 - INTERDITS : actifs micro-cap, penny stocks, quantique pur, levier
 - Pour profil prudent/équilibré : 60-70% ETF monde + 30-40% actions blue chip
 - Pour profil agressif : max 50% actions croissance, 50% ETF monde obligatoire
 - Horizon réaliste : 6-18 mois minimum, pas de "3-6 mois" pour les ETF
 
 Réponds UNIQUEMENT en JSON valide, sans markdown :
-[{"ticker":"IWDA.L","name":"iShares MSCI World","gain":"+6-9%","horizon":"12+ mois","desc":"ETF monde diversifié","color":"#1a7f5a","montant":${Math.round(capital*0.5)}}]
+[{"ticker":"IWDA.L","name":"iShares MSCI World","gain":"","horizon":"12+ mois","desc":"ETF monde diversifié, avec un chiffre réel des données","color":"#1a7f5a","montant":${Math.round(capital*0.5)}}]
 
 Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Colors hex variées.`;
 
-  try {
-    const raw = await callClaude(prompt, 'Tu es un expert en investissement. Réponds UNIQUEMENT en JSON valide sans markdown.');
+  if (haveData) try {
+    const raw = await callClaude(prompt, 'Tu es un expert en investissement. ' + (typeof AI_PERSONA !== 'undefined' ? AI_PERSONA : '') + '\nRéponds UNIQUEMENT en JSON valide sans markdown.', 3000);
     const clean = raw.replace(/```json|```/g, '').trim();
-    const actions = JSON.parse(clean);
-    const safe = Array.isArray(actions) ? actions.filter(a => a && a.ticker && !planLineBlocked(a.ticker)) : [];
+    const actions = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']') + 1));
+    // Garde-fou : uniquement des valeurs de la liste fermée (ou déjà détenues) ; montants recalés ; performance passée réelle à la place d'un gain inventé
+    const okT = new Set([...PLAN_UNIVERSE.map(u => u[0]), ...PLAN_ETFS.map(e => e[0]), ...apos().map(p => String(p.name).toUpperCase())]);
+    const safe = Array.isArray(actions) ? actions.filter(a => a && a.ticker && okT.has(String(a.ticker).toUpperCase()) && !planLineBlocked(a.ticker)) : [];
+    const tot = safe.reduce((s, a) => s + (Number(a.montant) || 0), 0);
+    if (safe.length && tot > 0 && Math.abs(tot - capital) > 1) safe.forEach(a => { a.montant = Math.round((Number(a.montant) || 0) / tot * capital); });
+    safe.forEach(a => { const mm = _md[String(a.ticker).toUpperCase()]; a.gain = mm ? '1 an : ' + kpSigned(mm.p1y) + ' (passé)' : 'historique indisponible'; if (mm) a.m = { p1y: mm.p1y, dd: mm.dd, vol: mm.vol }; const nw = (_planCtx.news || {})[String(a.ticker).toUpperCase()]; if (nw && nw[0]) a.news = { title: nw[0].title, source: nw[0].source, ts: nw[0].ts }; });
     if (safe.length > 0) return safe;
   } catch(e) {
     console.warn('AI recs failed, using fallback', e);
@@ -1144,7 +1155,7 @@ Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Co
 }
 
 // ===== CACHE ACTIONS COURT TERME =====
-const CACHE_ACTIONS = 'iq_court_actions';
+const CACHE_ACTIONS = 'iq_court_actions_v2';
 const CACHE_ACTIONS_TTL = 24 * 60 * 60 * 1000; // 24h
 
 function loadActionsCache(risk) {
@@ -1198,10 +1209,12 @@ function renderActionCard(a, i, isOld) {
             ${badgeHtml}
           </div>
           <div style="font-size:12px;color:#8e8e93;margin-top:1px">${a.desc}</div>
+          ${(!isOld && a.m) ? `<div style="font-size:10.5px;color:#a1a1aa;margin-top:2px">📊 ${planMetricsLine(a.m)}</div>` : ''}
+          ${(!isOld && a.news) ? `<div style="font-size:10.5px;color:#a1a1aa;margin-top:2px;line-height:1.35">📰 ${_escHtml(a.news.title)} <span style="opacity:.7">(${_escHtml(a.news.source || 'presse')}, ${kpAgoDays(a.news.ts)})</span></div>` : ''}
         </div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:14px;font-weight:800;color:${isOld?'#c7c7cc':'#1a7f5a'}">${a.gain}</div>
+        <div style="font-size:14px;font-weight:800;color:${isOld?'#c7c7cc':(a.m && a.m.p1y < 0 ? '#cc2f26' : '#1a7f5a')}">${a.gain}</div>
         <div style="font-size:11px;color:#8e8e93">${a.horizon}</div>
       </div>
     </div>
