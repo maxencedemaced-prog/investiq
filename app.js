@@ -432,6 +432,67 @@ function getCachedMonthlyPlan() {
   } catch { return null; }
 }
 
+// ═══ ANALYSE RÉELLE AVANT LE PLAN DU MOIS ═══
+// Liste fermée de grandes valeurs (France, Europe, États-Unis) : l'IA ne peut choisir QUE dedans (ou parmi ce que l'utilisateur détient déjà).
+const PLAN_UNIVERSE = [
+  ['MC.PA','LVMH','Luxe','France'], ['RMS.PA','Hermès','Luxe','France'], ['OR.PA',"L'Oréal",'Consommation','France'], ['BN.PA','Danone','Consommation de base','France'],
+  ['AI.PA','Air Liquide','Industrie','France'], ['SU.PA','Schneider Electric','Industrie','France'], ['AIR.PA','Airbus','Aéronautique','France'], ['SAF.PA','Safran','Aéronautique','France'],
+  ['DG.PA','Vinci','Construction','France'], ['SAN.PA','Sanofi','Santé','France'], ['EL.PA','EssilorLuxottica','Santé','France'], ['TTE.PA','TotalEnergies','Énergie','France'],
+  ['BNP.PA','BNP Paribas','Finance','France'], ['CS.PA','AXA','Finance','France'], ['ORA.PA','Orange','Télécoms','France'], ['FDJU.PA','FDJ United','Jeux','France'],
+  ['ASML.AS','ASML','Technologie','Europe'], ['SAP.DE','SAP','Technologie','Europe'], ['SIE.DE','Siemens','Industrie','Europe'], ['ALV.DE','Allianz','Finance','Europe'],
+  ['NESN.SW','Nestlé','Consommation de base','Europe'], ['NOVN.SW','Novartis','Santé','Europe'], ['NOVO-B.CO','Novo Nordisk','Santé','Europe'], ['IBE.MC','Iberdrola','Services publics','Europe'],
+  ['AAPL','Apple','Technologie','États-Unis'], ['MSFT','Microsoft','Technologie','États-Unis'], ['NVDA','Nvidia','Technologie','États-Unis'], ['GOOGL','Alphabet','Technologie','États-Unis'],
+  ['AMZN','Amazon','Consommation','États-Unis'], ['JNJ','Johnson & Johnson','Santé','États-Unis'], ['JPM','JPMorgan','Finance','États-Unis'], ['V','Visa','Finance','États-Unis'],
+  ['KO','Coca-Cola','Consommation de base','États-Unis'], ['PG','Procter & Gamble','Consommation de base','États-Unis'], ['XOM','ExxonMobil','Énergie','États-Unis'],
+];
+const PLAN_ETFS = [['IWDA.L','iShares Core MSCI World','ETF actions monde'], ['VWCE.DE','Vanguard FTSE All-World','ETF actions monde'], ['AGGH.DE','iShares Core Global Aggregate Bond','ETF obligataire'], ['4GLD.DE','Xetra-Gold','ETC or physique']];
+
+// Cours réels sur 1 an : performances, baisse maximale, volatilité (+ PER, marge, dividende pour les valeurs américaines)
+async function fetchPlanMarketData() {
+  const held = apos().filter(p => /^[A-Z0-9.\-]{1,14}$/.test(String(p.name))).map(p => p.name);
+  const syms = [...new Set([...PLAN_UNIVERSE.map(u => u[0]), ...PLAN_ETFS.map(e => e[0]), ...held])].slice(0, 60);
+  const r = await fetch('/api/market-data?symbols=' + encodeURIComponent(syms.join(',')));
+  if (!r.ok) throw new Error('market-data ' + r.status);
+  return (await r.json()).data || {};
+}
+const kpSigned = (n, suffix) => (n == null || !Number.isFinite(n)) ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '') + String(Math.abs(n)).replace('.', ',') + (suffix || ' %');
+function planMetricsLine(m) {
+  if (!m) return '';
+  return '1 an ' + kpSigned(m.p1y) + ' · baisse max ' + kpSigned(m.dd) + ' · volatilité ' + String(m.vol).replace('.', ',') + ' %';
+}
+// Tableau remis à l'IA : uniquement des valeurs dont on a de vraies données, sans cas extrêmes (baisse > 50 % ou volatilité > 50 %)
+function planCandidateTable(md) {
+  const ok = [], out = [];
+  PLAN_UNIVERSE.forEach(([t, name, sector, zone]) => {
+    const m = md[t];
+    if (!m) return;
+    if (m.dd < -50 || m.vol > 50 || m.price < 1) { out.push(name); return; }
+    ok.push({ t, name, sector, zone, m });
+  });
+  const row = c => c.t + ' | ' + c.name + ' | ' + c.sector + ' | ' + c.zone + ' | 1 an ' + kpSigned(c.m.p1y) + ' | 6 mois ' + kpSigned(c.m.p6m) + ' | 1 mois ' + kpSigned(c.m.p1m) + ' | baisse max 1 an ' + kpSigned(c.m.dd) + ' | volatilité ' + String(c.m.vol).replace('.', ',') + ' %' + (c.m.pe != null ? ' | PER ' + String(c.m.pe).replace('.', ',') : '') + (c.m.margin != null ? ' | marge nette ' + String(c.m.margin).replace('.', ',') + ' %' : '') + (c.m.divYield != null ? ' | dividende ' + String(c.m.divYield).replace('.', ',') + ' %' : '');
+  const etf = PLAN_ETFS.filter(e => md[e[0]]).map(e => e[0] + ' | ' + e[1] + ' | ' + e[2] + ' | 1 an ' + kpSigned(md[e[0]].p1y) + ' | baisse max 1 an ' + kpSigned(md[e[0]].dd) + ' | volatilité ' + String(md[e[0]].vol).replace('.', ',') + ' %');
+  return { ok, out, text: ok.map(row).join('\n'), etfText: etf.join('\n') || PLAN_ETFS.map(e => e[0] + ' | ' + e[1] + ' | ' + e[2]).join('\n') };
+}
+// Secteurs déjà présents dans le portefeuille de l'utilisateur
+function planHeldSectors() {
+  const tv = apos().reduce((a, p) => a + p.qty * p.price, 0) || 1, by = {};
+  apos().forEach(p => { const s = p.sector || (PLAN_UNIVERSE.find(u => u[0] === p.name) || [])[2]; if (s) by[s] = (by[s] || 0) + p.qty * p.price / tv * 100; });
+  const list = Object.entries(by).sort((a, b) => b[1] - a[1]).map(([s, w]) => s + ' ' + Math.round(w) + ' %');
+  return list.length ? list.join(', ') : 'aucun secteur identifié';
+}
+// Le plan ne garde que des valeurs de la liste fermée (ou déjà détenues) ; montants recalés sur le budget
+function planKeepKnown(data, budget, allowed) {
+  const keep = (data.lignes || []).filter(l => allowed.has(String(l.ticker).toUpperCase()));
+  if (keep.length === (data.lignes || []).length) return;
+  const kept = keep.reduce((s, l) => s + (Number(l.montant) || 0), 0);
+  if (keep.length && kept > 0) {
+    keep.forEach(l => { l.montant = Math.round((Number(l.montant) || 0) / kept * budget); l.pct = Math.round(l.montant / budget * 100); });
+    const diff = budget - keep.reduce((s, l) => s + l.montant, 0);
+    [...keep].sort((a, b) => b.montant - a.montant)[0].montant += diff;
+  }
+  data.lignes = keep;
+}
+
 let _monthlyPlanBusy = false; // verrou anti-boucle
 
 // Ligne détenue qui a perdu plus de 60 % : la renforcer n'a pas de sens (c'est aussi ce que dit l'analyse)
@@ -489,10 +550,23 @@ async function generateMonthlyPlan(force = false) {
   <div style="background:linear-gradient(135deg,#0a0f1e,#111827);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:16px 18px;margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:10px">
       <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-      <span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:600">Kapitaro prépare ton plan de ${monthLabel()}...</span>
+      <span id="mp-load-msg" style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:600">Étape 1/3 · Kapitaro récupère les cours réels du marché…</span>
     </div>
   </div>`;
 
+  const setLoad = t => { const m = document.getElementById('mp-load-msg'); if (m) m.textContent = t; };
+  let _md = {};
+  try { _md = await fetchPlanMarketData(); } catch (e) { _md = {}; }
+  if (Object.keys(_md).length < 12) {   // pas de données réelles : on ne fabrique pas un plan « à l'aveugle »
+    _monthlyPlanBusy = false;
+    try { localStorage.setItem(MONTHLY_PLAN_KEY + '_cooldown', Date.now()); } catch {}
+    el = document.getElementById('obj-monthly-plan') || el;
+    el.innerHTML = '<div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:12px;color:var(--color-text-secondary)">Les cours du marché ne sont pas disponibles pour l’instant : Kapitaro ne génère pas de plan sans analyse. Réessaie dans quelques minutes.</span><button onclick="generateMonthlyPlan(true)" style="background:#6366f1;border:none;color:#fff;font-size:11px;font-weight:700;padding:7px 13px;border-radius:9px;cursor:pointer;flex-shrink:0">Réessayer</button></div>';
+    return;
+  }
+  setLoad('Étape 2/3 · Calcul des performances, des baisses et de la volatilité…');
+  const cand = planCandidateTable(_md);
+  const heldSectors = planHeldSectors();
   const tv = apos().reduce((a,p)=>a+p.qty*p.price, 0);
   const held = apos().slice(0, 12).map(p => {
     const pnl = p.pru>0 ? ((p.price-p.pru)/p.pru*100).toFixed(1) : '0';
@@ -504,6 +578,14 @@ async function generateMonthlyPlan(force = false) {
 
 Son portefeuille actuel (${fmtK(tv)}) :
 ${held || 'Portefeuille vide, premier mois.'}
+Secteurs déjà détenus : ${heldSectors}.
+
+DONNÉES RÉELLES DU MARCHÉ (cours du jour ; performances sur la période indiquée, en devise locale) :
+VALEURS CANDIDATES (ticker | nom | secteur | zone | indicateurs) :
+${cand.text}
+${cand.out.length ? 'Écartées par prudence (très forte baisse ou volatilité extrême) : ' + cand.out.join(', ') + '.\n' : ''}
+ETF / ETC AUTORISÉS :
+${cand.etfText}
 
 SA RÉPARTITION CIBLE CHOISIE : ${objStockPct}% actions / ${100-objStockPct}% ETF${objGlide ? ' (elle deviendra plus prudente à l\'approche de l\'objectif)' : ''}.
 
@@ -511,7 +593,10 @@ EXERCICE "PLAN DU MOIS" : répartis ses ${budget}€ de ce mois pour RESPECTER s
 RÈGLES STRICTES SUR LA RÉPARTITION :
 ${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (ou quasi tout) en ACTIONS individuelles. NE propose AUCUN ETF (ou 1 seul minoritaire si ${objStockPct}<100).` : objStockPct <= 10 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (ou quasi tout) en ETF. NE propose quasiment AUCUNE action individuelle.` : `- Respecte le ratio ${objStockPct}% actions / ${100-objStockPct}% ETF dans la répartition des montants.`}
 - Rééquilibrage par apports : regarde ce qu'il détient DÉJÀ et oriente le budget vers ce qui est sous-pondéré vs sa cible, sans vendre.
-- DIVERSIFICATION QUI DÉPEND DU BUDGET : ${(() => { const s = planSizing(0, budget, objStockPct); const nbMois = s.nbStocks > 0 ? Math.max(1, Math.min(s.nbStocks, Math.round(s.stockMonthly / 40) || 1)) : 0; return nbMois > 0 ? `sur la part actions (~${Math.round(s.stockMonthly)}€ ce mois-ci) propose ${nbMois} action${nbMois > 1 ? 's' : ''} DIFFÉRENTE${nbMois > 1 ? 'S' : ''}, de secteurs différents, aucune au-dessus de 40% du montant actions, ~20€ minimum par ligne. Plus le budget est élevé, plus il faut d'actions distinctes (jamais tout sur une seule).` : 'aucune action individuelle ce mois-ci.'; })()}
+- DIVERSIFICATION QUI GRANDIT AVEC LE BUDGET : ${(() => { const s = planSizing(0, budget, objStockPct); const nbMois = s.nbStocks > 0 ? Math.max(1, Math.min(s.nbStocks, Math.round(s.stockMonthly / 40) || 1)) : 0; return nbMois > 0 ? `sur la part actions (~${Math.round(s.stockMonthly)}€ ce mois-ci) propose ${nbMois} action${nbMois > 1 ? 's' : ''} DIFFÉRENTE${nbMois > 1 ? 'S' : ''}, avec au plus 2 valeurs du même secteur, plusieurs zones (France, Europe, États-Unis), aucune au-dessus de ${s.maxWeight}% du montant actions, ~20€ minimum par ligne. Plus le budget est élevé, plus il faut de valeurs distinctes (jamais tout sur une seule).` : 'aucune action individuelle ce mois-ci.'; })()}
+- ANALYSE OBLIGATOIRE : tu disposes ci-dessous de VRAIES données de marché (cours du jour, calculées sur 1 an). Tu choisis UNIQUEMENT parmi les valeurs de ces tableaux (ou parmi ce qu'il détient déjà), jamais une autre. Tu n'as AUCUNE autre donnée : n'invente ni résultats d'entreprise, ni actualité, ni valorisation absente du tableau.
+- CHAQUE ligne doit avoir une "raison" CHIFFRÉE tirée du tableau ou du portefeuille (ex : "baisse max 1 an −14 %, volatilité modérée", "Santé : 0 % du portefeuille, volatilité 18 %"). INTERDIT : "secteur absent" ou "diversifie" comme seule raison, et tout argument du type "déjà performant / a bien monté" pour justifier un achat (la performance passée ne prédit pas l'avenir).
+- Équilibre le risque : mélange valeurs peu volatiles et plus volatiles selon son profil (${riskLabel}), et évite les secteurs qu'il détient déjà en excès.
 - Évite de racheter ce qui pèse déjà plus de 25% de son portefeuille.
 - INTERDIT : renforcer une ligne marquée "EFFONDRÉE" (perte de plus de 60 %) ; une ligne qui pèse peu parce qu'elle s'est effondrée n'est PAS sous-pondérée.
 - Choisis uniquement des grandes entreprises solides et liquides (grandes capitalisations) et de grands ETF UCITS. JAMAIS d'action à moins de 1 €, de "penny stock", de petite valeur spéculative ou d'entreprise en difficulté financière (redressement, liquidation).
@@ -534,6 +619,12 @@ La somme des montants doit faire exactement ${budget}.`;
     const clean = raw.replace(/```json|```/g,'').trim();
     const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
     if (!data.lignes?.length) throw new Error('empty');
+    // Garde-fou : seulement des valeurs de la liste fermée ou déjà détenues (jamais une valeur inventée)
+    const _allowed = new Set([...PLAN_UNIVERSE.map(u => u[0]), ...PLAN_ETFS.map(e => e[0]), ...apos().map(p => String(p.name).toUpperCase())]);
+    planKeepKnown(data, budget, _allowed);
+    if (!data.lignes.length) throw new Error('aucune valeur valide');
+    setLoad('Étape 3/3 · Construction du plan…');
+    data.lignes.forEach(l => { const mm = _md[String(l.ticker).toUpperCase()]; if (mm) l.m = { p1y: mm.p1y, dd: mm.dd, vol: mm.vol }; });
 
     // Prix live de chaque ligne : sert au suivi à J+7 et à écarter les actions à quelques centimes
     const live = {};
@@ -548,7 +639,7 @@ La somme des montants doit faire exactement ${budget}.`;
     sanitizePlanLines(data, budget, live);
     if (!data.lignes.length) throw new Error('plan vide après filtrage');
 
-    const plan = { month: currentMonthId(), objId: activeObjId, stockPct: objStockPct, budget, data, ts: Date.now() };
+    const plan = { month: currentMonthId(), objId: activeObjId, stockPct: objStockPct, budget, data, ts: Date.now(), analysis: { n: cand.ok.length + PLAN_ETFS.filter(e => _md[e[0]]).length, asOf: Date.now() } };
 
     // Le plan reste figé tout le mois. S'il est régénéré et diffère du précédent, on prévient :
     // lignes retirées / ajoutées + raison, en bandeau sur le plan et dans les notifications.
@@ -638,6 +729,7 @@ function renderMonthlyPlan(plan, isNew) {
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;font-weight:800;color:#fff">${displayName(l.name||l.ticker)} <span style="font-size:9px;color:rgba(255,255,255,0.4)">${l.ticker}</span></div>
             <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:1px">${l.raison||''}</div>
+            ${l.m ? `<div style="font-size:9.5px;color:rgba(255,255,255,0.32);margin-top:2px">📊 ${planMetricsLine(l.m)}</div>` : ''}
             ${recoActionsHTML(l.ticker, l.name || l.ticker, l.montant, isSocle ? 'ETF' : '', true)}
           </div>
           <div style="text-align:right;flex-shrink:0">
@@ -655,7 +747,7 @@ function renderMonthlyPlan(plan, isNew) {
     </div>` : ''}
 
     <div style="display:flex;align-items:center;justify-content:space-between;position:relative">
-      <span style="font-size:10px;color:rgba(255,255,255,0.3)">Budget ${budget} €/mois · généré le ${generated}</span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.3)">Budget ${budget} €/mois · généré le ${generated}${plan.analysis ? ` · ${plan.analysis.n} valeurs analysées sur 1 an de cours réels` : ''}</span>
       <span style="font-size:10px;color:rgba(255,255,255,0.3)">Suivi à J+7 dans l'historique IA</span>
     </div>
   </div>`;
@@ -781,9 +873,9 @@ function planSizing(capital, monthly, stockPct) {
   const stockMonthly = (monthly || 0) * stockPct / 100;
   if (stockPct <= 0) return { nbStocks: 0, stockCap, stockMonthly, maxWeight: 100, minTicket: 0 };
   const eff = stockCap + stockMonthly * 12;
-  let n = eff < 250 ? 1 : eff < 600 ? 2 : eff < 1500 ? 3 : eff < 3500 ? 4 : eff < 8000 ? 5 : eff < 20000 ? 6 : 8;
+  let n = eff < 250 ? 1 : eff < 600 ? 2 : eff < 1500 ? 3 : eff < 3500 ? 4 : eff < 8000 ? 5 : eff < 20000 ? 6 : eff < 50000 ? 8 : eff < 100000 ? 10 : 12;
   if (stockPct >= 85) n = Math.max(n, 5); // quasi 100% actions : jamais concentré
-  const maxWeight = n <= 1 ? 100 : n === 2 ? 60 : n === 3 ? 40 : n === 4 ? 35 : 25;
+  const maxWeight = n <= 1 ? 100 : n === 2 ? 60 : n === 3 ? 40 : n === 4 ? 35 : n >= 10 ? 15 : 25;
   return { nbStocks: n, stockCap, stockMonthly, maxWeight, minTicket: eff < 600 ? 50 : 100 };
 }
 
