@@ -17,11 +17,22 @@ const OUT = path.resolve('out');
 const W = 390, H = 844;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Un fichier d'état par vidéo : plusieurs fabrications en parallèle ne s'écrasent pas
 async function setStatus(state, extra) {
-  let all = {};
-  try { const { data } = await sb.storage.from('social').download('tuto/status.json'); if (data) all = JSON.parse(await data.text()); } catch (e) {}
-  all[ID] = { state, at: new Date().toISOString(), ...(extra || {}) };
-  await sb.storage.from('social').upload('tuto/status.json', Buffer.from(JSON.stringify(all)), { contentType: 'application/json', upsert: true });
+  const st = { state, at: new Date().toISOString(), ...(extra || {}) };
+  await sb.storage.from('social').upload('tuto/status/' + ID + '.json', Buffer.from(JSON.stringify(st)), { contentType: 'application/json', upsert: true, cacheControl: '0' });
+}
+// manifest.json = réunion des descriptions de toutes les vidéos (tuto/meta/*.json)
+async function rebuildManifest() {
+  const { data: files } = await sb.storage.from('social').list('tuto/meta', { limit: 200 });
+  const manifest = {};
+  for (const f of files || []) {
+    if (!/\.json$/.test(f.name)) continue;
+    try { const { data } = await sb.storage.from('social').download('tuto/meta/' + f.name); if (data) manifest[f.name.replace(/\.json$/, '')] = JSON.parse(await data.text()); } catch (e) {}
+  }
+  const up = await sb.storage.from('social').upload('tuto/manifest.json', Buffer.from(JSON.stringify(manifest)), { contentType: 'application/json', upsert: true, cacheControl: '60' });
+  if (up.error) throw up.error;
+  return manifest;
 }
 
 // Petit serveur local pour la version de l'appli de cette branche
@@ -45,7 +56,7 @@ function serve(port) {
 // ── Préparation de la page : mode démo propre, objectif et plans d'exemple, curseur et sous-titres ──
 const SETUP = () => {
   const hide = document.createElement('style');
-  hide.textContent = '#cookie-banner,#tab-hint,#kp-tour,#kp-news-modal,#kp-level-modal,#legal-accept,#dup-banner,#demo-banner,.push-ask,#install-banner,.kp-install,#kp-consent,#home-install-banner,.install-banner,#kp-help-btn{display:none!important}';
+  hide.textContent = '#cookie-banner,#tab-hint,#kp-tour,#kp-news-modal,#kp-level-modal,#legal-accept,#dup-banner,#demo-banner,.push-ask,#install-banner,.kp-install,#kp-consent,#home-install-banner,.install-banner,#kp-help-btn,.kp-tuto-hint{display:none!important}';
   document.head.appendChild(hide);
   try { enterDemo(); } catch (e) {}
   // une crypto et de l'or, pour illustrer « tous tes placements »
@@ -74,6 +85,7 @@ const SETUP = () => {
       ] } };
   window.generateETFPlan = async () => { const el = document.getElementById('obj-etf-plan'); if (el) renderETFCards(ETFS, el, ACTIONS); };
   window.generateMonthlyPlan = async () => { renderMonthlyPlan(PLAN, false); };
+  window.isPremiumUser = () => true;   // le bilan (Premium) doit pouvoir s'ouvrir pendant le tournage
   window.showPlanTour = () => {}; window.showPortfolioTour = () => {}; window.kpTour = () => {}; window.kpMaybeWhatsNew = () => {}; window.maybeAskLevel = () => false;
   // réponse d'exemple de l'assistant
   window.__tutoAiDemo = async () => {
@@ -143,11 +155,12 @@ async function run() {
   const srv = await serve(4173);
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'fr-FR', timezoneId: 'Europe/Paris', colorScheme: 'light' });
+  await ctx.addInitScript(lvl => { window.__ttLevel = lvl; }, ['sante', 'depenses', 'news'].includes(timing.page) ? '3' : '1');
   await ctx.addInitScript(() => {
     try {
       localStorage.setItem('kp_consent', JSON.stringify({ ads: false, v: 1, at: Date.now() }));
       ['kp_hint_tour_portfolio', 'kp_hint_tour_chart', 'kp_tour_plan', 'kp_level_asked_anon', 'kp_news_seen_anon'].forEach(k => localStorage.setItem(k, k === 'kp_news_seen_anon' ? '99' : '1'));
-      localStorage.setItem('kp_level', '1');
+      localStorage.setItem('kp_level', window.__ttLevel || '1');
     } catch (e) {}
   });
   const page = await ctx.newPage();
@@ -240,14 +253,16 @@ async function run() {
     if (up.error) throw up.error;
   }
   const pub = n => sb.storage.from('social').getPublicUrl('tuto/' + n).data.publicUrl;
-  let manifest = {};
-  try { const { data } = await sb.storage.from('social').download('tuto/manifest.json'); if (data) manifest = JSON.parse(await data.text()); } catch (e) {}
   const v = Date.now();
-  manifest[ID] = { title: timing.title, page: timing.page || null, url: pub(ID + '.mp4') + '?v=' + v, poster: pub(ID + '.jpg') + '?v=' + v, duration: Math.round(total), voice: timing.voice, at: new Date().toISOString() };
-  const up = await sb.storage.from('social').upload('tuto/manifest.json', Buffer.from(JSON.stringify(manifest)), { contentType: 'application/json', upsert: true, cacheControl: '60' });
-  if (up.error) throw up.error;
-  await setStatus('done', { url: manifest[ID].url, size: fs.statSync(mp4).size });
-  console.log('Vidéo prête :', manifest[ID].url, Math.round(fs.statSync(mp4).size / 1024), 'Ko');
+  const meta = { title: timing.title, page: timing.page || null, url: pub(ID + '.mp4') + '?v=' + v, poster: pub(ID + '.jpg') + '?v=' + v, duration: Math.round(total), voice: timing.voice, at: new Date().toISOString() };
+  // reprise des vidéos déjà faites avant ce système (ancien manifest.json)
+  try { const { data: old } = await sb.storage.from('social').download('tuto/manifest.json'); if (old) { const om = JSON.parse(await old.text()); for (const [k, m] of Object.entries(om)) { const { data: ex } = await sb.storage.from('social').list('tuto/meta', { search: k + '.json' }); if (!(ex || []).some(x => x.name === k + '.json')) await sb.storage.from('social').upload('tuto/meta/' + k + '.json', Buffer.from(JSON.stringify(m)), { contentType: 'application/json', upsert: true }); } } } catch (e) {}
+  const upm = await sb.storage.from('social').upload('tuto/meta/' + ID + '.json', Buffer.from(JSON.stringify(meta)), { contentType: 'application/json', upsert: true, cacheControl: '0' });
+  if (upm.error) throw upm.error;
+  await rebuildManifest();
+  await sleep(8000); await rebuildManifest();   // seconde passe : inclut une vidéo terminée au même moment
+  await setStatus('done', { url: meta.url, size: fs.statSync(mp4).size });
+  console.log('Vidéo prête :', meta.url, Math.round(fs.statSync(mp4).size / 1024), 'Ko');
 }
 
 run().catch(async e => { console.error(e); try { await setStatus('error', { error: String(e.message || e).slice(0, 300) }); } catch (_) {} process.exit(1); });
