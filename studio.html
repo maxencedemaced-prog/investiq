@@ -100,7 +100,7 @@
   <h3 style="margin:0 0 6px">🎓 Vidéos tutoriels de l'appli</h3>
   <p class="sub" style="margin:0 0 12px">La voix lit le texte, puis l'appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l'appli.</p>
   <label>Voix</label>
-  <select id="tuto-voice" style="width:100%;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px;margin-bottom:12px"></select>
+  <div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:nowrap"><select id="tuto-voice" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select><button class="btn" id="btn-tuto-listen" onclick="listenTutoVoice()" style="white-space:nowrap">▶ Écouter</button></div>
   <div id="tuto-list"><div class="empty">Chargement…</div></div>
   <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeTutos()">Fermer</button></div>
 </dialog>
@@ -385,7 +385,7 @@ async function useVideo(btn) {
   btn.disabled = false; btn.textContent = '📤 Publier en Reel (Instagram, Facebook)';
 }
 
-// ── Vidéos tutoriels (api/_tuto.mjs → voix → tuto/record.mjs sur GitHub Actions) ──
+// ── Vidéos tutoriels (api/_tuto.js → voix → tuto/record.mjs sur GitHub Actions) ──
 var TUTO_TIMER = null;
 async function openTutos() {
   document.getElementById('dlg-tuto').showModal();
@@ -410,6 +410,20 @@ async function renderTutos(fillVoices) {
       + (m ? '<video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:8px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' : '')
       + '<div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn primary" onclick="makeTuto(\'' + t.id + '\', this)">' + (m ? '↻ Refaire la vidéo' : '🎬 Fabriquer la vidéo') + '</button></div></div>';
   }).join('');
+}
+var TUTO_AUDIO = null;
+async function listenTutoVoice() {
+  var btn = document.getElementById('btn-tuto-listen'), sel = document.getElementById('tuto-voice');
+  if (TUTO_AUDIO) { try { TUTO_AUDIO.pause(); } catch (e) {} TUTO_AUDIO = null; }
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    var r = await api('POST', { action: 'tuto-voice-preview', voice: sel.value });
+    TUTO_AUDIO = new Audio(r.audio);
+    TUTO_AUDIO.onended = function () { btn.textContent = '▶ Écouter'; };
+    await TUTO_AUDIO.play();
+    btn.textContent = '🔊 ' + r.voice;
+  } catch (e) { toast(e.message, 8000); btn.textContent = '▶ Écouter'; }
+  btn.disabled = false;
 }
 async function makeTuto(id, btn) {
   btn.disabled = true; var l = btn.textContent; btn.textContent = 'Voix en préparation (≈ 30 s)…';

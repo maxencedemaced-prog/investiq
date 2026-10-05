@@ -691,6 +691,25 @@ export default async function handler(req, res) {
       const voices = await tutoVoices();
       return res.status(200).json({ tutos: Object.entries(TUTOS).map(([id, t]) => ({ id, title: t.title, page: t.page, beats: t.beats.map(x => x.say) })), manifest, status, voices: voices.map(v => v.name), eleven: voices.some(v => v.id) });
     }
+    // Écoute d'essai d'une voix (phrase courte, rien n'est enregistré)
+    if (b.action === 'tuto-voice-preview') {
+      const voices = await tutoVoices();
+      const voice = voices[Math.max(0, Math.min(voices.length - 1, parseInt(b.voice, 10) || 0))];
+      if (!voice) return res.status(400).json({ error: 'Aucune voix ElevenLabs disponible' });
+      const text = 'Salut ! Moi, c’est la voix de Kapitaro. Je t’explique en trente secondes à quoi sert chaque page de l’appli.';
+      let last = '';
+      for (const model of [...new Set([process.env.ELEVENLABS_MODEL || 'eleven_v4', 'eleven_v3', 'eleven_multilingual_v2'])]) {
+        const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voice.id + '?output_format=mp3_44100_64', {
+          method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
+          body: JSON.stringify({ text, model_id: model }), signal: AbortSignal.timeout(30000),
+        });
+        if (r.ok) return res.status(200).json({ voice: voice.name, audio: 'data:audio/mpeg;base64,' + Buffer.from(await r.arrayBuffer()).toString('base64') });
+        last = r.status + ' ' + (await r.text()).slice(0, 160);
+        if (r.status === 401 || r.status === 402) break;
+        if (r.status === 404 || /voice_not_found|not found/i.test(last)) return res.status(400).json({ error: 'Voix introuvable sur ton compte ElevenLabs : ajoute-la à « Mes voix » depuis la bibliothèque, puis réessaie.' });
+      }
+      return res.status(502).json({ error: 'Écoute impossible : ' + last });
+    }
     if (b.action === 'tuto-create') {
       const t = TUTOS[b.id];
       if (!t) return res.status(400).json({ error: 'Tutoriel inconnu' });
