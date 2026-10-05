@@ -144,6 +144,19 @@ const SETUP = () => {
   window.__ttTap = sel => { const el = window.__ttTarget(sel); cur.classList.remove('tap'); void cur.offsetWidth; cur.classList.add('tap'); if (el) { try { el.click(); } catch (e) {} } };
 };
 
+// Sous-titres : on garde la ponctuation du texte (le minutage de la voix ne connaît que les mots nus)
+function dispWords(b) {
+  const toks = String(b.say || '').match(/\S+/g) || [], ws = b.words || [];
+  const out = []; let k = 0;
+  for (const tok of toks) {
+    const core = tok.replace(/[,.:;!?…]+$/, '');
+    if (!core) { if (out.length) out[out.length - 1].w += ' ' + tok; continue; }
+    const t = ws[k] ? ws[k].t : (out.length ? out[out.length - 1].t + 0.2 : 0); k++;
+    out.push({ w: tok, t });
+  }
+  return out;
+}
+
 async function run() {
   if (!ID) throw new Error('TUTO_ID manquant');
   await setStatus('recording', { pct: 20, step: 'Ouverture de l’appli' });
@@ -197,7 +210,7 @@ async function run() {
   for (const b of timing.beats) {
     const wait = at(b.start || 0) - Date.now();
     if (wait > 0) await sleep(wait);
-    await page.evaluate(([w, s]) => window.__ttCaption(w, s), [b.words || [], b.say]);
+    await page.evaluate(([w, s]) => window.__ttCaption(w, s), [dispWords(b), b.say]);
     { const i = timing.beats.indexOf(b), n = timing.beats.length; setStatus('recording', { pct: Math.round(25 + 55 * i / n), step: 'Tournage : scène ' + (i + 1) + ' sur ' + n }).catch(() => {}); }   // sans attendre : la chronologie ne doit pas prendre de retard
     for (const a of b.do || []) {
       try {
