@@ -142,8 +142,7 @@ async function run() {
 
   const srv = await serve(4173);
   const browser = await chromium.launch();
-  const t0 = Date.now();
-  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'fr-FR', timezoneId: 'Europe/Paris', colorScheme: 'light', recordVideo: { dir: path.join(OUT, 'raw'), size: { width: W * 2, height: H * 2 } } });
+  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'fr-FR', timezoneId: 'Europe/Paris', colorScheme: 'light' });
   await ctx.addInitScript(() => {
     try {
       localStorage.setItem('kp_consent', JSON.stringify({ ads: false, v: 1, at: Date.now() }));
@@ -165,8 +164,22 @@ async function run() {
   await page.evaluate(SETUP);
   await sleep(2500);   // prix, logos et graphiques chargés
 
-  const lead = (Date.now() - t0) / 1000;
-  const start = Date.now();
+  const FR = path.join(OUT, 'frames'); fs.mkdirSync(FR, { recursive: true });
+  const cdp = await ctx.newCDPSession(page);
+  const frames = []; let start = 0, nFr = 0;
+  cdp.on('Page.screencastFrame', async ev => {
+    try {
+      const file = path.join(FR, 'f' + String(nFr++).padStart(5, '0') + '.jpg');
+      fs.writeFileSync(file, Buffer.from(ev.data, 'base64'));
+      frames.push({ file, t: start ? (Date.now() - start) / 1000 : 0 });
+    } catch (e) {}
+    try { await cdp.send('Page.screencastFrameAck', { sessionId: ev.sessionId }); } catch (e) {}
+  });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: W * 2, maxHeight: H * 2, everyNthFrame: 1 });
+  await sleep(400);
+  // petit mouvement invisible pour obtenir une première image à l'instant 0
+  start = Date.now();
+  await page.evaluate(() => { const d = document.createElement('i'); d.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01'; document.body.appendChild(d); setTimeout(() => d.remove(), 50); });
   const at = s => start + s * 1000;
   for (const b of timing.beats) {
     const wait = at(b.start || 0) - Date.now();
@@ -187,11 +200,19 @@ async function run() {
   const total = (last.end || 0) + 1.6;
   const remain = at(total) - Date.now();
   if (remain > 0) await sleep(remain);
-  const video = page.video();
+  try { await cdp.send('Page.stopScreencast'); } catch (e) {}
+  await sleep(300);
   await ctx.close();
   await browser.close();
   srv.close();
-  const raw = await video.path();
+  if (frames.length < 5) throw new Error('Capture vide (' + frames.length + ' images)');
+  // liste d'images avec la durée de chacune (les images n'arrivent que quand l'écran change)
+  frames.sort((a, b) => a.t - b.t); frames[0].t = 0;
+  const list = [];
+  for (let k = 0; k < frames.length; k++) { const until = k + 1 < frames.length ? frames[k + 1].t : total; const d = Math.max(0.001, until - frames[k].t); list.push("file '" + frames[k].file.replace(/\\/g, '/') + "'", 'duration ' + d.toFixed(3)); }
+  list.push("file '" + frames[frames.length - 1].file.replace(/\\/g, '/') + "'");
+  const listFile = path.join(OUT, 'frames.txt'); fs.writeFileSync(listFile, list.join('\n'));
+  console.log('Images capturées :', frames.length);
 
   // voix
   const segs = [];
@@ -203,12 +224,12 @@ async function run() {
     segs.push({ f, start: timing.segments[k].start });
   }
   const mp4 = path.join(OUT, ID + '.mp4'), poster = path.join(OUT, ID + '.jpg');
-  const args = ['-y', '-ss', lead.toFixed(2), '-i', raw];
+  const args = ['-y', '-f', 'concat', '-safe', '0', '-i', listFile];
   segs.forEach(s => args.push('-i', s.f));
   const delays = segs.map((s, k) => `[${k + 1}:a]adelay=${Math.round(s.start * 1000)}|${Math.round(s.start * 1000)}[a${k}]`);
   const mix = segs.length > 1 ? `;${segs.map((_, k) => `[a${k}]`).join('')}amix=inputs=${segs.length}:normalize=0[a]` : '';
   args.push('-filter_complex', delays.join(';') + mix, '-map', '0:v', '-map', segs.length > 1 ? '[a]' : '[a0]', '-t', total.toFixed(2),
-    '-c:v', 'libx264', '-preset', 'medium', '-crf', '24', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', 'scale=720:-2',
+    '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', 'scale=720:-2:flags=lanczos',
     '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4);
   execFileSync('ffmpeg', args, { stdio: 'inherit' });
   execFileSync('ffmpeg', ['-y', '-ss', '1.2', '-i', mp4, '-frames:v', '1', '-q:v', '4', poster], { stdio: 'inherit' });
