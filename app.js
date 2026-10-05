@@ -3593,6 +3593,16 @@ function recoActionsHTML(ticker, name, amount, type, dark) {
 // on passe par le service worker, avec repli silencieux si rien n'est possible.
 function showLocalNotification(title, body) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  // Appli ouverte à l'écran : la liste de la cloche suffit (sinon chaque ouverture renvoyait les mêmes notifications au téléphone)
+  if (!document.hidden) return;
+  // Jamais deux fois la même notification dans la journée
+  try {
+    const day = new Date().toISOString().slice(0, 10), key = 'kp_local_notif_' + day;
+    const sent = JSON.parse(localStorage.getItem(key) || '[]'), sig = title + '|' + body;
+    if (sent.includes(sig)) return;
+    sent.push(sig); localStorage.setItem(key, JSON.stringify(sent.slice(-30)));
+    Object.keys(localStorage).filter(k => k.startsWith('kp_local_notif_') && k !== key).forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
   const opts = { body, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png' };
   const reg = navigator.serviceWorker && navigator.serviceWorker.getRegistration ? navigator.serviceWorker.getRegistration() : Promise.resolve(null);
   reg.then(r => { if (r && r.showNotification) return r.showNotification(title, opts); new Notification(title, opts); })
