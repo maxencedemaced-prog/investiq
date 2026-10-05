@@ -1,4 +1,4 @@
-// api/_tuto.mjs — vidéos tutoriels : textes (voix off + sous-titres) et gestes du curseur, scène par scène.
+// api/_tuto.js — vidéos tutoriels : textes (voix off + sous-titres) et gestes du curseur, scène par scène.
 // Utilisé par api/social.js (voix ElevenLabs) et par tuto/record.mjs (enregistrement de l'appli en mode démo sur GitHub Actions).
 // Gestes possibles dans « do » (exécutés au début de la scène, dans l'ordre) :
 //   { click: '#selecteur' }   le curseur va sur l'élément puis clique
