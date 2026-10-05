@@ -8948,8 +8948,10 @@ async function kpTutoForPage(page) {
     const id = Object.keys(m || {}).find(k => !k.includes('__') && m[k] && m[k].page === page && m[k].url);
     const sec = document.getElementById('sec-' + page);
     const h1 = sec && sec.querySelector('h1');
-    if (!id || !h1) return;
-    if (!h1.querySelector('.kp-tuto-btn')) h1.insertAdjacentHTML('beforeend', ' <button type="button" class="kp-tuto-btn" onclick="kpOpenTuto(\'' + id + '\')" style="vertical-align:middle;margin-left:6px;padding:4px 10px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:inherit;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0">▶ C’est quoi ?</button>');
+    if (!id || !sec) return;
+    // page sans titre (Actualités) : le bouton se place en haut de la page, hors du contenu redessiné
+    if (!h1) { if (!sec.querySelector('.kp-tuto-row')) sec.insertAdjacentHTML('afterbegin', '<div class="kp-tuto-row" style="display:flex;justify-content:flex-end;margin:0 0 8px"><button type="button" class="kp-tuto-btn" onclick="kpOpenTuto(\'' + id + '\')" style="padding:5px 12px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:inherit;font-size:12px;font-weight:800;cursor:pointer">▶ C’est quoi ?</button></div>'); }
+    else if (!h1.querySelector('.kp-tuto-btn')) h1.insertAdjacentHTML('beforeend', ' <button type="button" class="kp-tuto-btn" onclick="kpOpenTuto(\'' + id + '\')" style="vertical-align:middle;margin-left:6px;padding:4px 10px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:inherit;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0">▶ C’est quoi ?</button>');
     const key = 'kp_tuto_hint_' + page + '_' + ((currentUser && currentUser.id) || 'anon');
     if (isDemo || kpGetLevel() > 2 || localStorage.getItem(key) || localStorage.getItem(kpTutoSeenKey(id))) return;
     if (document.getElementById('kp-tour') || document.getElementById('onboarding-modal')?.style.display === 'flex') return;
