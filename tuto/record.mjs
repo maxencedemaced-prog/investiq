@@ -9,12 +9,14 @@ import path from 'path';
 import http from 'http';
 import { execFileSync } from 'child_process';
 
-const ID = String(process.env.TUTO_ID || '').trim();
+const TID = String(process.env.TUTO_ID || '').trim();
+const DESK = String(process.env.VARIANT || '').trim() === 'desktop';   // version ordinateur : grand écran, menu latéral
+const ID = DESK ? TID + '__desktop' : TID;   // nom des fichiers, de l'état et de l'entrée du manifest
 const LIVE = String(process.env.APP_URL || 'https://kapitaro.fr').trim().replace(/\/$/, '');
 const sb = createClient((process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.supabase.co').trim(), (process.env.SUPABASE_SERVICE_KEY || '').trim());   // même valeur par défaut que video/render-job.mjs
 const ROOT = path.resolve('..');
 const OUT = path.resolve('out');
-const W = 390, H = 844;
+const W = DESK ? 1280 : 390, H = DESK ? 800 : 844;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Un fichier d'état par vidéo : plusieurs fabrications en parallèle ne s'écrasent pas
@@ -86,6 +88,7 @@ const SETUP = () => {
   window.generateETFPlan = async () => { const el = document.getElementById('obj-etf-plan'); if (el) renderETFCards(ETFS, el, ACTIONS); };
   window.generateMonthlyPlan = async () => { renderMonthlyPlan(PLAN, false); };
   window.isPremiumUser = () => true;   // le bilan (Premium) doit pouvoir s'ouvrir pendant le tournage
+  window.kpOpenTuto = () => {};   // pendant le tournage, le bouton « ▶ C'est quoi ? » ne lance pas une vidéo dans la vidéo
   window.showPlanTour = () => {}; window.showPortfolioTour = () => {}; window.kpTour = () => {}; window.kpMaybeWhatsNew = () => {}; window.maybeAskLevel = () => false;
   // réponse d'exemple de l'assistant
   window.__tutoAiDemo = async () => {
@@ -136,7 +139,9 @@ const SETUP = () => {
   };
   window.__ttCaptionHide = () => { cap.style.opacity = '0'; };
   window.__ttTarget = sel => {
-    const el = sel.split(',').map(s => document.querySelector(s.trim())).find(e => e && e.getBoundingClientRect().width > 0);
+    // premier élément VISIBLE (une même classe peut exister sur des pages cachées)
+    let el = null;
+    for (const s of sel.split(',')) { el = [...document.querySelectorAll(s.trim())].find(e => e.getBoundingClientRect().width > 0); if (el) break; }
     return el || null;
   };
   window.__ttMove = sel => { const el = window.__ttTarget(sel); if (!el) return false; const r = el.getBoundingClientRect(); cur.style.left = (r.left + Math.min(r.width / 2, 60)) + 'px'; cur.style.top = (r.top + r.height / 2) + 'px'; return true; };
@@ -160,14 +165,14 @@ function dispWords(b) {
 async function run() {
   if (!ID) throw new Error('TUTO_ID manquant');
   await setStatus('recording', { pct: 20, step: 'Ouverture de l’appli' });
-  const { data: tf, error } = await sb.storage.from('social').download('tuto/' + ID + '/timing.json');
+  const { data: tf, error } = await sb.storage.from('social').download('tuto/' + TID + '/timing.json');
   if (error || !tf) throw new Error('timing.json introuvable : relance la fabrication depuis le Studio');
   const timing = JSON.parse(await tf.text());
   fs.mkdirSync(path.join(OUT, 'raw'), { recursive: true });
 
   const srv = await serve(4173);
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'fr-FR', timezoneId: 'Europe/Paris', colorScheme: 'light' });
+  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DESK ? 1.5 : 2, isMobile: !DESK, hasTouch: !DESK, locale: 'fr-FR', timezoneId: 'Europe/Paris', colorScheme: 'light' });
   await ctx.addInitScript(lvl => { window.__ttLevel = lvl; }, ['sante', 'depenses', 'news'].includes(timing.page) ? '3' : '1');
   await ctx.addInitScript(() => {
     try {
@@ -188,6 +193,7 @@ async function run() {
   await page.goto('http://localhost:4173/', { waitUntil: 'load' });
   await sleep(1500);
   await page.evaluate(SETUP);
+  if (DESK) await page.addStyleTag({ content: '#tt-cap{bottom:28px!important}#tt-cap .box{font-size:22px!important;max-width:820px!important;padding:12px 20px!important}' });
   await sleep(2500);   // prix, logos et graphiques chargés
 
   const FR = path.join(OUT, 'frames'); fs.mkdirSync(FR, { recursive: true });
@@ -201,7 +207,7 @@ async function run() {
     } catch (e) {}
     try { await cdp.send('Page.screencastFrameAck', { sessionId: ev.sessionId }); } catch (e) {}
   });
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: W * 2, maxHeight: H * 2, everyNthFrame: 1 });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: Math.round(W * (DESK ? 1.5 : 2)), maxHeight: Math.round(H * (DESK ? 1.5 : 2)), everyNthFrame: 1 });
   await sleep(400);
   // petit mouvement invisible pour obtenir une première image à l'instant 0
   start = Date.now();
@@ -212,13 +218,14 @@ async function run() {
     if (wait > 0) await sleep(wait);
     await page.evaluate(([w, s]) => window.__ttCaption(w, s), [dispWords(b), b.say]);
     { const i = timing.beats.indexOf(b), n = timing.beats.length; setStatus('recording', { pct: Math.round(25 + 55 * i / n), step: 'Tournage : scène ' + (i + 1) + ' sur ' + n }).catch(() => {}); }   // sans attendre : la chronologie ne doit pas prendre de retard
-    for (const a of b.do || []) {
+    for (const a0 of b.do || []) {
+      const a = DESK ? JSON.parse(JSON.stringify(a0).replace(/#bnav-/g, '#nav-')) : a0;
       try {
         if (a.wait) await sleep(a.wait);
         else if (a.js) { await page.evaluate(code => { try { (0, eval)(code); } catch (e) { console.log(e.message); } }, a.js); if (/\bnav\(/.test(a.js)) { await sleep(150); await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' })); } }   // changement de page : on repart du haut
         else if (a.scroll) { await page.evaluate(s => window.__ttScroll(s), a.scroll); await sleep(700); }
         else if (a.point) { await page.evaluate(s => window.__ttMove(s), a.point); await sleep(800); }
-        else if (a.click && /^#bnav-/.test(a.click)) { await page.evaluate(s => window.__ttMove(s), a.click); await sleep(780); await page.evaluate(s => window.__ttTap(s), a.click); await sleep(250); await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' })); }
+        else if (a.click && /^#b?nav-/.test(a.click)) { await page.evaluate(s => window.__ttMove(s), a.click); await sleep(780); await page.evaluate(s => window.__ttTap(s), a.click); await sleep(250); await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' })); }
         else if (a.click) { const ok = await page.evaluate(s => { window.__ttScroll(s); return true; }, a.click); await sleep(350); await page.evaluate(s => window.__ttMove(s), a.click); await sleep(780); if (ok) await page.evaluate(s => window.__ttTap(s), a.click); await sleep(250); }
         else if (a.type) { await page.evaluate(async ([s, t]) => { const el = window.__ttTarget(s); if (!el) return; el.focus(); el.value = ''; for (const ch of t) { el.value += ch; el.dispatchEvent(new Event('input', { bubbles: true })); await new Promise(r => setTimeout(r, 110)); } el.dispatchEvent(new Event('change', { bubbles: true })); }, a.type); }
         else if (a.upload) { await page.setInputFiles(a.upload[0], path.resolve('assets', a.upload[1])); }
@@ -259,7 +266,7 @@ async function run() {
   const delays = segs.map((s, k) => `[${k + 1}:a]adelay=${Math.round(s.start * 1000)}|${Math.round(s.start * 1000)}[a${k}]`);
   const mix = segs.length > 1 ? `;${segs.map((_, k) => `[a${k}]`).join('')}amix=inputs=${segs.length}:normalize=0[a]` : '';
   args.push('-filter_complex', delays.join(';') + mix, '-map', '0:v', '-map', segs.length > 1 ? '[a]' : '[a0]', '-t', total.toFixed(2),
-    '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', 'scale=720:-2:flags=lanczos',
+    '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : 'scale=720:-2') + ':flags=lanczos',
     '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4);
   execFileSync('ffmpeg', args, { stdio: 'inherit' });
   execFileSync('ffmpeg', ['-y', '-ss', '1.2', '-i', mp4, '-frames:v', '1', '-q:v', '4', poster], { stdio: 'inherit' });
@@ -272,7 +279,7 @@ async function run() {
   }
   const pub = n => sb.storage.from('social').getPublicUrl('tuto/' + n).data.publicUrl;
   const v = Date.now();
-  const meta = { title: timing.title, page: timing.page || null, url: pub(ID + '.mp4') + '?v=' + v, poster: pub(ID + '.jpg') + '?v=' + v, duration: Math.round(total), voice: timing.voice, at: new Date().toISOString() };
+  const meta = { title: timing.title, page: timing.page || null, variant: DESK ? 'desktop' : 'mobile', url: pub(ID + '.mp4') + '?v=' + v, poster: pub(ID + '.jpg') + '?v=' + v, duration: Math.round(total), voice: timing.voice, at: new Date().toISOString() };
   // reprise des vidéos déjà faites avant ce système (ancien manifest.json)
   try { const { data: old } = await sb.storage.from('social').download('tuto/manifest.json'); if (old) { const om = JSON.parse(await old.text()); for (const [k, m] of Object.entries(om)) { const { data: ex } = await sb.storage.from('social').list('tuto/meta', { search: k + '.json' }); if (!(ex || []).some(x => x.name === k + '.json')) await sb.storage.from('social').upload('tuto/meta/' + k + '.json', Buffer.from(JSON.stringify(m)), { contentType: 'application/json', upsert: true }); } } } catch (e) {}
   const upm = await sb.storage.from('social').upload('tuto/meta/' + ID + '.json', Buffer.from(JSON.stringify(meta)), { contentType: 'application/json', upsert: true, cacheControl: '0' });

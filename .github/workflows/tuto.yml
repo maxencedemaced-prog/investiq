@@ -8,8 +8,12 @@ on:
       tuto_id:
         description: Identifiant du tutoriel (api/_tuto.js)
         required: true
+      variant:
+        description: mobile ou desktop
+        required: false
+        default: mobile
 concurrency:
-  group: tuto-${{ inputs.tuto_id }}
+  group: tuto-${{ inputs.tuto_id }}-${{ inputs.variant }}
   cancel-in-progress: true
 jobs:
   record:
@@ -33,6 +37,7 @@ jobs:
       - name: Enregistrement de la vidéo
         env:
           TUTO_ID: ${{ inputs.tuto_id }}
+          VARIANT: ${{ inputs.variant }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           APP_URL: ${{ secrets.APP_URL }}
@@ -41,7 +46,7 @@ jobs:
       - name: Signaler l'échec au Studio
         if: failure() || cancelled()
         env:
-          TUTO_ID: ${{ inputs.tuto_id }}
+          TUTO_ID: ${{ inputs.variant == 'desktop' && format('{0}__desktop', inputs.tuto_id) || inputs.tuto_id }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
