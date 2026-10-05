@@ -780,7 +780,7 @@ export default async function handler(req, res) {
       const up = await sb.storage.from('social').upload('tuto/' + b.id + '/timing.json', Buffer.from(JSON.stringify(timing)), { contentType: 'application/json', upsert: true });
       if (up.error) throw up.error;
       let ref = '';
-      for (const v of ['mobile', 'desktop']) {
+      for (const v of (b.variant === 'desktop' ? ['desktop'] : b.variant === 'mobile' ? ['mobile'] : ['mobile', 'desktop'])) {
         const sid = v === 'desktop' ? b.id + '__desktop' : b.id;
         await sb.storage.from('social').upload('tuto/status/' + sid + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
         ref = await dispatchWorkflow('tuto.yml', { tuto_id: b.id, variant: v });
