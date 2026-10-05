@@ -1928,11 +1928,12 @@ async function acSearchYahoo(query) {
   try {
     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&crypto=1`);
     const data = await res.json();
-    const results = data.results || [];
+    if ((document.getElementById('f-search')?.value || '').trim().toLowerCase() !== String(query).trim().toLowerCase()) return;   // l’utilisateur a continué à taper : on n’écrase pas ses résultats
+    const results = (data.results || []).filter(acMatchesCat);
     if (!results.length) {
       drop.innerHTML = `<div class="ac-no-result">
         <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat pour "${_escHtml(query)}"</div>
-        <button class="ac-manual-btn" onclick="acSelectManual('${jsArg(query.toUpperCase())}')">Utiliser "${_escHtml(query.toUpperCase())}" comme ticker →</button>
+        ${acManualBtn(query)}
       </div>`;
       return;
     }
@@ -1949,7 +1950,7 @@ async function acSearchYahoo(query) {
     const drop2 = document.getElementById('ac-drop');
     if (drop2) drop2.innerHTML = `<div class="ac-no-result">
       <div style="font-size:13px;font-weight:600;color:#8e8e93">Aucun résultat trouvé</div>
-      <button class="ac-manual-btn" onclick="acSelectManual('${jsArg(query.toUpperCase())}')">Utiliser "${_escHtml(query.toUpperCase())}" comme ticker →</button>
+      ${acManualBtn(query)}
     </div>`;
   }
 }
@@ -1974,9 +1975,105 @@ function apos() { return positions.filter(p => !isTrackOnly(p)); }
 // Nom lisible d'une crypto (« SUI20947-USD » -> « Sui (SUI) »)
 function cryptoLabel(t) {
   const k = String(t || '').toUpperCase();
-  if (!/-(EUR|USD|G)$/.test(k) && !/^CUR-/.test(k)) return '';
+  if (!/-(EUR|USD|G)$/.test(k) && !/^CUR-/.test(k) && k !== '4GLD.DE') return '';
   const e = AC_DB.find(c => (c.type === 'Crypto' || c.type === 'Matière première' || c.type === 'Devise') && c.ticker.toUpperCase() === k);
   return e ? e.name : '';
+}
+
+// ═══ CATÉGORIES de l'ajout de position : Tout · Actions · ETF · Cryptos · Matières premières · Devises ═══
+(function kpInjectCats() {
+  try {
+    if (document.getElementById('kp-cats-css')) return;
+    const st = document.createElement('style'); st.id = 'kp-cats-css';
+    st.textContent = '.ac-cats{display:flex;gap:8px;overflow-x:auto;margin:0 0 16px;padding:2px 2px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.ac-cats::-webkit-scrollbar{display:none}'
+      + '.ac-cat{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:1.5px solid var(--color-border,#e4e4e7);background:var(--color-surface,#fff);color:var(--color-text,#09090b);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s}'
+      + '.ac-cat:hover{border-color:#16a34a}.ac-cat.on{background:var(--color-text,#09090b);color:var(--color-surface,#fff);border-color:var(--color-text,#09090b)}'
+      + '.ac-cat-hint{display:none;margin:0 0 14px;padding:10px 12px;border-radius:12px;font-size:12.5px;line-height:1.5}';
+    document.head.appendChild(st);
+  } catch (e) {}
+})();
+
+let acCat = 'all';
+const AC_CATS = {
+  all: { label: 'Rechercher un titre *', ph: 'Ex : Apple, LVMH, IWDA, bitcoin, or…', empty: 'Recherche un titre ci-dessus', sub: 'Le prix et le secteur se rempliront automatiquement — par nom ou par code (ex : AAPL, MC.PA, IWDA.L)', hint: '' },
+  Action: { label: 'Rechercher une action *', ph: 'Ex : Apple, NVIDIA, LVMH, Air Liquide…', empty: 'Recherche une action ci-dessus', sub: 'Par nom ou par code (ex : AAPL, MC.PA)', hint: '' },
+  ETF: { label: 'Rechercher un ETF *', ph: 'Ex : MSCI World, S&P 500, IWDA, VWCE…', empty: 'Recherche un ETF ci-dessus', sub: 'Par nom ou par code (ex : IWDA.L, VWCE.DE)', hint: '' },
+  Crypto: { label: 'Rechercher une cryptomonnaie *', ph: 'Ex : Bitcoin, Ethereum, Solana…', empty: 'Recherche une cryptomonnaie ci-dessus', sub: '357 cryptos disponibles, avec le cours en euros', hint: '🪙 Suivi du cours uniquement : Kapitaro n’analyse pas les cryptomonnaies.', warn: true },
+  'Matière première': { label: 'Rechercher une matière première *', ph: 'Ex : or, argent, platine…', empty: 'Recherche une matière première ci-dessus', sub: 'Or, argent et platine au gramme, ou un ETC sur l’or', hint: '🥇 L’or, l’argent et le platine physiques se saisissent en grammes. Pour le pétrole ou le gaz, cherche un ETC ou un ETF dans l’onglet ETF ; leur cours se suit dans Actualités › Matières premières.' },
+  Devise: { label: 'Rechercher une devise *', ph: 'Ex : dollar, livre, franc suisse, dirham…', empty: 'Recherche une devise ci-dessus', sub: '32 devises, valeur en euros au taux du jour', hint: '💱 Suivi du taux de change uniquement : Kapitaro n’analyse pas les devises.' },
+};
+function acMatchesCat(r) { return acCat === 'all' || (r && r.type === acCat); }
+function acManualBtn(q) {
+  if (acCat !== 'all' && acCat !== 'Action' && acCat !== 'ETF') return '';
+  return '<button class="ac-manual-btn" onclick="acSelectManual(\'' + jsArg(q.toUpperCase()) + '\')">Utiliser "' + _escHtml(q.toUpperCase()) + '" comme ticker →</button>';
+}
+function acChipHTML(c) {
+  const base = c.type === 'Crypto' ? c.ticker.replace(/\d{3,}-(EUR|USD)$/, '').replace(/-(EUR|USD)$/, '') : c.type === 'Devise' ? c.ticker.replace('CUR-', '') : c.ticker.slice(0, 2);
+  const col = c.type === 'Crypto' ? '#f59e0b' : c.type === 'Devise' ? '#0d9488' : '#ca8a04';
+  const nm = c.name.replace(/\s*\(.*\)$/, '');
+  return '<div onclick="acSelect(' + JSON.stringify(c).replace(/"/g, '&quot;') + ')" class="home-hover-card" style="cursor:pointer;background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;transition:all 0.15s">'
+    + '<div style="width:26px;height:26px;border-radius:7px;background:' + col + ';color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + _escHtml(base.slice(0, 4)) + '</div>'
+    + '<div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1c1c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(nm) + '</div><div style="font-size:10px;color:#8e8e93">' + _escHtml(c.type) + '</div></div></div>';
+}
+function acRenderPopular() {
+  const wrap = document.getElementById('ac-popular');
+  if (!wrap) return;
+  const grid = wrap.querySelector('[data-pop="default"]'), dyn = document.getElementById('ac-pop-dyn');
+  if (!grid || !dyn) return;
+  const lists = {
+    Crypto: ['BTC-EUR', 'ETH-EUR', 'SOL-EUR', 'XRP-EUR', 'BNB-EUR', 'ADA-EUR', 'DOGE-EUR', 'LINK-EUR'],
+    'Matière première': ['XAU-G', 'XAG-G', 'XPT-G', '4GLD.DE'],
+    Devise: ['CUR-USD', 'CUR-GBP', 'CUR-CHF', 'CUR-JPY', 'CUR-CAD', 'CUR-MAD', 'CUR-TND', 'CUR-AED'],
+  }[acCat];
+  if (lists) {
+    grid.style.display = 'none'; dyn.style.display = 'grid';
+    dyn.innerHTML = lists.map(t => AC_DB.find(c => c.ticker === t)).filter(Boolean).map(acChipHTML).join('');
+  } else {
+    dyn.style.display = 'none'; grid.style.display = 'grid';
+    [...grid.children].forEach(ch => { const o = ch.getAttribute('onclick') || ''; ch.style.display = (acCat === 'all' || o.indexOf('"type":"' + acCat + '"') !== -1) ? '' : 'none'; });
+  }
+}
+function setAcCat(cat) {
+  acCat = AC_CATS[cat] ? cat : 'all';
+  const c = AC_CATS[acCat];
+  document.querySelectorAll('#ac-cats .ac-cat').forEach(b => b.classList.toggle('on', b.dataset.cat === acCat));
+  const lab = document.getElementById('ac-label'); if (lab) lab.textContent = c.label;
+  const inp = document.getElementById('f-search'); if (inp) inp.placeholder = c.ph;
+  const t = document.getElementById('ac-empty-title'); if (t) t.textContent = c.empty;
+  const sub = document.getElementById('ac-empty-sub'); if (sub) sub.textContent = c.sub;
+  const hint = document.getElementById('ac-cat-hint');
+  if (hint) {
+    hint.textContent = c.hint; hint.style.display = c.hint ? 'block' : 'none';
+    hint.style.background = c.warn ? 'rgba(245,158,11,0.12)' : 'rgba(59,130,246,0.1)';
+    hint.style.border = '1px solid ' + (c.warn ? 'rgba(245,158,11,0.4)' : 'rgba(59,130,246,0.35)');
+    hint.style.color = c.warn ? '#92400e' : '#1e40af';
+  }
+  acRenderPopular();
+  const drop = document.getElementById('ac-drop'); if (drop) drop.style.display = 'none';
+  if (inp && !acSelected && inp.value.trim().length >= 2) acSearch(inp.value.trim());
+}
+
+// ═══ « Aide à la décision » : pas d'analyse des cryptos ni des devises, et jamais d'actif inventé ═══
+function decisionTrackOnlyKind(text) {
+  const t = String(text || '').trim().toLowerCase();
+  if (t.length < 2) return '';
+  if (/bitcoin|ethereum|\bcrypto/.test(t)) return 'Crypto';   // y compris les ETF/ETP adossés à des cryptos
+  if (/^(devise|devises|forex)$/.test(t)) return 'Devise';
+  if (AC_DB.some(c => c.type !== 'Crypto' && c.type !== 'Devise' && c.ticker.toLowerCase().split('.')[0] === t)) return '';   // un vrai titre porte ce nom : on ne bloque pas
+  for (const c of [...AC_DB.filter(x => x.type === 'Devise'), ...AC_DB.filter(x => x.type === 'Crypto')]) {
+    const sym = c.ticker.replace(/^CUR-/, '').replace(/\d{3,}-(EUR|USD)$/, '').replace(/-(EUR|USD)$/, '').toLowerCase();
+    const nm = c.name.replace(/\s*\(.*\)$/, '').toLowerCase();
+    if (t === sym || t === nm || t === c.ticker.toLowerCase()) return c.type;
+  }
+  return '';
+}
+function setDecisionNotice(kind) {
+  const el = document.getElementById('d-notice');
+  if (!el) return;
+  const msg = kind === 'Crypto' ? '🪙 Pas d’analyse pour les cryptomonnaies : Kapitaro les suit (cours, valeur) sans donner d’avis.'
+    : kind === 'Devise' ? '💱 Pas d’analyse pour les devises : Kapitaro suit leur valeur sans donner d’avis.'
+    : kind === 'unknown' ? '⚠️ Je ne trouve pas cet actif. Choisis un titre dans la liste proposée.' : '';
+  el.textContent = msg; el.style.display = msg ? 'block' : 'none';
 }
 
 // ===== AUTOCOMPLETE ADD POSITION =====
@@ -2340,6 +2437,7 @@ const AC_DB = [
   {ticker:"AURORA14803-USD",name:"Aurora (AURORA)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
   {ticker:"USDA35965-USD",name:"USDa (USDA)",type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
   // ===== MÉTAUX PHYSIQUES (cours au gramme, en euros) =====
+  {ticker:"4GLD.DE",name:"Xetra-Gold (ETC or physique)",type:'Matière première',sector:'Matières premières',exchange:'XETRA'},
   {ticker:"XAU-G",name:"Or physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
   {ticker:"XAG-G",name:"Argent physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
   {ticker:"XPT-G",name:"Platine physique (au gramme)",type:'Matière première',sector:'Matières premières',exchange:'Cours au gramme'},
@@ -2634,7 +2732,7 @@ function acSearch(query) {
     c.ticker.toLowerCase().includes(q) ||
     c.name.toLowerCase().includes(q) ||
     c.sector.toLowerCase().includes(q)
-  ).slice(0, 7);
+  ).filter(acMatchesCat).slice(0, 7);
 
   if (!results.length) {
     // Try dynamic search via Yahoo Finance
@@ -6277,6 +6375,13 @@ function updateDecisionCTA() {
   const name = document.getElementById('d-name')?.value.trim();
   const amount = document.getElementById('d-amount-display')?.dataset.amount || 500;
   const intentLbl = { garder: 'Que faire ?', acheter: 'Acheter', vendre: 'Vendre' }[decisionIntention || 'garder'];
+  const _kind = decisionTrackOnlyKind(name);
+  setDecisionNotice(_kind);
+  if (_kind) {
+    cta.innerHTML = '🪙 Pas d’analyse pour ' + (_kind === 'Devise' ? 'les devises' : 'les cryptomonnaies');
+    cta.style.opacity = '0.55';
+    return;
+  }
   if (name) {
     cta.innerHTML = `🤖 Analyser <strong style="margin:0 4px">${_escHtml(name)}</strong> · ${intentLbl} · ${parseInt(amount).toLocaleString('fr-FR')} €`;
     cta.style.opacity = '1';
@@ -6291,7 +6396,7 @@ function initDecisionPage() {
   const el = document.getElementById('d-quick-pos');
   if (el) {
     const dedupMap = {};
-    positions.forEach(p => { const k = p.name; if (!dedupMap[k]) dedupMap[k] = p; });
+    apos().forEach(p => { const k = p.name; if (!dedupMap[k]) dedupMap[k] = p; });
     const dedup = Object.values(dedupMap).slice(0, 8);
     el.innerHTML = dedup.map(p => {
       const pnl = p.pru > 0 ? ((p.price - p.pru)/p.pru*100).toFixed(1) : '0.0';
@@ -10382,9 +10487,16 @@ async function resolveDecisionText(text) {
 async function analyseDecision() {
   let name = getDecisionTicker();
   const nameInput = document.getElementById('d-name');
+  const _kind = decisionTrackOnlyKind(nameInput?.value || name);
+  if (_kind) { setDecisionNotice(_kind); updateDecisionCTA(); showToast('Pas d’analyse pour ' + (_kind === 'Devise' ? 'les devises' : 'les cryptomonnaies')); return; }
   if (name && nameInput && !(nameInput.dataset.ticker && nameInput.value.trim() === nameInput.dataset.label)) {
     const found = await resolveDecisionText(name);
+    if (found && /bitcoin|ethereum|crypto/i.test(found.name || '')) { updateDecisionCTA(); setDecisionNotice('Crypto'); showToast('Pas d’analyse pour les cryptomonnaies'); return; }   // le message vient APRÈS la mise à jour du bouton, sinon il serait effacé
     if (found) { setDecisionAsset(found.ticker, found.name); name = found.ticker; updateDecisionCTA(); }
+    else if (!positions.some(p => String(p.name).toLowerCase() === String(name).toLowerCase())) {
+      setDecisionNotice('unknown'); markFieldError('d-name');   // actif introuvable : on n’invente rien
+      return;
+    }
   }
   const amt  = parseInt(document.getElementById('d-amount-display')?.dataset.amount || 500);
   const bk   = profile.bankroll || 5000;
