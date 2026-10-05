@@ -409,11 +409,12 @@ async function renderTutos(fillVoices) {
   if (!fillVoices && listEl.dataset.sig === sig) return;
   if (!fillVoices && [].some.call(listEl.querySelectorAll('video'), function (v) { return !v.paused && !v.ended; })) return;
   listEl.dataset.sig = sig;
-  var lbl = { recording: '⏳ En cours de fabrication…', done: '✅ Prête', error: '❌ Erreur' };
+  var lbl = { queued: '⏳ En attente…', recording: '🎬 En cours de fabrication…', done: '✅ Prête', error: '❌ Erreur' };
   listEl.innerHTML = d.tutos.map(function (t) {
     var m = d.manifest[t.id], st = d.status[t.id];
     return '<div style="border:1px solid #1f2a44;border-radius:12px;padding:12px;margin-bottom:10px">'
       + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + esc(t.title) + '</b><span class="sub">' + (st ? lbl[st.state] || esc(st.state) : (m ? '✅ Prête' : 'Pas encore fabriquée')) + '</span></div>'
+      + (st && (st.state === 'queued' || st.state === 'recording') ? tutoBar(st) : '')
       + (st && st.state === 'error' ? '<p class="sub" style="color:#fca5a5;margin:6px 0 0">' + esc(st.error || '') + '</p>' : '')
       + '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Texte de la voix (' + t.beats.length + ' scènes)</summary><ol class="sub" style="margin:6px 0 0 18px;padding:0">' + t.beats.map(function (x) { return '<li style="margin-bottom:3px">' + esc(x) + '</li>'; }).join('') + '</ol></details>'
       + (m ? '<video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:8px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' : '')
@@ -422,6 +423,14 @@ async function renderTutos(fillVoices) {
 }
 // Messages affichés DANS la fenêtre (un toast passerait derrière la boîte de dialogue)
 function tutoMsg(text, kind) { var m = document.getElementById('tuto-msg'); if (!text) { m.style.display = 'none'; return; } m.style.display = 'block'; m.style.background = kind === 'err' ? 'rgba(220,38,38,0.15)' : kind === 'ok' ? 'rgba(22,163,74,0.15)' : 'rgba(255,255,255,0.06)'; m.style.color = kind === 'err' ? '#fca5a5' : kind === 'ok' ? '#86efac' : '#e5e7eb'; m.textContent = text; }
+// Barre de progression d'une fabrication (étape + pourcentage écrits par l'enregistreur, attente GitHub estimée)
+function tutoBar(st) {
+  var pct = Math.max(3, Math.min(99, st.pct || 10));
+  var mins = st.since ? Math.round((Date.now() - Date.parse(st.since)) / 60000) : 0;
+  var note = st.state === 'queued' ? (mins >= 3 ? ' · depuis ' + mins + ' min (GitHub est parfois lent à démarrer)' : '') : '';
+  return '<div style="margin-top:8px"><div style="height:8px;border-radius:99px;background:#1f2a44;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width .6s"></div></div>'
+    + '<div class="sub" style="margin-top:4px;display:flex;justify-content:space-between"><span>' + esc(st.step || '') + note + '</span><span>' + pct + ' %</span></div></div>';
+}
 var TUTO_AUDIO = null;
 async function listenTutoVoice() {
   var btn = document.getElementById('btn-tuto-listen'), sel = document.getElementById('tuto-voice');

@@ -204,10 +204,15 @@ async function elevenTts(text, voiceId, speed = 1.08) {
       ? { stability: speed > 1.1 ? 0.25 : 0.32, similarity_boost: 0.8, style: speed > 1.1 ? 0.7 : 0.5, use_speaker_boost: true, speed }
       : { stability: 0, speed };
     for (const voice_settings of [settings, { speed }, null]) {
-      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
+      let r;
+      for (let k = 0; k < 4; k++) {   // trop de voix demandées en même temps (429) : on patiente et on réessaie
+        r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
         method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(voice_settings ? { text, model_id: model, voice_settings } : { text, model_id: model }), signal: AbortSignal.timeout(60000),
-      });
+          body: JSON.stringify(voice_settings ? { text, model_id: model, voice_settings } : { text, model_id: model }), signal: AbortSignal.timeout(60000),
+        });
+        if (r.status !== 429) break;
+        await new Promise(res => setTimeout(res, 3000 * (k + 1)));
+      }
       if (r.ok) { const j = await r.json(); return { audio: Buffer.from(j.audio_base64, 'base64'), al: j.alignment || j.normalized_alignment, model }; }
       last = (await r.text()).slice(0, 200);
       if (r.status === 401 || r.status === 402) throw new Error('Voix ElevenLabs indisponible : ' + last);

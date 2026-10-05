@@ -722,7 +722,7 @@ export default async function handler(req, res) {
       const timing = { id: b.id, title: t.title, page: t.page || null, voice: voice.name, at: new Date().toISOString(), segments, beats: beats.map((x, i) => ({ say: x.say, start: x.start, end: x.end, words: x.words, do: t.beats[i].do || [] })) };
       const up = await sb.storage.from('social').upload('tuto/' + b.id + '/timing.json', Buffer.from(JSON.stringify(timing)), { contentType: 'application/json', upsert: true });
       if (up.error) throw up.error;
-      await sb.storage.from('social').upload('tuto/status/' + b.id + '.json', Buffer.from(JSON.stringify({ state: 'recording', at: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+      await sb.storage.from('social').upload('tuto/status/' + b.id + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
       const ref = await dispatchWorkflow('tuto.yml', { tuto_id: b.id });
       return res.status(200).json({ ok: true, ref, voice: voice.name, duration: Math.round((beats[beats.length - 1].end || 0) * 10) / 10 });
     }

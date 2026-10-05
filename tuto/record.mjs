@@ -146,7 +146,7 @@ const SETUP = () => {
 
 async function run() {
   if (!ID) throw new Error('TUTO_ID manquant');
-  await setStatus('recording');
+  await setStatus('recording', { pct: 20, step: 'Ouverture de l’appli' });
   const { data: tf, error } = await sb.storage.from('social').download('tuto/' + ID + '/timing.json');
   if (error || !tf) throw new Error('timing.json introuvable : relance la fabrication depuis le Studio');
   const timing = JSON.parse(await tf.text());
@@ -198,6 +198,7 @@ async function run() {
     const wait = at(b.start || 0) - Date.now();
     if (wait > 0) await sleep(wait);
     await page.evaluate(([w, s]) => window.__ttCaption(w, s), [b.words || [], b.say]);
+    { const i = timing.beats.indexOf(b), n = timing.beats.length; setStatus('recording', { pct: Math.round(25 + 55 * i / n), step: 'Tournage : scène ' + (i + 1) + ' sur ' + n }).catch(() => {}); }   // sans attendre : la chronologie ne doit pas prendre de retard
     for (const a of b.do || []) {
       try {
         if (a.wait) await sleep(a.wait);
@@ -236,6 +237,7 @@ async function run() {
     fs.writeFileSync(f, Buffer.from(await r.arrayBuffer()));
     segs.push({ f, start: timing.segments[k].start });
   }
+  await setStatus('recording', { pct: 85, step: 'Montage image + voix' });
   const mp4 = path.join(OUT, ID + '.mp4'), poster = path.join(OUT, ID + '.jpg');
   const args = ['-y', '-f', 'concat', '-safe', '0', '-i', listFile];
   segs.forEach(s => args.push('-i', s.f));
@@ -248,6 +250,7 @@ async function run() {
   execFileSync('ffmpeg', ['-y', '-ss', '1.2', '-i', mp4, '-frames:v', '1', '-q:v', '4', poster], { stdio: 'inherit' });
 
   // envoi + manifest
+  await setStatus('recording', { pct: 94, step: 'Envoi de la vidéo' });
   for (const [f, type] of [[mp4, 'video/mp4'], [poster, 'image/jpeg']]) {
     const up = await sb.storage.from('social').upload('tuto/' + path.basename(f), fs.readFileSync(f), { contentType: type, upsert: true, cacheControl: '60' });
     if (up.error) throw up.error;
@@ -261,7 +264,7 @@ async function run() {
   if (upm.error) throw upm.error;
   await rebuildManifest();
   await sleep(8000); await rebuildManifest();   // seconde passe : inclut une vidéo terminée au même moment
-  await setStatus('done', { url: meta.url, size: fs.statSync(mp4).size });
+  await setStatus('done', { pct: 100, step: 'Prête', url: meta.url, size: fs.statSync(mp4).size });
   console.log('Vidéo prête :', meta.url, Math.round(fs.statSync(mp4).size / 1024), 'Ko');
 }
 
