@@ -219,7 +219,8 @@ async function run() {
         else if (a.scroll) { await page.evaluate(s => window.__ttScroll(s), a.scroll); await sleep(700); }
         else if (a.point) { await page.evaluate(s => window.__ttMove(s), a.point); await sleep(800); }
         else if (a.click) { const ok = await page.evaluate(s => { window.__ttScroll(s); return true; }, a.click); await sleep(350); await page.evaluate(s => window.__ttMove(s), a.click); await sleep(780); if (ok) await page.evaluate(s => window.__ttTap(s), a.click); await sleep(250); }
-        else if (a.type) { await page.evaluate(([s, t]) => { const el = window.__ttTarget(s); if (el) el.value = t; }, a.type); }
+        else if (a.type) { await page.evaluate(async ([s, t]) => { const el = window.__ttTarget(s); if (!el) return; el.focus(); el.value = ''; for (const ch of t) { el.value += ch; el.dispatchEvent(new Event('input', { bubbles: true })); await new Promise(r => setTimeout(r, 110)); } el.dispatchEvent(new Event('change', { bubbles: true })); }, a.type); }
+        else if (a.upload) { await page.setInputFiles(a.upload[0], path.resolve('assets', a.upload[1])); }
       } catch (e) { console.log('geste ignoré', JSON.stringify(a), e.message); }
     }
   }
