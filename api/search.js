@@ -17,6 +17,14 @@ function rateLimited(key, max = 40, windowMs = 60_000) {
   return entry.count > max;
 }
 
+const CRYPTOS = [{"ticker":"BTC-EUR","name":"Bitcoin (BTC)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"ETH-EUR","name":"Ethereum (ETH)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"SOL-EUR","name":"Solana (SOL)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"XRP-EUR","name":"XRP","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"BNB-EUR","name":"BNB","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"ADA-EUR","name":"Cardano (ADA)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"DOGE-EUR","name":"Dogecoin (DOGE)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"AVAX-EUR","name":"Avalanche (AVAX)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"DOT-EUR","name":"Polkadot (DOT)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"LINK-EUR","name":"Chainlink (LINK)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"LTC-EUR","name":"Litecoin (LTC)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"TRX-EUR","name":"TRON (TRX)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"ATOM-EUR","name":"Cosmos (ATOM)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"XLM-EUR","name":"Stellar (XLM)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"},{"ticker":"BCH-EUR","name":"Bitcoin Cash (BCH)","type":"Crypto","sector":"Crypto","exchange":"Cryptomonnaie"}];
+const CRYPTO_ALIASES = { 'BTC-EUR': 'btc xbt', 'ETH-EUR': 'eth ether', 'BNB-EUR': 'binance', 'XRP-EUR': 'ripple', 'AVAX-EUR': 'avax', 'DOT-EUR': 'polka', 'TRX-EUR': 'tron' };
+function cryptoMatches(q) {
+  const s = String(q || '').toLowerCase().trim();
+  if (s.length < 2) return [];
+  return CRYPTOS.filter(c => c.name.toLowerCase().includes(s) || c.ticker.toLowerCase().startsWith(s) || (CRYPTO_ALIASES[c.ticker] || '').includes(s) || ('crypto'.startsWith(s) && s.length >= 4));
+}
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || '';
   if (ALLOWED_ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
@@ -43,7 +51,11 @@ export default async function handler(req, res) {
     const data = await response.json();
     const quotes = data.quotes || [];
 
-    const results = quotes
+    const yahooCrypto = quotes
+      .filter(q => q.symbol && q.quoteType === 'CRYPTOCURRENCY' && /-EUR$/.test(q.symbol))   // seulement les paires en euros : le prix affiché est en €
+      .map(q => ({ ticker: q.symbol, name: q.longname || q.shortname || q.symbol, type: 'Crypto', sector: 'Crypto', exchange: 'Cryptomonnaie' }));
+    const cryptoAll = [...cryptoMatches(req.query.q), ...yahooCrypto].filter((c, i, a) => a.findIndex(x => x.ticker === c.ticker) === i).slice(0, 4);
+    const stocks = quotes
       .filter(q => q.symbol && ['EQUITY','ETF','MUTUALFUND'].includes(q.quoteType))
       .slice(0, 8)
       .map(q => ({
@@ -53,6 +65,7 @@ export default async function handler(req, res) {
         sector: q.industry || q.sector || '',
         exchange: q.fullExchangeName || q.exchange || '',
       }));
+    const results = [...cryptoAll, ...stocks].slice(0, 8);
 
     return res.status(200).json({ results });
 
@@ -94,6 +107,6 @@ export default async function handler(req, res) {
       .filter(c => c.name.toLowerCase().includes(q_lower) || c.ticker.toLowerCase().includes(q_lower))
       .slice(0, 6);
 
-    return res.status(200).json({ results });
+    return res.status(200).json({ results: [...cryptoMatches(q), ...results].slice(0, 8) });
   }
 }

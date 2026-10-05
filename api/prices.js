@@ -54,6 +54,7 @@ export default async function handler(req, res) {
 }
 
 function getSymbolAttempts(symbol) {
+  if (/^[A-Z0-9]{2,12}-EUR$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol }];   // crypto en euros
   const nameToYahoo = {
     'LVMH': 'MC.PA', 'Air Liquide': 'AI.PA', 'TotalEnergies': 'TTE.PA',
     'BNP Paribas': 'BNP.PA', 'Veolia': 'VIE.PA', 'Veolia Environnement': 'VIE.PA',

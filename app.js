@@ -1947,6 +1947,22 @@ async function acSearchYahoo(query) {
 
 // ===== AUTOCOMPLETE ADD POSITION =====
 const AC_DB = [
+  // ===== CRYPTOMONNAIES (prix en euros) =====
+  {ticker:'BTC-EUR',name:'Bitcoin (BTC)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'ETH-EUR',name:'Ethereum (ETH)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'SOL-EUR',name:'Solana (SOL)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'XRP-EUR',name:'XRP',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'BNB-EUR',name:'BNB',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'ADA-EUR',name:'Cardano (ADA)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'DOGE-EUR',name:'Dogecoin (DOGE)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'AVAX-EUR',name:'Avalanche (AVAX)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'DOT-EUR',name:'Polkadot (DOT)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'LINK-EUR',name:'Chainlink (LINK)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'LTC-EUR',name:'Litecoin (LTC)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'TRX-EUR',name:'TRON (TRX)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'ATOM-EUR',name:'Cosmos (ATOM)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'XLM-EUR',name:'Stellar (XLM)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
+  {ticker:'BCH-EUR',name:'Bitcoin Cash (BCH)',type:'Crypto',sector:'Crypto',exchange:'Cryptomonnaie'},
   // ===== ETF MONDE =====
   {ticker:'IWDA.L',name:'iShares Core MSCI World ETF',type:'ETF',sector:'Monde',exchange:'LSE'},
   {ticker:'VWCE.DE',name:'Vanguard FTSE All-World UCITS ETF',type:'ETF',sector:'Monde',exchange:'XETRA'},
@@ -2251,6 +2267,18 @@ async function acSelect(company) {
       </div>
     </div>`;
 
+  // Crypto : rappel de risque
+  try {
+    document.getElementById('crypto-warn')?.remove();
+    if (company.type === 'Crypto') {
+      const w = document.createElement('div');
+      w.id = 'crypto-warn';
+      w.style.cssText = 'margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#92400e;font-size:12px;line-height:1.5';
+      w.textContent = '⚠️ Les cryptomonnaies sont très volatiles et peu régulées : tu peux perdre tout ou partie de ta mise. Kapitaro t’aide à suivre ce que tu détiens déjà, il ne conseille pas d’en acheter.';
+      badge.insertAdjacentElement('afterend', w);
+    }
+  } catch (e) {}
+
   // Show form fields
   document.getElementById('f-fields').style.display = 'block';
   try { updateAddButtons(); } catch(e) {}
@@ -2335,6 +2363,7 @@ function updatePosTotal() {
 
 function acClear() {
   acSelected = null;
+  document.getElementById('crypto-warn')?.remove();
   document.getElementById('f-search').value = '';
   document.getElementById('ac-drop').style.display = 'none';
   document.getElementById('ac-clear').style.display = 'none';
@@ -8137,7 +8166,7 @@ function renderPortfolio(auto=false) {
           ${getCompanyLogo(p.name, p.fullName||p.name, 36, 10)}
           <div>
             <div style="font-size:13px;font-weight:700;color:${textCol};letter-spacing:-0.02em">${displayName(p.name)}</div>
-            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.name} · ${p.type||'Action'} · ${p.qty} part${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
+            <div style="font-size:11px;color:${subCol};margin-top:1px">${p.name} · ${p.type||'Action'} · ${p.qty} ${p.type==='Crypto'?'unité':'part'}${p.qty>1?'s':''} ${p.platform?`· <span style="color:${subCol}">${p.platform}</span>`:''}</div>
           </div>
         </div>
         <!-- Investi -->
@@ -8346,7 +8375,7 @@ function togglePos(id) {
       <button onclick="event.stopPropagation();openDecisionFromPos('${p.name.replace(/'/g,"\\'")}', 'garder')" style="padding:7px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser</button>
       <button onclick="event.stopPropagation();sq('Que penses-tu de ma position ${p.name.replace(/'/g,"\\'")} ?');nav('ai')" style="padding:7px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;color:#16a34a;cursor:pointer">💬 Demander à l'IA</button>
       <button onclick="event.stopPropagation();openEditPos('${p.id}')" style="padding:7px 13px;background:var(--color-bg-subtle,#f5f5f5);border:1px solid var(--color-border,#e4e4e7);border-radius:9px;font-size:12px;font-weight:700;color:var(--color-text-secondary);cursor:pointer">✏️ Modifier</button>
-      ${p.platform && p.platform !== 'Autre' ? `<button onclick="event.stopPropagation();openOnPlatform('${p.platform}','${(p.name||'').replace(/'/g,"\\'")}')" style="padding:7px 13px;background:${p.platform==='Trade Republic'?'#eef2ff':'#fff7ed'};border:1px solid ${p.platform==='Trade Republic'?'#c7d2fe':'#fed7aa'};border-radius:9px;font-size:12px;font-weight:700;color:${p.platform==='Trade Republic'?'#4f46e5':'#ea580c'};cursor:pointer">🔗 ${p.platform}</button>` : ''}
+      ${p.platform && p.platform !== 'Autre' && PLATFORM_URLS[p.platform] ? `<button onclick="event.stopPropagation();openOnPlatform('${p.platform}','${(p.name||'').replace(/'/g,"\\'")}')" style="padding:7px 13px;background:${p.platform==='Trade Republic'?'#eef2ff':'#fff7ed'};border:1px solid ${p.platform==='Trade Republic'?'#c7d2fe':'#fed7aa'};border-radius:9px;font-size:12px;font-weight:700;color:${p.platform==='Trade Republic'?'#4f46e5':'#ea580c'};cursor:pointer">🔗 ${p.platform}</button>` : ''}
     </div>`;
   row.after(panel);
 }
@@ -8402,7 +8431,7 @@ async function addPos() {
   if (existing) {
     const totalQty = existing.qty + qty;
     const newPru = (existing.qty * existing.pru + qty * pru) / totalQty;
-    existing.qty = Math.round(totalQty * 10000) / 10000;
+    existing.qty = Math.round(totalQty * 1e8) / 1e8;
     existing.pru = Math.round(newPru * 100) / 100;
     existing.price = price;
     if (alertPrice) existing.alert_price = alertPrice;
@@ -9970,7 +9999,7 @@ async function addToPortfolioFromDecision(ticker, amount, name, type) {
   const price = parseFloat(document.getElementById('f-price')?.value) || 0;
   const qtyEl = document.getElementById('f-qty');
   if (price > 0 && amount > 0 && qtyEl) {
-    const qty = Math.round(amount / price * 10000) / 10000;
+    const qty = Math.round(amount / price * 1e8) / 1e8;
     qtyEl.value = qty;
     try { updatePosTotal(); } catch(e) {}
     try { updateAddPreview(); } catch(e) {}
@@ -10259,7 +10288,7 @@ async function qaAddLine(btn) {
     if (existing) {
       const totalQty = existing.qty + qty;
       const newPru = (existing.qty * existing.pru + qty * pru) / totalQty;
-      existing.qty = Math.round(totalQty * 10000) / 10000;
+      existing.qty = Math.round(totalQty * 1e8) / 1e8;
       existing.pru = Math.round(newPru * 100) / 100;
       existing.price = price;
       if (!isDemo && currentUser) {
@@ -10268,7 +10297,7 @@ async function qaAddLine(btn) {
         try { await addTransaction(name, 'achat', qty, pru, 'Saisie rapide'); } catch {}
       }
     } else {
-      const pos = { name, qty: Math.round(qty * 10000) / 10000, pru: Math.round(pru * 100) / 100, price, type, sector, platform: 'Autre', alert_price: null };
+      const pos = { name, qty: Math.round(qty * 1e8) / 1e8, pru: Math.round(pru * 100) / 100, price, type, sector, platform: 'Autre', alert_price: null };
       if (isDemo) {
         positions.push({ id: 'd' + Date.now(), ...pos });
       } else if (currentUser) {
@@ -10435,7 +10464,7 @@ function prUpdatePlatLabel() {
     const btn = document.getElementById('pr-open-btn');
     const v = sel ? sel.value : 'Autre';
     if (lbl) lbl.textContent = v;
-    if (btn) btn.style.display = (v === 'Autre') ? 'none' : '';
+    if (btn) btn.style.display = (v === 'Autre' || !PLATFORM_URLS[v]) ? 'none' : '';
   } catch (e) {}
 }
 function prRecalc(i) {
@@ -10451,7 +10480,7 @@ function prRecalc(i) {
   }
   if (pin) { pin.style.borderColor = ''; pin.style.background = ''; }
   if (amt <= 0) { span.textContent = '—'; return; }
-  const qty = Math.round((amt / price) * 10000) / 10000;
+  const qty = Math.round((amt / price) * 1e8) / 1e8;
   span.textContent = qty + ' part' + (qty > 1 ? 's' : '') + ' à ' + price.toFixed(2) + ' €';
 }
 
@@ -10470,7 +10499,7 @@ async function prConfirm(btn, openAfter) {
       const price = parseFloat(document.getElementById('pr-price-' + i)?.value) || l.price || 0;
       if (amt <= 0 || !price) { skipped++; continue; }
       l.price = price;
-      const qty = Math.round((amt / price) * 10000) / 10000;
+      const qty = Math.round((amt / price) * 1e8) / 1e8;
       if (qty <= 0) { skipped++; continue; }
       const existing = positions.find(p => (p.name || '').toUpperCase() === l.ticker.toUpperCase());
       if (existing) { skipped++; continue; }
@@ -11512,7 +11541,7 @@ async function parsePDFStatement(file) {
       tickerKnown: !!p.ticker,
       name: name.slice(0, 30),
       fullName: p.ticker ? p.name.slice(0, 50) : '',
-      qty: Math.round(p.qty * 10000) / 10000,
+      qty: Math.round(p.qty * 1e8) / 1e8,
       pru: Math.round(pru * 100) / 100,
       price: Math.round(price * 100) / 100,
       checked: true,
@@ -11586,7 +11615,7 @@ function parseCSVSmart(text) {
       tickerKnown: !!rawT && !isIsin,
       name: name.slice(0, 30),
       fullName: iName >= 0 && iTicker >= 0 ? (c[iName]||'').replace(/"/g,'').slice(0,50) : '',
-      qty: Math.round(qty * 10000) / 10000,
+      qty: Math.round(qty * 1e8) / 1e8,
       pru: Math.round(pru * 100) / 100,
       price: Math.round((price || pru) * 100) / 100,
       checked: true,
@@ -12411,7 +12440,7 @@ function updateAddButtons() {
   const btn = document.getElementById('f-btn-combined');
   if (!btn) return;
   const platform = document.getElementById('f-platform')?.value || 'Autre';
-  if (platform === 'Autre') {
+  if (platform === 'Autre' || !PLATFORM_URLS[platform]) {
     btn.style.display = 'none';
     return;
   }
@@ -12451,11 +12480,14 @@ const PLATFORMS = [
   { name: 'Scalable Capital',     url: 'https://secure.scalable.capital' },
 ];
 const PLATFORM_URLS = Object.fromEntries(PLATFORMS.map(p => [p.name, p.url]));
+// Où l'utilisateur détient ses cryptos : mémorisé pour le suivi, sans lien ni recommandation
+const CRYPTO_PLATFORMS = ['Binance', 'Coinbase', 'Kraken', 'Bitpanda', 'Crypto.com', 'Portefeuille personnel'];
 // Options <option> pour un menu déroulant, 'Autre' toujours en dernier
 function platformOptionsHTML(selected) {
   const esc = s => String(s).replace(/"/g, '&quot;');
   const opts = PLATFORMS.map(p => `<option${p.name === selected ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
-  return opts + `<option${selected === 'Autre' ? ' selected' : ''}>Autre</option>`;
+  const cryptoOpts = CRYPTO_PLATFORMS.map(n => `<option${n === selected ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  return opts + cryptoOpts + `<option${selected === 'Autre' ? ' selected' : ''}>Autre</option>`;
 }
 // Détecte la plateforme d'après le nom du fichier importé
 function detectPlatform(filename) {

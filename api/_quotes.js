@@ -20,6 +20,7 @@ function toFinnhubSymbol(t) {
 }
 
 function attemptsFor(symbol) {
+  if (/^[A-Z0-9]{2,12}-EUR$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol }];   // crypto en euros
   const y = NAME_TO_YAHOO[symbol];
   if (y) return [{ type: 'yahoo', ticker: y }, { type: 'finnhub', ticker: toFinnhubSymbol(y) }];
   const a = [{ type: 'finnhub', ticker: toFinnhubSymbol(symbol) }, { type: 'yahoo', ticker: symbol }];
