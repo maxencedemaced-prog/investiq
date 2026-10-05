@@ -11,7 +11,7 @@ import { execFileSync } from 'child_process';
 
 const ID = String(process.env.TUTO_ID || '').trim();
 const LIVE = String(process.env.APP_URL || 'https://kapitaro.fr').trim().replace(/\/$/, '');
-const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const sb = createClient((process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.supabase.co').trim(), (process.env.SUPABASE_SERVICE_KEY || '').trim());   // même valeur par défaut que video/render-job.mjs
 const ROOT = path.resolve('..');
 const OUT = path.resolve('out');
 const W = 390, H = 844;
