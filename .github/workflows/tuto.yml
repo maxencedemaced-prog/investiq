@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tuto_id:
-        description: Identifiant du tutoriel (api/_tuto.mjs)
+        description: Identifiant du tutoriel (api/_tuto.js)
         required: true
 concurrency:
   group: tuto-${{ inputs.tuto_id }}

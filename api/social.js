@@ -17,7 +17,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow } from './_reel.js';
-import { TUTOS } from './_tuto.mjs';
+import { TUTOS } from './_tuto.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
 const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ'];
@@ -683,7 +683,7 @@ export default async function handler(req, res) {
       const { data: pub } = sb.storage.from('social').getPublicUrl(path);
       return res.status(200).json({ path, token: data.token, publicUrl: pub.publicUrl });
     }
-    // ── Vidéos tutoriels (enregistrement de l'appli en mode démo, voir api/_tuto.mjs et tuto/record.mjs) ──
+    // ── Vidéos tutoriels (enregistrement de l'appli en mode démo, voir api/_tuto.js et tuto/record.mjs) ──
     if (b.action === 'tuto-list') {
       let manifest = {}, status = {};
       try { const { data } = await sb.storage.from('social').download('tuto/manifest.json'); if (data) manifest = JSON.parse(await data.text()); } catch (e) {}
