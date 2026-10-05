@@ -875,7 +875,13 @@ function renderMonthlyPlan(plan, isNew) {
 
 
 const CACHE_ETF_PLAN = 'iq_etf_plan_v4'; // v3 : poche ETF + poche actions diversifiée
-const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // 24h
+const CACHE_ETF_TTL  = 24 * 60 * 60 * 1000; // plus utilisé pour expirer le plan : il reste identique jusqu'à un nouveau plan
+// Nouvelle analyse voulue par l'utilisateur : on oublie le plan enregistré et on refait toute l'analyse
+function refreshEtfPlan() {
+  try { localStorage.removeItem(CACHE_ETF_PLAN); if (activeObjId) localStorage.removeItem(CACHE_ETF_PLAN + '_' + activeObjId); } catch (e) {}
+  window._etfMeta = null;
+  generateETFPlan();
+}
 
 let _etfPlanBusy = false; // verrou anti-boucle
 
@@ -904,7 +910,7 @@ async function generateETFPlan(objId) {
   // Vérifie le cache — d'abord par ID, puis global
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || localStorage.getItem(CACHE_ETF_PLAN) || 'null');
-    if (cached && cached.etfs && Date.now() - cached.ts < CACHE_ETF_TTL && cached.risk === objRisk && cached.stockPct === objStockPct && cached.sig === sig) {
+    if (cached && cached.etfs && cached.risk === objRisk && cached.stockPct === objStockPct && cached.sig === sig) {
       window._etfMeta = cached.meta ? { ...cached.meta, ts: cached.ts } : null;
       renderETFCards(cached.etfs, el, cached.actions || []);
       return;
@@ -1143,7 +1149,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
     <span style="font-size:12px;color:${isDark?'rgba(255,255,255,0.55)':sub}">💡 Clique sur un ETF pour l'analyser en détail avec l'IA</span>
     <button onclick="event.stopPropagation();sq('Explique-moi mon plan ETF : pourquoi cette répartition socle/satellites ?');nav('ai')" style="padding:6px 13px;background:#16a34a;border:none;border-radius:8px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0">Comprendre le plan →</button>
   </div>
-  <div style="font-size:10px;color:${sub};padding:0 2px">${window._etfMeta ? 'Analyse du ' + new Date(window._etfMeta.ts).toLocaleDateString('fr-FR') + ' : ' + window._etfMeta.n + ' valeurs étudiées (cours sur 1 an, tendance du marché, actualités). ' : ''}Répartition indicative basée sur ton profil — pas un conseil financier réglementé. Performances passées ≠ performances futures.</div>
+  <div style="font-size:10px;color:${sub};padding:0 2px">${window._etfMeta ? 'Analyse du ' + new Date(window._etfMeta.ts).toLocaleDateString('fr-FR') + ' : ' + window._etfMeta.n + ' valeurs étudiées (cours sur 1 an, tendance du marché, actualités). Le plan reste le même tant que tu ne crées pas un nouveau plan. <a href="#" onclick="refreshEtfPlan();return false" style="color:#16a34a;font-weight:700;text-decoration:none">↻ Refaire l’analyse</a><br>' : ''}Répartition indicative basée sur ton profil — pas un conseil financier réglementé. Performances passées ≠ performances futures.</div>
   `;
   if (goldShow) { try { _planLines.push({ ticker: '4GLD.DE', name: 'Xetra-Gold (or physique)', type: 'Matière première', montant: goldAmt, optional: true }); } catch (e) {} }
   try {
