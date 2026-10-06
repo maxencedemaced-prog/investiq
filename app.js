@@ -14587,8 +14587,9 @@ function applyAgentGrid() {
   const layout = document.getElementById('agent-layout');
   const bottom = document.getElementById('agent-bottom');
   const has = !!document.querySelector('#agent-right.agent-sample') || (isPremiumUser() && positions.length > 0);
-  if (layout) layout.style.gridTemplateColumns = (has && window.innerWidth >= 980) ? '1fr 300px' : '1fr';
-  if (bottom) bottom.style.gridTemplateColumns = (has && window.innerWidth >= 720) ? '240px 1fr' : '1fr';
+  // minmax(0,1fr) : un contenu large ne peut plus élargir la colonne au-delà de l'écran
+  if (layout) layout.style.gridTemplateColumns = (has && window.innerWidth >= 980) ? 'minmax(0,1fr) 300px' : 'minmax(0,1fr)';
+  if (bottom) bottom.style.gridTemplateColumns = (has && window.innerWidth >= 720) ? '240px minmax(0,1fr)' : 'minmax(0,1fr)';
 }
 
 // ── Aperçu « exemple » de l'Agent IA quand le portefeuille est vide ──

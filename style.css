@@ -2182,3 +2182,8 @@ button.set-row:hover,a.set-row:hover{background:var(--color-bg-subtle)}
   #theme-label { display: none; }
   #theme-toggle { padding: 5px 8px !important; }
 }
+
+/* Agent IA : une seule colonne sur téléphone et tablette, quel que soit l'état de la page (compte Premium, chargement…) */
+@media (max-width: 979px) { #agent-layout { grid-template-columns: minmax(0,1fr) !important; } #agent-right { position: static !important; } }
+@media (max-width: 719px) { #agent-bottom { grid-template-columns: minmax(0,1fr) !important; } }
+#agent-layout > *, #agent-bottom > * { min-width: 0; }
