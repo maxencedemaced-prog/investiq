@@ -4328,6 +4328,7 @@ async function obFinish(action) {
       try { renderObjLegend(tv); } catch(e) {}
       if (typeof renderMultiObjChart==='function') renderMultiObjChart();
     }, 100);
+    try { if (typeof tabSeenSet === 'function' && !tabSeenSet().has('objectif')) { tabMarkSeen('objectif'); updateNavDots(); setTimeout(() => showTabHint('objectif'), 800); } } catch (e) {}
   };
 
   // Si déjà 3 objectifs → modal de remplacement, sinon création directe
@@ -8491,6 +8492,7 @@ async function exportBilanPDF() {
 
 // ===== NAV =====
 function nav(page, auto=false) {
+  if (page !== 'ajouter') window._kpAddReturn = null;
   // Page inconnue (ancien nom mémorisé, lien périmé) : accueil plutôt qu'un écran vide
   if (!document.getElementById('sec-' + page)) page = 'home';
   // Mémorise la page pour la restaurer si Chrome recharge l'onglet (Memory Saver)
@@ -8950,7 +8952,7 @@ async function kpOpenTuto(id, opts) {
   vd.play().catch(() => { vd.muted = true; vd.play().catch(() => {}); });
   try { trackEvent('tuto_open', { id, auto: !!opts.auto }); } catch (e) {}
 }
-// Bouton « ▶ C'est quoi ? » sur les pages qui ont une vidéo, et invitation discrète à la première visite (niveaux 1 et 2)
+// Bouton « ▶ C'est quoi ? » sur les pages qui ont une vidéo (à la première visite, la vidéo est aussi proposée dans la fenêtre d'explication de l'onglet, voir tab-hints.js)
 async function kpTutoForPage(page) {
   try {
     const m = await kpTutoManifest();
@@ -8961,20 +8963,6 @@ async function kpTutoForPage(page) {
     // page sans titre (Actualités) : le bouton se place en haut de la page, hors du contenu redessiné
     if (!h1) { if (!sec.querySelector('.kp-tuto-row')) sec.insertAdjacentHTML('afterbegin', '<div class="kp-tuto-row" style="display:flex;justify-content:flex-end;margin:0 0 8px"><button type="button" class="kp-tuto-btn" onclick="kpOpenTuto(\'' + id + '\')" style="padding:5px 12px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:inherit;font-size:12px;font-weight:800;cursor:pointer">▶ C’est quoi ?</button></div>'); }
     else if (!h1.querySelector('.kp-tuto-btn')) h1.insertAdjacentHTML('beforeend', ' <button type="button" class="kp-tuto-btn" onclick="kpOpenTuto(\'' + id + '\')" style="vertical-align:middle;margin-left:6px;padding:4px 10px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:inherit;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0">▶ C’est quoi ?</button>');
-    const key = 'kp_tuto_hint_' + page + '_' + ((currentUser && currentUser.id) || 'anon');
-    if (isDemo || kpGetLevel() > 2 || localStorage.getItem(key) || localStorage.getItem(kpTutoSeenKey(id))) return;
-    if (document.getElementById('kp-tour') || document.getElementById('onboarding-modal')?.style.display === 'flex') return;
-    try { localStorage.setItem(key, '1'); } catch (e) {}
-    document.querySelector('.kp-tuto-hint')?.remove();
-    const c = document.createElement('div');
-    c.className = 'kp-tuto-hint';
-    c.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:9050;display:flex;align-items:center;gap:10px;background:#0b1220;color:#fff;border-radius:14px;padding:10px 10px 10px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.35);font-size:13px;max-width:calc(100vw - 24px)';
-    c.innerHTML = '<span>🎬 Découvre cette page en 30 secondes</span><button type="button" style="padding:7px 12px;border:none;border-radius:10px;background:#16a34a;color:#fff;font:inherit;font-weight:800;cursor:pointer">▶ Voir</button><button type="button" aria-label="Fermer" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:18px;cursor:pointer;padding:0 4px">✕</button>';
-    const [play, close] = c.querySelectorAll('button');
-    play.onclick = () => { c.remove(); kpOpenTuto(id); };
-    close.onclick = () => c.remove();
-    document.body.appendChild(c);
-    setTimeout(() => c.remove(), 12000);
   } catch (e) {}
 }
 // Première ouverture d'un nouveau compte : la présentation passe avant le tutoriel (on peut la passer)
@@ -10040,7 +10028,7 @@ async function addPos() {
       trackEvent('position_added', { type, renforcement: true });
     }
     acClear();
-    nav('portfolio');
+    kpAfterAddNav();
     showToast(`✓ ${displayName(name)} renforcé — ${existing.qty} parts, PRU moyen ${existing.pru.toFixed(2)} €`);
     return true;
   }
@@ -10048,7 +10036,7 @@ async function addPos() {
   if (isDemo) {
     positions.push({ id: 'd'+Date.now(), ...pos });
     acClear();
-    nav('portfolio');
+    kpAfterAddNav();
     showToast('✓ Position ajoutée !');
     return true;
   }
@@ -10060,10 +10048,16 @@ async function addPos() {
     await addTransaction(name, 'achat', qty, pru, 'Ouverture de position');
     trackEvent('position_added', { type, renforcement: false });
     acClear();
-    nav('portfolio');
+    kpAfterAddNav();
     showToast('✓ ' + name + ' ajouté au portefeuille !');
     return true;
   }
+}
+// Page affichée après l'ajout d'une position (formulaire « Ajouter »)
+function kpAfterAddNav() {
+  const back = window._kpAddReturn; window._kpAddReturn = null;
+  if (back === 'objectif') { nav('objectif'); setTimeout(() => { try { showGoToPortfolioHint(); } catch (e) {} }, 1200); }
+  else nav('portfolio');
 }
 async function delPos(id) {
   if(!confirm('Supprimer cette position ?'))return;
@@ -11618,6 +11612,9 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
 // Pré-remplit le formulaire d'ajout : la quantité est le montant divisé par le cours, en fraction d'action
 // (la plupart des courtiers, dont Trade Republic, achètent au montant et non à la part entière)
 async function addToPortfolioFromDecision(ticker, amount, name, type) {
+  // Ajout lancé depuis la page Objectif : on y revient après l'ajout (pas d'aller-retour par le portefeuille)
+  const from = (document.querySelector('.sec.active')?.id || '').replace('sec-', '');
+  window._kpAddReturn = from === 'objectif' ? 'objectif' : null;
   nav('ajouter');
   await new Promise(r => setTimeout(r, 150));
   acClear();
@@ -11725,7 +11722,7 @@ function showGoToPortfolioHint() {
   const cand = ['#bnav-portfolio', '#nav-portfolio'];
   let sel = '#nav-portfolio';
   for (const s of cand) { const el = document.querySelector(s); if (el) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) { sel = s; break; } } }
-  kpTour([{ sel: sel, legend: 'Va voir les actions que tu as rentrées dans ton portefeuille' }], 'goto_portfolio');
+  kpTour([{ sel: sel, legend: 'Va voir les actions que tu as rentrées dans ton portefeuille' }], 'goto_portfolio_' + ((currentUser && currentUser.id) || 'anon'));
 }
 function showPlanTour() {
   try { if (localStorage.getItem('kp_tour_plan')) return; } catch (e) {}

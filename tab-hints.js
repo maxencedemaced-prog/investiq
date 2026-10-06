@@ -79,6 +79,18 @@ function showTabHint(page) {
       </div>
     </div>`;
   document.body.appendChild(el);
+  // Vidéo de la page (si elle existe) : proposée ici, au même endroit que l'explication
+  if (typeof kpTutoManifest === 'function') kpTutoManifest().then(m => {
+    const id = Object.keys(m || {}).find(k => !k.includes('__') && m[k] && m[k].page === page && m[k].url);
+    const box = el.querySelector('[role="dialog"] > div > div[style*="min-width:0"]');
+    if (!id || !box || !el.isConnected) return;
+    const v = document.createElement('button');
+    v.type = 'button';
+    v.style.cssText = 'display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:8px 13px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;color:#15803d;font:inherit;font-size:13px;font-weight:800;cursor:pointer';
+    v.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#16a34a;color:#fff;font-size:9px;padding-left:1px">▶</span> Voir la vidéo (30 s)';
+    v.onclick = () => { el.remove(); kpOpenTuto(id); };
+    box.appendChild(v);
+  }).catch(() => {});
 }
 // « Ne plus afficher » : tous les onglets sont considérés comme vus
 function tabHintsOff() {
