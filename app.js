@@ -8492,6 +8492,7 @@ async function exportBilanPDF() {
 
 // ===== NAV =====
 function nav(page, auto=false) {
+  if (page !== 'ajouter') window._kpAddReturn = null;
   // Page inconnue (ancien nom mémorisé, lien périmé) : accueil plutôt qu'un écran vide
   if (!document.getElementById('sec-' + page)) page = 'home';
   // Mémorise la page pour la restaurer si Chrome recharge l'onglet (Memory Saver)
@@ -10027,7 +10028,7 @@ async function addPos() {
       trackEvent('position_added', { type, renforcement: true });
     }
     acClear();
-    nav('portfolio');
+    kpAfterAddNav();
     showToast(`✓ ${displayName(name)} renforcé — ${existing.qty} parts, PRU moyen ${existing.pru.toFixed(2)} €`);
     return true;
   }
@@ -10035,7 +10036,7 @@ async function addPos() {
   if (isDemo) {
     positions.push({ id: 'd'+Date.now(), ...pos });
     acClear();
-    nav('portfolio');
+    kpAfterAddNav();
     showToast('✓ Position ajoutée !');
     return true;
   }
@@ -10047,10 +10048,16 @@ async function addPos() {
     await addTransaction(name, 'achat', qty, pru, 'Ouverture de position');
     trackEvent('position_added', { type, renforcement: false });
     acClear();
-    nav('portfolio');
+    kpAfterAddNav();
     showToast('✓ ' + name + ' ajouté au portefeuille !');
     return true;
   }
+}
+// Page affichée après l'ajout d'une position (formulaire « Ajouter »)
+function kpAfterAddNav() {
+  const back = window._kpAddReturn; window._kpAddReturn = null;
+  if (back === 'objectif') { nav('objectif'); setTimeout(() => { try { showGoToPortfolioHint(); } catch (e) {} }, 1200); }
+  else nav('portfolio');
 }
 async function delPos(id) {
   if(!confirm('Supprimer cette position ?'))return;
@@ -11605,6 +11612,9 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
 // Pré-remplit le formulaire d'ajout : la quantité est le montant divisé par le cours, en fraction d'action
 // (la plupart des courtiers, dont Trade Republic, achètent au montant et non à la part entière)
 async function addToPortfolioFromDecision(ticker, amount, name, type) {
+  // Ajout lancé depuis la page Objectif : on y revient après l'ajout (pas d'aller-retour par le portefeuille)
+  const from = (document.querySelector('.sec.active')?.id || '').replace('sec-', '');
+  window._kpAddReturn = from === 'objectif' ? 'objectif' : null;
   nav('ajouter');
   await new Promise(r => setTimeout(r, 150));
   acClear();
@@ -11712,7 +11722,7 @@ function showGoToPortfolioHint() {
   const cand = ['#bnav-portfolio', '#nav-portfolio'];
   let sel = '#nav-portfolio';
   for (const s of cand) { const el = document.querySelector(s); if (el) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) { sel = s; break; } } }
-  kpTour([{ sel: sel, legend: 'Va voir les actions que tu as rentrées dans ton portefeuille' }], 'goto_portfolio');
+  kpTour([{ sel: sel, legend: 'Va voir les actions que tu as rentrées dans ton portefeuille' }], 'goto_portfolio_' + ((currentUser && currentUser.id) || 'anon'));
 }
 function showPlanTour() {
   try { if (localStorage.getItem('kp_tour_plan')) return; } catch (e) {}
