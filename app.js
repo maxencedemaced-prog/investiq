@@ -4328,6 +4328,7 @@ async function obFinish(action) {
       try { renderObjLegend(tv); } catch(e) {}
       if (typeof renderMultiObjChart==='function') renderMultiObjChart();
     }, 100);
+    try { if (typeof tabSeenSet === 'function' && !tabSeenSet().has('objectif')) { tabMarkSeen('objectif'); updateNavDots(); setTimeout(() => showTabHint('objectif'), 800); } } catch (e) {}
   };
 
   // Si déjà 3 objectifs → modal de remplacement, sinon création directe
@@ -8950,7 +8951,7 @@ async function kpOpenTuto(id, opts) {
   vd.play().catch(() => { vd.muted = true; vd.play().catch(() => {}); });
   try { trackEvent('tuto_open', { id, auto: !!opts.auto }); } catch (e) {}
 }
-// Bouton « ▶ C'est quoi ? » sur les pages qui ont une vidéo, et invitation discrète à la première visite (niveaux 1 et 2)
+// Bouton « ▶ C'est quoi ? » sur les pages qui ont une vidéo (à la première visite, la vidéo est aussi proposée dans la fenêtre d'explication de l'onglet, voir tab-hints.js)
 async function kpTutoForPage(page) {
   try {
     const m = await kpTutoManifest();
@@ -8961,20 +8962,6 @@ async function kpTutoForPage(page) {
     // page sans titre (Actualités) : le bouton se place en haut de la page, hors du contenu redessiné
     if (!h1) { if (!sec.querySelector('.kp-tuto-row')) sec.insertAdjacentHTML('afterbegin', '<div class="kp-tuto-row" style="display:flex;justify-content:flex-end;margin:0 0 8px"><button type="button" class="kp-tuto-btn" onclick="kpOpenTuto(\'' + id + '\')" style="padding:5px 12px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:inherit;font-size:12px;font-weight:800;cursor:pointer">▶ C’est quoi ?</button></div>'); }
     else if (!h1.querySelector('.kp-tuto-btn')) h1.insertAdjacentHTML('beforeend', ' <button type="button" class="kp-tuto-btn" onclick="kpOpenTuto(\'' + id + '\')" style="vertical-align:middle;margin-left:6px;padding:4px 10px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:inherit;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0">▶ C’est quoi ?</button>');
-    const key = 'kp_tuto_hint_' + page + '_' + ((currentUser && currentUser.id) || 'anon');
-    if (isDemo || kpGetLevel() > 2 || localStorage.getItem(key) || localStorage.getItem(kpTutoSeenKey(id))) return;
-    if (document.getElementById('kp-tour') || document.getElementById('onboarding-modal')?.style.display === 'flex') return;
-    try { localStorage.setItem(key, '1'); } catch (e) {}
-    document.querySelector('.kp-tuto-hint')?.remove();
-    const c = document.createElement('div');
-    c.className = 'kp-tuto-hint';
-    c.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:9050;display:flex;align-items:center;gap:10px;background:#0b1220;color:#fff;border-radius:14px;padding:10px 10px 10px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.35);font-size:13px;max-width:calc(100vw - 24px)';
-    c.innerHTML = '<span>🎬 Découvre cette page en 30 secondes</span><button type="button" style="padding:7px 12px;border:none;border-radius:10px;background:#16a34a;color:#fff;font:inherit;font-weight:800;cursor:pointer">▶ Voir</button><button type="button" aria-label="Fermer" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:18px;cursor:pointer;padding:0 4px">✕</button>';
-    const [play, close] = c.querySelectorAll('button');
-    play.onclick = () => { c.remove(); kpOpenTuto(id); };
-    close.onclick = () => c.remove();
-    document.body.appendChild(c);
-    setTimeout(() => c.remove(), 12000);
   } catch (e) {}
 }
 // Première ouverture d'un nouveau compte : la présentation passe avant le tutoriel (on peut la passer)
