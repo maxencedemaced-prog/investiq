@@ -9783,7 +9783,7 @@ function renderPortfolio(auto=false) {
 
   // Section bas — Répartition + Insights IA
   const bottomHtml = `
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+  <div class="port-split" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
     <!-- Donut répartition -->
     <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;padding:20px">
       <div style="font-size:14px;font-weight:700;color:${textCol};letter-spacing:-0.03em;margin-bottom:16px">Répartition</div>
@@ -14767,7 +14767,7 @@ function renderAgentDashboard() {
       heroEl.innerHTML = agentEmptyHeroHTML(false);
     } else {
       heroEl.innerHTML = `
-      <div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:20px 22px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
+      <div class="agent-hero-card" style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:20px 22px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
         <div class="agent-hero-grid" style="display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start">
           <div style="min-width:0">
             <div class="agent-hero-title-row" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
@@ -14787,7 +14787,7 @@ function renderAgentDashboard() {
                 Analyse IA en cours...
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div class="agent-hero-stats" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
               <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
                 <div style="display:flex;align-items:center;justify-content:center;gap:5px;font-size:18px;font-weight:900;color:#f87171">⚠ <span>${alerts.filter(a=>a.type==='err').length}</span></div>
                 <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Risques détectés</div>

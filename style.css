@@ -1848,6 +1848,13 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
    sur téléphone (grilles à colonnes fixes trop nombreuses/étroites)
    ══════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
+  /* Écrans étroits ou affichage agrandi (réglage « Taille de l'affichage » / police d'Android) : rien ne doit dépasser */
+  .port-split { grid-template-columns: minmax(0,1fr) !important; }
+  .agent-hero-card { padding: 16px !important; }
+  .agent-hero-stats > div { padding: 8px 4px !important; min-width: 0; }
+  .agent-hero-stats > div > div:first-child { font-size: 15px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agent-hero-stats > div > div:last-child { font-size: 9.5px !important; }
+  #agent-hero-notifs > * { min-width: 0; max-width: 100%; }
   /* Accueil : badge « Performance totale » qui passait par-dessus le titre */
   .hero-perf-badge {
     position: static !important;
@@ -1897,7 +1904,7 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
   /* Agent IA : en-tête (salutation + score). Les ajustements min-width/flex-wrap ne suffisaient
      pas à chaque cas (nom long, brief IA...) → colonne du score empilée sous le reste, point final,
      quel que soit le contenu de gauche. */
-  .agent-hero-grid { grid-template-columns: 1fr !important; }
+  .agent-hero-grid { grid-template-columns: minmax(0,1fr) !important; }   /* minmax : le contenu ne peut plus élargir la carte au-delà de l'écran */
   .agent-hero-score { min-width: 0 !important; margin-top: 14px; }
   .agent-hero-score > div:first-child { text-align: left !important; }
   /* Nom sur sa propre ligne, les 2 boutons ensemble sur la ligne suivante — fixe, ne dépend plus
@@ -2160,3 +2167,11 @@ button.set-row:hover,a.set-row:hover{background:var(--color-bg-subtle)}
 .lp-foot-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 16px;margin-bottom:12px}
 .lp-foot-links button,.lp-foot-links a{background:none;border:none;padding:0;font:inherit;font-size:12.5px;color:#475467;text-decoration:underline;cursor:pointer}
 .lp-foot p{font-size:11.5px;color:#667085;line-height:1.6;max-width:720px;margin:0 auto 6px}
+
+/* En-tête sur écran étroit (ou affichage agrandi) : on garde l'avatar et l'icône du thème, sans les textes */
+@media (max-width: 420px) {
+  #topbar-email { display: none; }
+  .profile-pill { padding: 4px !important; }
+  #theme-label { display: none; }
+  #theme-toggle { padding: 5px 8px !important; }
+}
