@@ -6451,14 +6451,14 @@ function showSignupConfirmation(email) {
   box.innerHTML = `
     <div style="text-align:center;padding:8px 0 4px">
       <div style="font-size:40px;margin-bottom:10px">📬</div>
-      <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-0.02em">Vérifie ta boîte mail</div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:16px">
-        On vient d'envoyer un lien de confirmation à<br><strong style="color:#fff">${safe}</strong>.<br>
+      <div style="font-size:18px;font-weight:800;color:#0b1220;margin-bottom:8px;letter-spacing:-0.02em">Vérifie ta boîte mail</div>
+      <div style="font-size:13px;color:#475467;line-height:1.6;margin-bottom:16px">
+        On vient d'envoyer un lien de confirmation à<br><strong style="color:#0b1220">${safe}</strong>.<br>
         Clique dessus pour activer ton compte, puis reviens te connecter ici.
       </div>
-      <div style="font-size:11.5px;color:rgba(255,255,255,0.4);margin-bottom:18px">Rien reçu ? Regarde dans les spams / courriers indésirables.</div>
-      <button id="auth-resend-btn" onclick="resendConfirmation('${safe}')" style="width:100%;padding:12px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.15);border-radius:12px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;margin-bottom:8px">Renvoyer l'email</button>
-      <button onclick="backToLoginAfterSignup('${safe}')" style="width:100%;padding:13px;background:linear-gradient(135deg,#1a7f5a,#059669);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer">J'ai confirmé → Me connecter</button>
+      <div style="font-size:11.5px;color:#667085;margin-bottom:18px">Rien reçu ? Regarde dans les spams / courriers indésirables.</div>
+      <button id="auth-resend-btn" onclick="resendConfirmation('${safe}')" style="width:100%;padding:12px;background:#fff;border:1.5px solid #d0d5dd;border-radius:12px;font-size:13px;font-weight:700;color:#344054;cursor:pointer;margin-bottom:8px">Renvoyer l'email</button>
+      <button onclick="backToLoginAfterSignup('${safe}')" style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer">J'ai confirmé → Me connecter</button>
     </div>`;
   document.getElementById('auth-signup').style.display = 'none';
   box.style.display = 'block';

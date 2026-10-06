@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <script src="/errlog.js?v=20261002"></script>
-  <script src="/ads.js?v=20261001200000" defer></script>
+  <script src="/ads.js?v=20261006400000" defer></script>
   <script src="/inapp.js?v=20261002170000" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kapitaro : suis et comprends ton épargne, gratuitement</title>
   <meta name="description" content="Actions, ETF, PEA : suis tout ton portefeuille au même endroit, avec un score de santé, des objectifs chiffrés et un assistant IA en français. Gratuit, sans carte bancaire.">
   <meta name="robots" content="noindex, follow">
   <link rel="canonical" href="https://kapitaro.fr/">
-  <meta name="theme-color" content="#080e1e">
+  <meta name="theme-color" content="#f6f8f5">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Kapitaro">
   <meta property="og:title" content="Kapitaro : suis et comprends ton épargne">
@@ -20,27 +20,36 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <script defer src="/_vercel/insights/script.js"></script>
   <style>
-    :root { --bg:#080e1e; --card:rgba(255,255,255,0.05); --line:rgba(255,255,255,0.1); --muted:rgba(255,255,255,0.62); --green:#16a34a; --green2:#4ade80; }
+    /* Page des publicités, version claire (même univers que la page d'accueil) */
+    :root { --bg:#f6f8f5; --ink:#0b1220; --card:#fff; --line:#e4e7ec; --muted:#475467; --soft:#667085; --green:#16a34a; --green-d:#15803d; --green-l:#dcfce7; }
     * { box-sizing:border-box; }
-    body { margin:0; background:var(--bg); color:#fff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; line-height:1.55; }
-    .wrap { max-width:980px; margin:0 auto; padding:0 16px; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; line-height:1.55; }
+    body::before { content:''; position:absolute; inset:0 0 auto 0; height:620px; background:radial-gradient(800px 380px at 15% -10%,rgba(22,163,74,.13),transparent 70%),radial-gradient(600px 320px at 95% 0%,rgba(99,102,241,.08),transparent 70%); pointer-events:none; z-index:-1; }
+    .wrap { max-width:980px; margin:0 auto; padding:0 16px; position:relative; }
     header { display:flex; align-items:center; gap:10px; padding:18px 0; }
     header img { border-radius:10px; }
     header b { font-size:19px; letter-spacing:-0.3px; }
-    .hero { display:grid; grid-template-columns:1.1fr 0.9fr; gap:40px; align-items:center; padding:28px 0 40px; }
+    .tag { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--green-d); background:var(--green-l); border:1px solid #bbf7d0; border-radius:999px; padding:5px 12px; margin-bottom:14px; }
+    .fr { display:inline-block; width:16px; height:11px; border-radius:2px; background:linear-gradient(90deg,#1d4ed8 33.3%,#fff 33.3% 66.6%,#dc2626 66.6%); box-shadow:0 0 0 1px rgba(16,24,40,.12); }
+    .hero { display:grid; grid-template-columns:1.1fr 0.9fr; gap:40px; align-items:center; padding:20px 0 40px; }
     h1 { font-size:clamp(32px,5.4vw,52px); line-height:1.08; letter-spacing:-1.5px; margin:0 0 14px; font-weight:900; }
-    h1 span { background:linear-gradient(135deg,var(--green2),#1a7f5a); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    h1 span { color:var(--green); }
     .lead { font-size:17px; color:var(--muted); margin:0 0 24px; max-width:480px; }
-    .cta { display:block; width:100%; max-width:380px; text-align:center; padding:16px; border-radius:14px; background:linear-gradient(135deg,#22c55e,var(--green)); color:#fff; font-size:17px; font-weight:800; text-decoration:none; box-shadow:0 12px 34px rgba(22,163,74,0.35); }
-    .cta-note { font-size:13px; color:rgba(255,255,255,0.45); margin-top:10px; }
-    .mock { background:var(--card); border:1px solid var(--line); border-radius:22px; padding:18px; }
+    .cta { display:block; width:100%; max-width:380px; text-align:center; padding:16px; border-radius:14px; background:var(--green); color:#fff; font-size:17px; font-weight:800; text-decoration:none; box-shadow:0 10px 26px rgba(22,163,74,.28); }
+    .cta:hover { background:var(--green-d); }
+    .cta-note { font-size:13px; color:var(--soft); margin-top:10px; }
+    .safe { display:flex; gap:12px; align-items:flex-start; margin-top:20px; max-width:480px; padding:14px 16px; background:#fff; border:1px solid var(--line); border-radius:14px; font-size:14px; color:#344054; }
+    .safe b { color:var(--ink); }
+    .trust { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+    .trust span { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--muted); background:#fff; border:1px solid var(--line); border-radius:999px; padding:6px 12px; }
+    .mock { background:var(--card); border:1px solid var(--line); border-radius:22px; padding:18px; box-shadow:0 16px 40px rgba(16,24,40,.08); }
     .mock-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; }
     .mock-top b { font-size:26px; letter-spacing:-0.5px; }
-    .pill { font-size:12px; font-weight:700; color:var(--green2); background:rgba(22,163,74,0.14); border-radius:999px; padding:3px 9px; }
-    .row { display:flex; justify-content:space-between; padding:10px 0; border-top:1px solid var(--line); font-size:14px; }
-    .row small { color:var(--muted); display:block; font-size:12px; }
-    .score { display:flex; align-items:center; gap:12px; margin-top:12px; background:rgba(255,255,255,0.04); border-radius:14px; padding:12px; }
-    .score b { font-size:28px; color:var(--green2); }
+    .pill { font-size:12px; font-weight:700; color:var(--green-d); background:var(--green-l); border-radius:999px; padding:3px 9px; }
+    .row { display:flex; justify-content:space-between; padding:10px 0; border-top:1px solid #f2f4f7; font-size:14px; font-weight:600; }
+    .row small { color:var(--soft); display:block; font-size:12px; font-weight:400; }
+    .score { display:flex; align-items:center; gap:12px; margin-top:12px; background:#f6f8f5; border:1px solid var(--line); border-radius:14px; padding:12px; }
+    .score b { font-size:28px; color:var(--green); }
     section { padding:34px 0; }
     h2 { font-size:clamp(24px,3.6vw,32px); letter-spacing:-0.6px; margin:0 0 20px; }
     .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
@@ -50,19 +59,20 @@
     .card p { margin:0; font-size:14px; color:var(--muted); }
     .steps { counter-reset:s; display:grid; gap:12px; }
     .step { display:flex; gap:14px; align-items:flex-start; }
-    .step::before { counter-increment:s; content:counter(s); flex-shrink:0; width:32px; height:32px; border-radius:50%; background:rgba(22,163,74,0.16); color:var(--green2); font-weight:800; display:flex; align-items:center; justify-content:center; }
+    .step::before { counter-increment:s; content:counter(s); flex-shrink:0; width:32px; height:32px; border-radius:50%; background:var(--green); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; }
     .step b { display:block; }
     .step span { color:var(--muted); font-size:14px; }
     .price { text-align:center; }
     .price p { color:var(--muted); margin:0 0 20px; }
     .price .cta { margin:0 auto; }
-    .warn { font-size:12px; color:rgba(255,255,255,0.4); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:10px 0 0; }
-    footer { padding:28px 0 40px; font-size:12px; color:rgba(255,255,255,0.4); border-top:1px solid var(--line); margin-top:20px; }
-    footer a { color:rgba(255,255,255,0.55); margin-right:12px; }
+    .warn { font-size:12px; color:var(--soft); border:1px solid var(--line); background:#fff; border-radius:12px; padding:12px 14px; margin:10px 0 0; }
+    footer { padding:28px 0 40px; font-size:12px; color:var(--soft); border-top:1px solid var(--line); margin-top:20px; }
+    footer a { color:var(--muted); margin-right:12px; }
     @media (max-width:760px) {
-      .hero { grid-template-columns:1fr; gap:26px; padding-top:8px; }
+      .hero { grid-template-columns:1fr; gap:26px; padding-top:4px; }
       .grid3 { grid-template-columns:1fr; }
       .cta { max-width:none; }
+      .cta-note { text-align:center; }
     }
   </style>
 </head>
@@ -72,17 +82,20 @@
 
     <div class="hero">
       <div>
+        <div class="tag"><i class="fr" aria-hidden="true"></i> Créé en France · Gratuit pour commencer</div>
         <h1>Toute ton épargne au même endroit, <span>enfin claire.</span></h1>
         <p class="lead">Actions, ETF, PEA : suis ton portefeuille en direct, vois ce qui va bien et ce qui coince, et pose tes questions à un assistant IA en français.</p>
         <a class="cta" href="/?inscription=1" onclick="window.kpAds && kpAds.track('lead')">Créer mon compte gratuit</a>
         <div class="cta-note">Sans carte bancaire · prêt en 2 minutes</div>
+        <div class="safe"><span aria-hidden="true">🔒</span><div><b>Kapitaro ne touche jamais à ton argent.</b> Aucun accès à ta banque ni à ton courtier, aucun ordre passé : tu investis où tu veux, l’app t’aide à y voir clair.</div></div>
+        <div class="trust"><span><i class="fr" aria-hidden="true"></i> Créé en France</span><span>✓ Sans engagement</span><span>🛡️ Données jamais revendues</span></div>
       </div>
       <div class="mock" aria-hidden="true">
         <div class="mock-top"><b>24 860 €</b><span class="pill">Exemple</span></div>
         <div class="row"><div>ETF Monde<small>PEA</small></div><div>12 400 €</div></div>
         <div class="row"><div>ETF S&amp;P 500<small>Compte-titres</small></div><div>7 150 €</div></div>
         <div class="row"><div>Actions France<small>PEA</small></div><div>5 310 €</div></div>
-        <div class="score"><b>7,8</b><div style="font-size:13px;color:rgba(255,255,255,0.7)">Score de santé /10<br>Priorité : diversifier un peu plus</div></div>
+        <div class="score"><b>7,8</b><div style="font-size:13px;color:#475467">Score de santé /10<br>Priorité : diversifier un peu plus</div></div>
       </div>
     </div>
 

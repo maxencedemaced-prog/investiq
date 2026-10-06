@@ -90,13 +90,13 @@
     b.id = 'kp-consent';
     b.setAttribute('role', 'dialog');
     b.setAttribute('aria-label', 'Cookies publicitaires');
-    b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:30000;max-width:520px;margin:0 auto;background:#0b1220;color:#fff;border:1px solid rgba(255,255,255,0.14);border-radius:16px;padding:16px;box-shadow:0 16px 50px rgba(0,0,0,0.45);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
-    b.innerHTML = '<div style="font-weight:800;font-size:15px;margin-bottom:4px">🍪 Cookies publicitaires</div>'
-      + '<div style="font-size:13px;color:rgba(255,255,255,0.72)">Avec ton accord, Kapitaro utilise des cookies de Meta et Google pour mesurer l\'efficacité de ses publicités. Aucun cookie publicitaire n\'est déposé si tu refuses, et l\'app fonctionne pareil. '
-      + '<a href="/confidentialite" style="color:#4ade80">En savoir plus</a></div>'
-      + '<div style="display:flex;gap:8px;margin-top:12px">'
-      + '<button type="button" data-c="0" style="flex:1;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,0.25);background:transparent;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Refuser</button>'
-      + '<button type="button" data-c="1" style="flex:1;padding:11px;border-radius:10px;border:none;background:#16a34a;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Accepter</button></div>';
+    // Bandeau compact (il ne doit pas cacher la moitié de l'écran) ; Refuser et Accepter restent de même taille (règle CNIL)
+    b.style.cssText = 'position:fixed;left:10px;right:10px;bottom:10px;z-index:30000;max-width:520px;margin:0 auto;background:#fff;color:#0b1220;border:1px solid #e4e7ec;border-radius:14px;padding:12px 14px;box-shadow:0 12px 40px rgba(16,24,40,0.18);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
+    b.innerHTML = '<div style="color:#344054">🍪 <b style="color:#0b1220">Cookies publicitaires</b> (Meta, Google) pour mesurer nos pubs, seulement avec ton accord. Si tu refuses, rien n’est déposé et l’app fonctionne pareil. '
+      + '<a href="/confidentialite" style="color:#15803d;font-weight:600">En savoir plus</a></div>'
+      + '<div style="display:flex;gap:8px;margin-top:10px">'
+      + '<button type="button" data-c="0" style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #d0d5dd;background:#fff;color:#0b1220;font-weight:700;font-size:14px;cursor:pointer">Refuser</button>'
+      + '<button type="button" data-c="1" style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #16a34a;background:#16a34a;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Accepter</button></div>';
     b.addEventListener('click', e => { const v = e.target && e.target.getAttribute('data-c'); if (v !== null) setConsent(v === '1'); });
     document.body.appendChild(b);
   }
