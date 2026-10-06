@@ -64,7 +64,8 @@
     }
   ],
   "redirects": [
-    { "source": "/landing", "destination": "/", "permanent": true }
+    { "source": "/landing", "destination": "/", "permanent": true },
+    { "source": "/commencer", "destination": "/", "permanent": false }
   ],
   "rewrites": [
     { "source": "/blog", "destination": "/api/blog" },

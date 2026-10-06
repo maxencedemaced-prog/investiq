@@ -6391,6 +6391,7 @@ function setAuthMsg(msg, ok=false) {
   el.textContent = msg; el.className = 'auth-msg ' + (ok?'success':'error');
 }
 async function loginWithGoogle() {
+  if (document.documentElement.classList.contains('kp-inapp')) { setAuthMsg('Google bloque sa connexion dans le navigateur d’Instagram ou de Facebook : inscris-toi avec ton e-mail, ou ouvre kapitaro.fr dans ton navigateur.'); return; }
   setAuthMsg('Redirection vers Google...', true);
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
