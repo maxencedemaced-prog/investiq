@@ -5,7 +5,7 @@
   <script src="/errlog.js?v=20261002"></script>
   <script src="/ads.js?v=20261006400000" defer></script>
   <script src="/inapp.js?v=20261002170000" defer></script>
-  <script>try { if (/Instagram|FBAN|FBAV|FB_IAB|FBIOS|Line\/|Snapchat|Pinterest|TikTok|musical_ly|BytedanceWebview/i.test(navigator.userAgent || '')) document.documentElement.classList.add('kp-inapp'); } catch (e) {}</script>
+  <script>try { if (/Instagram|FBAN|FBAV|FB_IAB|FBIOS|Line\/|Snapchat|Pinterest|TikTok|musical_ly|BytedanceWebview/i.test(navigator.userAgent || '')) { document.documentElement.classList.add('kp-inapp'); if (/Android/i.test(navigator.userAgent || '')) document.documentElement.classList.add('kp-inapp-android'); } } catch (e) {}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#080e1e">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -70,7 +70,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="style.css?v=20261006410000">
+  <link rel="stylesheet" href="style.css?v=20261006420000">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -513,6 +513,7 @@ window.addEventListener('load', function() {
   else if (_isNewVisitor()) window.switchAuth('signup');
   // Arrivée depuis la page de publicité (/commencer) : inscription ouverte directement
   if (/[?&]inscription=1/.test(location.search) && document.getElementById('auth-screen').style.display !== 'none') setTimeout(function() { heroStart('signup'); }, 300);
+  if (/[?&]google=1/.test(location.search) && !document.documentElement.classList.contains('kp-inapp') && document.getElementById('auth-screen').style.display !== 'none') setTimeout(function() { loginWithGoogle(); }, 400);
 });
 // Nouveau visiteur = jamais connecté sur cet appareil : on lui ouvre l'inscription plutôt que la connexion
 function _isNewVisitor() {
@@ -1754,7 +1755,7 @@ function heroStart(tab) {
     </div>
 <script src="legal-docs.js?v=20261001180000"></script>
 <script src="glossary.js?v=20261006010000"></script>
-<script src="app.js?v=20261006410000"></script>
+<script src="app.js?v=20261006420000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20261004250000"></script>

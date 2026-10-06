@@ -6391,6 +6391,14 @@ function setAuthMsg(msg, ok=false) {
   el.textContent = msg; el.className = 'auth-msg ' + (ok?'success':'error');
 }
 async function loginWithGoogle() {
+  // Android, navigateur d'Instagram / Facebook : on rouvre la page dans Chrome (fin du lien utm gardée), qui lance la connexion Google
+  if (document.documentElement.classList.contains('kp-inapp-android')) {
+    const q = new URLSearchParams(location.search); q.delete('inscription'); q.set('google', '1');
+    const url = location.host + location.pathname + '?' + q.toString();
+    setAuthMsg('Ouverture de Chrome…', true);
+    window.location.href = 'intent://' + url + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent('https://' + url) + ';end';
+    return;
+  }
   if (document.documentElement.classList.contains('kp-inapp')) { setAuthMsg('Google bloque sa connexion dans le navigateur d’Instagram ou de Facebook : inscris-toi avec ton e-mail, ou ouvre kapitaro.fr dans ton navigateur.'); return; }
   setAuthMsg('Redirection vers Google...', true);
   const { error } = await sb.auth.signInWithOAuth({
