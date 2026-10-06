@@ -9262,7 +9262,7 @@ async function renderHome() {
     const bestData = genSparkData(2, 20);
     const worstData = genSparkData(-2, 20);
     html += `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="home-bw" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px">
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">🏆 Meilleure performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${best.name}</div>
@@ -9783,7 +9783,7 @@ function renderPortfolio(auto=false) {
 
   // Section bas — Répartition + Insights IA
   const bottomHtml = `
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+  <div class="port-split" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
     <!-- Donut répartition -->
     <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;padding:20px">
       <div style="font-size:14px;font-weight:700;color:${textCol};letter-spacing:-0.03em;margin-bottom:16px">Répartition</div>
@@ -10276,12 +10276,12 @@ async function renderSante() {
       <span style="font-size:15px;font-weight:700;color:${textPrimary};letter-spacing:-0.03em">Conseils personnalisés</span>
       <span style="background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.25);border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700;color:#3fb950">✦ IA</span>
     </div>
-    <div style="display:flex;gap:16px;align-items:flex-start">
-      <div style="flex-shrink:0;width:80px;height:80px;position:relative">
+    <div class="sante-conseils" style="display:flex;gap:16px;align-items:flex-start">
+      <div class="sante-conseils-ico" style="flex-shrink:0;width:80px;height:80px;position:relative">
         <div style="width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,0.3),rgba(6,182,212,0.2));display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid rgba(99,102,241,0.2)">🌐</div>
         <div style="position:absolute;inset:0;border-radius:50%;animation:pulse-green 3s infinite;border:1px solid rgba(63,185,80,0.3)"></div>
       </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
         ${[
           {icon:'🛡️', title:'Bonne diversification globale', sub:dedupPos.length>=8?'Votre portefeuille est bien diversifié sur plusieurs classes d\'actifs.':`${dedupPos.length} position${dedupPos.length>1?'s':''} — vise 8 ou plus pour bien diversifier.`, ok:dedupPos.length>=8, q:`Comment améliorer la diversification de mon portefeuille (${dedupPos.length} positions actuellement) ?`},
           {icon:'⭐', title:'Réduire la concentration', sub:`Envisage de réduire l'exposition à ${maxPos?maxPos.name:'ta position principale'} (${maxPct}%) pour limiter le risque.`, ok:parseFloat(maxPct)<=25, q:`Comment réduire progressivement mon exposition à ${maxPos?maxPos.name:'ma position principale'} (${maxPct}% de mon portefeuille) ?`},
@@ -10289,7 +10289,7 @@ async function renderSante() {
         ].map(c=>`
         <div onclick="askAgentFrom(${JSON.stringify(c.q).replace(/"/g,'&quot;')})" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border-radius:12px;border:1px solid ${border};transition:border-color 0.15s"
           onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='${border}'">
-          <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1">
             <span style="font-size:18px;flex-shrink:0;margin-top:1px">${c.icon}</span>
             <div>
               <div style="font-size:13px;font-weight:700;color:${textPrimary};margin-bottom:3px">${c.title}</div>
@@ -11084,9 +11084,9 @@ function renderCrise() {
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
       ${strategies.map(s=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:${raised};border:1px solid ${border};border-radius:12px;transition:border-color 0.15s;cursor:pointer"
+      <div class="crise-strat" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:${raised};border:1px solid ${border};border-radius:12px;transition:border-color 0.15s;cursor:pointer"
         onmouseover="this.style.borderColor='${s.priorityColor}40'" onmouseout="this.style.borderColor='${border}'">
-        <div style="display:flex;align-items:center;gap:12px;flex:1">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
           <div style="width:38px;height:38px;border-radius:10px;background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${s.icon}</div>
           <div>
             <div style="font-size:13px;font-weight:700;color:${text};margin-bottom:3px">${s.title}</div>
@@ -14767,7 +14767,7 @@ function renderAgentDashboard() {
       heroEl.innerHTML = agentEmptyHeroHTML(false);
     } else {
       heroEl.innerHTML = `
-      <div style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:20px 22px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
+      <div class="agent-hero-card" style="background:linear-gradient(135deg,#080d1a,#0f1628);border-radius:18px;padding:20px 22px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06)">
         <div class="agent-hero-grid" style="display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start">
           <div style="min-width:0">
             <div class="agent-hero-title-row" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
@@ -14787,7 +14787,7 @@ function renderAgentDashboard() {
                 Analyse IA en cours...
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div class="agent-hero-stats" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
               <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
                 <div style="display:flex;align-items:center;justify-content:center;gap:5px;font-size:18px;font-weight:900;color:#f87171">⚠ <span>${alerts.filter(a=>a.type==='err').length}</span></div>
                 <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Risques détectés</div>
