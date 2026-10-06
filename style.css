@@ -1850,6 +1850,13 @@ input[type="radio"], input[type="checkbox"] { width: auto; padding: 0; backgroun
 @media (max-width: 640px) {
   /* Écrans étroits ou affichage agrandi (réglage « Taille de l'affichage » / police d'Android) : rien ne doit dépasser */
   .port-split { grid-template-columns: minmax(0,1fr) !important; }
+  .home-bw > div { min-width: 0; padding: 12px !important; }
+  .home-bw > div > div:nth-child(2) { font-size: 15px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .home-bw > div > div:nth-child(3) { font-size: 17px !important; }
+  .home-bw svg { max-width: 100%; }
+  .crise-strat { flex-wrap: wrap; }
+  .sante-conseils-ico { display: none; }   /* l'illustration prenait le tiers de la largeur : les conseils passent en pleine largeur */
+  .crise-strat > div:last-child { margin-left: 50px; }
   .agent-hero-card { padding: 16px !important; }
   .agent-hero-stats > div { padding: 8px 4px !important; min-width: 0; }
   .agent-hero-stats > div > div:first-child { font-size: 15px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
