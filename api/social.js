@@ -401,8 +401,10 @@ async function newsStories() {
   const midnight = parisISO(now.y, now.m, now.d, 0, 0);
   const { data: recent } = await sb.from('social_posts').select('created_at, video_script').eq('format', 'story').gte('created_at', new Date(Date.now() - 3 * 86400000).toISOString());
   const today = (recent || []).filter(p => p.created_at >= midnight);
-  const left = STORIES_PER_DAY - today.length;
-  if (left <= 0) return { skipped: 'limite de ' + STORIES_PER_DAY + ' stories atteinte aujourd\'hui' };
+  const { data: lim } = await sb.from('app_tokens').select('value').eq('name', 'stories_per_day').maybeSingle();
+  const perDay = Math.max(0, parseInt(lim?.value, 10) || STORIES_PER_DAY);
+  const left = perDay - today.length;
+  if (left <= 0) return { skipped: 'limite de ' + perDay + ' stories atteinte aujourd\'hui' };
   if (today.some(p => Date.now() - Date.parse(p.created_at) < 20 * 60000)) return { skipped: 'story récente (moins de 20 min)' };
   const seen = new Set((recent || []).map(p => p.video_script && p.video_script.news_id).filter(Boolean));
 
@@ -608,7 +610,7 @@ export default async function handler(req, res) {
     // Tâches automatiques (cron Vercel) : lot du dimanche (agenda + pédagogie), bilan des marchés du vendredi soir
     if (req.method === 'GET' && ['weekly', 'recap', 'reels', 'stories', 'articles'].includes(req.query.cron)) {
       if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({ error: 'Non autorisé' });
-      { const { data: sp } = await sb.from('app_tokens').select('value').eq('name', 'studio_pause').maybeSingle(); if (sp?.value === '1') return res.status(200).json({ paused: true }); }   // bouton « Tout arrêter » du Studio
+      { const { data: sp } = await sb.from('app_tokens').select('value').eq('name', 'studio_pause').maybeSingle(); if (sp?.value === '1' || (sp?.value === 'stories' && req.query.cron !== 'stories')) return res.status(200).json({ paused: true, mode: sp.value }); }   // bouton « Tout arrêter » du Studio
       if (req.query.cron === 'weekly') { const posts = await weeklyPlan(); return res.status(200).json({ generated: posts.length }); }
       if (req.query.cron === 'stories') return res.status(200).json(await newsStories());
       if (req.query.cron === 'articles') return res.status(200).json(await articlesCron());
