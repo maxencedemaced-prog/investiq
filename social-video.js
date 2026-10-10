@@ -102,9 +102,9 @@
     }
     if (logo) { ctx.save(); roundRect(ctx, 60, 146, 60, 60, 14); ctx.clip(); ctx.drawImage(logo, 60, 146, 60, 60); ctx.restore(); }
     ctx.fillStyle = '#ffffff'; ctx.font = "800 36px 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif"; ctx.textBaseline = 'middle';
-    ctx.fillText('@kapitaro_app', 138, 178);
+    ctx.fillText('@kapitaro.app', 138, 178);
     ctx.fillStyle = 'rgba(255,255,255,0.72)'; ctx.font = "600 34px 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif"; ctx.textAlign = 'center';
-    ctx.fillText('Plus de conseils simples sur @kapitaro_app', W / 2, 1575);
+    ctx.fillText('Plus de conseils simples sur @kapitaro.app', W / 2, 1575);
     ctx.textAlign = 'left';
   }
 

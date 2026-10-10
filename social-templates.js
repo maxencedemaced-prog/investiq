@@ -176,7 +176,7 @@
     Object.keys(th).forEach(function (k) { el.style.setProperty('--' + k, th[k]); });
     var last = index === total - 1;
     el.innerHTML = '<div class="kps-glow"></div><div class="kps-glow2"></div><div class="kps-main">' + inner(slide, th) + '</div>' +
-      '<div class="kps-foot"><span class="kps-brand"><i></i>@kapitaro_app</span><span class="kps-page">' + (index + 1) + '/' + total + (last ? '' : ' <span class="kps-swipe">→</span>') + '</span></div>';
+      '<div class="kps-foot"><span class="kps-brand"><i></i>@kapitaro.app</span><span class="kps-page">' + (index + 1) + '/' + total + (last ? '' : ' <span class="kps-swipe">→</span>') + '</span></div>';
     return el;
   }
 
