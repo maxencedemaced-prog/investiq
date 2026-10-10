@@ -229,10 +229,21 @@ export default async function handler(req, res) {
       // Interrupteur de pause (ligne « social_pause » = 1 dans app_tokens) : aucun envoi automatique tant qu'elle existe
       const { data: pause } = await sb.from('app_tokens').select('value').eq('name', 'social_pause').maybeSingle();
       if (pause?.value === '1') return res.status(200).json({ processed: 0, paused: true });
+      // Mode « stories seulement » (social_pause = 'stories') : posts et vidéos restent en attente (publiés à la main) ;
+      // seules les stories fraîches (moins de 6 h, une actu périmée ne part jamais) sont envoyées, une par passage, avec un plafond par jour
+      const storiesOnly = pause?.value === 'stories';
+      if (storiesOnly) {
+        const { data: lim } = await sb.from('app_tokens').select('value').eq('name', 'stories_per_day').maybeSingle();
+        const cap = Math.max(0, parseInt(lim?.value, 10) || 10);
+        const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('format', 'story').eq('status', 'published').gte('published_at', new Date(Date.now() - 24 * 3600000).toISOString());
+        if ((count || 0) >= cap) return res.status(200).json({ processed: 0, storiesOnly: true, skipped: 'plafond de ' + cap + ' stories sur 24 h atteint' });
+      }
       // Débloque un post resté « en cours » (publication interrompue par un délai dépassé)
       await sb.from('social_posts').update({ status: 'approved' }).eq('status', 'publishing').lt('locked_at', new Date(Date.now() - 10 * 60000).toISOString());
-      const { data: due } = await sb.from('social_posts').select('id, publish_log, platforms')
-        .eq('status', 'approved').lte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(3);
+      let dueQ = sb.from('social_posts').select('id, publish_log, platforms')
+        .eq('status', 'approved').lte('scheduled_at', new Date().toISOString());
+      if (storiesOnly) dueQ = dueQ.eq('format', 'story').gte('scheduled_at', new Date(Date.now() - 6 * 3600000).toISOString());
+      const { data: due } = await dueQ.order('scheduled_at').limit(storiesOnly ? 1 : 3);
       const results = [];
       for (const p of due || []) {
         // Réseaux automatisés encore à publier, sans avoir épuisé les essais
