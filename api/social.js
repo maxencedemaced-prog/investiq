@@ -395,6 +395,46 @@ FORMAT : un tableau JSON, sans texte autour :
   "source": "nom du média source", "value": "variation chiffrée si elle est fournie, ex. « −1,8 % » (sinon vide)",
   "photo": "2 à 4 mots EN ANGLAIS décrivant une vraie photo du SECTEUR d'activité, jamais la marque ni un logo : ex. « computer chips close up », « oil refinery », « airplane assembly line », « pharmaceutical laboratory », « luxury boutique window », « stock market screen »"}]`;
 
+// ── Week-end (bourses fermées, pas d'actu) : stories pédagogiques à la place des stories d'actu ──
+// 2 par jour au plus, espacées d'au moins 4 h, entre 10 h et 19 h ; jamais le même sujet deux fois en 60 jours.
+const PEDA_PER_DAY = 2;
+const PEDA_SYSTEM = `Tu écris des stories Instagram pédagogiques pour Kapitaro, une app française qui aide les particuliers débutants à comprendre et suivre leur épargne.
+Chaque story explique UNE notion simple et intemporelle : intérêts composés, règle de 72, diversification, ETF, frais de gestion, inflation, épargne de précaution, investissement régulier (DCA), volatilité, horizon de placement, PEA, assurance-vie, dividende, rendement vs risque, biais psychologiques de l'investisseur, etc.
+
+RÈGLES ABSOLUES (réglementation AMF) :
+- Pédagogie uniquement : aucune recommandation (jamais « acheter », « vendre », « opportunité »), aucune promesse de gain, aucun produit ni entreprise cité.
+- Aucun taux, plafond ou chiffre qui change avec le temps (taux du Livret A, plafonds actuels, cours…) : seulement des définitions, des règles de calcul et des exemples chiffrés présentés comme des exemples.
+- Ton simple, chaleureux, tutoiement, phrases courtes. Pas de mot qui fait peur.
+
+FORMAT : un tableau JSON d'UN seul élément, sans texte autour :
+[{"company": "la notion en 1 à 3 mots, ex. « Intérêts composés »", "value": "un chiffre ou symbole marquant tiré de l'exemple, ex. « ×2 », « 72 », « 3 à 6 mois » (sinon vide)",
+  "title": "l'idée clé en français, max 60 caractères", "facts": "1 ou 2 phrases d'explication avec un exemple simple, max 170 caractères",
+  "photo": "2 à 4 mots EN ANGLAIS décrivant une photo neutre et apaisante en lien avec l'idée, sans personne reconnaissable ni signe religieux : ex. « coins growing plant », « calculator notebook desk », « piggy bank wooden table »"}]`;
+
+async function pedagogyStory(now, recent, today) {
+  if (now.h < 10 || now.h >= 19) return { skipped: 'week-end : hors horaires des stories pédagogiques (10 h – 19 h)' };
+  const peda = today.filter(p => p.video_script && p.video_script.pedagogy);
+  if (peda.length >= PEDA_PER_DAY) return { skipped: 'week-end : ' + PEDA_PER_DAY + ' stories pédagogiques déjà faites aujourd\'hui' };
+  if (today.some(p => Date.now() - Date.parse(p.created_at) < 4 * 3600000)) return { skipped: 'week-end : story récente (moins de 4 h)' };
+  const { data: past } = await sb.from('social_posts').select('title').eq('format', 'story').gte('created_at', new Date(Date.now() - 60 * 86400000).toISOString()).like('title', 'Story · À savoir%');
+  const done = (past || []).map(p => p.title.replace(/^Story · À savoir · /, '')).slice(0, 60);
+  const picks = await askClaude(`Une story. Sujets déjà traités récemment (à NE PAS reprendre) : ${done.join(' ; ') || 'aucun'}`, PEDA_SYSTEM, STORY_MODEL);
+  const s = picks[0];
+  if (!s || !s.company || !s.title) return { skipped: 'week-end : aucune story pédagogique proposée' };
+  const story = { kicker: 'À SAVOIR', company: clip(s.company, 30), title: clip(s.title, 80), facts: clip(s.facts, 200), source: '', value: clip(s.value || '', 14), photo: clip(s.photo || 'coins growing plant', 60) };
+  if (/ach[eè]te|vend(s|ez)\b|opportunit|garanti|sans risque|krach|panique/i.test(story.title + ' ' + story.facts)) return { skipped: 'week-end : texte écarté par le garde-fou AMF' };
+  const { data: row, error } = await sb.from('social_posts').insert({
+    kind: 'story', format: 'story', status: 'draft', title: `Story · À savoir · ${story.company}`,
+    slides: [{ t: 'text', kicker: story.kicker, title: story.title, body: story.facts }], caption: '', hashtags: '',
+    platforms: ['instagram', 'facebook'], scheduled_at: new Date().toISOString(),
+    video_script: { type: 'story', status: 'queued', pedagogy: true, news_id: 'peda-' + story.company.toLowerCase(), story, queued_at: new Date().toISOString() },
+  }).select().single();
+  if (error) return { skipped: 'week-end : ' + error.message };
+  try { await dispatchRender(row.id); }
+  catch (e) { await sb.from('social_posts').update({ video_script: { ...row.video_script, status: 'error', error: e.message } }).eq('id', row.id); }
+  return { stories: [story.title], pedagogy: true };
+}
+
 async function newsStories() {
   const now = parisParts(Date.now());
   if (now.h < 7 || now.h >= 22) return { skipped: 'hors horaires (7 h – 22 h)' };
@@ -407,6 +447,8 @@ async function newsStories() {
   if (left <= 0) return { skipped: 'limite de ' + perDay + ' stories atteinte aujourd\'hui' };
   if (today.some(p => Date.now() - Date.parse(p.created_at) < 20 * 60000)) return { skipped: 'story récente (moins de 20 min)' };
   const seen = new Set((recent || []).map(p => p.video_script && p.video_script.news_id).filter(Boolean));
+  const wd = new Date(Date.UTC(now.y, now.m - 1, now.d)).getUTCDay();
+  if (wd === 0 || wd === 6) return await pedagogyStory(now, recent, today);
 
   // Candidats : mouvements forts d'indices (± 1,5 % sur la séance) et dépêches des 90 dernières minutes
   const items = [];
