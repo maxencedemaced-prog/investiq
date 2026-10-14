@@ -7,6 +7,8 @@
     frais: { c: 10000, m: 200, y: 20, r: 6, fa: 0.3, fb: 1.8 },
     infl: { s: 10000, y: 10, i: 3, r: 1 },
   };
+  // Petit « ? » du lexique (glossary.js), si disponible
+  var tip = function (k) { try { return typeof kpTip === 'function' ? ' ' + kpTip(k) : ''; } catch (e) { return ''; } };
   var eur = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
   var num = function (n, d) { return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: d == null ? 2 : d }); };
   var fv = function (c, m, years, rPct) { var i = rPct / 100 / 12, cap = c, out = [c]; for (var y = 1; y <= years; y++) { for (var k = 0; k < 12; k++) cap = cap * (1 + i) + m; out.push(cap); } return out; };
@@ -16,15 +18,15 @@
       ['c', 'Capital de départ', 0, 100000, 500, '€'],
       ['m', 'Versement mensuel', 0, 3000, 10, '€'],
       ['y', 'Durée', 1, 50, 1, 'ans'],
-      ['r', 'Rendement brut annuel (hypothèse)', 0, 12, 0.1, '%'],
-      ['fa', 'Frais du placement A (ex. ETF : 0,1 à 0,5 %)', 0, 3, 0.05, '%'],
-      ['fb', 'Frais du placement B (ex. fonds de banque : 1,5 à 2,5 %)', 0, 4, 0.05, '%'],
+      ['r', 'Rendement brut annuel (hypothèse)' + tip('rendement'), 0, 12, 0.1, '%'],
+      ['fa', 'Frais du placement A' + tip('frais') + '<br><span style="font-weight:500;font-size:12px;color:var(--color-text-secondary,#71717a)">ex. un ETF' + tip('etf') + ' : 0,1 à 0,5 %</span>', 0, 3, 0.05, '%'],
+      ['fb', 'Frais du placement B' + tip('frais') + '<br><span style="font-weight:500;font-size:12px;color:var(--color-text-secondary,#71717a)">ex. un fonds de banque' + tip('fonds') + ' : 1,5 à 2,5 %</span>', 0, 4, 0.05, '%'],
     ],
     infl: [
       ['s', 'Somme aujourd’hui', 0, 200000, 500, '€'],
       ['y', 'Durée', 1, 40, 1, 'ans'],
-      ['i', 'Inflation annuelle (hypothèse)', 0, 10, 0.1, '%'],
-      ['r', 'Rendement de ton épargne (hypothèse)', 0, 10, 0.1, '%'],
+      ['i', 'Inflation annuelle (hypothèse)' + tip('inflation'), 0, 10, 0.1, '%'],
+      ['r', 'Rendement de ton épargne (hypothèse)' + tip('rendement'), 0, 10, 0.1, '%'],
     ],
   };
   var PRESETS = {
