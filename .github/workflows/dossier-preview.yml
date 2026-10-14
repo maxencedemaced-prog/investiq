@@ -1,0 +1,30 @@
+# Aperçu (images fixes, sans voix) du style de Reel « Dossier décodé », à chaque modification sur la branche dev.
+name: Aperçu Dossier décodé
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - 'video/src/Dossier.jsx'
+      - 'video/preview-dossier.mjs'
+      - 'api/_dossier.js'
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: video
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: video/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Images d'aperçu
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node preview-dossier.mjs

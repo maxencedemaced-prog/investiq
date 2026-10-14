@@ -18,6 +18,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns } from './_reel.js';
 import { TUTOS } from './_tuto.js';
+import { DOSSIERS } from './_dossier.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
 const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ'];
@@ -888,6 +889,30 @@ export default async function handler(req, res) {
       return res.status(200).json({ posts: data });
     }
     if (b.action === 'ad-create') return res.status(200).json({ posts: await createAds({ short: !!b.short }) });
+    // Reel « Dossier décodé » : script écrit à la main (api/_dossier.js), voix ElevenLabs, rendu Dossier.jsx sur GitHub
+    if (b.action === 'dossier-list') return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })) });
+    if (b.action === 'dossier-create') {
+      const d = DOSSIERS[b.topic];
+      if (!d) return res.status(400).json({ error: 'Dossier inconnu' });
+      const voices = await tutoVoices();
+      if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
+      // Même voix que les tutoriels (David Vautrin) par défaut, sinon la première
+      const voice = (b.voice != null && voices[parseInt(b.voice, 10)]) || voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
+      const beats = d.beats.map(x => ({ ...x }));
+      const { data: post, error } = await sb.from('social_posts').insert({
+        kind: 'weekly', format: 'reel', status: 'draft', title: 'Dossier décodé · ' + d.title.charAt(0) + d.title.slice(1).toLowerCase(),
+        slides: [{ t: 'text', kicker: 'DOSSIER ' + d.num, title: d.title, body: '' }], caption: d.caption, hashtags: d.hashtags,
+        platforms: ['instagram', 'facebook'], scheduled_at: new Date(Date.now() + 86400000).toISOString(),
+      }).select().single();
+      if (error) throw error;
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: 1.05 });
+      const script = { v: 1, style: 'dossier', dossier: { num: d.num, title: d.title, chapters: d.chapters }, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
+      let status = 'queued', err = null;
+      try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
+      const { data: row, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
+      if (e2) throw e2;
+      return res.status(200).json({ post: row });
+    }
     if (b.action === 'reel-create' || b.action === 'reel-render') {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
       const { data: post, error } = await sb.from('social_posts').select('*').eq('id', b.id).single();
