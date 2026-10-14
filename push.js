@@ -206,8 +206,8 @@ function installAppRender() {
   if (box) {
     if (!mode || installDismissedRecently(INSTALL_DISMISS_KEY)) box.style.display = 'none';
     else {
-      document.getElementById('install-app-btn').style.display = mode === 'prompt' ? 'block' : 'none';
-      document.getElementById('install-app-text').innerHTML = installHowHTML(mode, '#fff');
+      document.getElementById('install-app-btn').style.display = 'block';
+      document.getElementById('install-app-text').innerHTML = installHowHTML(mode, '#0b1220');
       box.style.display = 'block';
     }
   }
@@ -223,7 +223,7 @@ function installAppRender() {
         <div style="flex:1;min-width:0">
           <div class="install-banner-title">Installe l'app Kapitaro</div>
           <div class="install-banner-text">${installHowHTML(mode)}</div>
-          ${mode === 'prompt' ? '<button type="button" class="set-pill primary" style="margin-top:8px" onclick="installApp()">📲 Installer l\'app</button>' : ''}
+          <button type="button" class="set-pill primary" style="margin-top:8px" onclick="installApp()">📲 Installer l\'app</button>
         </div>
         <button type="button" class="install-banner-x" onclick="installHomeDismiss()" aria-label="Masquer">✕</button>
       </div>`;
@@ -242,7 +242,7 @@ function installAppRender() {
           <div class="set-row-title">Installer l'app sur cet appareil</div>
           <div class="set-row-sub">${installHowHTML(mode)}</div>
         </div>
-        ${mode === 'prompt' ? '<div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="installApp()">Installer</button></div>' : ''}
+        <div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="installApp()">Installer</button></div>
       </div>`;
       wrap.style.display = 'block';
     }
@@ -251,7 +251,7 @@ function installAppRender() {
 
 async function installApp() {
   const evt = window._installEvt;
-  if (!evt) return;
+  if (!evt) { installGuide(installMode() || (isIOSDevice() ? 'ios' : 'android')); return; }
   evt.prompt();
   let outcome = 'dismissed';
   try { outcome = (await evt.userChoice).outcome; } catch {}
@@ -261,6 +261,30 @@ async function installApp() {
     try { window.va && window.va('event', { name: 'app_install_accepted' }); } catch {}
   }
   installAppRender();
+}
+
+// Guide pas à pas (iPhone : Apple interdit l'installation par un bouton ; Android sans installation en un clic)
+function installGuide(mode) {
+  document.getElementById('install-guide')?.remove();
+  const ua = navigator.userAgent || '';
+  const inApp = /Instagram|FBAN|FBAV|FB_IAB|FBIOS|Line\/|Snapchat|TikTok|musical_ly/i.test(ua);
+  const chromeIOS = /CriOS/i.test(ua);
+  const step = (n, html) => '<div style="display:flex;gap:12px;align-items:flex-start;margin-top:12px"><span style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#16a34a;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center">' + n + '</span><div style="font-size:14px;line-height:1.5;color:#344054;padding-top:2px">' + html + '</div></div>';
+  const share = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+  let steps;
+  if (mode === 'ios' && inApp) steps = step(1, 'Tu es dans le navigateur d’Instagram ou de Facebook : touche <b>⋯</b> en haut à droite, puis <b>« Ouvrir dans le navigateur »</b> (Safari).') + step(2, 'Dans Safari, touche <b>Partager</b> ' + share + ' en bas de l’écran.') + step(3, 'Fais défiler et choisis <b>« Sur l’écran d’accueil »</b>, puis <b>« Ajouter »</b>.');
+  else if (mode === 'ios') steps = step(1, 'Touche <b>Partager</b> ' + share + (chromeIOS ? ' en haut à droite de Chrome.' : ' en bas de l’écran de Safari.')) + step(2, 'Fais défiler et choisis <b>« Sur l’écran d’accueil »</b>.') + step(3, 'Touche <b>« Ajouter »</b> en haut à droite : l’icône Kapitaro apparaît sur ton écran d’accueil.');
+  else steps = step(1, 'Ouvre le menu <b>⋮</b> de ton navigateur (en haut à droite).') + step(2, 'Choisis <b>« Installer l’application »</b> ou <b>« Ajouter à l’écran d’accueil »</b>.') + step(3, 'Confirme : l’icône Kapitaro apparaît sur ton écran d’accueil.');
+  const o = document.createElement('div');
+  o.id = 'install-guide';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10007;display:flex;align-items:flex-end;justify-content:center';
+  o.onclick = e => { if (e.target === o) o.remove(); };
+  o.innerHTML = '<div style="background:#fff;color:#0b1220;border-radius:22px 22px 0 0;width:100%;max-width:480px;padding:22px 20px calc(20px + env(safe-area-inset-bottom))">'
+    + '<div style="display:flex;align-items:center;gap:12px"><img src="icons/kapitaro-tile.svg" width="44" height="44" alt="" style="border-radius:12px"><div><div style="font-size:17px;font-weight:900">Installer Kapitaro</div><div style="font-size:12.5px;color:#667085">Gratuit, en 3 gestes, sans magasin d’applications</div></div></div>'
+    + steps
+    + '<button type="button" onclick="document.getElementById(\'install-guide\').remove()" style="width:100%;margin-top:18px;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">J’ai compris</button></div>';
+  document.body.appendChild(o);
+  try { window.va && window.va('event', { name: 'install_guide_open', mode }); } catch {}
 }
 
 function installAppDismiss() {
