@@ -17,8 +17,8 @@
       ['m', 'Versement mensuel', 0, 3000, 10, '€'],
       ['y', 'Durée', 1, 50, 1, 'ans'],
       ['r', 'Rendement brut annuel (hypothèse)', 0, 12, 0.1, '%'],
-      ['fa', 'Frais annuels · option A', 0, 3, 0.05, '%'],
-      ['fb', 'Frais annuels · option B', 0, 4, 0.05, '%'],
+      ['fa', 'Frais du placement A (ex. ETF : 0,1 à 0,5 %)', 0, 3, 0.05, '%'],
+      ['fb', 'Frais du placement B (ex. fonds de banque : 1,5 à 2,5 %)', 0, 4, 0.05, '%'],
     ],
     infl: [
       ['s', 'Somme aujourd’hui', 0, 200000, 500, '€'],
@@ -68,9 +68,9 @@
       return '<div style="font-size:12.5px;font-weight:700;color:var(--color-text-secondary,#71717a)">Écart au bout de ' + y + ' an' + (y > 1 ? 's' : '') + '</div>'
         + '<div style="font-size:38px;font-weight:900;letter-spacing:-1px;color:#dc2626;margin:2px 0 4px">' + eur(gap) + '</div>'
         + '<div style="font-size:13px;color:var(--color-text-secondary,#71717a);margin-bottom:12px">entre ' + num(v.fa) + ' % et ' + num(v.fb) + ' % de frais par an, pour le même placement</div>'
-        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' + stat('Option A (' + num(v.fa) + ' %)', eur(a[y]), '#16a34a') + stat('Option B (' + num(v.fb) + ' %)', eur(b[y])) + stat('Total versé', eur(inv[y])) + '</div>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' + stat('Placement A (frais ' + num(v.fa) + ' %)', eur(a[y]), '#16a34a') + stat('Placement B (frais ' + num(v.fb) + ' %)', eur(b[y])) + stat('Total versé', eur(inv[y])) + '</div>'
         + chart([{ v: inv, color: '#9ca3af', area: true }, { v: a, color: '#16a34a' }, { v: b, color: '#334155', dash: true }], y)
-        + legend([['Versé', '#9ca3af'], ['Option A', '#16a34a'], ['Option B', '#334155']]);
+        + legend([['Versé', '#9ca3af'], ['Placement A', '#16a34a'], ['Placement B', '#334155']]);
     }
     var yy = Math.max(1, Math.round(v.y)), pa = [], nom = [], real = [];
     for (var j = 0; j <= yy; j++) { var infl = Math.pow(1 + v.i / 100, j), grow = Math.pow(1 + v.r / 100, j); pa.push(v.s / infl); nom.push(v.s * grow); real.push(v.s * grow / infl); }
@@ -89,7 +89,7 @@
     root.innerHTML = '<div style="display:flex;gap:4px;background:var(--color-bg,#f2f4f7);border:1px solid var(--color-border,#e4e4e7);border-radius:13px;padding:4px;margin-bottom:14px;max-width:520px">' + tab('frais', '💸 Impact des frais') + tab('infl', '📉 Inflation') + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' + PRESETS[TAB].map(function (p, k) { return '<button type="button" onclick="calcPreset(' + k + ')" style="padding:6px 12px;border-radius:99px;border:1px solid var(--color-border,#e4e4e7);background:var(--color-surface,#fff);color:var(--color-text,#1c1c1e);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer">' + p[0] + '</button>'; }).join('') + '</div>'
       + '<div class="calc-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:12px;align-items:start">'
-      + card(fieldsHTML()) + card('<div id="calc-out">' + results() + '</div>') + '</div>'
+      + card((TAB === 'frais' ? '<p style="margin:0 0 14px;font-size:13px;line-height:1.5;color:var(--color-text-secondary,#71717a)">Compare <b style="color:var(--color-text,#1c1c1e)">deux placements identiques</b> (même versement, même durée, même rendement avant frais) qui n’ont <b style="color:var(--color-text,#1c1c1e)">pas les mêmes frais annuels</b>. Tu vois ce que la différence te coûte à la fin.</p>' : '<p style="margin:0 0 14px;font-size:13px;line-height:1.5;color:var(--color-text-secondary,#71717a)">Vois ce que vaudra vraiment ton épargne dans quelques années, une fois la hausse des prix prise en compte, selon ce qu’elle rapporte.</p>') + fieldsHTML()) + card('<div id="calc-out">' + results() + '</div>') + '</div>'
       + '<p style="font-size:11.5px;color:var(--color-text-secondary,#71717a);line-height:1.5;margin:12px 2px 0">Simulation pédagogique avec des hypothèses constantes, ce qui n’arrive jamais en réalité : les rendements varient et peuvent être négatifs. Ce n’est pas un conseil en investissement.</p>';
     FIELDS[TAB].forEach(function (f) {
       var id = f[0], range = document.getElementById('calc-' + id), box = document.getElementById('calc-' + id + '-n');
