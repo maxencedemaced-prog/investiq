@@ -174,6 +174,20 @@
     <select id="dossier-music" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px"></select>
     <button class="btn" id="btn-music-listen" onclick="listenDossierMusic()" style="white-space:nowrap">▶ Écouter</button>
   </div>
+  <div class="row" style="gap:8px;margin:2px 0 4px">
+    <button class="btn" type="button" onclick="toggleMusicMaker()" style="font-size:12.5px;padding:6px 10px">🎵 Créer une musique (IA)</button>
+    <button class="btn" type="button" id="btn-music-del" onclick="deleteAiMusic()" style="font-size:12.5px;padding:6px 10px;display:none;border-color:#7f1d1d;color:#fca5a5">🗑 Supprimer cette musique IA</button>
+  </div>
+  <div id="music-maker" style="display:none;border:1px solid var(--line);border-radius:12px;padding:12px;margin:6px 0 4px;background:#0b1120">
+    <div class="sub" style="margin:0 0 6px">Décris le style voulu (en français ou en anglais). Musique sans paroles, faite pour passer sous une voix off. ElevenLabs Music : quelques crédits par morceau.</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px" id="music-presets"></div>
+    <textarea id="music-prompt" rows="2" placeholder="Ex. : lo-fi calme et positif, piano doux et beat léger" style="width:100%;font:inherit;font-size:13.5px;background:#070d18;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px;resize:vertical"></textarea>
+    <div class="row" style="gap:8px;margin-top:8px;flex-wrap:nowrap">
+      <input id="music-name" placeholder="Nom (facultatif)" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#070d18;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px">
+      <select id="music-secs" style="font:inherit;font-size:13.5px;background:#070d18;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px"><option value="30">30 s</option><option value="45">45 s</option><option value="60" selected>60 s</option><option value="90">90 s</option></select>
+      <button class="btn primary" type="button" id="btn-music-make" onclick="makeAiMusic(this)" style="white-space:nowrap">Créer</button>
+    </div>
+  </div>
   <p class="sub" id="dossier-msg" style="min-height:18px;margin:4px 0 12px"></p>
   <div class="row" style="justify-content:flex-end">
     <button class="btn" onclick="document.getElementById('dlg-dossier').close()">Annuler</button>
@@ -221,14 +235,55 @@ async function createDossier(btn) {
   if (!(d.dossiers || []).length) { toast('Aucun dossier prêt pour l’instant'); return; }
   document.getElementById('dossier-topic').innerHTML = d.dossiers.map(function (x) { return '<option value="' + esc(x.id) + '">Dossier ' + esc(x.num) + ' · ' + esc(x.title) + '</option>'; }).join('');
   document.getElementById('dossier-voice').innerHTML = (d.voices || []).map(function (n, i) { return '<option value="' + i + '"' + (i === d.defaultVoice ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
-  var nice = function (f) { return f.replace(/\.mp3$/i, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); };
-  DOSSIER_MUSIC = d.music || [];
-  document.getElementById('dossier-music').innerHTML = '<option value="">🎲 Au hasard</option><option value="none">🔇 Sans musique</option>' + DOSSIER_MUSIC.map(function (m) { return '<option value="' + esc(m.file) + '">🎵 ' + esc(nice(m.file)) + '</option>'; }).join('');
+  DOSSIER_MUSIC = (d.music || []).sort(function (a, b) { return (/^ia-/.test(b.file) ? 1 : 0) - (/^ia-/.test(a.file) ? 1 : 0); });   // musiques IA en premier
+  paintMusicSelect('');
   document.getElementById('dossier-msg').textContent = DOSSIER_MUSIC.length ? '' : 'Les musiques ne sont pas encore en ligne pour l’écoute : « Au hasard » reste possible.';
   document.getElementById('dlg-dossier').onclose = function () { if (DOSSIER_AUDIO) { try { DOSSIER_AUDIO.pause(); } catch (e) {} DOSSIER_AUDIO = null; } document.getElementById('btn-music-listen').textContent = '▶ Écouter'; };
   document.getElementById('dlg-dossier').showModal();
 }
 var DOSSIER_AUDIO = null, DOSSIER_MUSIC = [];
+// ── Musiques créées par l'IA (ElevenLabs Music) ──
+var MUSIC_PRESETS = [
+  ['Lo-fi calme', 'lo-fi hip-hop calme et positif, piano doux, beat léger, 80 bpm'],
+  ['Corporate positif', 'musique corporate optimiste et moderne, guitare claire, synthés légers, 100 bpm'],
+  ['Tech / start-up', 'electronic tech minimaliste et motivante, pulsation régulière, synthés modernes, 110 bpm'],
+  ['Enquête / mystère', 'ambiance d’enquête mystérieuse et tendue, basses profondes, pulsation lente, style documentaire'],
+  ['Motivation', 'musique motivante qui monte en puissance, percussions, cordes, 115 bpm'],
+  ['Chill acoustique', 'acoustique chill et chaleureuse, guitare, claquements de mains doux, 95 bpm'],
+];
+function useMusicPreset(i) { document.getElementById('music-prompt').value = MUSIC_PRESETS[i][1]; document.getElementById('music-name').value = MUSIC_PRESETS[i][0]; }
+function toggleMusicMaker() {
+  var m = document.getElementById('music-maker'); m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  var p = document.getElementById('music-presets');
+  if (!p.innerHTML) p.innerHTML = MUSIC_PRESETS.map(function (x, i) { return '<button class="btn" type="button" style="font-size:12px;padding:4px 9px" onclick="useMusicPreset(' + i + ')">' + esc(x[0]) + '</button>'; }).join('');
+}
+function paintMusicSelect(selected) {
+  var nice = function (f) { var ia = /^ia-/.test(f); var n = f.replace(/\.mp3$/i, '').replace(/^ia-/, '').replace(/-[a-z0-9]{4}$/, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); return (ia ? '✨ IA · ' : '') + n; };
+  var sel = document.getElementById('dossier-music');
+  sel.innerHTML = '<option value="">🎲 Au hasard</option><option value="none">🔇 Sans musique</option>' + DOSSIER_MUSIC.map(function (m) { return '<option value="' + esc(m.file) + '">🎵 ' + esc(nice(m.file)) + '</option>'; }).join('');
+  if (selected) sel.value = selected;
+  sel.onchange = function () { document.getElementById('btn-music-del').style.display = /^ia-/.test(sel.value) ? '' : 'none'; };
+  sel.onchange();
+}
+async function makeAiMusic(btn) {
+  var msg = document.getElementById('dossier-msg'), prompt = document.getElementById('music-prompt').value.trim();
+  if (prompt.length < 5) { msg.textContent = 'Décris d’abord la musique voulue (ou choisis un style ci-dessus).'; return; }
+  btn.disabled = true; btn.textContent = 'Composition…'; msg.textContent = '🎵 Composition en cours (≈ 30 s à 1 min), ne ferme pas la fenêtre…';
+  try {
+    var r = await api('POST', { action: 'music-create', prompt: prompt, name: document.getElementById('music-name').value, seconds: document.getElementById('music-secs').value });
+    DOSSIER_MUSIC.unshift({ file: r.file, url: r.url });
+    paintMusicSelect(r.file);
+    msg.textContent = '✅ Musique créée et sélectionnée : clique sur « ▶ Écouter ». Elle reste disponible pour toutes les vidéos.';
+    document.getElementById('music-maker').style.display = 'none';
+  } catch (e) { msg.textContent = '⚠ ' + e.message; }
+  btn.disabled = false; btn.textContent = 'Créer';
+}
+async function deleteAiMusic() {
+  var sel = document.getElementById('dossier-music'), f = sel.value, msg = document.getElementById('dossier-msg');
+  if (!/^ia-/.test(f) || !confirm('Supprimer cette musique créée par l’IA ?')) return;
+  try { await api('POST', { action: 'music-delete', file: f }); DOSSIER_MUSIC = DOSSIER_MUSIC.filter(function (m) { return m.file !== f; }); paintMusicSelect(''); msg.textContent = '🗑 Musique supprimée.'; }
+  catch (e) { msg.textContent = '⚠ ' + e.message; }
+}
 // Écoute de la musique choisie (les 20 premières secondes, au volume du montage)
 function listenDossierMusic() {
   var btn = document.getElementById('btn-music-listen'), v = document.getElementById('dossier-music').value, msg = document.getElementById('dossier-msg');

@@ -225,7 +225,20 @@ async function slideshowJob(script) {
   console.log('Diaporama prêt :', url);
 }
 
+// Musiques créées depuis le Studio (IA) : seulement dans le stockage, on les copie dans public/music avant le rendu
+async function syncMusic() {
+  try {
+    const dir = path.join('public', 'music'); fs.mkdirSync(dir, { recursive: true });
+    const { data } = await sb.storage.from('social').list('music', { limit: 200 });
+    for (const f of data || []) {
+      if (!/\.mp3$/i.test(f.name) || fs.existsSync(path.join(dir, f.name))) continue;
+      const { data: blob } = await sb.storage.from('social').download('music/' + f.name);
+      if (blob) fs.writeFileSync(path.join(dir, f.name), Buffer.from(await blob.arrayBuffer()));
+    }
+  } catch (e) { console.log('musiques en ligne :', e.message); }
+}
 async function main() {
+  await syncMusic();
   const { data: post, error } = await sb.from('social_posts').select('id, format, video_script').eq('id', ID).single();
   if (error) throw error;
   if (post.format === 'story') return storyJob(post);
