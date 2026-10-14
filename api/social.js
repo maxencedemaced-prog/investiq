@@ -911,12 +911,39 @@ export default async function handler(req, res) {
       return res.status(200).json({ post: row });
     }
     // Reel « Dossier décodé » : script écrit à la main (api/_dossier.js), voix ElevenLabs, rendu Dossier.jsx sur GitHub
+    // ── Musiques de fond créées par l'IA (ElevenLabs Music) : social/music/ia-<nom>.mp3, utilisables dans toutes les vidéos ──
+    if (b.action === 'music-create') {
+      const key = process.env.ELEVENLABS_API_KEY;
+      if (!key) return res.status(400).json({ error: 'Clé ElevenLabs absente dans Vercel' });
+      const prompt = String(b.prompt || '').trim().slice(0, 500);
+      if (prompt.length < 5) return res.status(400).json({ error: 'Décris la musique voulue (style, ambiance, tempo…)' });
+      const secs = Math.max(10, Math.min(120, parseInt(b.seconds, 10) || 45));
+      const slug = String(b.name || prompt).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 36) || 'musique';
+      const file = 'ia-' + slug + '-' + Date.now().toString(36).slice(-4) + '.mp3';
+      const r = await fetch('https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128', {
+        method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt + '. Instrumental background music for a short personal-finance video with a voice-over: no vocals, steady energy, clean mix, clean ending.', music_length_ms: secs * 1000, force_instrumental: true }),
+      });
+      if (!r.ok) { const t = await r.text().catch(() => ''); return res.status(400).json({ error: 'ElevenLabs a refusé (' + r.status + ') : ' + t.slice(0, 240) }); }
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length < 5000) return res.status(400).json({ error: 'Musique vide, réessaie avec une autre description' });
+      const up = await sb.storage.from('social').upload('music/' + file, buf, { contentType: 'audio/mpeg', upsert: true, cacheControl: '86400' });
+      if (up.error) throw up.error;
+      return res.status(200).json({ file, url: sb.storage.from('social').getPublicUrl('music/' + file).data.publicUrl, seconds: secs });
+    }
+    if (b.action === 'music-delete') {
+      const f = String(b.file || '');
+      if (!/^ia-[\w.-]+\.mp3$/.test(f)) return res.status(400).json({ error: 'Seules les musiques créées par l’IA peuvent être supprimées ici' });
+      const { error } = await sb.storage.from('social').remove(['music/' + f]);
+      if (error) throw error;
+      return res.status(200).json({ ok: true });
+    }
     if (b.action === 'dossier-list') {
       const voices = await tutoVoices();
       const def = Math.max(0, voices.findIndex(v => /vautrin|david/i.test(v.name)));
       const { data: mus } = await sb.storage.from('social').list('music', { limit: 100 });
       const music = (mus || []).filter(f => /\.mp3$/i.test(f.name)).map(f => ({ file: f.name, url: sb.storage.from('social').getPublicUrl('music/' + f.name).data.publicUrl }));
-      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })), voices: voices.map(v => v.name), defaultVoice: def, music });
+      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })).sort((a, b) => a.num.localeCompare(b.num)), voices: voices.map(v => v.name), defaultVoice: def, music });
     }
     if (b.action === 'dossier-create') {
       const d = DOSSIERS[b.topic];
@@ -932,7 +959,7 @@ export default async function handler(req, res) {
         platforms: ['instagram', 'facebook'], scheduled_at: new Date(Date.now() + 86400000).toISOString(),
       }).select().single();
       if (error) throw error;
-      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: 1.05 });
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: d.speed || 1.05 });
       const script = { v: 1, style: 'dossier', dossier: { num: d.num, title: d.title, chapters: d.chapters }, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
       // Musique de fond : 'none' = sans musique, un nom de fichier = ce morceau, sinon au hasard
       if (b.music === 'none') script.music = false;

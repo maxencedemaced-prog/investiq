@@ -309,6 +309,11 @@ async function run() {
   const delays = segs.map((s, k) => `[${k + 1}:a]adelay=${Math.round(s.start * 1000)}|${Math.round(s.start * 1000)}[a${k}]`);
   const mix = segs.length > 1 ? `;${segs.map((_, k) => `[a${k}]`).join('')}amix=inputs=${segs.length}:normalize=0[a]` : '';
   // pub sans voix : seulement la musique (bibliothèque video/public/music), avec fondu en fin
+  // musique créée depuis le Studio (IA) : seulement dans le stockage
+  if (timing.music) {
+    const lp = path.resolve('..', 'video', 'public', 'music', path.basename(timing.music));
+    if (!fs.existsSync(lp)) { try { const r = await fetch(sb.storage.from('social').getPublicUrl('music/' + path.basename(timing.music)).data.publicUrl); if (r.ok) { fs.mkdirSync(path.dirname(lp), { recursive: true }); fs.writeFileSync(lp, Buffer.from(await r.arrayBuffer())); } } catch (e) {} }
+  }
   const musicPath = !segs.length && timing.music ? path.resolve('..', 'video', 'public', 'music', path.basename(timing.music)) : null;
   if (!segs.length && !(musicPath && fs.existsSync(musicPath))) throw new Error('Ni voix ni musique pour cette vidéo');
   if (!segs.length) args.push('-i', musicPath);
