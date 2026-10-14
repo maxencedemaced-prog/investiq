@@ -250,7 +250,7 @@ async function run() {
     } catch (e) {}
     try { await cdp.send('Page.screencastFrameAck', { sessionId: ev.sessionId }); } catch (e) {}
   });
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: Math.round(W * (DESK ? 1.5 : AD ? 8 / 3 : 2)), maxHeight: Math.round(H * (DESK ? 1.5 : AD ? 8 / 3 : 2)), everyNthFrame: 1 });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: AD ? 95 : 88, maxWidth: Math.round(W * (DESK ? 1.5 : AD ? 8 / 3 : 2)), maxHeight: Math.round(H * (DESK ? 1.5 : AD ? 8 / 3 : 2)), everyNthFrame: 1 });
   await sleep(400);
   // petit mouvement invisible pour obtenir une première image à l'instant 0
   start = Date.now();
@@ -319,12 +319,12 @@ async function run() {
     const mi = segs.length + 1, vo = segs.length > 1 ? '[a]' : '[a0]';
     const voice = delays.join(';') + mix;
     args.push('-filter_complex', voice + `;[${mi}:a]volume=0.14,afade=t=out:st=${Math.max(0, total - 1.4).toFixed(2)}:d=1.4[m];${vo}[m]amix=inputs=2:duration=longest:normalize=0,apad[out]`, '-map', '0:v', '-map', '[out]', '-t', total.toFixed(2),
-      '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : AD ? 'scale=1080:1920' : 'scale=720:-2') + ':flags=lanczos',
+      '-c:v', 'libx264', '-preset', AD ? 'slow' : 'medium', '-crf', AD ? '18' : '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : AD ? 'scale=1080:1920' : 'scale=720:-2') + ':flags=lanczos',
       '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4);
   } else {
   const afilter = segs.length ? delays.join(';') + mix : `[1:a]volume=0.85,afade=t=in:d=0.2,afade=t=out:st=${Math.max(0, total - 1.4).toFixed(2)}:d=1.4[a]`;
   args.push('-filter_complex', afilter, '-map', '0:v', '-map', !segs.length || segs.length > 1 ? '[a]' : '[a0]', '-t', total.toFixed(2),
-    '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : AD ? 'scale=1080:1920' : 'scale=720:-2') + ':flags=lanczos',
+    '-c:v', 'libx264', '-preset', AD ? 'slow' : 'medium', '-crf', AD ? '18' : '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : AD ? 'scale=1080:1920' : 'scale=720:-2') + ':flags=lanczos',
     '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4);
   }
   execFileSync('ffmpeg', args, { stdio: 'inherit' });
