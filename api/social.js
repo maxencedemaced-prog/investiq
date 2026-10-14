@@ -890,6 +890,20 @@ export default async function handler(req, res) {
       return res.status(200).json({ posts: data });
     }
     if (b.action === 'ad-create') return res.status(200).json({ posts: await createAds({ short: !!b.short }) });
+    // Vidéo diaporama d'un carrousel : fabriquée sur GitHub (plus besoin de rester sur la page)
+    if (b.action === 'slideshow-create') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
+      const images = (Array.isArray(b.images) ? b.images : []).filter(u => typeof u === 'string' && u.startsWith(SUPABASE_URL)).slice(0, 10);
+      if (!images.length) return res.status(400).json({ error: 'Aucune image du carrousel' });
+      const script = { v: 1, style: 'slideshow', images, created_at: new Date().toISOString() };
+      if (b.music === false || b.music === 'none') script.music = false;
+      else if (typeof b.music === 'string' && /^[\w.-]+\.mp3$/.test(b.music)) script.music_file = b.music;
+      let status = 'queued', err = null;
+      try { await dispatchRender(b.id); } catch (e) { status = 'error'; err = e.message; }
+      const { data: row, error } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', b.id).select().single();
+      if (error) throw error;
+      return res.status(200).json({ post: row });
+    }
     // Reel « Dossier décodé » : script écrit à la main (api/_dossier.js), voix ElevenLabs, rendu Dossier.jsx sur GitHub
     if (b.action === 'dossier-list') {
       const voices = await tutoVoices();

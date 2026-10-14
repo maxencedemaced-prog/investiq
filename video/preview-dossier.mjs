@@ -28,3 +28,18 @@ for (const topic of topics.length ? topics : Object.keys(DOSSIERS)) {
   }
   console.log('Aperçus envoyés :', topic, beats.length);
 }
+
+// Diaporama : une image de test avec 2 diapositives d'un carrousel existant
+if (!topics.length) {
+  const imgs = ['https://soyyznyceqzimhoaffaw.supabase.co/storage/v1/object/public/social/39fd3b08-0c17-42a5-bea4-90859c6578a2/1-1791135241756.jpg', 'https://soyyznyceqzimhoaffaw.supabase.co/storage/v1/object/public/social/39fd3b08-0c17-42a5-bea4-90859c6578a2/2-1791135242543.jpg'];
+  const slides = [];
+  for (let i = 0; i < imgs.length; i++) { const r = await fetch(imgs[i]); if (!r.ok) continue; fs.writeFileSync(path.join('public', 'slide-' + i + '.jpg'), Buffer.from(await r.arrayBuffer())); slides.push('slide-' + i + '.jpg'); }
+  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ style: 'slideshow', beats: [], segments: [], slides, perSlide: 3.4, musicFile: null, jingle: false }));
+  for (const [tag, fr] of [['a', 50], ['b', 230]]) {
+    const file = `out/slideshow-${tag}.jpg`;
+    execSync(`npx remotion still src/index.js Reel ${file} --frame=${fr} --image-format=jpeg --jpeg-quality=80 --scale=0.5 --log=warn`, { stdio: 'inherit' });
+    const up = await sb.storage.from('social').upload('preview/' + path.basename(file), fs.readFileSync(file), { contentType: 'image/jpeg', upsert: true, cacheControl: '0' });
+    if (up.error) throw up.error;
+  }
+  console.log('Aperçu diaporama envoyé');
+}
