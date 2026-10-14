@@ -10905,7 +10905,7 @@ function renderObjFeasibilityPanel() {
   el.innerHTML = f.level === 'ok' ? '' : `<div style="margin-bottom:14px">${html.replace('margin-top:18px', 'margin-top:0')}</div>`;
   const badge = document.getElementById('obj-track-badge');
   if (badge) {
-    badge.textContent = String(OBJ_FEAS_STYLE[f.level].badge).replace(/^[✓⚠!]s*/, '');   // le symbole est déjà dans la pastille ronde
+    badge.textContent = String(OBJ_FEAS_STYLE[f.level].badge).replace(/^[✓⚠!]\s*/, '');   // le symbole est déjà dans la pastille ronde
     badge.className = 'obj-track-badge ' + (f.level === 'ok' || f.level === 'tight' ? 'on-track' : 'off-track');
     const box = document.getElementById('obj-badge-box'), ck = document.getElementById('obj-badge-ck'), good = f.level === 'ok' || f.level === 'tight';
     if (box) box.classList.toggle('warn', !good);
