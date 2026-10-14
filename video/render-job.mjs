@@ -192,10 +192,44 @@ async function storyJob(post) {
   }
 }
 
+// ── Diaporama d'un carrousel : images déjà en ligne, musique, carte de fin (sans voix) ──
+async function slideshowJob(script) {
+  await patchScript({ status: 'rendering', rendering_at: new Date().toISOString(), error: null });
+  fs.mkdirSync('out', { recursive: true });
+  const slides = [];
+  for (let i = 0; i < (script.images || []).length; i++) {
+    const r = await fetch(script.images[i]);
+    if (!r.ok) throw new Error('Image ' + (i + 1) + ' introuvable (' + r.status + ')');
+    const file = 'slide-' + i + (/\.png(\?|$)/i.test(script.images[i]) ? '.png' : '.jpg');
+    fs.writeFileSync(path.join('public', file), Buffer.from(await r.arrayBuffer()));
+    slides.push(file);
+  }
+  if (!slides.length) throw new Error('Aucune image : valide d’abord le carrousel');
+  const perSlide = 3.4, total = slides.length * perSlide + 2;
+  const chosen = typeof script.music_file === 'string' && /^[\w.-]+\.mp3$/.test(script.music_file) && fs.existsSync(path.join('public', 'music', script.music_file)) ? 'music/' + script.music_file : null;
+  const musicFile = script.music === false ? null : (chosen || pickMusic(total));
+  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ style: 'slideshow', beats: [], segments: [], slides, perSlide, musicFile, jingle: false }));
+  execSync('npx remotion render src/index.js Reel out/reel.mp4 --codec=h264 --crf=20 --concurrency=100% --log=warn', { stdio: 'inherit' });
+  const buf = fs.readFileSync('out/reel.mp4');
+  const file = `${ID}/slideshow-${Date.now()}.mp4`;
+  const up = await sb.storage.from('social').upload(file, buf, { contentType: 'video/mp4', upsert: true });
+  if (up.error) throw up.error;
+  const url = sb.storage.from('social').getPublicUrl(file).data.publicUrl;
+  let coverUrl = script.images[0] || null;
+  const { data: cur } = await sb.from('social_posts').select('video_script').eq('id', ID).single();
+  const { error } = await sb.from('social_posts').update({
+    video_url: url,
+    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
+  }).eq('id', ID);
+  if (error) throw error;
+  console.log('Diaporama prêt :', url);
+}
+
 async function main() {
   const { data: post, error } = await sb.from('social_posts').select('id, format, video_script').eq('id', ID).single();
   if (error) throw error;
   if (post.format === 'story') return storyJob(post);
+  if ((post.video_script || {}).style === 'slideshow') return slideshowJob(post.video_script);
   const script = post.video_script || {};
   if (!Array.isArray(script.beats) || !script.beats.length) throw new Error('Script vidéo absent : relance la création depuis le Studio');
   await patchScript({ status: 'rendering', rendering_at: new Date().toISOString(), error: null });

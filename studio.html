@@ -445,22 +445,27 @@ async function remakeVideoMuted(btn) {
   var src = document.querySelector('#post-' + VIDEO.id + ' button[onclick^="makeVideo"]');
   if (src) await makeVideo(VIDEO.id, src, { music: false });
 }
+// Vidéo diaporama : les images du carrousel sont mises en ligne (si besoin), puis la vidéo est fabriquée sur GitHub.
+// Tu peux quitter la page pendant la fabrication : la vidéo apparaît sur le post quand elle est prête.
 async function makeVideo(id, btn, opts) {
   opts = opts || {};
   var p = findPost(id), label = btn.textContent;
   btn.disabled = true;
   try {
-    var images = [];
-    for (var i = 0; i < p.slides.length; i++) { btn.textContent = 'Images ' + (i + 1) + '/' + p.slides.length + '…'; images.push(await slidePng(p, i)); }
-    var res = await KapitaroVideo.make(images, p.slides, { music: opts.music !== false, onProgress: function (f) { btn.textContent = 'Vidéo ' + Math.round(f * 100) + ' %…'; } });
-    if (VIDEO && VIDEO.url) URL.revokeObjectURL(VIDEO.url);
-    VIDEO = { id: id, blob: res.blob, mp4: res.mp4, url: URL.createObjectURL(res.blob), seconds: res.seconds, muted: opts.music === false };
-    var v = document.getElementById('video-preview'); v.src = VIDEO.url;
-    document.getElementById('video-info').textContent = res.seconds + ' secondes · ' + (opts.music === false ? 'sans musique : ajoute un son dans Instagram ou TikTok · ' : 'musique d\'ambiance libre de droits · ') + (res.mp4 ? (res.size ? (res.size / 1e6).toFixed(1).replace('.', ',') + ' Mo · ' : '') + 'MP4, compatible Instagram et TikTok' : 'format WebM : utilise Chrome ou Edge à jour pour un MP4 compatible Instagram');
-    document.getElementById('btn-video-use').style.display = res.mp4 ? '' : 'none';
-    document.getElementById('btn-video-mute').style.display = opts.music === false ? 'none' : '';
-    document.getElementById('dlg-video').showModal();
-  } catch (e) { alert('Création de la vidéo impossible : ' + (e && e.message ? e.message : e)); }
+    var urls = (p.image_urls || []).length === p.slides.length ? p.image_urls.slice() : [];
+    if (!urls.length) {
+      for (var i = 0; i < p.slides.length; i++) {
+        btn.textContent = 'Images ' + (i + 1) + '/' + p.slides.length + '…';
+        var jpg = await slideImage(p, i, true);
+        urls.push((await api('POST', { action: 'upload', id: id, index: i, image: jpg })).url);
+      }
+    }
+    btn.textContent = 'Lancement…';
+    var d = await api('POST', { action: 'slideshow-create', id: id, images: urls, music: opts.music === false ? 'none' : '' });
+    Object.assign(p, d.post);
+    render(); watchReels();
+    toast('🎬 Fabrication lancée sur le serveur (≈ 3 min). Tu peux quitter la page : la vidéo apparaîtra sur le post.', 8000);
+  } catch (e) { toast('Création de la vidéo impossible : ' + (e && e.message ? e.message : e), 8000); }
   btn.disabled = false; btn.textContent = label;
 }
 function downloadVideo() {
