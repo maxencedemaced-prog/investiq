@@ -220,6 +220,8 @@ async function run() {
   await page.evaluate(SETUP);
   if (AD) await page.addStyleTag({ content: '#tt-cap{bottom:96px!important}#tt-cap .box{font-size:21px!important;max-width:380px!important;padding:12px 16px!important}' });
   if (DESK) await page.addStyleTag({ content: '#tt-cap{bottom:28px!important}#tt-cap .box{font-size:22px!important;max-width:820px!important;padding:12px 20px!important}' });
+  // Vidéos de l'appli : sous-titres NON incrustés, le lecteur les affiche et on peut les masquer (les pubs gardent les leurs, regardées sans le son)
+  if (!AD) await page.addStyleTag({ content: '#tt-cap{display:none!important}' });
   await sleep(2500);   // prix, logos et graphiques chargés
 
   const FR = path.join(OUT, 'frames'); fs.mkdirSync(FR, { recursive: true });
@@ -321,7 +323,9 @@ async function run() {
   }
   const pub = n => sb.storage.from('social').getPublicUrl('tuto/' + n).data.publicUrl;
   const v = Date.now();
-  const meta = { title: timing.title, page: timing.page || null, variant: DESK ? 'desktop' : 'mobile', url: pub(ID + '.mp4') + '?v=' + v, poster: pub(ID + '.jpg') + '?v=' + v, duration: Math.round(total), voice: timing.voice, at: new Date().toISOString() };
+  // sous-titres séparés : début/fin de chaque phrase (secondes) + minutage des mots depuis le début de la phrase
+  const captions = AD ? null : timing.beats.map((b, k) => ({ s: +(b.start || 0).toFixed(2), e: +((timing.beats[k + 1] ? timing.beats[k + 1].start : total) || total).toFixed(2), words: dispWords(b).map(w => ({ w: w.w, t: +(+w.t || 0).toFixed(2) })) }));
+  const meta = { title: timing.title, page: timing.page || null, variant: DESK ? 'desktop' : 'mobile', url: pub(ID + '.mp4') + '?v=' + v, poster: pub(ID + '.jpg') + '?v=' + v, duration: Math.round(total), voice: timing.voice, at: new Date().toISOString(), ...(captions ? { captions } : {}) };
   // reprise des vidéos déjà faites avant ce système (ancien manifest.json)
   try { const { data: old } = await sb.storage.from('social').download('tuto/manifest.json'); if (old) { const om = JSON.parse(await old.text()); for (const [k, m] of Object.entries(om)) { const { data: ex } = await sb.storage.from('social').list('tuto/meta', { search: k + '.json' }); if (!(ex || []).some(x => x.name === k + '.json')) await sb.storage.from('social').upload('tuto/meta/' + k + '.json', Buffer.from(JSON.stringify(m)), { contentType: 'application/json', upsert: true }); } } } catch (e) {}
   const upm = await sb.storage.from('social').upload('tuto/meta/' + ID + '.json', Buffer.from(JSON.stringify(meta)), { contentType: 'application/json', upsert: true, cacheControl: '0' });
