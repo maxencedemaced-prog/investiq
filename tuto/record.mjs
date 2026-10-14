@@ -197,6 +197,11 @@ async function run() {
     let t = 0;
     const beats = a.beats.map(b => { const start = t, end = t + (b.dur || 3); t = end; const toks = String(b.say || '').match(/\S+/g) || []; return { say: b.say || '', start, end, words: toks.map((w, k) => ({ w: w.replace(/[,.:;!?…]+$/, ''), t: +(k * Math.min(0.32, (b.dur || 3) * 0.6 / Math.max(1, toks.length))).toFixed(2) })), do: b.do || [] }; });
     timing = { id: TID, title: a.title, page: null, ad: true, voice: 'sans voix', music: a.music || null, segments: [], beats };
+    // voix faite depuis le Studio (« Fabriquer la vidéo ») : on garde son minutage, les gestes restent ceux du fichier local
+    try {
+      const { data: tv } = await sb.storage.from('social').download('tuto/' + TID + '/timing.json');
+      if (tv) { const vt = JSON.parse(await tv.text()); if (vt.segments && vt.segments.length && vt.beats && vt.beats.length === beats.length) timing = { ...vt, music: a.music || null, beats: vt.beats.map((b, k) => ({ ...b, do: beats[k].do })) }; }
+    } catch (e) {}
   } else {
     const { data: tf, error } = await sb.storage.from('social').download('tuto/' + TID + '/timing.json');
     if (error || !tf) throw new Error('timing.json introuvable : relance la fabrication depuis le Studio');
@@ -307,10 +312,21 @@ async function run() {
   const musicPath = !segs.length && timing.music ? path.resolve('..', 'video', 'public', 'music', path.basename(timing.music)) : null;
   if (!segs.length && !(musicPath && fs.existsSync(musicPath))) throw new Error('Ni voix ni musique pour cette vidéo');
   if (!segs.length) args.push('-i', musicPath);
+  // voix + musique douce en fond (pub)
+  const bed = segs.length && timing.music ? path.resolve('..', 'video', 'public', 'music', path.basename(timing.music)) : null;
+  if (bed && fs.existsSync(bed)) {
+    args.push('-i', bed);
+    const mi = segs.length + 1, vo = segs.length > 1 ? '[a]' : '[a0]';
+    const voice = delays.join(';') + mix;
+    args.push('-filter_complex', voice + `;[${mi}:a]volume=0.14,afade=t=out:st=${Math.max(0, total - 1.4).toFixed(2)}:d=1.4[m];${vo}[m]amix=inputs=2:duration=first:normalize=0[out]`, '-map', '0:v', '-map', '[out]', '-t', total.toFixed(2),
+      '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : AD ? 'scale=1080:1920' : 'scale=720:-2') + ':flags=lanczos',
+      '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4);
+  } else {
   const afilter = segs.length ? delays.join(';') + mix : `[1:a]volume=0.85,afade=t=in:d=0.2,afade=t=out:st=${Math.max(0, total - 1.4).toFixed(2)}:d=1.4[a]`;
   args.push('-filter_complex', afilter, '-map', '0:v', '-map', !segs.length || segs.length > 1 ? '[a]' : '[a0]', '-t', total.toFixed(2),
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : AD ? 'scale=1080:1920' : 'scale=720:-2') + ':flags=lanczos',
     '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4);
+  }
   execFileSync('ffmpeg', args, { stdio: 'inherit' });
   execFileSync('ffmpeg', ['-y', '-ss', '1.2', '-i', mp4, '-frames:v', '1', '-q:v', '4', poster], { stdio: 'inherit' });
 
