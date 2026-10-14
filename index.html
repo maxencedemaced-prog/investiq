@@ -70,7 +70,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="style.css?v=20261006460000">
+  <link rel="stylesheet" href="style.css?v=20261014110000">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -813,6 +813,7 @@ function heroStart(tab) {
     <button class="nav-btn" id="nav-news" onclick="nav('news')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg><span>Actualités</span></button>
     <button class="nav-btn" id="nav-decision" onclick="nav('decision')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Aide décision</span></button>
     <button class="nav-btn" id="nav-dca" onclick="nav('dca')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Simulateur DCA</span></button>
+    <button class="nav-btn" id="nav-calc" onclick="nav('calc')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8" y2="11.01"/><line x1="12" y1="11" x2="12" y2="11.01"/><line x1="16" y1="11" x2="16" y2="11.01"/><line x1="8" y1="15" x2="8" y2="15.01"/><line x1="12" y1="15" x2="12" y2="15.01"/><line x1="16" y1="15" x2="16" y2="18"/><line x1="8" y1="18" x2="12" y2="18"/></svg> Calculateurs</button>
     <button class="nav-btn" id="nav-depenses" onclick="nav('depenses')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg><span>Mes dépenses</span></button>
     <button class="nav-btn" id="nav-ai" onclick="nav('ai')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/><circle cx="9" cy="11" r="1"/><circle cx="15" cy="11" r="1"/></svg><span>Agent IA</span></button>
     <button class="nav-btn" id="nav-bilan" onclick="openBilan();closeSidebar()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>Mon bilan</span></button>
@@ -1550,6 +1551,17 @@ function heroStart(tab) {
       <div id="news-page-content"></div>
     </section>
 
+    <!-- CALCULATEURS (frais, inflation) — voir calc.js -->
+    <section id="sec-calc" class="sec">
+      <div class="page-header">
+        <div>
+          <h1>Calculateurs</h1>
+          <p class="page-sub">Ce que les frais te coûtent, et ce que l’inflation fait à ton épargne.</p>
+        </div>
+      </div>
+      <div id="calc-root"></div>
+    </section>
+
     <!-- SETTINGS -->
     <section id="sec-settings" class="sec">
       <div class="page-header"><h1>Paramètres</h1></div>
@@ -1755,10 +1767,11 @@ function heroStart(tab) {
     </div>
 <script src="legal-docs.js?v=20261001180000"></script>
 <script src="glossary.js?v=20261006010000"></script>
-<script src="app.js?v=20261006480000"></script>
+<script src="calc.js?v=20261014100000"></script>
+<script src="app.js?v=20261014100000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
-<script src="tab-hints.js?v=20261006470000"></script>
+<script src="tab-hints.js?v=20261014100000"></script>
 <script src="push.js?v=20261014100000"></script>
   <script src="applock.js?v=20261004180000"></script>
 

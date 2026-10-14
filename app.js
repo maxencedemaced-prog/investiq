@@ -8530,7 +8530,7 @@ function nav(page, auto=false) {
   } else if (document.getElementById('obj-results')?.style.display === 'block') {
     setTimeout(() => buildObjChart(objChartCapital, objChartMonthly, objChartTarget, objChartYears, objChartRate), 100);
   }
-}, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSettingsAccount();}catch(e){console.warn('account:',e);} try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderReferralCard();}catch(e){} try{renderPushCard();}catch(e){} try{renderLockCard();}catch(e){} },
+}, calc:()=>{ try{ renderCalc(); }catch(e){ console.warn('calc:', e); } }, crise:renderCrise, dca:()=>{updateDCA();setTimeout(initDCAPresets,50);}, depenses:()=>{ try{renderDepenses();}catch(e){console.warn('depenses:',e);} }, decision:()=>{ try{initDecisionPage();}catch(e){console.warn('decision:',e);} }, settings:()=>{ try{renderSettingsAccount();}catch(e){console.warn('account:',e);} try{renderSubscriptionCard();}catch(e){console.warn('sub:',e);} try{renderReferralCard();}catch(e){} try{renderPushCard();}catch(e){} try{renderLockCard();}catch(e){} },
     ai:()=>{ try{loadChatHistory();}catch(e){console.warn('chat:',e);} initAgent(auto); }, news:()=>{ if(typeof renderNewsPage==='function'){loadWatchlist();renderNewsPage(auto);}else{if(loadNewsCache())renderNewsList();else if(!auto)loadNews(false);} } };
   if (renders[page]) renders[page]();
   try {
@@ -8865,7 +8865,7 @@ function applyUserLevel() {
       const btn = document.getElementById('nav-' + t);
       if (btn) btn.style.display = allowed.includes(t) ? '' : 'none';
     });
-    const outilsVisible = ['news', 'decision', 'dca', 'depenses'].some(t => allowed.includes(t));
+    const outilsVisible = ['news', 'decision', 'dca', 'depenses'].some(t => allowed.includes(t)) || !!document.getElementById('nav-calc');   // les calculateurs sont visibles à tous les niveaux
     const lbl = document.getElementById('navlbl-outils'); if (lbl) lbl.style.display = outilsVisible ? '' : 'none';
     const sep = document.getElementById('navsep-outils'); if (sep) sep.style.display = outilsVisible ? '' : 'none';
   } catch (e) {}
