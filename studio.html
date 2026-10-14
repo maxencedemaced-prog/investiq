@@ -159,6 +159,23 @@
   </div>
 </dialog>
 
+<dialog id="dlg-dossier">
+  <h3 style="margin:0 0 6px">📁 Reel « Dossier décodé »</h3>
+  <p class="sub" style="margin:0 0 14px">Fiche d’enquête animée, mots-clés en gros, voix ElevenLabs. Fabrication ≈ 5 min, puis le Reel arrive dans « À valider ».</p>
+  <label>Dossier</label>
+  <select id="dossier-topic" style="width:100%;font:inherit;font-size:13.5px;background:#0b1120;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:12px"></select>
+  <label>Voix</label>
+  <div class="row" style="gap:8px;flex-wrap:nowrap;margin-bottom:6px">
+    <select id="dossier-voice" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px"></select>
+    <button class="btn" id="btn-dossier-listen" onclick="listenDossierVoice()" style="white-space:nowrap">▶ Écouter</button>
+  </div>
+  <p class="sub" id="dossier-msg" style="min-height:18px;margin:4px 0 12px"></p>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn" onclick="document.getElementById('dlg-dossier').close()">Annuler</button>
+    <button class="btn primary" id="btn-dossier-go" onclick="makeDossier(this)">🎬 Fabriquer le Reel</button>
+  </div>
+</dialog>
+
 <dialog id="dlg-actu">
   <h3 style="margin:0 0 6px">⚡ Post d'actualité</h3>
   <p class="sub" style="margin:0 0 12px">Décris l'événement en une ou deux phrases, avec les faits que tu connais. Le post explique ce que ça change pour l'épargne, sans prédiction.</p>
@@ -192,14 +209,38 @@ async function api(method, body) {
 
 // ── Reel « Dossier décodé » (script écrit à la main, voix des tutoriels) ──
 async function createDossier(btn) {
-  let list = [];
-  try { list = (await api('POST', { action: 'dossier-list' })).dossiers || []; } catch (e) { toast(e.message, 6000); return; }
-  if (!list.length) { toast('Aucun dossier prêt pour l’instant'); return; }
-  const pick = list.length === 1 ? list[0] : list[(parseInt(prompt(list.map((d, i) => (i + 1) + '. Dossier ' + d.num + ' · ' + d.title).join('\n') + '\n\nNuméro du dossier à fabriquer :', '1'), 10) || 1) - 1];
-  if (!pick || !confirm('Fabriquer le Reel « Dossier ' + pick.num + ' · ' + pick.title + ' » ? (voix ElevenLabs, ≈ 5 min sur GitHub)')) return;
-  const label = btn.textContent; btn.disabled = true; btn.textContent = 'Voix en préparation…';
-  try { const d = await api('POST', { action: 'dossier-create', topic: pick.id }); POSTS = [d.post].concat(POSTS); setFilter('draft'); toast('C’est parti : le Reel arrive dans « À valider » dans quelques minutes', 6000); try { watchReels(); } catch (e) {} }
-  catch (e) { toast(e.message, 8000); }
+  btn.disabled = true;
+  let d;
+  try { d = await api('POST', { action: 'dossier-list' }); } catch (e) { toast(e.message, 6000); btn.disabled = false; return; }
+  btn.disabled = false;
+  if (!(d.dossiers || []).length) { toast('Aucun dossier prêt pour l’instant'); return; }
+  document.getElementById('dossier-topic').innerHTML = d.dossiers.map(function (x) { return '<option value="' + esc(x.id) + '">Dossier ' + esc(x.num) + ' · ' + esc(x.title) + '</option>'; }).join('');
+  document.getElementById('dossier-voice').innerHTML = (d.voices || []).map(function (n, i) { return '<option value="' + i + '"' + (i === d.defaultVoice ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
+  document.getElementById('dossier-msg').textContent = '';
+  document.getElementById('dlg-dossier').showModal();
+}
+var DOSSIER_AUDIO = null;
+async function listenDossierVoice() {
+  var btn = document.getElementById('btn-dossier-listen'), msg = document.getElementById('dossier-msg');
+  if (DOSSIER_AUDIO) { try { DOSSIER_AUDIO.pause(); } catch (e) {} DOSSIER_AUDIO = null; }
+  btn.disabled = true; btn.textContent = '…'; msg.textContent = 'Préparation de l’écoute (quelques secondes)…';
+  try {
+    var r = await api('POST', { action: 'tuto-voice-preview', voice: document.getElementById('dossier-voice').value });
+    DOSSIER_AUDIO = new Audio(r.audio); DOSSIER_AUDIO.onended = function () { btn.textContent = '▶ Écouter'; };
+    await DOSSIER_AUDIO.play(); btn.textContent = '🔊 ' + r.voice; msg.textContent = '🔊 Voix : ' + r.voice;
+  } catch (e) { msg.textContent = e.message; btn.textContent = '▶ Écouter'; }
+  btn.disabled = false;
+}
+async function makeDossier(btn) {
+  var label = btn.textContent; btn.disabled = true; btn.textContent = 'Voix en préparation…';
+  document.getElementById('dossier-msg').textContent = 'Préparation de la voix (≈ 30 s), ne ferme pas la fenêtre…';
+  try {
+    var d = await api('POST', { action: 'dossier-create', topic: document.getElementById('dossier-topic').value, voice: document.getElementById('dossier-voice').value });
+    if (DOSSIER_AUDIO) { try { DOSSIER_AUDIO.pause(); } catch (e) {} }
+    document.getElementById('dlg-dossier').close();
+    POSTS = [d.post].concat(POSTS); setFilter('draft');
+    toast('C’est parti : le Reel arrive dans « À valider » dans quelques minutes', 6000); try { watchReels(); } catch (e) {}
+  } catch (e) { document.getElementById('dossier-msg').textContent = e.message; }
   btn.disabled = false; btn.textContent = label;
 }
 

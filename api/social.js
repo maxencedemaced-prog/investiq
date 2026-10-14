@@ -891,7 +891,11 @@ export default async function handler(req, res) {
     }
     if (b.action === 'ad-create') return res.status(200).json({ posts: await createAds({ short: !!b.short }) });
     // Reel « Dossier décodé » : script écrit à la main (api/_dossier.js), voix ElevenLabs, rendu Dossier.jsx sur GitHub
-    if (b.action === 'dossier-list') return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })) });
+    if (b.action === 'dossier-list') {
+      const voices = await tutoVoices();
+      const def = Math.max(0, voices.findIndex(v => /vautrin|david/i.test(v.name)));
+      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })), voices: voices.map(v => v.name), defaultVoice: def });
+    }
     if (b.action === 'dossier-create') {
       const d = DOSSIERS[b.topic];
       if (!d) return res.status(400).json({ error: 'Dossier inconnu' });
