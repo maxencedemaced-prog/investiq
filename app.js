@@ -1917,6 +1917,8 @@ function renderObjChartLegend(items) {
 }
 
 // ===== MULTI-OBJECTIFS CHART =====
+// Couleur de courbe sur le fond sombre du bloc Objectif : le vert foncé du 1er objectif est éclairci pour ressortir
+function objLineColor(c) { return c === '#1a7f5a' ? '#4ade80' : c; }
 function renderMultiObjChart() {
   const el = document.getElementById('obj-results');
   const wizard = document.getElementById('obj-wizard');
@@ -1953,7 +1955,7 @@ function renderMultiObjChart() {
       {
         label: obj.label,
         data: projData,
-        borderColor: obj.color,
+        borderColor: objLineColor(obj.color),
         backgroundColor: obj.color + '18',
         borderWidth: 2.5,
         fill: false,
@@ -2392,7 +2394,7 @@ function updateObjSlider(val) {
           ds.pointRadius = ds.data.map((_,i) => i === chartIndex ? 8 : 0);
           ds.pointBackgroundColor = ds.borderColor;
           ds.borderWidth = 3;
-          ds.borderColor = allObjectives[activeIdx]?.color || ds.borderColor;
+          ds.borderColor = objLineColor(allObjectives[activeIdx]?.color) || ds.borderColor;
         } else {
           // Autres courbes : pas de point, légèrement estompées
           ds.pointRadius = ds.data.map(() => 0);
