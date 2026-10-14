@@ -175,13 +175,47 @@ const Rule = ({ b }) => {
   const f = useCurrentFrame();
   const part = (txt, at, col = '#fff', size = 170) => <span style={{ display: 'inline-block', margin: '0 18px', opacity: io(f, at, at + 8, 0, 1), transform: `translateY(${io(f, at, at + 10, 40, 0)}px)`, color: col, fontSize: size }}>{txt}</span>;
   const d = b.dur;
+  // b.rows : lignes personnalisées [[texte, couleur, taille], …] ; sinon la règle de 72 (b.rate, b.years)
+  const COL = { g: G, dim: DIM, red: RED, w: '#fff' };
+  const rows = b.rows || [[['72', 'g'], ['÷', 'dim', 120], [b.rate || '6 %', 'w']], [['=', 'dim', 120], [b.years || '12 ANS', 'g', 150]]];
+  let k = 0; const n = rows.reduce((s, r) => s + r.length, 0);
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 640, textAlign: 'center', fontFamily: mono, fontWeight: 700, lineHeight: 1.1 }}>
-      <div>{part('72', d * 0.1, G)}{part('÷', d * 0.3, DIM, 120)}{part(b.rate || '6 %', d * 0.45)}</div>
-      <div style={{ marginTop: 30 }}>{part('=', d * 0.6, DIM, 120)}{part(b.years || '12 ANS', d * 0.7, G, 150)}</div>
-      <div style={{ fontSize: 30, letterSpacing: 3, color: DIM, marginTop: 40, opacity: io(f, d * 0.75, d * 0.85, 0, 1) }}>POUR DOUBLER TON CAPITAL (ESTIMATION)</div>
+      {rows.map((r, ri) => <div key={ri} style={{ marginTop: ri ? 30 : 0 }}>{r.map(([t, c, s]) => part(t, d * (0.08 + 0.62 * (k++ / Math.max(1, n - 1))), COL[c] || c || '#fff', s || 150))}</div>)}
+      <div style={{ fontSize: 30, letterSpacing: 3, color: DIM, marginTop: 40, padding: '0 60px', opacity: io(f, d * 0.75, d * 0.85, 0, 1) }}>{b.caption || 'POUR DOUBLER TON CAPITAL (ESTIMATION)'}</div>
     </div>
   );
+};
+// Frais : la pile de pièces perd des gouttes à chaque « année »
+const Leak = ({ b }) => {
+  const f = useCurrentFrame(), n = Math.max(3, 8 - Math.floor(f / 25));
+  return <>
+    <Stack x={540} base={960} n={n} w={210} />
+    {Array.from({ length: 7 }).map((_, k) => { const t = (f + k * 11) % 60, y = 1000 + t * 4.5, x = 470 + ((k * 37) % 140); return <div key={k} style={{ position: 'absolute', left: x, top: y, width: 18, height: 26, borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%', background: RED, opacity: io(t, 0, 10, 0, 0.9) * io(t, 40, 60, 1, 0), boxShadow: '0 0 16px rgba(255,90,95,.6)' }} />; })}
+    <Label x={540} y={1150} top={b.leakLabel || '− FRAIS CHAQUE ANNÉE'} sub={b.leakSub || 'PRÉLEVÉS SUR TOUT LE CAPITAL'} color={RED} size={44} />
+  </>;
+};
+// Inflation : un billet qui rétrécit pendant que les années défilent
+const Shrink = ({ b }) => {
+  const f = useCurrentFrame(), p = io(f, 6, b.dur - 8, 0, 1), from = b.shrinkFrom || 1000, to = b.shrinkTo || 744, years = b.shrinkYears || 10;
+  const s = 1 - (1 - to / from) * p, v = from - (from - to) * p;
+  return <>
+    <div style={{ position: 'absolute', left: 540 - 300 * s, top: 820 - 160 * s, width: 600 * s, height: 320 * s, borderRadius: 22 * s, background: 'linear-gradient(135deg,#1b6b45,#22e08a 55%,#0e4d31)', boxShadow: '0 0 80px rgba(34,224,138,.35)', border: '3px solid rgba(255,255,255,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: mono, fontWeight: 700, fontSize: 120 * s, color: '#03140b' }}>{eur(v)}</div>
+    <Label x={540} y={1060} top={'ANNÉE ' + Math.round(p * years)} sub="POUVOIR D’ACHAT (EN EUROS D’AUJOURD’HUI)" size={46} />
+  </>;
+};
+// DCA : prix mensuels (barres) et parts achetées avec la même somme (pièces)
+const Dca = ({ b }) => {
+  const f = useCurrentFrame(), prices = b.prices || [10, 8, 5, 10], amount = b.amount || 100, max = Math.max(...prices);
+  const step = (b.dur - 20) / prices.length;
+  return <>{prices.map((pr, k) => {
+    const x = 210 + k * 220, at = 8 + k * step, h = 380 * (pr / max), o = io(f, at, at + 8, 0, 1), parts = amount / pr;
+    return <React.Fragment key={k}>
+      <div style={{ position: 'absolute', left: x - 50, top: 1020 - h * o, width: 100, height: h * o, borderRadius: '12px 12px 0 0', background: 'linear-gradient(180deg, rgba(148,163,184,.9), rgba(148,163,184,.15))' }} />
+      <Label x={x} y={1040} top={String(pr).replace('.', ',') + ' €'} sub={'MOIS ' + (k + 1)} size={36} />
+      {b.showParts !== false && <div style={{ position: 'absolute', left: x - 110, width: 220, top: 1020 - h - 90, textAlign: 'center', fontFamily: mono, fontWeight: 700, fontSize: 34, color: G, opacity: io(f, at + 6, at + 14, 0, 1) }}>{String(Math.round(parts * 10) / 10).replace('.', ',')} parts</div>}
+    </React.Fragment>;
+  })}</>;
 };
 const End = ({ b }) => {
   const f = useCurrentFrame(), o = io(f, 0, 12, 0, 1);
@@ -190,12 +224,12 @@ const End = ({ b }) => {
       <Img src={staticFile('logo.svg')} style={{ width: 170, height: 170, borderRadius: 40, boxShadow: '0 0 0 3px rgba(34,224,138,.5), 0 0 90px rgba(34,224,138,.45)' }} />
       <div style={{ fontSize: 76, fontWeight: 900, color: '#fff', marginTop: 40 }}>Kapitaro</div>
       <div style={{ fontFamily: mono, fontSize: 28, letterSpacing: 4, color: G, marginTop: 14 }}>DOSSIER {D.num || ''} · DÉCODÉ</div>
-      <div style={{ display: 'inline-block', marginTop: 60, background: G, color: '#03140b', fontSize: 46, fontWeight: 900, padding: '26px 46px', borderRadius: 26, boxShadow: '0 16px 50px rgba(34,224,138,.4)' }}>Calcule le tien · kapitaro.fr</div>
-      <div style={{ fontSize: 26, color: DIM, marginTop: 50, lineHeight: 1.45 }}>Exemple pédagogique avec un rendement hypothétique.<br />Les rendements ne sont pas garantis. Investir comporte un risque de perte en capital.</div>
+      <div style={{ display: 'inline-block', marginTop: 60, background: G, color: '#03140b', fontSize: 46, fontWeight: 900, padding: '26px 46px', borderRadius: 26, boxShadow: '0 16px 50px rgba(34,224,138,.4)' }}>{b.cta || 'Calcule le tien · kapitaro.fr'}</div>
+      <div style={{ fontSize: 26, color: DIM, marginTop: 50, lineHeight: 1.45 }}>{b.note || 'Exemple pédagogique avec un rendement hypothétique.'}<br />Les rendements ne sont pas garantis. Investir comporte un risque de perte en capital.</div>
     </div>
   );
 };
-const VISUALS = { title: Title, compare: Compare, snowball: Snowball, curve: Curve, result: Result, rule: Rule, end: End };
+const VISUALS = { title: Title, compare: Compare, snowball: Snowball, curve: Curve, result: Result, rule: Rule, end: End, leak: Leak, shrink: Shrink, dca: Dca };
 
 const Scene = ({ b }) => {
   const f = useCurrentFrame(), last = b.i === beats.length - 1;
