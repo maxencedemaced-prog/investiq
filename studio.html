@@ -169,6 +169,11 @@
     <select id="dossier-voice" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px"></select>
     <button class="btn" id="btn-dossier-listen" onclick="listenDossierVoice()" style="white-space:nowrap">▶ Écouter</button>
   </div>
+  <label style="margin-top:6px">Musique de fond</label>
+  <div class="row" style="gap:8px;flex-wrap:nowrap;margin-bottom:6px">
+    <select id="dossier-music" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:8px 10px"></select>
+    <button class="btn" id="btn-music-listen" onclick="listenDossierMusic()" style="white-space:nowrap">▶ Écouter</button>
+  </div>
   <p class="sub" id="dossier-msg" style="min-height:18px;margin:4px 0 12px"></p>
   <div class="row" style="justify-content:flex-end">
     <button class="btn" onclick="document.getElementById('dlg-dossier').close()">Annuler</button>
@@ -216,10 +221,24 @@ async function createDossier(btn) {
   if (!(d.dossiers || []).length) { toast('Aucun dossier prêt pour l’instant'); return; }
   document.getElementById('dossier-topic').innerHTML = d.dossiers.map(function (x) { return '<option value="' + esc(x.id) + '">Dossier ' + esc(x.num) + ' · ' + esc(x.title) + '</option>'; }).join('');
   document.getElementById('dossier-voice').innerHTML = (d.voices || []).map(function (n, i) { return '<option value="' + i + '"' + (i === d.defaultVoice ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
-  document.getElementById('dossier-msg').textContent = '';
+  var nice = function (f) { return f.replace(/\.mp3$/i, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); };
+  DOSSIER_MUSIC = d.music || [];
+  document.getElementById('dossier-music').innerHTML = '<option value="">🎲 Au hasard</option><option value="none">🔇 Sans musique</option>' + DOSSIER_MUSIC.map(function (m) { return '<option value="' + esc(m.file) + '">🎵 ' + esc(nice(m.file)) + '</option>'; }).join('');
+  document.getElementById('dossier-msg').textContent = DOSSIER_MUSIC.length ? '' : 'Les musiques ne sont pas encore en ligne pour l’écoute : « Au hasard » reste possible.';
+  document.getElementById('dlg-dossier').onclose = function () { if (DOSSIER_AUDIO) { try { DOSSIER_AUDIO.pause(); } catch (e) {} DOSSIER_AUDIO = null; } document.getElementById('btn-music-listen').textContent = '▶ Écouter'; };
   document.getElementById('dlg-dossier').showModal();
 }
-var DOSSIER_AUDIO = null;
+var DOSSIER_AUDIO = null, DOSSIER_MUSIC = [];
+// Écoute de la musique choisie (les 20 premières secondes, au volume du montage)
+function listenDossierMusic() {
+  var btn = document.getElementById('btn-music-listen'), v = document.getElementById('dossier-music').value, msg = document.getElementById('dossier-msg');
+  if (DOSSIER_AUDIO) { try { DOSSIER_AUDIO.pause(); } catch (e) {} var was = DOSSIER_AUDIO._music; DOSSIER_AUDIO = null; if (was) { btn.textContent = '▶ Écouter'; return; } }
+  var m = DOSSIER_MUSIC.find(function (x) { return x.file === v; });
+  if (!m) { msg.textContent = v === 'none' ? 'Sans musique : seulement la voix.' : 'Au hasard : un des morceaux de la liste sera choisi.'; return; }
+  DOSSIER_AUDIO = new Audio(m.url); DOSSIER_AUDIO._music = true; DOSSIER_AUDIO.volume = 0.6;
+  DOSSIER_AUDIO.play().then(function () { btn.textContent = '⏸ Stop'; msg.textContent = '🎵 ' + m.file; }).catch(function (e) { msg.textContent = e.message; });
+  setTimeout(function () { if (DOSSIER_AUDIO && DOSSIER_AUDIO._music) { DOSSIER_AUDIO.pause(); DOSSIER_AUDIO = null; btn.textContent = '▶ Écouter'; } }, 20000);
+}
 async function listenDossierVoice() {
   var btn = document.getElementById('btn-dossier-listen'), msg = document.getElementById('dossier-msg');
   if (DOSSIER_AUDIO) { try { DOSSIER_AUDIO.pause(); } catch (e) {} DOSSIER_AUDIO = null; }
@@ -235,7 +254,7 @@ async function makeDossier(btn) {
   var label = btn.textContent; btn.disabled = true; btn.textContent = 'Voix en préparation…';
   document.getElementById('dossier-msg').textContent = 'Préparation de la voix (≈ 30 s), ne ferme pas la fenêtre…';
   try {
-    var d = await api('POST', { action: 'dossier-create', topic: document.getElementById('dossier-topic').value, voice: document.getElementById('dossier-voice').value });
+    var d = await api('POST', { action: 'dossier-create', topic: document.getElementById('dossier-topic').value, voice: document.getElementById('dossier-voice').value, music: document.getElementById('dossier-music').value });
     if (DOSSIER_AUDIO) { try { DOSSIER_AUDIO.pause(); } catch (e) {} }
     document.getElementById('dlg-dossier').close();
     POSTS = [d.post].concat(POSTS); setFilter('draft');

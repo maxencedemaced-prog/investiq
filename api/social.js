@@ -894,7 +894,9 @@ export default async function handler(req, res) {
     if (b.action === 'dossier-list') {
       const voices = await tutoVoices();
       const def = Math.max(0, voices.findIndex(v => /vautrin|david/i.test(v.name)));
-      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })), voices: voices.map(v => v.name), defaultVoice: def });
+      const { data: mus } = await sb.storage.from('social').list('music', { limit: 100 });
+      const music = (mus || []).filter(f => /\.mp3$/i.test(f.name)).map(f => ({ file: f.name, url: sb.storage.from('social').getPublicUrl('music/' + f.name).data.publicUrl }));
+      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })), voices: voices.map(v => v.name), defaultVoice: def, music });
     }
     if (b.action === 'dossier-create') {
       const d = DOSSIERS[b.topic];
@@ -912,6 +914,9 @@ export default async function handler(req, res) {
       if (error) throw error;
       const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: 1.05 });
       const script = { v: 1, style: 'dossier', dossier: { num: d.num, title: d.title, chapters: d.chapters }, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
+      // Musique de fond : 'none' = sans musique, un nom de fichier = ce morceau, sinon au hasard
+      if (b.music === 'none') script.music = false;
+      else if (typeof b.music === 'string' && /^[\w.-]+\.mp3$/.test(b.music)) script.music_file = b.music;
       let status = 'queued', err = null;
       try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
       const { data: row, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();

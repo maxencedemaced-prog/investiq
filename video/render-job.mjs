@@ -217,7 +217,8 @@ async function main() {
   }
 
   const total = beats[beats.length - 1].end + 1.5;
-  const musicFile = script.music === false ? null : pickMusic(total);
+  const chosen = typeof script.music_file === 'string' && /^[\w.-]+\.mp3$/.test(script.music_file) && fs.existsSync(path.join('public', 'music', script.music_file)) ? 'music/' + script.music_file : null;
+  const musicFile = script.music === false ? null : (chosen || pickMusic(total));
   const clips = script.style === 'real' ? await fetchBroll(beats) : [];
   if (script.style !== 'real') beats.forEach(b => { delete b.broll; delete b.broll_file; });
   if (script.style === 'real') {
