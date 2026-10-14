@@ -14,6 +14,7 @@ const TAB_HINTS = {
   depenses:  { title: 'Mes dépenses', premium: true, text: 'Importe ton relevé de compte : Kapitaro retrouve tes abonnements, classe tes dépenses et te montre ce que tu économiserais en l\'investissant.' },
   ai:        { title: 'Agent IA', text: 'Ton copilote financier : pose-lui des questions sur ton portefeuille, demande-lui un avis, ou faites ensemble un ordre comme ajouter une position ou une alerte.' },
   bilan:     { title: 'Mon bilan', premium: true, text: 'Le bilan patrimonial complet : ta situation, tes objectifs, un plan d\'action chiffré et un PDF à garder. Tu le retrouves ici à tout moment.' },
+  calc:      { title: 'Calculateurs', text: 'Deux calculateurs simples : ce que les frais te coûtent sur la durée, et ce que l\'inflation fait au pouvoir d\'achat de ton épargne.' },
   settings:  { title: 'Paramètres', text: 'Ton compte, ton abonnement, tes notifications et l\'apparence de l\'application (thème clair ou sombre).' },
   agentSample: { title: "Exemple de l'Agent IA", premium: true, emoji: '✦', note: "Aperçu figé : rien n'est calculé sur tes données. Avec Premium, tout porte sur ton vrai portefeuille.", text: "Voici ce que l'Agent IA te donne avec Premium : score, alertes, conseils chiffrés et analyse de ton portefeuille. Ici, ce sont des chiffres d'exemple." },
 };

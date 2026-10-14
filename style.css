@@ -2187,3 +2187,6 @@ button.set-row:hover,a.set-row:hover{background:var(--color-bg-subtle)}
 @media (max-width: 979px) { #agent-layout { grid-template-columns: minmax(0,1fr) !important; } #agent-right { position: static !important; } }
 @media (max-width: 719px) { #agent-bottom { grid-template-columns: minmax(0,1fr) !important; } }
 #agent-layout > *, #agent-bottom > * { min-width: 0; }
+
+/* Calculateurs : réglages puis résultats l'un sous l'autre sur téléphone */
+@media (max-width: 760px) { .calc-grid { grid-template-columns: minmax(0,1fr) !important; } .calc-grid > :last-child { order: -1; } }
