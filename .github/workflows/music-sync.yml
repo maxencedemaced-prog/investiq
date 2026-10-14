@@ -1,0 +1,30 @@
+# Met en ligne les musiques de fond des vidéos (video/public/music) pour l'écoute dans le Studio.
+name: Musiques du Studio
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'video/public/music/**'
+      - 'video/music-sync.mjs'
+      - '.github/workflows/music-sync.yml'
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: video
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: video/package-lock.json
+      - run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: Envoi des musiques
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node music-sync.mjs
