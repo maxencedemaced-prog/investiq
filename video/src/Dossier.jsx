@@ -58,10 +58,10 @@ const Hud = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ fontSize: 26, letterSpacing: 3, color: DIM }}><span style={{ color: G, opacity: blink ? 1 : 0.3 }}>●</span> DOSSIER {D.num || '001'}</div>
-          <div style={{ fontFamily, fontSize: 46, fontWeight: 900, letterSpacing: 1, marginTop: 10, color: '#fff' }}>{D.title || ''}</div>
+          <div style={{ fontFamily, fontSize: String(D.title || '').length > 16 ? 36 : 46, fontWeight: 900, letterSpacing: 1, marginTop: 10, color: '#fff', whiteSpace: 'nowrap' }}>{D.title || ''}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 60, fontWeight: 700, color: b.hudColor === 'green' ? G : RED, lineHeight: 1 }}>{b.hud || ''}</div>
+          <div style={{ fontSize: String(b.hud || '').length > 8 ? 44 : 60, fontWeight: 700, color: b.hudColor === 'green' ? G : RED, lineHeight: 1, whiteSpace: 'nowrap' }}>{b.hud || ''}</div>
           <div style={{ fontSize: 22, letterSpacing: 2, color: DIM, marginTop: 10 }}>{b.hudLabel || ''}</div>
         </div>
       </div>
@@ -190,9 +190,9 @@ const Rule = ({ b }) => {
 const Leak = ({ b }) => {
   const f = useCurrentFrame(), n = Math.max(3, 8 - Math.floor(f / 25));
   return <>
-    <Stack x={540} base={960} n={n} w={210} />
-    {Array.from({ length: 7 }).map((_, k) => { const t = (f + k * 11) % 60, y = 1000 + t * 4.5, x = 470 + ((k * 37) % 140); return <div key={k} style={{ position: 'absolute', left: x, top: y, width: 18, height: 26, borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%', background: RED, opacity: io(t, 0, 10, 0, 0.9) * io(t, 40, 60, 1, 0), boxShadow: '0 0 16px rgba(255,90,95,.6)' }} />; })}
-    <Label x={540} y={1150} top={b.leakLabel || '− FRAIS CHAQUE ANNÉE'} sub={b.leakSub || 'PRÉLEVÉS SUR TOUT LE CAPITAL'} color={RED} size={44} />
+    <Stack x={540} base={800} n={n} w={210} />
+    {Array.from({ length: 7 }).map((_, k) => { const t = (f + k * 11) % 60, y = 840 + t * 3, x = 470 + ((k * 37) % 140); return <div key={k} style={{ position: 'absolute', left: x, top: y, width: 18, height: 26, borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%', background: RED, opacity: io(t, 0, 10, 0, 0.9) * io(t, 40, 60, 1, 0), boxShadow: '0 0 16px rgba(255,90,95,.6)' }} />; })}
+    <Label x={540} y={1070} top={b.leakLabel || '− FRAIS CHAQUE ANNÉE'} sub={b.leakSub || 'PRÉLEVÉS SUR TOUT LE CAPITAL'} color={RED} size={44} />
   </>;
 };
 // Inflation : un billet qui rétrécit pendant que les années défilent
