@@ -959,7 +959,7 @@ export default async function handler(req, res) {
         platforms: ['instagram', 'facebook'], scheduled_at: new Date(Date.now() + 86400000).toISOString(),
       }).select().single();
       if (error) throw error;
-      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: 1.05 });
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: d.speed || 1.05 });
       const script = { v: 1, style: 'dossier', dossier: { num: d.num, title: d.title, chapters: d.chapters }, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
       // Musique de fond : 'none' = sans musique, un nom de fichier = ce morceau, sinon au hasard
       if (b.music === 'none') script.music = false;

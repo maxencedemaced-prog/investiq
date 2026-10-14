@@ -22,19 +22,18 @@ export const DOSSIERS = {
 
   // Chiffres vérifiés : 200 €/mois pendant 30 ans, rendement d'exemple 6 %/an avant frais → frais 0,2 % (net 5,8 %) : 193 387 € ;
   // frais 2 % (net 4 %) : 138 810 € ; écart 54 577 € ; versé 72 000 €.
-  // Version PUB (≈ 25 s) du dossier intérêts composés : accroche directe, finit sur le simulateur d'objectif. Mêmes chiffres vérifiés que 004.
+  // Version PUB courte (≈ 13 s) du dossier intérêts composés : résultat d'entrée, finit sur le simulateur d'objectif. Mêmes chiffres vérifiés que 004.
   'pub-lea-tom': {
     num: '008',
     title: 'LÉA ET TOM',
-    chapters: ['LA QUESTION', 'LA RÉPONSE', 'TON TOUR'],
+    chapters: ['LE RÉSULTAT', 'LA RAISON', 'TON TOUR'],
+    speed: 1.1,
     caption: 'Même somme, même placement… et pourtant deux fois plus à l’arrivée. 📁\n\nExemple pédagogique avec un rendement hypothétique de 7 %/an : les rendements ne sont pas garantis et investir comporte un risque de perte en capital.\n\nSimule ton objectif gratuitement sur kapitaro.fr',
     hashtags: '#interetscomposes #epargne #investir #financepersonnelle #kapitaro',
     beats: [
-      { chapter: 0, visual: 'title', hud: '×2', hudLabel: 'ÉCART FINAL', kw: [['100 € / MOIS', 'euros'], ['MÊME PLACEMENT', 'placement'], ['×2 À L’ARRIVÉE', 'deux'], ['POURQUOI ?', 'pourquoi']], say: 'Léa et Tom mettent cent euros par mois, sur le même placement. À l’arrivée, Léa a deux fois plus. Pourquoi ?' },
-      { chapter: 0, visual: 'compare', hud: '10 ANS', hudLabel: 'D’AVANCE', kw: [['LÉA · 25 ANS', 'cinq'], ['TOM · 35 ANS', 'trente'], ['JUSQU’À 65 ANS', 'soixante']], say: 'Léa commence à vingt-cinq ans. Tom, à trente-cinq. Tous les deux jusqu’à soixante-cinq ans.' },
-      { chapter: 1, visual: 'result', hud: '+12 000 €', hudLabel: 'VERSÉS EN PLUS PAR LÉA', leftValue: 262481, rightValue: 121997, kw: [['7 % / AN (EXEMPLE)', 'sept'], ['≈ 262 000 €', 'soixante-deux'], ['≈ 122 000 €', 'vingt-deux'], ['+12 000 € VERSÉS', 'douze']], say: 'À sept pour cent par an en exemple : environ deux cent soixante-deux mille euros pour Léa, cent vingt-deux mille pour Tom. Pour seulement douze mille euros versés en plus.' },
-      { chapter: 1, visual: 'snowball', hud: 'EN MARCHE', hudLabel: 'EFFET BOULE DE NEIGE', hudColor: 'green', kw: [['INTÉRÊTS COMPOSÉS', 'composés'], ['GAINS SUR GAINS', 'rapportent'], ['LE TEMPS', 'temps']], say: 'C’est l’effet des intérêts composés : tes gains rapportent à leur tour des gains. Et le temps fait le reste.' },
-      { chapter: 2, visual: 'end', hud: 'À TOI', hudLabel: 'TON SCÉNARIO', hudColor: 'green', cta: 'Simule ton objectif · kapitaro.fr', note: 'Exemple pédagogique avec un rendement hypothétique de 7 %/an.', say: 'Et toi, combien tu auras ? Simule ton objectif gratuitement sur Kapitaro, en une minute.' },
+      { chapter: 0, visual: 'result', hud: '×2', hudLabel: 'ÉCART FINAL', leftValue: 262481, rightValue: 121997, kw: [['100 € / MOIS', 'euros'], ['MÊME PLACEMENT', 'placement'], ['×2 POUR LÉA', 'fois']], say: 'Cent euros par mois, même placement. Léa finit avec deux fois plus que Tom.' },
+      { chapter: 1, visual: 'compare', hud: '10 ANS', hudLabel: 'D’AVANCE', kw: [['SEULE DIFFÉRENCE', 'différence'], ['10 ANS PLUS TÔT', 'dix']], say: 'Sa seule différence ? Elle a commencé dix ans plus tôt.' },
+      { chapter: 2, visual: 'end', hud: 'À TOI', hudLabel: 'TON SCÉNARIO', hudColor: 'green', cta: 'Simule ton objectif · kapitaro.fr', note: 'Exemple : 100 €/mois de 25 ou 35 ans à 65 ans, rendement hypothétique de 7 %/an.', say: 'Et toi, ça donne quoi ? Simule ton objectif gratuitement sur Kapitaro.' },
     ],
   },
   'frais-caches': {
