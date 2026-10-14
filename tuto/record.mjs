@@ -318,7 +318,7 @@ async function run() {
     args.push('-i', bed);
     const mi = segs.length + 1, vo = segs.length > 1 ? '[a]' : '[a0]';
     const voice = delays.join(';') + mix;
-    args.push('-filter_complex', voice + `;[${mi}:a]volume=0.14,afade=t=out:st=${Math.max(0, total - 1.4).toFixed(2)}:d=1.4[m];${vo}[m]amix=inputs=2:duration=first:normalize=0[out]`, '-map', '0:v', '-map', '[out]', '-t', total.toFixed(2),
+    args.push('-filter_complex', voice + `;[${mi}:a]volume=0.14,afade=t=out:st=${Math.max(0, total - 1.4).toFixed(2)}:d=1.4[m];${vo}[m]amix=inputs=2:duration=longest:normalize=0,apad[out]`, '-map', '0:v', '-map', '[out]', '-t', total.toFixed(2),
       '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : AD ? 'scale=1080:1920' : 'scale=720:-2') + ':flags=lanczos',
       '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4);
   } else {
