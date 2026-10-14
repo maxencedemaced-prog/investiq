@@ -916,7 +916,7 @@ export default async function handler(req, res) {
       const def = Math.max(0, voices.findIndex(v => /vautrin|david/i.test(v.name)));
       const { data: mus } = await sb.storage.from('social').list('music', { limit: 100 });
       const music = (mus || []).filter(f => /\.mp3$/i.test(f.name)).map(f => ({ file: f.name, url: sb.storage.from('social').getPublicUrl('music/' + f.name).data.publicUrl }));
-      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })), voices: voices.map(v => v.name), defaultVoice: def, music });
+      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })).sort((a, b) => a.num.localeCompare(b.num)), voices: voices.map(v => v.name), defaultVoice: def, music });
     }
     if (b.action === 'dossier-create') {
       const d = DOSSIERS[b.topic];
