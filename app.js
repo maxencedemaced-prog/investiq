@@ -8984,8 +8984,9 @@ async function kpOpenTuto(id, opts) {
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#fff"><div style="font-size:15px;font-weight:800">🎬 ' + _escHtml(v.title || 'Kapitaro') + '</div>'
     + (opts.skippable ? '<button type="button" id="kp-tuto-skip" style="padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.08);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer">Passer ›</button>' : '<button type="button" id="kp-tuto-skip" aria-label="Fermer" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1">✕</button>')
     + '</div>'
-    + '<div style="position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:' + (wide ? '1280/800' : '390/844') + ';box-shadow:0 20px 60px rgba(0,0,0,0.5)">'
+    + '<div style="position:relative;container-type:inline-size;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:' + (wide ? '1280/800' : '390/844') + ';box-shadow:0 20px 60px rgba(0,0,0,0.5)">'
     + '<video playsinline controls preload="auto" poster="' + _escHtml(v.poster || '') + '" src="' + _escHtml(v.url) + '" style="width:100%;height:100%;display:block;object-fit:contain"></video>'
+    + (Array.isArray(v.captions) && v.captions.length ? '<div id="kp-tuto-cap" style="position:absolute;left:4%;right:4%;bottom:' + (wide ? '11%' : '12%') + ';display:flex;justify-content:center;pointer-events:none"></div><button type="button" id="kp-tuto-cc" style="position:absolute;right:10px;top:10px;padding:6px 11px;border-radius:999px;border:1px solid rgba(255,255,255,0.35);background:rgba(9,9,11,0.7);color:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer"></button>' : '')
     + (opts.auto ? '<button type="button" id="kp-tuto-sound" style="position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 14px;border-radius:999px;border:none;background:#16a34a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.35)">🔊 Activer le son</button>' : '')
     + '</div></div>';
   document.body.appendChild(o);
@@ -8996,8 +8997,34 @@ async function kpOpenTuto(id, opts) {
   const sb2 = o.querySelector('#kp-tuto-sound');
   if (sb2) sb2.onclick = () => { vd.muted = false; try { vd.currentTime = 0; } catch (e) {} vd.play().catch(() => {}); sb2.remove(); };
   vd.addEventListener('volumechange', () => { if (!vd.muted && sb2 && sb2.isConnected) sb2.remove(); });
+  kpTutoCaptions(o, vd, v.captions, wide);
   vd.play().catch(() => { vd.muted = true; vd.play().catch(() => {}); });
   try { trackEvent('tuto_open', { id, auto: !!opts.auto }); } catch (e) {}
+}
+// Sous-titres des vidéos : affichés par-dessus la vidéo (pas incrustés), bouton pour les masquer, choix mémorisé
+function kpTutoCaptions(o, vd, caps, wide) {
+  const box = o.querySelector('#kp-tuto-cap'), btn = o.querySelector('#kp-tuto-cc');
+  if (!box || !btn || !Array.isArray(caps)) return;
+  let on = true; try { on = localStorage.getItem('kp_tuto_subs') !== '0'; } catch (e) {}
+  const paint = () => { btn.textContent = on ? '💬 Sous-titres ✓' : '💬 Sous-titres ✕'; btn.style.opacity = on ? '1' : '0.75'; box.style.display = on ? 'flex' : 'none'; };
+  btn.onclick = () => { on = !on; try { localStorage.setItem('kp_tuto_subs', on ? '1' : '0'); } catch (e) {} paint(); try { trackEvent('tuto_subs', { on }); } catch (e) {} };
+  paint();
+  let cur = -1, els = [];
+  const tick = () => {
+    if (!o.isConnected) return;
+    const t = vd.currentTime || 0, k = caps.findIndex(c => t >= c.s && t < c.e);
+    if (k !== cur) {
+      cur = k;
+      if (k < 0) { box.innerHTML = ''; els = []; }
+      else {
+        box.innerHTML = '<span style="background:rgba(9,9,11,0.84);color:#fff;font-weight:800;line-height:1.38;font-size:' + (wide ? 'clamp(13px,1.9cqw,22px)' : 'clamp(12px,4.3cqw,18px)') + ';padding:0.55em 0.8em;border-radius:0.8em;text-align:center;max-width:' + (wide ? '70%' : '100%') + '">' + caps[k].words.map(w => '<i style="font-style:normal;opacity:.45;transition:opacity .1s">' + _escHtml(w.w) + '</i>').join(' ') + '</span>';
+        els = [...box.querySelectorAll('i')];
+      }
+    }
+    if (k >= 0) { const rel = t - caps[k].s; els.forEach((e, i) => { e.style.opacity = caps[k].words[i].t <= rel + 0.05 ? '1' : '.45'; }); }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 // Bouton « ▶ C'est quoi ? » sur les pages qui ont une vidéo (à la première visite, la vidéo est aussi proposée dans la fenêtre d'explication de l'onglet, voir tab-hints.js)
 async function kpTutoForPage(page) {
