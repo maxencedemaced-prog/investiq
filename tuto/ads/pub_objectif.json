@@ -1,0 +1,48 @@
+{
+ "title": "📣 Pub v2 · 100 €/mois, combien dans 10 ans ?",
+ "music": "motivating-mornings.mp3",
+ "beats": [
+  {
+   "say": "",
+   "dur": 2.9,
+   "do": [
+    {
+     "js": "(() => {\n  const st0 = document.createElement('style'); st0.textContent = '#tt-cap .box:empty{display:none!important}'; document.head.appendChild(st0);\n  const d = document.createElement('div'); d.id = 'ad2-hook';\n  d.style.cssText = 'position:fixed;inset:0;z-index:2147483641;background:radial-gradient(500px 400px at 80% 0%,rgba(34,197,94,.35),transparent 60%),linear-gradient(160deg,#0b1424,#0a2a22);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 26px;text-align:center';\n  d.innerHTML = '<div id=\"ad2-a\" style=\"font:900 74px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:-3px;background:linear-gradient(90deg,#4ade80,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent;transform:scale(.6);opacity:0;transition:all .45s cubic-bezier(.2,1.5,.4,1)\">100 €</div>'\n    + '<div id=\"ad2-b\" style=\"font:900 30px/1.1 system-ui;color:#fff;opacity:0;transform:translateY(10px);transition:all .4s\">par mois.</div>'\n    + '<div id=\"ad2-c\" style=\"margin-top:22px;font:900 34px/1.15 system-ui;color:#fff;opacity:0;transform:translateY(14px);transition:all .45s\">Combien dans<br><span style=\"color:#fbbf24\">10 ans</span> ? 🤔</div>';\n  document.body.appendChild(d);\n  const on = (id, ms) => setTimeout(() => { const e = document.getElementById(id); if (e) { e.style.opacity = '1'; e.style.transform = 'none'; } }, ms);\n  on('ad2-a', 80); on('ad2-b', 450); on('ad2-c', 1100);\n})()"
+    },
+    {
+     "wait": 200
+    },
+    {
+     "js": "(() => {\n  objChartCapital = 500; objChartMonthly = 100; objChartTarget = 15000; objChartYears = 10; objChartRate = 5; objRisk = 'equilibre'; objStockPct = 30; objGlide = false;\n  allObjectives = [{ id: 'ad2', label: 'Objectif 1', color: '#16a34a', capital: 500, monthly: 100, target: 15000, years: 10, rate: 5, risk: 'equilibre', stock_pct: 30, glide: false, validated_at: new Date().toISOString() }];\n  activeObjId = 'ad2';\n  const s = document.createElement('style');\n  s.textContent = 'header.topbar,#sec-objectif .page-header,#bottom-nav,.obj-real-progress,#obj-tabs,.kp-tuto-row,#obj-chart-legend,.obj-chart-legend,#demo-banner,#tt-cur{display:none!important}'\n    + 'body,#sec-objectif{background:#070d18!important}#sec-objectif{padding:0!important;margin:0!important}'\n    + '.obj-chart-card{margin:0!important;border-radius:0!important;min-height:720px;padding:64px 18px 20px!important;box-shadow:none!important}'\n    + '.obj-chart-wrap{height:215px!important}.obj-chart-amount{font-size:54px!important}'\n    + '#tt-cap{bottom:22px!important}#tt-cap .box:empty{display:none}'\n    + '#ad2-tag{position:fixed;left:0;right:0;top:20px;z-index:2147483600;text-align:center;font:800 12px system-ui;letter-spacing:1.2px;color:rgba(226,232,240,.7);text-transform:uppercase}';\n  document.head.appendChild(s);\n  const t = document.createElement('div'); t.id = 'ad2-tag'; t.textContent = 'Simulation · 5 %/an, non garantie'; document.body.appendChild(t);\n  nav('objectif');\n  setTimeout(() => { window.scrollTo({ top: 0, behavior: 'instant' }); const sl = document.getElementById('obj-slider'); if (sl) { sl.value = 0; try { updateObjSlider(0); } catch (e) {} } }, 250);\n})()"
+    }
+   ]
+  },
+  {
+   "say": "500 € au départ, puis 100 € chaque mois…",
+   "dur": 6.6,
+   "do": [
+    {
+     "js": "(async () => {\n  const h = document.getElementById('ad2-hook'); if (h) { h.style.transition = 'opacity .35s'; h.style.opacity = '0'; setTimeout(() => h.remove(), 400); }\n  const sl = document.getElementById('obj-slider'); if (!sl) return;\n  await new Promise(r => setTimeout(r, 450));\n  for (let v = 0; v <= 100; v += 1) { sl.value = v; try { updateObjSlider(v); } catch (e) {} await new Promise(r => setTimeout(r, 52 - v * 0.25)); }\n})()"
+    }
+   ]
+  },
+  {
+   "say": "…l’objectif de 15 000 € serait atteint en ≈ 9 ans.",
+   "dur": 3.3,
+   "do": [
+    {
+     "js": "(() => {\n  const b = document.getElementById('obj-badge-box'); if (b) { b.style.transition = 'transform .35s cubic-bezier(.2,1.6,.4,1), box-shadow .35s'; b.style.transform = 'scale(1.06)'; b.style.boxShadow = '0 0 0 3px rgba(74,222,128,.55), 0 10px 30px rgba(34,197,94,.35)'; }\n})()"
+    }
+   ]
+  },
+  {
+   "say": "",
+   "dur": 4.2,
+   "do": [
+    {
+     "js": "(() => {\n  document.getElementById('ad2-tag')?.remove();\n  const cap = document.getElementById('tt-cap'); if (cap) cap.style.setProperty('display', 'none', 'important');\n  const d = document.createElement('div');\n  d.style.cssText = 'position:fixed;inset:0;z-index:2147483640;background:linear-gradient(160deg,#0b1220,#0f1f17);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 26px;text-align:center;opacity:0;transition:opacity .45s';\n  d.innerHTML = '<img src=\"icons/kapitaro-tile.svg\" width=\"88\" height=\"88\" style=\"border-radius:22px\"><div style=\"color:#fff;font:900 34px/1.12 system-ui;letter-spacing:-.02em\">Simule <span style=\"color:#4ade80\">ton</span> objectif</div><div style=\"color:#cbd5e1;font:700 17px/1.35 system-ui\">Combien verser et combien de temps ?<br>Tu vois tout en 1 minute.</div><div style=\"margin-top:6px;background:#22c55e;color:#052e16;font:900 20px system-ui;padding:14px 28px;border-radius:999px\">Essaie gratuitement</div><div style=\"color:#4ade80;font:800 22px system-ui\">kapitaro.fr</div><div style=\"max-width:340px;margin-top:4px;color:#94a3b8;font:600 11px/1.4 system-ui\">Simulation à 5 %/an, non garantie. Outil pédagogique, pas un conseil en investissement. Investir comporte un risque de perte en capital. Kapitaro ne touche jamais à ton argent.</div>';\n  document.body.appendChild(d); requestAnimationFrame(() => { d.style.opacity = '1'; });\n})()"
+    }
+   ]
+  }
+ ]
+}

@@ -38,6 +38,8 @@ export const TUTOS = {
   // ── Pubs (≈ 25 s, format vertical 9:16, version téléphone seulement) : même vidéo, 3 accroches à tester ──
   pub_epargne: { title: '📣 Pub · Épargne qui dort', page: null, ad: true, speed: 1.08, beats: adBeats('Tu as de l’épargne qui dort, mais tu ne sais pas par où commencer ?', 'Ton épargne dort ? 😴') },
   pub_bourse: { title: '📣 Pub · La bourse, rien compris', page: null, ad: true, speed: 1.08, beats: adBeats('La bourse, tu n’y comprends rien ? Normal : personne ne te l’a jamais expliquée simplement.', 'La bourse ? 🤯 Rien compris') },
+  // Pub v2 sans voix (musique + gros textes) : scénario et gestes dans tuto/ads/pub_objectif.json
+  pub_objectif: { title: '📣 Pub v2 · 100 €/mois, combien dans 10 ans ?', page: null, ad: true, silent: true, beats: [{ say: '100 € par mois. Combien dans 10 ans ?' }, { say: '500 € au départ, puis 100 € chaque mois…' }, { say: '…l’objectif de 15 000 € serait atteint en ≈ 9 ans.' }, { say: 'Simule ton objectif gratuitement · kapitaro.fr' }] },
   pub_eparpille: { title: '📣 Pub · Placements éparpillés', page: null, ad: true, speed: 1.08, beats: adBeats('Actions, ETF, cryptos… tu t’y perds entre toutes tes applis ?', 'Tes placements ? 🧩 Éparpillés partout') },
   accueil: {
     title: 'L’accueil',

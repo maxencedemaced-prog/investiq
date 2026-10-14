@@ -189,9 +189,19 @@ function dispWords(b) {
 async function run() {
   if (!ID) throw new Error('TUTO_ID manquant');
   await setStatus('recording', { pct: 20, step: 'Ouverture de l’appli' });
-  const { data: tf, error } = await sb.storage.from('social').download('tuto/' + TID + '/timing.json');
-  if (error || !tf) throw new Error('timing.json introuvable : relance la fabrication depuis le Studio');
-  const timing = JSON.parse(await tf.text());
+  let timing;
+  const local = path.resolve('ads', TID + '.json');
+  if (fs.existsSync(local)) {
+    // pub sans voix (tuto/ads/<id>.json) : durée fixe par scène, sous-titres incrustés, musique de fond
+    const a = JSON.parse(fs.readFileSync(local, 'utf8'));
+    let t = 0;
+    const beats = a.beats.map(b => { const start = t, end = t + (b.dur || 3); t = end; const toks = String(b.say || '').match(/\S+/g) || []; return { say: b.say || '', start, end, words: toks.map((w, k) => ({ w: w.replace(/[,.:;!?…]+$/, ''), t: +(k * Math.min(0.32, (b.dur || 3) * 0.6 / Math.max(1, toks.length))).toFixed(2) })), do: b.do || [] }; });
+    timing = { id: TID, title: a.title, page: null, ad: true, voice: 'sans voix', music: a.music || null, segments: [], beats };
+  } else {
+    const { data: tf, error } = await sb.storage.from('social').download('tuto/' + TID + '/timing.json');
+    if (error || !tf) throw new Error('timing.json introuvable : relance la fabrication depuis le Studio');
+    timing = JSON.parse(await tf.text());
+  }
   if (timing.ad && !DESK) { AD = true; W = 405; H = 720; }
   fs.mkdirSync(path.join(OUT, 'raw'), { recursive: true });
 
@@ -261,7 +271,7 @@ async function run() {
     }
   }
   const last = timing.beats[timing.beats.length - 1];
-  const total = (last.end || 0) + 1.6;
+  const total = (last.end || 0) + (timing.segments.length ? 1.6 : 0.2);
   const remain = at(total) - Date.now();
   if (remain > 0) await sleep(remain);
   try { await cdp.send('Page.stopScreencast'); } catch (e) {}
@@ -293,7 +303,12 @@ async function run() {
   segs.forEach(s => args.push('-i', s.f));
   const delays = segs.map((s, k) => `[${k + 1}:a]adelay=${Math.round(s.start * 1000)}|${Math.round(s.start * 1000)}[a${k}]`);
   const mix = segs.length > 1 ? `;${segs.map((_, k) => `[a${k}]`).join('')}amix=inputs=${segs.length}:normalize=0[a]` : '';
-  args.push('-filter_complex', delays.join(';') + mix, '-map', '0:v', '-map', segs.length > 1 ? '[a]' : '[a0]', '-t', total.toFixed(2),
+  // pub sans voix : seulement la musique (bibliothèque video/public/music), avec fondu en fin
+  const musicPath = !segs.length && timing.music ? path.resolve('..', 'video', 'public', 'music', path.basename(timing.music)) : null;
+  if (!segs.length && !(musicPath && fs.existsSync(musicPath))) throw new Error('Ni voix ni musique pour cette vidéo');
+  if (!segs.length) args.push('-i', musicPath);
+  const afilter = segs.length ? delays.join(';') + mix : `[1:a]volume=0.85,afade=t=in:d=0.2,afade=t=out:st=${Math.max(0, total - 1.4).toFixed(2)}:d=1.4[a]`;
+  args.push('-filter_complex', afilter, '-map', '0:v', '-map', !segs.length || segs.length > 1 ? '[a]' : '[a0]', '-t', total.toFixed(2),
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30', '-vf', (DESK ? 'scale=1600:-2' : AD ? 'scale=1080:1920' : 'scale=720:-2') + ':flags=lanczos',
     '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4);
   execFileSync('ffmpeg', args, { stdio: 'inherit' });
