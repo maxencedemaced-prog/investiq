@@ -742,7 +742,8 @@ export default async function handler(req, res) {
     if (b.action === 'studio-state') {
       const { data } = await sb.from('app_tokens').select('name, value').in('name', ['studio_pause', 'social_pause']);
       const v = n => (data || []).find(x => x.name === n)?.value === '1';
-      return res.status(200).json({ paused: v('studio_pause'), publishPaused: v('social_pause') });
+      const raw = n => (data || []).find(x => x.name === n)?.value || '0';
+      return res.status(200).json({ paused: v('studio_pause'), publishPaused: v('social_pause'), studioMode: raw('studio_pause'), publishMode: raw('social_pause') });
     }
     if (b.action === 'studio-stop') {
       await sb.from('app_tokens').upsert({ name: 'studio_pause', value: '1', updated_at: new Date().toISOString() }, { onConflict: 'name' });
