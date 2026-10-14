@@ -28,16 +28,21 @@ const beatAt = f => Math.max(0, beats.findIndex(b => f >= b.from && f < b.from +
 const JINGLE_AT = beats.length ? Math.round(beats[beats.length - 1].end * FPS) - 4 : 0;
 const eur = n => Math.round(n).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' €';
 
-// ── Décor : noir, halo vert, sol en grille qui avance vers la caméra ──
+// ── Décor : noir, halo vert, sol en grille 3D qui avance vers la caméra (perspective calculée en SVG) ──
 const Floor = () => {
-  const f = useCurrentFrame();
+  const f = useCurrentFrame(), VX = 540, VY = 900, BOTTOM = 1920, N = 14, phase = (f / 40) % 1;
+  const rows = Array.from({ length: N }).map((_, k) => { const p = (k + phase) / N; return { y: VY + (BOTTOM - VY) * p * p, o: Math.min(1, p * 1.6) }; });
+  const cols = Array.from({ length: 25 }).map((_, k) => -2600 + k * 360);
   return (
     <AbsoluteFill style={{ background: INK, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', left: -400, right: -400, top: 300, height: 1300, background: 'radial-gradient(ellipse at 50% 45%, rgba(34,224,138,.22), transparent 60%)' }} />
-      <div style={{ position: 'absolute', left: '-60%', right: '-60%', bottom: -260, height: 1100, transform: 'perspective(900px) rotateX(70deg)', transformOrigin: 'bottom',
-        backgroundImage: 'linear-gradient(rgba(74,222,128,.28) 2px, transparent 2px), linear-gradient(90deg, rgba(74,222,128,.28) 2px, transparent 2px)',
-        backgroundSize: '120px 120px', backgroundPosition: `0 ${(f * 2.2) % 120}px`,
-        maskImage: 'linear-gradient(to top, black 15%, transparent 90%)', WebkitMaskImage: 'linear-gradient(to top, black 15%, transparent 90%)' }} />
+      <svg width="1080" height="1920" style={{ position: 'absolute', inset: 0 }}>
+        <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#4ade80" stopOpacity="0" /><stop offset="1" stopColor="#4ade80" stopOpacity="0.5" /></linearGradient></defs>
+        {cols.map((x, k) => <line key={'c' + k} x1={VX} y1={VY} x2={x} y2={BOTTOM} stroke="url(#fade)" strokeWidth="2" />)}
+        {rows.map((r, k) => <line key={'r' + k} x1="0" y1={r.y} x2="1080" y2={r.y} stroke="#4ade80" strokeOpacity={0.4 * r.o} strokeWidth="2" />)}
+        <rect x="0" y={VY - 2} width="1080" height="260" fill="url(#fade)" opacity="0" />
+      </svg>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: VY - 140, height: 260, background: 'linear-gradient(180deg, rgba(4,8,13,0), rgba(4,8,13,.95) 50%, rgba(4,8,13,0))' }} />
       <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,.75) 100%)' }} />
     </AbsoluteFill>
   );
@@ -70,24 +75,30 @@ const Hud = () => {
   );
 };
 
-// ── Mots-clés : groupes de 1 à 2 mots, très gros, au moment où ils sont dits ──
+// ── Mots-clés choisis (b.kw : [texte affiché, mot déclencheur]) en très gros, et sous-titres de la voix en dessous ──
+const norm = w => String(w).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
 const Keywords = ({ b }) => {
   const f = useCurrentFrame(), t = f / FPS;
   const words = (b.words || []).filter(w => w.w);
   if (!words.length || b.visual === 'end') return null;
-  const groups = []; let cur = null;
-  for (const w of words) {
-    const txt = w.w.replace(/[«»"]/g, '');
-    if (!cur || cur.n >= 2 || (cur.text + ' ' + txt).length > 14) { cur = { text: txt, t: w.t, n: 1 }; groups.push(cur); }
-    else { cur.text += ' ' + txt; cur.n++; }
+  // Moment de chaque mot-clé : le mot déclencheur prononcé (dans l'ordre)
+  let from = 0; const kws = [];
+  for (const [text, trig] of b.kw || []) {
+    const k = words.findIndex((w, i) => i >= from && norm(w.w).includes(norm(trig)));
+    if (k >= 0) { kws.push({ text, t: words[k].t }); from = k + 1; }
   }
-  let g = null; for (const x of groups) if (x.t <= t + 0.05) g = x;
-  if (!g) return null;
-  const age = (t - g.t) * FPS, s = io(age, 0, 6, 0.86, 1), o = io(age, 0, 4, 0, 1);
-  return (
-    <div style={{ position: 'absolute', left: 60, right: 60, top: 1290, textAlign: 'center', fontFamily, fontWeight: 900, fontSize: 104, letterSpacing: 1, color: '#fff', textTransform: 'uppercase', lineHeight: 1,
-      transform: `scale(${s})`, opacity: o, textShadow: '0 6px 30px rgba(0,0,0,.8), 0 0 40px rgba(34,224,138,.25)' }}>{g.text}</div>
-  );
+  let kw = null; for (const x of kws) if (x.t <= t + 0.05) kw = x;
+  // Sous-titres : morceaux de 5 mots, le mot dit en vert
+  const chunks = []; for (let i = 0; i < words.length; i += 5) chunks.push(words.slice(i, i + 5));
+  let chunk = chunks[0]; for (const ch of chunks) if (ch[0].t <= t + 0.05) chunk = ch;
+  const age = kw ? (t - kw.t) * FPS : 0;
+  return <>
+    {kw && <div style={{ position: 'absolute', left: 50, right: 50, top: 1240, textAlign: 'center', fontFamily, fontWeight: 900, fontSize: kw.text.length > 14 ? 88 : 112, letterSpacing: 1, color: '#fff', textTransform: 'uppercase', lineHeight: 1,
+      transform: `scale(${io(age, 0, 6, 0.86, 1)})`, opacity: io(age, 0, 4, 0, 1), textShadow: '0 6px 30px rgba(0,0,0,.85), 0 0 40px rgba(34,224,138,.3)' }}>{kw.text}</div>}
+    <div style={{ position: 'absolute', left: 90, right: 90, top: 1400, textAlign: 'center', fontFamily, fontWeight: 700, fontSize: 40, lineHeight: 1.35, textShadow: '0 3px 14px rgba(0,0,0,.9)' }}>
+      {chunk.map((w, i) => <span key={i} style={{ color: w.t <= t + 0.02 ? (w.t + w.d >= t ? G2 : '#fff') : 'rgba(255,255,255,.4)' }}>{w.w} </span>)}
+    </div>
+  </>;
 };
 
 // ── Pièce de monnaie « 3D » (ellipses empilées) ──
@@ -132,7 +143,7 @@ const Snowball = ({ b }) => {
       background: 'radial-gradient(circle at 35% 30%, #d9ffe9, #22e08a 40%, #0a5c37 85%)', boxShadow: '0 0 90px rgba(34,224,138,.45)' }}>
       <div style={{ position: 'absolute', inset: '18%', borderRadius: '50%', border: '4px dashed rgba(4,8,13,.35)' }} />
     </div>
-    <Label x={540} y={1100} top={'+ ' + Math.round(p * 100) + ' %'} sub="LES GAINS RAPPORTENT DES GAINS" color={G} size={52} />
+    <Label x={540} y={1100} top="INTÉRÊTS SUR INTÉRÊTS" sub="LES GAINS RAPPORTENT DES GAINS" color={G} size={46} />
   </>;
 };
 const Curve = ({ b }) => {
