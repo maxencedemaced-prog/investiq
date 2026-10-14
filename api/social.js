@@ -850,6 +850,12 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
     // Relance seulement le tournage, avec la voix déjà fabriquée (pas de nouveaux caractères ElevenLabs)
+    // pub sans voix : rien à préparer, l'enregistreur lit son scénario dans tuto/ads/
+    if ((b.action === 'tuto-render' || b.action === 'tuto-create') && TUTOS[b.id] && TUTOS[b.id].silent) {
+      await sb.storage.from('social').upload('tuto/status/' + b.id + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+      await dispatchWorkflow('tuto.yml', { tuto_id: b.id, variant: 'mobile' });
+      return res.status(200).json({ ok: true, voice: 'sans voix (musique)', duration: 17, variants: ['mobile'] });
+    }
     if (b.action === 'tuto-render') {
       if (!TUTOS[b.id]) return res.status(400).json({ error: 'Tutoriel inconnu' });
       const { data: tf } = await sb.storage.from('social').download('tuto/' + b.id + '/timing.json');
