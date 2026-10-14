@@ -1983,13 +1983,43 @@ function renderMultiObjChart() {
   if (objChartInstance) objChartInstance.destroy();
 
   const ctx = canvas.getContext('2d');
+  // Objectif actif : dégradé sous sa courbe, ses versements visibles s'il est seul, et une ligne jaune pour le montant visé
+  const _act = allObjectives.find(o => o.id === activeObjId) || allObjectives[0];
+  const _ai = Math.max(0, allObjectives.indexOf(_act));
+  const _grad = ctx.createLinearGradient(0, 0, 0, 210);
+  _grad.addColorStop(0, 'rgba(74,222,128,0.42)'); _grad.addColorStop(1, 'rgba(74,222,128,0)');
+  if (datasets[_ai * 2]) { datasets[_ai * 2].fill = true; datasets[_ai * 2].backgroundColor = _grad; datasets[_ai * 2].borderWidth = 3.5; }
+  if (datasets[_ai * 2 + 1] && allObjectives.length === 1) { datasets[_ai * 2 + 1].hidden = false; datasets[_ai * 2 + 1].borderColor = 'rgba(148,163,184,0.9)'; datasets[_ai * 2 + 1].borderWidth = 2; datasets[_ai * 2 + 1].borderDash = [6, 5]; }
+  const _targetIdx = datasets.length;
+  datasets.push({ label: 'Ton objectif', data: labels.map(() => _act.target), borderColor: '#fbbf24', borderWidth: 2, borderDash: [6, 6], pointRadius: 0, fill: false, tension: 0, isTarget: true });
+  const _hitI = datasets[_ai * 2] ? datasets[_ai * 2].data.findIndex(v => v >= _act.target) : -1;
+  const _hitYears = _hitI > 0 ? ((_hitI * step) / 12).toFixed(1).replace('.0', '').replace('.', ',') : null;
+  // Dessin du point « 🎯 Atteint à X ans » à l'endroit où la courbe croise l'objectif
+  const _goalPlugin = { id: 'kpGoal', afterDatasetsDraw(chart) {
+    try {
+      if (_hitI < 0 || !_hitYears) return;
+      const meta = chart.getDatasetMeta(_ai * 2); if (!meta || meta.hidden || !meta.data[_hitI]) return;
+      const p = meta.data[_hitI], c = chart.ctx, area = chart.chartArea;
+      c.save();
+      c.strokeStyle = 'rgba(251,191,36,0.5)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x, area.bottom); c.stroke();
+      c.fillStyle = '#fbbf24'; c.strokeStyle = '#0b1424'; c.lineWidth = 3; c.beginPath(); c.arc(p.x, p.y, 7, 0, Math.PI * 2); c.fill(); c.stroke();
+      const txt = '🎯 Atteint à ' + _hitYears + ' an' + (_hitYears === '1' ? '' : 's');
+      c.font = '800 12px Inter, system-ui, sans-serif'; const w = c.measureText(txt).width + 18, h = 24;
+      const bx = Math.max(area.left, Math.min(p.x - w / 2, area.right - w)), by = Math.max(2, p.y - h - 12);
+      c.fillStyle = '#fff'; c.beginPath(); if (c.roundRect) c.roundRect(bx, by, w, h, 8); else c.rect(bx, by, w, h); c.fill();
+      c.fillStyle = '#0b1220'; c.textBaseline = 'middle'; c.fillText(txt, bx + 9, by + h / 2 + 1);
+      c.restore();
+    } catch (e) {}
+  } };
   objChartInstance = new Chart(ctx, {
     type: 'line',
     data: { labels, datasets },
+    plugins: [_goalPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 500 },
+      layout: { padding: { top: 34 } },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -2003,7 +2033,12 @@ function renderMultiObjChart() {
           borderWidth: 1,
         }
       },
-      scales: { x: { display: false }, y: { display: false } },
+      scales: {
+        x: { display: true, grid: { display: false }, border: { display: false },
+          ticks: { color: 'rgba(226,232,240,0.5)', font: { size: 11, weight: '600' }, maxRotation: 0, autoSkip: false,
+            callback: (v, i) => { const l = labels[i]; if (!l) return ''; if (l === 'Auj.') return 'Auj.'; const n = parseInt(l, 10); return (maxYears > 8 && n % 2) ? '' : n + ' an' + (n > 1 ? 's' : ''); } } },
+        y: { display: false, beginAtZero: true }
+      },
       interaction: { mode: 'index', intersect: false }
     }
   });
@@ -2015,8 +2050,9 @@ function renderMultiObjChart() {
       label: allObjectives.length > 1 ? `${obj.label} — valeur projetée` : 'Valeur projetée (avec intérêts)',
       color: obj.color, datasetIndexes: [i * 2]
     })),
-    { label: 'Argent investi (versements)', color: 'rgba(255,255,255,0.6)', dashed: true,
-      datasetIndexes: allObjectives.map((_, i) => i * 2 + 1), hiddenByDefault: true },
+    { label: 'Argent versé', color: 'rgba(148,163,184,0.9)', dashed: true,
+      datasetIndexes: allObjectives.map((_, i) => i * 2 + 1), hiddenByDefault: allObjectives.length > 1 },
+    { label: 'Ton objectif', color: '#fbbf24', dashed: true, datasetIndexes: [_targetIdx] },
   ]);
 
   // Légende + gestion des objectifs
@@ -2055,6 +2091,16 @@ function renderMultiObjChart() {
     if (pctEl) pctEl.textContent = pct.toFixed(1).replace(".", ",") + ' %';
     if (valEl) valEl.textContent = fmtK(tv);
     if (targetEl) targetEl.textContent = fmtK(active.target);
+    const ring = document.getElementById('obj-real-ring'), ringTxt = document.getElementById('obj-real-ring-txt');
+    if (ring) ring.style.strokeDashoffset = String(169.6 * (1 - pct / 100));
+    if (ringTxt) ringTxt.textContent = (pct > 0 && pct < 1 ? '<1' : Math.round(pct)) + ' %';
+    const sub = document.getElementById('obj-track-sub');
+    if (sub) {
+      const hit = objProjectionData.findIndex(v => v >= active.target);
+      const yy = Math.floor(hit / 12), mm = hit % 12;
+      sub.textContent = hit > 0 ? Math.round(active.target).toLocaleString('fr-FR') + ' € atteints en ≈ ' + (yy ? yy + ' an' + (yy > 1 ? 's' : '') : '') + (yy && mm ? ' et ' : '') + (mm ? mm + ' mois' : '')
+        : 'Projection : ' + fmtK(objProjectionData[objProjectionData.length - 1] || 0) + ' sur ' + fmtK(active.target) + ' visés';
+    }
   }
 
   // Explication de faisabilité + badge (remplace le "Calcul..." qui restait affiché)
@@ -2314,21 +2360,20 @@ function updateObjSlider(val) {
   const gains = Math.max(0, projValue - invested);
   const gainsPct = invested > 0 ? Math.round(gains/invested*100) : 0;
 
-  if (amountEl) {
-    amountEl.textContent = fmtK(projValue);
-    amountEl.style.color = projValue >= objChartTarget ? '#4ade80' : '#fff';
-  }
+  const _eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
+  const yrsTxt = String(years).replace(/\.0$/, '').replace('.', ',');
+  if (amountEl) amountEl.textContent = _eur(projValue);
+  const kick = document.getElementById('obj-chart-kicker');
+  if (kick) kick.textContent = monthIndex === 0 ? 'Aujourd’hui' : 'Dans ' + yrsTxt + ' an' + (years > 1 ? 's' : '');
   if (labelEl) {
-    if (monthIndex === 0) {
-      labelEl.textContent = "Point de départ";
-    } else if (projValue >= objChartTarget) {
-      // Projection (pas un fait) : on dit QUAND l'objectif serait atteint, pas qu'il l'est déjà
-      const hitYears = (Math.max(0, objProjectionData.findIndex(v => v >= objChartTarget)) / 12).toFixed(1).replace(/\.0$/, '').replace('.', ',');
-      labelEl.innerHTML = `<span style="color:#4ade80">🎯 Objectif atteint en ${hitYears} ans</span> · +${fmtK(gains)} d'intérêts composés`;
-    } else {
-      labelEl.innerHTML = `Dans ${years} ans · <span style="color:#4ade80">+${fmtK(gains)} de gains</span> (+${gainsPct}%)`;
-    }
+    const rateTxt = String(objChartRate).replace('.', ',');
+    labelEl.innerHTML = monthIndex === 0
+      ? `<span class="obj-chip">Point de départ</span><span class="obj-chip">${_eur(objChartMonthly)}/mois · ${rateTxt} %/an</span>`
+      : `<span class="obj-chip g">+${_eur(gains)} d’intérêts composés</span><span class="obj-chip">${_eur(invested)} versés</span><span class="obj-chip">${_eur(objChartMonthly)}/mois · ${rateTxt} %/an</span>`;
   }
+  const sl = document.getElementById('obj-slider'), bub = document.getElementById('obj-slider-bubble');
+  if (sl) sl.style.setProperty('--p', val + '%');
+  if (bub) { bub.textContent = (monthIndex === 0 ? 'Aujourd’hui' : 'Année ' + yrsTxt) + ' · ' + fmtK(projValue); bub.style.left = 'calc(' + val + '% + ' + (12 - val * 0.24) + 'px)'; bub.style.transform = 'translateX(' + (val > 85 ? -92 : val < 15 ? -8 : -50) + '%)'; }
 
   // Update chart — highlight UNIQUEMENT la courbe de l'objectif actif
   if (objChartInstance) {
@@ -2341,7 +2386,7 @@ function updateObjSlider(val) {
     // Highlight uniquement la courbe active (dataset index = position dans allObjectives * 2)
     const activeIdx = allObjectives.findIndex(o => o.id === activeObjId);
     objChartInstance.data.datasets.forEach((ds, di) => {
-      if (di % 2 === 0) {
+      if (di % 2 === 0 && !ds.isTarget) {
         if (di === activeIdx * 2) {
           // Courbe active : point visible
           ds.pointRadius = ds.data.map((_,i) => i === chartIndex ? 8 : 0);
@@ -10860,8 +10905,11 @@ function renderObjFeasibilityPanel() {
   el.innerHTML = f.level === 'ok' ? '' : `<div style="margin-bottom:14px">${html.replace('margin-top:18px', 'margin-top:0')}</div>`;
   const badge = document.getElementById('obj-track-badge');
   if (badge) {
-    badge.textContent = OBJ_FEAS_STYLE[f.level].badge;
+    badge.textContent = String(OBJ_FEAS_STYLE[f.level].badge).replace(/^[✓⚠!]s*/, '');   // le symbole est déjà dans la pastille ronde
     badge.className = 'obj-track-badge ' + (f.level === 'ok' || f.level === 'tight' ? 'on-track' : 'off-track');
+    const box = document.getElementById('obj-badge-box'), ck = document.getElementById('obj-badge-ck'), good = f.level === 'ok' || f.level === 'tight';
+    if (box) box.classList.toggle('warn', !good);
+    if (ck) ck.textContent = good ? '✓' : '!';
   }
 }
 
