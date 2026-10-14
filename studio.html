@@ -14,8 +14,45 @@
   <style>
     :root{--bg:#0b1120;--card:#131c33;--line:#1f2a44;--txt:#e5e7eb;--mut:#8b93a7;--green:#16a34a;--green2:#24e898}
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
-    .wrap{max-width:1100px;margin:0 auto;padding:22px 16px 80px}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+    .app{display:flex;min-height:100vh}
+    .side{width:250px;flex-shrink:0;background:#0a1020;border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+    .brand{display:flex;align-items:center;gap:10px;padding:2px 8px 14px}
+    .brand img{width:34px;height:34px;border-radius:9px}
+    .brand b{display:block;font-size:15.5px;letter-spacing:-.2px}
+    .brand span{display:block;font-size:11.5px;color:var(--mut)}
+    .status{margin:0 4px 12px;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:#0f1729;font-size:12px;line-height:1.45;color:#c7cedd}
+    .status b{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--txt)}
+    .status i{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18);flex-shrink:0}
+    .status.off i{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+    .side .create{margin:2px 4px 14px;width:calc(100% - 8px);justify-content:center;display:flex}
+    .sec-t{font-size:10.5px;font-weight:800;letter-spacing:1.2px;color:#5b6684;text-transform:uppercase;padding:10px 10px 4px}
+    .side::-webkit-scrollbar{width:6px}.side::-webkit-scrollbar-thumb{background:#1f2a44;border-radius:3px}.side{scrollbar-width:thin;scrollbar-color:#1f2a44 transparent}
+    .side .nav{font:inherit;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:9px;border:none;background:transparent;color:#aeb6c8;cursor:pointer;position:relative}
+    .side .nav:hover{background:#121b31;color:var(--txt)}
+    .side .nav.on{background:#14213b;color:#fff}
+    .side .nav.on::before{content:'';position:absolute;left:-12px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--green2)}
+    .side .nav .ic{width:20px;text-align:center;flex-shrink:0}
+    .side .nav .cnt{margin-left:auto;font-size:11px;font-weight:800;background:#1f2a44;color:#c7cedd;border-radius:99px;padding:1px 8px}
+    .side .nav .cnt.hot{background:var(--green);color:#fff}
+    .side .nav:disabled{opacity:.55;cursor:wait}
+    .side-foot{margin-top:auto;padding-top:14px}
+    .side-foot .btn{width:100%}
+    .main{flex:1;min-width:0;padding:26px 30px 80px}
+    .main-in{max-width:1040px;margin:0 auto}
+    .main-h{margin-bottom:18px}
+    .main-h h1{font-size:24px;letter-spacing:-.4px}
+    @media (max-width:900px){
+      .app{display:block}
+      .side{position:static;width:auto;height:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:10px 10px;border-right:none;border-bottom:1px solid var(--line);align-items:center}
+      .brand,.status,.sec-t{display:none}
+      .side .create{margin:0;width:auto}
+      .side .nav{width:auto;white-space:nowrap;border:1px solid var(--line);border-radius:99px;padding:7px 12px}
+      .side .nav.on::before{display:none}
+      .side-foot{margin:0;padding:0}
+      .side-foot .btn{width:auto}
+      .main{padding:18px 14px 80px}
+    }
     h1{font-size:21px;margin:0}
     .sub{color:var(--mut);font-size:13px;margin-top:2px}
     .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px}
@@ -59,32 +96,36 @@
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <div><h1>🎬 Studio réseaux</h1><div class="sub">Tu relis, tu valides, c'est programmé. Chaque dimanche : l'agenda de la semaine + 2 posts pédagogiques. Chaque vendredi soir : le bilan des marchés.</div></div>
-    <div class="row">
-      <button class="btn" id="btn-gen" onclick="generate()">✨ Préparer 3 posts</button>
-      <button class="btn" onclick="generateMode('agenda', this)">📅 Agenda de la semaine</button>
-      <button class="btn" onclick="generateMode('recap', this)">📈 Bilan des marchés</button>
-      <button class="btn primary" onclick="document.getElementById('dlg-actu').showModal()">⚡ Post d'actu</button>
-      <button class="btn" id="btn-dossier" onclick="createDossier(this)">📁 Dossier décodé</button>
-      <button class="btn" onclick="setFilter('ads')">🎯 Vidéos pub</button>
-      <button class="btn" id="btn-stop-all" onclick="studioStopToggle(this)" style="border-color:#7f1d1d;color:#fca5a5">⏹ Tout arrêter</button>
-    </div>
-  </div>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><img src="icons/kapitaro-tile.svg" alt=""><div><b>Studio</b><span>Kapitaro · réseaux sociaux</span></div></div>
+    <div class="status" id="pub-status"><b><i></i>Chargement…</b></div>
+    <button class="btn primary create" onclick="document.getElementById('dlg-actu').showModal()">⚡ Post d'actu</button>
+
+    <div class="sec-t">Publications</div>
+    <button class="nav tab on" data-f="draft" onclick="setFilter('draft')"><span class="ic">📝</span>À valider<span class="cnt hot" id="cnt-draft"></span></button>
+    <button class="nav tab" data-f="approved" onclick="setFilter('approved')"><span class="ic">🗓</span>Programmés<span class="cnt" id="cnt-approved"></span></button>
+    <button class="nav tab" data-f="published" onclick="setFilter('published')"><span class="ic">✅</span>Publiés</button>
+    <button class="nav tab" data-f="calendar" onclick="setFilter('calendar')"><span class="ic">📅</span>Planning</button>
+
+    <div class="sec-t">Vidéos</div>
+    <button class="nav tab" data-f="ads" onclick="setFilter('ads')"><span class="ic">🎯</span>Vidéos pub</button>
+    <button class="nav tab" data-f="tutos" onclick="setFilter('tutos')"><span class="ic">🎓</span>Tutoriels de l'app</button>
+
+    <div class="sec-t">Créer avec l'IA</div>
+    <button class="nav" id="btn-dossier" onclick="createDossier(this)"><span class="ic">📁</span>Reel « Dossier décodé »</button>
+    <button class="nav" id="btn-gen" onclick="generate()"><span class="ic">✨</span>3 posts pédagogiques</button>
+    <button class="nav" onclick="generateMode('agenda', this)"><span class="ic">🗓</span>Agenda de la semaine</button>
+    <button class="nav" onclick="generateMode('recap', this)"><span class="ic">📈</span>Bilan des marchés</button>
+
+    <div class="side-foot"><button class="btn" id="btn-stop-all" onclick="studioStopToggle(this)" style="border-color:#7f1d1d;color:#fca5a5">⏹ Tout arrêter</button></div>
+  </aside>
+
+  <main class="main"><div class="main-in">
+    <div class="main-h"><h1 id="page-title">À valider</h1><div class="sub" id="page-sub"></div></div>
   <div class="notice" id="studio-paused" style="display:none;border-color:#7f1d1d;background:rgba(127,29,29,0.18)">⏸ <b>Studio en pause.</b> Plus aucune création automatique (stories, vidéos, articles, posts de la semaine) tant que tu n’as pas cliqué sur « ▶ Reprendre ». Tu peux toujours créer à la main.</div>
-
-  <div class="notice" id="notice">📸 <b>Publication automatique : Instagram et Facebook.</b> Un post validé part tout seul à l'heure prévue (vérification toutes les 15 min), ou tout de suite avec <b>🚀 Publier maintenant</b>.<br>LinkedIn et TikTok : pas encore automatiques. Utilise <b>Télécharger</b> et <b>Copier le texte</b> pour les publier à la main.</div>
-
-  <div class="tabs">
-    <button class="tab on" data-f="draft" onclick="setFilter('draft')">À valider</button>
-    <button class="tab" data-f="approved" onclick="setFilter('approved')">Validés</button>
-    <button class="tab" data-f="published" onclick="setFilter('published')">Publiés</button>
-    <button class="tab" data-f="calendar" onclick="setFilter('calendar')">📅 Planning</button>
-    <button class="tab" data-f="ads" onclick="setFilter('ads')">🎯 Vidéos pub</button>
-    <button class="tab" data-f="tutos" onclick="setFilter('tutos')">🎓 Tutoriels</button>
-  </div>
   <div id="list"><div class="empty">Chargement…</div></div>
+  </div></main>
 </div>
 
 <dialog id="dlg-video" style="max-width:420px">
@@ -169,7 +210,7 @@ function paintStudioPause() {
   if (b) { b.textContent = STUDIO_PAUSED ? '▶ Reprendre' : '⏹ Tout arrêter'; b.style.borderColor = STUDIO_PAUSED ? '#14532d' : '#7f1d1d'; b.style.color = STUDIO_PAUSED ? '#86efac' : '#fca5a5'; }
   if (n) n.style.display = STUDIO_PAUSED ? '' : 'none';
 }
-async function loadStudioPause() { try { var r = await api('POST', { action: 'studio-state' }); STUDIO_PAUSED = !!r.paused; paintStudioPause(); } catch (e) {} }
+async function loadStudioPause() { try { var r = await api('POST', { action: 'studio-state' }); STUDIO_PAUSED = !!r.paused; paintStudioPause(); paintPubStatus(r); } catch (e) {} }
 async function studioStopToggle(btn) {
   if (!STUDIO_PAUSED && !confirm('Tout arrêter ?\n\n• Les vidéos en cours de fabrication (Reels et tutoriels) sont annulées.\n• Les créations automatiques (stories, vidéos, articles, posts de la semaine) sont mises en pause jusqu’à « Reprendre ».\n\nLes posts déjà créés ne sont pas supprimés.')) return;
   btn.disabled = true;
@@ -182,6 +223,7 @@ async function studioStopToggle(btn) {
 }
 async function load() {
   loadStudioPause();
+  try { document.getElementById('page-sub').textContent = PAGES.draft[1]; } catch (e) {}
   try {
     var d = await api('GET');
     POSTS = d.posts || [];
@@ -194,10 +236,41 @@ async function load() {
   }
 }
 
+var PAGES = {
+  draft: ['À valider', 'Ce que l’IA a préparé : relis, modifie si besoin, puis valide pour programmer.'],
+  approved: ['Programmés', 'Validés et rangés par jour. Les stories partent toutes seules ; les posts et les Reels se publient avec 🚀 Publier maintenant ou à la main.'],
+  published: ['Publiés', 'Ce qui est déjà en ligne, avec le lien vers chaque publication.'],
+  calendar: ['Planning', 'Ce qui part et quand, jour par jour, sur les 3 prochaines semaines.'],
+  ads: ['Vidéos pub', 'Vidéos de l’appli filmée (format vertical 9:16) pour tes publicités Meta. À télécharger puis importer dans le Gestionnaire de publicités.'],
+  tutos: ['Tutoriels de l’app', 'Les vidéos d’aide affichées dans l’appli (bouton « ▶ C’est quoi ? » de chaque page).'],
+};
 function setFilter(f) {
   FILTER = f;
   document.querySelectorAll('.tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-f') === f); });
+  var pg = PAGES[f] || ['Studio', ''];
+  document.getElementById('page-title').textContent = pg[0];
+  document.getElementById('page-sub').textContent = pg[1];
   render();
+}
+// Compteurs du menu (À valider, Programmés)
+function updateCounts() {
+  var n = function (st) { return POSTS.filter(function (p) { return (p.status === st || (st === 'approved' && p.status === 'publishing')) && p.format !== 'guide' && !(st === 'draft' && p.format === 'story'); }).length; };
+  var d = n('draft'), a = n('approved');
+  var cd = document.getElementById('cnt-draft'), ca = document.getElementById('cnt-approved');
+  if (cd) { cd.textContent = d || ''; cd.style.display = d ? '' : 'none'; }
+  if (ca) { ca.textContent = a || ''; ca.style.display = a ? '' : 'none'; }
+}
+// Encart d'état : ce qui part tout seul en ce moment
+function paintPubStatus(r) {
+  var el = document.getElementById('pub-status'); if (!el) return;
+  var pm = r && r.publishMode, sm = r && r.studioMode;
+  var title, text, off = false;
+  if (sm === '1') { title = 'Studio en pause'; text = 'Rien n’est créé ni publié automatiquement.'; off = true; }
+  else if (pm === 'stories') { title = 'Auto : stories seulement'; text = 'Stories d’actu publiées toutes seules (3/jour). Posts et Reels : à la main.'; }
+  else if (pm === '1') { title = 'Publication auto en pause'; text = 'Les créations continuent, rien ne part tout seul.'; off = true; }
+  else { title = 'Publication auto active'; text = 'Instagram et Facebook, à l’heure prévue.'; }
+  el.className = 'status' + (off ? ' off' : '');
+  el.innerHTML = '<b><i></i>' + title + '</b>' + text;
 }
 
 function toLocalInput(iso) {
@@ -241,6 +314,7 @@ function goToPost(id) {
 
 function render() {
   var list = document.getElementById('list');
+  try { updateCounts(); } catch (e) {}
   if (FILTER === 'calendar') { renderCalendar(); return; }
   if (FILTER === 'ads' || FILTER === 'tutos') { renderTutosPage(FILTER); return; }
   clearInterval(TUTO_TIMER);
