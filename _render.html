@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>html,body{margin:0;background:#080e1e}</style></head>
+<body>
+<!-- Outil local (non publié) : affiche une diapositive d'un post pour la capture d'écran -->
+<script src="/social-templates.js"></script>
+<script src="/_posts-lancement.js"></script>
+<script>
+var q = new URLSearchParams(location.search);
+var post = POSTS[+q.get('p') || 0], k = +q.get('s') || 0;
+var el = KapitaroSocial.renderSlide(post.slides[k], k, post.slides.length);
+document.body.appendChild(el);
+KapitaroSocial.fontsReady().then(function () { setTimeout(function () { KapitaroSocial.fit(el); }, 300); });
+</script>
+</body></html>
