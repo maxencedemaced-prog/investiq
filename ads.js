@@ -8,7 +8,7 @@
   const CONFIG = {
     metaPixel: '29037079089229292',     // ex. '123456789012345' (Meta Business → Gestionnaire d'événements)
     googleTag: 'AW-18528605387',     // Google Ads (compte créé le 21/10/2026)
-    googleSignupLabel: '',     // libellé de la conversion « inscription » (Google Ads → Objectifs → Conversions), ex. 'AbCdEfGhIjKlMn'
+    googleSignupLabel: '84zpCLy-uKQdEMupkINF',     // conversion « Inscription Kapitaro » (Google Ads → Objectifs → Conversions)
   };
   const CONSENT_KEY = 'kp_consent', CONSENT_VERSION = 1, CONSENT_DAYS = 180;
   const SOURCE_KEY = 'kp_source';
