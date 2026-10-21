@@ -87,4 +87,86 @@ export const DOSSIERS = {
       { chapter: 2, visual: 'end', hud: 'DÉCODÉ', hudLabel: 'DOSSIER CLOS', hudColor: 'green', cta: 'Simule le tien · kapitaro.fr', note: 'Exemple pédagogique avec des prix fictifs.', say: 'Régulier, simple, sans stress. Simule ton investissement programmé gratuitement sur Kapitaro.' },
     ],
   },
+
+  // Chiffres vérifiés : 10 000 € à 1,5 %/an pendant 10 ans → 11 605 € (10000 × 1,015^10) ; avec 2 %/an d'inflation,
+  // valeur en euros d'aujourd'hui 11 605 / 1,02^10 = 9 520 € ; rendement réel ≈ 1,5 − 2 = −0,5 %/an. Taux d'exemple, pas le taux en vigueur.
+  'livret': {
+    num: '009',
+    title: 'LIVRET : LE FAUX GAIN',
+    chapters: ['LE PIÈGE', 'LE CALCUL', 'LA FORMULE'],
+    caption: 'Ton livret t’affiche des intérêts chaque année… et pourtant tu peux t’appauvrir. 📁\n\nExemple pédagogique avec un taux de 1,5 %/an et une inflation de 2 %/an hypothétiques (pas les taux en vigueur). Le livret reste utile pour l’argent disponible.\n\nCalcule l’effet de l’inflation avec le calculateur gratuit sur kapitaro.fr',
+    hashtags: '#livreta #epargne #inflation #pouvoirdachat #financepersonnelle #argent #kapitaro',
+    beats: [
+      { chapter: 0, visual: 'title', hud: '−480 €', hudLabel: 'POUVOIR D’ACHAT EN 10 ANS', kw: [['DES INTÉRÊTS', 'intérêts'], ['CHAQUE ANNÉE', 'année'], ['T’APPAUVRIR ?', 'appauvrir']], say: 'Ton livret t’affiche des intérêts chaque année. Pourtant, tu peux quand même t’appauvrir. Comment ?' },
+      { chapter: 1, visual: 'result', hud: '+1 605 €', hudLabel: 'AFFICHÉS SUR LE RELEVÉ', left: 'SUR TON RELEVÉ', leftSub: '10 000 € PLACÉS', right: 'CE QUE ÇA ACHÈTE', rightSub: 'EN EUROS D’AUJOURD’HUI', leftValue: 11605, rightValue: 9520, kw: [['1,5 % / AN (EXEMPLE)', 'virgule'], ['≈ 11 600 €', 'onze'], ['2 % D’INFLATION', 'inflation'], ['≈ 9 500 €', 'neuf']], say: 'Exemple : dix mille euros à un virgule cinq pour cent par an. Dix ans plus tard, ton relevé affiche onze mille six cents euros. Mais avec deux pour cent d’inflation par an, ils n’achètent plus que l’équivalent de neuf mille cinq cents euros d’aujourd’hui.' },
+      { chapter: 2, visual: 'rule', hud: 'RÉEL', hudLabel: 'LA FORMULE À RETENIR', hudColor: 'green', rows: [[['1,5 %', 'w'], ['−', 'dim', 120], ['2 %', 'red']], [['=', 'dim', 120], ['−0,5 %', 'red', 150]]], caption: 'TON RENDEMENT RÉEL PAR AN (APPROXIMATION)', kw: [['RENDEMENT RÉEL', 'réel'], ['TAUX − INFLATION', 'moins'], ['−0,5 % / AN', 'zéro']], say: 'La formule à retenir : rendement réel égale taux moins inflation. Ici, un virgule cinq moins deux : moins zéro virgule cinq pour cent par an.' },
+      { chapter: 2, visual: 'rule', hud: 'UTILE', hudLabel: 'MAIS PAS POUR TOUT', rows: [[['DISPONIBLE', 'g', 120]], [['≠', 'dim', 100], ['RENTABLE', 'w', 120]]], caption: 'UN LIVRET SERT SURTOUT À GARDER DE L’ARGENT DISPONIBLE', kw: [['DISPONIBLE', 'disponible'], ['SANS RISQUE', 'risque'], ['RENDEMENT RÉEL', 'réel']], say: 'Le livret reste très pratique : ton argent est disponible et sans risque de perte. Mais pour un objectif lointain, regarde toujours son rendement réel.' },
+      { chapter: 2, visual: 'end', hud: 'DÉCODÉ', hudLabel: 'DOSSIER CLOS', hudColor: 'green', cta: 'Calcule l’effet · kapitaro.fr', note: 'Exemple pédagogique : taux de 1,5 %/an et inflation de 2 %/an hypothétiques.', say: 'Calcule l’effet de l’inflation sur ton épargne avec le calculateur gratuit de Kapitaro.' },
+    ],
+  },
+
+  // Chiffres vérifiés : 10 000 € − 30 % = 7 000 € ; pour revenir à 10 000 € il faut +42,9 % (10000/7000 − 1) ; après −50 % il faut +100 %.
+  'krach': {
+    num: '010',
+    title: 'LE KRACH',
+    chapters: ['LA CHUTE', 'LE PIÈGE', 'LA LEÇON'],
+    caption: 'Krach boursier : ton portefeuille perd 30 %. Tu vends, ou tu tiens ? 📁\n\nExemple pédagogique avec une baisse hypothétique de 30 %. Les performances passées ne préjugent pas des performances futures et investir comporte un risque de perte en capital.\n\nConstruis ton plan gratuitement sur kapitaro.fr',
+    hashtags: '#krach #bourse #investir #etf #psychologie #financepersonnelle #argent #kapitaro',
+    beats: [
+      { chapter: 0, visual: 'title', hud: '−30 %', hudLabel: 'BAISSE D’EXEMPLE', kw: [['KRACH', 'krach'], ['−30 %', 'trente'], ['TU VENDS ?', 'vends'], ['TU TIENS ?', 'tiens']], say: 'Krach boursier. Ton portefeuille perd trente pour cent en quelques semaines. Tu vends, ou tu tiens ?' },
+      { chapter: 0, visual: 'result', hud: '−3 000 €', hudLabel: 'SUR LE PAPIER', left: 'AVANT', leftSub: 'TON PORTEFEUILLE', right: 'APRÈS LA BAISSE', rightSub: '−30 %', leftValue: 10000, rightValue: 7000, kw: [['10 000 €', 'dix'], ['7 000 €', 'sept'], ['SUR LE PAPIER', 'papier'], ['SI TU VENDS', 'vends']], say: 'Dix mille euros deviennent sept mille. Sur le papier, c’est une perte. Elle ne devient définitive que si tu vends.' },
+      { chapter: 1, visual: 'rule', hud: '+43 %', hudLabel: 'POUR REVENIR AU DÉPART', rows: [[['−30 %', 'red'], ['→', 'dim', 120], ['+43 %', 'g']], [['−50 %', 'red'], ['→', 'dim', 120], ['+100 %', 'g']]], caption: 'HAUSSE NÉCESSAIRE POUR RETROUVER LE POINT DE DÉPART', kw: [['LE PIÈGE', 'piège'], ['+43 %', 'quarante-trois'], ['×2', 'doubler']], say: 'Le piège des pourcentages : après une baisse de trente pour cent, il faut une hausse de quarante-trois pour cent pour revenir au départ. Après une baisse de moitié, il faut doubler.' },
+      { chapter: 2, visual: 'compare', hud: 'REBOND', hudLabel: 'CELUI QUI TIENT', hudColor: 'green', left: 'A TENU', leftSub: 'A PU PROFITER DU REBOND', right: 'A VENDU', rightSub: 'PERTE ENCAISSÉE', kw: [['AU PLUS BAS', 'bas'], ['LE REBOND', 'rebond'], ['PARFOIS DES ANNÉES', 'années'], ['RIEN DE GARANTI', 'garantit']], say: 'Celui qui vend au plus bas encaisse la perte et rate souvent le rebond. Les grands indices mondiaux ont fini par remonter après chaque krach, parfois au bout de plusieurs années. Mais le passé ne garantit rien.' },
+      { chapter: 2, visual: 'end', hud: 'DÉCODÉ', hudLabel: 'DOSSIER CLOS', hudColor: 'green', cta: 'Fais ton plan · kapitaro.fr', note: 'Exemple pédagogique avec une baisse hypothétique de 30 %. Les performances passées ne préjugent pas des performances futures.', say: 'Un bon antidote à la panique : un plan clair, décidé à l’avance. Construis le tien gratuitement sur Kapitaro.' },
+    ],
+  },
+
+  // Repères : un ETF MSCI World contient environ 1 400 entreprises (le nombre varie) ; frais courants fréquents des ETF indiciels ≈ 0,1 à 0,5 %/an.
+  'etf': {
+    num: '011',
+    title: 'L’ETF',
+    chapters: ['L’ÉNIGME', 'LE PANIER', 'LE BILAN'],
+    caption: 'Une seule ligne dans ton portefeuille… et un petit bout d’environ 1 400 entreprises dans le monde. Le secret : l’ETF. 📁\n\nContenu pédagogique : aucun ETF n’est recommandé. Un ETF suit son marché, à la hausse comme à la baisse, et investir comporte un risque de perte en capital.\n\nSuis tes ETF gratuitement sur kapitaro.fr',
+    hashtags: '#etf #msciworld #bourse #investir #diversification #financepersonnelle #kapitaro',
+    beats: [
+      { chapter: 0, visual: 'title', hud: '≈ 1 400', hudLabel: 'ENTREPRISES EN UNE LIGNE', kw: [['UNE SEULE LIGNE', 'ligne'], ['≈ 1 400 ENTREPRISES', 'quatre'], ['LE SECRET', 'secret']], say: 'Avec une seule ligne dans ton portefeuille, tu peux détenir un petit bout d’environ mille quatre cents entreprises dans le monde. Le secret ?' },
+      { chapter: 1, visual: 'rule', hud: 'ETF', hudLabel: 'C’EST QUOI ?', hudColor: 'green', rows: [[['ETF', 'g', 170]], [['=', 'dim', 110], ['PANIER', 'w', 130]]], caption: 'UN FONDS QUI COPIE UN INDICE ET S’ACHÈTE EN BOURSE COMME UNE ACTION', kw: [['UN PANIER', 'panier'], ['COPIE UN INDICE', 'indice'], ['COMME UNE ACTION', 'action']], say: 'Un ETF, c’est un panier d’actions qui copie un indice, comme le MSCI World. Et il s’achète en bourse, comme une action.' },
+      { chapter: 1, visual: 'compare', hud: 'DIVERSIFIÉ', hudLabel: 'LE RISQUE EST RÉPARTI', hudColor: 'green', left: 'ETF MONDE', leftSub: '≈ 1 400 ENTREPRISES', right: '1 ACTION', rightSub: '1 SEULE ENTREPRISE', kw: [['UNE PETITE PARTIE', 'partie'], ['UNE SEULE ACTION', 'seule'], ['TOUT CHUTE', 'chute']], say: 'Si une entreprise du panier s’effondre, elle ne pèse qu’une petite partie de l’ensemble. Avec une seule action, c’est tout ton placement qui chute.' },
+      { chapter: 2, visual: 'rule', hud: 'FRAIS', hudLabel: 'SOUVENT BAS', rows: [[['FRAIS', 'w', 120]], [['≈ 0,1 À 0,5 %', 'g', 110]]], caption: 'FRAIS COURANTS ANNUELS FRÉQUENTS (À VÉRIFIER DANS LE DIC)', kw: [['FRAIS BAS', 'frais'], ['0,1 À 0,5 % / AN', 'zéro'], ['IL BAISSE AUSSI', 'baisse']], say: 'Autre atout : des frais souvent bas, entre zéro virgule un et zéro virgule cinq pour cent par an. Mais attention : un ETF suit son marché, il baisse aussi quand le marché baisse.' },
+      { chapter: 2, visual: 'end', hud: 'DÉCODÉ', hudLabel: 'DOSSIER CLOS', hudColor: 'green', cta: 'Suis tes ETF · kapitaro.fr', note: 'Contenu pédagogique : aucun ETF n’est recommandé.', say: 'Suis tes ETF et la répartition de ton portefeuille gratuitement sur Kapitaro.' },
+    ],
+  },
+
+  // Repère courant : 3 à 6 mois de dépenses ; exemple 1 800 €/mois → 5 400 € à 10 800 €.
+  'precaution': {
+    num: '012',
+    title: 'ÉPARGNE DE PRÉCAUTION',
+    chapters: ['L’IMPRÉVU', 'LE REPÈRE', 'OÙ LA RANGER'],
+    caption: 'Voiture en panne, frigo qui lâche, perte d’emploi… Sans réserve, un imprévu devient vite une dette. 📁\n\nRepère indicatif (3 à 6 mois de dépenses), à adapter à ta situation.\n\nCalcule ton épargne de précaution gratuitement sur kapitaro.fr',
+    hashtags: '#epargnedeprecaution #epargne #budget #livreta #financepersonnelle #argent #kapitaro',
+    beats: [
+      { chapter: 0, visual: 'title', hud: '?', hudLabel: 'TA RÉSERVE', kw: [['PANNE', 'panne'], ['FRIGO', 'frigo'], ['PERTE D’EMPLOI', 'emploi'], ['UNE DETTE', 'dette']], say: 'Voiture en panne, frigo qui lâche, perte d’emploi. Sans réserve, un imprévu devient vite une dette.' },
+      { chapter: 1, visual: 'rule', hud: 'LE REPÈRE', hudLabel: 'LE PLUS CITÉ', hudColor: 'green', rows: [[['3', 'g'], ['À', 'dim', 110], ['6 MOIS', 'g']]], caption: 'DE DÉPENSES COURANTES, MIS DE CÔTÉ', kw: [['3 À 6 MOIS', 'trois'], ['DE DÉPENSES', 'dépenses'], ['PRÉCAUTION', 'précaution']], say: 'Le repère le plus courant : garder de côté trois à six mois de dépenses. C’est ton épargne de précaution.' },
+      { chapter: 1, visual: 'result', hud: '1 800 €/MOIS', hudLabel: 'DÉPENSES D’EXEMPLE', left: '6 MOIS', leftSub: 'CONFORTABLE', right: '3 MOIS', rightSub: 'MINIMUM', leftValue: 10800, rightValue: 5400, kw: [['1 800 € / MOIS', 'huit'], ['≈ 5 400 €', 'quatre'], ['≈ 10 800 €', 'dix']], say: 'Exemple : tu dépenses mille huit cents euros par mois. Ta réserve se situe entre cinq mille quatre cents et dix mille huit cents euros.' },
+      { chapter: 2, visual: 'rule', hud: 'OÙ ?', hudLabel: 'LA RANGER', rows: [[['DISPONIBLE', 'g', 110]], [['+', 'dim', 100], ['SANS RISQUE', 'w', 110]]], caption: 'UN LIVRET OU UN COMPTE ÉPARGNE, PAS LA BOURSE', kw: [['DISPONIBLE', 'disponible'], ['SANS RISQUE', 'risque'], ['PAS EN BOURSE', 'bourse'], ['ENSUITE', 'ensuite']], say: 'Cet argent doit rester disponible et sans risque : sur un livret, pas en bourse. Et c’est seulement ensuite qu’on pense à investir.' },
+      { chapter: 2, visual: 'end', hud: 'DÉCODÉ', hudLabel: 'DOSSIER CLOS', hudColor: 'green', cta: 'Calcule ta réserve · kapitaro.fr', note: 'Repère indicatif, à adapter à ta situation (emploi, famille, logement).', say: 'Calcule ton épargne de précaution gratuitement sur Kapitaro.' },
+    ],
+  },
+
+  // Chiffres vérifiés : 100 €/mois à 6 %/an (taux mensuel 6 %/12) jusqu'à 65 ans → dès 25 ans (40 ans) : 199 149 € ;
+  // dès 35 ans (30 ans) : 100 452 € ; dès 45 ans (20 ans) : 46 204 € ; versés : 48 000 / 36 000 / 24 000 € ; ratio 40 ans / 20 ans ≈ 4,3.
+  'commencer-tot': {
+    num: '013',
+    title: '25, 35 OU 45 ANS',
+    chapters: ['LA QUESTION', 'LE CALCUL', 'LA LEÇON'],
+    caption: 'Commencer à 25, 35 ou 45 ans : on a fait le calcul, et l’écart est énorme. 📁\n\nExemple pédagogique : 100 €/mois jusqu’à 65 ans avec un rendement hypothétique de 6 %/an. Les rendements ne sont pas garantis et investir comporte un risque de perte en capital.\n\nSimule ton objectif gratuitement sur kapitaro.fr',
+    hashtags: '#interetscomposes #epargne #investir #retraite #financepersonnelle #argent #kapitaro',
+    beats: [
+      { chapter: 0, visual: 'title', hud: '×4', hudLabel: 'ÉCART FINAL', kw: [['25 ANS', 'vingt-cinq'], ['35 ANS', 'trente-cinq'], ['45 ANS', 'quarante-cinq'], ['LE CALCUL', 'calcul']], say: 'Commencer à vingt-cinq, trente-cinq ou quarante-cinq ans : est-ce que ça change vraiment quelque chose ? On a fait le calcul.' },
+      { chapter: 1, visual: 'rule', hud: '100 €/MOIS', hudLabel: 'JUSQU’À 65 ANS', hudColor: 'green', rows: [[['25 ANS', 'w', 80], ['→', 'dim', 80], ['≈ 199 000 €', 'g', 90]], [['35 ANS', 'w', 80], ['→', 'dim', 80], ['≈ 100 000 €', 'g', 90]], [['45 ANS', 'w', 80], ['→', 'dim', 80], ['≈ 46 000 €', 'w', 90]]], caption: '100 €/MOIS JUSQU’À 65 ANS, RENDEMENT D’EXEMPLE 6 %/AN', kw: [['6 % / AN (EXEMPLE)', 'six'], ['≈ 199 000 €', 'quatre-vingt-dix-neuf'], ['≈ 100 000 €', 'cent'], ['≈ 46 000 €', 'quarante-six']], say: 'Cent euros par mois jusqu’à soixante-cinq ans, à six pour cent par an en exemple. Dès vingt-cinq ans : environ cent quatre-vingt-dix-neuf mille euros. Dès trente-cinq ans : cent mille. Dès quarante-cinq ans : quarante-six mille.' },
+      { chapter: 1, visual: 'result', hud: '×4', hudLabel: 'POUR 2× PLUS VERSÉ', left: 'DÈS 25 ANS', leftSub: '48 000 € VERSÉS', right: 'DÈS 45 ANS', rightSub: '24 000 € VERSÉS', leftValue: 199149, rightValue: 46204, kw: [['2× PLUS VERSÉ', 'deux'], ['×4 À L’ARRIVÉE', 'quatre']], say: 'Celui qui commence à vingt-cinq ans verse deux fois plus. Mais il finit avec plus de quatre fois plus.' },
+      { chapter: 2, visual: 'rule', hud: 'LE TEMPS', hudLabel: 'TON MEILLEUR ALLIÉ', hudColor: 'green', rows: [[['COMMENCER', 'g', 120]], [['>', 'dim', 100], ['ATTENDRE', 'w', 120]]], caption: 'MÊME AVEC UN PETIT MONTANT', kw: [['LE TEMPS', 'temps'], ['UN PETIT MONTANT', 'petit'], ['AUJOURD’HUI', 'aujourd']], say: 'La leçon : c’est le temps qui fait le gros du travail. Mieux vaut commencer avec un petit montant aujourd’hui que d’attendre d’avoir plus.' },
+      { chapter: 2, visual: 'end', hud: 'DÉCODÉ', hudLabel: 'DOSSIER CLOS', hudColor: 'green', cta: 'Simule ton objectif · kapitaro.fr', note: 'Exemple pédagogique : 100 €/mois jusqu’à 65 ans, rendement hypothétique de 6 %/an.', say: 'Et toi, ça donne quoi ? Simule ton objectif gratuitement sur Kapitaro.' },
+    ],
+  },
 };
