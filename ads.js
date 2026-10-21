@@ -7,7 +7,8 @@
   // Identifiants publics (ce ne sont pas des secrets) : à renseigner une fois les comptes publicitaires créés.
   const CONFIG = {
     metaPixel: '29037079089229292',     // ex. '123456789012345' (Meta Business → Gestionnaire d'événements)
-    googleTag: '',     // ex. 'AW-123456789' (Google Ads) ou 'G-XXXXXXX'
+    googleTag: 'AW-18528605387',     // Google Ads (compte créé le 21/10/2026)
+    googleSignupLabel: '84zpCLy-uKQdEMupkINF',     // conversion « Inscription Kapitaro » (Google Ads → Objectifs → Conversions)
   };
   const CONSENT_KEY = 'kp_consent', CONSENT_VERSION = 1, CONSENT_DAYS = 180;
   const SOURCE_KEY = 'kp_source';
@@ -73,6 +74,8 @@
       document.head.appendChild(s);
       window.dataLayer = window.dataLayer || [];
       window.gtag = function () { window.dataLayer.push(arguments); };
+      // Mode Consentement v2 (exigé par Google dans l'EEE) : la balise n'est chargée qu'après « Accepter », donc tout est accordé
+      window.gtag('consent', 'default', { ad_storage: 'granted', ad_user_data: 'granted', ad_personalization: 'granted', analytics_storage: 'granted' });
       window.gtag('js', new Date());
       window.gtag('config', CONFIG.googleTag);
     }
@@ -114,7 +117,11 @@
         else if (name === 'lead') window.fbq('track', 'Lead');
       }
       if (window.gtag) {
-        if (name === 'signup') window.gtag('event', 'sign_up');
+        if (name === 'signup') {
+          window.gtag('event', 'sign_up');
+          // conversion Google Ads « inscription » (l'enchère « Maximiser les conversions » s'appuie dessus)
+          if (CONFIG.googleSignupLabel && /^AW-/.test(CONFIG.googleTag)) window.gtag('event', 'conversion', { send_to: CONFIG.googleTag + '/' + CONFIG.googleSignupLabel });
+        }
         else if (name === 'subscribe') window.gtag('event', 'purchase', { value: data.value || 0, currency: 'EUR', transaction_id: data.id || undefined });
         else if (name === 'lead') window.gtag('event', 'generate_lead');
       }
