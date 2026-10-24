@@ -99,6 +99,20 @@ async function coutsIA() {
     note: "Studio et voix enregistrés depuis le 30/09/2026 ; ton compte et les utilisateurs depuis le début." };
 }
 
+// ── Publicité Google : un script Google Ads (Outils → Actions groupées → Scripts, chaque heure) envoie ses chiffres
+// à cette même adresse avec la clé « gads_key » (table app_tokens) ; le dernier envoi est gardé dans app_tokens « gads_stats ».
+// Les inscrits sont reliés par la provenance « google / … » (suffixe utm de la campagne) ou « google » (clic avec gclid).
+async function googleAds(sources) {
+  const { data } = await supabaseAdmin.from('app_tokens').select('value').eq('name', 'gads_stats').maybeSingle();
+  if (!data || !data.value) return { branche: false };
+  const g = JSON.parse(data.value);
+  const viaGoogle = (sources || []).filter(s => s.source === 'google' || /^google \/ /.test(s.source));
+  const inscrits = viaGoogle.reduce((t, s) => t + s.inscrits, 0), premium = viaGoogle.reduce((t, s) => t + s.premium, 0);
+  const r2 = x => Math.round(x * 100) / 100, cout = (g.total && g.total.cost) || 0;
+  return { branche: true, ...g, inscrits_site: inscrits, premium_site: premium,
+    cout_inscrit_site: inscrits ? r2(cout / inscrits) : null, cout_premium_site: premium ? r2(cout / premium) : null };
+}
+
 export default async function handler(req, res) {
   // Page ouverte en local (file://) ou depuis le site : pas de cookies impliqués, seulement un
   // jeton Bearer vérifié ci-dessous, donc une origine ouverte ne crée pas de risque ici.
@@ -113,6 +127,18 @@ export default async function handler(req, res) {
   }
 
   try {
+    // ── Envoi du script Google Ads (pas de session : protégé par la clé gads_key) ──
+    if (req.method === 'POST' && req.headers['x-gads-key']) {
+      const { data: k } = await supabaseAdmin.from('app_tokens').select('value').eq('name', 'gads_key').maybeSingle();
+      if (!k || !k.value || String(req.headers['x-gads-key']) !== k.value) return res.status(403).json({ error: 'Clé invalide.' });
+      const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      const s = JSON.stringify({ ...b, received_at: new Date().toISOString() });
+      if (s.length > 300000) return res.status(413).json({ error: 'Envoi trop volumineux.' });
+      const { error } = await supabaseAdmin.from('app_tokens').upsert({ name: 'gads_stats', value: s, updated_at: new Date().toISOString() }, { onConflict: 'name' });
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ ok: true });
+    }
+
     // ── Authentification + vérification que c'est bien l'admin ──
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -328,6 +354,12 @@ export default async function handler(req, res) {
       couts.publicite_mois_eur = publicite.depense_mois;
       couts.total_mois_eur = Math.round((couts.total_mois_eur + publicite.depense_mois) * 100) / 100;
     }
+    const google_ads = await googleAds(sourcesList).catch(e => ({ branche: true, erreur: e.message }));
+    const gMois = google_ads.month && google_ads.month.cost;
+    if (couts && gMois && (google_ads.currency || 'EUR') === 'EUR') {
+      couts.publicite_google_mois_eur = Math.round(gMois * 100) / 100;
+      couts.total_mois_eur = Math.round((couts.total_mois_eur + gMois) * 100) / 100;
+    }
 
     res.status(200).json({
       generated_at: new Date().toISOString(),
@@ -336,6 +368,7 @@ export default async function handler(req, res) {
       revenue: { mrr_estime: mrr, abonnes_mensuels: monthlySubs, abonnes_annuels: annualSubs, stripe: stripeRev },
       couts,
       publicite,
+      google_ads,
       funnel: {
         inscrits: totalUsers,
         ont_vu_offre: funnel.paywall_view.size,

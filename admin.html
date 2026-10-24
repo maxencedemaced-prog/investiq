@@ -90,6 +90,11 @@
       </div>
 
       <div class="card">
+        <h3>Publicité Google Ads</h3>
+        <div id="gads-box" class="sub">Chargement…</div>
+      </div>
+
+      <div class="card">
         <h3>Publicité Meta (depuis le début des campagnes)</h3>
         <div id="ads-table" class="sub">Chargement…</div>
       </div>
@@ -224,6 +229,7 @@ function renderCosts(d) {
     rows.push(['Abonnement ' + f.nom + voix, f.montant.toLocaleString('fr-FR') + (f.devise === 'USD' ? ' $' : ' €'), f.eur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €']);
   });
   if (c.publicite_mois_eur) rows.push(['Publicité Meta (ce mois)', c.publicite_mois_eur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €', c.publicite_mois_eur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €']);
+  if (c.publicite_google_mois_eur) rows.push(['Publicité Google (ce mois)', c.publicite_google_mois_eur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €', c.publicite_google_mois_eur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €']);
   box.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
     rows.map(function (r) { return '<tr><td style="padding:8px 0;border-bottom:1px solid #e5e7eb">' + r[0] + '</td><td style="text-align:right;padding:8px 10px;border-bottom:1px solid #e5e7eb;white-space:nowrap">' + r[1] + '</td><td style="text-align:right;padding:8px 0;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:#6b7280">≈ ' + r[2] + '</td></tr>'; }).join('') +
     '<tr><td style="padding:10px 0;font-weight:800">Total des coûts du mois</td><td></td><td style="text-align:right;font-weight:800">≈ ' + coutEur.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €</td></tr></table>' +
@@ -290,6 +296,37 @@ function render(d) {
     adsBox.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;opacity:.7">' + th('Pub') + th('Statut') + th('Dépensé', 1) + th('Affichages', 1) + th('Visites', 1) + th('Coût / visite', 1) + th('Inscrits', 1) + th('Coût / inscrit', 1) + th('Premium', 1) + '</tr>'
       + pub.pubs.map(function (p) { return line(p); }).join('') + line({ nom: 'Total', depense: tt.depense, affichages: tt.affichages, visites: tt.visites, cout_visite: tt.cout_visite, inscrits: tt.inscrits, cout_inscrit: tt.cout_inscrit, premium: tt.premium }, true) + '</table></div>'
       + '<div class="sub" style="margin-top:8px">Dépense pub ce mois : ' + e2(pub.depense_mois) + ' (incluse dans les coûts). « Visites » = vues de la page d\'arrivée comptées par Meta ; inscrits et Premium = comptes réellement créés avec le lien de la pub.</div>';
+  }
+
+  // Publicité Google : chiffres envoyés chaque heure par le script Google Ads, inscrits reliés par la provenance « google »
+  var ga = d.google_ads || {}, gBox = document.getElementById('gads-box');
+  if (!ga.branche) gBox.innerHTML = 'Pas encore branché : colle le script Kapitaro dans Google Ads (Outils → Actions groupées → Scripts) et programme-le toutes les heures.';
+  else if (ga.erreur) gBox.innerHTML = '<span style="color:#dc2626">Google Ads indisponible : ' + esc(ga.erreur) + '</span>';
+  else {
+    var gt = ga.total || {}, gd = ga.today || {}, gm = ga.month || {};
+    var ago = ga.received_at ? Math.round((Date.now() - new Date(ga.received_at)) / 60000) : null;
+    var kp = function (v, l) { return '<div class="kpi" style="flex:1;min-width:120px"><div class="v">' + v + '</div><div class="l">' + l + '</div></div>'; };
+    var gpct = function (x) { return x == null ? '—' : (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %'; };
+    var gth = function (t, r) { return '<th style="padding:6px 4px;' + (r ? 'text-align:right;' : '') + 'white-space:nowrap">' + t + '</th>'; };
+    var gtd = function (t, r) { return '<td style="padding:6px 4px;' + (r ? 'text-align:right;' : '') + 'white-space:nowrap">' + t + '</td>'; };
+    var gtab = function (head, rows) { return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;opacity:.7">' + head + '</tr>' + rows + '</table></div>'; };
+    var h = '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      + kp(e2(gd.cost), "Dépensé aujourd'hui (" + n0(gd.clicks) + ' clics)')
+      + kp(e2(gt.cost), 'Dépensé depuis le début')
+      + kp(n0(gt.clicks) + ' / ' + n0(gt.impressions), 'Clics / affichages (CTR ' + gpct(gt.impressions ? gt.clicks / gt.impressions : null) + ')')
+      + kp(e2(gt.clicks ? gt.cost / gt.clicks : null), 'Coût moyen par clic')
+      + kp(n0(ga.inscrits_site) + (ga.premium_site ? ' (' + ga.premium_site + ' Premium)' : ''), 'Inscrits venus de Google')
+      + kp(e2(ga.cout_inscrit_site), 'Coût par inscrit')
+      + '</div>';
+    var days = (ga.days || []).slice(-14);
+    if (days.length) h += '<canvas id="chart-gads" style="margin-top:14px;max-height:220px"></canvas>';
+    if ((ga.keywords || []).length) h += '<h4 style="margin:16px 0 6px">Mots-clés (depuis le début)</h4>' + gtab(gth('Mot-clé') + gth('Clics', 1) + gth('Affichages', 1) + gth('CTR', 1) + gth('Coût', 1) + gth('Conv.', 1),
+      ga.keywords.slice(0, 15).map(function (k) { return '<tr style="border-top:1px solid rgba(127,127,127,.2)">' + gtd(esc(k.text) + ' <span style="opacity:.55;font-size:11px">' + esc(k.match || '') + '</span>') + gtd(n0(k.clicks), 1) + gtd(n0(k.impressions), 1) + gtd(gpct(k.impressions ? k.clicks / k.impressions : null), 1) + gtd(e2(k.cost), 1) + gtd(n0(k.conversions), 1) + '</tr>'; }).join(''));
+    if ((ga.terms || []).length) h += '<h4 style="margin:16px 0 6px">Ce que les gens ont tapé (30 derniers jours)</h4>' + gtab(gth('Recherche') + gth('Clics', 1) + gth('Affichages', 1) + gth('Coût', 1) + gth('Conv.', 1),
+      ga.terms.slice(0, 20).map(function (k) { return '<tr style="border-top:1px solid rgba(127,127,127,.2)">' + gtd(esc(k.term)) + gtd(n0(k.clicks), 1) + gtd(n0(k.impressions), 1) + gtd(e2(k.cost), 1) + gtd(n0(k.conversions), 1) + '</tr>'; }).join(''));
+    h += '<div class="sub" style="margin-top:8px">Ce mois : ' + e2(gm.cost) + ' (inclus dans les coûts) · Conversions comptées par Google : ' + n0(gt.conversions) + ' · Mise à jour ' + (ago == null ? '—' : ago < 2 ? "à l'instant" : 'il y a ' + (ago < 120 ? ago + ' min' : Math.round(ago / 60) + ' h')) + ' (Google affiche ses chiffres avec environ 3 h de retard).</div>';
+    gBox.innerHTML = h;
+    if (days.length) mkChart('chart-gads', 'bar', days.map(function (x) { return x.date.slice(5); }), [{ label: 'Clics', data: days.map(function (x) { return x.clicks || 0; }), color: '#3b82f6' }, { label: 'Dépense (€)', data: days.map(function (x) { return Math.round((x.cost || 0) * 100) / 100; }), color: '#f59e0b' }]);
   }
 
   // Provenance des inscrits : inscriptions et abonnés actuels par canal
