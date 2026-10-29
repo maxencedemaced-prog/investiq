@@ -17,8 +17,8 @@ export function checkUnsubToken(userId, token) {
   const a = Buffer.from(String(token || '')), b = Buffer.from(unsubToken(userId));
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-export function unsubUrl(userId) {
-  return `${SITE}/api/unsubscribe?u=${encodeURIComponent(userId)}&t=${unsubToken(userId)}`;
+export function unsubUrl(userId, lang) {
+  return `${SITE}/api/unsubscribe?u=${encodeURIComponent(userId)}&t=${unsubToken(userId)}${lang === 'en' ? '&l=en' : ''}`;   // l=en : page de confirmation en anglais
 }
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -29,7 +29,7 @@ export function renderEmail({ title, paragraphs, cta, userId, extraHtml = '', ex
   const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   const body = paragraphs.map(p => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1f2937">${md(p)}</p>`).join('');
   const button = cta ? `<p style="margin:22px 0 8px"><a href="${esc(cta.url)}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 22px;border-radius:10px">${esc(cta.label)}</a></p>` : '';
-  const unsub = userId ? unsubUrl(userId) : null;
+  const unsub = userId ? unsubUrl(userId, lang) : null;
   const html = `<!DOCTYPE html><html lang="${EN ? 'en' : 'fr'}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px"><tr><td align="center">
