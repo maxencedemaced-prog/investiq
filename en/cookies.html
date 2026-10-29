@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- DRAFT – to be reviewed by a qualified lawyer before publication -->
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261029" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cookie notice — Kapitaro</title>
+  <meta name="description" content="Which cookies and storage Kapitaro uses, advertising cookies only with consent, and how to opt out.">
+  <meta name="robots" content="noindex, follow"><!-- brouillon : à passer en index après relecture juridique -->
+  <link rel="canonical" href="https://kapitaro.com/cookies">
+  <link rel="alternate" hreflang="en" href="https://kapitaro.com/cookies">
+  <link rel="alternate" hreflang="fr" href="https://kapitaro.fr/confidentialite">
+  <meta name="theme-color" content="#080e1e">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="stylesheet" href="/outils.css?v=20260929b">
+  <style>
+    .legal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px 24px;max-width:780px;margin:-40px auto 0}
+    .legal h3{font-size:18px;margin:26px 0 8px}
+    .legal p,.legal li{font-size:15px;line-height:1.65}
+    .legal .legal-date{color:var(--muted);font-size:13px}
+    .legal-nav{max-width:780px;margin:22px auto 0;display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13.5px}
+    .legal-nav a{color:var(--muted)}
+    .legal-nav a.on{color:var(--text);font-weight:700;text-decoration:none}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="/icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/">Open Kapitaro</a>
+    </div>
+  </header>
+  <section class="hero"><div class="hero-in"><h1 id="doc-title">Cookie notice</h1></div></section>
+  <main>
+    <article class="legal" id="doc-body"><p>Loading…</p></article>
+    <nav class="legal-nav" aria-label="Legal documents">
+      <a href="/terms" data-k="cgu">Terms of Service</a>
+      <a href="/privacy" data-k="privacy">Privacy Policy</a>
+      <a href="/cookies" data-k="cookies">Cookie notice</a>
+      <a href="/risks" data-k="risk">Risk disclosure</a>
+      <a href="/legal" data-k="mentions">Legal notice</a>
+      <a href="#" onclick="window.kpAds&&kpAds.optOut&&kpAds.optOut();return false">Do Not Sell or Share My Personal Information</a>
+      <a href="https://kapitaro.fr/confidentialite" hreflang="fr" lang="fr">Version française</a>
+    </nav>
+  </main>
+  <footer><p>Kapitaro · contact@kapitaro.fr · <a href="/">kapitaro.com</a></p></footer>
+  <script src="/legal-docs.js?v=20261029"></script>
+  <script>
+    (function () {
+      var key = 'cookies', doc = legalDocEN(key, true);
+      if (!doc) return;
+      document.getElementById('doc-title').textContent = doc.title;
+      document.getElementById('doc-body').innerHTML = doc.content.replace(/\{\{LEGAL_DATE\}\}/g, legalDateEN());
+      var a = document.querySelector('.legal-nav a[data-k="' + key + '"]'); if (a) a.className = 'on';
+      // Hors kapitaro.com (aperçus Vercel, localhost), les pages anglaises sont servies sous /en/
+      if (location.hostname.indexOf('kapitaro.com') < 0) document.querySelectorAll('.legal-nav a[data-k]').forEach(function (l) { l.setAttribute('href', '/en' + l.getAttribute('href')); });
+    })();
+  </script>
+</body>
+</html>

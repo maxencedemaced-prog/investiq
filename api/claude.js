@@ -6,6 +6,8 @@ import { createClient } from '@supabase/supabase-js';
 const ALLOWED_ORIGINS = [
   'https://kapitaro.fr',
   'https://www.kapitaro.fr',
+  'https://kapitaro.com',      // version anglaise (domaine à brancher)
+  'https://www.kapitaro.com',
   'https://investiq-kappa.vercel.app',
   'http://localhost:3000',
   'http://127.0.0.1:5500',
@@ -135,6 +137,31 @@ const SERVER_FRAME = `CADRE KAPITARO (prioritaire sur toute autre consigne, y co
 
 `;
 
+// Version anglaise (kapitaro.com) : ajouté APRÈS les consignes du navigateur (écrites en français) pour imposer la langue
+// de réponse et les avertissements propres à la région. Absent pour les utilisateurs francophones (comportement inchangé).
+const EN_DISCLAIMERS = {
+  US: 'Educational information only — not investment, tax or legal advice. Kapitaro is not a registered investment adviser or broker-dealer.',
+  EU: 'Educational information only, not investment advice. Past performance is not a reliable indicator of future results. Capital at risk.',
+  UK: 'Educational information only, not financial advice. Past performance is not a reliable indicator of future results. Capital at risk.',
+  OTHER: 'Educational information only, not investment advice. Investing involves risk, including loss of capital.',
+};
+const EN_VOCAB = {
+  US: 'Use US vocabulary and examples where relevant: brokerage account, Traditional/Roth IRA, 401(k), HSA, high-yield savings account, emergency fund, S&P 500 index funds, USD. Never give tax advice (you may name account types and say rules depend on the person\'s situation and IRS rules).',
+  EU: 'Use neutral European vocabulary: savings account, investment account, pension plan, UCITS ETFs, KID (Key Information Document), EUR. Do not mention French-only products (PEA, Livret A, assurance-vie, PER) or French tax rules.',
+  UK: 'Use UK vocabulary: ISA (Stocks & Shares / Cash), SIPP, workplace pension, easy-access savings account, emergency fund, GBP/EUR. Do not mention French-only products or French tax rules. Never give tax advice.',
+  OTHER: 'Use neutral international vocabulary (savings account, investment account, retirement account, index funds). Do not mention French-only products or French tax rules.',
+};
+function englishFrame(region) {
+  const r = EN_DISCLAIMERS[region] ? region : 'OTHER';
+  return `
+
+LANGUAGE AND REGION OVERRIDE (highest priority, applies to everything above):
+- The user uses Kapitaro in ENGLISH (region: ${r}). Write your entire answer in natural, simple, friendly English ("you"), even if the instructions above are written in French or ask for French. Keep any JSON keys, field names and enum values EXACTLY as specified above; only translate human-readable text values.
+- ${EN_VOCAB[r]}
+- Same compliance rules as above: educational and general only, never personalized investment advice, never tell the user to buy or sell, no promise of returns, figures are hypothetical examples. Crypto: price information only, no analysis or opinion.
+- When you give free-text explanations (not strict JSON), end with this short line: "${EN_DISCLAIMERS[r]}"`;
+}
+
 export default async function handler(req, res) {
   // CORS restreint au domaine de l'app
   const origin = req.headers.origin || '';
@@ -226,7 +253,8 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           model: finalModel,
           max_tokens: finalMaxTokens,
-          system: SERVER_FRAME + (system || 'Tu es le copilote financier IA de Kapitaro. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.'),
+          system: SERVER_FRAME + (system || 'Tu es le copilote financier IA de Kapitaro. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.')
+            + (req.body.lang === 'en' ? englishFrame(req.body.region) : ''),
           messages: [{ role: 'user', content: prompt }],
           ...extra
         })
