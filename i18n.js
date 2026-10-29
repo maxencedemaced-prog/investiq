@@ -78,7 +78,10 @@
   // Région enregistrée dans le profil (user_metadata.region) : appelée par app.js après connexion
   function syncRegionFromUser(user) {
     try {
-      var r = user && user.user_metadata && user.user_metadata.region;
+      var md = (user && user.user_metadata) || {};
+      // Compte créé via Google sur kapitaro.com : langue et région enregistrées dans le profil (e-mails en anglais)
+      if (EN && !md.lang && typeof sb !== 'undefined' && sb && sb.auth) sb.auth.updateUser({ data: { lang: 'en', region: md.region || region } }).catch(function () {});
+      var r = md.region;
       if (EN && REGIONS.indexOf(r) >= 0 && r !== 'FR' && r !== region) { safeSet('kp_region', r); location.reload(); }
     } catch (e) {}
   }
