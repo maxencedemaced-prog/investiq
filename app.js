@@ -6385,7 +6385,7 @@ async function resetPassword() {
   }
   try {
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://kapitaro.fr'
+      redirectTo: (window.kpI18n && kpI18n.isEN && kpI18n.config.enDomainLive) ? kpI18n.config.domains.en : 'https://kapitaro.fr'   // version anglaise : retour sur kapitaro.com
     });
     if (error) throw error;
     setAuthMsg('📧 Email de réinitialisation envoyé !', true);
