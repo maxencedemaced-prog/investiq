@@ -119,3 +119,6 @@ function openGlossary(focusKey) {
   if (focusKey) setTimeout(() => { const el = document.getElementById('kp-glo-' + focusKey); if (el) el.scrollIntoView({ block: 'center' }); }, 50);
   else setTimeout(() => q.focus(), 50);
 }
+
+// Version anglaise : remplace les définitions par leur traduction (i18n-en.js, chargé seulement en anglais)
+if (window.KP_EN && KP_EN.applyData) KP_EN.applyData();
