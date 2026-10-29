@@ -32,6 +32,8 @@
   function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
   function detect() {
+    var forced = document.documentElement.getAttribute('data-kp-lang');   // pages publiques anglaises (dossier en/)
+    if (forced === 'en' || forced === 'fr') return forced;
     var h = CONFIG.hosts[location.hostname];
     if (h) return h;                                   // le domaine décide
     try {
