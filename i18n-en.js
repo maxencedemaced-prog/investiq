@@ -491,6 +491,13 @@
     "Qu'est-ce que tu sais de moi et de mon profil d'investisseur ?": 'What do you know about me and my investor profile?', 'Résume mon dernier bilan et dis-moi par quoi commencer.': 'Summarize my last check-up and tell me where to start.',
     'Quelles positions sous-performent dans mon portefeuille, et que suggères-tu ?': 'Which holdings are underperforming in my portfolio, and what should I look at?', 'Comment améliorer la diversification de mon portefeuille (': 'How could I improve my portfolio’s diversification (',
     'Comment réduire progressivement mon exposition à': 'How could I gradually reduce my exposure to', '% de mon portefeuille) ?': '% of my portfolio)?', 'À surveiller': 'To watch',
+    // ── Messages renvoyés par les API (affichés tels quels par l'app) ──
+    'Configuration serveur incomplète.': 'Server configuration incomplete.', "Connecte-toi pour t'abonner.": 'Log in to subscribe.', 'Session expirée. Reconnecte-toi.': 'Session expired. Please log in again.',
+    'Tu es déjà abonné à Premium.': 'You’re already subscribed to Premium.', 'Aucun abonnement trouvé pour ce compte.': 'No subscription found for this account.', 'Connecte-toi.': 'Please log in.',
+    'Analyse du PDF indisponible, réessaie dans un instant.': 'PDF analysis unavailable, try again in a moment.', 'Aucun texte lisible dans ce PDF.': 'No readable text in this PDF.', 'Connecte-toi pour importer un PDF.': 'Log in to import a PDF.',
+    "Erreur pendant l'analyse du PDF.": 'Error while analyzing the PDF.', 'Session expirée, reconnecte-toi.': 'Session expired, please log in again.', 'Session invalide.': 'Invalid session.',
+    "Trop d'imports d'un coup. Patiente une minute.": 'Too many imports at once. Please wait a minute.', 'Code invalide': 'Invalid code', "Connecte-toi pour utiliser l'assistant IA.": 'Log in to use the AI assistant.',
+    'Prompt trop long.': 'Request too long.', 'Prompt manquant.': 'Missing request.',
     // ── Objectifs, plan du mois ──
     "C'est le maximum. Choisis lequel remplacer par ton nouvel objectif": 'That’s the maximum. Choose which one to replace with your new goal',
     '€/mois ·': '€/month ·', 'ans ·': 'years ·', 'Génération du plan personnalisé...': 'Generating your plan...',
@@ -731,6 +738,18 @@
     'Assurance-vie': { _: 'long-term savings plan', US: 'retirement account (IRA / 401(k))', UK: 'pension / ISA' },
     'Livret A': { _: 'savings account', US: 'high-yield savings account', UK: 'easy-access savings account' },
     'livret': { _: 'savings account', US: 'savings account', UK: 'savings account' },
+    // Bilan : champs de patrimoine (mêmes données, intitulés adaptés à la région)
+    'Livret A / LDDS (€)': { _: 'Savings accounts (€)', US: 'Savings / high-yield savings (€)', UK: 'Savings accounts / Cash ISA (€)' },
+    'PEA (€)': { _: 'Tax-advantaged investment account (€)', US: 'IRA / 401(k) (€)', UK: 'Stocks & Shares ISA (€)' },
+    'Assurance vie (€)': { _: 'Life insurance / pension savings (€)', US: 'Annuities / other retirement savings (€)', UK: 'Pension (SIPP, workplace) (€)' },
+    'Bourse / CTO (€)': { _: 'Taxable investment account (€)', US: 'Taxable brokerage account (€)', UK: 'General investment account (€)' },
+    'Immobilier (valeur estimée €)': 'Real estate (estimated value €)', 'Autres actifs (€)': 'Other assets (€)', 'Patrimoine existant': 'What you already own',
+    'Fais un état des lieux de ce que tu possèdes déjà.': 'Take stock of what you already own.', 'Pas sûr ? Analyse tes vraies dépenses →': 'Not sure? Analyze your real spending →', "Tes habitudes d'investissement": 'Your investing habits',
+    'Livrets': { _: 'Savings', US: 'Savings', UK: 'Savings' }, 'Assurance vie': { _: 'Pension savings', US: 'Retirement', UK: 'Pension' }, 'Bourse': { _: 'Investments', US: 'Brokerage' },
+    'Analyse toute ta situation : revenus, épargne, PEA, assurance-vie… pas seulement ton portefeuille': { _: 'Analyzes your whole situation: income, savings, investment and pension accounts… not just your portfolio', US: 'Analyzes your whole situation: income, savings, IRA/401(k)… not just your portfolio', UK: 'Analyzes your whole situation: income, savings, ISA, pension… not just your portfolio' },
+    'Mensualité recommandée, allocation cible et projections à 5, 10 et 20 ans': 'Suggested monthly amount, illustrative allocation and projections at 5, 10 and 20 years', 'Export PDF de ton bilan': 'PDF export of your check-up',
+    'Retrouvable à tout moment, à refaire quand ta situation change': 'Available any time, redo it when your situation changes', 'Bilan patrimonial complet': 'Complete financial check-up',
+    'PDF, Excel ou CSV : Trade Republic, Boursorama, XTB…': 'PDF, Excel or CSV from your broker', 'Importer le relevé de mon courtier': 'Import my broker statement', '🏦 Choisir un courtier': '🏦 Choosing a broker',
   });
 
   // ════════════ TEXTES AVEC NOMBRES (expressions régulières) ════════════
@@ -750,6 +769,9 @@
     [/^Passer à Premium — (.+)\/mois$/, 'Go Premium — $1/month'],
     [/^(([+−-][^)]*)). Je connais toutes tes positions, tes objectifs et ton profil. Que veux-tu faire ?$/, '($1). I know all your holdings, goals and profile. What would you like to do?'],
     [/^\(([+−-][^)]*)\)\. Je connais toutes tes positions, tes objectifs et ton profil\. Que veux-tu faire \?$/, '($1). I know all your holdings, goals and profile. What would you like to do?'],
+    [/^(⚠️ )?Impossible de démarrer le paiement : (.*)$/, '$1Couldn’t start the payment: $2'],
+    [/^(⚠️ )?Portail indisponible : (.*)$/, '$1Billing portal unavailable: $2'],
+    [/^(⚠️ )?Tu as atteint la limite de (\d+) imports PDF pour aujourd'hui\. Réessaie demain\.$/, '$1You’ve reached the limit of $2 PDF imports for today. Try again tomorrow.'],
     [/^Erreur : (.*)$/, 'Error: $1'],
     [/^Erreur: (.*)$/, 'Error: $1'],
     [/^IA indisponible : (.*)$/, 'AI unavailable: $1'],
