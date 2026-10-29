@@ -6283,6 +6283,7 @@ function shareReferral() {
 async function initApp(user) {
   try {
   currentUser = user; isDemo = false;
+  try { if (window.kpI18n) kpI18n.syncRegionFromUser(user); } catch (e) {}   // version anglaise : région enregistrée dans le profil
   try { localStorage.setItem('kp_known', '1'); } catch (e) {}
   try { if (typeof appLockOnStart === 'function') appLockOnStart(); } catch (e) {}   // écran verrouillé avant d'afficher quoi que ce soit
   claimCaches(user.id);
@@ -6468,6 +6469,7 @@ async function signup() {
   const pass = document.getElementById('signup-pass').value;
   const pass2 = document.getElementById('signup-pass2').value;
   if (!email||!pass) { setAuthMsg('Remplis tous les champs.'); return; }
+  if (window.kpI18n && !kpI18n.signupConsentOk()) { setAuthMsg(kpT('auth.consentRequired')); return; }   // version anglaise uniquement
   if (pass!==pass2) { setAuthMsg('Mots de passe différents.'); return; }
   if (pass.length<8) { setAuthMsg('Mot de passe trop court : au moins 8 caractères.'); return; }
   setAuthMsg('Création...', true);
@@ -6476,6 +6478,7 @@ async function signup() {
   const meta = {};
   if (parrain) meta.parrain = parrain;
   try { if (window.kpAds) meta.source = kpAds.sourceLabel(); } catch (e) {}
+  try { if (window.kpI18n && kpI18n.isEN) { meta.lang = 'en'; meta.region = kpI18n.region; } } catch (e) {}
   const { data, error } = await sb.auth.signUp({ email, password: pass, options: Object.keys(meta).length ? { data: meta } : undefined });
   if (error) {
     const m = (error.message || '').toLowerCase();
@@ -8637,8 +8640,8 @@ function kpPriceStr(p) {
   return v >= 1 ? v.toFixed(2) : Number(v.toPrecision(4)).toFixed(12).replace(/0+$/, '').replace(/\.$/, '');
 }
 // Petits prix (cryptos à quelques millièmes d’euro) : plus de décimales, sinon « 0,00 € »
-function fmt(n) { const v = Number(n), x = Math.abs(v), d = x > 0 && x < 0.01 ? 8 : x > 0 && x < 1 ? 4 : 2; return v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:d}); }
-function fmtK(n) { return n>=1000?(n/1000).toFixed(1).replace('.', ',')+' k€':fmt(n)+' €'; }
+function fmt(n) { const v = Number(n), x = Math.abs(v), d = x > 0 && x < 0.01 ? 8 : x > 0 && x < 1 ? 4 : 2; return v.toLocaleString(window.kpI18n ? kpI18n.locale : 'fr-FR',{minimumFractionDigits:2,maximumFractionDigits:d}); }
+function fmtK(n) { return n>=1000?(n/1000).toFixed(1).replace('.', window.kpI18n && kpI18n.isEN ? '.' : ',')+' k€':fmt(n)+' €'; }
 
 // Prénom pour les salutations : fourni par Google à la connexion, sinon rien (jamais le début de l'e-mail)
 function userFirstName() {
@@ -8647,7 +8650,7 @@ function userFirstName() {
   const raw = m.given_name || m.first_name || String(m.full_name || m.name || '').trim().split(/\s+/)[0] || '';
   return raw && !raw.includes('@') ? raw.charAt(0).toUpperCase() + raw.slice(1) : '';
 }
-function fmtI(n) { return Math.round(n).toLocaleString('fr-FR'); }
+function fmtI(n) { return Math.round(n).toLocaleString(window.kpI18n ? kpI18n.locale : 'fr-FR'); }
 
 // ===== NOTIFICATIONS =====
 async function checkAndGenerateNotifications() {
@@ -12681,6 +12684,7 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
     if (maxTokens) body.max_tokens = maxTokens;
     if (model) body.model = model;
     if (opts && opts.noThinking) body.no_thinking = true;
+    if (window.kpI18n && kpI18n.isEN) { body.lang = 'en'; body.region = kpI18n.region; }   // version anglaise : réponse en anglais, cadre adapté à la région
     const res=await fetch('/api/claude',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
@@ -13517,8 +13521,8 @@ async function confirmCSVImport() {
 //  💳 ABONNEMENT PREMIUM — souscription et gestion
 // ═══════════════════════════════════════════════════════════
 
-const PREMIUM_PRICE = '9,99 €';
-const PREMIUM_PRICE_ANNUAL = '79,99 €';
+const PREMIUM_PRICE = window.kpI18n ? kpI18n.price('monthly') : '9,99 €';   // version anglaise : prix affiché selon la devise (i18n.js)
+const PREMIUM_PRICE_ANNUAL = window.kpI18n ? kpI18n.price('annual') : '79,99 €';
 const PREMIUM_ANNUAL_SAVINGS_PCT = 33; // (9,99×12 − 79,99) ⁄ (9,99×12) ≈ 33 %
 
 // Lance le paiement Stripe
@@ -13830,7 +13834,7 @@ function showPremiumWelcome() {
 
 // ═══ AFFICHAGE DES DOCUMENTS LÉGAUX ═══
 function openLegalDoc(key) {
-  const doc = LEGAL_DOCS[key];
+  const doc = (window.kpI18n && kpI18n.isEN && typeof legalDocEN === 'function' && legalDocEN(key)) || LEGAL_DOCS[key];
   if (!doc) return;
 
   document.getElementById('legal-modal')?.remove();
@@ -13847,7 +13851,7 @@ function openLegalDoc(key) {
         </div>
         <button onclick="document.getElementById('legal-modal').remove()" class="legal-doc-close" aria-label="Fermer">×</button>
       </div>
-      <div class="legal-doc-body">${doc.content.replace(/\{\{LEGAL_DATE\}\}/g, legalDateFR())}</div>
+      <div class="legal-doc-body">${doc.content.replace(/\{\{LEGAL_DATE\}\}/g, doc.en ? legalDateEN() : legalDateFR())}</div>
       <div class="legal-doc-foot">
         <span>Document contractuel — Kapitaro</span>
         <button onclick="document.getElementById('legal-modal').remove()">Fermer</button>

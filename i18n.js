@@ -181,6 +181,8 @@
       if (!show) { els[i].style.display = 'none'; continue; }
       if (els[i].hasAttribute('data-kp-label')) els[i].textContent = EN ? 'Français' : 'English';
     }
+    var lb = document.querySelectorAll('[data-lang-opt]');
+    for (var j = 0; j < lb.length; j++) lb[j].classList.toggle('on', lb[j].getAttribute('data-lang-opt') === lang);
   });
 
   if (EN) {
