@@ -54,6 +54,7 @@
 | Brouillons juridiques anglais US / UE / UK | ✅ (section 5) |
 | Bandeau cookies anglais, signal **Global Privacy Control** respecté, lien **« Do Not Sell or Share My Personal Information »** | ✅ (anglais uniquement) |
 | Paiement : retour sur kapitaro.com et page Stripe en anglais quand le paiement part de kapitaro.com | ✅ (`api/create-checkout.js`, `api/create-portal.js`) ; kapitaro.com ajouté aux origines autorisées des API |
+| Bulle d’aide en anglais (`faq-data-en.js`, mots-clés anglais, refus de conseil) | ✅ |
 | E-mails bienvenue / relances en anglais | ✅ ; la lettre du dimanche n'est pas envoyée aux comptes anglais (elle est en français) |
 | SEO : simulateur d'intérêts composés en anglais (`/compound-interest-calculator`, $/€/£), hreflang/canonical dans les deux sens (accueil, simulateur, pages juridiques), `sitemap-en.xml`, `robots.txt` | ✅ ; adresses françaises inchangées |
 | Contrôles : syntaxe de tous les fichiers JS modifiés, chargement de la page en anglais et en français sans erreur, français identique (titre, textes, prix « 9,99 € », nombres « 1 234,50 », lexique) | ✅ |
@@ -93,7 +94,7 @@ L'outil de diagnostic (`&i18n_debug=1`) liste ce qui reste sur chaque page. Zone
 - **Formats** : les montants de l'app restent en euros (les portefeuilles sont en euros) ; le séparateur décimal suit l'anglais (`1,234.50 €`) seulement dans `fmt`/`fmtI`/`fmtK`. Les ~80 autres `toLocaleString('fr-FR')` d'`app.js` restent au format français. Conversion du portefeuille en dollars : non faite (nécessite un taux de change).
 - **Fonctions propres à la France à masquer hors FR** : mention « Créé en France » (gardée, c'est un fait), plateformes françaises dans les listes (Boursorama, Fortuneo…), import de relevés de courtiers français, fiscalité dans le bilan, médiateur — à revoir écran par écran.
 - **depenses.js / bilan-extra.js** : catégories traduites en partie ; règles de détection des libellés bancaires françaises (PRLV, CB…) inchangées.
-- **Bulle d'aide** (`help-bot.js` + `faq-data.js`) et page **/faq** : en français uniquement ; à traduire (base de questions anglaise + mots-clés anglais).
+- Page publique **/faq** : en français uniquement (la bulle d’aide, elle, est traduite).
 - **Notifications push** (`push.js`, `api/push-send.js`, `api/_push.js`) : briefing et alertes en français ; à générer selon `user_metadata.lang`.
 - **Blog** (`api/blog.js`) et **lettre du dimanche** : français uniquement ; décision éditoriale (blog anglais séparé ?).
 - **Autres simulateurs publics** : objectif d'épargne, ETF MSCI World, épargne de précaution, investissement programmé, frais, inflation ; page `/commencer` et `/faq` — seul le simulateur d'intérêts composés est fait.
