@@ -8312,13 +8312,13 @@ function safeK(val) {
 // Outil PDF chargé à la demande (évite ~350 Ko au chargement de chaque page)
 let _jsPDFLoading = null;
 function loadJsPDF() {
-  if (window.jspdf) return Promise.resolve();
+  if (window.jspdf) { try { if (window.KP_EN && KP_EN.patchPDF) KP_EN.patchPDF(); } catch (e) {} return Promise.resolve(); }   // version anglaise : PDF traduit
   if (!_jsPDFLoading) _jsPDFLoading = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
     s.integrity = 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk';
     s.crossOrigin = 'anonymous';
-    s.onload = () => resolve();
+    s.onload = () => { try { if (window.KP_EN && KP_EN.patchPDF) KP_EN.patchPDF(); } catch (e) {} resolve(); };
     s.onerror = () => { _jsPDFLoading = null; reject(new Error('Outil PDF indisponible, vérifie ta connexion et réessaie.')); };
     document.head.appendChild(s);
   });
