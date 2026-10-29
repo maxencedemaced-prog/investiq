@@ -475,6 +475,16 @@
     'Idéal : 60%+': 'Ideal: 60%+', 'Min conseillé : 8': 'Suggested min: 8',
   });
 
+  // ════════════ BULLE D'AIDE (help-bot.js ; questions/réponses dans faq-data-en.js) ════════════
+  add({
+    'Aide Kapitaro': 'Kapitaro help', 'Envoyer': 'Send',
+    "Bonjour 👋 Pose-moi ta question sur l'utilisation de Kapitaro, ou choisis une question ci-dessous.": 'Hi 👋 Ask me anything about using Kapitaro, or pick a question below.',
+    "Avec plaisir ! N'hésite pas si tu as une autre question 🙂": 'You’re welcome! Ask me if you have another question 🙂',
+    "Je réponds uniquement aux questions sur l'utilisation de Kapitaro, et je n'ai pas trouvé de réponse à celle-ci. Essaie avec d'autres mots, choisis une question ci-dessous, ou écris-nous à": 'I only answer questions about using Kapitaro, and I couldn’t find an answer to this one. Try other words, pick a question below, or email us at',
+    "Bonjour 👋 Je réponds à tes questions sur l'": 'Hi 👋 I answer your questions about ', 'utilisation de Kapitaro': 'using Kapitaro',
+    ': compte, portefeuille, outils, Premium, application… Choisis une question ou écris la tienne.': '(account, portfolio, tools, Premium, app…). Pick a question or type your own.',
+  });
+
   // ════════════ PRODUITS FRANÇAIS → ÉQUIVALENTS NEUTRES SELON LA RÉGION ════════════
   // (jamais de conseil fiscal : on nomme seulement le type de compte)
   add({
