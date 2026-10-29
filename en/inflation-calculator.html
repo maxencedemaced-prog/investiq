@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261029" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inflation Calculator: what your money will be worth — Kapitaro</title>
+  <meta name="description" content="See how inflation erodes the purchasing power of your savings over time, and what return keeps it intact. Free calculator.">
+  <link rel="canonical" href="https://kapitaro.com/inflation-calculator">
+  <link rel="alternate" hreflang="en" href="https://kapitaro.com/inflation-calculator">
+  <link rel="alternate" hreflang="fr" href="https://kapitaro.fr/calculateur-inflation">
+  <link rel="alternate" hreflang="x-default" href="https://kapitaro.com/inflation-calculator">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://kapitaro.com/inflation-calculator">
+  <meta property="og:title" content="Inflation Calculator: what your money will be worth — Kapitaro">
+  <meta property="og:description" content="See how inflation erodes the purchasing power of your savings over time, and what return keeps it intact. Free calculator.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Inflation Calculator: what your money will be worth — Kapitaro","url":"https://kapitaro.com/inflation-calculator","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"en","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+  <link rel="stylesheet" href="/outils.css?v=20260929b">
+  <style>
+    .cur-switch{display:inline-flex;gap:4px;margin-left:auto}
+    .cur-switch button{border:1px solid var(--border);background:transparent;color:inherit;border-radius:8px;padding:3px 9px;font-weight:700;cursor:pointer}
+    .cur-switch button.on{background:var(--green);border-color:var(--green);color:#fff}
+  </style>
+  <script src="/en/sim-en.js?v=20261029"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="/icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Create a free account</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Inflation calculator</h1>
+      <p>See what your money will really be worth in a few years once rising prices are taken into account — and what it takes to keep up.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Examples">
+            <button type="button" data-preset="10000,2,20,3">10,000, 20 yrs</button>
+            <button type="button" data-preset="1000,3,10,1.5">1,000, 10 yrs</button>
+            <button type="button" data-preset="50000,2,30,5">50,000, 30 yrs</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="s">Amount</label><span class="field-val"><input type="number" id="s-n" min="100" max="10000000" step="100" aria-label="Amount"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="s" min="100" max="100000" step="100" value="10000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="i">Annual inflation (assumption)</label><span class="field-val"><input type="number" id="i-n" min="0" max="20" step="0.1" aria-label="Annual inflation"><span class="unit">%/yr</span></span></div>
+            <input type="range" id="i" min="0" max="10" step="0.1" value="2">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="y">Duration</label><span class="field-val"><input type="number" id="y-n" min="1" max="60" step="1" aria-label="Duration"><span class="unit">years</span></span></div>
+            <input type="range" id="y" min="1" max="50" step="1" value="20">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="r">Return on your savings (assumption)</label><span class="field-val"><input type="number" id="r-n" min="0" max="20" step="0.1" aria-label="Return on savings"><span class="unit">%/yr</span></span></div>
+            <input type="range" id="r" min="0" max="12" step="0.1" value="3">
+          </div>
+        </div>
+        <div>
+          <div class="result-sub" style="margin-top:0">Purchasing power of this amount if kept as cash</div>
+          <div class="result-total" id="out-total">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-need">—</b><span>Amount needed for the same purchasing power</span></div>
+            <div class="kpi gain"><b id="out-real">—</b><span>Real return on your savings</span></div>
+            <div class="kpi"><b id="out-placed">—</b><span>Invested savings, in today’s money</span></div>
+          </div>
+          <svg class="chart" id="chart" viewBox="0 0 520 220" role="img" aria-label="Purchasing power over time"></svg>
+          <div class="legend"><span><i style="background:var(--navy)"></i>Kept with no return</span><span><i style="background:var(--green)"></i>Invested (purchasing power)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>What inflation does to your savings</h2>
+      <p>Inflation is the general rise in prices. With 2% inflation a year, 10,000 kept as cash only buys about what 6,700 buys today after 20 years. The number on your account stays the same; what it can buy shrinks.</p>
+      <h2>Real return</h2>
+      <p>Your real return is roughly your return minus inflation. A savings account paying 3% with 2% inflation grows your purchasing power by about 1% a year. A return below inflation means you lose purchasing power, even if the balance goes up.</p>
+      <section class="faq">
+        <h2>Frequently asked questions</h2>
+        <h3>Which inflation rate should I use?</h3>
+        <p>Central banks in the US, the euro area and the UK target around 2% a year over the long run, but actual inflation can be much higher for a while. Try several assumptions.</p>
+        <h3>Is the return guaranteed?</h3>
+        <p>No. Returns are hypothetical; investments can lose value. This calculator is educational and not investment advice.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Go from simulation to your real portfolio</h2>
+      <p>Track your stocks and ETFs live, set a goal and ask an AI assistant your questions. Free to start.</p>
+      <a href="/?inscription=1" data-cta="bottom">Create my free account</a>
+    </section>
+
+    <section class="others">
+      <h2>Other free tools</h2>
+      <a href="/compound-interest-calculator"><div>Compound interest calculator<span>What your savings become over time</span></div>›</a>
+      <a href="/savings-goal-calculator"><div>Savings goal calculator<span>How much to set aside each month to reach a goal</span></div>›</a>
+      <a href="/dollar-cost-averaging-calculator"><div>Monthly investing calculator<span>Investing the same amount every month: 3 scenarios</span></div>›</a>
+      <a href="/investment-fee-calculator"><div>Investment fee calculator<span>What fees cost you over 10, 20 or 30 years</span></div>›</a>
+      <a href="/inflation-calculator"><div>Inflation calculator<span>What your money will be worth over time</span></div>›</a>
+      <a href="/emergency-fund-calculator"><div>Emergency fund calculator<span>How much to keep aside before investing</span></div>›</a>
+      <a href="/msci-world-etf-returns"><div>MSCI World ETF returns<span>3 scenarios and the effect of fees</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p id="disclaimer">Illustrative, educational calculation based on hypothetical constant assumptions. It is not investment advice. Investing involves risk, including loss of capital.</p>
+    <p>Kapitaro · Maxence De Macedo, sole proprietor (Quorvia), France · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.com</a><br><a href="/legal">Legal notice</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/risks">Risks</a> · <a href="/faq">FAQ</a> · <a href="#" onclick="window.kpAds&&kpAds.optOut&&kpAds.optOut();return false">Do Not Sell or Share My Personal Information</a> · <a href="https://kapitaro.fr/calculateur-inflation" hreflang="fr" lang="fr">Version française</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = KS.fmt, get = KS.get;
+    function update() {
+      var s = get('s'), inf = Math.min(20, get('i')) / 100, y = Math.max(1, Math.min(60, Math.round(get('y')))), r = Math.min(20, get('r')) / 100;
+      var cash = [], placed = [];
+      for (var k = 0; k <= y; k++) { cash.push(s / Math.pow(1 + inf, k)); placed.push(s * Math.pow(1 + r, k) / Math.pow(1 + inf, k)); }
+      var real = ((1 + r) / (1 + inf) - 1) * 100;
+      document.getElementById('out-total').textContent = fmt(cash[y]);
+      document.getElementById('out-sub').textContent = 'in today’s money, in ' + y + ' year' + (y > 1 ? 's' : '') + ' with ' + KS.num(inf * 100) + '% inflation a year';
+      document.getElementById('out-need').textContent = fmt(s * Math.pow(1 + inf, y));
+      document.getElementById('out-real').textContent = (real >= 0 ? '+' : '') + real.toFixed(2) + '%/yr';
+      document.getElementById('out-placed').textContent = fmt(placed[y]);
+      KS.draw([{ v: cash, color: 'var(--navy)' }, { v: placed, color: 'var(--green)' }], y);
+    }
+    KS.bind(['s', 'i', 'y', 'r'], update, 'inflation');
+    update();
+  })();
+  </script>
+</body>
+</html>

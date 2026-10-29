@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261029" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Fund Calculator: how much to keep aside — Kapitaro</title>
+  <meta name="description" content="How many months of expenses should you keep in an emergency fund? Get a range based on your situation and see when you’ll reach it.">
+  <link rel="canonical" href="https://kapitaro.com/emergency-fund-calculator">
+  <link rel="alternate" hreflang="en" href="https://kapitaro.com/emergency-fund-calculator">
+  <link rel="alternate" hreflang="fr" href="https://kapitaro.fr/epargne-de-precaution">
+  <link rel="alternate" hreflang="x-default" href="https://kapitaro.com/emergency-fund-calculator">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://kapitaro.com/emergency-fund-calculator">
+  <meta property="og:title" content="Emergency Fund Calculator: how much to keep aside — Kapitaro">
+  <meta property="og:description" content="How many months of expenses should you keep in an emergency fund? Get a range based on your situation and see when you’ll reach it.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Emergency Fund Calculator: how much to keep aside — Kapitaro","url":"https://kapitaro.com/emergency-fund-calculator","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"en","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+  <link rel="stylesheet" href="/outils.css?v=20260929b">
+  <style>
+    .cur-switch{display:inline-flex;gap:4px;margin-left:auto}
+    .cur-switch button{border:1px solid var(--border);background:transparent;color:inherit;border-radius:8px;padding:3px 9px;font-weight:700;cursor:pointer}
+    .cur-switch button.on{background:var(--green);border-color:var(--green);color:#fff}
+  </style>
+  <script src="/en/sim-en.js?v=20261029"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="/icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Create a free account</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Emergency fund calculator</h1>
+      <p>How much should you keep aside for the unexpected before investing? Get a range based on your situation and see when you’ll get there.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Examples" style="min-height:8px"></div>
+          <div class="field">
+            <div class="field-head"><label for="d">My essential expenses per month</label><span class="field-val"><input type="number" id="d-n" min="0" max="50000" step="50" aria-label="Monthly expenses"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="d" min="300" max="8000" step="50" value="1800">
+          </div>
+          <div class="field">
+            <label for="s" style="display:block;margin-bottom:6px">My situation</label>
+            <select id="s">
+              <option value="3,3,6">Permanent employee or public servant</option>
+              <option value="6,6,9">Fixed-term, temporary or probation</option>
+              <option value="9,6,12">Self-employed, freelancer or business owner</option>
+              <option value="3,3,6">Retired</option>
+              <option value="6,4,9">Student or not working</option>
+            </select>
+          </div>
+          <div class="checks">
+            <label><input type="checkbox" id="kids">I have dependent children</label>
+            <label><input type="checkbox" id="owner">I own my home</label>
+            <label><input type="checkbox" id="single">I’m the only income in my household</label>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="h">I’ve already set aside</label><span class="field-val"><input type="number" id="h-n" min="0" max="1000000" step="100" aria-label="Savings available"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="h" min="0" max="50000" step="100" value="2000">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="m">I can save per month</label><span class="field-val"><input type="number" id="m-n" min="0" max="20000" step="10" aria-label="Monthly savings"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="m" min="0" max="2000" step="10" value="200">
+          </div>
+        </div>
+        <div>
+          <div class="result-sub" style="margin-top:0">Suggested emergency fund</div>
+          <div class="result-total result-big-green" id="out-target">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="progress" aria-hidden="true"><div id="out-bar" style="width:0"></div></div>
+          <div class="range-note" id="out-progress"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-have">—</b><span>Already saved</span></div>
+            <div class="kpi"><b id="out-left">—</b><span>Still to save</span></div>
+            <div class="kpi gain"><b id="out-time">—</b><span>Goal reached in</span></div>
+          </div>
+          <div class="example" id="out-advice" style="margin-top:4px;font-size:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>What is an emergency fund?</h2>
+      <p>It’s money set aside for the unexpected — a job loss, a car repair, a medical bill — kept somewhere safe and available at any time. Having one means you never have to sell investments at a bad moment.</p>
+      <h2>How many months of expenses?</h2>
+      <p>A common rule of thumb is 3 to 6 months of essential expenses, more if your income is irregular, if you’re the only earner or if you have dependents. The calculator suggests a range based on your situation; it is a starting point, not a rule.</p>
+      <h2>Where do people keep it?</h2>
+      <ul>
+        <li><strong>United States</strong>: often a high-yield savings account or money market account (check FDIC or NCUA insurance).</li>
+        <li><strong>European Union</strong>: an easy-access savings account (deposits are protected up to 100,000 per bank under EU deposit guarantee rules).</li>
+        <li><strong>United Kingdom</strong>: an easy-access savings account or Cash ISA (FSCS protection up to the current limit).</li>
+      </ul>
+      <section class="faq">
+        <h2>Frequently asked questions</h2>
+        <h3>Should I invest before my emergency fund is ready?</h3>
+        <p>Many people build the cushion first, then invest what they won’t need for several years. Your situation may differ — this is general information, not personal advice.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Go from simulation to your real portfolio</h2>
+      <p>Track your stocks and ETFs live, set a goal and ask an AI assistant your questions. Free to start.</p>
+      <a href="/?inscription=1" data-cta="bottom">Create my free account</a>
+    </section>
+
+    <section class="others">
+      <h2>Other free tools</h2>
+      <a href="/compound-interest-calculator"><div>Compound interest calculator<span>What your savings become over time</span></div>›</a>
+      <a href="/savings-goal-calculator"><div>Savings goal calculator<span>How much to set aside each month to reach a goal</span></div>›</a>
+      <a href="/dollar-cost-averaging-calculator"><div>Monthly investing calculator<span>Investing the same amount every month: 3 scenarios</span></div>›</a>
+      <a href="/investment-fee-calculator"><div>Investment fee calculator<span>What fees cost you over 10, 20 or 30 years</span></div>›</a>
+      <a href="/inflation-calculator"><div>Inflation calculator<span>What your money will be worth over time</span></div>›</a>
+      <a href="/emergency-fund-calculator"><div>Emergency fund calculator<span>How much to keep aside before investing</span></div>›</a>
+      <a href="/msci-world-etf-returns"><div>MSCI World ETF returns<span>3 scenarios and the effect of fees</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p id="disclaimer">Illustrative, educational calculation based on hypothetical constant assumptions. It is not investment advice. Investing involves risk, including loss of capital.</p>
+    <p>Kapitaro · Maxence De Macedo, sole proprietor (Quorvia), France · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.com</a><br><a href="/legal">Legal notice</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/risks">Risks</a> · <a href="/faq">FAQ</a> · <a href="#" onclick="window.kpAds&&kpAds.optOut&&kpAds.optOut();return false">Do Not Sell or Share My Personal Information</a> · <a href="https://kapitaro.fr/epargne-de-precaution" hreflang="fr" lang="fr">Version française</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = KS.fmt, get = KS.get;
+    var plural = function (n, w) { return n + ' ' + w + (n > 1 ? 's' : ''); };
+    var duration = function (months) {
+      if (months <= 0) return 'Already reached';
+      if (months < 12) return plural(months, 'month');
+      var y = Math.floor(months / 12), mo = months % 12;
+      return plural(y, 'year') + (mo ? ' ' + plural(mo, 'month') : '');
+    };
+    function update() {
+      var d = get('d'), have = get('h'), m = get('m');
+      var sit = document.getElementById('s').value.split(',').map(Number);
+      var extra = (document.getElementById('kids').checked ? 1 : 0) + (document.getElementById('owner').checked ? 1 : 0) + (document.getElementById('single').checked ? 1 : 0);
+      var months = Math.min(12, sit[0] + extra), lo = Math.min(12, sit[1] + extra), hi = Math.min(12, sit[2] + extra);
+      var target = d * months, left = Math.max(0, target - have);
+      var pct = target > 0 ? Math.min(100, have / target * 100) : 0;
+      var toGo = left <= 0 ? 0 : (m > 0 ? Math.ceil(left / m) : Infinity);
+      document.getElementById('out-target').textContent = fmt(target);
+      document.getElementById('out-sub').textContent = months + ' months of expenses' + (lo !== hi ? ' (suggested range: ' + fmt(d * lo) + ' to ' + fmt(d * hi) + ')' : '');
+      document.getElementById('out-bar').style.width = pct.toFixed(1) + '%';
+      document.getElementById('out-progress').textContent = Math.round(pct) + '% already in place';
+      document.getElementById('out-have').textContent = fmt(have);
+      document.getElementById('out-left').textContent = fmt(left);
+      document.getElementById('out-time').textContent = toGo === Infinity ? '—' : duration(toGo);
+      var adv = document.getElementById('out-advice');
+      if (left <= 0) adv.innerHTML = '<strong>Your safety cushion is in place.</strong> Many people keep it in an easy-access account; money you won’t need for several years can then be considered for long-term goals.';
+      else if (m <= 0) adv.innerHTML = 'Enter how much you can set aside each month to see when your emergency fund will be ready. Even 20 or 50 a month makes a difference.';
+      else adv.innerHTML = 'Setting aside <strong>' + fmt(m) + ' each month</strong>, your emergency fund would be ready in <strong>' + duration(toGo) + '</strong>. An automatic transfer on payday helps keep the pace.';
+    }
+    KS.bind(['d', 'h', 'm'], update, 'emergency-fund');
+    ['s', 'kids', 'owner', 'single'].forEach(function (id) { document.getElementById(id).addEventListener('change', update); });
+    update();
+  })();
+  </script>
+</body>
+</html>

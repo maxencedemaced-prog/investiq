@@ -985,7 +985,7 @@
   var mo = new MutationObserver(function (muts) {
     for (var i = 0; i < muts.length; i++) {
       var m = muts[i];
-      if (m.type === 'childList') { for (var j = 0; j < m.addedNodes.length; j++) walk(m.addedNodes[j]); }
+      if (m.type === 'childList') { for (var j = 0; j < m.addedNodes.length; j++) { walk(m.addedNodes[j]); if (m.addedNodes[j].nodeType === 1 && document.readyState !== 'loading') K.fixLinks && K.fixLinks(m.addedNodes[j]); } }
       else if (m.type === 'characterData') { if (!skipped(m.target.parentNode)) doText(m.target); }
       else if (m.type === 'attributes' && !skipped(m.target)) doEl(m.target);
     }
@@ -1082,5 +1082,26 @@
     }
     var lb = document.querySelectorAll('[data-lang-opt]');
     for (var i = 0; i < lb.length; i++) lb[i].classList.toggle('on', lb[i].getAttribute('data-lang-opt') === 'en');
+    fixLinks(document);
   }
+
+  // Liens vers les pages publiques françaises → pages anglaises ; le blog (en français) est masqué en anglais
+  var EN_PAGES = {
+    '/simulateur-interets-composes': '/compound-interest-calculator', '/calculateur-objectif-epargne': '/savings-goal-calculator',
+    '/calculateur-frais-placement': '/investment-fee-calculator', '/calculateur-inflation': '/inflation-calculator',
+    '/epargne-de-precaution': '/emergency-fund-calculator', '/simulateur-investissement-programme': '/dollar-cost-averaging-calculator',
+    '/rendement-etf-msci-world': '/msci-world-etf-returns', '/faq': '/faq', '/cgu': '/terms', '/confidentialite': '/privacy',
+    '/risques': '/risks', '/mentions-legales': '/legal',
+  };
+  var ON_COM = location.hostname.indexOf('kapitaro.com') >= 0;
+  function fixLinks(root) {
+    var as = root.querySelectorAll ? Array.prototype.slice.call(root.querySelectorAll('a[href]')) : [];
+    if (root.tagName === 'A' && root.getAttribute('href')) as.push(root);
+    for (var i = 0; i < as.length; i++) {
+      var a = as[i], h = a.getAttribute('href');
+      if (h === '/blog' || h.indexOf('/blog/') === 0) { a.style.display = 'none'; continue; }
+      if (EN_PAGES[h]) a.setAttribute('href', (ON_COM ? '' : '/en') + EN_PAGES[h]);
+    }
+  }
+  K.fixLinks = fixLinks;
 })();
