@@ -748,8 +748,27 @@
       if (typeof openLegalDoc === 'function') openLegalDoc(a.getAttribute('data-legal'));
     });
   }
+  // Balises SEO de la page d'accueil servie sur kapitaro.com (index.html est commun aux deux domaines)
+  function englishHead() {
+    var DESC = 'Track your stocks and ETFs in real time, simulate your savings and ask an AI assistant your questions. Free plan, no credit card.';
+    var set = function (sel, attr, val) { var e = document.head.querySelector(sel); if (e) e.setAttribute(attr, val); };
+    if (location.pathname !== '/' && location.pathname !== '/index.html') return;
+    set('link[rel="canonical"]', 'href', 'https://kapitaro.com/');
+    set('meta[name="description"]', 'content', DESC);
+    set('meta[property="og:locale"]', 'content', 'en_US');
+    set('meta[property="og:url"]', 'content', 'https://kapitaro.com/');
+    set('meta[property="og:title"]', 'content', 'Kapitaro — Portfolio tracker & AI assistant');
+    set('meta[property="og:description"]', 'content', DESC);
+    set('meta[name="twitter:title"]', 'content', 'Kapitaro — Portfolio tracker & AI assistant');
+    set('meta[name="twitter:description"]', 'content', DESC);
+    // Données structurées en français (FAQ, prix en €) : retirées de la version anglaise plutôt que laissées fausses
+    var ld = document.head.querySelectorAll('script[type="application/ld+json"]');
+    for (var i = 0; i < ld.length; i++) if (/FAQPage|"price"/.test(ld[i].textContent)) ld[i].remove();
+  }
+
   function injectEnglishUI() {
     var p = window.kpI18n;
+    try { englishHead(); } catch (e) {}
     // 1. Inscription : pays + case de consentement (Conditions, Confidentialité, 18 ans et plus)
     var su = document.getElementById('auth-signup');
     var submit = su && su.querySelector('.kh-submit');
