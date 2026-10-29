@@ -38,8 +38,59 @@ async function loadRecipients() {
   }
   const users = [...byUser.values()];
   users.forEach(u => { u.moves = u.devices.some(d => d.moves !== false); });   // au moins un appareil veut les alertes de marché
+  // Version anglaise : langue du compte (user_metadata.lang, enregistrée à l'inscription sur kapitaro.com)
+  try {
+    const want = new Set(ids);
+    for (let page = 1; page <= 10 && want.size; page++) {
+      const { data } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+      const list = (data && data.users) || [];
+      for (const au of list) if (want.has(au.id)) { const u = byUser.get(au.id); u.lang = au.user_metadata && au.user_metadata.lang === 'en' ? 'en' : 'fr'; want.delete(au.id); }
+      if (list.length < 1000) break;
+    }
+  } catch (e) { console.error('[push-send] langue des comptes :', e.message); }
   return users;
 }
+
+// ── Version anglaise des notifications (comptes créés sur kapitaro.com). En français : rien ne change. ──
+const ECO_EN = {
+  'Décision de taux de la Fed': ['Fed interest rate decision', 'The US central bank announces its rates: markets can move sharply.'],
+  'Décision de taux de la BCE': ['ECB interest rate decision', 'The European Central Bank announces its rates: direct impact on European markets.'],
+  'Inflation américaine (CPI)': ['US inflation (CPI)', 'A closely watched figure: it weighs on Fed decisions and on markets.'],
+  'Emploi américain (NFP)': ['US jobs report (NFP)', 'US job creation and unemployment: often a big market mover.'],
+  'Croissance du PIB américain (1re estimation)': ['US GDP growth (advance estimate)', 'First estimate of US growth for the quarter.'],
+  'Inflation PCE américaine': ['US PCE inflation', 'The Fed’s preferred inflation gauge.'],
+  'Inflation de la zone euro (estimation rapide)': ['Euro area inflation (flash estimate)', 'First estimate of the month’s euro area inflation, watched by the ECB.'],
+};
+function toEnglish(text) {
+  let s = String(text || '');
+  for (const [fr, [t, d]] of Object.entries(ECO_EN)) s = s.split(fr).join(t).split(ECO_EN_DESC_FR[fr] || '\u0000').join(d);
+  const rules = [
+    [/☀️ Ton briefing Kapitaro/g, '☀️ Your Kapitaro briefing'],
+    [/ à la dernière séance/g, ' in the last session'], [/ depuis l'achat/g, ' since purchase'],
+    [/(\d+) positions? à plus de 10 % sous ton prix d'achat/g, (m, n) => `${n} holding${n > 1 ? 's' : ''} more than 10% below your purchase price`],
+    [/(\d+) positions?\b/g, (m, n) => `${n} holding${n > 1 ? 's' : ''}`],
+    [/📅 Aujourd'hui : /g, '📅 Today: '], [/ à (\d\d?)h(\d\d)/g, ' at $1:$2 (Paris time)'], [/ à (\d\d?:\d\d)/g, ' at $1 (Paris time)'],
+    [/^⏰ (\d\d?)h(\d\d) : /, '⏰ $1:$2 Paris time: '], [/^⏰ (\d\d?:\d\d) : /, '⏰ $1 Paris time: '], [/\nAussi : /g, '\nAlso: '],
+    [/Forte hausse sur la séance, /g, 'Strong rise in the session, '], [/Forte baisse sur la séance, /g, 'Strong drop in the session, '],
+    [/dans ton portefeuille/g, 'in your portfolio'], [/dans ta watchlist/g, 'in your watchlist'], [/sur les matières premières/g, 'in commodities'], [/sur le marché/g, 'in the market'],
+    [/\((portefeuille|watchlist)\)/g, (m, w) => w === 'portefeuille' ? '(portfolio)' : '(watchlist)'],
+    [/📊 ça bouge sur les marchés/g, '📊 Markets are moving'],
+    [/🔔 Alerte prix · /g, '🔔 Price alert · '], [/ est à ([\d,.\s]+) € \(ton seuil : ([\d,.\s]+) €\)/g, ' is at €$1 (your threshold: €$2)'],
+    [/ · \+(\d+) autres? alertes?/g, (m, n) => ` · +${n} more alert${n > 1 ? 's' : ''}`],
+    [/(\d) ?k€/g, '$1k €'], [/(\d),(\d)/g, '$1.$2'], [/(\d) |(\d) (?=\d{3}\b)/g, (m, a, b) => (a || b) + ','],
+  ];
+  for (const [re, rep] of rules) s = s.replace(re, rep);
+  return s;
+}
+const ECO_EN_DESC_FR = {
+  'Décision de taux de la Fed': 'La banque centrale américaine annonce ses taux : les marchés peuvent bouger fortement.',
+  'Décision de taux de la BCE': 'La Banque centrale européenne annonce ses taux : impact direct sur les marchés européens.',
+  'Inflation américaine (CPI)': 'Chiffre très suivi : il pèse sur les décisions de la Fed et sur les marchés.',
+  'Emploi américain (NFP)': 'Créations d\'emplois et chômage aux États-Unis : souvent un gros mouvement de marché.',
+  'Croissance du PIB américain (1re estimation)': 'Première mesure de la croissance du trimestre aux États-Unis.',
+  'Inflation PCE américaine': 'L\'indicateur d\'inflation préféré de la Fed.',
+  'Inflation de la zone euro (estimation rapide)': 'Première mesure de l\'inflation du mois dans la zone euro, suivie par la BCE.',
+};
 
 async function loadPositions(userIds, alertsOnly) {
   const rows = [];
@@ -55,6 +106,7 @@ async function loadPositions(userIds, alertsOnly) {
 
 // Envoie à tous les appareils de l'utilisateur ; supprime ceux qui n'existent plus. Renvoie le nombre d'appareils joints.
 async function notifyUser(user, payload, deviceFilter, urgency = 'normal') {
+  if (user.lang === 'en') payload = { ...payload, title: toEnglish(payload.title), body: toEnglish(payload.body) };   // version anglaise
   let ok = 0;
   for (const d of user.devices) {
     if (deviceFilter && !deviceFilter(d)) continue;
