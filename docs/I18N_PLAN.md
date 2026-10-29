@@ -118,6 +118,6 @@ Diagnostic : ajouter `?lang=en&i18n_debug=1` à l'adresse, puis `Object.keys(_kp
 4. **Représentants** : représentant UE non nécessaire (éditeur établi en France) ; représentant UK probablement nécessaire si tu vises le Royaume-Uni ; agent DMCA aux US.
 5. **Rétractation UE** : paiement au prorata (rédigé) ou case de renonciation expresse au moment du paiement ?
 6. **E-mails Supabase** : coller les modèles bilingues de `docs/supabase-email-templates/` (ou garder le français pour tous).
-8. **Démo en anglais** : faut-il un portefeuille et un relevé d’exemple anglais/américain ?
-9. **Blog anglais** : en créer un (articles écrits en anglais) ou rester sans blog sur kapitaro.com ?
-7. **Détection automatique** sur les hôtes de test : un navigateur non francophone voit l'anglais par défaut ; sur kapitaro.fr c'est toujours le français.
+7. **Démo en anglais** : faut-il un portefeuille et un relevé d’exemple anglais/américain ?
+8. **Blog anglais** : en créer un (articles écrits en anglais) ou rester sans blog sur kapitaro.com ?
+9. **Détection automatique** sur les hôtes de test : un navigateur non francophone voit l'anglais par défaut ; sur kapitaro.fr c'est toujours le français.
