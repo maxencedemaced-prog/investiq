@@ -38,7 +38,7 @@
 5. **Variables Vercel** : rien d'obligatoire. `APP_URL` reste `https://kapitaro.fr` ; le retour sur kapitaro.com est déduit automatiquement de l'origine de la demande.
 6. **Publicité** : si tu fais de la pub en anglais, déclarer kapitaro.com dans Google Ads / Meta (le bandeau cookies anglais respecte déjà le signal GPC et a le lien « Do Not Sell or Share »).
 7. Passer `enDomainLive: true` dans `i18n.js` quand kapitaro.com est en ligne (le sélecteur de langue apparaîtra alors sur kapitaro.fr et renverra vers kapitaro.com).
-8. Après relecture juridique : retirer `noindex` des pages `en/*.html` et les ajouter à `sitemap-en.xml`.
+8. Après relecture juridique : retirer `noindex` des pages juridiques `en/terms|privacy|cookies|risks|legal.html` et les ajouter à `sitemap-en.xml`.
 9. **Faire relire tous les textes juridiques anglais par un avocat** (section 5).
 
 ## 4. Ce qui est fait (branche `i18n-en`)
@@ -56,8 +56,15 @@
 | Paiement : retour sur kapitaro.com et page Stripe en anglais quand le paiement part de kapitaro.com | ✅ (`api/create-checkout.js`, `api/create-portal.js`) ; kapitaro.com ajouté aux origines autorisées des API |
 | Bulle d’aide en anglais (`faq-data-en.js`, mots-clés anglais, refus de conseil) | ✅ |
 | E-mails bienvenue / relances en anglais | ✅ ; la lettre du dimanche n'est pas envoyée aux comptes anglais (elle est en français) |
-| SEO : simulateur d'intérêts composés en anglais (`/compound-interest-calculator`, $/€/£), hreflang/canonical dans les deux sens (accueil, simulateur, pages juridiques), `sitemap-en.xml`, `robots.txt` | ✅ ; adresses françaises inchangées |
-| Contrôles : syntaxe de tous les fichiers JS modifiés, chargement de la page en anglais et en français sans erreur, français identique (titre, textes, prix « 9,99 € », nombres « 1 234,50 », lexique) | ✅ |
+| SEO : les 7 simulateurs publics en anglais à la racine de kapitaro.com (`/compound-interest-calculator`, `/savings-goal-calculator`, `/investment-fee-calculator`, `/inflation-calculator`, `/emergency-fund-calculator`, `/dollar-cost-averaging-calculator`, `/msci-world-etf-returns`), avec choix $/€/£ et avertissement selon la devise ; hreflang/canonical dans les deux sens ; `sitemap-en.xml` ; `robots.txt` | ✅ ; adresses françaises inchangées (seules 2 balises hreflang ajoutées dans l'en-tête des pages françaises) |
+| 2e session — fenêtres moins fréquentes : offres Premium, compteur IA, bilan patrimonial (questionnaire, résultats, **PDF** traduit au moment de l'écriture), plan du mois, import de relevé, verrouillage (`applock.js`), installation et notifications (`push.js`), dépenses (`depenses.js`), calculateurs (`calc.js`), nouveautés, messages d'erreur des API | ✅ (environ 1 300 textes et 70 formules au total) |
+| Notifications push (briefing, alertes de prix, gros mouvements, annonces économiques, notification de test) en anglais pour les comptes anglais | ✅ (`api/push-send.js`, `api/push-subscribe.js`) ; heures indiquées « Paris time » |
+| Page FAQ publique anglaise (`/faq` sur kapitaro.com) ; bulle d'aide et bandeau cookies anglais sur toutes les pages anglaises | ✅ |
+| Page de désinscription des e-mails en anglais | ✅ (`api/unsubscribe.js`, lien `l=en` dans les e-mails anglais) |
+| Consignes IA : produits français (PEA, Livret A, assurance vie, PER, CTO) traités comme comptes génériques et nommés selon la région ; jamais de règle fiscale française ni de conseil fiscal | ✅ (`api/claude.js`) ; champs de patrimoine du bilan renommés selon la région |
+| E-mails Supabase (inscription, mot de passe, lien magique, changement d'adresse) | ✅ modèles **bilingues** prêts à coller dans `docs/supabase-email-templates/` (mode d'emploi : `LISEZMOI.md`) — rien n'a été changé dans Supabase |
+| Blog | Laissé en français : lien masqué sur la version anglaise ; `kapitaro.com/blog` renvoie vers `kapitaro.fr/blog`. Je n'ai pas traduit automatiquement les articles (exactitude non garantie) |
+| Contrôles finaux : syntaxe des 28 fichiers JS modifiés ; page anglaise parcourue onglet par onglet en mode démo (il ne reste que les données d'exemple françaises : libellés bancaires du relevé fictif) ; pages françaises identiques (titre, textes, « 9,99 € », « 1 234,50 », « 47,3 k€ », lexique avec PEA, CGU françaises) ; pages françaises modifiées uniquement par 2 balises hreflang | ✅ |
 
 ## 5. Textes juridiques à faire relire (brouillons)
 
@@ -85,22 +92,22 @@ Chaque page porte en haut : « **Draft – to be reviewed by a qualified lawyer 
 | Bandeau cookies | inchangé | anglais + GPC + Do Not Sell | anglais + GPC | anglais + GPC | anglais + GPC |
 | Simulateur public anglais | — | $ + avertissement US | € + avertissement UE | £ + avertissement UE/UK | € |
 
-## 7. Ce qui reste à traduire / adapter (non fait)
+| Champs de patrimoine du bilan (Livret A, PEA, assurance vie, CTO) | inchangés | Savings / IRA-401(k) / annuities / taxable brokerage | savings / tax-advantaged account / pension savings / taxable account | Cash ISA / Stocks & Shares ISA / pension / GIA | génériques |
+| Bilan : estimation de retraite | info-retraite.fr | Social Security (ssa.gov) | relevé national de retraite | State Pension (GOV.UK) | relevé national |
+| Notifications push et e-mails | français | anglais | anglais | anglais | anglais |
 
-L'outil de diagnostic (`&i18n_debug=1`) liste ce qui reste sur chaque page. Zones connues :
+## 7. Ce qui reste (non fait) et textes non traduits
 
-- **app.js — fenêtres moins fréquentes** : tutoriel détaillé (étapes avancées), fenêtre des offres Premium, bilan patrimonial (questionnaire et PDF), plan mensuel, import de relevé (messages détaillés), historique IA, matières premières, parrainage, verrouillage de l'app (`applock.js`), notes de version (« Nouveautés »). Le dictionnaire couvre les textes déjà rencontrés ; les autres apparaissent en français jusqu'à la prochaine passe.
-- **Consignes envoyées à l'IA par l'app** (écrites en français dans `app.js`) : la réponse est bien en anglais grâce au cadre serveur, mais certaines consignes citent des produits français (PEA, Livret A) ; à neutraliser par région dans une 2e passe.
-- **Formats** : les montants de l'app restent en euros (les portefeuilles sont en euros) ; le séparateur décimal suit l'anglais (`1,234.50 €`) seulement dans `fmt`/`fmtI`/`fmtK`. Les ~80 autres `toLocaleString('fr-FR')` d'`app.js` restent au format français. Conversion du portefeuille en dollars : non faite (nécessite un taux de change).
-- **Fonctions propres à la France à masquer hors FR** : mention « Créé en France » (gardée, c'est un fait), plateformes françaises dans les listes (Boursorama, Fortuneo…), import de relevés de courtiers français, fiscalité dans le bilan, médiateur — à revoir écran par écran.
-- **depenses.js / bilan-extra.js** : catégories traduites en partie ; règles de détection des libellés bancaires françaises (PRLV, CB…) inchangées.
-- Page publique **/faq** : en français uniquement (la bulle d’aide, elle, est traduite).
-- **Notifications push** (`push.js`, `api/push-send.js`, `api/_push.js`) : briefing et alertes en français ; à générer selon `user_metadata.lang`.
-- **Blog** (`api/blog.js`) et **lettre du dimanche** : français uniquement ; décision éditoriale (blog anglais séparé ?).
-- **Autres simulateurs publics** : objectif d'épargne, ETF MSCI World, épargne de précaution, investissement programmé, frais, inflation ; page `/commencer` et `/faq` — seul le simulateur d'intérêts composés est fait.
-- **Page de désinscription** (`api/unsubscribe.js`) et **e-mails Supabase** (confirmation, mot de passe) : français.
-- **Vidéos du tutoriel** (`tuto/`, `video/`) et images : françaises.
-- **Données structurées** (FAQ JSON-LD) de l'accueil anglais : retirées en anglais plutôt que laissées fausses ; à recréer en anglais.
+Diagnostic : ajouter `?lang=en&i18n_debug=1` à l'adresse, puis `Object.keys(_kpMissing)` dans la console du navigateur.
+
+- **Données d'exemple du mode démo** : le relevé bancaire fictif (libellés « CARTE … RESTAURANT LE COMPTOIR », « PRLV SEPA … ») et le portefeuille d'exemple (LVMH, Air Liquide) restent français — ce sont des données, pas des textes d'interface. À remplacer par un jeu d'exemple américain/européen si tu veux.
+- **Textes affichés rarement que je n'ai pas pu déclencher** (comptes Premium réels, erreurs serveur rares) : ils sont presque tous dans le dictionnaire grâce à l'extraction du code, mais certains fragments construits avec des nombres peuvent rester en français. L'outil de diagnostic les liste.
+- **Formats de nombres** : `fmt`, `fmtI`, `fmtK` suivent l'anglais ; les autres `toLocaleString('fr-FR')` d'`app.js` (environ 80, souvent dans des textes destinés à l'IA ou des petits libellés) restent au format français. Les montants restent en euros (devise de référence de l'app) ; pas de conversion du portefeuille en dollars.
+- **Fonctions propres à la France** encore visibles : listes de plateformes (Boursorama, Fortuneo…), aide à l'import pour Trade Republic et XTB, détection des libellés bancaires français dans « Mes dépenses », capacité d'emprunt « règles habituelles des banques » (raisonnement français : 35 %, frais de notaire → traduits « closing costs »).
+- **Blog et lettre du dimanche** : français uniquement (voir plus haut).
+- **Vidéos du tutoriel** (`tuto/`, `video/`) et images avec du texte : françaises.
+- **Page 404** : Vercel affiche sa page par défaut (en anglais) sur les deux domaines ; je n'ai pas ajouté de page 404 pour ne rien changer côté français.
+- **Données structurées FAQ** de l'accueil anglais : retirées en anglais ; la page `/faq` anglaise a ses propres données structurées.
 - Exclus volontairement : Studio et tableau de bord admin (usage interne).
 
 ## 8. Décisions qui restent à prendre
@@ -110,5 +117,7 @@ L'outil de diagnostic (`&i18n_debug=1`) liste ce qui reste sur chaque page. Zone
 3. **US** : faire valider par un avocat que les fonctions personnalisées restent dans l'exclusion « éditeur », ou les limiter pour les utilisateurs américains ; loi applicable / arbitrage.
 4. **Représentants** : représentant UE non nécessaire (éditeur établi en France) ; représentant UK probablement nécessaire si tu vises le Royaume-Uni ; agent DMCA aux US.
 5. **Rétractation UE** : paiement au prorata (rédigé) ou case de renonciation expresse au moment du paiement ?
-6. **E-mails Supabase** en anglais : modèle bilingue ou envoi personnalisé via Resend ?
+6. **E-mails Supabase** : coller les modèles bilingues de `docs/supabase-email-templates/` (ou garder le français pour tous).
+8. **Démo en anglais** : faut-il un portefeuille et un relevé d’exemple anglais/américain ?
+9. **Blog anglais** : en créer un (articles écrits en anglais) ou rester sans blog sur kapitaro.com ?
 7. **Détection automatique** sur les hôtes de test : un navigateur non francophone voit l'anglais par défaut ; sur kapitaro.fr c'est toujours le français.
