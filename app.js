@@ -3789,6 +3789,8 @@ let transactions = [];
 
 async function loadTransactions() {
   if (isDemo) {
+    const _kpDemo = kpDemoSet();
+    if (_kpDemo) { transactions = _kpDemo.transactions; return; }
     transactions = [
       {id:'t1',position_name:'IWDA.L',type:'achat',qty:10,price:87.5,total:875,date:new Date(Date.now()-86400000*30).toISOString(),notes:'Premier achat ETF monde'},
       {id:'t2',position_name:'LVMH',type:'achat',qty:2,price:730,total:1460,date:new Date(Date.now()-86400000*14).toISOString(),notes:''},
@@ -6344,6 +6346,8 @@ async function initApp(user) {
   } catch(e) { console.error('initApp error:', e); alert('Erreur de chargement: ' + e.message); }
 }
 
+// Version anglaise : données d'exemple selon la région (KP_EN.demo, i18n-en.js). En français : null → démo française inchangée.
+function kpDemoSet() { try { return (window.KP_EN && typeof KP_EN.demo === 'function') ? KP_EN.demo() : null; } catch (e) { return null; } }
 function enterDemo() {
   isDemo = true;
   claimCaches('demo');
@@ -6354,7 +6358,8 @@ function enterDemo() {
   openNotifPanelByDefault();
   document.getElementById('topbar-email').textContent = 'Demo';
   document.getElementById('topbar-avatar').textContent = 'D';
-  positions = [
+  const _kpDemo = kpDemoSet();
+  positions = _kpDemo ? _kpDemo.positions.map((p, i) => ({ ...p, id: 'd' + (i + 1) })) : [
     {id:'d1',name:'IWDA.L',qty:15,pru:87.5,price:94.2,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:80},
     {id:'d2',name:'VWCE.DE',qty:8,pru:110,price:118.5,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:null},
     {id:'d3',name:'LVMH',qty:2,pru:730,price:685,type:'Action',sector:'Luxe',platform:'XTB',alert_price:650},
@@ -10159,7 +10164,8 @@ async function delPosGroup(ids) {
   renderPortfolio(); renderHome();
 }
 async function loadDemo() {
-  const demo=[
+  const _kpDemo = kpDemoSet();
+  const demo=_kpDemo ? _kpDemo.positions : [
     {name:'IWDA.L',qty:15,pru:87.5,price:94.2,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:80},
     {name:'VWCE.DE',qty:8,pru:110,price:118.5,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:null},
     {name:'LVMH',qty:2,pru:730,price:685,type:'Action',sector:'Luxe',platform:'XTB',alert_price:650},
@@ -14768,13 +14774,16 @@ function clearAgentSample() {
 function renderAgentSample() {
   const real = positions;
   _agentSampling = true;
-  positions = AGENT_SAMPLE_POSITIONS.map(p => ({ ...p }));
+  const _kpDemo = kpDemoSet();
+  positions = (_kpDemo ? _kpDemo.agent : AGENT_SAMPLE_POSITIONS).map(p => ({ ...p }));
+  const _kpHeavyPct = _kpDemo ? Math.round(100 * positions.filter(p => p.name === _kpDemo.heavy.name).reduce((a, p) => a + p.qty * p.price, 0) / positions.reduce((a, p) => a + p.qty * p.price, 0)) : 0;
   try { renderAgentDashboard(); } finally { positions = real; _agentSampling = false; }
-  renderDailyBrief(AGENT_SAMPLE_BRIEF);
+  renderDailyBrief(_kpDemo ? _kpDemo.brief(_kpHeavyPct) : AGENT_SAMPLE_BRIEF);
   { const v = document.getElementById('agent-verdict'); if (v) v.innerHTML = ''; }
 
   const alertEl = document.getElementById('agent-smart-alerts');
-  if (alertEl) alertEl.innerHTML = `
+  if (alertEl && _kpDemo) alertEl.innerHTML = _kpDemo.alertHTML(_kpHeavyPct);
+  else if (alertEl) alertEl.innerHTML = `
   <div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.3);border-radius:16px;padding:16px 18px;margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:15px">⚠️</span><span style="font-size:13px;font-weight:900;color:#fbbf24">À surveiller dans ton portefeuille</span></div>
     <div style="font-size:12.5px;color:rgba(255,255,255,0.85);line-height:1.5"><strong style="color:#fff">LVMH</strong> pèse <strong>30%</strong> de ton portefeuille (conseillé : moins de 25%).</div>

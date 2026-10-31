@@ -932,6 +932,24 @@
     [/^(⏳ |⚠️ )?Limite IA atteinte : tes (\d+) analyses offertes sont épuisées et tu as utilisé tes (\d+) analyses gratuites du jour\. Passe à Premium pour un accès illimité\.$/, '$1AI limit reached: your $2 free analyses are used up and you’ve used today’s $3 free analyses. Go Premium for unlimited access.'],
     [/^(⚠️ )?Trop de requêtes\. Patiente une minute\.$/, '$1Too many requests. Please wait a minute.'],
     [/^(⚠️ )?Session invalide ou expirée\. Reconnecte-toi\.$/, '$1Invalid or expired session. Please log in again.'],
+    // Tableau de bord de l'Agent (aperçu Premium visible en mode démo)
+    [/^([+\-−]?[\d.,]+ %) · (\d+)% du portef\.$/, '$1 · $2% of portfolio'],
+    [/^(\d+)\. (Réduire|Renforcer|Surveiller|Conserver) (.+)$/, function (m, n, v, name) { return n + '. ' + ({ 'Réduire': 'Reduce', 'Renforcer': 'Add to', 'Surveiller': 'Watch', 'Conserver': 'Hold' })[v] + ' ' + name; }],
+    [/^Position (\d+)% · perf ([+\-−]?[\d.,]+ %) — (.+)$/, function (m, w, p, r) { return 'Position ' + w + '% · return ' + p + ' — ' + tr(r); }],
+    [/^poids de (\d+)% — au-dessus du seuil de concentration conseillé$/, 'weight of $1% — above the usual concentration guideline'],
+    [/^momentum positif \(([+\-−]?[\d.,]+ %)\) sur position de qualité$/, 'positive momentum ($1) on a solid holding'],
+    [/^moins-value de ([+\-−]?[\d.,]+ %) — analyse recommandée avant tout arbitrage$/, 'loss of $1 — worth reviewing before any change'],
+    [/^Position leader \((\d+)% du portef\., en (gain de \+|perte de )([+\-−]?[\d.,]+ %)\) — (.+)$/, function (m, w, g, p, r) { return 'Largest holding (' + w + '% of portfolio, ' + (/gain/.test(g) ? 'up +' : 'down ') + p + ') — ' + tr(r); }],
+    [/^Agir sur (.+)$/, 'Review $1'],
+    [/^Gérer (.+)$/, 'Manage $1'],
+    [/^Optimise (.+)$/, 'Optimize $1'],
+    [/^Basée sur (\d+) positions analysées$/, 'Based on $1 holdings analyzed'],
+    [/^Fait le (.+) · retrouve-le ici, ou refais-le quand ta situation change\.$/, 'Done on $1 · find it here, or redo it when your situation changes.'],
+    [/^Poids (\d+)%$/, 'Weight $1%'],
+    [/^(.+) · Action · ([\d.,]+) parts?( ·)?$/, '$1 · Stock · $2 shares$3'],
+    [/^([+\-−]?[\d.,]+ %) auj\.$/, '$1 today'],
+    [/^⏳ Premières évaluations dans (\d+) jours — le taux de réussite sera calculé sur les cours réels, sans triche\.$/, '⏳ First evaluations in $1 days — the hit rate will be calculated on real prices, no cheating.'],
+    [/^([$€£]?[\d.,\s ]+k?\s?(?:€|CHF|£|\$|CA\$|A\$|¥)?)\/an$/, '$1/yr'],
   ];
   K.applyData = function () {
     try {
@@ -948,6 +966,150 @@
       if (typeof TAB_HINTS !== 'undefined' && !K._hintsDone) { K._hintsDone = true; for (var h in K.tabHints) if (TAB_HINTS[h]) Object.assign(TAB_HINTS[h], K.tabHints[h]); }
     } catch (e) {}
   };
+
+  add({
+    'Retrouve ton bilan patrimonial ou continue-le avec ces dépenses.': 'Open your financial check-up or continue it with these expenses.',
+    'Santé détail': 'Health details', "✦ Aujourd'hui j'ai trouvé": '✦ Today I found', 'Opportunités': 'Opportunities', 'Alertes & opportunités': 'Alerts & opportunities',
+    '⚠ Risque évalué': '⚠ Risk assessed', '✦ Opportunité': '✦ Opportunity', 'Rééquilibrer — Demander à l\'IA →': 'Rebalance — Ask the AI →',
+    'Conserver — Demander à l\'IA →': 'Hold — Ask the AI →', 'Renforcer ? — Demander à l\'IA →': 'Add more? — Ask the AI →',
+    'Basées sur ton profil et les conditions de marché': 'Based on your profile and market conditions',
+    "Position la plus faible aujourd'hui. Surveille l'évolution avant d'agir.": 'Weakest holding today. Keep an eye on it before doing anything.',
+    '💰 Opportunité principale': '💰 Main opportunity', "Voir l'opportunité →": 'See the opportunity →',
+    'concentration élevée — un rééquilibrage réduirait ton risque': 'high concentration — rebalancing would reduce your risk',
+    'momentum positif — renforcement possible selon ton profil': 'positive momentum — adding may fit your profile',
+    'moins-value importante — analyse avant tout arbitrage': 'significant loss — review before any change',
+    'position stable — surveille les prochains mouvements': 'stable holding — keep an eye on upcoming moves',
+    "position équilibrée — pas d'action requise": 'balanced holding — no action needed',
+    "Ces chiffres sont un exemple, rien n'est calculé sur tes données. Avec Premium, les conseils IA (✦) portent sur ton vrai portefeuille.": 'These figures are an example: nothing is calculated from your data. With Premium, AI insights (✦) are based on your real portfolio.',
+    'calculés sur tes vraies positions (concentration, secteurs, écarts)': 'calculated on your real holdings (concentration, sectors, gaps)',
+    'Conseils IA chiffrés (✦)': 'Quantified AI insights (✦)', ': alléger, renforcer, avec un ETF de remplacement': ': trim, add, with an alternative ETF',
+    'Brief du jour': 'Daily brief', ": ce qui a bougé dans ton portefeuille et pourquoi": ': what moved in your portfolio and why',
+    'Priorités et recommandations': 'Priorities and recommendations', 'mises à jour à chaque visite': 'updated on every visit',
+    ", et l'Agent qui connaît ton bilan et tes objectifs": ', and the Agent that knows your check-up and goals',
+    'Technologie': 'Technology', 'Obligations': 'Bonds', 'Consommation de base': 'Consumer staples',
+    // Mes dépenses : catégories et niveaux (aperçu du relevé d'exemple)
+    'Logement': 'Housing', '🏠 Logement': '🏠 Housing', 'Assurances & mutuelle': 'Insurance', '🛡️ Assurances & mutuelle': '🛡️ Insurance',
+    'Courses alimentaires': 'Groceries', '🛒 Courses alimentaires': '🛒 Groceries', 'Musique': 'Music', '🎧 Musique': '🎧 Music',
+    "Jeux d'argent & paris": 'Gambling & betting', "🎲 Jeux d'argent & paris": '🎲 Gambling & betting', 'Tabac': 'Tobacco', '🚬 Tabac': '🚬 Tobacco',
+    'Sorties & loisirs': 'Going out & leisure', '🎟️ Sorties & loisirs': '🎟️ Going out & leisure', 'Virements & retraits': 'Transfers & withdrawals', '↔️ Virements & retraits': '↔️ Transfers & withdrawals',
+    'Restaurants & cafés': 'Restaurants & cafés', 'Essentiel': 'Essential', 'Confort': 'Comfort', 'Non vital': 'Non-essential', 'À classer': 'To sort',
+    '🔄 Refaire': '🔄 Redo', 'Non reconnus': 'Unrecognized', 'Factures & assurances': 'Bills & insurance', 'Courses': 'Groceries',
+    'Abonnements': 'Subscriptions', "Jeux d'argent": 'Gambling', 'Shopping & achats': 'Shopping', 'Je garde': 'Keep', 'Je supprime': 'Cut it',
+    'Je garde tel quel': 'Keep as is', '📄 Reprendre mon bilan': '📄 Resume my check-up', 'évaluation auto à J+7': 'auto-evaluated after 7 days',
+    'Ce que Premium ajoute': 'What Premium adds', 'Score et alertes': 'Score and alerts', '+ Ajouter mes positions': '+ Add my holdings',
+    'Bilan rapide': 'Quick summary', 'P&L global': 'Overall P&L', 'Moyen ●': 'Average ●', 'Pourquoi ce score ?': 'Why this score?', 'Depuis hier': 'Since yesterday',
+  });
+
+  // ════════════ MODE DÉMO : DONNÉES D'EXEMPLE ANGLAISES SELON LA RÉGION ════════════
+  // Lu par app.js (enterDemo, loadDemo, transactions, aperçu de l'Agent), depenses.js (relevé fictif) et tuto/record.mjs.
+  // Données FICTIVES. Les cours sont remplacés par les cours du jour au chargement, comme la démo française
+  // (même unité que /api/prices : cours de cotation). Les montants du relevé sont en euros (devise de stockage de l'app),
+  // convertis à l'affichage par currency.js. Jamais de crypto ici (cours seulement, ajoutés à part pour les vidéos).
+  var DEMO = {
+    US: {
+      positions: [
+        { name: 'VOO', qty: 5, pru: 480, price: 560, type: 'ETF', sector: 'États-Unis', platform: 'Roth IRA', alert_price: 500 },
+        { name: 'VTI', qty: 8, pru: 255, price: 300, type: 'ETF', sector: 'États-Unis', platform: 'Brokerage account', alert_price: null },
+        { name: 'AAPL', qty: 10, pru: 185, price: 230, type: 'Action', sector: 'Technologie', platform: 'Brokerage account', alert_price: 200 },
+        { name: 'MSFT', qty: 3, pru: 400, price: 450, type: 'Action', sector: 'Technologie', platform: 'Brokerage account', alert_price: null },
+        { name: 'BND', qty: 15, pru: 74, price: 73, type: 'ETF', sector: 'Obligations', platform: 'Roth IRA', alert_price: null },
+      ],
+      agent: [['VOO', 2, 560, 0.5, 'ETF', 'États-Unis'], ['VTI', 4, 300, 0.4, 'ETF', 'États-Unis'], ['AAPL', 7, 230, -1.1, 'Action', 'Technologie'], ['BND', 12, 73, 0.1, 'ETF', 'Obligations']],
+      heavy: { name: 'AAPL', label: 'Apple', qty: 20 },
+      alt: { name: 'Vanguard Total Stock Market ETF', t: 'VTI', n: '3,500' },
+      tx: [['VOO', 3, 470, 30, 'First ETF purchase'], ['AAPL', 10, 185, 14, ''], ['VOO', 2, 495, 7, 'Monthly contribution']],
+      landing: ['AP', 'Apple', 'Stock · Tech'],
+      bank: [
+        [1, 'ACH DEBIT RENT OAKWOOD APARTMENTS', 1450], [2, 'NETFLIX.COM', 14.3], [2, 'DISNEY PLUS', 9.2], [3, 'PLANET FITNESS', 23],
+        [3, 'SPOTIFY USA', 11], [4, 'VERIZON WIRELESS', 60], [5, 'CON EDISON ELECTRIC', 85], [5, 'GEICO AUTO INSURANCE', 110],
+        [6, 'CARD PURCHASE WHOLE FOODS MARKET', 96], [9, 'CARD PURCHASE TRADER JOE S', 64], [7, 'DRAFTKINGS', 55], [14, 'DRAFTKINGS', 40],
+        [8, 'DOORDASH', 31], [15, 'DOORDASH', 27], [10, 'CARD 09/10 STARBUCKS', 6.4], [12, 'CARD PURCHASE THE CORNER BISTRO', 48],
+        [17, 'CARD PURCHASE TONYS PIZZA', 22], [13, 'AMAZON MKTPLACE', 42], [11, 'STUDENT LOAN PAYMENT', 280], [16, 'SHELL OIL 5741', 45],
+      ],
+    },
+    UK: {
+      positions: [
+        { name: 'VWRA.L', qty: 20, pru: 130, price: 150, type: 'ETF', sector: 'Monde', platform: 'Stocks & Shares ISA', alert_price: 140 },
+        { name: 'AZN', qty: 15, pru: 68, price: 76, type: 'Action', sector: 'Santé', platform: 'Stocks & Shares ISA', alert_price: null },
+        { name: 'SHEL', qty: 20, pru: 66, price: 71, type: 'Action', sector: 'Énergie', platform: 'Stocks & Shares ISA', alert_price: 62 },
+        { name: 'HSBC', qty: 25, pru: 52, price: 60, type: 'Action', sector: 'Finance', platform: 'General investment account', alert_price: null },
+      ],
+      agent: [['VWRA.L', 6, 150, 0.5, 'ETF', 'Monde'], ['AZN', 10, 76, 0.6, 'Action', 'Santé'], ['SHEL', 18, 71, -1.1, 'Action', 'Énergie'], ['HSBC', 8, 60, 0.9, 'Action', 'Finance']],
+      heavy: { name: 'SHEL', label: 'Shell', qty: 45 },
+      alt: { name: 'Vanguard FTSE All-World UCITS ETF', t: 'VWRA.L', n: '3,600' },
+      tx: [['VWRA.L', 12, 128, 30, 'First ETF purchase'], ['SHEL', 20, 66, 14, ''], ['VWRA.L', 8, 140, 7, 'Monthly contribution']],
+      landing: ['AZ', 'AstraZeneca', 'Stock · Healthcare'],
+      bank: [
+        [1, 'DD RENT LANDLORD PAYMENT', 1350], [2, 'NETFLIX.COM', 12.5], [2, 'DISNEY PLUS', 9.2], [3, 'PUREGYM', 28],
+        [3, 'SPOTIFY UK', 13.9], [4, 'VODAFONE LTD', 23], [5, 'OCTOPUS ENERGY', 95], [5, 'COUNCIL TAX', 175],
+        [6, 'CARD PAYMENT TESCO STORES 2041', 88], [9, 'CARD PAYMENT SAINSBURYS', 61], [7, 'BET365', 50], [14, 'BET365', 35],
+        [8, 'DELIVEROO', 28], [15, 'DELIVEROO', 25], [10, 'CARD 09/10 COSTA COFFEE', 4.6], [12, 'CARD PAYMENT THE RED LION PUB', 42],
+        [17, 'CARD PAYMENT PIZZA EXPRESS', 31], [13, 'AMAZON.CO.UK', 45.9], [11, 'AVIVA INSURANCE', 32], [16, 'TFL TRAVEL CHARGE', 58.2],
+      ],
+    },
+    EU: {
+      positions: [
+        { name: 'VWCE.DE', qty: 12, pru: 115, price: 135, type: 'ETF', sector: 'Monde', platform: 'Investment account', alert_price: 120 },
+        { name: 'IWDA.L', qty: 10, pru: 95, price: 110, type: 'ETF', sector: 'Monde', platform: 'Investment account', alert_price: null },
+        { name: 'ASML.AS', qty: 2, pru: 640, price: 700, type: 'Action', sector: 'Technologie', platform: 'Investment account', alert_price: 600 },
+        { name: 'SAP.DE', qty: 4, pru: 210, price: 240, type: 'Action', sector: 'Technologie', platform: 'Investment account', alert_price: null },
+        { name: 'MSFT', qty: 2, pru: 400, price: 450, type: 'Action', sector: 'Technologie', platform: 'Investment account', alert_price: null },
+      ],
+      agent: [['VWCE.DE', 7, 135, 0.4, 'ETF', 'Monde'], ['IWDA.L', 8, 110, 0.6, 'ETF', 'Monde'], ['ASML.AS', 2, 700, -1.1, 'Action', 'Technologie'], ['SAP.DE', 3, 240, 0.9, 'Action', 'Technologie']],
+      heavy: { name: 'ASML.AS', label: 'ASML', qty: 4 },
+      alt: { name: 'Vanguard FTSE All-World UCITS ETF', t: 'VWCE.DE', n: '3,600' },
+      tx: [['VWCE.DE', 8, 112, 30, 'First ETF purchase'], ['ASML.AS', 2, 640, 14, ''], ['VWCE.DE', 4, 121, 7, 'Monthly contribution']],
+      landing: ['AS', 'ASML', 'Stock · Tech'],
+      bank: [
+        [1, 'SEPA DD RENT APARTMENT', 900], [2, 'NETFLIX.COM', 13.49], [2, 'DISNEY PLUS', 9.99], [3, 'BASIC-FIT', 24.99],
+        [3, 'SPOTIFY', 11.99], [4, 'VODAFONE MOBILE', 20], [5, 'E.ON ELECTRICITY', 62.4], [5, 'ALLIANZ INSURANCE', 28.5],
+        [6, 'CARD PAYMENT LIDL', 92.3], [9, 'CARD PAYMENT ALDI', 71.6], [7, 'BET365', 60], [14, 'BET365', 45],
+        [8, 'UBER EATS', 27.8], [15, 'UBER EATS', 31.2], [10, 'CARD 10/09 STARBUCKS', 6.2], [12, 'CARD PAYMENT TRATTORIA ROMA', 42.5],
+        [17, 'CARD PAYMENT CAFE CENTRAL', 24], [13, 'AMAZON', 45.9], [11, 'CAR LOAN PAYMENT', 200], [16, 'SHELL STATION', 58.2],
+      ],
+    },
+  };
+  DEMO.OTHER = DEMO.EU;
+  K.demo = function () {
+    var d = DEMO[REGION] || DEMO.EU;
+    return {
+      region: REGION,
+      positions: d.positions.map(function (p) { return Object.assign({}, p); }),
+      agent: d.agent.map(function (a, i) { return { id: 's' + (i + 1), name: a[0], qty: a[1], pru: Math.round(a[2] * [0.86, 0.91, 0.95, 0.83][i % 4] * 100) / 100, price: a[2], change_pct: a[3], type: a[4], sector: a[5], platform: '', alert_price: null }; }),
+      transactions: d.tx.map(function (t, i) { return { id: 't' + (i + 1), position_name: t[0], type: 'achat', qty: t[1], price: t[2], total: Math.round(t[1] * t[2] * 100) / 100, date: new Date(Date.now() - 86400000 * t[3]).toISOString(), notes: t[4] }; }),
+      heavy: d.heavy, alt: d.alt, landing: d.landing,
+      bank: d.bank.map(function (b) { return b.slice(); }),
+      brief: function (pct) {
+        return [
+          { icon: '📈', text: 'Portfolio up 0.3% today', color: '#4ade80', type: 'perf' },
+          { icon: '⚡', text: d.heavy.label + ' makes up ' + pct + '% of your portfolio', color: '#fbbf24', type: 'alert' },
+          { icon: '💡', text: 'A regular monthly contribution would move your goal forward', color: '#a5b4fc', type: 'tip' },
+        ];
+      },
+      // Bloc « À surveiller » de l'aperçu Premium de l'Agent (mêmes styles que la version française d'app.js)
+      alertHTML: function (pct) {
+        return '<div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.3);border-radius:16px;padding:16px 18px;margin-bottom:14px">'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:15px">⚠️</span><span style="font-size:13px;font-weight:900;color:#fbbf24">Worth watching in your portfolio</span></div>'
+          + '<div style="font-size:12.5px;color:rgba(255,255,255,0.85);line-height:1.5"><strong style="color:#fff">' + d.heavy.label + '</strong> makes up <strong>' + pct + '%</strong> of your portfolio (common guideline: under 25%).</div>'
+          + '<div style="margin-top:8px;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px">'
+          + '<div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">AI signal: trim <span style="color:#4ade80">· ✦ Premium</span></div>'
+          + '<div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.5">A single stock makes up close to a third of your portfolio: one bad day for that company would weigh heavily. Bringing it down by about 10 points would put it back under the guideline.</div>'
+          + '<div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ Alternative to consider: <strong style="color:#fff">' + d.alt.name + '</strong> <span style="opacity:.6">' + d.alt.t + '</span> — spread across about ' + d.alt.n + ' companies</div>'
+          + '</div></div>';
+      },
+    };
+  };
+  // Accueil : la 2e ligne du portefeuille d'exemple (LVMH en français) prend une valeur de la région
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      var em = document.getElementById('hero-pos2-chg'), row = em && em.parentNode, l = (DEMO[REGION] || DEMO.EU).landing;
+      if (!row) return;
+      var b = row.querySelector('b'), sp = row.querySelector('span'), sm = row.querySelector('small');
+      if (b) b.textContent = l[0];
+      if (sp) sp.textContent = l[1];
+      if (sm) sm.textContent = l[2];
+    } catch (e) {}
+  });
 
   // ════════════ LEXIQUE (remplace glossary.js) ════════════
   K.glossary = {
