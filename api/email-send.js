@@ -7,7 +7,7 @@
 //   POST (compte admin) : m'envoyer un aperçu de la lettre de la semaine
 
 import { createClient } from '@supabase/supabase-js';
-import { EMAILS, renderEmail, sendEmail, escapeHtml as esc } from './_email.js';
+import { EMAILS, renderEmail, sendEmail, escapeHtml as esc, emailFor, userLang } from './_email.js';
 
 const SITE = 'https://kapitaro.fr';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'maxencedemacedo@gmail.com';
@@ -127,6 +127,7 @@ async function sendNewsletter(sb, { onlyEmail = null } = {}) {
   let sent = 0; const errors = [];
   for (const u of users.slice(0, MAX_PER_RUN)) {
     if (!onlyEmail && optedOut.has(u.id)) continue;
+    if (!onlyEmail && userLang(u) === 'en') continue;   // lettre en français : pas envoyée aux comptes anglais (version anglaise à créer)
     if (!onlyEmail) { const { error: logErr } = await sb.from('email_log').insert({ user_id: u.id, kind }); if (logErr) continue; }   // déjà reçue cette semaine
     try {
       const { html, text, unsub } = newsletterEmail(content, await personalData(sb, u.id), u.id);
@@ -207,8 +208,8 @@ export default async function handler(req, res) {
     for (const { u, kind } of todo.slice(0, MAX_PER_RUN)) {
       const { error: logErr } = await sb.from('email_log').insert({ user_id: u.id, kind });
       if (logErr) continue;   // déjà envoyé entre-temps
-      const e = EMAILS[kind];
-      const { html, text, unsub } = renderEmail({ title: e.title, paragraphs: e.paragraphs, cta: e.cta, userId: u.id });
+      const e = emailFor(kind, u);   // anglais pour les comptes créés sur kapitaro.com
+      const { html, text, unsub } = renderEmail({ title: e.title, paragraphs: e.paragraphs, cta: e.cta, userId: u.id, lang: userLang(u) });
       try {
         await sendEmail({ to: u.email, subject: e.subject, html, text, unsub });
         sent++;

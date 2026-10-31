@@ -729,7 +729,7 @@ function kpChartMount(host, ticker, name, opts) {
     : { bg: '#ffffff', txt: '#3f3f46', grid: '#f1f1f4', line: '#e4e4e7', sub: '#71717a', chip: '#f4f4f5', chipTxt: '#09090b' };
   const chipCss = on => 'padding:5px 10px;border-radius:8px;border:1px solid ' + (on ? '#16a34a' : 'transparent') + ';background:' + (on ? 'rgba(22,163,74,0.14)' : C.chip) + ';color:' + (on ? '#16a34a' : C.chipTxt) + ';font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap';
   const h = opts.height || (window.innerWidth < 640 ? 300 : 380);
-  host.innerHTML = '<div class="kp-chart" style="background:' + C.bg + ';border-radius:14px">'
+  host.innerHTML = '<div class="kp-chart" data-nocur style="background:' + C.bg + ';border-radius:14px">'
     + '<div id="kpc-head" style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px"><div><span id="kpc-price" style="font-size:22px;font-weight:900;color:' + C.chipTxt + '">—</span> <span id="kpc-chg" style="font-size:13px;font-weight:800"></span> <span id="kpc-live" style="font-size:11px;color:' + C.sub + '"></span></div><div id="kpc-ohlc" style="font-size:11px;color:' + C.sub + '"></div></div>'
     + '<div id="kpc-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center"></div>'
     + '<div id="kpc-canvas" style="width:100%;height:' + h + 'px;position:relative"><div id="kpc-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:' + C.sub + ';font-size:13px;text-align:center;padding:10px">Chargement du graphique…</div></div>'
@@ -1840,7 +1840,7 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: ctx => fmtK(ctx.raw) + ' €',
+            label: ctx => kpCurTxt(fmtK(ctx.raw) + ' €'),
             title: ctx => ctx[0].label ? `+${ctx[0].label}` : "Aujourd'hui"
           },
           backgroundColor: 'rgba(255,255,255,0.15)',
@@ -2026,7 +2026,7 @@ function renderMultiObjChart() {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: c => c.dataset.label + ' : ' + fmtK(c.raw)
+            label: c => c.dataset.label + ' : ' + kpCurTxt(fmtK(c.raw))
           },
           backgroundColor: 'rgba(255,255,255,0.12)',
           titleColor: '#fff',
@@ -3642,6 +3642,7 @@ function showLocalNotification(title, body) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   // Appli ouverte à l'écran : la liste de la cloche suffit (sinon chaque ouverture renvoyait les mêmes notifications au téléphone)
   if (!document.hidden) return;
+  if (window.kpCurTxt) { title = kpCurTxt(title); body = kpCurTxt(body); }   // devise d'affichage
   // Jamais deux fois la même notification dans la journée
   try {
     const day = new Date().toISOString().slice(0, 10), key = 'kp_local_notif_' + day;
@@ -3770,13 +3771,13 @@ function renderPortfolioChart() {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: ctx => ctx.dataset.label + ': ' + ctx.raw.toLocaleString('fr-FR') + ' €'
+            label: ctx => ctx.dataset.label + ': ' + kpCurTxt(ctx.raw.toLocaleString('fr-FR') + ' €')
           }
         }
       },
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' }, color: '#8e8e93' } },
-        y: { grid: { color: '#f5f5f5' }, ticks: { font: { size: 11, weight: '600' }, color: '#8e8e93', callback: v => v.toLocaleString('fr-FR') + ' €' } }
+        y: { grid: { color: '#f5f5f5' }, ticks: { font: { size: 11, weight: '600' }, color: '#8e8e93', callback: v => kpCurTxt(v.toLocaleString('fr-FR') + ' €') } }
       }
     }
   });
@@ -3788,6 +3789,8 @@ let transactions = [];
 
 async function loadTransactions() {
   if (isDemo) {
+    const _kpDemo = kpDemoSet();
+    if (_kpDemo) { transactions = _kpDemo.transactions; return; }
     transactions = [
       {id:'t1',position_name:'IWDA.L',type:'achat',qty:10,price:87.5,total:875,date:new Date(Date.now()-86400000*30).toISOString(),notes:'Premier achat ETF monde'},
       {id:'t2',position_name:'LVMH',type:'achat',qty:2,price:730,total:1460,date:new Date(Date.now()-86400000*14).toISOString(),notes:''},
@@ -6283,6 +6286,8 @@ function shareReferral() {
 async function initApp(user) {
   try {
   currentUser = user; isDemo = false;
+  try { if (window.kpI18n) kpI18n.syncRegionFromUser(user); } catch (e) {}
+  try { if (window.kpCur) kpCur.syncFromUser(user); } catch (e) {}   // devise d'affichage enregistrée dans le profil   // version anglaise : région enregistrée dans le profil
   try { localStorage.setItem('kp_known', '1'); } catch (e) {}
   try { if (typeof appLockOnStart === 'function') appLockOnStart(); } catch (e) {}   // écran verrouillé avant d'afficher quoi que ce soit
   claimCaches(user.id);
@@ -6341,6 +6346,8 @@ async function initApp(user) {
   } catch(e) { console.error('initApp error:', e); alert('Erreur de chargement: ' + e.message); }
 }
 
+// Version anglaise : données d'exemple selon la région (KP_EN.demo, i18n-en.js). En français : null → démo française inchangée.
+function kpDemoSet() { try { return (window.KP_EN && typeof KP_EN.demo === 'function') ? KP_EN.demo() : null; } catch (e) { return null; } }
 function enterDemo() {
   isDemo = true;
   claimCaches('demo');
@@ -6351,7 +6358,8 @@ function enterDemo() {
   openNotifPanelByDefault();
   document.getElementById('topbar-email').textContent = 'Demo';
   document.getElementById('topbar-avatar').textContent = 'D';
-  positions = [
+  const _kpDemo = kpDemoSet();
+  positions = _kpDemo ? _kpDemo.positions.map((p, i) => ({ ...p, id: 'd' + (i + 1) })) : [
     {id:'d1',name:'IWDA.L',qty:15,pru:87.5,price:94.2,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:80},
     {id:'d2',name:'VWCE.DE',qty:8,pru:110,price:118.5,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:null},
     {id:'d3',name:'LVMH',qty:2,pru:730,price:685,type:'Action',sector:'Luxe',platform:'XTB',alert_price:650},
@@ -6384,7 +6392,7 @@ async function resetPassword() {
   }
   try {
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://kapitaro.fr'
+      redirectTo: (window.kpI18n && kpI18n.isEN && kpI18n.config.enDomainLive) ? kpI18n.config.domains.en : 'https://kapitaro.fr'   // version anglaise : retour sur kapitaro.com
     });
     if (error) throw error;
     setAuthMsg('📧 Email de réinitialisation envoyé !', true);
@@ -6468,6 +6476,7 @@ async function signup() {
   const pass = document.getElementById('signup-pass').value;
   const pass2 = document.getElementById('signup-pass2').value;
   if (!email||!pass) { setAuthMsg('Remplis tous les champs.'); return; }
+  if (window.kpI18n && !kpI18n.signupConsentOk()) { setAuthMsg(kpT('auth.consentRequired')); return; }   // version anglaise uniquement
   if (pass!==pass2) { setAuthMsg('Mots de passe différents.'); return; }
   if (pass.length<8) { setAuthMsg('Mot de passe trop court : au moins 8 caractères.'); return; }
   setAuthMsg('Création...', true);
@@ -6476,6 +6485,7 @@ async function signup() {
   const meta = {};
   if (parrain) meta.parrain = parrain;
   try { if (window.kpAds) meta.source = kpAds.sourceLabel(); } catch (e) {}
+  try { if (window.kpI18n && kpI18n.isEN) { meta.lang = 'en'; meta.region = kpI18n.region; } } catch (e) {}
   const { data, error } = await sb.auth.signUp({ email, password: pass, options: Object.keys(meta).length ? { data: meta } : undefined });
   if (error) {
     const m = (error.message || '').toLowerCase();
@@ -8309,13 +8319,13 @@ function safeK(val) {
 // Outil PDF chargé à la demande (évite ~350 Ko au chargement de chaque page)
 let _jsPDFLoading = null;
 function loadJsPDF() {
-  if (window.jspdf) return Promise.resolve();
+  if (window.jspdf) { try { if (window.kpCur) kpCur.patchPDF(); if (window.KP_EN && KP_EN.patchPDF) KP_EN.patchPDF(); } catch (e) {} return Promise.resolve(); }   // version anglaise : PDF traduit
   if (!_jsPDFLoading) _jsPDFLoading = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
     s.integrity = 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk';
     s.crossOrigin = 'anonymous';
-    s.onload = () => resolve();
+    s.onload = () => { try { if (window.kpCur) kpCur.patchPDF(); if (window.KP_EN && KP_EN.patchPDF) KP_EN.patchPDF(); } catch (e) {} resolve(); };   // devise puis traduction (la traduction passe en premier à l'écriture)
     s.onerror = () => { _jsPDFLoading = null; reject(new Error('Outil PDF indisponible, vérifie ta connexion et réessaie.')); };
     document.head.appendChild(s);
   });
@@ -8637,8 +8647,9 @@ function kpPriceStr(p) {
   return v >= 1 ? v.toFixed(2) : Number(v.toPrecision(4)).toFixed(12).replace(/0+$/, '').replace(/\.$/, '');
 }
 // Petits prix (cryptos à quelques millièmes d’euro) : plus de décimales, sinon « 0,00 € »
-function fmt(n) { const v = Number(n), x = Math.abs(v), d = x > 0 && x < 0.01 ? 8 : x > 0 && x < 1 ? 4 : 2; return v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:d}); }
-function fmtK(n) { return n>=1000?(n/1000).toFixed(1).replace('.', ',')+' k€':fmt(n)+' €'; }
+function fmt(n) { const v = Number(n), x = Math.abs(v), d = x > 0 && x < 0.01 ? 8 : x > 0 && x < 1 ? 4 : 2; return v.toLocaleString(window.kpI18n ? kpI18n.locale : 'fr-FR',{minimumFractionDigits:2,maximumFractionDigits:d}); }
+if (typeof window.kpCurTxt !== 'function') window.kpCurTxt = s => s;   // currency.js absent : identité
+function fmtK(n) { return n>=1000?(n/1000).toFixed(1).replace('.', window.kpI18n && kpI18n.isEN ? '.' : ',')+' k€':fmt(n)+' €'; }
 
 // Prénom pour les salutations : fourni par Google à la connexion, sinon rien (jamais le début de l'e-mail)
 function userFirstName() {
@@ -8647,7 +8658,7 @@ function userFirstName() {
   const raw = m.given_name || m.first_name || String(m.full_name || m.name || '').trim().split(/\s+/)[0] || '';
   return raw && !raw.includes('@') ? raw.charAt(0).toUpperCase() + raw.slice(1) : '';
 }
-function fmtI(n) { return Math.round(n).toLocaleString('fr-FR'); }
+function fmtI(n) { return Math.round(n).toLocaleString(window.kpI18n ? kpI18n.locale : 'fr-FR'); }
 
 // ===== NOTIFICATIONS =====
 async function checkAndGenerateNotifications() {
@@ -8960,12 +8971,34 @@ function showLevelChooser(fromSettings) {
 const KP_TUTO_BASE = 'https://soyyznyceqzimhoaffaw.supabase.co/storage/v1/object/public/social/tuto/';
 let _kpTutoManifest = null, _kpTutoAt = 0;
 async function kpTutoManifest() {
-  if (_kpTutoManifest && Date.now() - _kpTutoAt < 10 * 60 * 1000) return _kpTutoManifest;
+  if (_kpTutoManifest && Date.now() - _kpTutoAt < 10 * 60 * 1000) return kpTutoLangManifest(_kpTutoManifest);
   try { const r = await fetch(KP_TUTO_BASE + 'manifest.json?t=' + Math.floor(Date.now() / 600000)); _kpTutoManifest = r.ok ? await r.json() : (_kpTutoManifest || {}); }
   catch (e) { _kpTutoManifest = _kpTutoManifest || {}; }
   _kpTutoAt = Date.now();
-  return _kpTutoManifest;
+  return kpTutoLangManifest(_kpTutoManifest);
 }
+// Version anglaise : seules les vidéos anglaises sont proposées (« <id>__en » → « <id> », « <id>__en__desktop » → « <id>__desktop »).
+// Une vidéo sans version anglaise n'existe donc pas en anglais : boutons et propositions masqués, jamais de vidéo française.
+// En français : manifest inchangé.
+function kpTutoLangManifest(m) {
+  if (!(window.kpI18n && kpI18n.isEN) || !m) return m;
+  const o = {};
+  for (const k in m) { const x = k.match(/^(.+?)__en(__desktop)?$/); if (x) o[x[1] + (x[2] || '')] = m[k]; }
+  return o;
+}
+// Anglais : boutons « vidéo de présentation » (accueil, Paramètres) et vidéo de la fenêtre Premium masqués tant que la vidéo anglaise n'existe pas
+function kpTutoHideMissing(root) {
+  if (!(window.kpI18n && kpI18n.isEN)) return;
+  const btns = [...(root || document).querySelectorAll('[onclick^="kpOpenTuto("]')].filter(b => !b.classList.contains('kp-tuto-btn'));
+  if (!btns.length) return;
+  btns.forEach(b => { if (!b.dataset.kpTutoChecked) b.style.display = 'none'; });
+  kpTutoManifest().then(m => btns.forEach(b => {
+    const id = (b.getAttribute('onclick').match(/kpOpenTuto\('([a-z_]+)'/) || [])[1];
+    b.dataset.kpTutoChecked = '1';
+    b.style.display = id && m && m[id] && m[id].url ? '' : 'none';
+  })).catch(() => {});
+}
+if (window.kpI18n && kpI18n.isEN) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => kpTutoHideMissing()); else kpTutoHideMissing(); }
 function kpTutoSeenKey(id) { try { return 'kp_tuto_seen_' + id + '_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch (e) { return 'kp_tuto_seen_' + id; } }
 // opts : { auto (lancée seule : démarre sans le son), skippable (bouton « Passer »), onDone }
 async function kpOpenTuto(id, opts) {
@@ -10153,7 +10186,8 @@ async function delPosGroup(ids) {
   renderPortfolio(); renderHome();
 }
 async function loadDemo() {
-  const demo=[
+  const _kpDemo = kpDemoSet();
+  const demo=_kpDemo ? _kpDemo.positions : [
     {name:'IWDA.L',qty:15,pru:87.5,price:94.2,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:80},
     {name:'VWCE.DE',qty:8,pru:110,price:118.5,type:'ETF',sector:'Monde',platform:'Trade Republic',alert_price:null},
     {name:'LVMH',qty:2,pru:730,price:685,type:'Action',sector:'Luxe',platform:'XTB',alert_price:650},
@@ -12462,13 +12496,13 @@ function updateDCA() {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: ctx => ctx.dataset.label + ' : ' + fmtK(ctx.raw)
+              label: ctx => ctx.dataset.label + ' : ' + kpCurTxt(fmtK(ctx.raw))
             }
           }
         },
         scales: {
           x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' }, color: 'rgba(255,255,255,0.35)', maxRotation: 0 } },
-          y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { font: { size: 10, weight: '600' }, color: 'rgba(255,255,255,0.35)', callback: v => fmtK(v) } }
+          y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { font: { size: 10, weight: '600' }, color: 'rgba(255,255,255,0.35)', callback: v => kpCurTxt(fmtK(v)) } }
         }
       }
     });
@@ -12681,6 +12715,8 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
     if (maxTokens) body.max_tokens = maxTokens;
     if (model) body.model = model;
     if (opts && opts.noThinking) body.no_thinking = true;
+    if (window.kpI18n && kpI18n.isEN) { body.lang = 'en'; body.region = kpI18n.region; }   // version anglaise : réponse en anglais, cadre adapté à la région
+    if (window.kpCur && kpCur.active()) body.system += kpCur.aiNote();   // devise d'affichage : l'IA garde les euros, l'app convertit
     const res=await fetch('/api/claude',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
@@ -13517,8 +13553,8 @@ async function confirmCSVImport() {
 //  💳 ABONNEMENT PREMIUM — souscription et gestion
 // ═══════════════════════════════════════════════════════════
 
-const PREMIUM_PRICE = '9,99 €';
-const PREMIUM_PRICE_ANNUAL = '79,99 €';
+const PREMIUM_PRICE = window.kpI18n ? kpI18n.price('monthly') : '9,99 €';   // version anglaise : prix affiché selon la devise (i18n.js)
+const PREMIUM_PRICE_ANNUAL = window.kpI18n ? kpI18n.price('annual') : '79,99 €';
 const PREMIUM_ANNUAL_SAVINGS_PCT = 33; // (9,99×12 − 79,99) ⁄ (9,99×12) ≈ 33 %
 
 // Lance le paiement Stripe
@@ -13595,7 +13631,7 @@ const PLAN_PREMIUM_ONLY = [
 
 // Choix de facturation (annuel par défaut) — partagé par la fenêtre et les Paramètres
 let plansBilling = 'annual';
-const PROMO_PRICE = '4,99 €';   // 1er mois d'un filleul (coupon Stripe PARRAINAGE50)
+const PROMO_PRICE = window.kpCur ? kpCur.tag('4,99 €') : '4,99 €';   // 1er mois d'un filleul (coupon Stripe PARRAINAGE50)
 const PRICE_MONTHLY_NUM = 9.99, PRICE_ANNUAL_NUM = 79.99;
 const _eur = n => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
@@ -13670,6 +13706,7 @@ function showPlansModal(opts) {
   const lapsed = profile?.subscription_status === 'canceled' || profile?.subscription_status === 'unpaid';
   const o = document.createElement('div');
   o.id = 'plans-modal';
+  o.setAttribute('data-nocur', '');   // prix de l'abonnement : toujours en euros (devise de paiement)
   o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10005;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto';
   o.onclick = e => { if (e.target === o) o.remove(); };
   const ctx = opts && opts.feature ? `
@@ -13691,6 +13728,7 @@ function showPlansModal(opts) {
       <div data-plans-root data-lapsed="${lapsed ? 1 : 0}">${plansComparisonHTML(lapsed)}</div>
     </div>`;
   document.body.appendChild(o);
+  kpTutoHideMissing(o);   // anglais : bouton vidéo masqué si la vidéo anglaise n'existe pas (rien en français)
 }
 
 // Carte d'abonnement dans les Paramètres — s'adapte au statut
@@ -13830,7 +13868,7 @@ function showPremiumWelcome() {
 
 // ═══ AFFICHAGE DES DOCUMENTS LÉGAUX ═══
 function openLegalDoc(key) {
-  const doc = LEGAL_DOCS[key];
+  const doc = (window.kpI18n && kpI18n.isEN && typeof legalDocEN === 'function' && legalDocEN(key)) || LEGAL_DOCS[key];
   if (!doc) return;
 
   document.getElementById('legal-modal')?.remove();
@@ -13847,7 +13885,7 @@ function openLegalDoc(key) {
         </div>
         <button onclick="document.getElementById('legal-modal').remove()" class="legal-doc-close" aria-label="Fermer">×</button>
       </div>
-      <div class="legal-doc-body">${doc.content.replace(/\{\{LEGAL_DATE\}\}/g, legalDateFR())}</div>
+      <div class="legal-doc-body">${doc.content.replace(/\{\{LEGAL_DATE\}\}/g, doc.en ? legalDateEN() : legalDateFR())}</div>
       <div class="legal-doc-foot">
         <span>Document contractuel — Kapitaro</span>
         <button onclick="document.getElementById('legal-modal').remove()">Fermer</button>
@@ -14759,13 +14797,16 @@ function clearAgentSample() {
 function renderAgentSample() {
   const real = positions;
   _agentSampling = true;
-  positions = AGENT_SAMPLE_POSITIONS.map(p => ({ ...p }));
+  const _kpDemo = kpDemoSet();
+  positions = (_kpDemo ? _kpDemo.agent : AGENT_SAMPLE_POSITIONS).map(p => ({ ...p }));
+  const _kpHeavyPct = _kpDemo ? Math.round(100 * positions.filter(p => p.name === _kpDemo.heavy.name).reduce((a, p) => a + p.qty * p.price, 0) / positions.reduce((a, p) => a + p.qty * p.price, 0)) : 0;
   try { renderAgentDashboard(); } finally { positions = real; _agentSampling = false; }
-  renderDailyBrief(AGENT_SAMPLE_BRIEF);
+  renderDailyBrief(_kpDemo ? _kpDemo.brief(_kpHeavyPct) : AGENT_SAMPLE_BRIEF);
   { const v = document.getElementById('agent-verdict'); if (v) v.innerHTML = ''; }
 
   const alertEl = document.getElementById('agent-smart-alerts');
-  if (alertEl) alertEl.innerHTML = `
+  if (alertEl && _kpDemo) alertEl.innerHTML = _kpDemo.alertHTML(_kpHeavyPct);
+  else if (alertEl) alertEl.innerHTML = `
   <div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.3);border-radius:16px;padding:16px 18px;margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:15px">⚠️</span><span style="font-size:13px;font-weight:900;color:#fbbf24">À surveiller dans ton portefeuille</span></div>
     <div style="font-size:12.5px;color:rgba(255,255,255,0.85);line-height:1.5"><strong style="color:#fff">LVMH</strong> pèse <strong>30%</strong> de ton portefeuille (conseillé : moins de 25%).</div>

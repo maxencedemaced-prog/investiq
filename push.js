@@ -85,7 +85,7 @@ async function pushTest(silent) {
     const sub = await pushCurrentSub();
     const h = await pushHeaders();
     if (!sub || !h) throw new Error('Active d\'abord les notifications');
-    const r = await fetch('/api/push-subscribe', { method: 'POST', headers: h, body: JSON.stringify({ test: true, endpoint: sub.endpoint }) });
+    const r = await fetch('/api/push-subscribe', { method: 'POST', headers: h, body: JSON.stringify(Object.assign({ test: true, endpoint: sub.endpoint }, window.kpI18n && kpI18n.isEN ? { lang: 'en' } : {})) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'Envoi impossible');
     if (!silent) showToast('Notification envoyée : regarde ton appareil');

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" data-kp-lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="/i18n.js?v=20261031180000"></script>
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261029" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Free Compound Interest Calculator (monthly contributions) — Kapitaro</title>
+  <meta name="description" content="Free compound interest calculator: starting amount, monthly contribution, years and rate of return. See your savings grow with a chart and a year-by-year table. Dollars, euros or pounds.">
+  <link rel="canonical" href="https://kapitaro.com/compound-interest-calculator">
+  <link rel="alternate" hreflang="en" href="https://kapitaro.com/compound-interest-calculator">
+  <link rel="alternate" hreflang="fr" href="https://kapitaro.fr/simulateur-interets-composes">
+  <link rel="alternate" hreflang="x-default" href="https://kapitaro.com/compound-interest-calculator">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.com/compound-interest-calculator">
+  <meta property="og:title" content="Free Compound Interest Calculator — Kapitaro">
+  <meta property="og:description" content="Starting amount, monthly contribution, years and return: see in seconds what compound interest can do for your savings.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Compound Interest Calculator — Kapitaro",
+        "url": "https://kapitaro.com/compound-interest-calculator",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "en",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "How do you calculate compound interest?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Each period, interest is calculated on your starting amount plus the interest already earned. For an amount P invested at an annual rate r for n years, you get P × (1 + r)^n. With monthly contributions, you add up the final value of each contribution: the calculator does it for you." } },
+          { "@type": "Question", "name": "How much will 100 a month grow to in 20 years?",
+            "acceptedAnswer": { "@type": "Answer", "text": "With a hypothetical 5% annual return, 100 invested every month for 20 years (24,000 in total) grows to about 41,100, of which about 17,100 is interest. This return is not guaranteed." } },
+          { "@type": "Question", "name": "What is the rule of 72?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Divide 72 by the annual rate of return to get the approximate number of years needed to double your money. At 6% a year, money doubles in about 12 years." } },
+          { "@type": "Question", "name": "What rate of return should I use?",
+            "acceptedAnswer": { "@type": "Answer", "text": "It depends on the investment: a savings account pays little but with little risk, while stocks and index funds have historically returned more over long periods, with sometimes large drops along the way. Try several cautious assumptions — past performance is not a reliable indicator of future results." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="/outils.css?v=20260929b">
+  <style>
+    .cur-switch{display:inline-flex;gap:4px;margin-left:auto}
+    .cur-switch button{border:1px solid var(--border);background:transparent;color:inherit;border-radius:8px;padding:3px 9px;font-weight:700;cursor:pointer}
+    .cur-switch button.on{background:var(--green);border-color:var(--green);color:#fff}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="/icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Create a free account</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Compound interest calculator</h1>
+      <p>Starting amount, monthly contribution, time and rate of return: see in seconds what happens to your savings when your interest starts earning interest too.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Examples" style="align-items:center">
+            <button type="button" data-preset="0,100,20,5">100/month, 20 years</button>
+            <button type="button" data-preset="1000,200,15,5">1,000 + 200/month</button>
+            <button type="button" data-preset="10000,0,20,5">10,000 invested</button>
+            <span class="cur-switch" role="group" aria-label="Currency"><button type="button" data-cur="USD">$</button><button type="button" data-cur="EUR">€</button><button type="button" data-cur="GBP">£</button><button type="button" data-cur="CHF">CHF</button></span>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="c">Starting amount</label><span class="field-val"><input type="number" id="c-n" min="0" max="1000000" step="100" aria-label="Starting amount"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="c" min="0" max="100000" step="500" value="1000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="m">Monthly contribution</label><span class="field-val"><input type="number" id="m-n" min="0" max="20000" step="10" aria-label="Monthly contribution"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="m" min="0" max="3000" step="10" value="200">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="y">Duration</label><span class="field-val"><input type="number" id="y-n" min="1" max="60" step="1" aria-label="Duration in years"><span class="unit">years</span></span></div>
+            <input type="range" id="y" min="1" max="50" step="1" value="20">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="r">Average annual return</label><span class="field-val"><input type="number" id="r-n" min="0" max="20" step="0.1" aria-label="Annual return in percent"><span class="unit">%/yr</span></span></div>
+            <input type="range" id="r" min="0" max="12" step="0.1" value="5">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Estimated final amount (hypothetical)</div>
+          <div class="result-total" id="out-total">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-invested">—</b><span>Total contributed</span></div>
+            <div class="kpi gain"><b id="out-gain">—</b><span>Interest earned</span></div>
+            <div class="kpi"><b id="out-mult">—</b><span>Multiplier</span></div>
+          </div>
+          <svg class="chart" id="chart" viewBox="0 0 520 220" role="img" aria-label="Growth of your money: contributions and compound interest"></svg>
+          <div class="legend"><span><i style="background:var(--invested)"></i>Money contributed</span><span><i style="background:var(--green)"></i>Compound interest</span></div>
+        </div>
+      </div>
+      <details>
+        <summary>See the year-by-year breakdown</summary>
+        <div style="overflow-x:auto"><table><thead><tr><th>Year</th><th>Total contributed</th><th>Cumulative interest</th><th>Balance</th></tr></thead><tbody id="table"></tbody></table></div>
+      </details>
+    </div>
+
+    <article class="content">
+      <h2>How does compound interest work?</h2>
+      <p>With <strong>simple</strong> interest, you earn the same amount every year, calculated only on your starting amount. With <strong>compound</strong> interest, the interest you earn is added to your balance and earns interest itself the following year. It’s a snowball effect: slow at first, then stronger and stronger over time.</p>
+      <p>At 5% a year, 10,000 earns a little over 500 in the first year. By year ten it earns much more, because interest is calculated on a balance that has already grown. After 20 years, compounded monthly, that 10,000 becomes about <strong>27,100</strong> without adding anything.</p>
+
+      <h2>The compound interest formula</h2>
+      <p>For a single lump sum:</p>
+      <div class="formula">Final amount = Starting amount × (1 + rate)<sup>number of periods</sup></div>
+      <p>If you add money every month, each contribution grows for a different length of time: the first for the whole period, the last hardly at all. The calculator adds it all up for you, with interest compounded monthly (annual rate ÷ 12).</p>
+
+      <h2>Example: 100 a month for 20 years</h2>
+      <div class="example">
+        <p style="margin:0">You set aside <strong>100 every month</strong> for <strong>20 years</strong> — <strong>24,000</strong> in total. With a hypothetical average return of 5% a year, you’d end up with about <strong>41,100</strong>: more than <strong>17,000</strong> comes from compound interest alone.</p>
+      </div>
+      <p>Time matters even more than the amount. 200 a month at 5% for 30 years grows to about 166,500. The same 200 for 40 years grows to about <strong>305,200</strong> — nearly double, for only 24,000 more contributed. That’s why people often say: start early, even with small amounts.</p>
+
+      <h2>Compound interest and dollar-cost averaging (DCA)</h2>
+      <p>Investing the same amount every month, whatever the markets do, is called dollar-cost averaging. It smooths your purchase price over time and avoids trying to guess the “right moment”. Combined with compound growth and reinvested dividends, it’s one of the simplest ways people grow savings over the long term.</p>
+
+      <h2>The rule of 72</h2>
+      <p>To estimate how long it takes to double your money, divide 72 by the annual return. At 6% a year, money doubles in about 12 years. At 3%, it takes about 24 years.</p>
+
+      <section class="faq">
+        <h2>Frequently asked questions</h2>
+        <h3>What rate of return should I use?</h3>
+        <p>It depends on the investment. A savings account pays little but carries little risk. Stocks and broad index funds have historically returned more over long periods, but with sometimes sharp drops along the way. Try several cautious assumptions: past performance is not a reliable indicator of future results.</p>
+        <h3>Are taxes and fees included?</h3>
+        <p>No. The calculator shows a gross return. Depending on the type of account (for example a taxable brokerage account, a retirement account such as an IRA or 401(k) in the US, an ISA in the UK, or a pension plan), taxes and fees reduce the final result. For a more realistic picture, lower the return a little. This is not tax advice.</p>
+        <h3>Is inflation included?</h3>
+        <p>No: amounts are in today’s nominal money. To think in purchasing power, subtract expected inflation from the return (for example 5% − 2% = 3%).</p>
+        <h3>Is this calculator free?</h3>
+        <p>Yes, with no sign-up. To track your real portfolio, set a goal and get alerts, you can create a free Kapitaro account.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Go from simulation to your real portfolio</h2>
+      <p>Track your stocks and ETFs live, set a goal and ask an AI assistant your questions. Free to start.</p>
+      <a href="/?inscription=1" data-cta="bottom">Create my free account</a>
+    </section>
+  </main>
+
+  <footer>
+    <p id="disclaimer">Illustrative, educational simulation based on a constant hypothetical return. It is not investment, tax or legal advice. Investing involves risk, including loss of capital; past performance is not a reliable indicator of future results.</p>
+    <p>Kapitaro · Maxence De Macedo, sole proprietor (Quorvia), France · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.com</a><br><a href="/legal">Legal notice</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/risks">Risks</a> · <a href="#" onclick="window.kpAds&&kpAds.optOut&&kpAds.optOut();return false">Do Not Sell or Share My Personal Information</a> · <a href="https://kapitaro.fr/simulateur-interets-composes" hreflang="fr" lang="fr">Version française</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    // Devise d'affichage uniquement (le calcul est identique) : $ aux États-Unis, £ au Royaume-Uni, € ailleurs ; mémorisée
+    var tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+    var cur = 'EUR';
+    try { cur = localStorage.getItem('kp_sim_cur') || (/^America\//.test(tz) ? 'USD' : (tz === 'Europe/London' ? 'GBP' : tz === 'Europe/Zurich' ? 'CHF' : 'EUR')); } catch (e) {}
+    var LOC = { USD: 'en-US', EUR: 'en-IE', GBP: 'en-GB', CHF: 'en-CH' };
+    var fmt = function (n) { return new Intl.NumberFormat(LOC[cur], { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(Math.round(n)); };
+    var ids = ['c', 'm', 'y', 'r'];
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+
+    function project(c, m, y, r) {
+      var i = r / 100 / 12, rows = [], cap = c, inv = c;
+      for (var year = 1; year <= y; year++) {
+        for (var k = 0; k < 12; k++) { cap = cap * (1 + i) + m; inv += m; }
+        rows.push({ year: year, inv: inv, cap: cap });
+      }
+      return rows;
+    }
+
+    function draw(rows, c) {
+      var svg = document.getElementById('chart'), W = 520, H = 220, L = 8, R = 8, T = 10, B = 24;
+      var max = rows.length ? rows[rows.length - 1].cap : 1; if (max <= 0) max = 1;
+      var pts = [{ year: 0, inv: c, cap: c }].concat(rows);
+      var x = function (k) { return L + (W - L - R) * k / (pts.length - 1 || 1); };
+      var yv = function (v) { return T + (H - T - B) * (1 - v / max); };
+      var line = function (key) { return pts.map(function (p, k) { return (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + yv(p[key]).toFixed(1); }).join(''); };
+      var base = 'L' + x(pts.length - 1).toFixed(1) + ',' + yv(0) + 'L' + x(0).toFixed(1) + ',' + yv(0) + 'Z';
+      var step = Math.max(1, Math.ceil((pts.length - 1) / 5)), ticks = '';
+      var last = pts.length - 1, marks = [];
+      for (var k = 0; k < last; k += step) if (last - k >= step / 2) marks.push(k);
+      marks.push(last);
+      marks.forEach(function (k) {
+        var anchor = k === 0 ? 'start' : (k === last ? 'end' : 'middle');
+        ticks += '<text x="' + x(k).toFixed(1) + '" y="' + (H - 6) + '" font-size="15" text-anchor="' + anchor + '" fill="var(--faint)">' + (k ? k + ' yr' + (k > 1 ? 's' : '') : 'Now') + '</text>';
+      });
+      svg.innerHTML =
+        '<path d="' + line('cap') + base + '" fill="var(--green)" opacity="0.85"/>' +
+        '<path d="' + line('inv') + base + '" fill="var(--invested)"/>' + ticks;
+    }
+
+    function update() {
+      var c = get('c'), m = get('m'), y = Math.max(1, Math.min(60, Math.round(get('y')))), r = Math.min(20, get('r'));
+      var rows = project(c, m, y, r), last = rows[rows.length - 1];
+      var gain = last.cap - last.inv;
+      document.getElementById('out-total').textContent = fmt(last.cap);
+      document.getElementById('out-sub').textContent = 'after ' + y + ' year' + (y > 1 ? 's' : '') + ' at ' + r.toLocaleString('en-US') + '% a year';
+      document.getElementById('out-invested').textContent = fmt(last.inv);
+      document.getElementById('out-gain').textContent = '+' + fmt(gain);
+      document.getElementById('out-mult').textContent = last.inv > 0 ? '×' + (last.cap / last.inv).toFixed(2) : '—';
+      document.getElementById('table').innerHTML = rows.map(function (row) {
+        return '<tr><td>' + row.year + '</td><td>' + fmt(row.inv) + '</td><td>' + fmt(row.cap - row.inv) + '</td><td><strong>' + fmt(row.cap) + '</strong></td></tr>';
+      }).join('');
+      draw(rows, c);
+    }
+    function setCur(c2) {
+      cur = c2; try { localStorage.setItem('kp_sim_cur', c2); } catch (e) {}
+      var sym = { USD: '$', EUR: '€', GBP: '£', CHF: 'CHF' }[c2];
+      document.querySelectorAll('.cur-sym').forEach(function (s) { s.textContent = sym; });
+      document.querySelectorAll('[data-cur]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cur') === c2); });
+      // Avertissement selon la région (EU/UK : formule réglementaire sur les performances passées)
+      if (c2 !== 'USD') document.getElementById('disclaimer').textContent = 'Illustrative, educational simulation based on a constant hypothetical return. It is not investment advice. Capital at risk. Past performance is not a reliable indicator of future results.';
+      update();
+    }
+
+    ids.forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    document.querySelectorAll('[data-preset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-preset').split(',');
+        ids.forEach(function (id, k) { document.getElementById(id).value = v[k]; document.getElementById(id + '-n').value = v[k]; });
+        update();
+      });
+    });
+    document.querySelectorAll('[data-cur]').forEach(function (b) { b.addEventListener('click', function () { setCur(b.getAttribute('data-cur')); }); });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'compound-interest-en', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+    // Hors kapitaro.com (aperçus, localhost) : liens vers les pages anglaises servies sous /en/
+    if (location.hostname.indexOf('kapitaro.com') < 0) document.querySelectorAll('footer a[href^="/"]').forEach(function (a) { var h = a.getAttribute('href'); if (h !== '/') a.setAttribute('href', '/en' + h); else a.setAttribute('href', '/?lang=en'); });
+    setCur(cur);
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20261029"></script>
+</body>
+</html>

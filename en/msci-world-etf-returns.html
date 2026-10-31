@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-kp-lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="/i18n.js?v=20261031180000"></script>
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261029" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How much can an MSCI World ETF return? Free simulator — Kapitaro</title>
+  <meta name="description" content="Simulate an investment in an MSCI World index ETF with three hypothetical scenarios (4%, 6%, 8% a year) and the effect of the ETF’s fees.">
+  <link rel="canonical" href="https://kapitaro.com/msci-world-etf-returns">
+  <link rel="alternate" hreflang="en" href="https://kapitaro.com/msci-world-etf-returns">
+  <link rel="alternate" hreflang="fr" href="https://kapitaro.fr/rendement-etf-msci-world">
+  <link rel="alternate" hreflang="x-default" href="https://kapitaro.com/msci-world-etf-returns">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://kapitaro.com/msci-world-etf-returns">
+  <meta property="og:title" content="How much can an MSCI World ETF return? Free simulator — Kapitaro">
+  <meta property="og:description" content="Simulate an investment in an MSCI World index ETF with three hypothetical scenarios (4%, 6%, 8% a year) and the effect of the ETF’s fees.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"How much can an MSCI World ETF return? Free simulator — Kapitaro","url":"https://kapitaro.com/msci-world-etf-returns","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"en","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+  <link rel="stylesheet" href="/outils.css?v=20260929b">
+  <style>
+    .cur-switch{display:inline-flex;gap:4px;margin-left:auto}
+    .cur-switch button{border:1px solid var(--border);background:transparent;color:inherit;border-radius:8px;padding:3px 9px;font-weight:700;cursor:pointer}
+    .cur-switch button.on{background:var(--green);border-color:var(--green);color:#fff}
+  </style>
+  <script src="/en/sim-en.js?v=20261031180000"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="/icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Create a free account</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>How much can an MSCI World ETF return?</h1>
+      <p>Simulate a lump sum or monthly investment in a global index ETF, with three hypothetical scenarios and the effect of fees.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Examples">
+            <button type="button" data-preset="0,100,20,0.2">100/month, 20 yrs</button>
+            <button type="button" data-preset="0,200,20,0.2">200/month, 20 yrs</button>
+            <button type="button" data-preset="10000,0,15,0.2">10,000 lump sum</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="c">Starting amount</label><span class="field-val"><input type="number" id="c-n" min="0" max="1000000" step="100" aria-label="Starting amount"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="c" min="0" max="100000" step="500" value="1000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="m">Monthly contribution</label><span class="field-val"><input type="number" id="m-n" min="0" max="20000" step="10" aria-label="Monthly contribution"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="m" min="0" max="3000" step="10" value="200">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="y">Duration</label><span class="field-val"><input type="number" id="y-n" min="1" max="60" step="1" aria-label="Duration in years"><span class="unit">years</span></span></div>
+            <input type="range" id="y" min="1" max="40" step="1" value="20">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="f">ETF annual fees</label><span class="field-val"><input type="number" id="f-n" min="0" max="3" step="0.01" aria-label="ETF annual fees in percent"><span class="unit">%/yr</span></span></div>
+            <input type="range" id="f" min="0" max="2" step="0.01" value="0.2">
+          </div>
+        </div>
+        <div>
+          <div class="result-sub" style="margin-top:0">Estimated value, middle scenario (6%/yr, hypothetical)</div>
+          <div class="result-total" id="out-mid">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-low">—</b><span>Cautious · 4%</span></div>
+            <div class="kpi gain"><b id="out-mid2">—</b><span>Middle · 6%</span></div>
+            <div class="kpi"><b id="out-high">—</b><span>Favorable · 8%</span></div>
+          </div>
+          <svg class="chart" id="chart" viewBox="0 0 520 220" role="img" aria-label="Three hypothetical scenarios"></svg>
+          <div class="legend" style="flex-wrap:wrap"><span><i style="background:var(--invested)"></i>Money contributed</span><span><i style="background:#86efac"></i>Cautious</span><span><i style="background:var(--green)"></i>Middle</span><span><i style="background:#15803d"></i>Favorable</span></div>
+          <div class="compare">
+            <div>Total contributed<b id="out-invested">—</b>out of pocket</div>
+            <div>Fees paid to the ETF<b id="out-fees">—</b>middle scenario</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>What is an MSCI World ETF?</h2>
+      <p>The MSCI World index covers roughly 1,400–1,500 large and mid-sized companies in about 23 developed countries, with a large weight in US companies. An ETF tracking it gives broad diversification in a single purchase. Investors in the US often use similar broad index funds (for example total-market or S&amp;P 500 funds); in Europe, UCITS ETFs tracking the MSCI World or FTSE All-World are common.</p>
+      <h2>Why three scenarios?</h2>
+      <p>The index’s long-term historical average has been in the mid-to-high single digits per year with dividends reinvested, but with large drops along the way (for example around −40% in 2008). The scenarios at 4%, 6% and 8% are hypothetical illustrations, not a forecast. Past performance is not a reliable indicator of future results.</p>
+      <section class="faq">
+        <h2>Frequently asked questions</h2>
+        <h3>Is this a recommendation to buy an MSCI World ETF?</h3>
+        <p>No. Kapitaro doesn’t recommend any security. This simulator is educational; check a fund’s documents (prospectus or KID) and consider your own situation.</p>
+        <h3>Are taxes included?</h3>
+        <p>No. Results are after the ETF’s fees but before taxes and any platform fees.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Go from simulation to your real portfolio</h2>
+      <p>Track your stocks and ETFs live, set a goal and ask an AI assistant your questions. Free to start.</p>
+      <a href="/?inscription=1" data-cta="bottom">Create my free account</a>
+    </section>
+
+    <section class="others">
+      <h2>Other free tools</h2>
+      <a href="/compound-interest-calculator"><div>Compound interest calculator<span>What your savings become over time</span></div>›</a>
+      <a href="/savings-goal-calculator"><div>Savings goal calculator<span>How much to set aside each month to reach a goal</span></div>›</a>
+      <a href="/dollar-cost-averaging-calculator"><div>Monthly investing calculator<span>Investing the same amount every month: 3 scenarios</span></div>›</a>
+      <a href="/investment-fee-calculator"><div>Investment fee calculator<span>What fees cost you over 10, 20 or 30 years</span></div>›</a>
+      <a href="/inflation-calculator"><div>Inflation calculator<span>What your money will be worth over time</span></div>›</a>
+      <a href="/emergency-fund-calculator"><div>Emergency fund calculator<span>How much to keep aside before investing</span></div>›</a>
+      <a href="/msci-world-etf-returns"><div>MSCI World ETF returns<span>3 scenarios and the effect of fees</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p id="disclaimer">Illustrative, educational calculation based on hypothetical constant assumptions. It is not investment advice. Investing involves risk, including loss of capital.</p>
+    <p>Kapitaro · Maxence De Macedo, sole proprietor (Quorvia), France · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.com</a><br><a href="/legal">Legal notice</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/risks">Risks</a> · <a href="/faq">FAQ</a> · <a href="#" onclick="window.kpAds&&kpAds.optOut&&kpAds.optOut();return false">Do Not Sell or Share My Personal Information</a> · <a href="https://kapitaro.fr/rendement-etf-msci-world" hreflang="fr" lang="fr">Version française</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = KS.fmt, get = KS.get, SCEN = [4, 6, 8], COLORS = ['#86efac', 'var(--green)', '#15803d'];
+    function project(c, m, y, g, f) {
+      var i = (g - f) / 100 / 12, cap = c, inv = c, fees = 0, caps = [c], invs = [c];
+      for (var year = 1; year <= y; year++) { for (var k = 0; k < 12; k++) { fees += cap * f / 100 / 12; cap = cap * (1 + i) + m; inv += m; } caps.push(cap); invs.push(inv); }
+      return { caps: caps, invs: invs, fees: fees };
+    }
+    function update() {
+      var c = get('c'), m = get('m'), y = Math.max(1, Math.min(60, Math.round(get('y')))), f = Math.min(3, get('f'));
+      var s = SCEN.map(function (r) { return project(c, m, y, r, f); });
+      document.getElementById('out-mid').textContent = fmt(s[1].caps[y]);
+      document.getElementById('out-sub').textContent = 'after ' + y + ' year' + (y > 1 ? 's' : '') + ', with ' + KS.num(f) + '%/yr in fees deducted';
+      document.getElementById('out-low').textContent = fmt(s[0].caps[y]);
+      document.getElementById('out-mid2').textContent = fmt(s[1].caps[y]);
+      document.getElementById('out-high').textContent = fmt(s[2].caps[y]);
+      document.getElementById('out-invested').textContent = fmt(s[1].invs[y]);
+      document.getElementById('out-fees').textContent = fmt(s[1].fees);
+      KS.draw([{ v: s[1].invs, color: 'var(--invested)', area: true, opacity: 0.6 }].concat(s.map(function (x, n) { return { v: x.caps, color: COLORS[n] }; })), y);
+    }
+    KS.bind(['c', 'm', 'y', 'f'], update, 'msci-world');
+    update();
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20261029"></script>
+</body>
+</html>

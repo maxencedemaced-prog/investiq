@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-kp-lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="/i18n.js?v=20261031180000"></script>
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261029" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Savings Goal Calculator: how much to save each month — Kapitaro</title>
+  <meta name="description" content="Enter your target, your deadline and what you already have: this free calculator shows how much to set aside each month, with and without investment returns.">
+  <link rel="canonical" href="https://kapitaro.com/savings-goal-calculator">
+  <link rel="alternate" hreflang="en" href="https://kapitaro.com/savings-goal-calculator">
+  <link rel="alternate" hreflang="fr" href="https://kapitaro.fr/calculateur-objectif-epargne">
+  <link rel="alternate" hreflang="x-default" href="https://kapitaro.com/savings-goal-calculator">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://kapitaro.com/savings-goal-calculator">
+  <meta property="og:title" content="Savings Goal Calculator: how much to save each month — Kapitaro">
+  <meta property="og:description" content="Enter your target, your deadline and what you already have: this free calculator shows how much to set aside each month, with and without investment returns.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Savings Goal Calculator: how much to save each month — Kapitaro","url":"https://kapitaro.com/savings-goal-calculator","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"en","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+  <link rel="stylesheet" href="/outils.css?v=20260929b">
+  <style>
+    .cur-switch{display:inline-flex;gap:4px;margin-left:auto}
+    .cur-switch button{border:1px solid var(--border);background:transparent;color:inherit;border-radius:8px;padding:3px 9px;font-weight:700;cursor:pointer}
+    .cur-switch button.on{background:var(--green);border-color:var(--green);color:#fff}
+  </style>
+  <script src="/en/sim-en.js?v=20261031180000"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="/icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Create a free account</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>How much should you save each month to reach your goal?</h1>
+      <p>Enter the amount you’re aiming for, when you need it and what you already have: the calculator shows how much to set aside each month.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" aria-label="Examples">
+            <button type="button" data-preset="10000,3,0,3">10,000 in 3 years</button>
+            <button type="button" data-preset="50000,15,0,5">50,000 in 15 years</button>
+            <button type="button" data-preset="100000,20,5000,5">100,000 in 20 years</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="t">My goal</label><span class="field-val"><input type="number" id="t-n" min="0" max="10000000" step="1000" aria-label="Goal amount"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="t" min="1000" max="500000" step="1000" value="50000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="y">In</label><span class="field-val"><input type="number" id="y-n" min="1" max="60" step="1" aria-label="Years"><span class="unit">years</span></span></div>
+            <input type="range" id="y" min="1" max="40" step="1" value="15">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="c">I already have</label><span class="field-val"><input type="number" id="c-n" min="0" max="10000000" step="100" aria-label="Starting amount"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="c" min="0" max="100000" step="500" value="0">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="r">Average annual return</label><span class="field-val"><input type="number" id="r-n" min="0" max="20" step="0.1" aria-label="Annual return in percent"><span class="unit">%/yr</span></span></div>
+            <input type="range" id="r" min="0" max="12" step="0.1" value="5">
+          </div>
+        </div>
+        <div>
+          <div class="result-sub" style="margin-top:0">To set aside each month</div>
+          <div class="result-total result-big-green" id="out-pmt">—</div>
+          <div class="result-sub" id="out-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-invested">—</b><span>Total contributed</span></div>
+            <div class="kpi gain"><b id="out-gain">—</b><span>Interest earned</span></div>
+            <div class="kpi"><b id="out-share">—</b><span>Share from interest</span></div>
+          </div>
+          <svg class="chart" id="chart" viewBox="0 0 520 220" role="img" aria-label="Progress toward the goal: contributions and interest"></svg>
+          <div class="legend"><span><i style="background:var(--invested)"></i>Money contributed</span><span><i style="background:var(--green)"></i>Compound interest</span></div>
+          <div class="compare">
+            <div>With no return at all<b id="out-zero">—</b>per month</div>
+            <div id="out-later-box">If you start 5 years later<b id="out-later">—</b>per month</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>How is the monthly amount calculated?</h2>
+      <p>Without any return, it’s a simple division: what you still need, divided by the number of months. For 50,000 in 15 years starting from zero, that’s about <strong>278 a month</strong>.</p>
+      <p>If your savings earn a return, each contribution grows until the deadline and the interest earns interest too, so you need to put in less. With a hypothetical average return of 5% a year, the same 50,000 in 15 years takes about <strong>187 a month</strong> — nearly 16,000 comes from compound growth.</p>
+      <h2>Time is your best ally</h2>
+      <div class="example"><p style="margin:0">To reach <strong>50,000</strong> at 5% a year you need about <strong>122 a month over 20 years</strong>, <strong>187 over 15 years</strong>, but <strong>322 over 10 years</strong>. Waiting five or ten years can almost triple the monthly effort.</p></div>
+      <h2>Setting a good goal</h2>
+      <ul>
+        <li><strong>A specific amount and date</strong>: “a 20,000 down payment in 5 years” is far more motivating than “saving more”.</li>
+        <li><strong>An <a href="/emergency-fund-calculator">emergency fund</a> first</strong>: keeping a few months of expenses available avoids dipping into your project at the first surprise.</li>
+        <li><strong>An investment that fits the timeline</strong>: for a near goal, people usually favor safety; for a distant goal, some stocks or index funds may aim for more return, with ups and downs along the way.</li>
+        <li><strong>Automatic contributions</strong>: a transfer scheduled on payday means you don’t have to think about it.</li>
+      </ul>
+      <section class="faq">
+        <h2>Frequently asked questions</h2>
+        <h3>Are taxes, fees and inflation included?</h3>
+        <p>No, the calculation uses a constant gross return. To stay cautious, lower the return a little or aim slightly higher to account for inflation. This is not tax advice.</p>
+        <h3>What if the monthly amount is too high?</h3>
+        <p>Three levers: extend the timeline, adjust the goal, or start with a larger amount. Try different combinations — the effect of time is often surprising.</p>
+        <h3>Is this calculator free?</h3>
+        <p>Yes, with no sign-up. With a free Kapitaro account you can save your goal and track your progress.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Go from simulation to your real portfolio</h2>
+      <p>Track your stocks and ETFs live, set a goal and ask an AI assistant your questions. Free to start.</p>
+      <a href="/?inscription=1" data-cta="bottom">Create my free account</a>
+    </section>
+
+    <section class="others">
+      <h2>Other free tools</h2>
+      <a href="/compound-interest-calculator"><div>Compound interest calculator<span>What your savings become over time</span></div>›</a>
+      <a href="/savings-goal-calculator"><div>Savings goal calculator<span>How much to set aside each month to reach a goal</span></div>›</a>
+      <a href="/dollar-cost-averaging-calculator"><div>Monthly investing calculator<span>Investing the same amount every month: 3 scenarios</span></div>›</a>
+      <a href="/investment-fee-calculator"><div>Investment fee calculator<span>What fees cost you over 10, 20 or 30 years</span></div>›</a>
+      <a href="/inflation-calculator"><div>Inflation calculator<span>What your money will be worth over time</span></div>›</a>
+      <a href="/emergency-fund-calculator"><div>Emergency fund calculator<span>How much to keep aside before investing</span></div>›</a>
+      <a href="/msci-world-etf-returns"><div>MSCI World ETF returns<span>3 scenarios and the effect of fees</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p id="disclaimer">Illustrative, educational calculation based on hypothetical constant assumptions. It is not investment advice. Investing involves risk, including loss of capital.</p>
+    <p>Kapitaro · Maxence De Macedo, sole proprietor (Quorvia), France · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.com</a><br><a href="/legal">Legal notice</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/risks">Risks</a> · <a href="/faq">FAQ</a> · <a href="#" onclick="window.kpAds&&kpAds.optOut&&kpAds.optOut();return false">Do Not Sell or Share My Personal Information</a> · <a href="https://kapitaro.fr/calculateur-objectif-epargne" hreflang="fr" lang="fr">Version française</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = KS.fmt, get = KS.get;
+    function pmt(t, c, y, r) {
+      var i = r / 100 / 12, n = y * 12;
+      if (n <= 0) return Math.max(0, t - c);
+      if (i === 0) return Math.max(0, (t - c) / n);
+      var g = Math.pow(1 + i, n);
+      return Math.max(0, (t - c * g) * i / (g - 1));
+    }
+    function update() {
+      var t = get('t'), y = Math.max(1, Math.min(60, Math.round(get('y')))), c = get('c'), r = Math.min(20, get('r'));
+      var m = pmt(t, c, y, r), cap = KS.fv(c, m, y, r), inv = [];
+      for (var k = 0; k <= y; k++) inv.push(c + m * 12 * k);
+      var gain = Math.max(0, cap[y] - inv[y]);
+      if (m <= 0 && t > 0) {
+        document.getElementById('out-pmt').textContent = fmt(0);
+        document.getElementById('out-sub').textContent = 'Your starting amount is enough: it should reach the goal on its own in ' + y + ' year' + (y > 1 ? 's' : '') + ' (hypothetical).';
+      } else {
+        document.getElementById('out-pmt').textContent = fmt(m);
+        document.getElementById('out-sub').textContent = 'for ' + y + ' year' + (y > 1 ? 's' : '') + ' to reach ' + fmt(t) + ' at ' + KS.num(r) + '% a year';
+      }
+      document.getElementById('out-invested').textContent = fmt(inv[y]);
+      document.getElementById('out-gain').textContent = '+' + fmt(gain);
+      document.getElementById('out-share').textContent = cap[y] > 0 ? Math.round(gain / cap[y] * 100) + '%' : '—';
+      document.getElementById('out-zero').textContent = fmt(pmt(t, c, y, 0));
+      var box = document.getElementById('out-later-box');
+      if (y > 5) { box.style.display = ''; document.getElementById('out-later').textContent = fmt(pmt(t, c, y - 5, r)); } else box.style.display = 'none';
+      KS.draw([{ v: cap, color: 'var(--green)', area: true, opacity: 0.85 }, { v: inv, color: 'var(--invested)', area: true }], y, { target: t, max: t, label: 'Goal ' + fmt(t) });
+    }
+    KS.bind(['t', 'y', 'c', 'r'], update, 'savings-goal');
+    update();
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20261029"></script>
+</body>
+</html>

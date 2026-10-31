@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Plan du site anglais (kapitaro.com). Les pages juridiques sont des brouillons en noindex : à ajouter ici après relecture. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://kapitaro.com/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/"/>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/compound-interest-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/compound-interest-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/simulateur-interets-composes"/>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/savings-goal-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/savings-goal-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/calculateur-objectif-epargne"/>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/investment-fee-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/investment-fee-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/calculateur-frais-placement"/>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/inflation-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/inflation-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/calculateur-inflation"/>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/emergency-fund-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/emergency-fund-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/epargne-de-precaution"/>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/dollar-cost-averaging-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/dollar-cost-averaging-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/simulateur-investissement-programme"/>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/msci-world-etf-returns</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/msci-world-etf-returns"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/rendement-etf-msci-world"/>
+    <lastmod>2026-10-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>

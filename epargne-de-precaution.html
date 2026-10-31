@@ -6,10 +6,13 @@
   <script src="/ads.js?v=20261021110000" defer></script>
   <script src="/inapp.js?v=20261002170000" defer></script>
   <script src="/simcta.js?v=20261023100000" defer></script>
+  <script src="/sim-cur.js?v=20261031180000" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Épargne de précaution : combien garder de côté ? Calculateur gratuit — Kapitaro</title>
   <meta name="description" content="Calcule le montant de ton épargne de précaution selon tes dépenses et ta situation (salarié, indépendant, enfants…), et en combien de temps la constituer. Gratuit, sans inscription.">
   <link rel="canonical" href="https://kapitaro.fr/epargne-de-precaution">
+  <link rel="alternate" hreflang="fr" href="https://kapitaro.fr/epargne-de-precaution">
+  <link rel="alternate" hreflang="en" href="https://kapitaro.com/emergency-fund-calculator">
   <meta name="theme-color" content="#080e1e">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Kapitaro">
@@ -177,7 +180,7 @@
 
   <script>
   (function () {
-    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' ' + (window.kpSimSym ? kpSimSym() : '€'); };
     var ids = ['d', 'h', 'm'];
     var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
     var plural = function (n, w) { return n + ' ' + w + (n > 1 ? 's' : ''); };

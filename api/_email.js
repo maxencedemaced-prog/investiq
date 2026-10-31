@@ -17,19 +17,20 @@ export function checkUnsubToken(userId, token) {
   const a = Buffer.from(String(token || '')), b = Buffer.from(unsubToken(userId));
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-export function unsubUrl(userId) {
-  return `${SITE}/api/unsubscribe?u=${encodeURIComponent(userId)}&t=${unsubToken(userId)}`;
+export function unsubUrl(userId, lang) {
+  return `${SITE}/api/unsubscribe?u=${encodeURIComponent(userId)}&t=${unsubToken(userId)}${lang === 'en' ? '&l=en' : ''}`;   // l=en : page de confirmation en anglais
 }
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Gabarit : titre, paragraphes (texte simple, **gras** autorisé), bouton, pied de page légal + désinscription
-export function renderEmail({ title, paragraphs, cta, userId, extraHtml = '', extraText = '', hero = null }) {
+export function renderEmail({ title, paragraphs, cta, userId, extraHtml = '', extraText = '', hero = null, lang = 'fr' }) {
+  const EN = lang === 'en';   // version anglaise (kapitaro.com)
   const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   const body = paragraphs.map(p => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1f2937">${md(p)}</p>`).join('');
   const button = cta ? `<p style="margin:22px 0 8px"><a href="${esc(cta.url)}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 22px;border-radius:10px">${esc(cta.label)}</a></p>` : '';
-  const unsub = userId ? unsubUrl(userId) : null;
-  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+  const unsub = userId ? unsubUrl(userId, lang) : null;
+  const html = `<!DOCTYPE html><html lang="${EN ? 'en' : 'fr'}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden">
@@ -39,10 +40,10 @@ ${title ? `<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#0b12
 ${body}${extraHtml}${button}
 </td></tr>
 <tr><td style="padding:16px 24px 24px;border-top:1px solid #e5e7eb;font-size:11.5px;line-height:1.6;color:#6b7280">
-Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital.<br>
-Maxence De Macedo, entrepreneur individuel (Quorvia) · contact@kapitaro.fr${unsub ? `<br><a href="${esc(unsub)}" style="color:#6b7280">Ne plus recevoir ces e-mails</a>` : ''}
+${EN ? 'Kapitaro provides general educational information only, not investment, tax or legal advice. Investing involves risk, including loss of capital.' : "Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital."}<br>
+${EN ? 'Maxence De Macedo, sole proprietor (Quorvia), France' : 'Maxence De Macedo, entrepreneur individuel (Quorvia)'} · contact@kapitaro.fr${unsub ? `<br><a href="${esc(unsub)}" style="color:#6b7280">${EN ? 'Unsubscribe from these emails' : 'Ne plus recevoir ces e-mails'}</a>` : ''}
 </td></tr></table></td></tr></table></body></html>`;
-  const text = `${title || 'Ta semaine avec Kapitaro'}\n\n${paragraphs.map(p => p.replace(/\*\*/g, '')).join('\n\n')}${extraText ? '\n\n' + extraText : ''}${cta ? `\n\n${cta.label} : ${cta.url}` : ''}\n\n--\nKapitaro · contact@kapitaro.fr${unsub ? `\nNe plus recevoir ces e-mails : ${unsub}` : ''}`;
+  const text = `${title || (EN ? 'Your week with Kapitaro' : 'Ta semaine avec Kapitaro')}\n\n${paragraphs.map(p => p.replace(/\*\*/g, '')).join('\n\n')}${extraText ? '\n\n' + extraText : ''}${cta ? `\n\n${cta.label} : ${cta.url}` : ''}\n\n--\nKapitaro · contact@kapitaro.fr${unsub ? (EN ? `\nUnsubscribe: ${unsub}` : `\nNe plus recevoir ces e-mails : ${unsub}`) : ''}`;
   return { html, text, unsub };
 }
 
@@ -95,3 +96,43 @@ export const EMAILS = {
     cta: { label: 'Voir mon portefeuille', url: SITE },
   },
 };
+
+// ── Version anglaise (kapitaro.com) : mêmes e-mails, envoyés en anglais aux comptes créés en anglais
+// (user_metadata.lang = 'en', enregistré à l'inscription). La lettre du dimanche reste en français : non envoyée à ces comptes.
+const SITE_EN = 'https://kapitaro.com';
+export const EMAILS_EN = {
+  welcome: {
+    subject: 'Welcome to Kapitaro 👋',
+    title: 'Welcome to Kapitaro!',
+    paragraphs: [
+      'Thanks for joining. Kapitaro helps you track your investments, understand where you stand and stay on course toward your goals.',
+      'Three things are enough to get started:',
+      '**1. Add your investments**, manually or by importing your broker statement (PDF, Excel or CSV).',
+      '**2. Set a goal**: Kapitaro shows whether it looks realistic and how much you might set aside each month (illustrative figures).',
+      '**3. Install the app on your phone** to get your morning briefing: on kapitaro.com, tap “Install the app” (or Share then “Add to Home Screen” on iPhone).',
+      'Any questions? Just reply to this email.',
+    ],
+    cta: { label: 'Open Kapitaro', url: SITE_EN },
+  },
+  nudge_empty: {
+    subject: 'Your portfolio is waiting',
+    title: 'Two minutes to get started',
+    paragraphs: [
+      'You created your Kapitaro account, but your portfolio is still empty.',
+      'If you already invest, import your broker statement: Kapitaro finds your holdings for you. You then get your health score and allocation in seconds.',
+      'Not investing yet? No problem: set a goal and the tutorial shows you a simple example plan for beginners.',
+    ],
+    cta: { label: 'Complete my portfolio', url: SITE_EN },
+  },
+  winback: {
+    subject: 'How is your goal going?',
+    title: 'We haven’t seen you for a few days',
+    paragraphs: [
+      'Markets have moved since your last visit. Take a look at your portfolio and health score to see where you stand.',
+      'Tip: turn on notifications to get a morning briefing and an alert when a price crosses your threshold, without opening the app.',
+    ],
+    cta: { label: 'See my portfolio', url: SITE_EN },
+  },
+};
+export const userLang = u => (u && u.user_metadata && u.user_metadata.lang === 'en') ? 'en' : 'fr';
+export const emailFor = (kind, u) => (userLang(u) === 'en' ? EMAILS_EN[kind] : null) || EMAILS[kind];

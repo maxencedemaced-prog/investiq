@@ -9,6 +9,8 @@ const { pushReady, sendToDevice } = require('./_push');
 const ALLOWED_ORIGINS = [
   'https://kapitaro.fr',
   'https://www.kapitaro.fr',
+  'https://kapitaro.com',      // version anglaise (domaine à brancher)
+  'https://www.kapitaro.com',
   'https://investiq-kappa.vercel.app',
   'http://localhost:3000',
   'http://127.0.0.1:5500',
@@ -50,8 +52,8 @@ module.exports = async function handler(req, res) {
       let sent = 0, lastErr = '';
       for (const d of devices) {
         const r = await sendToDevice(d, {
-          title: '🔔 Notifications activées',
-          body: 'Tu recevras ton briefing du matin et une alerte quand un prix tombe sous ton seuil.',
+          title: body.lang === 'en' ? '🔔 Notifications on' : '🔔 Notifications activées',   // version anglaise
+          body: body.lang === 'en' ? 'You’ll get your morning briefing and an alert when a price drops below your threshold.' : 'Tu recevras ton briefing du matin et une alerte quand un prix tombe sous ton seuil.',
           tag: 'investiq-test',
         }, 'high');
         try { await supabase.from('push_devices').update({ last_push_at: new Date().toISOString(), last_push_ok: r.ok, last_push_error: r.ok ? null : String(r.error || '').slice(0, 200) }).eq('endpoint', d.endpoint); } catch (e) {}

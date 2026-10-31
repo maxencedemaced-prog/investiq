@@ -5,9 +5,12 @@
   if (window.__kpHelp) return; window.__kpHelp = true;
 
   var POPULAR = ['ajouter', 'importer', 'premium', 'installer', 'resilier'];
+  // Version anglaise (kapitaro.com) : base de questions anglaise (faq-data-en.js), mots vides et formules de politesse anglais
+  var EN = !!(window.kpI18n && window.kpI18n.isEN);
   // Mots trop courants pour aider à reconnaître une question
   var STOP = {};
   'le la les un une des de du d l a au aux et ou en est ce que qui quoi comment pourquoi je j tu il on mon ma mes ton ta tes son sa ses sur pour par avec dans pas ne plus se s y elle nous vous c ca faire fait peut peux puis veux voudrais kapitaro site'.split(' ').forEach(function (w) { STOP[w] = true; });
+  if (EN) 'the a an of to in on for and or is are do does how what why where can i my me you your it this that with from be have get kapitaro site'.split(' ').forEach(function (w) { STOP[w] = true; });
   var norm = function (s) { return ' ' + String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim() + ' '; };
   var stem = function (w) { return w.length > 4 ? w.replace(/(es|s|x)$/, '') : w; };
   var tokens = function (s) { return norm(s).trim().split(' ').filter(function (w) { return w.length > 1 && !STOP[w]; }).map(stem); };
@@ -26,7 +29,9 @@
   function answer(text) {
     var q = norm(text), qt = tokens(text), faq = window.KAPITARO_FAQ || [];
     if (/^(bonjour|salut|hello|coucou|bonsoir|hey)\b/.test(q.trim()) && qt.length <= 1) return { html: 'Bonjour 👋 Pose-moi ta question sur l\'utilisation de Kapitaro, ou choisis une question ci-dessous.', chips: POPULAR };
+    if (EN && /^(hi|hello|hey)\b/.test(q.trim()) && qt.length <= 1) return { html: 'Hi 👋 Ask me anything about using Kapitaro, or pick a question below.', chips: POPULAR };
     if (/ (merci|super|parfait|top|genial) /.test(q) && qt.length <= 3) return { html: 'Avec plaisir ! N\'hésite pas si tu as une autre question 🙂' };
+    if (EN && / (thanks|thank you|great|perfect) /.test(q) && qt.length <= 3) return { html: 'You’re welcome! Ask me if you have another question 🙂' };
     var ranked = faq.map(function (e) { return { e: e, s: score(e, q, qt) }; }).sort(function (a, b) { return b.s - a.s; });
     var advice = window.KAPITARO_FAQ_ADVICE, adviceHit = advice && advice.keys.some(function (k) { return q.indexOf(norm(k)) >= 0; });
     if (adviceHit && (!ranked[0] || ranked[0].s < 5)) return { html: advice.a, chips: ['decision', 'agent'], id: 'conseil-refus' };
@@ -113,7 +118,7 @@
   var loaded = null;
   function loadData() {
     if (window.KAPITARO_FAQ) return Promise.resolve();
-    if (!loaded) loaded = new Promise(function (ok) { var s = document.createElement('script'); s.src = '/faq-data.js?v=20260930'; s.onload = ok; s.onerror = ok; document.head.appendChild(s); });
+    if (!loaded) loaded = new Promise(function (ok) { var s = document.createElement('script'); s.src = EN ? '/faq-data-en.js?v=20261029' : '/faq-data.js?v=20260930'; s.onload = ok; s.onerror = ok; document.head.appendChild(s); });
     return loaded;
   }
   var started = false;

@@ -2,6 +2,8 @@
 // un curseur qui clique et des sous-titres synchronisés sur la voix off ElevenLabs préparée par api/social.js (action « tuto-create »).
 // Étapes : timing.json (stockage) → enregistrement Playwright → montage ffmpeg (image + voix) → envoi dans le stockage + manifest.json.
 // Variables : TUTO_ID, SUPABASE_URL, SUPABASE_SERVICE_KEY, APP_URL (les appels /api/* de l'appli sont relayés vers ce site).
+// TUTO_LANG=en : version anglaise (appli ouverte avec ?lang=en, démo anglaise, voix tuto/<id>__en/timing.json, fichiers <id>__en[__desktop]).
+// En anglais, TUTO_REGION (US par défaut) et TUTO_CURRENCY (USD par défaut) règlent la démo filmée.
 import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
@@ -11,7 +13,11 @@ import { execFileSync } from 'child_process';
 
 const TID = String(process.env.TUTO_ID || '').trim();
 const DESK = String(process.env.VARIANT || '').trim() === 'desktop';   // version ordinateur : grand écran, menu latéral
-const ID = DESK ? TID + '__desktop' : TID;   // nom des fichiers, de l'état et de l'entrée du manifest
+const EN = String(process.env.TUTO_LANG || 'fr').trim().toLowerCase() === 'en';   // version anglaise (français par défaut)
+const BASE = EN ? TID + '__en' : TID;   // dossier de la voix (tuto/<BASE>/timing.json)
+const ID = DESK ? BASE + '__desktop' : BASE;   // nom des fichiers, de l'état et de l'entrée du manifest
+const EN_REGION = ['US', 'UK', 'EU', 'OTHER'].includes(String(process.env.TUTO_REGION || '').trim().toUpperCase()) ? String(process.env.TUTO_REGION).trim().toUpperCase() : 'US';
+const EN_CUR = /^[A-Z]{3}$/.test(String(process.env.TUTO_CURRENCY || '').trim().toUpperCase()) ? String(process.env.TUTO_CURRENCY).trim().toUpperCase() : 'USD';
 const LIVE = String(process.env.APP_URL || 'https://kapitaro.fr').trim().replace(/\/$/, '');
 const sb = createClient((process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.supabase.co').trim(), (process.env.SUPABASE_SERVICE_KEY || '').trim());   // même valeur par défaut que video/render-job.mjs
 const ROOT = path.resolve('..');
@@ -62,26 +68,43 @@ const SETUP = () => {
   hide.textContent = '#cookie-banner,#tab-hint,#kp-tour,#kp-news-modal,#kp-level-modal,#legal-accept,#dup-banner,#demo-banner,.push-ask,#install-banner,.kp-install,#kp-consent,#home-install-banner,.install-banner,#kp-help-btn,.kp-tuto-hint{display:none!important}';
   document.head.appendChild(hide);
   try { enterDemo(); } catch (e) {}
-  // une crypto et de l'or, pour illustrer « tous tes placements »
-  try { positions.push({ id: 'd5', name: 'BTC-EUR', qty: 0.012, pru: 61000, price: 76800, type: 'Crypto', sector: 'Crypto', platform: 'Binance', alert_price: null }, { id: 'd6', name: 'XAU-G', qty: 8, pru: 104, price: 119.6, type: 'Matière première', sector: 'Or', platform: 'Portefeuille personnel', alert_price: null }); } catch (e) {}
+  const EN = !!(window.KP_EN && window.KP_EN.demo);   // version anglaise : démo anglaise (i18n-en.js), textes d'exemple en anglais
+  const DS = EN ? window.KP_EN.demo() : null;
+  // une crypto (cours seulement) et de l'or, pour illustrer « tous tes placements »
+  try { positions.push({ id: 'd5', name: 'BTC-EUR', qty: 0.012, pru: 61000, price: 76800, type: 'Crypto', sector: 'Crypto', platform: EN ? 'Crypto exchange' : 'Binance', alert_price: null }, { id: 'd6', name: 'XAU-G', qty: 8, pru: 104, price: 119.6, type: 'Matière première', sector: 'Or', platform: EN ? 'Personal holdings' : 'Portefeuille personnel', alert_price: null }); } catch (e) {}
   // une ligne un peu trop lourde, pour que la zone « À surveiller » ait quelque chose à montrer
-  try { const lv = positions.find(p => p.name === 'LVMH'); if (lv) lv.qty = 4; } catch (e) {}
+  try { const hv = DS ? DS.heavy : { name: 'LVMH', qty: 4 }; const lv = positions.find(p => p.name === hv.name); if (lv) lv.qty = hv.qty; } catch (e) {}
   const ob = document.getElementById('onboarding-modal'); if (ob) ob.style.display = 'none';
   // objectif d'exemple
   objChartCapital = 5000; objChartMonthly = 300; objChartTarget = 50000; objChartYears = 10; objChartRate = 7; objRisk = 'equilibre'; objStockPct = 30; objGlide = false;
-  allObjectives = [{ id: 'demo1', label: 'Objectif 1', color: '#16a34a', capital: 5000, monthly: 300, target: 50000, years: 10, rate: 7, risk: 'equilibre', stock_pct: 30, glide: false, validated_at: new Date(Date.now() - 40 * 864e5).toISOString() }];
+  allObjectives = [{ id: 'demo1', label: EN ? 'Goal 1' : 'Objectif 1', color: '#16a34a', capital: 5000, monthly: 300, target: 50000, years: 10, rate: 7, risk: 'equilibre', stock_pct: 30, glide: false, validated_at: new Date(Date.now() - 40 * 864e5).toISOString() }];
   activeObjId = 'demo1';
   const m = (p1y, dd, vol) => ({ p1y, dd, vol });
-  const ETFS = [
+  const US = DS && DS.region === 'US';
+  const ETFS = EN ? [
+    US ? { ticker: 'VT', name: 'Vanguard Total World Stock ETF', desc: 'Stocks from around the world', pct_capital: 75, pct_mensuel: 75, role: 'socle', color: '#16a34a', pourquoi: '1-year max drop −6.5%, volatility 11.7%: the steadiest core', m: m(21, -6.5, 11.7) }
+      : { ticker: 'VWCE.DE', name: 'Vanguard FTSE All-World', desc: 'Stocks from around the world', pct_capital: 75, pct_mensuel: 75, role: 'socle', color: '#16a34a', pourquoi: '1-year max drop −6.5%, volatility 11.7%: the steadiest core', m: m(21, -6.5, 11.7) },
+    US ? { ticker: 'BND', name: 'Vanguard Total Bond Market ETF', desc: 'US investment-grade bonds', pct_capital: 25, pct_mensuel: 25, role: 'satellite', color: '#0ea5e9', pourquoi: 'Volatility 3.2%: cushions the bumps', m: m(-2.5, -4.1, 3.2) }
+      : { ticker: 'AGGH.AS', name: 'iShares Core Global Aggregate Bond', desc: 'Global bonds (euro hedged)', pct_capital: 25, pct_mensuel: 25, role: 'satellite', color: '#0ea5e9', pourquoi: 'Volatility 3.2%: cushions the bumps', m: m(-2.5, -4.1, 3.2) },
+  ] : [
     { ticker: 'VWCE.DE', name: 'Vanguard FTSE All-World', desc: 'Actions du monde entier', pct_capital: 75, pct_mensuel: 75, role: 'socle', color: '#16a34a', pourquoi: 'Baisse max 1 an −6,5 %, volatilité 11,7 % : le socle le plus stable', m: m(21, -6.5, 11.7) },
     { ticker: 'AGGH.AS', name: 'iShares Core Global Aggregate Bond', desc: 'Obligations mondiales (euro couvert)', pct_capital: 25, pct_mensuel: 25, role: 'satellite', color: '#0ea5e9', pourquoi: 'Volatilité 3,2 % : amortit les secousses', m: m(-2.5, -4.1, 3.2) },
   ];
-  const ACTIONS = [
+  const ACTIONS = EN ? [
+    { ticker: 'MSFT', name: 'Microsoft', desc: 'Software & cloud', secteur: 'Technologie', pct_capital: 50, pct_mensuel: 50, color: '#06b6d4', pourquoi: '1-year max drop −10.5%, volatility 17.8%', m: m(12.1, -10.5, 17.8) },
+    { ticker: 'JNJ', name: 'Johnson & Johnson', desc: 'Healthcare', secteur: 'Santé', pct_capital: 50, pct_mensuel: 50, color: '#6366f1', pourquoi: '1-year max drop −12.4%, volatility 19.2%', m: m(15.2, -12.4, 19.2) },
+  ] : [
     { ticker: 'AI.PA', name: 'Air Liquide', desc: 'Gaz industriels', secteur: 'Industrie', pct_capital: 50, pct_mensuel: 50, color: '#06b6d4', pourquoi: 'Baisse max 1 an −10,5 %, volatilité 17,8 %', m: m(12.1, -10.5, 17.8) },
     { ticker: 'ALV.DE', name: 'Allianz', desc: 'Assurance', secteur: 'Finance', pct_capital: 50, pct_mensuel: 50, color: '#6366f1', pourquoi: 'Baisse max 1 an −12,4 %, volatilité 19,2 %', m: m(15.2, -12.4, 19.2) },
   ];
   const PLAN = { month: currentMonthId(), objId: 'demo1', stockPct: 30, budget: 300, ts: Date.now(), analysis: { n: 41, news: 30, indices: 5 },
-    data: { synthese: 'Un mois régulier : on renforce le socle et on complète doucement les actions.', note_marche: 'Le CAC 40 recule de 5,6 % sur un mois : investir la même somme chaque mois lisse ton prix d’entrée.',
+    data: EN ? { synthese: 'A steady month: the core gets topped up and the stocks are added gradually.', note_marche: 'Markets have been choppy this month: investing the same amount every month smooths out your entry price.',
+      lignes: [
+        { ticker: ETFS[0].ticker, name: ETFS[0].name, montant: 150, pct: 50, role: 'socle', raison: 'global core, volatility 11.7%', m: m(21, -6.5, 11.7) },
+        { ticker: ETFS[1].ticker, name: ETFS[1].name, montant: 60, pct: 20, role: 'satellite', raison: 'shock absorber, volatility 3.2%', m: m(-2.5, -4.1, 3.2) },
+        { ticker: 'MSFT', name: 'Microsoft', montant: 45, pct: 15, role: 'croissance', raison: '1-year max drop −10.5%', m: m(12.1, -10.5, 17.8) },
+        { ticker: 'JNJ', name: 'Johnson & Johnson', montant: 45, pct: 15, role: 'croissance', raison: 'volatility 19.2%, healthcare', m: m(15.2, -12.4, 19.2) },
+      ] } : { synthese: 'Un mois régulier : on renforce le socle et on complète doucement les actions.', note_marche: 'Le CAC 40 recule de 5,6 % sur un mois : investir la même somme chaque mois lisse ton prix d’entrée.',
       lignes: [
         { ticker: 'VWCE.DE', name: 'Vanguard FTSE All-World', montant: 150, pct: 50, role: 'socle', raison: 'socle monde, volatilité 11,7 %', m: m(21, -6.5, 11.7) },
         { ticker: 'AGGH.AS', name: 'iShares Core Global Aggregate Bond', montant: 60, pct: 20, role: 'satellite', raison: 'amortisseur, volatilité 3,2 %', m: m(-2.5, -4.1, 3.2) },
@@ -92,26 +115,28 @@ const SETUP = () => {
   window.generateMonthlyPlan = async () => { renderMonthlyPlan(PLAN, false); };
   window.isPremiumUser = () => true;   // le bilan (Premium) doit pouvoir s'ouvrir pendant le tournage
   window.kpOpenTuto = () => {};
-  window.getSmartAdvice = async a => ({ verdict: a.kind === 'loss' ? 'garder' : 'alléger', raison: a.kind === 'loss' ? 'Cette ligne a beaucoup baissé, mais elle pèse peu : pas d’urgence, garde un œil sur son évolution.' : (a.name + ' pèse ' + Math.round(a.pct) + ' % de ton portefeuille, au-dessus du repère de 25 % : orienter tes prochains versements vers ton socle ETF rééquilibrerait l’ensemble.'), remplacement: a.kind === 'loss' ? null : { ticker: 'VWCE.DE', name: 'Vanguard FTSE All-World', raison: 'socle monde très diversifié' } });   // exemple pour le tournage   // pendant le tournage, le bouton « ▶ C'est quoi ? » ne lance pas une vidéo dans la vidéo
+  if (EN) window.getSmartAdvice = async a => ({ verdict: a.kind === 'loss' ? 'garder' : 'alléger', raison: a.kind === 'loss' ? 'This holding has dropped a lot, but it weighs little: no rush, keep an eye on how it evolves.' : (a.name + ' makes up ' + Math.round(a.pct) + '% of your portfolio, above the 25% guideline: directing your next contributions to your ETF core would rebalance the whole.'), remplacement: a.kind === 'loss' ? null : { ticker: ETFS[0].ticker, name: ETFS[0].name, raison: 'very diversified global core' } });
+  else window.getSmartAdvice = async a => ({ verdict: a.kind === 'loss' ? 'garder' : 'alléger', raison: a.kind === 'loss' ? 'Cette ligne a beaucoup baissé, mais elle pèse peu : pas d’urgence, garde un œil sur son évolution.' : (a.name + ' pèse ' + Math.round(a.pct) + ' % de ton portefeuille, au-dessus du repère de 25 % : orienter tes prochains versements vers ton socle ETF rééquilibrerait l’ensemble.'), remplacement: a.kind === 'loss' ? null : { ticker: 'VWCE.DE', name: 'Vanguard FTSE All-World', raison: 'socle monde très diversifié' } });   // exemple pour le tournage   // pendant le tournage, le bouton « ▶ C'est quoi ? » ne lance pas une vidéo dans la vidéo
   window.showPlanTour = () => {}; window.showPortfolioTour = () => {}; window.kpTour = () => {}; window.kpMaybeWhatsNew = () => {}; window.maybeAskLevel = () => false;
   // réponse d'exemple de l'assistant
   window.__tutoAiDemo = async () => {
     const inp = document.getElementById('ai-in'), chat = document.getElementById('ai-chat');
     if (!inp || !chat) return;
-    const q = 'Mon portefeuille est-il bien diversifié ?';
+    const q = EN ? 'Is my portfolio well diversified?' : 'Mon portefeuille est-il bien diversifié ?';
     for (let i = 1; i <= q.length; i++) { inp.value = q.slice(0, i); await new Promise(r => setTimeout(r, 38)); }
     await new Promise(r => setTimeout(r, 300));
     inp.value = '';
     chat.innerHTML += '<div class="bubble user">' + q + '</div>';
     await new Promise(r => setTimeout(r, 700));
-    chat.innerHTML += '<div class="bubble bot">Ton portefeuille tient bien la route : tes ETF monde répartissent déjà ton argent sur des milliers d’entreprises. Point d’attention : LVMH pèse environ 30 % du total. Orienter tes prochains versements vers ton socle ETF rééquilibrerait l’ensemble, la décision t’appartient.</div>';
+    if (EN) chat.innerHTML += '<div class="bubble bot">Your portfolio holds up well: your global ETFs already spread your money across thousands of companies. One point to watch: ' + (DS ? DS.heavy.label : 'one stock') + ' is a large share of the total. Directing your next contributions to your ETF core would rebalance things, and the decision is yours.</div>';
+    else chat.innerHTML += '<div class="bubble bot">Ton portefeuille tient bien la route : tes ETF monde répartissent déjà ton argent sur des milliers d’entreprises. Point d’attention : LVMH pèse environ 30 % du total. Orienter tes prochains versements vers ton socle ETF rééquilibrerait l’ensemble, la décision t’appartient.</div>';
     chat.scrollTop = chat.scrollHeight;
   };
   // carte de fin
   window.__tutoEndCard = () => {
     const d = document.createElement('div');
     d.style.cssText = 'position:fixed;inset:0;z-index:2147483640;background:linear-gradient(160deg,#0b1220,#0f1f17);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0;transition:opacity .6s';
-    d.innerHTML = '<img src="icons/kapitaro-tile.svg" width="84" height="84" style="border-radius:20px"><div style="color:#fff;font:900 30px/1 system-ui;letter-spacing:-.03em">Kapitaro</div><div style="color:#4ade80;font:700 15px system-ui">kapitaro.fr</div>';
+    d.innerHTML = '<img src="icons/kapitaro-tile.svg" width="84" height="84" style="border-radius:20px"><div style="color:#fff;font:900 30px/1 system-ui;letter-spacing:-.03em">Kapitaro</div><div style="color:#4ade80;font:700 15px system-ui">' + (EN ? 'kapitaro.com' : 'kapitaro.fr') + '</div>';
     document.body.appendChild(d); requestAnimationFrame(() => { d.style.opacity = '1'; });
     const cu = document.getElementById('tt-cur'); if (cu) cu.style.opacity = '0';
   };
@@ -137,7 +162,7 @@ const SETUP = () => {
   };
   // bouton « lecture » de démonstration sur la page Portefeuille
   const hdr = document.querySelector('#sec-portfolio .page-header h1');
-  if (hdr && !document.querySelector('.kp-tuto-btn')) hdr.insertAdjacentHTML('beforeend', ' <button type="button" class="kp-tuto-btn" style="vertical-align:middle;margin-left:6px;padding:4px 10px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:800 12px system-ui">▶ C’est quoi ?</button>');
+  if (hdr && !document.querySelector('.kp-tuto-btn')) hdr.insertAdjacentHTML('beforeend', ' <button type="button" class="kp-tuto-btn" style="vertical-align:middle;margin-left:6px;padding:4px 10px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:800 12px system-ui">' + (EN ? '▶ What is it?' : '▶ C’est quoi ?') + '</button>');
   // curseur + sous-titres
   const css = document.createElement('style');
   css.textContent = '#tt-cur{position:fixed;left:50%;top:45%;z-index:2147483646;pointer-events:none;transition:left .7s cubic-bezier(.45,0,.2,1),top .7s cubic-bezier(.45,0,.2,1);filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))}'
@@ -191,6 +216,7 @@ async function run() {
   await setStatus('recording', { pct: 20, step: 'Ouverture de l’appli' });
   let timing;
   const local = path.resolve('ads', TID + '.json');
+  if (EN && fs.existsSync(local)) throw new Error('Pas de version anglaise pour les pubs');
   if (fs.existsSync(local)) {
     // pub sans voix (tuto/ads/<id>.json) : durée fixe par scène, sous-titres incrustés, musique de fond
     const a = JSON.parse(fs.readFileSync(local, 'utf8'));
@@ -203,17 +229,19 @@ async function run() {
       if (tv) { const vt = JSON.parse(await tv.text()); if (vt.segments && vt.segments.length && vt.beats && vt.beats.length === beats.length) timing = { ...vt, music: a.music || null, beats: vt.beats.map((b, k) => ({ ...b, do: beats[k].do })) }; }
     } catch (e) {}
   } else {
-    const { data: tf, error } = await sb.storage.from('social').download('tuto/' + TID + '/timing.json');
+    const { data: tf, error } = await sb.storage.from('social').download('tuto/' + BASE + '/timing.json');
     if (error || !tf) throw new Error('timing.json introuvable : relance la fabrication depuis le Studio');
     timing = JSON.parse(await tf.text());
   }
+  if (EN && timing.ad) throw new Error('Pas de version anglaise pour les pubs');
   if (timing.ad && !DESK) { AD = true; W = 405; H = 720; }
   fs.mkdirSync(path.join(OUT, 'raw'), { recursive: true });
 
   const srv = await serve(4173);
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DESK ? 1.5 : AD ? 8 / 3 : 2, isMobile: !DESK, hasTouch: !DESK, locale: 'fr-FR', timezoneId: 'Europe/Paris', colorScheme: 'light' });
+  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DESK ? 1.5 : AD ? 8 / 3 : 2, isMobile: !DESK, hasTouch: !DESK, locale: EN ? 'en-US' : 'fr-FR', timezoneId: EN ? (EN_REGION === 'UK' ? 'Europe/London' : EN_REGION === 'US' ? 'America/New_York' : 'Europe/Berlin') : 'Europe/Paris', colorScheme: 'light' });
   await ctx.addInitScript(lvl => { window.__ttLevel = lvl; }, ['sante', 'depenses', 'news'].includes(timing.page) ? '3' : '1');
+  if (EN) await ctx.addInitScript(([r, c]) => { try { localStorage.setItem('kp_lang', 'en'); localStorage.setItem('kp_region', r); localStorage.setItem('kp_currency', c); } catch (e) {} }, [EN_REGION, EN_CUR]);
   await ctx.addInitScript(() => {
     try {
       localStorage.setItem('kp_consent', JSON.stringify({ ads: false, v: 1, at: Date.now() }));
@@ -230,7 +258,7 @@ async function run() {
     try { const resp = await route.fetch({ url: LIVE + u.pathname + u.search, headers: { ...route.request().headers(), origin: LIVE, referer: LIVE + '/' } }); await route.fulfill({ response: resp }); }
     catch (e) { await route.fulfill({ status: 503, body: '{}' }); }
   });
-  await page.goto('http://localhost:4173/', { waitUntil: 'load' });
+  await page.goto('http://localhost:4173/' + (EN ? '?lang=en' : ''), { waitUntil: 'load' });
   await sleep(1500);
   await page.evaluate(SETUP);
   if (AD) await page.addStyleTag({ content: '#tt-cap{bottom:96px!important}#tt-cap .box{font-size:21px!important;max-width:380px!important;padding:12px 16px!important}' });

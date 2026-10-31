@@ -2,6 +2,8 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <script src="/i18n.js?v=20261031180000"></script>
+  <script src="/currency.js?v=20261031170000"></script>
   <script src="/errlog.js?v=20261002"></script>
   <script src="/ads.js?v=20261021110000" defer></script>
   <script src="/inapp.js?v=20261002170000" defer></script>
@@ -14,6 +16,9 @@
   <title>Kapitaro — Suivi de portefeuille et assistant IA</title>
   <meta name="description" content="Suis tes actions et ETF en temps réel, simule ton épargne et pose tes questions à un assistant IA. Version gratuite, sans carte bancaire.">
   <link rel="canonical" href="https://kapitaro.fr/">
+  <link rel="alternate" hreflang="fr" href="https://kapitaro.fr/">
+  <link rel="alternate" hreflang="en" href="https://kapitaro.com/">
+  <link rel="alternate" hreflang="x-default" href="https://kapitaro.fr/">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Kapitaro">
@@ -273,6 +278,7 @@
           <button type="button" onclick="openLegalDoc('mentions')">Mentions légales</button>
           <button type="button" onclick="openLegalDoc('privacy')">Confidentialité</button>
           <button type="button" onclick="openLegalDoc('risk')">Risques</button>
+          <button type="button" class="kp-lang-switch notranslate" data-kp-label onclick="kpI18n.toggle()">English</button>
         </div>
         <!-- OUTILS GRATUITS SANS COMPTE (pages publiques, aussi pour le référencement) -->
         <div class="kh-tools">
@@ -437,6 +443,7 @@
         <a href="/faq">FAQ</a>
         <a href="mailto:contact@kapitaro.fr">Contact</a>
         <button type="button" onclick="window.kpAds && kpAds.openConsent()">Cookies</button>
+        <button type="button" class="kp-lang-switch notranslate" data-kp-label onclick="kpI18n.toggle()">English</button>
       </div>
       <p>Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. L'éditeur n'est pas enregistré auprès de l'ORIAS ni agréé par l'AMF. Investir comporte un risque de perte en capital.</p>
       <p>© Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016</p>
@@ -1659,6 +1666,16 @@ function heroStart(tab) {
               </div>
             </div>
           </div>
+          <!-- LANGUE : masquée sur kapitaro.fr tant que kapitaro.com n'est pas en ligne (voir i18n.js) -->
+          <div class="set-row kp-lang-switch" id="set-lang-row">
+            <div class="set-row-main"><div class="set-row-title">Langue · Language</div></div>
+            <div class="set-row-ctrl">
+              <div class="set-seg notranslate" role="group" aria-label="Langue">
+                <button type="button" data-lang-opt="fr" onclick="kpI18n.setLang('fr')">Français</button>
+                <button type="button" data-lang-opt="en" onclick="kpI18n.setLang('en')">English</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- SÉCURITÉ -->
@@ -1772,10 +1789,10 @@ function heroStart(tab) {
       </div>
     </div>
 <script src="legal-docs.js?v=20261001180000"></script>
-<script src="glossary.js?v=20261014120000"></script>
+<script src="glossary.js?v=20261031180000"></script>
 <script src="calc.js?v=20261014130000"></script>
-<script src="app.js?v=20261014180000"></script>
-<script src="depenses.js?v=20260928194433"></script>
+<script src="app.js?v=20261031180000"></script>
+<script src="depenses.js?v=20261031180000"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20261014100000"></script>
 <script src="push.js?v=20261014100000"></script>

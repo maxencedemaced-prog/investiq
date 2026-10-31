@@ -12,8 +12,12 @@ on:
         description: mobile ou desktop
         required: false
         default: mobile
+      lang:
+        description: fr ou en (version anglaise des tutoriels de l'appli)
+        required: false
+        default: fr
 concurrency:
-  group: tuto-${{ inputs.tuto_id }}-${{ inputs.variant }}
+  group: tuto-${{ inputs.tuto_id }}-${{ inputs.variant }}${{ inputs.lang == 'en' && '-en' || '' }}
   cancel-in-progress: true
 jobs:
   record:
@@ -38,6 +42,7 @@ jobs:
         env:
           TUTO_ID: ${{ inputs.tuto_id }}
           VARIANT: ${{ inputs.variant }}
+          TUTO_LANG: ${{ inputs.lang || 'fr' }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           APP_URL: ${{ secrets.APP_URL }}
@@ -47,7 +52,7 @@ jobs:
       - name: Signaler l'échec au Studio
         if: failure()
         env:
-          TUTO_ID: ${{ inputs.variant == 'desktop' && format('{0}__desktop', inputs.tuto_id) || inputs.tuto_id }}
+          TUTO_ID: ${{ format('{0}{1}{2}', inputs.tuto_id, inputs.lang == 'en' && '__en' || '', inputs.variant == 'desktop' && '__desktop' || '') }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
