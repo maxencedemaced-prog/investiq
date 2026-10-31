@@ -6,6 +6,7 @@
   <script src="/ads.js?v=20261021110000" defer></script>
   <script src="/inapp.js?v=20261002170000" defer></script>
   <script src="/simcta.js?v=20261023100000" defer></script>
+  <script src="/sim-cur.js?v=20261031180000" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calculateur d'objectif d'épargne : combien épargner par mois ? — Kapitaro</title>
   <meta name="description" content="Combien mettre de côté chaque mois pour atteindre ton objectif ? Indique la somme visée, la durée et ton capital de départ : le calculateur gratuit te donne le versement mensuel nécessaire.">
@@ -173,7 +174,7 @@
 
   <script>
   (function () {
-    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' ' + (window.kpSimSym ? kpSimSym() : '€'); };
     var ids = ['t', 'y', 'c', 'r'];
     var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
 
@@ -225,7 +226,7 @@
       var gain = Math.max(0, end.cap - end.inv);
       var pmtEl = document.getElementById('out-pmt');
       if (m <= 0 && t > 0) {
-        pmtEl.textContent = '0 €';
+        pmtEl.textContent = '0 ' + (window.kpSimSym ? kpSimSym() : '€');
         document.getElementById('out-sub').textContent = 'Ton capital de départ suffit : il devrait atteindre l\'objectif tout seul en ' + y + ' an' + (y > 1 ? 's' : '') + '.';
       } else {
         pmtEl.textContent = fmt(m);

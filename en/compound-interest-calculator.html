@@ -86,7 +86,7 @@
             <button type="button" data-preset="0,100,20,5">100/month, 20 years</button>
             <button type="button" data-preset="1000,200,15,5">1,000 + 200/month</button>
             <button type="button" data-preset="10000,0,20,5">10,000 invested</button>
-            <span class="cur-switch" role="group" aria-label="Currency"><button type="button" data-cur="USD">$</button><button type="button" data-cur="EUR">€</button><button type="button" data-cur="GBP">£</button></span>
+            <span class="cur-switch" role="group" aria-label="Currency"><button type="button" data-cur="USD">$</button><button type="button" data-cur="EUR">€</button><button type="button" data-cur="GBP">£</button><button type="button" data-cur="CHF">CHF</button></span>
           </div>
           <div class="field">
             <div class="field-head"><label for="c">Starting amount</label><span class="field-val"><input type="number" id="c-n" min="0" max="1000000" step="100" aria-label="Starting amount"><span class="unit cur-sym">$</span></span></div>
@@ -177,8 +177,8 @@
     // Devise d'affichage uniquement (le calcul est identique) : $ aux États-Unis, £ au Royaume-Uni, € ailleurs ; mémorisée
     var tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
     var cur = 'EUR';
-    try { cur = localStorage.getItem('kp_sim_cur') || (/^America\//.test(tz) ? 'USD' : (tz === 'Europe/London' ? 'GBP' : 'EUR')); } catch (e) {}
-    var LOC = { USD: 'en-US', EUR: 'en-IE', GBP: 'en-GB' };
+    try { cur = localStorage.getItem('kp_sim_cur') || (/^America\//.test(tz) ? 'USD' : (tz === 'Europe/London' ? 'GBP' : tz === 'Europe/Zurich' ? 'CHF' : 'EUR')); } catch (e) {}
+    var LOC = { USD: 'en-US', EUR: 'en-IE', GBP: 'en-GB', CHF: 'en-CH' };
     var fmt = function (n) { return new Intl.NumberFormat(LOC[cur], { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(Math.round(n)); };
     var ids = ['c', 'm', 'y', 'r'];
     var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
@@ -229,7 +229,7 @@
     }
     function setCur(c2) {
       cur = c2; try { localStorage.setItem('kp_sim_cur', c2); } catch (e) {}
-      var sym = { USD: '$', EUR: '€', GBP: '£' }[c2];
+      var sym = { USD: '$', EUR: '€', GBP: '£', CHF: 'CHF' }[c2];
       document.querySelectorAll('.cur-sym').forEach(function (s) { s.textContent = sym; });
       document.querySelectorAll('[data-cur]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cur') === c2); });
       // Avertissement selon la région (EU/UK : formule réglementaire sur les performances passées)

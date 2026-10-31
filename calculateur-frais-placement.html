@@ -6,6 +6,7 @@
   <script src="/ads.js?v=20261021110000" defer></script>
   <script src="/inapp.js?v=20261002170000" defer></script>
   <script src="/simcta.js?v=20261023100000" defer></script>
+  <script src="/sim-cur.js?v=20261031180000" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calculateur de l'impact des frais sur un placement — Kapitaro</title>
   <meta name="description" content="Compare gratuitement ce que deviennent tes placements avec des frais annuels faibles ou élevés : l'écart sur 10, 20 ou 30 ans, avec graphique et détail année par année.">
@@ -221,7 +222,7 @@
 
   <script>
   (function () {
-    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' ' + (window.kpSimSym ? kpSimSym() : '€'); };
     var ids = ["c","m","y","r","fa","fb"];
     var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
     var fv = function (c, m, years, rPct) { var i = rPct / 100 / 12, cap = c, out = [c]; for (var y = 1; y <= years; y++) { for (var k = 0; k < 12; k++) cap = cap * (1 + i) + m; out.push(cap); } return out; };

@@ -4,13 +4,14 @@
 window.KS = (function () {
   var tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
   var cur = 'EUR';
-  try { cur = localStorage.getItem('kp_sim_cur') || (/^America\//.test(tz) ? 'USD' : (tz === 'Europe/London' ? 'GBP' : 'EUR')); } catch (e) {}
-  var LOC = { USD: 'en-US', EUR: 'en-IE', GBP: 'en-GB' }, SYM = { USD: '$', EUR: '€', GBP: '£' };
+  try { cur = localStorage.getItem('kp_sim_cur') || (/^America\//.test(tz) ? 'USD' : (tz === 'Europe/London' ? 'GBP' : tz === 'Europe/Zurich' ? 'CHF' : 'EUR')); } catch (e) {}
+  var LOC = { USD: 'en-US', EUR: 'en-IE', GBP: 'en-GB', CHF: 'en-CH' }, SYM = { USD: '$', EUR: '€', GBP: '£', CHF: 'CHF' };
   var DISC = {
     USD: 'Illustrative, educational calculation based on hypothetical constant assumptions. It is not investment, tax or legal advice, and Kapitaro is not a registered investment adviser. Investing involves risk, including loss of principal.',
     EUR: 'Illustrative, educational calculation based on hypothetical constant assumptions. It is not investment advice. Capital at risk. Past performance is not a reliable indicator of future results.',
     GBP: 'Illustrative, educational calculation based on hypothetical constant assumptions. It is not financial advice. Capital at risk. Past performance is not a reliable indicator of future results.',
   };
+  DISC.CHF = DISC.EUR;
   var listeners = [];
   function fmt(n) { return new Intl.NumberFormat(LOC[cur], { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(Math.round(n)); }
   function num(n, d) { return Number(n).toLocaleString('en-US', { maximumFractionDigits: d == null ? 2 : d }); }
@@ -74,7 +75,7 @@ window.KS = (function () {
     var pre = document.querySelector('.presets');
     if (pre && !pre.querySelector('.cur-switch')) {
       pre.style.alignItems = 'center';
-      pre.insertAdjacentHTML('beforeend', '<span class="cur-switch" role="group" aria-label="Currency"><button type="button" data-cur="USD">$</button><button type="button" data-cur="EUR">€</button><button type="button" data-cur="GBP">£</button></span>');
+      pre.insertAdjacentHTML('beforeend', '<span class="cur-switch" role="group" aria-label="Currency"><button type="button" data-cur="USD">$</button><button type="button" data-cur="EUR">€</button><button type="button" data-cur="GBP">£</button><button type="button" data-cur="CHF">CHF</button></span>');
       pre.querySelectorAll('[data-cur]').forEach(function (b) { b.addEventListener('click', function () { setCur(b.getAttribute('data-cur')); }); });
     }
     // Hors kapitaro.com (aperçus, localhost) : les pages anglaises sont sous /en/

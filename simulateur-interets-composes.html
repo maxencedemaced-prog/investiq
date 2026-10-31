@@ -6,6 +6,7 @@
   <script src="/ads.js?v=20261021110000" defer></script>
   <script src="/inapp.js?v=20261002170000" defer></script>
   <script src="/simcta.js?v=20261023100000" defer></script>
+  <script src="/sim-cur.js?v=20261031180000" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Simulateur d'intérêts composés gratuit (versements mensuels) — Kapitaro</title>
   <meta name="description" content="Calcule gratuitement ce que devient ton épargne grâce aux intérêts composés : capital de départ, versement mensuel, durée et rendement. Graphique et tableau année par année.">
@@ -176,7 +177,7 @@
 
   <script>
   (function () {
-    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' ' + (window.kpSimSym ? kpSimSym() : '€'); };
     var ids = ['c', 'm', 'y', 'r'];
     var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
 
