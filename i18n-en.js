@@ -960,7 +960,7 @@
     return String(s).replace(/\{\{(\w+)\}\}/g, function (m, k) {
       var p = window.kpI18n;
       if (p && (k === 'monthly' || k === 'annual')) return p.price(k);
-      if (p && k === 'half') { var c = p.currency(); return c === 'USD' ? '$5.00' : '€5.00'; }
+      if (p && k === 'half') { var c = p.currency(), h = c === 'USD' ? '$5.00' : '€5.00'; return window.kpCur ? kpCur.tag(h) : h; }
       return m;
     });
   }
@@ -1017,7 +1017,8 @@
     return false;
   }
   // Nombres écrits à la française par app.js (« 163,50 € », « 3,7 % », « 6,0/10 ») : virgule décimale → point
-  function numFix(s) { return /\d,\d/.test(s) ? s.replace(/(\d),(\d)/g, '$1.$2') : s; }
+  // (une virgule suivie d'exactement 3 chiffres est un séparateur de milliers anglais « 1,234.50 » : on la garde)
+  function numFix(s) { return /\d,\d/.test(s) ? s.replace(/(\d),(\d+)/g, function (m, a, b) { return b.length === 3 ? m : a + '.' + b; }) : s; }
   function doText(node) { var v = node.nodeValue, r = numFix(tr(v)); if (r !== v) node.nodeValue = r; }
   function doEl(el) {
     for (var i = 0; i < ATTRS.length; i++) {

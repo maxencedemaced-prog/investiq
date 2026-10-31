@@ -926,7 +926,7 @@ function depDrawChart() {
     options: {
       responsive: true, maintainAspectRatio: false, animation: false, cutout: '58%',
       devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),     // rendu net sur écrans HD et pendant les zooms
-      plugins: { legend: { display: false }, tooltip: { callbacks: { title: () => '', label: c => ` ${c.label} : ${depFmt0(c.parsed)}/mois` } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: () => '', label: c => ` ${c.label} : ${kpCurTxt(depFmt0(c.parsed))}/mois` } } },
     },
   });
 }

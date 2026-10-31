@@ -65,6 +65,7 @@ function kpTip(key) {
     closePop();
     const p = document.createElement('div');
     p.id = 'kp-tip-pop';
+    p.setAttribute('data-nocur', '');   // exemples chiffrés en euros : non convertis
     p.innerHTML = (title ? '<b>' + title + '</b>' : '') + text + (key ? '<br><a data-glo="' + key + '">Voir le lexique ›</a>' : '');
     document.body.appendChild(p);
     const r = el.getBoundingClientRect(), pw = p.offsetWidth, ph = p.offsetHeight;

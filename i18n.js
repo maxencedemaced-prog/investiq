@@ -88,10 +88,11 @@
     } catch (e) {}
   }
 
+  // Devise de PAIEMENT de l'abonnement (affichage des prix Premium). La devise d'AFFICHAGE des montants est dans currency.js.
   function currency() {
     if (!EN) return 'EUR';
-    if (!PROD) { try { var c = new URLSearchParams(location.search).get('currency'); if (c) safeSet('kp_currency', c.toUpperCase()); } catch (e) {} }
-    var pref = safeGet('kp_currency');
+    if (!PROD) { try { var c = new URLSearchParams(location.search).get('currency'); if (c) safeSet('kp_price_currency', c.toUpperCase()); } catch (e) {} }
+    var pref = safeGet('kp_price_currency');   // (kp_currency = devise d'affichage, voir currency.js)
     return (PRICING.usdReady || !PROD) && pref === 'USD' ? 'USD' : (PRICING.usdReady ? 'USD' : 'EUR');
   }
 
@@ -194,6 +195,6 @@
     document.documentElement.setAttribute('lang', 'en');
     document.documentElement.setAttribute('data-region', region);   // CSS : [data-region="US"] .fr-only { display:none }
     // Chargement synchrone du dictionnaire : il doit exister avant que le corps de la page soit lu
-    document.write('<script src="/i18n-en.js?v=20261031120000"><\/script>');
+    document.write('<script src="/i18n-en.js?v=20261031180000"><\/script>');
   }
 })();
