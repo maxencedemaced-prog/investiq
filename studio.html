@@ -552,17 +552,23 @@ var TUTO_TIMER = null;
 function openTutos() { setFilter('tutos'); }
 // Page « Tutoriels » (onglet) : n'est construite qu'une fois tant qu'on reste sur l'onglet (une vidéo en lecture n'est pas coupée)
 var TUTO_MODE = 'tutos';
-function renderTutosPage(mode) {
+// Langue des tutoriels de l'appli : 'fr' (vidéos actuelles) ou 'en' (version anglaise, fichiers <id>__en). Les pubs restent en français.
+var TUTO_LANG = 'fr';
+function tutoLangNow() { return TUTO_MODE === 'ads' ? 'fr' : TUTO_LANG; }
+function setTutoLang(l) { if (l === TUTO_LANG) return; TUTO_LANG = l; var le = document.getElementById('tuto-list'); if (le) le.remove(); renderTutosPage(TUTO_MODE, true); }
+function renderTutosPage(mode, force) {
   mode = mode === 'ads' ? 'ads' : 'tutos';
   var list = document.getElementById('list');
-  if (document.getElementById('tuto-list') && TUTO_MODE === mode) return;
+  if (!force && document.getElementById('tuto-list') && TUTO_MODE === mode) return;
   TUTO_MODE = mode;
   var ads = mode === 'ads';
   list.innerHTML = '<div style="max-width:720px">'
     + (ads ? '<h3 style="margin:4px 0 6px">🎯 Vidéos pub (appli filmée, format vertical 9:16)</h3>'
       + '<p class="sub" style="margin:0 0 14px">≈ 25 s chacune, trois accroches à comparer. La voix lit le texte, puis l’appli est filmée en mode démo avec le curseur et de gros sous-titres, et se termine sur « Essaie gratuitement · kapitaro.fr » avec la mention de risque. Jamais publiées automatiquement et absentes de l’appli : télécharge-les puis importe-les dans le Gestionnaire de publicités Meta. Fabrique-les une par une.</p>'
       : '<h3 style="margin:4px 0 6px">🎓 Vidéos tutoriels de l’appli</h3>'
-      + '<p class="sub" style="margin:0 0 14px">La voix lit le texte, puis l’appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l’appli.</p>')
+      + '<p class="sub" style="margin:0 0 14px">La voix lit le texte, puis l’appli est filmée automatiquement en mode démo (format téléphone), avec un curseur qui clique et les sous-titres (≈ 4 min). La vidéo apparaît ensuite dans l’appli.</p>'
+      + '<label>Langue</label><div class="row" style="gap:8px;margin-bottom:10px"><button class="btn' + (TUTO_LANG === 'fr' ? ' primary' : '') + '" onclick="setTutoLang(\'fr\')">🇫🇷 Français</button><button class="btn' + (TUTO_LANG === 'en' ? ' primary' : '') + '" onclick="setTutoLang(\'en\')">🇬🇧 English</button></div>'
+      + (TUTO_LANG === 'en' ? '<p class="sub" style="margin:-2px 0 12px;color:#fde68a">Version anglaise : l’appli est filmée en anglais (démo américaine, montants en dollars) et publiée à part (les vidéos françaises ne changent pas). <b>Choisis une voix ElevenLabs anglophone</b> (accent américain ou britannique) et écoute-la avant de fabriquer. <span id="tuto-chars"></span></p>' : ''))
     + '<label>Voix</label>'
     + '<div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:nowrap;max-width:520px"><select id="tuto-voice" style="flex:1;min-width:0;font:inherit;font-size:13.5px;background:#0b1120;color:#e5e7eb;border:1px solid #1f2a44;border-radius:9px;padding:8px 10px"></select><button class="btn" id="btn-tuto-listen" onclick="listenTutoVoice()" style="white-space:nowrap">▶ Écouter</button></div>'
     + '<label' + (ads ? ' style="display:none"' : '') + '>Version à fabriquer</label>'
@@ -578,14 +584,16 @@ function renderTutosPage(mode) {
   clearInterval(TUTO_TIMER); TUTO_TIMER = setInterval(function () { if (FILTER === TUTO_MODE && document.getElementById('tuto-list')) renderTutos(false); else clearInterval(TUTO_TIMER); }, 15000);
 }
 async function renderTutos(fillVoices) {
-  var d; try { d = await api('POST', { action: 'tuto-list' }); } catch (e) { document.getElementById('tuto-list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  var d; try { d = await api('POST', { action: 'tuto-list', lang: tutoLangNow() }); } catch (e) { document.getElementById('tuto-list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  var SUF = d.suffix || '';
+  var ch = document.getElementById('tuto-chars'); if (ch && d.chars) ch.textContent = 'Voix de toutes les vidéos anglaises : ≈ ' + d.chars.toLocaleString('fr-FR') + ' caractères ElevenLabs (une seule voix par vidéo, réutilisée pour téléphone et ordinateur).';
   if (fillVoices) {
     var sel = document.getElementById('tuto-voice');
     sel.innerHTML = d.voices.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('');
     if (!d.eleven) sel.insertAdjacentHTML('afterend', '<p class="sub" style="color:#fca5a5;margin:-6px 0 10px">Voix ElevenLabs indisponible : vérifie la clé dans Vercel.</p>');
   }
   // On ne redessine la liste que si quelque chose a changé, et jamais pendant qu'une vidéo est lue (sinon elle repart à zéro)
-  var sig = JSON.stringify([TUTO_MODE, d.manifest, d.status]);
+  var sig = JSON.stringify([TUTO_MODE, tutoLangNow(), d.manifest, d.status]);
   var listEl = document.getElementById('tuto-list');
   if (!fillVoices && listEl.dataset.sig === sig) return;
   if (!fillVoices && [].some.call(listEl.querySelectorAll('video'), function (v) { return !v.paused && !v.ended; })) return;
@@ -595,7 +603,7 @@ async function renderTutos(fillVoices) {
   var stopBtn = document.getElementById('btn-tuto-stop'); if (stopBtn) stopBtn.style.display = busy ? '' : 'none';
   var ADS = TUTO_MODE === 'ads';
   listEl.innerHTML = d.tutos.filter(function (t) { return !!t.ad === ADS; }).map(function (t) {
-    var m = d.manifest[t.id], st = d.status[t.id], md = d.manifest[t.id + '__desktop'], sd = d.status[t.id + '__desktop'];
+    var k = t.id + SUF, m = d.manifest[k], st = d.status[k], md = d.manifest[k + '__desktop'], sd = d.status[k + '__desktop'];
     return '<div style="border:1px solid #1f2a44;border-radius:12px;padding:12px;margin-bottom:10px">'
       + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + esc(t.title) + '</b><span class="sub">' + (st ? lbl[st.state] || esc(st.state) : (m ? '✅ Prête' : 'Pas encore fabriquée')) + '</span></div>'
       + (st && (st.state === 'queued' || st.state === 'recording') ? '<div class="sub" style="margin-top:6px">📱 Téléphone</div>' + tutoBar(st) : '')
@@ -604,7 +612,7 @@ async function renderTutos(fillVoices) {
       + (st && st.state === 'error' ? '<p class="sub" style="color:#fca5a5;margin:6px 0 0">' + esc(st.error || '') + '</p>' : '')
       + '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Texte de la voix (' + t.beats.length + ' scènes)</summary><ol class="sub" style="margin:6px 0 0 18px;padding:0">' + t.beats.map(function (x) { return '<li style="margin-bottom:3px">' + esc(x) + '</li>'; }).join('') + '</ol></details>'
       + (md ? '<div class="sub" style="margin-top:8px">🖥 Version ordinateur</div><video controls playsinline preload="none" poster="' + esc(md.poster || '') + '" src="' + esc(md.url) + '" style="width:100%;max-width:480px;border-radius:12px;background:#000;margin-top:4px;display:block"></video>' : '')
-      + (m ? '<div class="sub" style="margin-top:8px">📱 Version téléphone</div><video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:4px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' + (ADS ? '<a class="btn" href="' + esc(m.url) + '" download="' + t.id + '.mp4" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px">⬇ Télécharger</a>' : '') : '')
+      + (m ? '<div class="sub" style="margin-top:8px">📱 Version téléphone</div><video controls playsinline preload="none" poster="' + esc(m.poster || '') + '" src="' + esc(m.url) + '" style="width:100%;max-width:220px;border-radius:12px;background:#000;margin-top:4px;display:block"></video><p class="sub" style="margin:4px 0 0">Voix : ' + esc(m.voice || '') + ' · ' + (m.duration || '?') + ' s · ' + new Date(m.at).toLocaleString('fr-FR') + '</p>' + (ADS ? '<a class="btn" href="' + esc(m.url) + '" download="' + k + '.mp4" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px">⬇ Télécharger</a>' : '') : '')
       + '<div class="row" style="justify-content:flex-end;margin-top:8px;gap:8px">' + ((m || st) ? '<button class="btn" onclick="rerenderTuto(\'' + t.id + '\', this)" title="Refait seulement le tournage (téléphone + ordinateur), avec la voix déjà fabriquée">▶ Relancer le tournage (même voix)</button>' : '') + '<button class="btn primary" onclick="makeTuto(\'' + t.id + '\', this)">' + (m ? '↻ Refaire la vidéo' : '🎬 Fabriquer la vidéo') + '</button></div></div>';
   }).join('');
 }
@@ -634,7 +642,7 @@ async function listenTutoVoice() {
   btn.disabled = true; btn.textContent = '…';
   tutoMsg('Préparation de l’écoute (quelques secondes)…');
   try {
-    var r = await api('POST', { action: 'tuto-voice-preview', voice: sel.value });
+    var r = await api('POST', { action: 'tuto-voice-preview', voice: sel.value, lang: tutoLangNow() });
     TUTO_AUDIO = new Audio(r.audio);
     TUTO_AUDIO.onended = function () { btn.textContent = '▶ Écouter'; };
     try { await TUTO_AUDIO.play(); } catch (pe) { throw new Error('Le navigateur bloque la lecture du son : vérifie que l’onglet n’est pas en sourdine. (' + pe.message + ')'); }
@@ -654,7 +662,7 @@ async function renderTutoArchives() {
     return d.archives[id].map(function (a) {
       return '<div style="display:flex;gap:12px;align-items:center;border:1px solid #1f2a44;border-radius:12px;padding:10px;margin-bottom:8px;flex-wrap:wrap">'
         + '<video controls playsinline preload="none" poster="' + esc(a.poster || '') + '" src="' + esc(a.url) + '" style="width:' + (desk ? '200px' : '90px') + ';border-radius:8px;background:#000"></video>'
-        + '<div style="flex:1;min-width:180px"><b>' + esc(a.title || id) + '</b> <span class="sub">' + (desk ? '🖥 Ordinateur' : '📱 Téléphone') + '</span><div class="sub">Voix : ' + esc(a.voice || '?') + ' · ' + (a.duration || '?') + ' s · faite le ' + (a.at ? new Date(a.at).toLocaleString('fr-FR') : '?') + '</div></div>'
+        + '<div style="flex:1;min-width:180px"><b>' + esc(a.title || id) + '</b> <span class="sub">' + (desk ? '🖥 Ordinateur' : '📱 Téléphone') + (/__en(__|$)/.test(id) ? ' · 🇬🇧 English' : '') + '</span><div class="sub">Voix : ' + esc(a.voice || '?') + ' · ' + (a.duration || '?') + ' s · faite le ' + (a.at ? new Date(a.at).toLocaleString('fr-FR') : '?') + '</div></div>'
         + '<div class="row" style="gap:6px"><button class="btn" onclick="tutoArchiveAct(\'restore\', \'' + id + '\', \'' + a.stamp + '\', this)">↩ Remettre en ligne</button><button class="btn" style="border-color:#7f1d1d;color:#fca5a5" onclick="tutoArchiveAct(\'delete\', \'' + id + '\', \'' + a.stamp + '\', this)">🗑 Supprimer</button></div></div>';
     }).join('');
   }).join('');
@@ -672,7 +680,7 @@ async function tutoArchiveAct(kind, id, stamp, btn) {
 }
 async function rerenderTuto(id, btn) {
   btn.disabled = true; var l = btn.textContent; btn.textContent = 'Relance…';
-  try { var r = await api('POST', { action: 'tuto-render', id: id, variant: document.getElementById('tuto-variant').value }); tutoMsg('▶ Tournage relancé avec la voix ' + r.voice + ' (aucun caractère ElevenLabs en plus).', 'ok'); }
+  try { var r = await api('POST', { action: 'tuto-render', id: id, variant: document.getElementById('tuto-variant').value, lang: tutoLangNow() }); tutoMsg('▶ Tournage relancé avec la voix ' + r.voice + ' (aucun caractère ElevenLabs en plus).', 'ok'); }
   catch (e) { tutoMsg(e.message, 'err'); }
   btn.disabled = false; btn.textContent = l;
   var le = document.getElementById('tuto-list'); if (le) le.dataset.sig = '';
@@ -682,7 +690,7 @@ async function makeTuto(id, btn) {
   btn.disabled = true; var l = btn.textContent; btn.textContent = 'Voix en préparation (≈ 30 s)…';
   tutoMsg('Préparation de la voix off (≈ 30 s), ne ferme pas la fenêtre…');
   try {
-    var r = await api('POST', { action: 'tuto-create', id: id, voice: document.getElementById('tuto-voice').value, variant: document.getElementById('tuto-variant').value });
+    var r = await api('POST', { action: 'tuto-create', id: id, voice: document.getElementById('tuto-voice').value, variant: document.getElementById('tuto-variant').value, lang: tutoLangNow() });
     tutoMsg('🎙 Voix prête (' + r.voice + ', ' + r.duration + ' s). Enregistrement de l’appli lancé sur GitHub : ≈ 4 min, l’état se met à jour ici.', 'ok');
   } catch (e) { tutoMsg(e.message, 'err'); }
   btn.disabled = false; btn.textContent = l;

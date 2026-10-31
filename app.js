@@ -8971,12 +8971,34 @@ function showLevelChooser(fromSettings) {
 const KP_TUTO_BASE = 'https://soyyznyceqzimhoaffaw.supabase.co/storage/v1/object/public/social/tuto/';
 let _kpTutoManifest = null, _kpTutoAt = 0;
 async function kpTutoManifest() {
-  if (_kpTutoManifest && Date.now() - _kpTutoAt < 10 * 60 * 1000) return _kpTutoManifest;
+  if (_kpTutoManifest && Date.now() - _kpTutoAt < 10 * 60 * 1000) return kpTutoLangManifest(_kpTutoManifest);
   try { const r = await fetch(KP_TUTO_BASE + 'manifest.json?t=' + Math.floor(Date.now() / 600000)); _kpTutoManifest = r.ok ? await r.json() : (_kpTutoManifest || {}); }
   catch (e) { _kpTutoManifest = _kpTutoManifest || {}; }
   _kpTutoAt = Date.now();
-  return _kpTutoManifest;
+  return kpTutoLangManifest(_kpTutoManifest);
 }
+// Version anglaise : seules les vidéos anglaises sont proposées (« <id>__en » → « <id> », « <id>__en__desktop » → « <id>__desktop »).
+// Une vidéo sans version anglaise n'existe donc pas en anglais : boutons et propositions masqués, jamais de vidéo française.
+// En français : manifest inchangé.
+function kpTutoLangManifest(m) {
+  if (!(window.kpI18n && kpI18n.isEN) || !m) return m;
+  const o = {};
+  for (const k in m) { const x = k.match(/^(.+?)__en(__desktop)?$/); if (x) o[x[1] + (x[2] || '')] = m[k]; }
+  return o;
+}
+// Anglais : boutons « vidéo de présentation » (accueil, Paramètres) et vidéo de la fenêtre Premium masqués tant que la vidéo anglaise n'existe pas
+function kpTutoHideMissing(root) {
+  if (!(window.kpI18n && kpI18n.isEN)) return;
+  const btns = [...(root || document).querySelectorAll('[onclick^="kpOpenTuto("]')].filter(b => !b.classList.contains('kp-tuto-btn'));
+  if (!btns.length) return;
+  btns.forEach(b => { if (!b.dataset.kpTutoChecked) b.style.display = 'none'; });
+  kpTutoManifest().then(m => btns.forEach(b => {
+    const id = (b.getAttribute('onclick').match(/kpOpenTuto\('([a-z_]+)'/) || [])[1];
+    b.dataset.kpTutoChecked = '1';
+    b.style.display = id && m && m[id] && m[id].url ? '' : 'none';
+  })).catch(() => {});
+}
+if (window.kpI18n && kpI18n.isEN) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => kpTutoHideMissing()); else kpTutoHideMissing(); }
 function kpTutoSeenKey(id) { try { return 'kp_tuto_seen_' + id + '_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch (e) { return 'kp_tuto_seen_' + id; } }
 // opts : { auto (lancée seule : démarre sans le son), skippable (bouton « Passer »), onDone }
 async function kpOpenTuto(id, opts) {
@@ -13706,6 +13728,7 @@ function showPlansModal(opts) {
       <div data-plans-root data-lapsed="${lapsed ? 1 : 0}">${plansComparisonHTML(lapsed)}</div>
     </div>`;
   document.body.appendChild(o);
+  kpTutoHideMissing(o);   // anglais : bouton vidéo masqué si la vidéo anglaise n'existe pas (rien en français)
 }
 
 // Carte d'abonnement dans les Paramètres — s'adapte au statut
