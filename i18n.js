@@ -195,6 +195,6 @@
     document.documentElement.setAttribute('lang', 'en');
     document.documentElement.setAttribute('data-region', region);   // CSS : [data-region="US"] .fr-only { display:none }
     // Chargement synchrone du dictionnaire : il doit exister avant que le corps de la page soit lu
-    document.write('<script src="/i18n-en.js?v=20261031180000"><\/script>');
+    document.write('<script src="/i18n-en.js?v=20261031150000"><\/script>');
   }
 })();

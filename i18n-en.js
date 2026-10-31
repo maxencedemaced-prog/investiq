@@ -771,6 +771,11 @@
   add({
     'Ajouter': 'Add', 'Performance totale': 'Total performance', 'Portef.': 'Portfolio', 'Mis à jour': 'Updated',
     'Actus': 'News', 'Agent IA': 'AI agent', 'Agent IA →': 'AI agent →', 'Monde': 'World',
+    'deux placements identiques': 'two identical investments', 'pas les mêmes frais annuels': 'the same annual fees',
+    'Versement mensuel': 'Monthly contribution', 'Auj.': 'Today', 'Inflation forte': 'High inflation',
+    // Fenêtre des offres Premium
+    'Ton offre actuelle': 'Your current plan', 'Inclus dans ton offre': 'Included in your plan', 'Mensuel': 'Monthly', 'Annuel': 'Yearly',
+    '/an': '/year', '/mois': '/month', 'le 1er mois': 'first month', 'Analyses IA': 'AI analyses', 'illimitées': 'unlimited', 'Placement A': 'Investment A', 'Placement B': 'Investment B',
     '✦ Exemple Premium': '✦ Premium sample', 'Exemple Premium': 'Premium sample',
     'Palier maximum atteint 🎉': 'Top tier reached 🎉',
   });
@@ -779,6 +784,21 @@
     // Salutation de l'accueil : « Bonjour Max ! 👋 »
     [/^(Bonjour|Bon après-midi|Bonsoir)( [^!]+)? !(.*)$/, function (m, g, name, rest) { return ({ 'Bonjour': 'Good morning', 'Bon après-midi': 'Good afternoon', 'Bonsoir': 'Good evening' })[g] + (name || '') + '!' + rest; }],
     [/^Mis à jour (.+)$/, 'Updated $1'],
+    // Libellés de champ suivis du symbole de la devise (« Versement mensuel $ », « Capital de départ CHF »)
+    [/^Versement mensuel (\S{1,4})$/, 'Monthly contribution $1'],
+    [/^entre (.+) et (.+) de frais par an, pour le même placement$/, 'with $1 vs $2 in annual fees, for the same investment'],
+    // Offres Premium
+    [/^soit (.+)\/mois · sans engagement$/, 'i.e. $1/month · no commitment'],
+    [/^puis (.+)\/mois · sans engagement$/, 'then $1/month · no commitment'],
+    [/^Tu économises (.+) par an$/, 'You save $1 a year'],
+    [/^Passe à l['’]annuel et économise (.+) par an →$/, 'Switch to yearly and save $1 a year →'],
+    [/^Tu économises (.+) sur ton 1er mois$/, 'You save $1 on your first month'],
+    [/^(S'abonner|Reprendre) — (.+?)(\/an|\/mois| le 1er mois)$/, function (m, a, p, u) { return (a === 'Reprendre' ? 'Resume' : 'Subscribe') + ' — ' + p + ({ '/an': '/year', '/mois': '/month', ' le 1er mois': ' first month' })[u]; }],
+    // Calculateur d'inflation
+    [/^Pouvoir d’achat de ton épargne dans (\d+) ans?$/, function (m, n) { return 'Purchasing power of your savings in ' + n + (n === '1' ? ' year' : ' years'); }],
+    [/^en euros d’aujourd’hui : tu perds (.+) de pouvoir d’achat \(rendement (.+) contre inflation (.+)\)$/, 'in today’s money: you lose $1 of purchasing power ($2 return vs $3 inflation)'],
+    [/^en euros d’aujourd’hui : ton épargne garde son pouvoir d’achat \(rendement (.+) contre inflation (.+)\)$/, 'in today’s money: your savings keep their purchasing power ($1 return vs $2 inflation)'],
+    [/^≈ (\d+) ans$/, '≈ $1 years'],
     // Paliers du score de santé
     [/^Palier (Or|Argent|Bronze)$/, function (m, t) { return ({ Or: 'Gold', Argent: 'Silver', Bronze: 'Bronze' })[t] + ' tier'; }],
     [/^Étape (\d+) ?\/ ?(\d+)$/, 'Step $1 / $2'],
