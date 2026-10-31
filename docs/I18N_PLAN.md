@@ -120,16 +120,54 @@ Ajouté le 31/10/2026 (fichier `currency.js`, chargé juste après `i18n.js`). F
 
 Corrigé au passage : en anglais, « 1,234.50 € » s'affichait « 1.234.50 € » (la virgule des milliers était prise pour une virgule décimale).
 
+## Mode démo et vidéos tutoriels en anglais
+
+Ajouté le 31/10/2026.
+
+### Mode démo anglais (selon la région)
+Données **fictives** dans `i18n-en.js` (`KP_EN.demo()`), lues par `app.js` (démo, « Charger un exemple », transactions, aperçu Premium de l'Agent), `depenses.js` (relevé d'exemple) et `tuto/record.mjs`. En français, `KP_EN` n'existe pas : la démo française reste identique (vérifié).
+
+| Région | Portefeuille d'exemple | Comptes | Relevé bancaire fictif |
+|---|---|---|---|
+| US | VOO, VTI, Apple (AAPL), Microsoft (MSFT), BND (obligations) | Brokerage account, Roth IRA | loyer, Netflix, Disney+, Planet Fitness, Spotify, Verizon, Con Edison, GEICO, Whole Foods, Trader Joe's, DraftKings, DoorDash, Starbucks, prêt étudiant, Shell… |
+| UK | VWRA.L (Vanguard FTSE All-World), AstraZeneca, Shell, HSBC | Stocks & Shares ISA, General investment account | loyer, Netflix, PureGym, Vodafone, Octopus Energy, council tax, Tesco, Sainsbury's, Bet365, Deliveroo, Costa, pub, TfL… |
+| EU / autre | VWCE.DE, IWDA.L, ASML, SAP, Microsoft | Investment account | loyer, Netflix, Basic-Fit, Vodafone, E.ON, Allianz, Lidl, Aldi, Bet365, Uber Eats, trattoria, Shell… |
+
+- Cours : comme la démo française, des valeurs de départ plausibles puis les cours du jour au chargement (`/api/prices`). ⚠️ Limite déjà présente dans l'app (pas créée ici) : `/api/prices` renvoie les actions et ETF **dans leur devise de cotation** (dollars pour AAPL, VOO, IWDA.L…) et l'app les traite comme des euros. J'ai évité les titres cotés en pence (ex. AZN.L, ULVR.L) qui seraient affichés 100 fois trop chers ; au Royaume-Uni, AstraZeneca/Shell/HSBC sont les cotations américaines (AZN, SHEL, HSBC).
+- Montants du relevé enregistrés en euros, convertis à l'affichage (`currency.js`).
+- Mes dépenses : nouvelles règles de reconnaissance des libellés anglais (RENT, GROCERY, DOORDASH, DRAFTKINGS, VERIZON, COUNCIL TAX…) et nettoyage de CARD / ACH / DEBIT / PURCHASE / DD, **uniquement en anglais** (en français, les règles et le nettoyage sont inchangés).
+- Accueil : la 2e ligne du « portefeuille exemple » (LVMH en français) devient Apple (US), AstraZeneca (UK) ou ASML (UE/autre).
+- Aucune crypto dans les données d'exemple (les vidéos ajoutent une ligne bitcoin, cours seulement, comme en français).
+- Traductions ajoutées au passage : tableau de bord de l'Agent (aperçu Premium) et Mes dépenses (catégories, « Keep / Cut it »…), lignes « Stock · 10 shares » et « +0.00 % today » du portefeuille.
+
+### Vidéos tutoriels anglaises (préparées, pas fabriquées)
+- **Textes** : `api/_tuto.js` → `TUTOS_EN` (9 vidéos de l'appli : presentation, accueil, portefeuille, objectif, assistant, bilan, sante, depenses, actualites ; pas les pubs). Mêmes gestes que les vidéos françaises ; seule la présentation (bouton « Skip ») et Mes dépenses (relevé `tuto/assets/sample-statement-en.csv`) ont des gestes adaptés.
+- **Fichiers** dans le stockage `social` : voix `tuto/<id>__en/timing.json`, vidéos `tuto/<id>__en.mp4` et `tuto/<id>__en__desktop.mp4`, entrées du manifest `<id>__en` et `<id>__en__desktop`. Les vidéos françaises ne sont pas touchées.
+- **Enregistreur** `tuto/record.mjs` : variable `TUTO_LANG=en` → appli ouverte avec `?lang=en`, démo anglaise **région US, montants en dollars** (modifiable avec `TUTO_REGION` = US/UK/EU/OTHER et `TUTO_CURRENCY`), textes d'exemple anglais (plan du mois, réponse de l'assistant, carte de fin « kapitaro.com »).
+- **Workflow** `.github/workflows/tuto.yml` : entrée facultative `lang` (fr par défaut) ; sans elle, rien ne change. Le Studio n'envoie `lang` qu'en anglais.
+- **API** `api/social.js` (`tuto-create`, `tuto-render`, `tuto-list`, écoute d'essai, arrêt, archives) : paramètre `lang` ('fr' par défaut).
+- **Appli** : en anglais, le lecteur n'utilise que les vidéos `__en` ; tant qu'une vidéo anglaise n'existe pas, son bouton (« ▶ What is it? », vidéo de présentation de l'accueil et des Paramètres, vidéo de la fenêtre Premium, proposition dans l'aide d'onglet) est masqué. Jamais de vidéo française en anglais.
+
+### Ce que tu dois faire pour fabriquer les vidéos anglaises (après fusion et mise en ligne)
+1. Fusionner la branche puis attendre le déploiement Vercel (le Studio lance le workflow sur la branche déployée : il faut que `tuto.yml` avec l'entrée `lang` y soit).
+2. **Studio → Tutoriels de l'app → 🇬🇧 English.**
+3. Dans « Voix », choisir une **voix ElevenLabs anglophone** (accent américain conseillé, puisque la démo filmée est américaine) et cliquer **▶ Écouter** (phrase d'essai en anglais, ≈ 100 caractères). Si aucune voix anglaise n'est dans la liste, en ajouter une à « Mes voix » sur ElevenLabs (ou son identifiant dans `TUTO_EXTRA_VOICES` en haut de `api/social.js`).
+4. « Version à fabriquer » : **📱 + 🖥 Les deux**.
+5. Pour chaque vidéo : **🎬 Fabriquer la vidéo** (≈ 30 s de voix, puis ≈ 4 min de tournage sur GitHub par version). Fabriquer une vidéo à la fois est plus sûr.
+6. Regarder le résultat dans le Studio ; si un geste rate, « ▶ Relancer le tournage (même voix) » ne coûte aucun caractère.
+7. Les vidéos apparaissent ensuite automatiquement dans la version anglaise de l'appli (manifest mis à jour, ≈ 1 min).
+
+**Coût ElevenLabs estimé** : **≈ 4 600 caractères** pour les 9 vidéos (somme des textes anglais : 4 570), la voix étant fabriquée une seule fois par vidéo puis réutilisée pour les versions téléphone et ordinateur ; + ≈ 100 caractères par écoute d'essai. Détail : présentation 893, accueil 454, portefeuille 535, objectif 1 192, assistant 408, bilan 299, santé 221, dépenses 357, actualités 211. Le Studio affiche ce total en mode English. Refaire une vidéo (« ↻ Refaire la vidéo ») recompte ses caractères ; « Relancer le tournage » non.
+
 ## 7. Ce qui reste (non fait) et textes non traduits
 
 Diagnostic : ajouter `?lang=en&i18n_debug=1` à l'adresse, puis `Object.keys(_kpMissing)` dans la console du navigateur.
 
-- **Données d'exemple du mode démo** : le relevé bancaire fictif (libellés « CARTE … RESTAURANT LE COMPTOIR », « PRLV SEPA … ») et le portefeuille d'exemple (LVMH, Air Liquide) restent français — ce sont des données, pas des textes d'interface. À remplacer par un jeu d'exemple américain/européen si tu veux.
 - **Textes affichés rarement que je n'ai pas pu déclencher** (comptes Premium réels, erreurs serveur rares) : ils sont presque tous dans le dictionnaire grâce à l'extraction du code, mais certains fragments construits avec des nombres peuvent rester en français. L'outil de diagnostic les liste.
 - **Formats de nombres** : `fmt`, `fmtI`, `fmtK` suivent l'anglais ; les autres `toLocaleString('fr-FR')` d'`app.js` (environ 80, souvent dans des textes destinés à l'IA ou des petits libellés) restent au format français. Les montants sont enregistrés en euros et convertis à l'affichage dans la devise choisie (voir « Devise d'affichage » ci-dessous).
 - **Fonctions propres à la France** encore visibles : listes de plateformes (Boursorama, Fortuneo…), aide à l'import pour Trade Republic et XTB, détection des libellés bancaires français dans « Mes dépenses », capacité d'emprunt « règles habituelles des banques » (raisonnement français : 35 %, frais de notaire → traduits « closing costs »).
 - **Blog et lettre du dimanche** : français uniquement (voir plus haut).
-- **Vidéos du tutoriel** (`tuto/`, `video/`) et images avec du texte : françaises.
+- **Vidéos du tutoriel** : tout est prêt pour la version anglaise (voir « Mode démo et vidéos tutoriels en anglais ») mais **aucune voix ni vidéo anglaise n'a été fabriquée** ; tant qu'elles n'existent pas, les boutons vidéo sont masqués en anglais. Vidéos animées (`video/`), pubs et images avec du texte : françaises.
 - **Page 404** : Vercel affiche sa page par défaut (en anglais) sur les deux domaines ; je n'ai pas ajouté de page 404 pour ne rien changer côté français.
 - **Données structurées FAQ** de l'accueil anglais : retirées en anglais ; la page `/faq` anglaise a ses propres données structurées.
 - Exclus volontairement : Studio et tableau de bord admin (usage interne).
@@ -142,6 +180,6 @@ Diagnostic : ajouter `?lang=en&i18n_debug=1` à l'adresse, puis `Object.keys(_kp
 4. **Représentants** : représentant UE non nécessaire (éditeur établi en France) ; représentant UK probablement nécessaire si tu vises le Royaume-Uni ; agent DMCA aux US.
 5. **Rétractation UE** : paiement au prorata (rédigé) ou case de renonciation expresse au moment du paiement ?
 6. **E-mails Supabase** : coller les modèles bilingues de `docs/supabase-email-templates/` (ou garder le français pour tous).
-7. **Démo en anglais** : faut-il un portefeuille et un relevé d’exemple anglais/américain ?
+7. ~~Démo en anglais~~ : fait (portefeuille et relevé d'exemple selon la région, voir plus haut).
 8. **Blog anglais** : en créer un (articles écrits en anglais) ou rester sans blog sur kapitaro.com ?
 9. **Détection automatique** sur les hôtes de test : un navigateur non francophone voit l'anglais par défaut ; sur kapitaro.fr c'est toujours le français.
