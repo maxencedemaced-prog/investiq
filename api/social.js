@@ -17,10 +17,17 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns } from './_reel.js';
-import { TUTOS } from './_tuto.js';
+import { TUTOS, TUTOS_EN, tutoFor } from './_tuto.js';
 import { DOSSIERS } from './_dossier.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
+// Tutoriels : langue demandée par le Studio ('fr' par défaut). En anglais, fichiers « <id>__en » (les vidéos françaises ne bougent pas).
+const tutoLang = b => (b && b.lang === 'en' ? 'en' : 'fr');
+const tutoBase = (id, lang) => (lang === 'en' ? id + '__en' : id);
+// Toutes les clés d'état possibles (français, anglais, téléphone, ordinateur)
+const tutoAllIds = () => Object.keys(TUTOS).flatMap(id => [id, id + '__desktop', ...(TUTOS_EN[id] ? [id + '__en', id + '__en__desktop'] : [])]);
+// Lancement GitHub : l'entrée « lang » n'est envoyée qu'en anglais (en français, appel identique à avant)
+const tutoDispatch = (id, variant, lang) => dispatchWorkflow('tuto.yml', lang === 'en' ? { tuto_id: id, variant, lang: 'en' } : { tuto_id: id, variant });
 const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ'];
 async function tutoVoices() {
   const base = (await reelVoices()).filter(v => v.id);
@@ -731,12 +738,16 @@ export default async function handler(req, res) {
     }
     // ── Vidéos tutoriels (enregistrement de l'appli en mode démo, voir api/_tuto.js et tuto/record.mjs) ──
     if (b.action === 'tuto-list') {
+      const lang = tutoLang(b);
       let manifest = {}, status = {};
       try { const { data } = await sb.storage.from('social').download('tuto/manifest.json'); if (data) manifest = JSON.parse(await data.text()); } catch (e) {}
       try { const { data } = await sb.storage.from('social').download('tuto/status.json'); if (data) status = JSON.parse(await data.text()); } catch (e) {}   // ancien format
-      await Promise.all(Object.keys(TUTOS).flatMap(id => [id, id + '__desktop']).map(async id => { try { const { data } = await sb.storage.from('social').download('tuto/status/' + id + '.json'); if (data) status[id] = JSON.parse(await data.text()); } catch (e) {} }));
+      await Promise.all(tutoAllIds().map(async id => { try { const { data } = await sb.storage.from('social').download('tuto/status/' + id + '.json'); if (data) status[id] = JSON.parse(await data.text()); } catch (e) {} }));
       const voices = await tutoVoices();
-      return res.status(200).json({ tutos: Object.entries(TUTOS).map(([id, t]) => ({ id, title: t.title, page: t.page, ad: !!t.ad, beats: t.beats.map(x => x.say) })), manifest, status, voices: voices.map(v => v.name), eleven: voices.some(v => v.id) });
+      // lang = 'en' : seulement les tutoriels qui ont une version anglaise (pas les pubs), textes anglais, clés « <id>__en » (suffix)
+      const list = Object.keys(TUTOS).map(id => ({ id, t: tutoFor(id, lang) })).filter(x => x.t);
+      const chars = list.filter(x => !x.t.ad).reduce((a, x) => a + x.t.beats.reduce((s, y) => s + y.say.length, 0), 0);
+      return res.status(200).json({ lang, suffix: lang === 'en' ? '__en' : '', chars, tutos: list.map(({ id, t }) => ({ id, title: t.title, page: t.page, ad: !!t.ad, beats: t.beats.map(x => x.say) })), manifest, status, voices: voices.map(v => v.name), eleven: voices.some(v => v.id) });
     }
     // ── Bouton général du Studio : tout arrêter (vidéos en fabrication + créations automatiques) / reprendre ──
     if (b.action === 'studio-state') {
@@ -750,7 +761,7 @@ export default async function handler(req, res) {
       let cancelled = 0, warn = '';
       for (const wf of ['reel.yml', 'tuto.yml']) { try { cancelled += await cancelWorkflowRuns(wf); } catch (e) { warn = e.message; } }
       // états : tutoriels et vidéos des posts marqués « arrêtée »
-      await Promise.all(Object.keys(TUTOS).map(async id => {
+      await Promise.all(tutoAllIds().map(async id => {
         try {
           const { data } = await sb.storage.from('social').download('tuto/status/' + id + '.json');
           const st = data ? JSON.parse(await data.text()) : null;
@@ -769,7 +780,7 @@ export default async function handler(req, res) {
     if (b.action === 'tuto-cancel') {
       const cancelled = await cancelWorkflowRuns('tuto.yml');
       let marked = 0;
-      await Promise.all(Object.keys(TUTOS).flatMap(id => [id, id + '__desktop']).map(async id => {
+      await Promise.all(tutoAllIds().map(async id => {
         try {
           const { data } = await sb.storage.from('social').download('tuto/status/' + id + '.json');
           const st = data ? JSON.parse(await data.text()) : null;
@@ -786,7 +797,7 @@ export default async function handler(req, res) {
       const voices = await tutoVoices();
       const voice = voices[Math.max(0, Math.min(voices.length - 1, parseInt(b.voice, 10) || 0))];
       if (!voice) return res.status(400).json({ error: 'Aucune voix ElevenLabs disponible' });
-      const text = 'Salut ! Moi, c’est la voix de Kapitaro. Je t’explique en trente secondes à quoi sert chaque page de l’appli.';
+      const text = tutoLang(b) === 'en' ? 'Hi! I’m the voice of Kapitaro. In thirty seconds, I’ll show you what each page of the app is for.' : 'Salut ! Moi, c’est la voix de Kapitaro. Je t’explique en trente secondes à quoi sert chaque page de l’appli.';
       let last = '';
       for (const model of [...new Set([process.env.ELEVENLABS_MODEL || 'eleven_v4', 'eleven_v3', 'eleven_multilingual_v2'])]) {
         const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voice.id + '?output_format=mp3_44100_64', {
@@ -803,7 +814,7 @@ export default async function handler(req, res) {
     // ── Archives des vidéos tutoriels (anciennes versions) ──
     if (b.action === 'tuto-archive-list') {
       const out = {};
-      for (const id of Object.keys(TUTOS).flatMap(k => [k, k + '__desktop'])) {
+      for (const id of tutoAllIds()) {
         const { data: files } = await sb.storage.from('social').list('tuto/archive/' + id, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
         const metas = (files || []).filter(f => /\.json$/.test(f.name));
         if (!metas.length) continue;
@@ -814,7 +825,7 @@ export default async function handler(req, res) {
     }
     if (b.action === 'tuto-archive-delete' || b.action === 'tuto-archive-restore') {
       const id = String(b.id || ''), stamp = String(b.stamp || '');
-      if (!/^[a-z]+(__desktop)?$/.test(id) || !TUTOS[id.replace('__desktop', '')] || !/^[0-9TZ-]+$/.test(stamp)) return res.status(400).json({ error: 'Version invalide' });
+      if (!/^[a-z]+(__en)?(__desktop)?$/.test(id) || !TUTOS[id.replace('__desktop', '').replace('__en', '')] || !/^[0-9TZ-]+$/.test(stamp)) return res.status(400).json({ error: 'Version invalide' });
       const dir = 'tuto/archive/' + id + '/' + stamp;
       if (b.action === 'tuto-archive-delete') {
         const { error } = await sb.storage.from('social').remove([dir + '.mp4', dir + '.jpg', dir + '.json']);
@@ -851,40 +862,42 @@ export default async function handler(req, res) {
     }
     // Relance seulement le tournage, avec la voix déjà fabriquée (pas de nouveaux caractères ElevenLabs)
     // pub sans voix : rien à préparer, l'enregistreur lit son scénario dans tuto/ads/
-    if ((b.action === 'tuto-render' || b.action === 'tuto-create') && TUTOS[b.id] && TUTOS[b.id].silent) {
+    if ((b.action === 'tuto-render' || b.action === 'tuto-create') && TUTOS[b.id] && TUTOS[b.id].silent && tutoLang(b) !== 'en') {
       await sb.storage.from('social').upload('tuto/status/' + b.id + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
       await dispatchWorkflow('tuto.yml', { tuto_id: b.id, variant: 'mobile' });
       return res.status(200).json({ ok: true, voice: 'sans voix (musique)', duration: 17, variants: ['mobile'] });
     }
     if (b.action === 'tuto-render') {
-      if (!TUTOS[b.id]) return res.status(400).json({ error: 'Tutoriel inconnu' });
-      const { data: tf } = await sb.storage.from('social').download('tuto/' + b.id + '/timing.json');
+      const lang = tutoLang(b), base = tutoBase(b.id, lang);
+      if (!tutoFor(b.id, lang)) return res.status(400).json({ error: lang === 'en' ? 'Pas de version anglaise pour cette vidéo' : 'Tutoriel inconnu' });
+      const { data: tf } = await sb.storage.from('social').download('tuto/' + base + '/timing.json');
       if (!tf) return res.status(400).json({ error: 'Pas encore de voix pour cette vidéo : utilise « Fabriquer la vidéo ».' });
       const timing = JSON.parse(await tf.text());
       const variants = TUTOS[b.id].ad ? ['mobile'] : b.variant === 'desktop' ? ['desktop'] : b.variant === 'mobile' ? ['mobile'] : ['mobile', 'desktop'];   // pub : format vertical seulement
       for (const v of variants) {
-        const sid = v === 'desktop' ? b.id + '__desktop' : b.id;
+        const sid = v === 'desktop' ? base + '__desktop' : base;
         await sb.storage.from('social').upload('tuto/status/' + sid + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
-        await dispatchWorkflow('tuto.yml', { tuto_id: b.id, variant: v });
+        await tutoDispatch(b.id, v, lang);
       }
       return res.status(200).json({ ok: true, voice: timing.voice, variants });
     }
     if (b.action === 'tuto-create') {
-      const t = TUTOS[b.id];
-      if (!t) return res.status(400).json({ error: 'Tutoriel inconnu' });
+      const lang = tutoLang(b), base = tutoBase(b.id, lang);
+      const t = tutoFor(b.id, lang);
+      if (!t) return res.status(400).json({ error: lang === 'en' ? 'Pas de version anglaise pour cette vidéo' : 'Tutoriel inconnu' });
       const voices = await tutoVoices();
       if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
       const voice = voices[Math.max(0, Math.min(voices.length - 1, parseInt(b.voice, 10) || 0))];
       const beats = t.beats.map(x => ({ say: x.say }));
-      const segments = await voiceOver({ beats, voices: [voice], sb, id: 'tuto/' + b.id, speed: t.speed || 1.0 });
-      const timing = { id: b.id, title: t.title, page: t.page || null, ad: !!t.ad, voice: voice.name, at: new Date().toISOString(), segments, beats: beats.map((x, i) => ({ say: x.say, start: x.start, end: x.end, words: x.words, do: t.beats[i].do || [] })) };
-      const up = await sb.storage.from('social').upload('tuto/' + b.id + '/timing.json', Buffer.from(JSON.stringify(timing)), { contentType: 'application/json', upsert: true });
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: 'tuto/' + base, speed: t.speed || 1.0 });
+      const timing = { id: base, lang, title: t.title, page: t.page || null, ad: !!t.ad, voice: voice.name, at: new Date().toISOString(), segments, beats: beats.map((x, i) => ({ say: x.say, start: x.start, end: x.end, words: x.words, do: t.beats[i].do || [] })) };
+      const up = await sb.storage.from('social').upload('tuto/' + base + '/timing.json', Buffer.from(JSON.stringify(timing)), { contentType: 'application/json', upsert: true });
       if (up.error) throw up.error;
       let ref = '';
       for (const v of (t.ad ? ['mobile'] : b.variant === 'desktop' ? ['desktop'] : b.variant === 'mobile' ? ['mobile'] : ['mobile', 'desktop'])) {
-        const sid = v === 'desktop' ? b.id + '__desktop' : b.id;
+        const sid = v === 'desktop' ? base + '__desktop' : base;
         await sb.storage.from('social').upload('tuto/status/' + sid + '.json', Buffer.from(JSON.stringify({ state: 'queued', pct: 8, step: 'En attente d’un ordinateur GitHub', at: new Date().toISOString(), since: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
-        ref = await dispatchWorkflow('tuto.yml', { tuto_id: b.id, variant: v });
+        ref = await tutoDispatch(b.id, v, lang);
       }
       return res.status(200).json({ ok: true, ref, voice: voice.name, duration: Math.round((beats[beats.length - 1].end || 0) * 10) / 10 });
     }
