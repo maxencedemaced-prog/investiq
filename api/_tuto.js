@@ -127,3 +127,114 @@ export const TUTOS = {
     ],
   },
 };
+
+// ── Version anglaise des tutoriels de l'appli (pas des pubs) ──
+// Mêmes scènes et mêmes gestes que la version française (les sélecteurs ne dépendent pas de la langue) ; seule la voix change.
+// say : une phrase par scène, dans le même ordre que TUTOS[id].beats. do : remplace les gestes d'une scène (index → gestes) si besoin.
+// Fichiers : tuto/<id>__en/timing.json, tuto/<id>__en.mp4, tuto/<id>__en__desktop.mp4, manifest « <id>__en » et « <id>__en__desktop ».
+// Mêmes règles : ton pédagogique, aucune promesse de gain, jamais « achète » ni « vends », vocabulaire valable dans toutes les régions.
+export const TUTOS_EN = {
+  presentation: {
+    title: 'What is Kapitaro?',
+    say: [
+      'Kapitaro is your co-pilot for building your future savings.',
+      'All your investments, stocks, ETFs, crypto prices and gold, in one place, with their up-to-date value.',
+      'Good to know: Kapitaro never holds your money and never places orders. You invest through your own bank or broker, then track everything here.',
+      'You set a goal, for example fifty thousand in ten years, and Kapitaro shows you how to get there, month after month.',
+      'Each month, a plan suggests how you could split your contribution, based on real prices and the latest news.',
+      'And the AI assistant answers your questions, in plain English.',
+      'To get started, a short guided tour helps you create your first goal. Just follow along.',
+      'After that, on every page, the play button explains what it is for in thirty seconds.',
+      'Kapitaro is an educational tool: it does not replace a licensed financial adviser, and investing involves the risk of losing money.',
+    ],
+    do: { 6: [{ js: "showOnboarding(true); var k = document.getElementById('ob-btn-skip'); if (k) k.textContent = 'Skip';" }, { wait: 900 }, { click: '#onboarding-modal .ob-profile-card' }] },
+  },
+  accueil: {
+    title: 'The home page',
+    say: [
+      'This is your home page: at a glance, the total value of your investments and how it is changing.',
+      'Just below, your health score and today’s alerts show you what deserves your attention.',
+      'And here, your progress toward your goal, calculated with real prices.',
+      'Got a question, or not sure where to go? Tap the green bubble at the bottom right: the help assistant answers right away.',
+      'Come back every day: the morning briefing sums up what matters in a few seconds.',
+    ],
+  },
+  portefeuille: {
+    title: 'The portfolio',
+    say: [
+      'The portfolio brings all your investments together, with their current value and your gain or loss.',
+      'To add a stock, tap Add, then search for it by name.',
+      'Pick it from the list and enter your quantity: the price fills in on its own. Then just add it to your portfolio.',
+      'The Import button loads your broker statement, as a PDF, Excel or CSV file, to add everything at once.',
+      'Live price updates the prices, and Select lets you manage several lines at once.',
+      'Finally, tap a line to see its details: chart, analysis, a question for the AI, or edits.',
+    ],
+  },
+  objectif: {
+    title: 'Your goal',
+    say: [
+      'Your goal is the amount you want to reach, and by when. Everything starts from there.',
+      'The curve shows where your contributions could take you: the solid line is the value with returns, the dotted line is the money you put in. Drag the slider to see any year.',
+      'Just below, your real progress: what your investments are worth today, compared with your goal.',
+      'You can have up to three goals. If one is out of reach, Kapitaro tells you what would need to change: the time frame, the contribution or the return.',
+      'The To watch area flags holdings that weigh too much or have dropped a lot.',
+      'Each month, the monthly plan splits your contribution between ETFs and stocks, according to your target. Every line shows its real figures: performance, maximum drop, volatility and latest news.',
+      'The Add all button saves the plan in one click: you check the amounts, and lines you already hold are topped up.',
+      'Further down, your starting allocation: the core in global ETFs, the satellites, then the stocks. It stays the same until you create a new plan.',
+      'Finally, you can adjust your share of stocks and ETFs, edit your goal or ask the AI for an analysis. These are educational suggestions: you always make the decisions.',
+    ],
+  },
+  assistant: {
+    title: 'The AI assistant',
+    say: [
+      'The AI assistant knows your portfolio, your goal and your profile.',
+      'Ask it a question as you would a friend who knows the subject: it explains things using real prices and the news, and you make the call.',
+      'On the free plan, you get fifteen questions to start, then three per day.',
+      'With Premium, questions are unlimited, and the agent works for you every day: a portfolio verdict, alerts, priorities and AI signals.',
+    ],
+  },
+  bilan: {
+    title: 'The financial check-up',
+    say: [
+      'The financial check-up, included with Premium, gives you a complete picture of your situation: income, savings, plans and investments.',
+      'Answer a few simple questions: it takes about five minutes.',
+      'You get an allocation suited to your profile, which the AI assistant then uses to give you better answers.',
+    ],
+  },
+  sante: {
+    title: 'Portfolio health',
+    say: [
+      'Your portfolio health is a score out of ten, calculated on your real investments.',
+      'It looks at diversification, the weight of each line, the share of ETFs and performance.',
+      'The points in orange show you what to improve first.',
+    ],
+  },
+  depenses: {
+    title: 'My spending',
+    say: [
+      'My spending shows you where your money goes each month. This feature is part of Premium.',
+      'Simply import your bank statement, as a CSV, Excel or PDF file.',
+      'Kapitaro finds your subscriptions and sorts your spending: what is essential, and what is not.',
+      'You also see how much you could save by cutting back on some expenses, and what that could become once invested.',
+    ],
+    do: { 1: [{ scroll: '#dep-root label:has(input[type=file])' }, { click: '#dep-root label:has(input[type=file])' }, { upload: ['#dep-root input[type=file]', 'sample-statement-en.csv'] }, { wait: 1500 }] },
+  },
+  actualites: {
+    title: 'The news',
+    say: [
+      'The news shows you what is moving in the markets and in the companies you follow.',
+      'The Companies tab sums up the latest news about your investments, simply.',
+      'And the Commodities tab tracks gold, oil and copper live.',
+    ],
+  },
+};
+
+// Tutoriel dans la langue demandée (fr par défaut) : { title, page, ad, speed, beats:[{say, do}] }, ou null s'il n'existe pas
+export function tutoFor(id, lang) {
+  const t = TUTOS[id];
+  if (!t) return null;
+  if (lang !== 'en') return t;
+  const e = TUTOS_EN[id];
+  if (!e || t.ad || e.say.length !== t.beats.length) return null;
+  return { ...t, title: e.title, beats: t.beats.map((b, i) => ({ ...b, say: e.say[i], do: (e.do && e.do[i]) || b.do })) };
+}
