@@ -96,13 +96,37 @@ Chaque page porte en haut : « **Draft – to be reviewed by a qualified lawyer 
 | Bilan : estimation de retraite | info-retraite.fr | Social Security (ssa.gov) | relevé national de retraite | State Pension (GOV.UK) | relevé national |
 | Notifications push et e-mails | français | anglais | anglais | anglais | anglais |
 
+## Devise d'affichage
+
+Ajouté le 31/10/2026 (fichier `currency.js`, chargé juste après `i18n.js`). Fonctionne en français comme en anglais.
+
+**Pour l'utilisateur** : Paramètres → Apparence → « Devise d'affichage » (EUR €, CHF, GBP £, USD $, CAD, AUD, JPY). Tous les montants de l'app sont convertis au cours du jour ; la ligne indique le cours utilisé (« 1 € = 0,9300 CHF · cours du … »). Le choix est mémorisé sur l'appareil (`kp_currency`) et dans le profil (`user_metadata.currency`, retrouvé à la connexion sur un autre appareil).
+
+**Par défaut** : euro sur kapitaro.fr (rien ne change pour les utilisateurs actuels, même en Suisse romande : ils choisissent CHF eux-mêmes). En anglais : USD (région US), GBP (UK), CHF (fuseau Europe/Zurich ou navigateur -CH), CAD / AUD / JPY selon le fuseau, sinon EUR. Pas de nouvelle « région » Suisse : la région (textes juridiques, vocabulaire) et la devise sont deux réglages séparés.
+
+**Principe** : toutes les données restent en euros (calculs, base Supabase, IA, API, cours des actifs déjà convertis en euros par `/api/prices`). On convertit seulement à l'affichage :
+- **Textes** : un observateur convertit chaque montant écrit par l'app (« 1 234,50 € », « 4,6 k€ », « €1,234.50 », « 100k€ ») et remplace le « € » seul des libellés (« Capital (€) » → « Capital (CHF) »). En anglais, il passe après la traduction. Format selon la langue : « 1 234,50 CHF », « 4,3 k CHF » en français ; « CHF 1,234.50 », « $4.3k », « £4.3k » en anglais.
+- **Champs de saisie de montants** (PRU, prix, alerte, capital / versement / cible de l'objectif, bilan, calculateurs, capital disponible…) : l'utilisateur voit et tape dans sa devise, l'app enregistre des euros (100 CHF tapés → 107,53 € enregistrés → réaffichés 100 CHF).
+- **Graphiques** (Chart.js), **PDF** du bilan, **notifications locales** : convertis aussi. **IA** : on lui indique la devise et le cours ; elle répond en euros et l'app convertit sa réponse à l'affichage.
+- **Cours** : `/api/prices?symbols=CUR-CHF,CUR-GBP,…` (aucune nouvelle fonction Vercel), gardés en cache 6 h (`kp_fx`), réutilisables jusqu'à 10 jours si l'API ne répond pas. Sans cours disponible : montants laissés en euros + message « Taux de change indisponible ».
+
+**Jamais convertis (volontairement)** : prix de l'abonnement Premium (payé en euros : 9,99 € reste 9,99 €), écran d'accueil / inscription, graphique détaillé d'un actif (affiché dans sa devise de cotation), exemples chiffrés du lexique.
+
+**Reste en euros** : e-mails automatiques et notifications push envoyées par le serveur (alertes de prix, relances : textes construits côté serveur, ils ne connaissent pas encore la devise choisie — à faire si besoin en lisant `user_metadata.currency` dans `api/_push.js` / `api/_email.js`), données des pages publiques (FAQ, articles). Les montants ronds en euros des exemples (préréglages « 200 €/mois ») deviennent des montants convertis non ronds (« 186 CHF/mois ») : c'est voulu, ils restent exacts.
+
+**Simulateurs publics** : pages françaises → petit sélecteur « € / CHF » (euro par défaut, simple changement de symbole, mémorisé dans `kp_sim_cur_fr`, fichier `sim-cur.js`) ; pages anglaises → CHF ajouté à $ / € / £.
+
+**Tester** (aperçu de la branche ou local) : ajouter `?cur=CHF` (ou USD, GBP…) à l'adresse sur un hôte de test, ou choisir dans Paramètres. En local, `/api/prices` n'existe pas : simuler un cours dans la console avec `localStorage.setItem('kp_fx', JSON.stringify({t: Date.now(), r: {CHF: 0.93, GBP: 0.86, USD: 1.08, CAD: 1.5, AUD: 1.65, JPY: 165}}))`, puis recharger.
+
+Corrigé au passage : en anglais, « 1,234.50 € » s'affichait « 1.234.50 € » (la virgule des milliers était prise pour une virgule décimale).
+
 ## 7. Ce qui reste (non fait) et textes non traduits
 
 Diagnostic : ajouter `?lang=en&i18n_debug=1` à l'adresse, puis `Object.keys(_kpMissing)` dans la console du navigateur.
 
 - **Données d'exemple du mode démo** : le relevé bancaire fictif (libellés « CARTE … RESTAURANT LE COMPTOIR », « PRLV SEPA … ») et le portefeuille d'exemple (LVMH, Air Liquide) restent français — ce sont des données, pas des textes d'interface. À remplacer par un jeu d'exemple américain/européen si tu veux.
 - **Textes affichés rarement que je n'ai pas pu déclencher** (comptes Premium réels, erreurs serveur rares) : ils sont presque tous dans le dictionnaire grâce à l'extraction du code, mais certains fragments construits avec des nombres peuvent rester en français. L'outil de diagnostic les liste.
-- **Formats de nombres** : `fmt`, `fmtI`, `fmtK` suivent l'anglais ; les autres `toLocaleString('fr-FR')` d'`app.js` (environ 80, souvent dans des textes destinés à l'IA ou des petits libellés) restent au format français. Les montants restent en euros (devise de référence de l'app) ; pas de conversion du portefeuille en dollars.
+- **Formats de nombres** : `fmt`, `fmtI`, `fmtK` suivent l'anglais ; les autres `toLocaleString('fr-FR')` d'`app.js` (environ 80, souvent dans des textes destinés à l'IA ou des petits libellés) restent au format français. Les montants sont enregistrés en euros et convertis à l'affichage dans la devise choisie (voir « Devise d'affichage » ci-dessous).
 - **Fonctions propres à la France** encore visibles : listes de plateformes (Boursorama, Fortuneo…), aide à l'import pour Trade Republic et XTB, détection des libellés bancaires français dans « Mes dépenses », capacité d'emprunt « règles habituelles des banques » (raisonnement français : 35 %, frais de notaire → traduits « closing costs »).
 - **Blog et lettre du dimanche** : français uniquement (voir plus haut).
 - **Vidéos du tutoriel** (`tuto/`, `video/`) et images avec du texte : françaises.
