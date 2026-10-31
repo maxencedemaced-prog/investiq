@@ -775,7 +775,44 @@
     'Versement mensuel': 'Monthly contribution', 'Auj.': 'Today', 'Inflation forte': 'High inflation',
     // Fenêtre des offres Premium
     'Ton offre actuelle': 'Your current plan', 'Inclus dans ton offre': 'Included in your plan', 'Mensuel': 'Monthly', 'Annuel': 'Yearly',
-    '/an': '/year', '/mois': '/month', 'le 1er mois': 'first month', 'Analyses IA': 'AI analyses', 'illimitées': 'unlimited', 'Placement A': 'Investment A', 'Placement B': 'Investment B',
+    '/an': '/year', '/mois': '/month', 'le 1er mois': 'first month', 'Analyses IA': 'AI analyses', 'illimitées': 'unlimited',
+    // Page Objectif (bloc v2, graphique, plan)
+    'Objectif atteignable': 'Goal within reach', '✓ Objectif atteignable': '✓ Goal within reach',
+    'Presque atteignable': 'Almost within reach', '≈ Presque atteignable': '≈ Almost within reach',
+    'Ambitieux': 'Ambitious', '⚠ Ambitieux': '⚠ Ambitious',
+    'Hors de portée': 'Out of reach', '⛔ Hors de portée': '⛔ Out of reach', "⛔ Hors de portée en l'état": '⛔ Out of reach as things stand',
+    'Valeur projetée (avec intérêts)': 'Projected value (with interest)', 'Argent versé': 'Money paid in', 'Ton objectif': 'Your goal',
+    '+ Nouveau objectif': '+ New goal', 'projection finale': 'final projection', 'Projection': 'Projection', 'Aujourd’hui': 'Today',
+    'de ton portefeuille (conseillé : moins de 25%).': 'of your portfolio (suggested: under 25%).',
+    '🔒 Conseil IA (que faire + par quoi le remplacer) — Premium': '🔒 AI insight (what to consider + possible alternatives) — Premium',
+    'Débloquer': 'Unlock',
+    // Bilan patrimonial : questionnaire
+    "Aucun bilan enregistré pour l'instant. Celui que tu vas faire sera enregistré automatiquement, et tu pourras le retrouver ici.": 'No check-up saved yet. The one you are about to do will be saved automatically, and you’ll find it here.',
+    'Ta situation personnelle': 'Your personal situation', 'Ces informations nous permettent de personnaliser ton plan.': 'This information helps us tailor your plan.',
+    'Célibataire': 'Single', 'En couple': 'In a relationship', 'Marié(e)': 'Married', 'Divorcé(e)': 'Divorced',
+    'Enfants à charge': 'Dependent children', '3 ou plus': '3 or more', 'Indépendant / Freelance': 'Self-employed / Freelance',
+    "Pour calculer ta capacité d'épargne réelle.": 'To work out how much you can really save.', 'Après impôts, avant charges': 'After tax, before expenses',
+    'Autres crédits (€/mois)': 'Other loans (€/month)', 'Charges fixes estimées (€/mois)': 'Estimated fixed expenses (€/month)',
+    "Remplis les champs pour voir ta capacité d'épargne calculée": 'Fill in the fields to see your savings capacity',
+    'Pour comprendre ton niveau et adapter les recommandations.': 'To understand your level and adapt the suggestions.',
+    'Depuis combien de temps investis-tu ?': 'How long have you been investing?', '1 à 3 ans': '1 to 3 years', '3 à 5 ans': '3 to 5 years', 'Plus de 5 ans': 'More than 5 years',
+    'Quelle part de ton salaire investis-tu ?': 'What share of your income do you invest?', 'Moins de 5%': 'Less than 5%', '5 à 10%': '5 to 10%', '10 à 20%': '10 to 20%', 'Plus de 20%': 'More than 20%',
+    "Ton plus gros problème avec l'investissement": 'Your biggest challenge with investing', "J'ai peur de perdre de l'argent": 'I’m afraid of losing money',
+    "Je n'ai pas le temps de suivre": 'I don’t have time to keep track', 'Je ne sais pas quoi choisir': 'I don’t know what to choose',
+    "J'investis de façon irrégulière": 'I invest irregularly', 'Je vends quand ça baisse': 'I sell when prices drop', 'Pas de problème particulier': 'No particular problem',
+    'Objectifs de vie': 'Life goals', 'Tes objectifs de vie': 'Your life goals', 'Sélectionne tout ce qui correspond à ta situation.': 'Select everything that applies to you.',
+    'Acheter un bien immobilier': 'Buy a property', 'Tolérance au risque réelle': 'Your real risk tolerance',
+    "Deux questions pour mesurer ce que tu supportes vraiment. Tes réponses déterminent la part d'actions de ton allocation cible et la baisse que ton plan doit pouvoir encaisser sans que tu paniques.": 'Two questions to measure what you can really handle. Your answers set the share of stocks in your target allocation and the drop your plan should be able to absorb without you panicking.',
+    'Question 1 · Ta réaction.': 'Question 1 · Your reaction.', 'Question 2 · Ta limite. Quelle perte maximale peux-tu supporter sans paniquer ?': 'Question 2 · Your limit. What is the biggest loss you could bear without panicking?',
+    "50%+ j'ai un horizon très long": '50%+ I have a very long horizon', 'Pour adapter la stratégie à ta situation temporelle.': 'To adapt the approach to your time horizon.',
+    'Court terme — moins de 3 ans': 'Short term — under 3 years', 'Moyen terme — 3 à 7 ans': 'Medium term — 3 to 7 years', 'Long terme — 7 à 15 ans': 'Long term — 7 to 15 years', 'Très long terme — 15+ ans': 'Very long term — 15+ years',
+    'As-tu besoin de liquidité rapide sur ton épargne ?': 'Do you need quick access to your savings?', "Partiellement — je garde un fonds d'urgence": 'Partly — I keep an emergency fund',
+    "Oui — j'ai besoin d'accéder rapidement": 'Yes — I need quick access', 'Événement majeur prévu dans les 3 prochaines années ?': 'Any major event planned in the next 3 years?',
+    'Aucun événement prévu': 'No event planned', "Naissance d'un enfant": 'Birth of a child', 'Décris ta situation en quelques mots...': 'Describe your situation in a few words...',
+    'Précisions sur tes projets': 'Details about your plans',
+    "Quelques questions ciblées sur ce que tu as coché, pour un bilan chiffré et un plan d'action précis. Tu peux laisser un champ vide.": 'A few targeted questions about what you ticked, for a check-up with figures and a clear action plan. You can leave a field empty.',
+    'Tu as déjà un bilan du': 'You already have a check-up from', 'Loyer / Remb. immo (€/mois)': 'Rent / mortgage (€/month)',
+    'Génération de ton bilan...': 'Generating your check-up...', 'Claude analyse ta situation complète et génère ton plan personnalisé': 'Claude is analysing your whole situation and preparing your plan', 'Placement A': 'Investment A', 'Placement B': 'Investment B',
     '✦ Exemple Premium': '✦ Premium sample', 'Exemple Premium': 'Premium sample',
     'Palier maximum atteint 🎉': 'Top tier reached 🎉',
   });
@@ -787,6 +824,29 @@
     // Libellés de champ suivis du symbole de la devise (« Versement mensuel $ », « Capital de départ CHF »)
     [/^Versement mensuel (\S{1,4})$/, 'Monthly contribution $1'],
     [/^entre (.+) et (.+) de frais par an, pour le même placement$/, 'with $1 vs $2 in annual fees, for the same investment'],
+    // Page Objectif
+    [/^Objectif (\d)$/, 'Goal $1'],
+    [/^(.+?) (?:de )?départ · (.+?)\/mois · (\d+) ?ans · (.+)\/an$/, '$1 initial · $2/month · $3 years · $4/year'],
+    [/^(\+?)(.+?) d’intérêts composés$/, '$1$2 in compound interest'],
+    [/^(.+?) versés$/, '$1 paid in'],
+    [/^(.+?)\/mois · (.+?)\/an$/, '$1/month · $2/year'],
+    [/^Année ([\d.,]+) · (.+)$/, 'Year $1 · $2'],
+    [/^Dans ([\d.,]+) ans?$/, function (m, n) { return 'In ' + n + (n === '1' ? ' year' : ' years'); }],
+    [/^(.+?) atteints en ≈ (.+)$/, function (m, a, d) { return a + ' reached in ≈ ' + d.replace(/(\d+) ans?/, function (x, n) { return n + (n === '1' ? ' year' : ' years'); }).replace(' et ', ' and ').replace(/(\d+) mois/, function (x, n) { return n + (n === '1' ? ' month' : ' months'); }); }],
+    [/^Projection : (.+) sur (.+) visés$/, 'Projection: $1 out of $2 targeted'],
+    [/^([\d.,]+) % atteint$/, '$1 % reached'],
+    [/^✓ (.+) — Profil (.+)$/, function (m, o, p) { return '✓ ' + o.replace(/^Objectif (\d)$/, 'Goal $1') + ' — ' + ({ 'Équilibré': 'Balanced', 'Prudent': 'Cautious', 'Dynamique': 'Growth' }[p] || p) + ' profile'; }],
+    [/^🚀 Ton investissement de départ \((.+)\)$/, '🚀 Your starting investment ($1)'],
+    [/^(\d+)% actions · (\d+)% ETF — voici comment répartir ton capital de départ\. Ton plan du mois \(dessous\) prend le relais pour tes versements de (.+)\/mois\.$/, '$1% stocks · $2% ETFs — here is how to split your starting amount. Your monthly plan (below) takes over for your $3/month contributions.'],
+    [/^Ton prochain plan mensuel : 1er (.+)$/, 'Your next monthly plan: $1 1'],
+    [/^\(dans (\d+) jours?\)$/, function (m, n) { return '(in ' + n + (n === '1' ? ' day)' : ' days)'); }],
+    [/^Chaque mois, Kapitaro prépare un nouveau plan : il répartit tes (.+) du mois entre actions et ETF, selon ta cible (.+) et ce que tu détiens déjà\. Il t'attendra ici dès le 1er (.+)\.$/, 'Each month, Kapitaro prepares a new plan: it splits your $1 for the month between stocks and ETFs, based on your $2 target and what you already hold. It will be waiting here from $3 1.'],
+    [/^Je veux aussi un plan pour (.+)$/, 'I also want a plan for $1'],
+    // Bilan : question de tolérance au risque
+    [/^Imagine que ton portefeuille de (.+) perde$/, 'Imagine your portfolio of $1 loses'],
+    [/^([\d.,]+) % en 1 mois$/, '$1 % in 1 month'],
+    [/^\(soit (.+)\)\. Que fais-tu \?$/, '(that’s $1). What do you do?'],
+    [/^(\d+)% si nécessaire \((.+)\)$/, '$1% if needed ($2)'],
     // Offres Premium
     [/^soit (.+)\/mois · sans engagement$/, 'i.e. $1/month · no commitment'],
     [/^puis (.+)\/mois · sans engagement$/, 'then $1/month · no commitment'],
@@ -1048,6 +1108,7 @@
     if (el.tagName === 'INPUT' && (el.type === 'button' || el.type === 'submit') && el.value) { var rv = tr(el.value); if (rv !== el.value) el.value = rv; }
   }
   var FILTER = { acceptNode: function (n) {
+    if (n.nodeType === 1 && n.tagName === 'TEXTAREA') { doEl(n); return NodeFilter.FILTER_REJECT; }   // texte saisi intact, mais le placeholder se traduit
     if (n.nodeType === 1 && (SKIP[n.tagName] || n.getAttribute('translate') === 'no' || n.classList.contains('notranslate') || n.isContentEditable)) return NodeFilter.FILTER_REJECT;
     return NodeFilter.FILTER_ACCEPT;
   } };

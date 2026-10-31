@@ -182,7 +182,7 @@
   if (I.price && !I._kpCurPrice) { var op = I.price; I.price = function (p) { return tag(op(p)); }; I._kpCurPrice = true; }
 
   // ── Textes de la page ──
-  var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, NOSCRIPT: 1, INPUT: 1, SELECT: 1, OPTION: 1 };
+  var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, NOSCRIPT: 1, INPUT: 1 };   // les listes déroulantes sont converties aussi, sauf le choix de devise (data-nocur)
   var ATTRS = ['placeholder', 'title', 'aria-label', 'data-tip'];
   function skipped(el) {
     for (; el && el.nodeType === 1; el = el.parentNode) {
@@ -328,7 +328,7 @@
     var opts = LIST.map(function (c) { return '<option value="' + c + '"' + (c === code ? ' selected' : '') + '>' + NAMES[EN ? 'en' : 'fr'][c] + '</option>'; }).join('');
     var html = '<div class="set-row notranslate" id="set-currency-row" data-nocur><div class="set-row-main"><div class="set-row-title">' + T.label + '</div>'
       + '<div class="set-row-sub">' + T.sub + ' <span id="set-currency-rate"></span></div></div>'
-      + '<div class="set-row-ctrl"><select id="set-currency" aria-label="' + T.label + '" style="padding:6px 8px;border-radius:8px;border:1px solid var(--border,#d0d5dd);background:transparent;color:inherit;font:inherit;max-width:190px">' + opts + '</select></div></div>';
+      + '<div class="set-row-ctrl"><select id="set-currency" data-nocur aria-label="' + T.label + '" style="padding:6px 8px;border-radius:8px;border:1px solid var(--border,#d0d5dd);background:transparent;color:inherit;font:inherit;max-width:190px">' + opts + '</select></div></div>';
     anchor.insertAdjacentHTML('beforebegin', html);
     document.getElementById('set-currency').addEventListener('change', function () { set(this.value); });
     refreshUI();
