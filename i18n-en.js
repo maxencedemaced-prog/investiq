@@ -10,6 +10,17 @@
   var K = window.KP_EN = window.KP_EN || {};
   var REGION = (window.kpI18n && window.kpI18n.region) || 'OTHER';
   var S = K.strings = K.strings || {};
+  // app.js formate encore beaucoup de nombres avec 'fr-FR' en dur : en anglais, on les fait passer au format de la langue
+  (function () {
+    var loc = (window.kpI18n && window.kpI18n.locale) || 'en-US';
+    var isFr = function (l) { return typeof l === 'string' ? /^fr/i.test(l) : Array.isArray(l) && /^fr/i.test(l[0] || ''); };
+    var nTLS = Number.prototype.toLocaleString;
+    Number.prototype.toLocaleString = function (l, o) { return nTLS.call(this, isFr(l) ? loc : l, o); };
+    var dTLS = Date.prototype.toLocaleDateString, dTLT = Date.prototype.toLocaleTimeString, dTL = Date.prototype.toLocaleString;
+    Date.prototype.toLocaleDateString = function (l, o) { return dTLS.call(this, isFr(l) ? loc : l, o); };
+    Date.prototype.toLocaleTimeString = function (l, o) { return dTLT.call(this, isFr(l) ? loc : l, o); };
+    Date.prototype.toLocaleString = function (l, o) { return dTL.call(this, isFr(l) ? loc : l, o); };
+  })();
   function add(o) { for (var k in o) S[k.replace(/\s+/g, ' ').trim()] = o[k]; }
 
   // Vocabulaire régional réutilisable
@@ -756,7 +767,20 @@
   });
 
   // ════════════ TEXTES AVEC NOMBRES (expressions régulières) ════════════
+  // Oublis repérés à la relecture (accueil, santé, agent IA, barre du bas)
+  add({
+    'Ajouter': 'Add', 'Performance totale': 'Total performance', 'Portef.': 'Portfolio', 'Mis à jour': 'Updated',
+    'Actus': 'News', 'Agent IA': 'AI agent', 'Agent IA →': 'AI agent →', 'Monde': 'World',
+    '✦ Exemple Premium': '✦ Premium sample', 'Exemple Premium': 'Premium sample',
+    'Palier maximum atteint 🎉': 'Top tier reached 🎉',
+  });
+
   K.patterns = [
+    // Salutation de l'accueil : « Bonjour Max ! 👋 »
+    [/^(Bonjour|Bon après-midi|Bonsoir)( [^!]+)? !(.*)$/, function (m, g, name, rest) { return ({ 'Bonjour': 'Good morning', 'Bon après-midi': 'Good afternoon', 'Bonsoir': 'Good evening' })[g] + (name || '') + '!' + rest; }],
+    [/^Mis à jour (.+)$/, 'Updated $1'],
+    // Paliers du score de santé
+    [/^Palier (Or|Argent|Bronze)$/, function (m, t) { return ({ Or: 'Gold', Argent: 'Silver', Bronze: 'Bronze' })[t] + ' tier'; }],
     [/^Étape (\d+) ?\/ ?(\d+)$/, 'Step $1 / $2'],
     [/^Étape (\d+) sur (\d+)$/, 'Step $1 of $2'],
     [/^(\d+) ans$/, '$1 years'],
@@ -992,7 +1016,9 @@
     }
     return false;
   }
-  function doText(node) { var v = node.nodeValue, r = tr(v); if (r !== v) node.nodeValue = r; }
+  // Nombres écrits à la française par app.js (« 163,50 € », « 3,7 % », « 6,0/10 ») : virgule décimale → point
+  function numFix(s) { return /\d,\d/.test(s) ? s.replace(/(\d),(\d)/g, '$1.$2') : s; }
+  function doText(node) { var v = node.nodeValue, r = numFix(tr(v)); if (r !== v) node.nodeValue = r; }
   function doEl(el) {
     for (var i = 0; i < ATTRS.length; i++) {
       var a = el.getAttribute(ATTRS[i]);
