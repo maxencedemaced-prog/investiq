@@ -97,11 +97,12 @@
   // ── Conversion et formatage ──
   function toDisp(eur) { return active() ? Number(eur) * rate : Number(eur); }
   function fromDisp(v) { return active() ? Number(v) / rate : Number(v); }
+  var NARROW = { USD: 1, GBP: 1, JPY: 1 };   // « 12 £ » plutôt que « 12 £GB » en français (CAD / AUD gardent CA$ / A$)
   var nfCache = {};
   function nf(dec) {
     var k = code + dec;
     if (!nfCache[k]) {
-      try { nfCache[k] = new Intl.NumberFormat(I.locale, { style: 'currency', currency: code, minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+      try { nfCache[k] = new Intl.NumberFormat(I.locale, { style: 'currency', currency: code, currencyDisplay: NARROW[code] ? 'narrowSymbol' : 'symbol', minimumFractionDigits: dec, maximumFractionDigits: dec }); }
       catch (e) { nfCache[k] = { format: function (n) { return n.toFixed(dec) + ' ' + code; } }; }
     }
     return nfCache[k];
