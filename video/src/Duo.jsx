@@ -187,8 +187,10 @@ const V = {
       `<rect x="100" y="282" width="160" height="16" rx="8" fill="${col}"/><rect x="100" y="562" width="160" height="16" rx="8" fill="${col}"/>` +
       `<path d="M118 298 L242 298 L188 430 L242 562 L118 562 L172 430 Z" fill="${dark ? 'rgba(255,255,255,.08)' : 'rgba(15,30,60,.06)'}" stroke="${col}" stroke-width="5"/>` +
       `<path d="M${180 - 54 * top} ${430 - 120 * top} L${180 + 54 * top} ${430 - 120 * top} L180 430 Z" fill="${sand}"/>` +
-      `<path d="M126 556 L234 556 L${180 + 54 * p} ${556 - 70 * p} L${180 - 54 * p} ${556 - 70 * p} Z" fill="${sand}" opacity="${p > 0.02 ? 1 : 0}"/>` +
-      (p > 0 && p < 1 ? `<line x1="180" y1="430" x2="180" y2="${556 - 70 * p}" stroke="${sand}" stroke-width="4" stroke-dasharray="6 4" stroke-dashoffset="${-f * 2}"/>` : '') + `</g>` +
+      // Sable du bas : rempli depuis le fond, découpé à la forme du verre pour ne pas déborder
+      `<clipPath id="hg-glass"><path d="M118 298 L242 298 L188 430 L242 562 L118 562 L172 430 Z"/></clipPath>` +
+      `<g clip-path="url(#hg-glass)"><path d="M100 562 L260 562 L260 ${562 - 80 * p} Q180 ${562 - 104 * p} 100 ${562 - 80 * p} Z" fill="${sand}" opacity="${p > 0.02 ? 1 : 0}"/></g>` +
+      (p > 0 && p < 1 ? `<line x1="180" y1="430" x2="180" y2="${562 - 96 * p}" stroke="${sand}" stroke-width="4" stroke-dasharray="6 4" stroke-dashoffset="${-f * 2}"/>` : '') + `</g>` +
       (s.text ? `<text x="180" y="625" text-anchor="middle" font-family="${head}" font-size="30" fill="${col}">${esc(s.text)}</text>` : '');
   },
   // Voiture en panne : fumée, triangle, petites secousses
