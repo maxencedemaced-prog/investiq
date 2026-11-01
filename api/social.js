@@ -18,7 +18,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns } from './_reel.js';
 import { TUTOS } from './_tuto.js';
-import { DOSSIERS } from './_dossier.js';
+import { DOSSIERS, duoScript } from './_dossier.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
 const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ'];
@@ -943,7 +943,7 @@ export default async function handler(req, res) {
       const def = Math.max(0, voices.findIndex(v => /vautrin|david/i.test(v.name)));
       const { data: mus } = await sb.storage.from('social').list('music', { limit: 100 });
       const music = (mus || []).filter(f => /\.mp3$/i.test(f.name)).map(f => ({ file: f.name, url: sb.storage.from('social').getPublicUrl('music/' + f.name).data.publicUrl }));
-      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })).sort((a, b) => a.num.localeCompare(b.num)), voices: voices.map(v => v.name), defaultVoice: def, music });
+      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.style === 'duo' ? 'DUO · ' + d.title.split('· ').pop() : d.title })).sort((a, b) => a.num.localeCompare(b.num)), voices: voices.map(v => v.name), defaultVoice: def, music });
     }
     if (b.action === 'dossier-create') {
       const d = DOSSIERS[b.topic];
@@ -952,15 +952,21 @@ export default async function handler(req, res) {
       if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
       // Même voix que les tutoriels (David Vautrin) par défaut, sinon la première
       const voice = (b.voice != null && voices[parseInt(b.voice, 10)]) || voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
-      const beats = d.beats.map(x => ({ ...x }));
+      // Style « Duo » : prénoms tournants (un duo différent à chaque vidéo de ce style, b.pair pour forcer un duo)
+      let duo = null, title = d.title, caption = d.caption, beats = d.beats.map(x => ({ ...x }));
+      if (d.style === 'duo') {
+        let k = parseInt(b.pair, 10);
+        if (!Number.isFinite(k)) { const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo'); k = count || 0; }
+        ({ duo, title, caption, beats } = duoScript(d, k));
+      }
       const { data: post, error } = await sb.from('social_posts').insert({
-        kind: 'weekly', format: 'reel', status: 'draft', title: 'Dossier décodé · ' + d.title.charAt(0) + d.title.slice(1).toLowerCase(),
-        slides: [{ t: 'text', kicker: 'DOSSIER ' + d.num, title: d.title, body: '' }], caption: d.caption, hashtags: d.hashtags,
+        kind: 'weekly', format: 'reel', status: 'draft', title: (duo ? 'Duo · ' : 'Dossier décodé · ') + title.charAt(0) + title.slice(1).toLowerCase(),
+        slides: [{ t: 'text', kicker: 'DOSSIER ' + d.num, title, body: '' }], caption, hashtags: d.hashtags,
         platforms: ['instagram', 'facebook'], scheduled_at: new Date(Date.now() + 86400000).toISOString(),
       }).select().single();
       if (error) throw error;
       const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: d.speed || 1.05 });
-      const script = { v: 1, style: 'dossier', dossier: { num: d.num, title: d.title, chapters: d.chapters }, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
+      const script = { v: 1, style: d.style || 'dossier', dossier: { num: d.num, title, chapters: d.chapters }, duo, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
       // Musique de fond : 'none' = sans musique, un nom de fichier = ce morceau, sinon au hasard
       if (b.music === 'none') script.music = false;
       else if (typeof b.music === 'string' && /^[\w.-]+\.mp3$/.test(b.music)) script.music_file = b.music;

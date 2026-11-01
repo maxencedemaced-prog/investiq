@@ -169,4 +169,67 @@ export const DOSSIERS = {
       { chapter: 2, visual: 'end', hud: 'DÉCODÉ', hudLabel: 'DOSSIER CLOS', hudColor: 'green', cta: 'Simule ton objectif · kapitaro.fr', note: 'Exemple pédagogique : 100 €/mois jusqu’à 65 ans, rendement hypothétique de 6 %/an.', say: 'Et toi, ça donne quoi ? Simule ton objectif gratuitement sur Kapitaro.' },
     ],
   },
+
+  // ── Style « Duo » (video/src/Duo.jsx) : deux personnages comparés, {A} fait le bon choix, {B} non. ──
+  // Les prénoms changent d'une vidéo à l'autre (DUO_PAIRS, choisis à la fabrication) : le texte n'utilise que les prénoms, jamais il/elle.
+  // Mêmes chiffres vérifiés que 013 (100 €/mois à 6 %/an jusqu'à 65 ans : 199 149 € dès 25 ans, 46 204 € dès 45 ans ; versés 48 000 / 24 000 €).
+  'duo-commencer-tot': {
+    num: '014', style: 'duo', tagA: '25 ans', tagB: '45 ans',
+    title: '{A} ET {B} · COMMENCER TÔT',
+    caption: '{A} et {B} mettent tous les deux 100 € par mois… mais pas au même âge. Et toi, tu es plutôt {A} ou {B} ? 👇\n\nExemple pédagogique : 100 €/mois jusqu’à 65 ans, rendement hypothétique de 6 %/an. Les rendements ne sont pas garantis et investir comporte un risque de perte en capital.\n\nSimule ton objectif gratuitement sur kapitaro.fr',
+    hashtags: '#interetscomposes #epargne #investir #retraite #financepersonnelle #argent #kapitaro',
+    beats: [
+      { scene: 'intro', kick: '{A} et {B} mettent tous les deux 100 € par mois…', big: '100 €', sub: 'chacun, jusqu’à 65 ans', pillA: 'DÈS 25 ANS', pillB: 'DÈS 45 ANS', say: '{A} et {B} mettent chacun cent euros par mois, jusqu’à soixante-cinq ans. {A} commence à vingt-cinq ans. {B}, à quarante-cinq.' },
+      { scene: 'columns', kick: 'à 65 ans, avec 6 %/an en exemple…', big: '×4', sub: 'pour {A}, en ayant versé 2× plus', leftValue: 199149, rightValue: 46204, moodB: 'sad', say: 'Avec un rendement d’exemple de six pour cent par an, {A} finit avec environ cent quatre-vingt-dix-neuf mille euros. {B}, quarante-six mille. Quatre fois moins, alors que {A} n’a versé que deux fois plus.' },
+      { scene: 'rule', kick: 'la leçon', rows: [[['COMMENCER', 'g', 130]], [['>', 'dim', 110], ['ATTENDRE', 'w', 130]]], caption: 'Même avec un petit montant', say: 'La différence, c’est le temps. Mieux vaut commencer petit aujourd’hui que d’attendre d’avoir plus.' },
+      { visual: 'end', cta: 'Simule ton objectif · kapitaro.fr', note: 'Exemple : 100 €/mois jusqu’à 65 ans, rendement hypothétique de 6 %/an.', say: 'Et toi, tu es plutôt {A} ou {B} ? Simule ton objectif gratuitement sur Kapitaro.' },
+    ],
+  },
+  // Mêmes chiffres vérifiés que 005 : 200 €/mois pendant 30 ans, 6 %/an avant frais → frais 0,2 % : 193 387 € ; frais 2 % : 138 810 € ; écart 54 577 €.
+  'duo-frais': {
+    num: '015', style: 'duo',
+    title: '{A} ET {B} · LES FRAIS',
+    caption: '{A} et {B} placent la même somme, avec le même rendement… sauf les frais. Et toi, tu es plutôt {A} ou {B} ? 👇\n\nExemple pédagogique : 200 €/mois pendant 30 ans, rendement hypothétique de 6 %/an avant frais, frais de 0,2 % contre 2 %/an. Les rendements ne sont pas garantis et investir comporte un risque de perte en capital.\n\nCalcule tes frais gratuitement sur kapitaro.fr',
+    hashtags: '#frais #epargne #investir #assurancevie #financepersonnelle #argent #kapitaro',
+    beats: [
+      { scene: 'safes', kick: '{A} et {B} placent la même somme…', big: '200 €/mois', sub: 'pendant 30 ans, même rendement', say: '{A} et {B} placent chacun deux cents euros par mois, pendant trente ans, avec le même rendement avant frais.' },
+      { scene: 'safes', leak: true, kick: 'seule différence : les frais', big: '0,2 % vs 2 %', bigColor: 'r', pillA: 'FRAIS 0,2 %', pillB: 'FRAIS 2 %', moodB: 'neutral', say: 'Seule différence : les frais. Zéro virgule deux pour cent par an pour {A}. Deux pour cent pour {B}. Ça paraît rien.' },
+      { scene: 'columns', colorB: 'r', kick: 'au bout de 30 ans…', big: '−54 000 €', bigColor: 'r', sub: 'pour {B}, partis en frais', leftValue: 193387, rightValue: 138810, moodB: 'sad', say: 'Au bout de trente ans, avec six pour cent d’exemple avant frais : environ cent quatre-vingt-treize mille euros pour {A}. Cent trente-neuf mille pour {B}. Cinquante-quatre mille euros partis en frais.' },
+      { visual: 'end', cta: 'Calcule tes frais · kapitaro.fr', note: 'Exemple : 200 €/mois pendant 30 ans, 6 %/an avant frais, frais de 0,2 % contre 2 %/an.', say: 'Regarde toujours les frais avant de choisir. Et toi, tu es plutôt {A} ou {B} ? Calcule tes frais sur Kapitaro.' },
+    ],
+  },
+  // Repère de 012 : 3 à 6 mois de dépenses de côté.
+  'duo-reserve': {
+    num: '016', style: 'duo',
+    title: '{A} ET {B} · LA RÉSERVE',
+    caption: 'Même panne, même facture… mais pas la même fin de mois. Et toi, tu es plutôt {A} ou {B} ? 👇\n\nExemple pédagogique. Repère courant : garder 3 à 6 mois de dépenses de côté, à adapter à ta situation.\n\nCalcule ta réserve gratuitement sur kapitaro.fr',
+    hashtags: '#epargnedeprecaution #epargne #budget #financepersonnelle #argent #kapitaro',
+    beats: [
+      { scene: 'reserve', kick: 'la voiture de {A} et de {B} tombe en panne…', big: '1 500 €', bigColor: 'b', sub: 'de réparation chacun', say: 'La voiture de {A} et celle de {B} tombent en panne la même semaine. Mille cinq cents euros de réparation chacun.' },
+      { scene: 'reserve', stage: 1, kick: '{A} a une réserve, {B} non…', big: '1 500 €', bigColor: 'b', sub: '{A} paie avec sa réserve, {B} à crédit', pillA: 'RÉSERVE : 5 400 €', pillB: 'CRÉDIT : −1 500 €', moodB: 'sad', say: '{A} paie avec sa réserve, mise de côté petit à petit. {B} n’a rien de côté, et doit emprunter, avec des intérêts en plus.' },
+      { scene: 'rule', kick: 'le repère le plus courant', rows: [[['3', 'g'], ['À', 'dim', 110], ['6 MOIS', 'g']]], caption: 'de dépenses mis de côté, sur un livret disponible', say: 'Le repère le plus courant : garder trois à six mois de dépenses de côté, sur un livret disponible et sans risque.' },
+      { visual: 'end', cta: 'Calcule ta réserve · kapitaro.fr', note: 'Repère indicatif, à adapter à ta situation (emploi, famille, logement).', say: 'Et toi, tu es plutôt {A} ou {B} ? Calcule ta réserve gratuitement sur Kapitaro.' },
+    ],
+  },
 };
+
+// Duos de prénoms pour le style « Duo » ({A} = celui qui fait le bon choix) : on tourne pour ne pas revoir toujours les mêmes.
+// Apparence neutre : cheveux longs ou courts, couleurs de cheveux et de peau variées, aucun signe distinctif.
+export const DUO_PAIRS = [
+  [{ name: 'Léa', long: true, hair: '#6b3f22' }, { name: 'Tom', hair: '#2b2b2b', skin: '#e0ac86' }],
+  [{ name: 'Camille', long: true, hair: '#c58a3a', skin: '#f3d0b0' }, { name: 'Hugo', hair: '#3b2a20' }],
+  [{ name: 'Sarah', long: true, hair: '#2b2b2b', skin: '#c98f6b' }, { name: 'Nathan', hair: '#8a5a32' }],
+  [{ name: 'Karim', hair: '#1f1a17', skin: '#c98f6b' }, { name: 'Emma', long: true, hair: '#d8a657', skin: '#f6d5b8' }],
+  [{ name: 'Inès', long: true, hair: '#1f1a17', skin: '#d9a27e' }, { name: 'Lucas', hair: '#a0662f', skin: '#f3d0b0' }],
+  [{ name: 'Julien', hair: '#5a3a22' }, { name: 'Chloé', long: true, hair: '#7a4a2a', skin: '#f3d0b0' }],
+  [{ name: 'Manon', long: true, hair: '#3b2a20', skin: '#e0ac86' }, { name: 'Mehdi', hair: '#2b2b2b', skin: '#b97a56' }],
+  [{ name: 'Yanis', hair: '#1f1a17', skin: '#8d5a3b' }, { name: 'Zoé', long: true, hair: '#b5651d', skin: '#f6d5b8' }],
+];
+
+// Remplace {A} / {B} par les prénoms du duo n° k : renvoie titre, légende, scènes et l'apparence à passer au rendu.
+export function duoScript(d, k) {
+  const [A, B] = DUO_PAIRS[((k % DUO_PAIRS.length) + DUO_PAIRS.length) % DUO_PAIRS.length];
+  const fill = v => typeof v === 'string' ? v.replace(/\{A\}/g, A.name).replace(/\{B\}/g, B.name) : Array.isArray(v) ? v.map(fill) : v;
+  const beats = d.beats.map(b => Object.fromEntries(Object.entries(b).map(([key, v]) => [key, fill(v)])));
+  return { title: fill(d.title).toUpperCase(), caption: fill(d.caption), beats, duo: { A, B, tagA: d.tagA || '', tagB: d.tagB || '' } };
+}
