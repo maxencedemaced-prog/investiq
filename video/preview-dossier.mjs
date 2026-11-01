@@ -1,7 +1,7 @@
 // Aperçu du style « Dossier décodé » sans voix : minutage fictif des mots, une image vers la fin de chaque scène,
 // envoyées dans le stockage public (social/preview/<dossier>-p<scène>.jpg). Lancé par .github/workflows/dossier-preview.yml.
 // TOPICS (facultatif) : dossiers à prévisualiser, séparés par des virgules ; sinon ceux du style « Duo » (un duo de prénoms différent pour chacun).
-// Style « Duo » : une image au milieu de chaque scène en plus (animation en cours).
+// Style « Duo » (montage rapide) : une image toutes les 1,1 s (<dossier>-pt00.jpg, pt01…).
 import { createClient } from '@supabase/supabase-js';
 import { execSync } from 'child_process';
 import fs from 'fs';
@@ -24,7 +24,7 @@ for (const topic of topics.length ? topics : Object.keys(DOSSIERS).filter(k => D
     return { ...b, start, end: t, words };
   });
   fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ beats, segments: [], musicFile: null, style: d.style || 'dossier', dossier: { num: d.num, title: d.title, chapters: d.chapters }, duo: duo && duo.duo, jingle: false }));
-  const shots = beats.flatMap((b, i) => duo ? [[i + 'm', (b.start + b.end) / 2 - 0.4], [i, b.end - 0.5]] : [[i, b.end - 0.5]]);
+  const shots = duo ? Array.from({ length: Math.ceil((t + 1.5) / 1.1) }, (_, k) => ['t' + String(k).padStart(2, '0'), 0.4 + k * 1.1]) : beats.map((b, i) => [i, b.end - 0.5]);
   for (const [i, at] of shots) {
     const fr = Math.round(at * 30), file = `out/${topic}-p${i}.jpg`;
     execSync(`npx remotion still src/index.js Reel ${file} --frame=${fr} --image-format=jpeg --jpeg-quality=80 --scale=0.5 --log=warn`, { stdio: 'inherit' });
