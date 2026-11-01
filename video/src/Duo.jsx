@@ -99,7 +99,7 @@ const nameOf = s => (s.who === 'B' ? DUO.B : DUO.A).name;
 // Fiche profil (comme une carte d'identité) qui glisse depuis la gauche
 function card(x, y, s, f, dark) {
   const p = who(s), dx = io(f, 0, 9, -260, 0, Easing.out(Easing.back(1.3)));
-  const av = `<g transform="translate(${x + 30} ${y + 52}) scale(.62)"><circle cx="0" cy="-80" r="20" fill="${dark ? '#1e293b' : '#e2e8f0'}"/>${person(0, 0, { ...p, top: p.top }, 1).replace(/<ellipse[^>]*rgba[^>]*\/>/, '')}</g>`;
+  const av = `<g transform="translate(${x + 30} ${y + 72}) scale(.56)">${person(0, 0, { ...p, top: p.top }, 1).replace(/<ellipse[^>]*rgba[^>]*\/>/, '')}</g>`;
   return `<g transform="translate(${dx} 0)"><rect x="${x}" y="${y}" width="220" height="62" rx="14" fill="#fff" stroke="#dbe3ef" style="filter:drop-shadow(0 6px 10px rgba(15,30,60,.15))"/>` +
     `<clipPath id="cl${y}"><rect x="${x}" y="${y}" width="60" height="62" rx="14"/></clipPath><g clip-path="url(#cl${y})">${av}</g>` +
     `<text x="${x + 66}" y="${y + 18}" font-family="${fontFamily}" font-size="8" font-weight="700" fill="#94a3b8" letter-spacing="1">PROFIL</text>` +
@@ -172,10 +172,10 @@ const V = {
   },
   // Bloc rouge (crédit) qui tombe à côté du personnage et se fissure
   block: (s, f, dark) => {
-    const y = io(f, 4, 16, -400, 0, Easing.in(Easing.quad)), hit = f >= 16, sq = hit ? io(f, 16, 22, 0.85, 1, Easing.out(Easing.back(3))) : 1;
+    const y = io(f, 4, 16, -170, 0, Easing.in(Easing.quad)), hit = f >= 16, sq = hit ? io(f, 16, 22, 0.85, 1, Easing.out(Easing.back(3))) : 1;
     let dust = ''; if (hit) for (let k = 0; k < 8; k++) { const t = f - 16, dx = (k - 3.5) * 9 * (1 + t / 8); dust += `<circle cx="${210 + dx}" cy="${560 - t * .6}" r="${4 + t * .3}" fill="${dark ? '#64748b' : '#cbd5e1'}" opacity="${io(t, 0, 18, .8, 0)}"/>`; }
     const crack = hit ? `<path d="M200 470 l12 22 l-8 14 l14 18 M228 456 l-6 18 l10 12" stroke="#7f1d1d" stroke-width="3" fill="none" opacity="${io(f, 17, 20, 0, 1)}"/>` : '';
-    return shadow(210, 568, 80, dark) + `<g transform="translate(0 ${y}) translate(210 560) scale(1 ${sq}) translate(-210 -560)">${prism(210, 568, 70, 70, 70, RED)}${crack}</g>` + dust +
+    return shadow(210, 568, 80, dark) + `<g opacity="${io(f, 4, 8, 0, 1)}" transform="translate(0 ${y}) translate(210 560) scale(1 ${sq}) translate(-210 -560)">${prism(210, 568, 70, 70, 70, RED)}${crack}</g>` + dust +
       pill(210, 400 + y, s.pill, RED, '#fff', io(f, 14, 18, 0, 1), 16) +
       person(80, 590, { ...DUO.B, top: s.top || BLUE, mood: hit ? 'sad' : 'wow' }, 1.8, { shake: hit && f < 50, drop: hit }, f);
   },
@@ -195,8 +195,9 @@ const V = {
   car: (s, f, dark) => {
     const jx = Math.sin(f / 1.5) * (f % 30 < 10 ? 2 : 0);
     let smoke = ''; for (let k = 0; k < 6; k++) { const t = ((f + k * 8) % 48) / 48; smoke += `<circle cx="${236 + Math.sin(t * 6 + k) * 10}" cy="${420 - t * 150}" r="${10 + t * 26}" fill="${dark ? '#94a3b8' : '#64748b'}" opacity="${(1 - t) * .55}"/>`; }
-    return shadow(180, 545, 120, dark) + `<g transform="translate(${jx} 0)">` + prism(200, 540, 130, 64, 46, RED) + prism(170, 506, 60, 56, 36, '#fca5a5') +
-      `<ellipse cx="130" cy="540" rx="18" ry="11" fill="#1f2937"/><ellipse cx="280" cy="500" rx="18" ry="11" fill="#1f2937"/><ellipse cx="226" cy="560" rx="18" ry="11" fill="#1f2937"/></g>` + smoke +
+    return shadow(180, 545, 120, dark) + `<g transform="translate(${jx} 0)">` + prism(200, 540, 130, 64, 46, RED) + prism(200 + 30 * C, 494 - 30 * S, 62, 56, 34, '#fca5a5') +
+      `<ellipse cx="${200 + 24 * C}" cy="${540 - 24 * S}" rx="11" ry="17" fill="#1f2937" transform="rotate(-30 ${200 + 24 * C} ${540 - 24 * S})"/><ellipse cx="${200 + 104 * C}" cy="${540 - 104 * S}" rx="11" ry="17" fill="#1f2937" transform="rotate(-30 ${200 + 104 * C} ${540 - 104 * S})"/>` +
+      `<ellipse cx="${200 - 32 * C}" cy="${540 - 32 * S}" rx="10" ry="16" fill="#111827" transform="rotate(30 ${200 - 32 * C} ${540 - 32 * S})"/></g>` + smoke +
       `<g opacity="${io(f, 10, 14, 0, 1)}" transform="translate(70 380) scale(${io(f, 10, 18, .4, 1, Easing.out(Easing.back(2.5)))})"><path d="M0 -34 L32 22 L-32 22 Z" fill="${GOLD}" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><text x="0" y="16" text-anchor="middle" font-family="${head}" font-size="34" fill="${INK}">!</text></g>`;
   },
   // Cases de mois qui se remplissent (épargne de précaution)
@@ -219,7 +220,7 @@ const Big = ({ s, f, fg }) => {
   const k = io(f, 2, 20, 0, 1, Easing.out(Easing.quad));
   const txt = m && s.count !== false ? m[1] + Math.round(n * k).toLocaleString('fr-FR').replace(/\s/g, ' ') + m[3] : s.text;
   const shake = f > 20 && f < 30 ? Math.sin(f * 2.5) * 6 : 0;
-  return <div style={{ position: 'absolute', left: 0, right: 0, top: 1150, textAlign: 'center', fontFamily: head, fontSize: String(s.text).length > 9 ? 190 : 260, lineHeight: 1, color: s.col === 'r' ? RED : s.col === 'g' ? GREEN : fg,
+  return <div style={{ position: 'absolute', left: 0, right: 0, top: 1150, textAlign: 'center', fontFamily: head, fontSize: String(s.text).length <= 3 ? 440 : String(s.text).length > 9 ? 190 : 260, lineHeight: 1, color: s.col === 'r' ? RED : s.col === 'g' ? GREEN : fg,
     transform: `translateX(${shake}px) scale(${io(f, 0, 8, 0.4, 1, Easing.out(Easing.back(2)))})`, textShadow: '0 10px 30px rgba(0,0,0,.18)' }}>{txt}</div>;
 };
 
@@ -256,7 +257,7 @@ const End = ({ b }) => {
   const svg = person(330, 1270, { ...DUO.A, top: GREEN, mood: 'happy' }, 5, { arm: 1, jump: true }, f) + person(750, 1270, { ...DUO.B, top: BLUE, mood: 'neutral' }, 5, {}, f);
   return (
     <AbsoluteFill style={{ background: BG.light[0], fontFamily }}>
-      <div style={{ position: 'absolute', top: 200, left: 60, right: 60, textAlign: 'center', fontFamily: head, fontSize: 130, lineHeight: 1.02, color: INK, transform: `scale(${io(f, 0, 8, 0.6, 1, Easing.out(Easing.back(2)))})` }}>
+      <div style={{ position: 'absolute', top: 200, left: 60, right: 60, textAlign: 'center', fontFamily: head, fontSize: (DUO.A.name + DUO.B.name).length > 11 ? 108 : 130, lineHeight: 1.02, color: INK, transform: `scale(${io(f, 0, 8, 0.6, 1, Easing.out(Easing.back(2)))})` }}>
         TU ES PLUTÔT<br /><span style={{ color: GREEN }}>{DUO.A.name.toUpperCase()}</span> OU <span style={{ color: BLUE }}>{DUO.B.name.toUpperCase()}</span> ?
       </div>
       <svg width="1080" height="1920" style={{ position: 'absolute', inset: 0, overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: svg }} />
