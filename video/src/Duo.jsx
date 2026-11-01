@@ -257,7 +257,7 @@ const End = ({ b }) => {
   const svg = person(330, 1270, { ...DUO.A, top: GREEN, mood: 'happy' }, 5, { arm: 1, jump: true }, f) + person(750, 1270, { ...DUO.B, top: BLUE, mood: 'neutral' }, 5, {}, f);
   return (
     <AbsoluteFill style={{ background: BG.light[0], fontFamily }}>
-      <div style={{ position: 'absolute', top: 200, left: 60, right: 60, textAlign: 'center', fontFamily: head, fontSize: (DUO.A.name + DUO.B.name).length > 11 ? 108 : 130, lineHeight: 1.02, color: INK, transform: `scale(${io(f, 0, 8, 0.6, 1, Easing.out(Easing.back(2)))})` }}>
+      <div style={{ position: 'absolute', top: 200, left: 60, right: 60, textAlign: 'center', fontFamily: head, fontSize: (DUO.A.name + DUO.B.name).length > 9 ? 104 : 130, lineHeight: 1.02, color: INK, transform: `scale(${io(f, 0, 8, 0.6, 1, Easing.out(Easing.back(2)))})` }}>
         TU ES PLUTÔT<br /><span style={{ color: GREEN }}>{DUO.A.name.toUpperCase()}</span> OU <span style={{ color: BLUE }}>{DUO.B.name.toUpperCase()}</span> ?
       </div>
       <svg width="1080" height="1920" style={{ position: 'absolute', inset: 0, overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: svg }} />
