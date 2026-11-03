@@ -1025,7 +1025,11 @@ export default async function handler(req, res) {
       const first = await duoCount();
       const made = await Promise.allSettled(subjects.map(async (s, i) => {
         // Musique créée en même temps que le scénario ; si elle échoue, le rendu prend une musique de la bibliothèque
-        const music = createMusic(DUO_MUSIC[Math.floor(Math.random() * DUO_MUSIC.length)], 50, 'duo-' + s.key).catch(e => { console.warn('[duo] musique :', e.message); return undefined; });
+        // Créations décalées (ElevenLabs limite les musiques simultanées), et une 2e tentative en cas de refus
+        const style = DUO_MUSIC[Math.floor(Math.random() * DUO_MUSIC.length)], wait = ms => new Promise(r => setTimeout(r, ms));
+        const music = wait(i * 6000).then(() => createMusic(style, 50, 'duo-' + s.key))
+          .catch(e => { console.warn('[duo] musique, 2e essai :', e.message); return wait(8000).then(() => createMusic(style, 50, 'duo-' + s.key)); })
+          .catch(e => { console.warn('[duo] musique :', e.message); return undefined; });
         // Scénario refusé par le contrôle (prénoms manquants, trop court…) : une 2e tentative
         let d;
         for (let attempt = 0; !d; attempt++) {
