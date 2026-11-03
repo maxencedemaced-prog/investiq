@@ -3,7 +3,7 @@
 window.KAPITARO_FAQ = [
   // ── Getting started ──
   { id: 'gratuit', cat: 'Getting started', q: 'Is Kapitaro free?',
-    a: 'Yes. The free plan has no time limit and needs no credit card. <b>Premium</b> (monthly or yearly, no commitment — price shown before you pay) adds unlimited AI and advanced tools.',
+    a: 'Yes. The free plan has no time limit and needs no credit card. Your goal and your <b>monthly plan</b> are free for <b>30 days</b> after you sign up. <b>Premium</b> (monthly or yearly, no commitment — price shown before you pay) keeps them after that, and adds unlimited AI and advanced tools.',
     keys: ['free', 'cost', 'price', 'pricing', 'how much', 'paid', 'charge'] },
   { id: 'compte', cat: 'Getting started', q: 'How do I create an account?',
     a: 'On the home page, open the <b>Sign up</b> tab: enter your email and a password (at least 8 characters), or use <b>Continue with Google</b>. Then confirm your address with the link we email you.',
@@ -55,7 +55,7 @@ window.KAPITARO_FAQ = [
     a: 'In the app: the <b>regular investing simulator</b> and the <b>crash scenario</b>. Without an account: the <a href="/compound-interest-calculator">compound interest calculator</a> (more coming soon).',
     keys: ['calculator', 'simulator', 'compound interest', 'dca', 'crash'] },
   { id: 'agent', cat: 'Tools', q: 'How does the AI agent work?',
-    a: 'In the <b>AI agent</b> tab, ask questions about your portfolio in plain English. Free plan: <b>15 free analyses, then 3 per day</b>. Premium: unlimited analyses and the full AI agent. Answers are educational, not investment advice.',
+    a: 'In the <b>AI agent</b> tab, ask questions about your portfolio in plain English. Free plan: <b>3 questions a day</b> to the assistant, on top of 15 free AI analyses then 3 per day for the rest of the app. Premium: unlimited, and the full AI agent. Answers are educational, not investment advice.',
     keys: ['ai', 'agent', 'assistant', 'chatbot', 'artificial intelligence', 'claude'] },
   { id: 'depenses', cat: 'Tools', q: 'What is the My spending page for?',
     a: 'With <b>Premium</b>, import your bank statement: Kapitaro sorts your spending, spots your subscriptions and shows what you could save.',
@@ -66,7 +66,7 @@ window.KAPITARO_FAQ = [
 
   // ── Premium & billing ──
   { id: 'premium', cat: 'Premium & billing', q: 'What does Premium include?',
-    a: 'Unlimited AI analyses, the full AI agent, the financial check-up with PDF export, spending analysis and AI insights on your alerts. Monthly or yearly, no commitment, cancel any time.',
+    a: 'Your savings plan (monthly plan and allocation for your goals) after the 30 free days, unlimited AI analyses, the full AI agent, the financial check-up with PDF export, spending analysis and AI insights on your alerts. Monthly or yearly, no commitment, cancel any time.',
     keys: ['premium', 'what s included', 'features', 'subscription', 'paid plan'] },
   { id: 'souscrire', cat: 'Premium & billing', q: 'How do I upgrade to Premium?',
     a: 'Menu → <b>Go Premium</b>, or <b>Settings → Subscription → See Premium</b>. Payment is by card, securely, through <b>Stripe</b>. The subscription renews automatically until you cancel.',

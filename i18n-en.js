@@ -1278,7 +1278,8 @@
     if (s == null) return s;
     var str = String(s);
     var n = str.replace(/\s+/g, ' ').trim();
-    if (!n || !/[A-Za-zÀ-ÿ]/.test(n)) return str;
+    // (montants seuls comme « 9,99 € » du tableau des offres : traduits seulement s'ils sont dans le dictionnaire)
+    if (!n || (!/[A-Za-zÀ-ÿ]/.test(n) && !(n.indexOf('€') >= 0 && S[n] != null))) return str;
     var v = S[n];
     if (v == null) {
       for (var i = 0; i < K.patterns.length; i++) {
