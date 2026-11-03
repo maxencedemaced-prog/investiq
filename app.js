@@ -9331,13 +9331,13 @@ async function renderHome() {
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">🏆 Meilleure performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${best.name}</div>
-        <div style="font-size:20px;font-weight:900;color:#16a34a;letter-spacing:-0.04em;margin-bottom:8px">+${(best.change_pct||0).toFixed(2).replace(".", ",")} %</div>
+        <div style="font-size:20px;font-weight:900;color:${(best.change_pct||0)>=0?'#16a34a':'#dc2626'};letter-spacing:-0.04em;margin-bottom:8px">${(best.change_pct||0)>=0?'+':''}${(best.change_pct||0).toFixed(2).replace(".", ",")} %</div>
         <div style="opacity:0.7">${sparkline(bestData,'#4ade80',120,32,true)}</div>
       </div>
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">📉 Plus faible performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${worst.name}</div>
-        <div style="font-size:20px;font-weight:900;color:#dc2626;letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0).toFixed(2).replace(".", ",")} %</div>
+        <div style="font-size:20px;font-weight:900;color:${(worst.change_pct||0)>=0?'#16a34a':'#dc2626'};letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0)>0?'+':''}${(worst.change_pct||0).toFixed(2).replace(".", ",")} %</div>
         <div style="opacity:0.7">${sparkline(worstData,'#f87171',120,32,true)}</div>
       </div>
     </div>`;
