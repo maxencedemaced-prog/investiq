@@ -217,7 +217,7 @@ export const DOSSIERS = {
         { bg: 'orange', intro: 'seule différence', head: 'les *frais*', v: 'leak', pill: 'FRAIS' },
         { at: 'zéro', bg: 'light', intro: 'pour {A}', head: 'frais *0,2 %*', v: 'coins', who: 'A', sub: 'FRAIS 0,2 %/AN', pill: 'FRAIS 0,2 %', n: 5 },
         { at: '=et', bg: 'light', intro: 'pour {B}', head: 'frais *2 %*', v: 'coins', who: 'B', sub: 'FRAIS 2 %/AN', pill: 'FRAIS 2 %', top: '#e5383b', n: 5, mood: 'neutral' },
-        { at: 'paraît', bg: 'dark', intro: 'ça paraît…', head: '*rien*', v: 'gauge', value: 2, max: 10, text: '2 % / AN', label: 'FRAIS D’EXEMPLE' },
+        { at: 'paraît', bg: 'dark', intro: 'ça paraît…', head: '*rien*', v: 'show', who: 'B', pose: 'reflechit', o: 'calculatrice', pill: '2 % / AN', top: '#e5383b' },
       ] },
       { say: 'Au bout de trente ans, avec six pour cent d’exemple avant frais : environ cent quatre-vingt-treize mille euros pour {A}. Cent trente-neuf mille pour {B}. Cinquante-quatre mille euros partis en frais.', shots: [
         { bg: 'light', intro: 'au bout de', head: '*30 ans*', v: 'columns', left: 193387, right: 138810, colB: 'r' },
@@ -244,11 +244,11 @@ export const DOSSIERS = {
         { bg: 'light', intro: '{A} a…', head: 'une *réserve*', v: 'coins', who: 'A', sub: 'ÉPARGNE DE PRÉCAUTION', label: 'RÉSERVE', value: 5400, n: 8 },
         { at: 'rien', bg: 'dark', intro: '{B} a…', head: '*rien* de côté', v: 'coins', who: 'B', sub: 'PAS D’ÉPARGNE', pill: '0 €', n: 0, mood: 'sad' },
         { at: 'emprunter', bg: 'orange', intro: 'alors…', head: 'à *crédit*', v: 'block', pill: 'CRÉDIT : −1 500 €' },
-        { at: 'intérêts', bg: 'dark', intro: 'avec', head: 'des *intérêts* en plus', v: 'block', pill: '+ INTÉRÊTS' },
+        { at: 'intérêts', bg: 'dark', intro: 'avec', head: 'des *intérêts* en plus', v: 'show', who: 'B', pose: 'choque', o: 'facture', pill: '+ INTÉRÊTS', col: 'r' },
       ] },
       { say: 'Le repère le plus courant : garder trois à six mois de dépenses de côté, sur un livret disponible et sans risque.', shots: [
         { bg: 'dark', intro: 'le repère', head: '*3 à 6* mois', v: 'months', n: 6, min: 3, label: 'DE DÉPENSES MISES DE CÔTÉ' },
-        { at: 'livret', bg: 'light', intro: 'sur un livret', head: '*disponible*', v: 'coins', who: 'A', sub: 'SANS RISQUE DE PERTE', pill: 'DISPONIBLE', n: 8 },
+        { at: 'livret', bg: 'light', intro: 'sur un livret', head: '*disponible*', v: 'show', who: 'A', o: 'parapluie', pill: 'DISPONIBLE · SANS RISQUE' },
       ] },
       { visual: 'end', cta: 'Calcule ta réserve · kapitaro.fr', note: 'Repère indicatif, à adapter à ta situation (emploi, famille, logement).', say: 'Et toi, tu es plutôt {A} ou {B} ? Calcule ta réserve gratuitement sur Kapitaro.' },
     ],
@@ -256,16 +256,16 @@ export const DOSSIERS = {
 };
 
 // Duos de prénoms pour le style « Duo » ({A} = celui qui fait le bon choix) : on tourne pour ne pas revoir toujours les mêmes.
-// Apparence neutre : cheveux longs ou courts, couleurs de cheveux et de peau variées, aucun signe distinctif.
+// look = personnage 3D des planches (video/public/duo/<look>-<humeur>.webp) ; le prénom peut changer, l'apparence suit le look.
 export const DUO_PAIRS = [
-  [{ name: 'Léa', long: true, hair: '#6b3f22' }, { name: 'Tom', hair: '#2b2b2b', skin: '#e0ac86' }],
-  [{ name: 'Camille', long: true, hair: '#c58a3a', skin: '#f3d0b0' }, { name: 'Hugo', hair: '#3b2a20' }],
-  [{ name: 'Sarah', long: true, hair: '#2b2b2b', skin: '#c98f6b' }, { name: 'Nathan', hair: '#8a5a32' }],
-  [{ name: 'Karim', hair: '#1f1a17', skin: '#c98f6b' }, { name: 'Emma', long: true, hair: '#d8a657', skin: '#f6d5b8' }],
-  [{ name: 'Inès', long: true, hair: '#1f1a17', skin: '#d9a27e' }, { name: 'Lucas', hair: '#a0662f', skin: '#f3d0b0' }],
-  [{ name: 'Julien', hair: '#5a3a22' }, { name: 'Chloé', long: true, hair: '#7a4a2a', skin: '#f3d0b0' }],
-  [{ name: 'Manon', long: true, hair: '#3b2a20', skin: '#e0ac86' }, { name: 'Mehdi', hair: '#2b2b2b', skin: '#b97a56' }],
-  [{ name: 'Yanis', hair: '#1f1a17', skin: '#8d5a3b' }, { name: 'Zoé', long: true, hair: '#b5651d', skin: '#f6d5b8' }],
+  [{ name: 'Léa', look: 'lea', long: true, hair: '#d8a657' }, { name: 'Tom', look: 'tom', hair: '#3b2a20' }],
+  [{ name: 'Camille', look: 'camille', long: true, hair: '#7a4a2a' }, { name: 'Hugo', look: 'hugo', hair: '#3b2a20' }],
+  [{ name: 'Sarah', look: 'sarah', long: true, hair: '#2b2b2b' }, { name: 'Nathan', look: 'nathan', hair: '#5a3a22' }],
+  [{ name: 'Karim', look: 'nathan', hair: '#5a3a22' }, { name: 'Emma', look: 'lea', long: true, hair: '#d8a657' }],
+  [{ name: 'Inès', look: 'sarah', long: true, hair: '#2b2b2b' }, { name: 'Lucas', look: 'hugo', hair: '#3b2a20' }],
+  [{ name: 'Julien', look: 'tom', hair: '#3b2a20' }, { name: 'Chloé', look: 'camille', long: true, hair: '#7a4a2a' }],
+  [{ name: 'Manon', look: 'camille', long: true, hair: '#7a4a2a' }, { name: 'Mehdi', look: 'nathan', hair: '#5a3a22' }],
+  [{ name: 'Yanis', look: 'hugo', hair: '#3b2a20' }, { name: 'Zoé', look: 'lea', long: true, hair: '#d8a657' }],
 ];
 
 // Remplace {A} / {B} par les prénoms du duo n° k : renvoie titre, légende, scènes et l'apparence à passer au rendu.
