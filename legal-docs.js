@@ -166,7 +166,7 @@ const LEGAL_DOCS = {
 // • Sur les pages publiques (/terms, /privacy…), toutes les sections sont affichées avec des ancres (#us, #eu, #uk).
 // Les mentions [TO CONFIRM] signalent des choix ou faits que seul le propriétaire / un avocat peut trancher.
 // ════════════════════════════════════════════════════════════════════════════════════════════
-const LEGAL_LAST_UPDATE_EN = '2026-10-29';
+const LEGAL_LAST_UPDATE_EN = '2026-11-04';
 function legalDateEN() {
   try { return new Date(LEGAL_LAST_UPDATE_EN).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }); }
   catch { return LEGAL_LAST_UPDATE_EN; }
@@ -193,7 +193,7 @@ const LEGAL_DOCS_EN = {
 <p><strong>Kapitaro is not an investment firm, broker or financial adviser.</strong> It provides general, impersonal educational information and tools. It does not hold client money, does not execute orders and does not provide personalized investment, tax or legal advice.</p>`,
     US: `
 <h3 id="us">6. United States</h3>
-<p>Kapitaro is not registered as an investment adviser with the U.S. Securities and Exchange Commission or any state, and is not a broker-dealer or a member of FINRA/SIPC. [TO CONFIRM by US counsel: reliance on the "publisher's exclusion" — see the Terms of Service, section on regulatory status.]</p>
+<p>Kapitaro is not a registered investment adviser or broker-dealer. It is not registered with the U.S. Securities and Exchange Commission, any state securities regulator or FINRA, and is not a member of SIPC. It provides general, impersonal educational information only and does not provide investment, tax or legal advice.</p>
 <p>Designated agent for DMCA copyright notices: [TO CONFIRM — registration with the U.S. Copyright Office required before relying on the DMCA safe harbor].</p>`,
     EU: `
 <h3 id="eu">6. European Union / EEA</h3>
@@ -224,7 +224,8 @@ const LEGAL_DOCS_EN = {
 <h3>3. Eligibility and account</h3>
 <p>You must be <strong>at least 18 years old</strong> and legally able to enter into a contract. The service is not directed to children. You are responsible for keeping your login details confidential and for activity on your account.</p>
 <h3>4. Free plan and Premium subscription</h3>
-<p>The free plan has no time limit. Premium is offered as a monthly or annual subscription at the price shown before you pay (currently {{PRICE_MONTHLY}} per month or {{PRICE_ANNUAL}} per year, taxes included where applicable [TO CONFIRM pricing and tax treatment per country]). Payments are processed by Stripe; we never store your card details.</p>
+<p>The free plan has no time limit. Premium is offered as a monthly or annual subscription at the price shown before you pay (currently {{PRICE_MONTHLY}} per month or {{PRICE_ANNUAL}} per year). The exact price, currency and any applicable taxes are shown on the payment page before you confirm. Payments are processed by Stripe; we never store your card details.</p>
+<p><strong>Free trial of the savings plan.</strong> After you sign up, your goal’s monthly plan and allocation are available free of charge for a limited period (currently 30 days). No payment details are requested for this trial and it never turns into a paid subscription automatically. When it ends, your goal and chart stay visible, and the monthly plan, the allocation and changes to the plan require Premium.</p>
 <p><strong>Automatic renewal.</strong> Your subscription renews automatically at the end of each billing period (monthly or yearly) at the then-current price until you cancel. We will tell you about any price change in advance and you may cancel before it applies.</p>
 <p><strong>Cancel any time, online.</strong> You can cancel in a few clicks in Settings → Subscription (Stripe customer portal), as easily as you subscribed. Cancellation takes effect at the end of the current billing period; you keep Premium until then.</p>
 <p><strong>Fair use.</strong> Premium includes unlimited AI use for normal personal use. To protect the service from abuse and automation, abnormal use (more than 300 AI analyses in one day) pauses AI access until the next day, without other consequences.</p>
@@ -243,29 +244,29 @@ const LEGAL_DOCS_EN = {
 <p>contact@kapitaro.fr</p>`,
     US: `
 <h3 id="us">Additional terms for users in the United States</h3>
-<p><strong>Regulatory status.</strong> Kapitaro is not a broker-dealer and is not registered as an investment adviser under the Investment Advisers Act of 1940 or any state law. We intend to rely on the exclusion for publishers of bona fide publications of general and regular circulation, which applies to content that is impersonal (not tailored to the individual needs of a specific person), disinterested and of general circulation (<em>Lowe v. SEC</em>, 472 U.S. 181 (1985)). [TO CONFIRM by US counsel: interactive, portfolio-based features (health score, AI answers referencing your holdings, decision helper) may be viewed as personalized; counsel should confirm whether the exclusion applies, whether features must be restricted for US users, or whether registration/state notice filings are needed.]</p>
+<p><strong>Regulatory status.</strong> Kapitaro is not a registered investment adviser or broker-dealer. It is not registered under the Investment Advisers Act of 1940 or any state law and is not a member of FINRA or SIPC. Kapitaro is an educational tool: its content is general and impersonal, it is not tailored to your individual financial needs, and it never tells you to buy, sell or hold any security. Scores, simulations and AI answers that use the holdings you enter are mechanical, educational illustrations, not recommendations. [TO CONFIRM by US counsel: whether these portfolio-based features remain outside investment-adviser registration.]</p>
 <p><strong>No advice.</strong> Nothing on Kapitaro is investment, tax or legal advice or an offer or solicitation to buy or sell any security.</p>
-<p><strong>Automatic renewal disclosure (California Bus. &amp; Prof. Code §17600 et seq. and similar state laws).</strong> Before you subscribe we show clearly: that the subscription renews automatically until cancelled, the billing frequency, the amount charged, and how to cancel. We send an acknowledgment email with these terms and cancellation instructions after purchase [TO CONFIRM that the Stripe receipt / welcome email contains all required elements]. You can cancel online at any time via Settings → Subscription. For annual plans we will send a reminder before renewal where required by law [TO CONFIRM implementation].</p>
+<p><strong>Automatic renewal disclosure (California Bus. &amp; Prof. Code §17600 et seq. and similar state laws).</strong> Before you subscribe we show clearly: that the subscription renews automatically until cancelled, the billing frequency, the amount charged, and how to cancel. After purchase we send an acknowledgment that includes the automatic-renewal terms, the cancellation policy and how to cancel. You can cancel online at any time via Settings → Subscription. For annual plans we send a reminder before renewal where required by law. [TO IMPLEMENT before any US launch: acknowledgment email and annual-renewal reminder — see docs/I18N_PLAN.md.]</p>
 <p><strong>Endorsements and testimonials.</strong> Any testimonials or examples reflect individual experiences or hypothetical figures and are not typical or guaranteed results. Material connections (e.g. referral rewards) are disclosed, consistent with FTC Endorsement Guides.</p>
-<p><strong>Governing law and disputes.</strong> [TO CONFIRM by US counsel — options: (a) French law with mandatory protections of your state of residence preserved; (b) the law of a US state; (c) binding individual arbitration with a class-action waiver and small-claims carve-out and a 30-day opt-out window. No option has been chosen yet; until confirmed, no arbitration clause applies.]</p>
-<p><strong>Warranty disclaimer and cap.</strong> TO THE EXTENT PERMITTED BY LAW, THE SERVICE IS PROVIDED WITHOUT WARRANTIES OF ANY KIND, AND OUR TOTAL LIABILITY IS LIMITED TO THE AMOUNTS YOU PAID US IN THE 12 MONTHS BEFORE THE CLAIM. [TO CONFIRM wording and enforceability by state.]</p>`,
+<p><strong>Governing law and disputes.</strong> These Terms are governed by French law, the law of the country where the publisher is established. This choice does not deprive you of the protection of any mandatory consumer-protection law of your state of residence. <strong>There is no arbitration agreement and no class-action waiver.</strong> Please contact us first at contact@kapitaro.fr so we can try to resolve the issue amicably. Failing that, disputes may be brought before the competent French courts, without prejudice to any right you have under mandatory law to bring proceedings in the courts of your place of residence, including small-claims court.</p>
+<p><strong>Warranty disclaimer and cap.</strong> TO THE EXTENT PERMITTED BY LAW, THE SERVICE IS PROVIDED WITHOUT WARRANTIES OF ANY KIND, AND OUR TOTAL LIABILITY IS LIMITED TO THE AMOUNTS YOU PAID US IN THE 12 MONTHS BEFORE THE CLAIM. Some states do not allow the exclusion of certain warranties or the limitation of certain damages, so some of these limits may not apply to you.</p>`,
     EU: `
 <h3 id="eu">Additional terms for consumers in the European Union / EEA</h3>
-<p><strong>Not investment advice (MiFID II).</strong> Kapitaro does not provide investment advice or any investment service within the meaning of Directive 2014/65/EU. Content is general information; it is not a personal recommendation.</p>
+<p><strong>Not investment advice (MiFID II).</strong> Kapitaro does not provide investment advice or any investment service within the meaning of Directive 2014/65/EU. Content is general information; it is not a personal recommendation. Capital at risk. Past performance is not a reliable indicator of future results.</p>
 <p><strong>14-day right of withdrawal.</strong> As a consumer you have the right to withdraw from your Premium subscription within 14 days of purchase without giving a reason (Directive 2011/83/EU, art. 9; in France art. L. 221-18 Code de la consommation). To exercise it, email contact@kapitaro.fr or use the model withdrawal form below. We will refund you within 14 days using the same payment method.</p>
-<p><strong>Immediate access.</strong> If you ask for Premium to start immediately, you expressly request performance during the withdrawal period. Under art. 14(3) of Directive 2011/83/EU you then pay a proportionate amount for the service supplied until you withdraw. [TO CONFIRM by EU counsel: whether to instead use the art. 16(m) waiver for digital content, which requires prior express consent and acknowledgment of loss of the right, recorded on a durable medium — the checkout currently does not collect this; see docs/I18N_PLAN.md.]</p>
+<p><strong>Immediate access.</strong> If you ask for Premium to start immediately, you expressly request performance during the withdrawal period. Under art. 14(3) of Directive 2011/83/EU you then pay a proportionate amount for the service supplied until you withdraw, and we refund the rest. If you did not make this express request, we refund you in full.</p>
 <p><em>Model withdrawal form:</em> "To Maxence De Macedo (Quorvia), 21 Le Routoir, 38240 Meylan, France, contact@kapitaro.fr — I hereby give notice that I withdraw from my contract for the Kapitaro Premium subscription ordered on [date], account email [email]. Date, name."</p>
 <p><strong>Legal guarantee of conformity.</strong> You benefit from the legal guarantee of conformity for digital services (Directive (EU) 2019/770).</p>
-<p><strong>Disputes.</strong> These Terms are governed by French law, without depriving you of the protection of mandatory provisions of the law of your country of residence. You may bring proceedings in the courts of your country of residence. You may also use a consumer mediator free of charge: [TO CONFIRM — name and website of the consumer mediator once appointed]. [TO CONFIRM: the EU Online Dispute Resolution platform was discontinued in July 2025; check current requirements.]</p>
+<p><strong>Disputes.</strong> These Terms are governed by French law, without depriving you of the protection of mandatory provisions of the law of your country of residence. You may bring proceedings in the courts of your country of residence. Please contact us first at contact@kapitaro.fr so we can try to resolve the issue amicably. You may also use a consumer mediator free of charge: [TO CONFIRM — name and website of the consumer mediator once appointed].</p>
 <p><strong>Digital Services Act.</strong> Contact point for users and authorities: contact@kapitaro.fr. You can report illegal content to that address.</p>`,
     UK: `
 <h3 id="uk">Additional terms for consumers in the United Kingdom</h3>
-<p><strong>Not financial advice.</strong> Kapitaro is not authorised by the FCA and does not provide regulated financial advice. Content is general information. Capital at risk.</p>
-<p><strong>Cancellation.</strong> Under the Consumer Contracts (Information, Cancellation and Additional Charges) Regulations 2013 you may cancel within 14 days of purchase. If you ask Premium to start immediately, you pay for the service supplied until you cancel. [TO CONFIRM by UK counsel, including the Digital Markets, Competition and Consumers Act 2024 subscription-contract rules (reminders, cooling-off periods) when in force.]</p>
-<p><strong>Disputes.</strong> French law applies without depriving you of the mandatory protections of UK law; you may bring claims in the courts of the part of the UK where you live. [TO CONFIRM.]</p>`,
+<p><strong>Not financial advice.</strong> Kapitaro is not authorised by the FCA and does not provide regulated financial advice. Content is general information, not investment advice. Capital at risk: the value of investments can fall as well as rise. Past performance is not a reliable indicator of future results.</p>
+<p><strong>Cancellation.</strong> Under the Consumer Contracts (Information, Cancellation and Additional Charges) Regulations 2013 you may cancel within 14 days of purchase. If you expressly ask Premium to start immediately, you pay a proportionate amount for the service supplied until you cancel and we refund the rest; otherwise we refund you in full. [TO CHECK before any UK launch: the subscription-contract rules of the Digital Markets, Competition and Consumers Act 2024 (reminders, renewal cooling-off) and their commencement date.]</p>
+<p><strong>Disputes.</strong> These Terms are governed by French law, without depriving you of the protection of the mandatory provisions of the law of the part of the UK where you live; you may bring claims in the courts of that part of the UK. There is no arbitration agreement.</p>`,
     OTHER: `
 <h3 id="other">Users in other countries</h3>
-<p>You are responsible for complying with local laws. Kapitaro may not be available or appropriate in every country. French law applies, subject to any mandatory consumer protections of your country of residence. [TO CONFIRM.]</p>`,
+<p>You are responsible for complying with local laws. Kapitaro may not be available or appropriate in every country. These Terms are governed by French law, subject to any mandatory consumer protections of your country of residence. There is no arbitration agreement.</p>`,
   },
 
   privacy: {
@@ -273,7 +274,7 @@ const LEGAL_DOCS_EN = {
     common: `
 <p class="legal-date">Last updated: {{LEGAL_DATE}}</p>
 <h3>1. Controller</h3>
-<p>${LEGAL_PUBLISHER_EN}. No Data Protection Officer has been appointed [TO CONFIRM whether one is required]; for any privacy request, write to contact@kapitaro.fr.</p>
+<p>${LEGAL_PUBLISHER_EN}. No Data Protection Officer has been appointed; for any privacy request, write to contact@kapitaro.fr.</p>
 <h3>2. Data we collect</h3>
 <ul>
 <li><strong>Account:</strong> email address, encrypted password (or Google sign-in identifier), language and country/region.</li>
@@ -303,7 +304,9 @@ const LEGAL_DOCS_EN = {
 <p>Data is encrypted in transit; access is restricted; row-level security protects each account’s data. No system is 100% secure.</p>
 <h3>7. Children</h3>
 <p>Kapitaro is for adults (18+). We do not knowingly collect data from children under 13 (or under 16 in the EU/UK). If you believe a child has given us data, contact us and we will delete it.</p>
-<h3>8. Your controls</h3>
+<h3>8. Applicable data protection rules</h3>
+<p>Because the publisher is established in France, we process all users’ personal data in line with the EU General Data Protection Regulation (GDPR), wherever you live. California residents also have the rights described in the US section below (CCPA/CPRA), and UK residents those of the UK GDPR.</p>
+<h3>9. Your controls</h3>
 <p>Export or delete your data at any time in Settings → My data, or email contact@kapitaro.fr. Manage emails and notifications in Settings → Notifications.</p>`,
     US: `
 <h3 id="us">Notice for California and other US residents</h3>
@@ -316,7 +319,7 @@ const LEGAL_DOCS_EN = {
 <h3 id="eu">Information for users in the EU/EEA (GDPR)</h3>
 <p><strong>Legal bases (art. 6 GDPR):</strong> performance of the contract (account, portfolio tracking, AI answers, subscription); consent (advertising cookies, push notifications, marketing emails — withdrawable at any time); legitimate interests (security, fraud prevention, service improvement, internal measurement of acquisition sources); legal obligation (invoicing, accounting).</p>
 <p><strong>Your rights:</strong> access, rectification, erasure, restriction, objection, data portability and withdrawal of consent, plus the right not to be subject to solely automated decisions with legal or similarly significant effects (Kapitaro’s scores have no such effect). Exercise them in Settings or at contact@kapitaro.fr; we answer within one month.</p>
-<p><strong>International transfers:</strong> some providers (Vercel, Anthropic, Stripe, Resend, Meta, Google) may process data in the USA. Transfers rely on the EU–US Data Privacy Framework where the provider is certified, or on the European Commission’s Standard Contractual Clauses. [TO CONFIRM provider by provider.]</p>
+<p><strong>International transfers:</strong> some providers (Vercel, Anthropic, Stripe, Resend, Meta, Google) may process data in the USA. Transfers rely on the EU–US Data Privacy Framework where the provider is certified, or otherwise on the European Commission’s Standard Contractual Clauses included in the provider’s data processing terms.</p>
 <p><strong>Complaints:</strong> you may lodge a complaint with your local supervisory authority; our lead authority is the CNIL (France, www.cnil.fr).</p>
 <p><strong>EU representative:</strong> not required as the controller is established in the EU (France).</p>`,
     UK: `
@@ -369,13 +372,13 @@ const LEGAL_DOCS_EN = {
 <p>Kapitaro is a tool to understand and organize. For a recommendation that takes your personal, financial and tax situation into account, consult a licensed professional.</p>`,
     US: `
 <h3 id="us">United States</h3>
-<p>Investments are not FDIC-insured, not bank-guaranteed and may lose value. For personal advice, consider a registered investment adviser or a fiduciary financial planner; you can check professionals on <a href="https://adviserinfo.sec.gov/" target="_blank" rel="noopener">adviserinfo.sec.gov</a> and <a href="https://brokercheck.finra.org/" target="_blank" rel="noopener">BrokerCheck</a>. Nothing here is tax advice.</p>`,
+<p>Kapitaro is not a registered investment adviser or broker-dealer, and nothing on Kapitaro is investment advice. Investments are not FDIC-insured, not bank-guaranteed and may lose value. For personal advice, consider a registered investment adviser or a fiduciary financial planner; you can check professionals on <a href="https://adviserinfo.sec.gov/" target="_blank" rel="noopener">adviserinfo.sec.gov</a> and <a href="https://brokercheck.finra.org/" target="_blank" rel="noopener">BrokerCheck</a>. Nothing here is tax advice.</p>`,
     EU: `
 <h3 id="eu">European Union / EEA</h3>
-<p>Before investing in a fund or ETF, read its Key Information Document (KID). For personal advice, consult an adviser authorized in your country under MiFID II.</p>`,
+<p>Kapitaro’s content is not investment advice. Capital at risk. Past performance is not a reliable indicator of future results. Before investing in a fund or ETF, read its Key Information Document (KID). For personal advice, consult an adviser authorized in your country under MiFID II.</p>`,
     UK: `
 <h3 id="uk">United Kingdom</h3>
-<p>Before investing, read the product’s Key Information Document. For personal advice, use an FCA-authorised adviser (check the <a href="https://register.fca.org.uk/" target="_blank" rel="noopener">FCA register</a>). Capital at risk.</p>`,
+<p>Kapitaro’s content is not financial advice. Capital at risk: you may get back less than you invest. Past performance is not a reliable indicator of future results. Before investing, read the product’s Key Information Document. For personal advice, use an FCA-authorised adviser (check the <a href="https://register.fca.org.uk/" target="_blank" rel="noopener">FCA register</a>).</p>`,
     OTHER: '',
   },
 };
