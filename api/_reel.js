@@ -195,14 +195,22 @@ export async function writeReelScript({ post, duo, askClaude, facts, style }) {
   return beats;
 }
 
+// Voix qui montent trop en fin de mot en mode « créatif » : stabilité « naturelle » (v3/v4) et moins d'expressivité (v2)
+const CALM_VOICES = [/vaud/];
+export const calmVoice = name => CALM_VOICES.some(re => re.test(nk(name)));
+export function ttsSettings(model, speed, calm) {
+  if (model === 'eleven_multilingual_v2') return calm
+    ? { stability: 0.5, similarity_boost: 0.8, style: 0.25, use_speaker_boost: true, speed }
+    : { stability: speed > 1.1 ? 0.25 : 0.32, similarity_boost: 0.8, style: speed > 1.1 ? 0.7 : 0.5, use_speaker_boost: true, speed };
+  return { stability: calm ? 0.5 : 0, speed };
+}
+
 // ── Voix ElevenLabs avec minutage de chaque caractère → minutage de chaque mot ──
-async function elevenTts(text, voiceId, speed = 1.08) {
+async function elevenTts(text, voiceId, speed = 1.08, calm = false) {
   let last = '';
   for (const model of [...new Set([process.env.ELEVENLABS_MODEL || 'eleven_v4', 'eleven_v3', 'eleven_multilingual_v2'])]) {
     // v3/v4 : stabilité « créative » (plus d'expression) ; v2 : expressivité et débit réglés finement
-    const settings = model === 'eleven_multilingual_v2'
-      ? { stability: speed > 1.1 ? 0.25 : 0.32, similarity_boost: 0.8, style: speed > 1.1 ? 0.7 : 0.5, use_speaker_boost: true, speed }
-      : { stability: 0, speed };
+    const settings = ttsSettings(model, speed, calm);
     for (const voice_settings of [settings, { speed }, null]) {
       let r;
       for (let k = 0; k < 4; k++) {   // trop de voix demandées en même temps (429) : on patiente et on réessaie
@@ -231,7 +239,7 @@ export async function voiceOver({ beats, voices, sb, id, speed }) {
     const voice = voices[groups[g].voice] || voices[0];
     let text = ''; const spans = [];
     for (const i of groups[g].idx) { if (text) text += ' '; spans.push({ i, from: text.length }); text += beats[i].say; spans[spans.length - 1].to = text.length; }
-    const { audio, al, model } = await elevenTts(text, voice.id, speed);
+    const { audio, al, model } = await elevenTts(text, voice.id, speed, calmVoice(voice.name));
     sb.from('ai_usage_log').insert({ user_id: null, model: 'elevenlabs:' + (model || ''), input_tokens: text.length, output_tokens: 0, cost_usd: 0, call_label: 'studio:voix' }).then(() => {}, () => {});
     const starts = al?.character_start_times_seconds || [], ends = al?.character_end_times_seconds || [];
     const exact = starts.length === text.length;

@@ -16,7 +16,7 @@
 // La clé Anthropic et la clé service Supabase ne quittent jamais le serveur.
 
 import { createClient } from '@supabase/supabase-js';
-import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns } from './_reel.js';
+import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns, ttsSettings, calmVoice } from './_reel.js';
 import { TUTOS } from './_tuto.js';
 import { DOSSIERS, duoScript } from './_dossier.js';
 
@@ -791,7 +791,7 @@ export default async function handler(req, res) {
       for (const model of [...new Set([process.env.ELEVENLABS_MODEL || 'eleven_v4', 'eleven_v3', 'eleven_multilingual_v2'])]) {
         const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voice.id + '?output_format=mp3_44100_64', {
           method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-          body: JSON.stringify({ text, model_id: model }), signal: AbortSignal.timeout(30000),
+          body: JSON.stringify({ text, model_id: model, ...(calmVoice(voice.name) ? { voice_settings: ttsSettings(model, 1.0, true) } : {}) }), signal: AbortSignal.timeout(30000),
         });
         if (r.ok) return res.status(200).json({ voice: voice.name, audio: 'data:audio/mpeg;base64,' + Buffer.from(await r.arrayBuffer()).toString('base64') });
         last = r.status + ' ' + (await r.text()).slice(0, 160);
