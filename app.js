@@ -8683,7 +8683,7 @@ async function checkAndGenerateNotifications() {
   }
 
   // ── 3. MARCHÉ EN BAISSE — opportunité DCA ──
-  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/apos().length : 0;   // même liste au numérateur et au dénominateur
   if (avgChange < -3) {
     newNotifs.push({ titre:'📉 Marché en baisse — opportunité !', texte:`Ton portefeuille baisse de ${Math.abs(avgChange).toFixed(1).replace(".", ",")} % aujourd'hui. Historiquement, c'est le bon moment pour renforcer en DCA, pas pour vendre.`, action:'Simulateur DCA', impact:'medium', heure:"Aujourd'hui", type:'marche' });
   } else if (avgChange < -1.5) {
@@ -14925,7 +14925,7 @@ function renderAgentDashboard() {
   const tv = apos().reduce((a,p)=>a+p.qty*p.price, 0);
   const ti = apos().reduce((a,p)=>a+p.qty*p.pru, 0);
   const tpnl = tv - ti;
-  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/apos().length : 0;   // même liste au numérateur et au dénominateur
   const {score, items: scoreItems} = calcScore();
   const scoreColor = score>=7?'#16a34a':score>=5?'#f59e0b':'#dc2626';
   const sorted = [...apos()].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
