@@ -321,9 +321,7 @@ async function makeDossier(btn) {
 
 // ── 3 Reels « Duo » : sujets jamais traités, scénarios écrits par l'IA, voix de David Vautrin ──
 async function makeDuoBatch(btn) {
-  if (!confirm('Créer 3 Reels « Duo » sur des sujets jamais traités ?
-
-L’IA écrit les scénarios, puis la voix ElevenLabs est préparée (≈ 3 × 500 caractères). Les Reels arrivent dans « À valider ».')) return;
+  if (!confirm('Créer 3 Reels « Duo » sur des sujets jamais traités ?\n\nL’IA écrit les scénarios, puis la voix ElevenLabs est préparée (≈ 3 × 500 caractères). Les Reels arrivent dans « À valider ».')) return;
   var label = btn.innerHTML; btn.disabled = true; btn.textContent = 'Écriture + voix (≈ 2 min)…';
   try {
     var d = await api('POST', { action: 'duo-batch', count: 3 });
