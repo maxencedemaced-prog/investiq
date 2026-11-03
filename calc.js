@@ -1,4 +1,4 @@
-// calc.js — page « Calculateurs » de l'appli : impact des frais et effet de l'inflation.
+// calc.js — page « Calculateurs » de l'appli : impact des frais et effet de l'inflation, puis liens vers tous les calculateurs gratuits.
 // Mêmes formules que les pages publiques (calculateur-frais-placement.html, calculateur-inflation.html) :
 // capitalisation mensuelle (taux annuel / 12), frais retirés du rendement brut ; inflation composée annuellement.
 (function () {
@@ -85,6 +85,25 @@
       + legend([['Solde affiché', '#9ca3af'], ['Pouvoir d’achat avec ton rendement', '#16a34a'], ['Pouvoir d’achat sans rendement', '#dc2626']]);
   }
 
+  // Tous les calculateurs gratuits (pages publiques, aussi listées sur /outils) : ouverts dans un nouvel onglet
+  var TOOLS = [
+    ['Budget et dépenses', [['/budget-50-30-20', '🧾', 'Budget 50/30/20', 'Répartis ton salaire entre besoins, envies et épargne'], ['/calculateur-petites-depenses', '☕', 'Petites dépenses', 'Café, livraison, snacks : le vrai coût sur un an'], ['/calculateur-abonnements', '📺', 'Abonnements', 'Ce qu’ils te coûtent vraiment par an']]],
+    ['Crédits et dettes', [['/cout-credit-consommation', '💳', 'Coût d’un crédit conso', 'Intérêts payés, ou épargner avant d’acheter'], ['/remboursement-dettes', '🧮', 'Rembourser ses dettes', 'Dans quel ordre, et combien d’intérêts économiser']]],
+    ['Épargne et placements', [['/epargne-de-precaution', '☂️', 'Épargne de précaution', 'Combien garder de côté'], ['/calculateur-objectif-epargne', '🎯', 'Objectif d’épargne', 'Combien mettre de côté chaque mois'], ['/simulateur-interets-composes', '📈', 'Intérêts composés', 'Ce que devient ton épargne avec le temps'], ['/simulateur-investissement-programme', '🗓️', 'Investir chaque mois', 'La même somme chaque mois : 3 scénarios'], ['/rendement-etf-msci-world', '🌍', 'ETF MSCI World', '3 scénarios et l’effet des frais']]],
+  ];
+  function toolsHTML() {
+    return '<div id="calc-tools" style="margin-top:22px"><div style="font-size:16px;font-weight:800;margin:0 2px 2px">🧮 Tous les calculateurs gratuits</div>'
+      + '<p style="font-size:12.5px;color:var(--color-text-secondary,#71717a);margin:0 2px 12px">Budget, dépenses, crédits, épargne : ils s’ouvrent dans un nouvel onglet.</p>'
+      + TOOLS.map(function (g) {
+        return '<div style="font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary,#71717a);margin:12px 2px 8px">' + g[0] + '</div>'
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px">' + g[1].map(function (t) {
+            return '<a href="' + t[0] + '" target="_blank" rel="noopener" style="display:flex;gap:10px;align-items:center;background:var(--color-surface,#fff);border:1px solid var(--color-border,#e4e4e7);border-radius:13px;padding:11px 12px;text-decoration:none;color:var(--color-text,#1c1c1e)">'
+              + '<span style="font-size:20px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--color-bg,#f2f4f7);border-radius:10px;flex-shrink:0">' + t[1] + '</span>'
+              + '<span style="min-width:0"><b style="display:block;font-size:13.5px">' + t[2] + '</b><span style="display:block;font-size:12px;color:var(--color-text-secondary,#71717a);line-height:1.35">' + t[3] + '</span></span></a>';
+          }).join('') + '</div>';
+      }).join('') + '</div>';
+  }
+
   window.renderCalc = function () {
     var root = document.getElementById('calc-root'); if (!root) return;
     var tab = function (id, label) { var on = TAB === id; return '<button type="button" onclick="calcTab(\'' + id + '\')" style="flex:1;padding:10px;border-radius:10px;border:none;font:inherit;font-size:13.5px;font-weight:' + (on ? 800 : 600) + ';cursor:pointer;background:' + (on ? 'var(--color-surface,#fff)' : 'transparent') + ';color:' + (on ? 'var(--color-text,#1c1c1e)' : 'var(--color-text-secondary,#71717a)') + ';box-shadow:' + (on ? '0 1px 4px rgba(0,0,0,.12)' : 'none') + '">' + label + '</button>'; };
@@ -92,7 +111,7 @@
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' + PRESETS[TAB].map(function (p, k) { return '<button type="button" onclick="calcPreset(' + k + ')" style="padding:6px 12px;border-radius:99px;border:1px solid var(--color-border,#e4e4e7);background:var(--color-surface,#fff);color:var(--color-text,#1c1c1e);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer">' + p[0] + '</button>'; }).join('') + '</div>'
       + '<div class="calc-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:12px;align-items:start">'
       + card((TAB === 'frais' ? '<p style="margin:0 0 14px;font-size:13px;line-height:1.5;color:var(--color-text-secondary,#71717a)">Compare <b style="color:var(--color-text,#1c1c1e)">deux placements identiques</b> (même versement, même durée, même rendement avant frais) qui n’ont <b style="color:var(--color-text,#1c1c1e)">pas les mêmes frais annuels</b>. Tu vois ce que la différence te coûte à la fin.</p>' : '<p style="margin:0 0 14px;font-size:13px;line-height:1.5;color:var(--color-text-secondary,#71717a)">Vois ce que vaudra vraiment ton épargne dans quelques années, une fois la hausse des prix prise en compte, selon ce qu’elle rapporte.</p>') + fieldsHTML()) + card('<div id="calc-out">' + results() + '</div>') + '</div>'
-      + '<p style="font-size:11.5px;color:var(--color-text-secondary,#71717a);line-height:1.5;margin:12px 2px 0">Simulation pédagogique avec des hypothèses constantes, ce qui n’arrive jamais en réalité : les rendements varient et peuvent être négatifs. Ce n’est pas un conseil en investissement.</p>';
+      + '<p style="font-size:11.5px;color:var(--color-text-secondary,#71717a);line-height:1.5;margin:12px 2px 0">Simulation pédagogique avec des hypothèses constantes, ce qui n’arrive jamais en réalité : les rendements varient et peuvent être négatifs. Ce n’est pas un conseil en investissement.</p>' + toolsHTML();
     FIELDS[TAB].forEach(function (f) {
       var id = f[0], range = document.getElementById('calc-' + id), box = document.getElementById('calc-' + id + '-n');
       var set = function (val) { var n = parseFloat(String(val).replace(',', '.')); V[TAB][id] = isFinite(n) && n >= 0 ? n : 0; document.getElementById('calc-out').innerHTML = results(); };
