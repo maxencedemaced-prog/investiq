@@ -85,14 +85,13 @@ export const EMAILS = {
     ],
     cta: { label: 'Compléter mon portefeuille', url: SITE },
   },
-  // Essai gratuit de l'objectif (30 jours sans carte, voir api/claude.js) : rappels avant la fin, puis le jour de la fin
+  // Essai gratuit de l'objectif (30 jours, voir api/claude.js) : rappels avant la fin, puis le jour de la fin
   trial_j7: {
     subject: 'Ton essai gratuit se termine dans 7 jours',
     title: 'Plus que 7 jours d\'essai',
     paragraphs: [
       'Ton objectif et ton plan du mois te sont offerts pendant 30 jours : il te reste une semaine pour en profiter.',
       'Ensuite, ton objectif et ta courbe restent visibles, mais le nouveau plan de chaque mois, la répartition et les modifications passent avec Premium.',
-      'Aucune carte bancaire n\'a été demandée : rien ne sera prélevé sans ton accord.',
     ],
     cta: { label: 'Voir mon plan du mois', url: SITE },
   },

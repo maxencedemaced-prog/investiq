@@ -3,7 +3,7 @@
 window.KAPITARO_FAQ = [
   // ── Démarrer ──
   { id: 'gratuit', cat: 'Démarrer', q: 'Kapitaro est-il gratuit ?',
-    a: 'Oui. La version gratuite n\'a pas de limite de durée et ne demande aucune carte bancaire. Ton objectif et ton <b>plan du mois</b> te sont offerts pendant <b>30 jours</b> après l\'inscription, sans carte. <b>Premium</b> (9,99 €/mois ou 79,99 €/an, sans engagement) les garde ensuite, et ajoute l\'IA illimitée et des outils avancés.',
+    a: 'Oui. La version gratuite n\'a pas de limite de durée et ne demande aucune carte bancaire. Ton objectif et ton <b>plan du mois</b> te sont offerts pendant <b>30 jours</b> après l\'inscription. <b>Premium</b> (9,99 €/mois ou 79,99 €/an, sans engagement) les garde ensuite, et ajoute l\'IA illimitée et des outils avancés.',
     keys: ['gratuit', 'payant', 'combien ca coute', 'prix', 'tarif', 'cout', 'free'] },
   { id: 'compte', cat: 'Démarrer', q: 'Comment créer un compte ?',
     a: 'Sur <a href="/">kapitaro.fr</a>, onglet <b>Inscription</b> : ton e-mail et un mot de passe (8 caractères minimum), ou <b>Continuer avec Google</b>. Confirme ensuite ton adresse avec le lien reçu par e-mail.',

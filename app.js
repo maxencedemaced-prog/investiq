@@ -14030,7 +14030,7 @@ function objTrialBannerHTML() {
   if (left > 0) {
     const urgent = left <= 7;
     return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:${urgent ? '#fff7ed' : '#f0fdf4'};border:1px solid ${urgent ? '#fed7aa' : '#bbf7d0'};border-radius:12px;padding:10px 14px;margin-bottom:12px">
-      <div style="font-size:12.5px;color:${urgent ? '#9a3412' : '#166534'};line-height:1.45"><strong>🎁 Essai gratuit : ${left} jour${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''}</strong><br>Ton objectif et ton plan du mois te sont offerts pendant ${OBJ_TRIAL_DAYS} jours, sans carte bancaire.</div>
+      <div style="font-size:12.5px;color:${urgent ? '#9a3412' : '#166534'};line-height:1.45"><strong>🎁 Essai gratuit : ${left} jour${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''}</strong><br>Ton objectif et ton plan du mois te sont offerts pendant ${OBJ_TRIAL_DAYS} jours.</div>
       <button onclick="showPlansModal()" style="background:${urgent ? '#ea580c' : '#16a34a'};border:none;color:#fff;font-size:12px;font-weight:800;padding:8px 13px;border-radius:9px;cursor:pointer;flex-shrink:0">Voir Premium</button>
     </div>`;
   }
