@@ -143,6 +143,13 @@ const V = {
   duo: (s, f, dark) => {
     const pa = io(f, 0, 10, 0, 1, Easing.out(Easing.back(1.8))), pb = io(f, 4, 14, 0, 1, Easing.out(Easing.back(1.8)));
     const A = { ...DUO.A, top: GREEN, mood: s.moodA || 'happy' }, B = { ...DUO.B, top: s.topB || BLUE, mood: s.moodB || 'happy' };
+    // Personnages en pied (planche 2) quand la scène ne demande pas de geste ni d'émotion particulière
+    if (!s.armA && !s.jumpA && !s.shakeB && !s.dropB && SPR[A.look + '-pied'] && SPR[B.look + '-pied']) {
+      const body = (o, x, p, ph) => `<g transform="translate(${x} 566) scale(${p}) translate(${-x} -566) translate(0 ${-Math.abs(Math.sin((f + ph) / 9)) * 3})">${shadow(x, 566, 48, dark)}${spr(o.look + '-pied', x, 566, 340)}</g>`;
+      return body(A, 100, pa, 0) + body(B, 262, pb, 5) +
+        pill(100, 590, DUO.A.name, GREEN, '#fff', pa, 15) + pill(262, 590, DUO.B.name, s.topB || BLUE, '#fff', pb, 15) +
+        pill(100, 205, s.pillA, GREEN, '#fff', io(f, 12, 18, 0, 1), 14) + pill(262, 205, s.pillB, s.topB || BLUE, '#fff', io(f, 16, 22, 0, 1), 14);
+    }
     return person(92, 545, A, 1.65 * pa, { wave: s.wave !== false && f < 40, arm: s.wave !== false && f < 40 ? 0.9 : (s.armA || 0), jump: s.jumpA }, f) +
       person(268, 545, B, 1.65 * pb, { wave: s.wave !== false && f > 8 && f < 48, arm: s.wave !== false && f > 8 && f < 48 ? 0.9 : 0, shake: s.shakeB, drop: s.dropB }, f + 9) +
       pill(92, 565, DUO.A.name, '#fff', INK, pa, 15) + pill(268, 565, DUO.B.name, '#fff', INK, pb, 15) +
