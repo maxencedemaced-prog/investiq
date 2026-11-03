@@ -708,10 +708,15 @@ export default async function handler(req, res) {
     if (!(await isAdmin(req))) return res.status(403).json({ error: 'Accès réservé.' });
 
     if (req.method === 'GET') {
-      const { data, error } = await sb.from('social_posts').select('*').neq('status', 'rejected')
-        .order('scheduled_at', { ascending: true, nullsFirst: false }).limit(100);
-      if (error) throw error;
-      return res.status(200).json({ posts: data });
+      // Tous les posts encore à traiter (à valider, programmés, pubs…) + les 60 derniers publiés : avec une seule limite de
+      // 100 triée par date, les publiés les plus anciens finissaient par cacher les nouveaux brouillons
+      const [open, done] = await Promise.all([
+        sb.from('social_posts').select('*').not('status', 'in', '(rejected,published)').order('scheduled_at', { ascending: true, nullsFirst: false }).limit(300),
+        sb.from('social_posts').select('*').eq('status', 'published').order('scheduled_at', { ascending: false, nullsFirst: false }).limit(60),
+      ]);
+      if (open.error || done.error) throw open.error || done.error;
+      const t = p => (p.scheduled_at ? Date.parse(p.scheduled_at) : Infinity);
+      return res.status(200).json({ posts: [...open.data, ...done.data].sort((a, b) => t(a) - t(b)) });
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
