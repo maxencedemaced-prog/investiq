@@ -9743,7 +9743,10 @@ function renderPortfolio(auto=false) {
     if (!dedupMap[key]) {
       dedupMap[key] = {...p};
     } else {
-      dedupMap[key].qty += p.qty;
+      // Prix de revient moyen pondéré : sinon la ligne regroupée gardait le PRU de la 1re ligne (investi et perf. faux)
+      const d = dedupMap[key], q = d.qty + p.qty;
+      if (q > 0) d.pru = (d.qty * d.pru + p.qty * p.pru) / q;
+      d.qty = q;
     }
   });
   const dedupPositions = Object.values(dedupMap);
@@ -10188,7 +10191,7 @@ async function renderSante() {
   apos().forEach(p => {
     const key = p.name + '|' + (p.platform||'');
     if (!dedupMap[key]) dedupMap[key] = {...p};
-    else dedupMap[key].qty += p.qty;
+    else { const d = dedupMap[key], q = d.qty + p.qty; if (q > 0) d.pru = (d.qty * d.pru + p.qty * p.pru) / q; d.qty = q; }   // PRU moyen pondéré
   });
   const dedupPos = Object.values(dedupMap);
   if (!dedupPos.length && positions.some(isTrackOnly)) {
