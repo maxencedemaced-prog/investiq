@@ -3,7 +3,7 @@
 window.KAPITARO_FAQ = [
   // ── Démarrer ──
   { id: 'gratuit', cat: 'Démarrer', q: 'Kapitaro est-il gratuit ?',
-    a: 'Oui. La version gratuite n\'a pas de limite de durée et ne demande aucune carte bancaire. <b>Premium</b> (9,99 €/mois ou 79,99 €/an, sans engagement) ajoute l\'IA illimitée et des outils avancés.',
+    a: 'Oui. La version gratuite n\'a pas de limite de durée et ne demande aucune carte bancaire. Ton objectif et ton <b>plan du mois</b> te sont offerts pendant <b>30 jours</b> après l\'inscription. <b>Premium</b> (9,99 €/mois ou 79,99 €/an, sans engagement) les garde ensuite, et ajoute l\'IA illimitée et des outils avancés.',
     keys: ['gratuit', 'payant', 'combien ca coute', 'prix', 'tarif', 'cout', 'free'] },
   { id: 'compte', cat: 'Démarrer', q: 'Comment créer un compte ?',
     a: 'Sur <a href="/">kapitaro.fr</a>, onglet <b>Inscription</b> : ton e-mail et un mot de passe (8 caractères minimum), ou <b>Continuer avec Google</b>. Confirme ensuite ton adresse avec le lien reçu par e-mail.',
@@ -55,7 +55,7 @@ window.KAPITARO_FAQ = [
     a: 'Dans l\'app : <b>Simulateur DCA</b> (investir chaque mois) et <b>Scénario crise</b> (impact d\'une baisse des marchés). Sans compte : <a href="/simulateur-interets-composes">intérêts composés</a>, <a href="/calculateur-objectif-epargne">objectif d\'épargne</a>, <a href="/rendement-etf-msci-world">ETF MSCI World</a>, <a href="/epargne-de-precaution">épargne de précaution</a>, <a href="/simulateur-investissement-programme">investissement programmé</a>, <a href="/calculateur-frais-placement">impact des frais</a> et <a href="/calculateur-inflation">inflation</a>.',
     keys: ['simulateur', 'dca', 'crise', 'scenario', 'interets composes', 'calculateur', 'simuler', 'outils gratuits'] },
   { id: 'agent', cat: 'Outils', q: 'Comment fonctionne l\'Agent IA ?',
-    a: 'Onglet <b>Agent IA</b> : pose tes questions sur ton portefeuille en français. Version gratuite : <b>15 analyses offertes, puis 3 par jour</b>. Premium : analyses illimitées et Agent IA complet.',
+    a: 'Onglet <b>Agent IA</b> : pose tes questions sur ton portefeuille en français. Version gratuite : <b>3 questions par jour</b> à l\'assistant, en plus de 15 analyses IA offertes puis 3 par jour pour le reste de l\'app. Premium : illimité, et Agent IA complet.',
     keys: ['agent', 'assistant', 'ia', 'intelligence artificielle', 'chat', 'poser une question', 'quota', 'limite ia', 'analyses'] },
   { id: 'depenses', cat: 'Outils', q: 'À quoi sert la page Mes dépenses ?',
     a: 'Avec <b>Premium</b>, importe ton relevé de compte bancaire : Kapitaro classe tes dépenses, repère tes abonnements et te montre ce que tu économiserais en investissant la différence.',
@@ -66,7 +66,7 @@ window.KAPITARO_FAQ = [
 
   // ── Premium & paiement ──
   { id: 'premium', cat: 'Premium & paiement', q: 'Que contient Premium ?',
-    a: 'Analyses IA illimitées, Agent IA complet, bilan patrimonial avec export PDF, analyse de tes dépenses et conseils IA sur tes alertes. <b>9,99 €/mois</b> ou <b>79,99 €/an</b>, sans engagement.',
+    a: 'Ton programme d\'épargne (plan du mois et répartition de tes objectifs) après les 30 jours offerts, analyses IA illimitées, Agent IA complet, bilan patrimonial avec export PDF, analyse de tes dépenses et conseils IA sur tes alertes. <b>9,99 €/mois</b> ou <b>79,99 €/an</b>, sans engagement.',
     keys: ['premium', 'abonnement', 'offre', 'avantages', 'difference gratuit', 'illimite'] },
   { id: 'souscrire', cat: 'Premium & paiement', q: 'Comment passer à Premium ?',
     a: 'Menu → <b>Passez à Premium</b>, ou <b>Paramètres → Abonnement → Voir Premium</b>. Le paiement se fait par carte, de façon sécurisée, via <b>Stripe</b>.',

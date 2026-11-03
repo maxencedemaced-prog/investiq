@@ -28,7 +28,8 @@ const MODEL_PRICING = {
 const DEFAULT_MODEL = 'claude-sonnet-5';
 
 // Enregistre la consommation réelle d'un appel. Ne bloque et ne casse jamais la réponse utilisateur.
-async function logUsage({ userId, model, usage, system }) {
+// feature 'objectif' ou 'agent' : préfixe « objectif| » / « agent| » dans call_label, pour compter ces appels à part.
+async function logUsage({ userId, model, usage, system, feature }) {
   if (!usage) return;
   if (!supabaseAdmin) {
     console.error('[api/claude] SUPABASE_SERVICE_KEY manquante : usage non enregistré');
@@ -46,7 +47,7 @@ async function logUsage({ userId, model, usage, system }) {
       input_tokens: inputTokens,
       output_tokens: outputTokens,
       cost_usd: costUsd,
-      call_label: (system || '').slice(0, 80), // préfixe du system prompt → regroupement approximatif par fonctionnalité
+      call_label: (feature && feature !== 'general' ? feature + '|' : '') + (system || '').slice(0, 80), // préfixe du system prompt → regroupement approximatif par fonctionnalité
     });
     if (error) console.error('[api/claude] insert ai_usage_log:', error.message);
   } catch (e) {
@@ -75,6 +76,19 @@ const FREE_DAILY_AFTER_WELCOME = 3;
 // « Illimité » Premium = usage raisonnable : plafond invisible en usage normal (appels automatiques compris),
 // qui empêche un compte abusif de générer des milliers d'appels facturés par jour
 const PREMIUM_DAILY_CAP = 300;
+// Page Objectif (plan du mois, répartition, plan de l'objectif) : offerte pendant l'essai de 30 jours sans carte, sans toucher
+// au quota ci-dessus ; ensuite réservée à Premium. Comptes créés avant le lancement de l'essai : les 30 jours partent du lancement.
+// Mêmes valeurs côté app (app.js, OBJ_TRIAL_*).
+const OBJ_TRIAL_DAYS = 30;
+const OBJ_TRIAL_LAUNCH = Date.parse('2026-11-04T00:00:00Z');
+const OBJ_DAILY_CAP = 40;   // garde-fou anti-abus pendant l'essai, invisible en usage normal
+// Agent IA : questions comptées à part, pour pouvoir toujours en poser quelques-unes même quand le quota des analyses est épuisé
+const AGENT_FREE_DAILY = 3;
+
+function objTrialEnd(createdAt) {
+  const c = Date.parse(createdAt || '') || Date.now();
+  return Math.max(c, OBJ_TRIAL_LAUNCH) + OBJ_TRIAL_DAYS * 86400000;
+}
 
 function isPremiumProfile(profile) {
   if (!profile) return false;
@@ -89,35 +103,44 @@ function isPremiumProfile(profile) {
 // Ne bloque jamais par excès de prudence : si la vérification échoue (clé
 // service_role absente, erreur réseau...) on laisse passer plutôt que de
 // casser l'IA pour tout le monde.
-// Retourne { blocked, premium, quota } où quota décrit l'état AVANT l'appel en cours :
+// Retourne { blocked, premium, quota, code, trialEnd, agent } où quota décrit l'état AVANT l'appel en cours :
 //   mode 'welcome' : il reste des analyses offertes (used/limit = total consommé / offert)
 //   mode 'daily'   : offertes épuisées, on compte le jour (used/limit = aujourd'hui / par jour)
-async function checkFreeQuota(userId) {
-  const open = { blocked: false, premium: false, quota: null };
+// feature : 'objectif' (essai de 30 jours puis Premium), 'agent' (questions du jour comptées à part) ou 'general'.
+async function checkFreeQuota(userId, feature = 'general', createdAt = null) {
+  const trialEnd = objTrialEnd(createdAt);
+  const open = { blocked: false, premium: false, quota: null, trialEnd };
   if (!supabaseAdmin) return open;
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('is_premium, subscription_status, premium_until').eq('id', userId).single();
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
+    const day = startOfDay.toISOString();
+    const count = q => q.then(r => { if (r.error) throw r.error; return r.count || 0; });
+    const logs = () => supabaseAdmin.from('ai_usage_log').select('id', { count: 'exact', head: true }).eq('user_id', userId);
     if (isPremiumProfile(profile)) {
-      const { count, error } = await supabaseAdmin.from('ai_usage_log').select('id', { count: 'exact', head: true })
-        .eq('user_id', userId).gte('created_at', startOfDay.toISOString());
+      const { count: n, error } = await logs().gte('created_at', day);
       if (error) console.error('[api/claude] plafond Premium:', error.message);
-      return { blocked: false, premium: true, quota: null, fairUseHit: !error && (count || 0) >= PREMIUM_DAILY_CAP };
+      return { blocked: false, premium: true, quota: null, trialEnd, fairUseHit: !error && (n || 0) >= PREMIUM_DAILY_CAP };
     }
-    const [total, today] = await Promise.all([
-      supabaseAdmin.from('ai_usage_log').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-      supabaseAdmin.from('ai_usage_log').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', startOfDay.toISOString()),
-    ]);
-    if (total.error || today.error) { console.error('[api/claude] checkFreeQuota:', (total.error || today.error).message); return open; }
-    const usedTotal = total.count || 0, usedToday = today.count || 0;
+    const agentToday = await count(logs().like('call_label', 'agent|%').gte('created_at', day));
+    const agent = { used: agentToday, limit: AGENT_FREE_DAILY };
+    if (feature === 'objectif') {
+      if (Date.now() >= trialEnd) return { blocked: true, code: 'trial_ended', premium: false, quota: null, trialEnd, agent };
+      const n = await count(logs().like('call_label', 'objectif|%').gte('created_at', day));
+      return { blocked: n >= OBJ_DAILY_CAP, code: 'objectif_cap', premium: false, quota: null, trialEnd, agent };
+    }
+    if (feature === 'agent') return { blocked: agentToday >= AGENT_FREE_DAILY, code: 'agent_quota', premium: false, quota: null, trialEnd, agent };
+    // Analyses « générales » : les appels de la page Objectif et de l'agent ne sont pas comptés ici
+    const general = () => logs().not('call_label', 'like', 'objectif|%').not('call_label', 'like', 'agent|%');
+    const [usedTotal, usedToday] = await Promise.all([count(general()), count(general().gte('created_at', day))]);
 
     if (usedTotal < FREE_WELCOME_CREDITS) {
-      return { blocked: false, premium: false, quota: { mode: 'welcome', used: usedTotal, limit: FREE_WELCOME_CREDITS } };
+      return { blocked: false, premium: false, trialEnd, agent, quota: { mode: 'welcome', used: usedTotal, limit: FREE_WELCOME_CREDITS } };
     }
     return {
-      blocked: usedToday >= FREE_DAILY_AFTER_WELCOME, premium: false,
+      blocked: usedToday >= FREE_DAILY_AFTER_WELCOME, code: 'quota_exceeded', premium: false, trialEnd, agent,
       quota: { mode: 'daily', used: usedToday, limit: FREE_DAILY_AFTER_WELCOME, welcome: FREE_WELCOME_CREDITS }
     };
   } catch (e) {
@@ -167,8 +190,8 @@ export default async function handler(req, res) {
 
     // ── 1bis. Consultation du compteur (aucun appel IA, ne consomme rien) ──
     if (req.body && req.body.action === 'quota') {
-      const q = await checkFreeQuota(user.id);
-      return res.status(200).json({ premium: q.premium, quota: q.quota });
+      const q = await checkFreeQuota(user.id, 'general', user.created_at);
+      return res.status(200).json({ premium: q.premium, quota: q.quota, agent: q.agent || null, trial_end: new Date(q.trialEnd).toISOString() });
     }
 
     // ── 2. RATE LIMIT : max 20 requêtes / minute / utilisateur ──
@@ -177,13 +200,29 @@ export default async function handler(req, res) {
     }
 
     // ── 2bis. QUOTA GRATUIT : accès IA illimité réservé à Premium ──
-    const quota = await checkFreeQuota(user.id);
+    const feature = ['objectif', 'agent'].includes(req.body && req.body.feature) ? req.body.feature : 'general';
+    const quota = await checkFreeQuota(user.id, feature, user.created_at);
     if (quota.fairUseHit) {
       console.warn('[api/claude] plafond Premium atteint pour', user.id);
       return res.status(429).json({
         code: 'fair_use',
         error: `Utilisation anormale détectée : plus de ${PREMIUM_DAILY_CAP} analyses IA aujourd'hui. Pour protéger le service, l'IA est en pause jusqu'à demain matin. Si c'est une erreur, écris-nous à contact@kapitaro.fr.`
       });
+    }
+    if (quota.blocked && quota.code === 'trial_ended') {
+      return res.status(402).json({
+        code: 'trial_ended', trial_end: new Date(quota.trialEnd).toISOString(),
+        error: `Ton essai gratuit de ${OBJ_TRIAL_DAYS} jours est terminé : le plan du mois et la répartition de ton objectif sont réservés à Premium.`
+      });
+    }
+    if (quota.blocked && quota.code === 'agent_quota') {
+      return res.status(429).json({
+        code: 'agent_quota', agent: quota.agent,
+        error: `Tu as posé tes ${AGENT_FREE_DAILY} questions gratuites du jour à l'assistant. ${AGENT_FREE_DAILY} nouvelles reviennent demain, ou passe à Premium pour des questions illimitées.`
+      });
+    }
+    if (quota.blocked && quota.code === 'objectif_cap') {
+      return res.status(429).json({ code: 'fair_use', error: 'Beaucoup de plans générés aujourd\'hui : la génération reprend demain matin.' });
     }
     if (quota.blocked) {
       return res.status(429).json({
@@ -251,15 +290,17 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'IA indisponible : ' + msg });
     }
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
-    await logUsage({ userId: user.id, model: finalModel, usage: data.usage, system });
+    await logUsage({ userId: user.id, model: finalModel, usage: data.usage, system, feature });
     res.status(200).json({
+      // Questions à l'agent du jour (comptes gratuits) : affichées sous le champ de saisie
+      agent: feature === 'agent' && !quota.premium && quota.agent ? { ...quota.agent, used: quota.agent.used + 1 } : undefined,
       text: text || 'Aucune réponse.',
       // Diagnostic : pourquoi la réponse est vide ou coupée (max_tokens…)
       meta: { stop_reason: data.stop_reason || null, output_tokens: data.usage?.output_tokens ?? null, blocks: (data.content || []).map(b => b.type) },
       // Compteur du jour pour l'affichage côté client (comptes gratuits uniquement)
       quota: (() => {
         const q = quota.quota;
-        if (quota.premium || !q) return null;
+        if (quota.premium || !q || feature !== 'general') return null;
         const used = q.used + 1; // cet appel vient d'être consommé
         // Si cet appel épuise les offertes, on bascule l'affichage sur le quota du jour
         if (q.mode === 'welcome' && used >= q.limit) return { mode: 'daily', used: 0, limit: FREE_DAILY_AFTER_WELCOME, welcome: FREE_WELCOME_CREDITS };

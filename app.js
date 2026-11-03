@@ -276,7 +276,7 @@ function showValidatedChart() {
   // Plan pour l'objectif ACTIF
   const el = document.getElementById('obj-ai-simple');
   if (el) {
-    el.innerHTML = `
+    el.innerHTML = `${objTrialBannerHTML()}
       <div style="background:${color}12;border-radius:14px;padding:14px 16px;margin-bottom:14px;border-left:4px solid ${color}">
         <div style="font-size:13px;font-weight:800;color:${color};margin-bottom:2px">✓ ${active ? active.label : 'Objectif'} — Profil ${riskLabel}</div>
         <div style="font-size:12px;color:#555">
@@ -937,6 +937,7 @@ async function generateMonthlyPlan(force = false) {
     }
     if (cached.data.lignes.length) { renderMonthlyPlan(cached, false); return; }
   }
+  if (!objectifAccess()) { el.innerHTML = objectifLockedLineHTML('Ton plan du mois'); return; }
   const prevPlan = force ? cached : null; // sert à détecter un changement de plan en cours de mois
   if (_monthlyPlanBusy) return; // génération déjà en cours
   // Cooldown 5 min après un échec (évite les rafales d'appels API)
@@ -1025,7 +1026,7 @@ Réponds UNIQUEMENT en JSON valide sans backticks :
 La somme des montants doit faire exactement ${budget}.`;
 
   try {
-    const raw = await callClaude(prompt, `Tu es Kapitaro, copilote financier. ${typeof AI_PERSONA!=='undefined'?AI_PERSONA:''}\nRéponds UNIQUEMENT en JSON valide.`);
+    const raw = await callClaude(prompt, `Tu es Kapitaro, copilote financier. ${typeof AI_PERSONA!=='undefined'?AI_PERSONA:''}\nRéponds UNIQUEMENT en JSON valide.`, undefined, undefined, OBJ_AI);
     const clean = raw.replace(/```json|```/g,'').trim();
     const data = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}')+1));
     if (!data.lignes?.length) throw new Error('empty');
@@ -1225,6 +1226,7 @@ async function generateETFPlan(objId) {
     }
   } catch {}
 
+  if (!objectifAccess()) { el.innerHTML = objectifLockedLineHTML('Ta répartition'); return; }
   // Analyse réelle d'abord : sans données de marché, pas de plan « à l'aveugle »
   _etfPlanBusy = true;
   const _lm = t => { const m = document.getElementById('etf-load-msg'); if (m) m.textContent = t; };
@@ -1267,7 +1269,7 @@ Utilise les tickers EXACTS des tableaux. Couleurs hex variées.`;
   _etfPlanBusy = true;
   _lm('Étape 3/3 · Construction de la répartition adaptée à ton profil…');
   try {
-    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.', 4000);
+    const raw = await callClaude(prompt, 'Réponds UNIQUEMENT en JSON valide.', 4000, undefined, OBJ_AI);
     const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
     let etfs, actions = [];
     if (clean.indexOf('{') !== -1 && clean.indexOf('{') < (clean.indexOf('[') === -1 ? 1e9 : clean.indexOf('['))) {
@@ -1503,7 +1505,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown :
 Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Colors hex variées.`;
 
   if (haveData) try {
-    const raw = await callClaude(prompt, 'Tu es un expert en investissement. ' + (typeof AI_PERSONA !== 'undefined' ? AI_PERSONA : '') + '\nRéponds UNIQUEMENT en JSON valide sans markdown.', 3000);
+    const raw = await callClaude(prompt, 'Tu es un expert en investissement. ' + (typeof AI_PERSONA !== 'undefined' ? AI_PERSONA : '') + '\nRéponds UNIQUEMENT en JSON valide sans markdown.', 3000, undefined, OBJ_AI);
     const clean = raw.replace(/```json|```/g, '').trim();
     const actions = JSON.parse(clean.slice(clean.indexOf('['), clean.lastIndexOf(']') + 1));
     // Garde-fou : uniquement des valeurs de la liste fermée (ou déjà détenues) ; montants recalés ; performance passée réelle à la place d'un gain inventé
@@ -2208,6 +2210,7 @@ function toggleDcaFullAnalysis(btn) {
 
 // Sauvegarder la simulation DCA comme nouvel objectif — avec plan IA
 async function saveDCAAsObjective() {
+  if (!objectifGate()) return;
   const m  = parseFloat(document.getElementById('dca-m')?.value) || 200;
   const y  = parseInt(document.getElementById('dca-y')?.value)   || 10;
   const r  = parseFloat(document.getElementById('dca-r')?.value) || 7;
@@ -2276,7 +2279,7 @@ Répartition exacte mensuelle avec tickers et montants
 Sois ULTRA concret. Donne de vrais tickers (IWDA.L, VWCE.DE, AAPL, etc.) et de vrais montants.`;
 
   try {
-    const r_resp = await callClaude(prompt + (await planDataSuffix(riskLabel)), 'Tu es conseiller financier pédagogue. Sois concret et donne des vrais noms et montants.');
+    const r_resp = await callClaude(prompt + (await planDataSuffix(riskLabel)), 'Tu es conseiller financier pédagogue. Sois concret et donne des vrais noms et montants.', undefined, undefined, OBJ_AI);
     // IA indisponible (non connecté, quota, panne) : pas de faux « plan prêt », mais l'objectif chiffré reste enregistrable
     if (callClaudeFailed(r_resp) || aiJustHitQuota() || /utilisation anormale|limite d'usage raisonnable/i.test(r_resp)) {
       if (contentEl) contentEl.innerHTML = `
@@ -4274,7 +4277,7 @@ async function obGeneratePlan() {
       : 'complément de salaire avec actions court terme';
     const prompt = `Débutant en bourse. Objectif : ${goalsTxt}. Budget : ${bankroll}€, ${monthly}€/mois. Profil : ${risk}.
 En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de jargon. Commence par "Pour toi,"`;
-    const advice = await callClaude(prompt);
+    const advice = await callClaude(prompt, undefined, undefined, undefined, OBJ_AI);
     const el = document.getElementById('ob-ai-advice');
     if (el) el.innerHTML = `<div style="background:#f9f9f9;border-radius:12px;padding:12px 14px;font-size:13px;color:#3c3c43;line-height:1.6">💬 ${advice}</div>`;
   } catch(e) {}
@@ -10522,6 +10525,7 @@ let objEditId = null; // objectif en cours de modification (null = création d'u
 // mode 'edit' : rouvre l'objectif actif prérempli et le met à jour à la validation.
 // sinon : création d'un nouvel objectif.
 function resetObj(mode) {
+  if (!objectifGate()) return;
   objEditId = null;
   const note = document.getElementById('obj-edit-note');
   if (note) note.innerHTML = '';
@@ -10549,6 +10553,7 @@ function resetObj(mode) {
 }
 
 async function generateObjPlan() {
+  if (!objectifGate()) return;
   // Limite max objectifs (ne s'applique pas à la modification d'un objectif existant)
   if (allObjectives.length >= 3 && !objEditId) {
     // Affiche le message dans le wizard lui-même
@@ -10747,7 +10752,7 @@ Répartition exacte avec montants
 Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${years} ans. Sois ULTRA concret, donne les vrais noms et montants.`;
   
   const _sfx = await planDataSuffix(objRisk);
-  const simpleR = await callClaude(simplePrompt + _sfx);
+  const simpleR = await callClaude(simplePrompt + _sfx, undefined, undefined, undefined, OBJ_AI);
   const simpleFailed = callClaudeFailed(simpleR);
 
   // Build nice cards for the recommendation
@@ -10778,7 +10783,7 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
     </div>`;
 
   // Full analysis in background
-  callClaude(prompt + _sfx).then(r => {
+  callClaude(prompt + _sfx, undefined, undefined, undefined, OBJ_AI).then(r => {
     const el = document.getElementById('obj-ai-plan');
     if (!el) return;
     el.innerHTML = callClaudeFailed(r)
@@ -10901,6 +10906,7 @@ function objFeasibilityHTML(capital, monthly, target, years, ratePct) {
 // en rouvrant l'objectif actif en mode modification avec la valeur déjà ajustée).
 function objApplyLever(kind, value) {
   const wizardHidden = document.getElementById('obj-wizard').style.display === 'none';
+  if (wizardHidden && !objectifGate()) return;
   if (wizardHidden) resetObj('edit');
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
   let msg = '';
@@ -11196,7 +11202,7 @@ function renderSettingsAccount() {
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   set('set-email', email);
   set('set-avatar', (email.replace(/[^a-zA-Z0-9]/g, '')[0] || 'K'));
-  set('set-plan', isPremiumUser() ? '✨ Premium' : 'Offre gratuite');
+  set('set-plan', isPremiumUser() ? '✨ Premium' : isDemo ? 'Offre gratuite' : objTrialDaysLeft() > 0 ? `Offre gratuite · 🎁 essai objectif : ${objTrialDaysLeft()} j` : 'Offre gratuite');
   const viaGoogle = (currentUser?.app_metadata?.providers || [currentUser?.app_metadata?.provider]).includes('google');
   set('set-pass-sub', viaGoogle ? 'Tu te connectes avec Google : tu peux aussi définir un mot de passe' : 'Modifier ton mot de passe');
   const emailSw = document.getElementById('s-email-opt');
@@ -12574,6 +12580,16 @@ function aiQuotaMessage() {
 // Vrai si le dernier appel IA vient d'être refusé pour cause de quota (utile dans les catch génériques)
 function aiJustHitQuota() { return Date.now() - (window._aiQuotaHitAt || 0) < 8000; }
 function isAIQuotaMessage(t) { return typeof t === 'string' && t.startsWith('🔒 Limite du jour atteinte'); }
+// Essai gratuit de l'objectif (voir objTrialEnd) : 30 jours sans carte ; comptes existants : à partir du lancement
+const OBJ_TRIAL_DAYS = 30;
+const OBJ_TRIAL_LAUNCH = Date.parse('2026-11-04T00:00:00Z');
+const OBJ_AI = { feature: 'objectif' };
+// Agent IA : questions du jour comptées à part des analyses (on peut toujours en poser quelques-unes)
+const AI_AGENT_DAILY = 3;
+let aiAgentQuota = null;   // { used, limit } renvoyé par le serveur (comptes gratuits)
+const AGENT_QUOTA_MSG = `🔒 Questions du jour utilisées : tu as posé tes ${AI_AGENT_DAILY} questions gratuites d'aujourd'hui à l'assistant.`;
+const OBJ_TRIAL_ENDED_MSG = '🔒 Essai terminé : le plan du mois et la répartition de ton objectif sont réservés à Premium.';
+function isTrialEndedMessage(t) { return typeof t === 'string' && t.startsWith('🔒 Essai terminé'); }
 
 // Compteur : pastille dans la barre du haut (visible partout) + jauge dans la carte Premium.
 function updateAIQuotaBadge() {
@@ -12616,6 +12632,7 @@ async function refreshAIQuota() {
     if (!r.ok) return;
     const d = await r.json();
     aiQuotaState = d.premium ? null : (d.quota || null);
+    aiAgentQuota = d.premium ? null : (d.agent || null);
     updateAIQuotaBadge();
   } catch (e) { console.warn('refreshAIQuota:', e); }
 }
@@ -12644,6 +12661,7 @@ function showAIQuotaModal() {
 
 // Bloc d'erreur IA : explique le quota (avec bouton Premium) sinon erreur classique + réessayer
 function aiFailureHTML(text, retryJs) {
+  if (isTrialEndedMessage(text)) return objectifLockedHTML();
   if (isAIQuotaMessage(text)) {
     return `<div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.35);border-radius:14px;padding:16px 18px;color:#fff">
       <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">⏳ Limite gratuite atteinte</div>
@@ -12681,6 +12699,9 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
     if (maxTokens) body.max_tokens = maxTokens;
     if (model) body.model = model;
     if (opts && opts.noThinking) body.no_thinking = true;
+    if (opts && opts.feature) body.feature = opts.feature;   // 'objectif' (essai de 30 jours) ou 'agent' (questions du jour) : comptés à part
+    // Essai de l'objectif terminé : inutile d'appeler le serveur (qui refuserait de toute façon)
+    if (opts && opts.feature === 'objectif' && !objectifAccess()) return OBJ_TRIAL_ENDED_MSG;
     const res=await fetch('/api/claude',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
@@ -12700,6 +12721,13 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
       }
       return aiQuotaMessage();
     }
+    if (!res.ok && d?.code === 'trial_ended') { trackEvent('objectif_trial_ended'); return OBJ_TRIAL_ENDED_MSG; }
+    if (!res.ok && d?.code === 'agent_quota') {
+      aiAgentQuota = d.agent || { used: AI_AGENT_DAILY, limit: AI_AGENT_DAILY };
+      trackEvent('ai_agent_quota_reached');
+      return AGENT_QUOTA_MSG;
+    }
+    if (res.ok && d && d.agent) aiAgentQuota = d.agent;
     if (res.ok && d && d.quota) { aiQuotaState = d.quota; updateAIQuotaBadge(); }
     if (!res.ok && d?.code === 'fair_use') {
       if (!window._aiErrShown || Date.now() - window._aiErrShown > 60000) { window._aiErrShown = Date.now(); showToast('⏳ ' + d.error); }
@@ -13577,13 +13605,14 @@ async function openBillingPortal(btn) {
 const PLAN_COMMON = [
   'Suivi du portefeuille avec prix en direct',
   'Score de santé et analyse de la répartition',
-  'Objectifs avec faisabilité et leviers d\'ajustement',
+  'Objectifs : simulation, faisabilité et leviers d\'ajustement',
   'Simulateur DCA et scénarios de crise',
   'Alertes chiffrées (concentration, grosses pertes)',
   'Agenda économique',
 ];
-const PLAN_FREE_IA = `${AI_FREE_WELCOME} analyses IA offertes, puis ${AI_FREE_DAILY} par jour`;
+const PLAN_FREE_IA = `${AI_FREE_WELCOME} analyses IA offertes, puis ${AI_FREE_DAILY} par jour · ${AI_AGENT_DAILY} questions par jour à l'assistant · plan du mois offert ${OBJ_TRIAL_DAYS} jours`;
 const PLAN_PREMIUM_ONLY = [
+  'Programme d\'épargne :<strong style="color:#4ade80">plan du mois</strong> et répartition IA pour tes objectifs, chaque mois',
   'Analyses IA <strong style="color:#4ade80">illimitées</strong>',
   'Agent IA complet : score, alertes et analyse de tout ton portefeuille',
   'Signaux IA sur tes positions et les opportunités du marché',
@@ -13763,6 +13792,12 @@ function updateSidebarPremiumCard() {
 // Retour depuis Stripe : confirme et rafraîchit le statut
 async function handleStripeReturn() {
   const params = new URLSearchParams(window.location.search);
+  // Lien « Passer à Premium » des e-mails de fin d'essai : ouvre directement les offres
+  if (params.get('plans') === '1') {
+    window.history.replaceState({}, '', window.location.pathname);
+    if (!isPremiumUser()) setTimeout(() => { try { showPlansModal(); } catch (e) {} }, 900);
+    return;
+  }
   const premium = params.get('premium');
   if (!premium) return;
 
@@ -13976,6 +14011,53 @@ function isPremiumUser() {
   }
   // Sinon on se fie au drapeau
   return profile?.is_premium === true;
+}
+
+// ═══ ESSAI GRATUIT DE L'OBJECTIF : 30 jours sans carte à partir de l'inscription ═══
+// Plan du mois, répartition et plan IA de l'objectif offerts pendant l'essai, puis réservés à Premium (lecture seule du
+// programme déjà généré). Comptes créés avant le lancement : les 30 jours partent du lancement. Le serveur applique la même
+// règle (api/claude.js, OBJ_TRIAL_*). Constantes définies plus haut, avec les quotas IA (utilisées dès le chargement).
+function objTrialEnd() {
+  const c = Date.parse(currentUser?.created_at || '') || Date.now();
+  return Math.max(c, OBJ_TRIAL_LAUNCH) + OBJ_TRIAL_DAYS * 86400000;
+}
+function objTrialDaysLeft() { return Math.max(0, Math.min(OBJ_TRIAL_DAYS, Math.ceil((objTrialEnd() - Date.now()) / 86400000))); }
+function objectifAccess() { return isDemo || !currentUser || isPremiumUser() || objTrialDaysLeft() > 0; }
+// Bandeau de la page Objectif : jours d'essai restants, ou programme en pause une fois l'essai terminé
+function objTrialBannerHTML() {
+  if (isDemo || !currentUser || isPremiumUser()) return '';
+  const left = objTrialDaysLeft();
+  if (left > 0) {
+    const urgent = left <= 7;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:${urgent ? '#fff7ed' : '#f0fdf4'};border:1px solid ${urgent ? '#fed7aa' : '#bbf7d0'};border-radius:12px;padding:10px 14px;margin-bottom:12px">
+      <div style="font-size:12.5px;color:${urgent ? '#9a3412' : '#166534'};line-height:1.45"><strong>🎁 Essai gratuit : ${left} jour${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''}</strong><br>Ton objectif et ton plan du mois te sont offerts pendant ${OBJ_TRIAL_DAYS} jours.</div>
+      <button onclick="showPlansModal()" style="background:${urgent ? '#ea580c' : '#16a34a'};border:none;color:#fff;font-size:12px;font-weight:800;padding:8px 13px;border-radius:9px;cursor:pointer;flex-shrink:0">Voir Premium</button>
+    </div>`;
+  }
+  return objectifLockedHTML(true);
+}
+// Essai terminé : le programme reste visible, mais le plan du mois, la répartition et les modifications passent à Premium
+function objectifLockedHTML(compact) {
+  return `<div style="background:linear-gradient(135deg,#0b1220,#1e3a8a);border-radius:14px;padding:${compact ? '14px 16px' : '18px'};margin-bottom:12px;color:#fff">
+    <div style="font-size:14px;font-weight:800;margin-bottom:6px">⏸ Ton programme d'épargne est en pause</div>
+    <div style="font-size:12.5px;color:rgba(255,255,255,0.78);line-height:1.55;margin-bottom:12px">Ton essai gratuit de ${OBJ_TRIAL_DAYS} jours est terminé. Ton objectif et ta courbe restent visibles, mais le plan du mois, la répartition et les modifications sont réservés à Premium : c'est ce qui permet à Kapitaro de suivre les marchés et d'ajuster ton plan chaque mois.</div>
+    <button onclick="showPlansModal()" style="background:linear-gradient(135deg,#22c55e,#16a34a);border:none;color:#fff;font-size:12.5px;font-weight:800;padding:10px 16px;border-radius:10px;cursor:pointer">Continuer avec Premium — ${PREMIUM_PRICE}/mois</button>
+  </div>`;
+}
+function objectifLockedLineHTML(what) {
+  return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px dashed var(--color-border,#d4d4d8);border-radius:12px;padding:12px 14px;margin-bottom:12px"><span style="font-size:12.5px;color:var(--color-text-secondary,#71717a)">🔒 ${what} est réservé${what.startsWith('Ta ') ? 'e' : ''} à Premium depuis la fin de ton essai.</span><button onclick="showPlansModal()" style="background:#16a34a;border:none;color:#fff;font-size:11.5px;font-weight:800;padding:7px 12px;border-radius:9px;cursor:pointer;flex-shrink:0">Débloquer</button></div>`;
+}
+// À l'entrée des actions réservées (créer ou modifier un objectif, régénérer un plan) : vrai si l'accès est ouvert
+function objectifGate() {
+  if (objectifAccess()) return true;
+  trackEvent('objectif_trial_gate');
+  showPremiumGate('Ton essai de 30 jours est terminé', [
+    'Ton objectif et ta courbe restent visibles.',
+    'Avec Premium : un nouveau plan chaque mois, adapté aux marchés et à ton portefeuille.',
+    'Créer, modifier et suivre jusqu\'à trois objectifs.',
+    'Analyses IA illimitées et agent IA complet.',
+  ], 'Programme d\'épargne — Premium');
+  return false;
 }
 
 
@@ -14504,7 +14586,17 @@ RÈGLES TECHNIQUES :
   const fullPrompt = `${ctx}\n${_hc}\n=== HISTORIQUE ===\n${histCtx}\n\n=== QUESTION ===\n${q}`;
 
   try {
-    const r = await callClaude(fullPrompt, systemPrompt, undefined, undefined, { gate: true });
+    const r = await callClaude(fullPrompt, systemPrompt, undefined, undefined, { feature: 'agent' });
+    // Questions gratuites du jour épuisées : on explique pourquoi, à l'endroit même de la question, et on propose Premium
+    if (r === AGENT_QUOTA_MSG) {
+      chatHistory.pop();
+      const loadingEl = document.getElementById('ai-loading');
+      if (loadingEl) loadingEl.outerHTML = agentQuotaBubbleHTML();
+      aiBusy = false;
+      if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; }
+      chat.scrollTop = chat.scrollHeight;
+      return;
+    }
     chatHistory.push({ role: 'assistant', content: r });
     saveChatHistory();
 
@@ -14513,7 +14605,9 @@ RÈGLES TECHNIQUES :
     let displayR = r.replace(/\[ACTION:[\s\S]*?\}\s*\]/g, '').trim();
 
     const loadingEl = document.getElementById('ai-loading');
-    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot">${formatMD(displayR)}</div>`;
+    const left = aiAgentQuota && !isPremiumUser() ? Math.max(0, aiAgentQuota.limit - aiAgentQuota.used) : null;
+    const leftNote = left === null ? '' : `<div style="font-size:11px;color:#8e8e93;margin-top:8px">${left > 0 ? `💬 Encore ${left} question${left > 1 ? 's' : ''} gratuite${left > 1 ? 's' : ''} aujourd'hui` : '💬 C\'était ta dernière question gratuite du jour'} · <a href="#" onclick="showPlansModal();return false" style="color:#16a34a;font-weight:700">illimité avec Premium</a></div>`;
+    if (loadingEl) loadingEl.outerHTML = `<div class="bubble bot">${formatMD(displayR)}${leftNote}</div>`;
 
     // Affiche le bouton d'action si détecté
     if (actionMatch) {
@@ -14533,6 +14627,15 @@ RÈGLES TECHNIQUES :
   aiBusy = false;
   if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; }
   chat.scrollTop = chat.scrollHeight;
+}
+
+// Réponse de l'agent quand les questions gratuites du jour sont utilisées : pourquoi, quand ça revient, et Premium
+function agentQuotaBubbleHTML() {
+  return `<div class="bubble bot" style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.35);color:#fff">
+    <div style="font-size:14px;font-weight:800;color:#fbbf24;margin-bottom:6px">⏳ Tu as posé tes ${AI_AGENT_DAILY} questions gratuites du jour</div>
+    <div style="font-size:12.5px;color:rgba(255,255,255,0.78);line-height:1.6;margin-bottom:12px">Ce n'est pas un bug : chaque question est analysée par une IA avec tes données, et cela a un coût. En version gratuite, tu peux poser ${AI_AGENT_DAILY} questions par jour : elles reviennent demain matin. Avec Premium, tu poses autant de questions que tu veux, et l'agent analyse ton portefeuille chaque jour.</div>
+    <button onclick="showPlansModal()" style="background:linear-gradient(135deg,#16a34a,#15803d);border:none;color:#fff;font-size:12.5px;font-weight:800;padding:10px 16px;border-radius:10px;cursor:pointer">Passer à Premium — questions illimitées</button>
+  </div>`;
 }
 
 function renderAgentAction(action, chat) {
