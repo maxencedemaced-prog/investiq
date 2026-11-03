@@ -998,7 +998,8 @@ export default async function handler(req, res) {
       if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
       const voice = voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
       const n = Math.max(1, Math.min(3, parseInt(b.count, 10) || 3));
-      const { data: done } = await sb.from('social_posts').select('title, video_script->duo_topic').eq('video_script->>style', 'duo');
+      // Sujets déjà traités = Reels Duo non rejetés (un sujet rejeté, raté par exemple, peut être refait)
+      const { data: done } = await sb.from('social_posts').select('title, video_script->duo_topic').eq('video_script->>style', 'duo').neq('status', 'rejected');
       const usedKeys = (done || []).map(r => r.duo_topic).filter(Boolean);
       const usedTitles = [...new Set([...DUO_DONE, ...usedKeys].map(k => (DUO_SUBJECTS.find(s => s.key === k) || {}).title || k)
         .concat((done || []).map(r => String(r.title || '').split('·').pop().trim()).filter(Boolean)))];
