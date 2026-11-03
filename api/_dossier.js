@@ -217,7 +217,7 @@ export const DOSSIERS = {
         { bg: 'orange', intro: 'seule différence', head: 'les *frais*', v: 'leak', pill: 'FRAIS' },
         { at: 'zéro', bg: 'light', intro: 'pour {A}', head: 'frais *0,2 %*', v: 'coins', who: 'A', sub: 'FRAIS 0,2 %/AN', pill: 'FRAIS 0,2 %', n: 5 },
         { at: '=et', bg: 'light', intro: 'pour {B}', head: 'frais *2 %*', v: 'coins', who: 'B', sub: 'FRAIS 2 %/AN', pill: 'FRAIS 2 %', top: '#e5383b', n: 5, mood: 'neutral' },
-        { at: 'paraît', bg: 'dark', intro: 'ça paraît…', head: '*rien*', v: 'gauge', value: 2, max: 10, text: '2 % / AN', label: 'FRAIS D’EXEMPLE' },
+        { at: 'paraît', bg: 'dark', intro: 'ça paraît…', head: '*rien*', v: 'show', who: 'B', pose: 'reflechit', o: 'calculatrice', pill: '2 % / AN', top: '#e5383b' },
       ] },
       { say: 'Au bout de trente ans, avec six pour cent d’exemple avant frais : environ cent quatre-vingt-treize mille euros pour {A}. Cent trente-neuf mille pour {B}. Cinquante-quatre mille euros partis en frais.', shots: [
         { bg: 'light', intro: 'au bout de', head: '*30 ans*', v: 'columns', left: 193387, right: 138810, colB: 'r' },
@@ -244,11 +244,11 @@ export const DOSSIERS = {
         { bg: 'light', intro: '{A} a…', head: 'une *réserve*', v: 'coins', who: 'A', sub: 'ÉPARGNE DE PRÉCAUTION', label: 'RÉSERVE', value: 5400, n: 8 },
         { at: 'rien', bg: 'dark', intro: '{B} a…', head: '*rien* de côté', v: 'coins', who: 'B', sub: 'PAS D’ÉPARGNE', pill: '0 €', n: 0, mood: 'sad' },
         { at: 'emprunter', bg: 'orange', intro: 'alors…', head: 'à *crédit*', v: 'block', pill: 'CRÉDIT : −1 500 €' },
-        { at: 'intérêts', bg: 'dark', intro: 'avec', head: 'des *intérêts* en plus', v: 'block', pill: '+ INTÉRÊTS' },
+        { at: 'intérêts', bg: 'dark', intro: 'avec', head: 'des *intérêts* en plus', v: 'show', who: 'B', pose: 'choque', o: 'facture', pill: '+ INTÉRÊTS', col: 'r' },
       ] },
       { say: 'Le repère le plus courant : garder trois à six mois de dépenses de côté, sur un livret disponible et sans risque.', shots: [
         { bg: 'dark', intro: 'le repère', head: '*3 à 6* mois', v: 'months', n: 6, min: 3, label: 'DE DÉPENSES MISES DE CÔTÉ' },
-        { at: 'livret', bg: 'light', intro: 'sur un livret', head: '*disponible*', v: 'coins', who: 'A', sub: 'SANS RISQUE DE PERTE', pill: 'DISPONIBLE', n: 8 },
+        { at: 'livret', bg: 'light', intro: 'sur un livret', head: '*disponible*', v: 'show', who: 'A', o: 'parapluie', pill: 'DISPONIBLE · SANS RISQUE' },
       ] },
       { visual: 'end', cta: 'Calcule ta réserve · kapitaro.fr', note: 'Repère indicatif, à adapter à ta situation (emploi, famille, logement).', say: 'Et toi, tu es plutôt {A} ou {B} ? Calcule ta réserve gratuitement sur Kapitaro.' },
     ],

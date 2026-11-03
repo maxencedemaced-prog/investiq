@@ -84,10 +84,11 @@ const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const pill = (x, y, t, bg = INK, fg = '#fff', o = 1, fs = 12, extra = '') => { if (!t) return ''; const w = String(t).length * fs * .62 + fs * 1.6, h = fs * 2; return `<g opacity="${o}"><rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="${h / 2}" fill="${bg}"${extra}/><text x="${x}" y="${y + fs * .38}" text-anchor="middle" font-family="${fontFamily}" font-weight="800" font-size="${fs}" fill="${fg}">${esc(t)}</text></g>`; };
 const shadow = (x, y, rx, dark) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${rx * .3}" fill="${dark ? 'rgba(0,0,0,.35)' : 'rgba(15,30,60,.16)'}"/>`;
 // Personnage (pieds en x,y, taille k) : o = { hair, long, skin, top, mood }, pose = { arm (0 bas → 1 levés), wave, shake, drop, jump }
-// Personnage 3D (buste) quand il a une apparence (o.look) : neutre, surpris, triste ou joie selon l'humeur et la pose
+// Personnage 3D (buste) quand il a une apparence (o.look) : neutre, triste, choqué, victoire (bras levés), montre ou réfléchit selon l'humeur et la pose
 function person(x, y, o, k = 1, pose = {}, f = 0) {
   if (!o.look || !SPR[o.look + '-neutre']) return personDrawn(x, y, o, k, pose, f);
-  const m = pose.arm >= 0.5 || pose.jump || pose.wave ? 'joie' : o.mood === 'sad' ? 'triste' : o.mood === 'wow' ? 'surpris' : 'neutre';
+  const has = n => SPR[o.look + '-' + n] ? n : null;
+  const m = pose.pose && has(pose.pose) || (pose.arm >= 0.5 || pose.jump ? has('victoire') || 'joie' : pose.wave ? 'joie' : o.mood === 'sad' ? 'triste' : o.mood === 'wow' ? has('choque') || 'surpris' : 'neutre');
   const h = 104 * k, jy = pose.jump ? Math.abs(Math.sin(f / 4)) * 8 : 0, rot = pose.shake ? Math.sin(f / 2.2) * 3 : pose.wave ? Math.sin(f / 4) * 2 : 0;
   const drop = pose.drop ? `<path d="M${x + h * .28} ${y - h * .86} q${4 * k} ${7 * k} 0 ${10 * k} q${-4 * k} ${-3 * k} 0 ${-10 * k} z" fill="#60a5fa" opacity="${0.5 + 0.5 * Math.sin(f / 5)}"/>` : '';
   return `<g transform="rotate(${rot} ${x} ${y}) translate(0 ${-jy})">${spr(o.look + '-' + m, x, y, h, '', true)}</g>` + drop;
@@ -225,6 +226,14 @@ const V = {
         `<rect x="${x}" y="${y}" width="60" height="18" rx="6" fill="${dark ? '#334155' : INK}"/>` +
         `<text x="${x + 30}" y="${y + 60}" text-anchor="middle" font-family="${head}" font-weight="900" font-size="28" fill="#fff">${k + 1}</text></g>`; }
     return t + `<text x="180" y="560" text-anchor="middle" font-family="${fontFamily}" font-size="13" font-weight="800" fill="${dark ? '#cbd5e1' : '#475569'}">${esc(s.label || '')}</text>`;
+  },
+  // Personnage (montre, réfléchit, choqué…) à gauche, objet 3D qui surgit à droite et flotte, étiquette au-dessus
+  show: (s, f, dark) => {
+    const p = who(s), k = io(f, 2, 12, 0, 1, Easing.out(Easing.back(2.2))), fy = Math.sin(f / 8) * 5 * io(f, 12, 18, 0, 1);
+    const tone = s.who === 'B' ? (s.col === 'r' ? RED : s.top || BLUE) : GREEN;
+    return shadow(250, 556, 62 * k, dark) + `<g transform="translate(250 ${470 + fy}) scale(${k}) rotate(${io(f, 2, 12, -14, 0)}) translate(-250 -470)">${spr(s.o, 250, 550, s.oh || 170)}</g>` +
+      person(105, 600, p, 2.3 * io(f, 0, 8, .8, 1, Easing.out(Easing.back(1.6))), { pose: s.pose || 'montre', shake: s.pose === 'choque' && f < 30 }, f) +
+      pill(250, 330, s.pill, tone, '#fff', io(f, 10, 16, 0, 1), 15);
   },
   // Gros chiffre (HTML, voir Big) : ici seulement les pièces qui jaillissent
   big: (s, f) => burst(180, 470, f, 14) + burst(180, 470, f, 22),
