@@ -13505,19 +13505,20 @@ async function confirmCSVImport() {
   document.getElementById('csv-preview-modal')?.remove();
   if (!rows.length) return;
 
-  let added = 0, updated = 0;
+  let added = 0, updated = 0, failed = 0;
   for (let r of rows) {
     const existing = positions.find(p => kpTickerOf(p.name) === kpTickerOf(r.name));
     const basePru = r.pru > 0 ? r.pru : (existing ? existing.pru : r.price);
     r = { ...r, pru: basePru > 0 ? csvRowPru({ ...r, pru: basePru }) : 0 };
     if (existing) {
-      existing.qty = r.qty;
-      if (r.pru > 0) existing.pru = r.pru;
-      if (r.price > 0) existing.price = r.price;
-      existing.platform = platform;
+      const upd = { qty: r.qty, pru: r.pru > 0 ? r.pru : existing.pru, price: r.price > 0 ? r.price : existing.price, platform };
+      // supabase-js renvoie { error } sans lever d'exception : une ligne non enregistrée n'est pas modifiée à l'écran
       if (!isDemo && currentUser) {
-        try { await sb.from('positions').update({ qty: existing.qty, pru: existing.pru, price: existing.price, platform }).eq('id', existing.id); } catch(e) {}
+        let err = null;
+        try { ({ error: err } = await sb.from('positions').update(upd).eq('id', existing.id)); } catch(e) { err = e; }
+        if (err) { failed++; continue; }
       }
+      Object.assign(existing, upd);
       updated++;
     } else {
       const pos = { name: r.name, qty: r.qty, pru: r.pru || r.price || 0, price: r.price || r.pru || 0,
@@ -13527,6 +13528,8 @@ async function confirmCSVImport() {
           const { data } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
           if (data) pos.id = data.id;
         } catch(e) {}
+        // Insertion refusée : pas de ligne fantôme (visible ici, disparue au rechargement, impossible à supprimer)
+        if (!pos.id) { failed++; continue; }
       }
       if (!pos.id) pos.id = 'csv_' + Date.now() + '_' + added;
       positions.push(pos);
@@ -13535,7 +13538,7 @@ async function confirmCSVImport() {
   }
   refreshPortfolioUI();
   refreshPrices();
-  showToast(`✓ Import terminé : ${added} ajoutée${added>1?'s':''}, ${updated} mise${updated>1?'s':''} à jour`);
+  showToast(`${failed ? '⚠️' : '✓'} Import terminé : ${added} ajoutée${added>1?'s':''}, ${updated} mise${updated>1?'s':''} à jour${failed ? `, ${failed} non enregistrée${failed>1?'s':''} (réessaie)` : ''}`);
 }
 
 // ═══════════════════════════════════════════════════════════
