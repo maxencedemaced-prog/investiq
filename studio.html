@@ -115,6 +115,7 @@
     <div class="sec-t">Créer avec l'IA</div>
     <button class="nav" id="btn-dossier" onclick="createDossier(this)"><span class="ic">📁</span>Reel « Dossier décodé »</button>
     <button class="nav" id="btn-gen" onclick="generate()"><span class="ic">✨</span>3 posts pédagogiques</button>
+    <button class="nav" id="btn-duo" onclick="makeDuoBatch(this)"><span class="ic">👥</span>3 Reels « Duo »</button>
     <button class="nav" onclick="generateMode('agenda', this)"><span class="ic">🗓</span>Agenda de la semaine</button>
     <button class="nav" onclick="generateMode('recap', this)"><span class="ic">📈</span>Bilan des marchés</button>
 
@@ -316,6 +317,21 @@ async function makeDossier(btn) {
     toast('C’est parti : le Reel arrive dans « À valider » dans quelques minutes', 6000); try { watchReels(); } catch (e) {}
   } catch (e) { document.getElementById('dossier-msg').textContent = e.message; }
   btn.disabled = false; btn.textContent = label;
+}
+
+// ── 3 Reels « Duo » : sujets jamais traités, scénarios écrits par l'IA, voix de David Vautrin ──
+async function makeDuoBatch(btn) {
+  if (!confirm('Créer 3 Reels « Duo » sur des sujets jamais traités ?
+
+L’IA écrit les scénarios, puis la voix ElevenLabs est préparée (≈ 3 × 500 caractères). Les Reels arrivent dans « À valider ».')) return;
+  var label = btn.innerHTML; btn.disabled = true; btn.textContent = 'Écriture + voix (≈ 2 min)…';
+  try {
+    var d = await api('POST', { action: 'duo-batch', count: 3 });
+    POSTS = (d.posts || []).concat(POSTS); setFilter('draft');
+    toast('👥 ' + (d.posts || []).length + ' Reel' + ((d.posts || []).length > 1 ? 's' : '') + ' Duo en fabrication : ils arrivent dans « À valider » dans quelques minutes' + ((d.errors || []).length ? ' (' + d.errors.length + ' raté : ' + d.errors[0] + ')' : ''), 8000);
+    try { watchReels(); } catch (e) {}
+  } catch (e) { toast(e.message, 8000); }
+  btn.disabled = false; btn.innerHTML = label;
 }
 
 // ── Bouton général « Tout arrêter » / « Reprendre » ──

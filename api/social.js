@@ -19,6 +19,7 @@ import { createClient } from '@supabase/supabase-js';
 import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns, ttsSettings, calmVoice } from './_reel.js';
 import { TUTOS } from './_tuto.js';
 import { DOSSIERS, duoScript } from './_dossier.js';
+import { DUO_SYSTEM, DUO_SUBJECTS, DUO_DONE, duoPrompt, pickDuoSubjects, cleanDuoScript } from './_duo.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
 const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ'];
@@ -605,6 +606,35 @@ async function createAds({ short = false } = {}) {
   return made;
 }
 
+// Nombre de Reels « Duo » déjà créés : sert à faire tourner les duos de prénoms
+async function duoCount() {
+  const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo');
+  return count || 0;
+}
+// Reel à partir d'un scénario écrit (dossier à la main ou duo de l'IA) : brouillon, voix, puis rendu sur GitHub Actions
+async function dossierReel(d, { voice, pair = 0, music, topic }) {
+  let duo = null, title = d.title, caption = d.caption, beats = d.beats.map(x => ({ ...x }));
+  if (d.style === 'duo') ({ duo, title, caption, beats } = duoScript(d, pair));
+  const subject = title.split('·').pop().trim().toLowerCase();
+  const { data: post, error } = await sb.from('social_posts').insert({
+    kind: 'weekly', format: 'reel', status: 'draft',
+    title: duo ? `Duo · ${duo.A.name} et ${duo.B.name} · ${subject}` : 'Dossier décodé · ' + title.charAt(0) + title.slice(1).toLowerCase(),
+    slides: [{ t: 'text', kicker: 'DOSSIER ' + d.num, title, body: '' }], caption, hashtags: d.hashtags,
+    platforms: ['instagram', 'facebook'], scheduled_at: new Date(Date.now() + 86400000).toISOString(),
+  }).select().single();
+  if (error) throw error;
+  const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: d.speed || 1.05 });
+  const script = { v: 1, style: d.style || 'dossier', dossier: { num: d.num, title, chapters: d.chapters }, duo, duo_topic: topic, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
+  // Musique de fond : 'none' = sans musique, un nom de fichier = ce morceau, sinon au hasard
+  if (music === 'none') script.music = false;
+  else if (typeof music === 'string' && /^[\w.-]+\.mp3$/.test(music)) script.music_file = music;
+  let status = 'queued', err = null;
+  try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
+  const { data: row, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
+  if (e2) throw e2;
+  return row;
+}
+
 async function createReel(post, { voice, style }) {
   const voices = await reelVoices(), duo = voice === 'duo' && voices.length > 1;
   const pick = duo ? voices.slice(0, 2) : [voices[Math.min(Math.max(parseInt(voice, 10) || 0, 0), voices.length - 1)]];
@@ -953,28 +983,31 @@ export default async function handler(req, res) {
       // Même voix que les tutoriels (David Vautrin) par défaut, sinon la première
       const voice = (b.voice != null && voices[parseInt(b.voice, 10)]) || voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
       // Style « Duo » : prénoms tournants (un duo différent à chaque vidéo de ce style, b.pair pour forcer un duo)
-      let duo = null, title = d.title, caption = d.caption, beats = d.beats.map(x => ({ ...x }));
-      if (d.style === 'duo') {
-        let k = parseInt(b.pair, 10);
-        if (!Number.isFinite(k)) { const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo'); k = count || 0; }
-        ({ duo, title, caption, beats } = duoScript(d, k));
-      }
-      const { data: post, error } = await sb.from('social_posts').insert({
-        kind: 'weekly', format: 'reel', status: 'draft', title: (duo ? 'Duo · ' : 'Dossier décodé · ') + title.charAt(0) + title.slice(1).toLowerCase(),
-        slides: [{ t: 'text', kicker: 'DOSSIER ' + d.num, title, body: '' }], caption, hashtags: d.hashtags,
-        platforms: ['instagram', 'facebook'], scheduled_at: new Date(Date.now() + 86400000).toISOString(),
-      }).select().single();
-      if (error) throw error;
-      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: d.speed || 1.05 });
-      const script = { v: 1, style: d.style || 'dossier', dossier: { num: d.num, title, chapters: d.chapters }, duo, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
-      // Musique de fond : 'none' = sans musique, un nom de fichier = ce morceau, sinon au hasard
-      if (b.music === 'none') script.music = false;
-      else if (typeof b.music === 'string' && /^[\w.-]+\.mp3$/.test(b.music)) script.music_file = b.music;
-      let status = 'queued', err = null;
-      try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
-      const { data: row, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
-      if (e2) throw e2;
-      return res.status(200).json({ post: row });
+      let pair = parseInt(b.pair, 10);
+      if (d.style === 'duo' && !Number.isFinite(pair)) pair = await duoCount();
+      return res.status(200).json({ post: await dossierReel(d, { voice, pair, music: b.music, topic: d.style === 'duo' ? b.topic.replace(/^duo-/, '') : undefined }) });
+    }
+    // 3 Reels « Duo » d'un coup : sujets jamais traités, scénarios écrits par l'IA (en parallèle), voix puis rendu
+    if (b.action === 'duo-batch') {
+      const voices = await tutoVoices();
+      if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
+      const voice = voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
+      const n = Math.max(1, Math.min(3, parseInt(b.count, 10) || 3));
+      const { data: done } = await sb.from('social_posts').select('title, video_script->duo_topic').eq('video_script->>style', 'duo');
+      const usedKeys = (done || []).map(r => r.duo_topic).filter(Boolean);
+      const usedTitles = [...new Set([...DUO_DONE, ...usedKeys].map(k => (DUO_SUBJECTS.find(s => s.key === k) || {}).title || k)
+        .concat((done || []).map(r => String(r.title || '').split('·').pop().trim()).filter(Boolean)))];
+      const subjects = pickDuoSubjects(n, usedKeys);
+      const first = await duoCount();
+      const made = await Promise.allSettled(subjects.map(async (s, i) => {
+        const [raw] = await askClaude(duoPrompt(s, usedTitles), DUO_SYSTEM);
+        const d = { ...cleanDuoScript(raw), num: 'IA' };
+        return dossierReel(d, { voice, pair: first + i, topic: s.key });
+      }));
+      const posts = made.filter(r => r.status === 'fulfilled').map(r => r.value);
+      const errors = made.filter(r => r.status === 'rejected').map(r => r.reason && r.reason.message || String(r.reason));
+      if (!posts.length) return res.status(500).json({ error: errors[0] || 'Aucun Reel Duo créé' });
+      return res.status(200).json({ posts, errors });
     }
     if (b.action === 'reel-create' || b.action === 'reel-render') {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
