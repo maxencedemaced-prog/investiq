@@ -22,6 +22,11 @@ const TOOLS = [
   ['/simulateur-investissement-programme', "Simulateur d'investissement programmé", 'Investir la même somme chaque mois'],
   ['/calculateur-frais-placement', "Calculateur de l'impact des frais", 'Ce que les frais te coûtent dans le temps'],
   ['/calculateur-inflation', "Calculateur d'inflation", 'Ce que valent tes euros dans le temps'],
+  ['/calculateur-petites-depenses', 'Coût de tes petites dépenses', 'Café, livraison, snacks : le vrai coût sur un an'],
+  ['/calculateur-abonnements', "Calculateur d'abonnements", 'Ce que tes abonnements te coûtent vraiment par an'],
+  ['/budget-50-30-20', 'Budget 50/30/20', 'Répartis ton salaire entre besoins, envies et épargne'],
+  ['/cout-credit-consommation', "Coût d'un crédit conso", "Intérêts payés, ou épargner avant d'acheter"],
+  ['/remboursement-dettes', 'Rembourser ses dettes', "Dans quel ordre, et combien d'intérêts économiser"],
 ];
 
 async function visibleArticles(limit = 500) {

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261021110000" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <script src="/simcta.js?v=20261103200000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combien te coûtent tes petites dépenses ? Calculateur gratuit — Kapitaro</title>
+  <meta name="description" content="Café, livraison, snacks, petits achats : calcule ce qu'une habitude te coûte par mois, par an et sur 10 ans, et ce que cette somme deviendrait si tu l'épargnais. Gratuit, sans inscription.">
+  <link rel="canonical" href="https://kapitaro.fr/calculateur-petites-depenses">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/calculateur-petites-depenses">
+  <meta property="og:title" content="Combien te coûtent tes petites dépenses ? — Kapitaro">
+  <meta property="og:description" content="Un café par jour, une livraison par semaine… Calcule le vrai coût de tes habitudes sur un an et sur 10 ans.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Calculateur du coût des petites dépenses — Kapitaro",
+        "url": "https://kapitaro.fr/calculateur-petites-depenses",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "fr",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Combien coûte un café par jour sur un an ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Un café à 2,50 € pris 5 jours par semaine coûte 2,50 × 5 × 52 = 650 € par an, soit environ 54 € par mois." } },
+          { "@type": "Question", "name": "Faut-il supprimer toutes ses petites dépenses ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Non. Le but est de choisir en connaissance de cause : garder les petits plaisirs qui comptent vraiment pour toi, et réduire ceux que tu fais par habitude, sans y penser." } },
+          { "@type": "Question", "name": "Que faire de l'argent économisé ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "D'abord constituer une épargne de précaution sur un livret disponible. Ensuite, l'argent dont tu n'as pas besoin avant plusieurs années peut être placé pour le long terme, en acceptant un risque de perte en capital." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Combien te coûtent tes petites dépenses ?</h1>
+      <p>Un café par jour, une livraison par semaine, un snack au distributeur… Pris un par un, ce n'est rien. Additionnés sur un an, c'est une autre histoire.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" id="presets">
+            <button type="button" data-p="2.5" data-f="5">☕ Café</button>
+            <button type="button" data-p="22" data-f="2">🛵 Livraison repas</button>
+            <button type="button" data-p="3" data-f="4">🍫 Snack</button>
+            <button type="button" data-p="12" data-f="3">🍔 Déjeuner dehors</button>
+            <button type="button" data-p="25" data-f="1">🛍️ Petit achat en ligne</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="p">Prix d'une fois</label><span class="field-val"><input type="number" id="p-n" min="0" max="500" step="0.5" aria-label="Prix en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="p" min="0.5" max="100" step="0.5" value="2.5">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="f">Nombre de fois par semaine</label><span class="field-val"><input type="number" id="f-n" min="0" max="21" step="1" aria-label="Fois par semaine"><span class="unit">/ sem.</span></span></div>
+            <input type="range" id="f" min="1" max="14" step="1" value="5">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="y">Sur combien d'années</label><span class="field-val"><input type="number" id="y-n" min="1" max="40" step="1" aria-label="Années"><span class="unit">ans</span></span></div>
+            <input type="range" id="y" min="1" max="30" step="1" value="10">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="r">Si c'était épargné, rendement d'exemple</label><span class="field-val"><input type="number" id="r-n" min="0" max="10" step="0.5" aria-label="Rendement annuel en pourcentage"><span class="unit">%/an</span></span></div>
+            <input type="range" id="r" min="0" max="8" step="0.5" value="3">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Ce que cette habitude te coûte par an</div>
+          <div class="result-total" id="out-year">—</div>
+          <div class="result-sub" id="out-month"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-week">—</b><span>Par semaine</span></div>
+            <div class="kpi"><b id="out-total">—</b><span id="out-total-l">Sur 10 ans</span></div>
+            <div class="kpi gain"><b id="out-fv">—</b><span>Si épargné</span></div>
+          </div>
+          <div class="example" id="out-advice" style="font-size:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>Pourquoi les petites dépenses comptent autant</h2>
+      <p>Une petite somme répétée souvent devient une grosse somme. Le calcul est simple : <strong>prix × nombre de fois par semaine × 52 semaines</strong>. Un café à 2,50 € pris 5 jours par semaine, c'est <strong>650 € par an</strong>. Une livraison à 22 € deux fois par semaine, c'est <strong>2 288 € par an</strong>.</p>
+      <div class="formula">coût annuel = prix × fois par semaine × 52</div>
+
+      <h2>Et si cet argent était épargné ?</h2>
+      <p>Le calculateur montre aussi ce que deviendrait la même somme si elle était mise de côté chaque mois, avec un rendement d'exemple. Ce rendement n'est pas garanti : un livret rapporte peu mais ne baisse pas, un placement en actions peut rapporter plus sur le long terme, mais il peut aussi baisser.</p>
+      <div class="example">
+        <p style="margin:0">Exemple : 650 € par an, soit environ 54 € par mois, épargnés pendant 10 ans à 3 %/an donnent environ <strong>7 600 €</strong>, dont environ 1 100 € d'intérêts.</p>
+      </div>
+
+      <h2>Comment réduire sans se priver</h2>
+      <ul>
+        <li><strong>Fais le tri</strong> : garde les petits plaisirs qui comptent vraiment, et réduis ceux que tu fais par habitude.</li>
+        <li><strong>Fixe une enveloppe</strong> par semaine pour ces dépenses : quand elle est vide, tu attends la semaine suivante.</li>
+        <li><strong>Mets la différence de côté</strong> tout de suite, par un virement automatique : l'argent économisé ne disparaît pas dans d'autres dépenses.</li>
+        <li><strong>Regarde tes relevés</strong> une fois par mois pour repérer les fuites.</li>
+      </ul>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>Combien coûte un café par jour sur un an ?</h3>
+        <p>Un café à 2,50 € pris 5 jours par semaine coûte 650 € par an, soit environ 54 € par mois. Pris 7 jours sur 7, c'est 910 € par an.</p>
+        <h3>Faut-il supprimer toutes ses petites dépenses ?</h3>
+        <p>Non. Le but est de choisir en connaissance de cause, pas de se priver de tout. Une dépense qui te fait vraiment plaisir a sa place dans ton budget.</p>
+        <h3>Que faire de l'argent économisé ?</h3>
+        <p>D'abord une <a href="/epargne-de-precaution">épargne de précaution</a> sur un livret disponible. Ensuite, l'argent dont tu n'as pas besoin avant plusieurs années peut être placé pour le long terme : le <a href="/simulateur-interets-composes">simulateur d'intérêts composés</a> te montre ce que ça peut donner.</p>
+        <h3>Ce calculateur est-il gratuit ?</h3>
+        <p>Oui, sans inscription. Avec Kapitaro, tu peux aussi fixer un objectif et suivre ton épargne mois après mois.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Transforme tes économies en objectif</h2>
+      <p>Fixe un objectif, et Kapitaro te montre comment l'atteindre mois après mois. Gratuit pour commencer.</p>
+      <a href="/?inscription=1" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+
+    <section class="others">
+      <h2>Autres outils gratuits</h2>
+      <a href="/calculateur-abonnements"><div>Calculateur d'abonnements<span>Ce que tes abonnements te coûtent vraiment par an</span></div>›</a>
+      <a href="/budget-50-30-20"><div>Budget 50/30/20<span>Répartis ton salaire entre besoins, envies et épargne</span></div>›</a>
+      <a href="/cout-credit-consommation"><div>Coût d'un crédit conso<span>Intérêts payés, ou épargner avant d'acheter</span></div>›</a>
+      <a href="/remboursement-dettes"><div>Rembourser ses dettes<span>Dans quel ordre, et combien d'intérêts économiser</span></div>›</a>
+      <a href="/epargne-de-precaution"><div>Épargne de précaution<span>Combien garder de côté avant d'investir</span></div>›</a>
+      <a href="/simulateur-interets-composes"><div>Simulateur d'intérêts composés<span>Ce que devient ton épargne avec le temps</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Calcul indicatif à but pédagogique. Les rendements d'exemple ne sont pas garantis et ne constituent pas un conseil financier personnalisé. Investir comporte un risque de perte en capital.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a><br><a href="/mentions-legales">Mentions légales</a> · <a href="/cgu">CGU / CGV</a> · <a href="/confidentialite">Confidentialité</a> · <a href="/risques">Risques</a> · <a href="/faq">FAQ</a> · <a href="/blog">Blog</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var ids = ['p', 'f', 'y', 'r'];
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+    // Valeur d'une épargne mensuelle constante au bout de n années (taux annuel en %)
+    var fv = function (monthly, years, rate) { var i = rate / 100 / 12, n = years * 12; return i ? monthly * ((Math.pow(1 + i, n) - 1) / i) : monthly * n; };
+
+    function update() {
+      var p = get('p'), f = get('f'), y = Math.max(1, get('y')), r = get('r');
+      var week = p * f, year = week * 52, month = year / 12, total = year * y, saved = fv(month, y, r);
+      document.getElementById('out-year').textContent = fmt(year);
+      document.getElementById('out-month').textContent = 'soit environ ' + fmt(month) + ' par mois';
+      document.getElementById('out-week').textContent = fmt(week);
+      document.getElementById('out-total').textContent = fmt(total);
+      document.getElementById('out-total-l').textContent = 'Sur ' + y + ' an' + (y > 1 ? 's' : '');
+      document.getElementById('out-fv').textContent = fmt(saved);
+      document.getElementById('out-advice').innerHTML = year <= 0 ? 'Indique un prix et une fréquence.' :
+        'En gardant cette habitude, tu dépenses <strong>' + fmt(total) + '</strong> en ' + y + ' an' + (y > 1 ? 's' : '') + '. Épargnée chaque mois avec un rendement d\'exemple de ' + r.toLocaleString('fr-FR') + ' %/an, la même somme deviendrait environ <strong>' + fmt(saved) + '</strong>. Même la moitié fait déjà une vraie différence.';
+    }
+
+    ids.forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    document.querySelectorAll('#presets button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        [['p', b.dataset.p], ['f', b.dataset.f]].forEach(function (x) { document.getElementById(x[0]).value = x[1]; document.getElementById(x[0] + '-n').value = x[1]; });
+        update();
+      });
+    });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'petites-depenses', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+    update();
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20260930"></script>
+</body>
+</html>

@@ -9,6 +9,11 @@
     'epargne-de-precaution': 'Fixe ton objectif de réserve et suis toute ton épargne au même endroit.',
     'rendement-etf-msci-world': 'Suis tes ETF en direct, avec leur performance réelle et leurs frais.',
     'simulateur-investissement-programme': 'Fixe ton versement mensuel et suis chaque mois où tu en es par rapport à ton objectif.',
+    'calculateur-petites-depenses': 'Transforme ce que tu économises en objectif : Kapitaro te montre comment l’atteindre, mois après mois.',
+    'calculateur-abonnements': 'Avec Premium, importe ton relevé bancaire : Kapitaro repère tes abonnements et tes dépenses pour toi.',
+    'budget-50-30-20': 'Donne un but à ton épargne : fixe un objectif et suis ta progression réelle.',
+    'cout-credit-consommation': 'Crée un objectif pour ton prochain achat : Kapitaro te dit combien mettre de côté chaque mois.',
+    'remboursement-dettes': 'Une fois tes dettes soldées, transforme tes anciennes mensualités en épargne avec un objectif.',
   };
   var page = location.pathname.replace(/^\/|\.html$/g, '');
   var msg = TEXT[page] || 'Passe de la simulation à ton vrai portefeuille : objectif chiffré, suivi en direct, assistant IA.';

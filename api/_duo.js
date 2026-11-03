@@ -25,6 +25,25 @@ export const DUO_SUBJECTS = [
   { key: 'paiement-4-fois', title: 'LE PAIEMENT EN 4 FOIS', brief: '{B} enchaîne les paiements fractionnés et ne sait plus combien il doit chaque mois, {A} n’achète que ce qu’il peut payer.' },
   { key: 'livraisons', title: 'LES LIVRAISONS DE REPAS', brief: '{B} se fait livrer plusieurs fois par semaine, {A} cuisine le plus souvent et garde la livraison pour le plaisir.' },
 ];
+// Outils réels de Kapitaro vers lesquels un Reel peut renvoyer (pages gratuites ou fonctions de l'app) : la fin du Reel ne promet
+// que ce qui existe. Sujet sans outil : on en parle, sans prétendre que Kapitaro le règle.
+export const DUO_TOOLS = {
+  petites: { name: 'le calculateur de petites dépenses (gratuit)', cta: 'Calcule le coût de tes petites dépenses sur kapitaro.fr' },
+  abonnements: { name: 'le calculateur d’abonnements (gratuit)', cta: 'Calcule ce que te coûtent tes abonnements sur kapitaro.fr' },
+  budget: { name: 'le calculateur de budget 50/30/20 (gratuit)', cta: 'Fais ton budget 50/30/20 sur kapitaro.fr' },
+  credit: { name: 'le calculateur du coût d’un crédit conso (gratuit)', cta: 'Calcule le vrai coût d’un crédit sur kapitaro.fr' },
+  dettes: { name: 'le calculateur de remboursement de dettes (gratuit)', cta: 'Vois dans quel ordre rembourser tes dettes sur kapitaro.fr' },
+  inflation: { name: 'le calculateur d’inflation (gratuit)', cta: 'Calcule ce que l’inflation coûte à ton épargne sur kapitaro.fr' },
+  reserve: { name: 'le calculateur d’épargne de précaution (gratuit)', cta: 'Calcule ta réserve idéale sur kapitaro.fr' },
+  programme: { name: 'le simulateur d’investissement programmé (gratuit)', cta: 'Simule un investissement chaque mois sur kapitaro.fr' },
+  objectif: { name: 'l’objectif de l’app Kapitaro (offert 30 jours)', cta: 'Crée ton objectif sur Kapitaro' },
+  sante: { name: 'le score de santé du portefeuille dans l’app Kapitaro', cta: 'Vérifie la répartition de ton portefeuille sur Kapitaro' },
+};
+const TOOL_OF = {
+  abonnements: 'abonnements', comparer: 'abonnements', 'petites-depenses': 'petites', livraisons: 'petites', courses: 'petites', 'achat-impulsif': 'petites', promos: 'petites',
+  'se-payer-en-premier': 'budget', 'budget-50-30-20': 'budget', augmentation: 'budget', 'suivre-budget': 'budget', 'credit-conso': 'credit', 'paiement-4-fois': 'credit',
+  'dettes-cheres': 'dettes', decouvert: 'dettes', 'argent-qui-dort': 'inflation', objectif: 'objectif', regulier: 'programme', diversifier: 'sante',
+};
 // Sujets déjà faits à la main (api/_dossier.js) : jamais repris par l'IA
 export const DUO_DONE = ['commencer-tot', 'frais', 'reserve'];
 
@@ -56,6 +75,7 @@ RÈGLES ABSOLUES (réglementation AMF) :
 - Tout rendement est un « exemple » ou une « hypothèse », jamais garanti ; si tu parles de placement, la note de fin rappelle le risque de perte en capital.
 - Pas de crypto, pas de sujet religieux, politique ou sensible.
 - Chiffres : uniquement ceux des faits vérifiés fournis, ou des multiplications simples et exactes de montants du quotidien.
+- Ne prétends jamais que Kapitaro fait quelque chose qui n'est pas dans l'outil indiqué : la fin du Reel (say, cta, caption) renvoie EXACTEMENT à l'outil donné, ou, s'il n'y en a pas, ne promet rien (« Suis Kapitaro pour d'autres astuces »).
 
 FORME DU SCÉNARIO (JSON) :
 { "title": "{A} ET {B} · SUJET COURT EN MAJUSCULES",
@@ -83,7 +103,13 @@ Les personnages s'écrivent TOUJOURS exactement {A} et {B}, avec les accolades (
 Réponds uniquement par un tableau JSON contenant UN scénario : [ { … } ].`;
 
 export function duoPrompt(subject, used) {
-  return `Écris le scénario du Reel Duo sur ce sujet :\n${subject.title ? subject.title + ' — ' : ''}${subject.brief}\n` +
+  const tool = DUO_TOOLS[TOOL_OF[subject.key]];
+  const toolTxt = tool
+    ? `Outil Kapitaro à mettre en avant à la fin : ${tool.name}. Phrase d'appel (cta, fin de la voix et de la légende) : « ${tool.cta} ».`
+    : subject.title
+      ? 'Pas d\'outil Kapitaro pour ce sujet : parle du sujet et du bon réflexe, sans dire que Kapitaro le règle. Fin de la voix : « Et toi, tu es plutôt {A} ou {B} ? Suis Kapitaro pour d\'autres astuces. », cta : « Suis Kapitaro · kapitaro.fr ».'
+      : `Si un de ces outils correspond vraiment au sujet que tu inventes, utilise sa phrase d'appel ; sinon ne promets rien (« Suis Kapitaro pour d'autres astuces ») : ${Object.values(DUO_TOOLS).map(t => t.name + ' → « ' + t.cta + ' »').join(' ; ')}.`;
+  return `Écris le scénario du Reel Duo sur ce sujet :\n${subject.title ? subject.title + ' — ' : ''}${subject.brief}\n${toolTxt}\n` +
     `Sujets déjà traités, à ne pas refaire : ${used.join(' | ') || 'aucun'}.\n` +
     `Objets 3D disponibles pour « show » : ${DUO_OBJECTS.join(', ')}.\nFaits vérifiés :\n${duoFacts()}`;
 }
