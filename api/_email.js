@@ -163,6 +163,36 @@ export const EMAILS_EN = {
     ],
     cta: { label: 'See my portfolio', url: SITE_EN },
   },
+  // Essai gratuit de l'objectif (30 jours) : mêmes rappels qu'en français
+  trial_j7: {
+    subject: 'Your free trial ends in 7 days',
+    title: '7 days of your trial left',
+    paragraphs: [
+      'Your goal and your monthly plan are free for 30 days: you have one week left to make the most of them.',
+      'After that, your goal and your chart stay visible, but the new plan each month, the allocation and any changes come with Premium.',
+    ],
+    cta: { label: 'See my monthly plan', url: SITE_EN },
+  },
+  trial_j1: {
+    subject: 'Last day of your free trial',
+    title: 'Your trial ends tomorrow',
+    paragraphs: [
+      'Your 30-day free trial ends tomorrow.',
+      'To keep getting your monthly plan, adjusted to the markets and to your portfolio, you can upgrade to Premium in a few seconds from the app.',
+      'Otherwise, there is nothing to do: your free account stays active, with your portfolio, your health score and 3 questions a day to the assistant.',
+    ],
+    cta: { label: 'Upgrade to Premium', url: SITE_EN + '/?plans=1' },
+  },
+  trial_end: {
+    subject: 'Your savings plan is on pause',
+    title: 'Your free trial has ended',
+    paragraphs: [
+      'Your 30-day trial is over. Your goal and your chart stay visible in the app.',
+      'To get your monthly plan back and keep moving toward your goal, upgrade to Premium.',
+      'Your free account stays active: portfolio, health score and 3 questions a day to the assistant.',
+    ],
+    cta: { label: 'Resume my plan', url: SITE_EN + '/?plans=1' },
+  },
 };
 export const userLang = u => (u && u.user_metadata && u.user_metadata.lang === 'en') ? 'en' : 'fr';
 export const emailFor = (kind, u) => (userLang(u) === 'en' ? EMAILS_EN[kind] : null) || EMAILS[kind];
