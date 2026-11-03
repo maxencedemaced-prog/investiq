@@ -43,6 +43,7 @@ export function duoFacts() {
   for (const m of [50, 100, 150, 200]) for (const y of [10, 20, 30]) for (const r of [3, 5]) rows.push(`${m} €/mois pendant ${y} ans à ${r} %/an : ${(m * 12 * y).toLocaleString('fr-FR')} € versés → ≈ ${(Math.round(fv(m, y, r) / 100) * 100).toLocaleString('fr-FR')} €`);
   rows.push('Inflation : avec 2 % d’inflation par an, 10 000 € perdent environ 1 800 € de pouvoir d’achat en 10 ans (≈ 8 200 € d’aujourd’hui).');
   rows.push('Épargne de précaution : repère courant de 3 à 6 mois de dépenses indispensables.');
+  rows.push('Découvert : en France, la commission d’intervention bancaire est plafonnée à 8 € par opération et 80 € par mois (agios en plus, selon la banque).');
   rows.push('Pour les petites dépenses, tu peux faire des multiplications simples et exactes (ex. 4 € × 5 jours × 52 semaines = 1 040 €/an). Garde des nombres ronds.');
   return rows.join('\n');
 }
@@ -58,7 +59,7 @@ RÈGLES ABSOLUES (réglementation AMF) :
 
 FORME DU SCÉNARIO (JSON) :
 { "title": "{A} ET {B} · SUJET COURT EN MAJUSCULES",
-  "caption": "légende Instagram : accroche, question « Et toi, tu es plutôt {A} ou {B} ? 👇 », mention « Exemple pédagogique » + hypothèses, puis « … sur kapitaro.fr »",
+  "caption": "légende Instagram : accroche, question « Et toi, tu es plutôt {A} ou {B} ? 👇 », mention « Exemple pédagogique » + hypothèses, puis une phrase d'appel complète qui finit par « sur kapitaro.fr » (jamais de « … » à la place du texte)",
   "hashtags": "6 à 8 hashtags dont #kapitaro",
   "beats": [ 3 ou 4 scènes, puis la scène de fin ] }
 Scène : { "say": "texte lu par la voix (1 à 3 phrases, nombres écrits EN LETTRES, ex. « cent cinquante euros »)", "shots": [ 2 à 5 plans ] }
@@ -77,7 +78,8 @@ Visuels et réglages :
 - big : gros chiffre plein écran. text (ex. "1 040 €", "×3") ; count: false si ce n'est pas un nombre qui défile.
 - show : un personnage + un objet 3D. who, pose: montre|reflechit|choque|victoire, o: un objet de la liste fournie, pill (≤ 24 car.).
 Scène de fin (toujours la dernière) : { "visual": "end", "cta": "Action courte · kapitaro.fr", "note": "Exemple : hypothèses utilisées (1 phrase)", "say": "… Et toi, tu es plutôt {A} ou {B} ? … sur Kapitaro." }
-Varie les visuels (au moins 5 différents, au moins un « show »). Écris toujours {A} et {B}, jamais de vrais prénoms.
+Varie les visuels (au moins 5 différents, au moins un « show »).
+Les personnages s'écrivent TOUJOURS exactement {A} et {B}, avec les accolades (dans "say", "head", "intro", "caption", "title") : jamais « A » ou « B » seuls, jamais de vrais prénoms. Les prénoms sont ajoutés ensuite.
 Réponds uniquement par un tableau JSON contenant UN scénario : [ { … } ].`;
 
 export function duoPrompt(subject, used) {
@@ -105,6 +107,9 @@ export function cleanDuoScript(raw) {
   const scenes = raw.beats.filter(b => b && b.visual !== 'end' && typeof b.say === 'string' && b.say.trim()).slice(0, 5);
   const end = raw.beats.find(b => b && b.visual === 'end');
   if (scenes.length < 2) throw new Error('Scénario Duo trop court');
+  // Les prénoms remplacent {A} et {B} : un scénario qui écrit « A » / « B » à la place ferait dire « A » à la voix
+  const voice = scenes.map(b => b.say).join(' ');
+  if (!/\{A\}/.test(voice) || !/\{B\}/.test(voice) || /(^|[\s,.;:!?«(])[AB](?=[\s,.;:!?»)]|$)/.test(voice.replace(/\{[AB]\}/g, ''))) throw new Error('Scénario Duo sans {A} / {B}');
   const beats = scenes.map(b => {
     const say = txt(b.say, 320), words = say.split(/\s+/).map(norm);
     let from = 0;
@@ -150,7 +155,8 @@ export function cleanDuoScript(raw) {
   if (!/\{A\}/.test(title)) title = '{A} ET {B} · ' + (title || 'LE BON RÉFLEXE');
   return {
     style: 'duo', title, beats,
-    caption: (txt(raw.caption, 1200) || 'Et toi, tu es plutôt {A} ou {B} ? 👇').replace(/kapitora/gi, 'kapitaro'),
+    caption: (txt(raw.caption, 1200) || 'Et toi, tu es plutôt {A} ou {B} ? 👇').replace(/kapitora/gi, 'kapitaro')
+      .replace(/(^|\s)…\s*sur kapitaro\.fr/i, '$1Fais le point gratuitement sur kapitaro.fr'),
     hashtags: txt(raw.hashtags, 200) || '#epargne #budget #financepersonnelle #argent #kapitaro',
   };
 }
