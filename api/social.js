@@ -19,7 +19,7 @@ import { createClient } from '@supabase/supabase-js';
 import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns, ttsSettings, calmVoice } from './_reel.js';
 import { TUTOS } from './_tuto.js';
 import { DOSSIERS, duoScript } from './_dossier.js';
-import { DUO_SYSTEM, DUO_SUBJECTS, DUO_DONE, duoPrompt, pickDuoSubjects, cleanDuoScript } from './_duo.js';
+import { DUO_SYSTEM, DUO_SUBJECTS, DUO_DONE, duoPrompt, pickDuoSubjects, cleanDuoScript, duoToolFor } from './_duo.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
 const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ'];
@@ -1029,6 +1029,33 @@ export default async function handler(req, res) {
       let status = 'queued', err = null;
       try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
       const { data, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
+      if (e2) throw e2;
+      return res.status(200).json({ post: data });
+    }
+    // Reel Duo déjà fabriqué : refait la fin (voix, bouton, légende) pour renvoyer vers le bon outil Kapitaro, puis voix et vidéo
+    if (b.action === 'duo-refresh-end') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
+      const { data: post, error } = await sb.from('social_posts').select('*').eq('id', b.id).single();
+      if (error) throw error;
+      const script = post.video_script || {}, A = script.duo && script.duo.A && script.duo.A.name, B = script.duo && script.duo.B && script.duo.B.name;
+      const beats = Array.isArray(script.beats) ? script.beats.map(x => ({ ...x })) : [];
+      const end = beats[beats.length - 1];
+      if (script.style !== 'duo' || !A || !B || !end || end.visual !== 'end') return res.status(400).json({ error: 'Ce post n’est pas un Reel Duo' });
+      const tool = duoToolFor(script.duo_topic);
+      end.say = `Et toi, tu es plutôt ${A} ou ${B} ? ` + (tool ? tool.cta.replace(/ sur kapitaro\.fr$/, ', gratuitement, sur kapitaro point f r') + '.' : 'Suis Kapitaro pour d’autres astuces.');
+      end.cta = tool ? tool.cta.replace(/ sur kapitaro\.fr$/, ' · kapitaro.fr') : 'Suis Kapitaro · kapitaro.fr';
+      // Légende : l'ancien appel de fin (« … sur kapitaro.fr ») est retiré, l'appel vers l'outil est ajouté à la ligne
+      // (le reste, dont la mention « Exemple pédagogique », est gardé tel quel)
+      const call = tool ? tool.cta : 'Suis Kapitaro pour d’autres astuces : kapitaro.fr';
+      let caption = String(post.caption || '').replace(/\s*(…\s*sur kapitaro\.fr|Fais le point gratuitement sur kapitaro\.fr)\s*$/i, '').trim();
+      if (!/[.!?👇)]$/u.test(caption)) caption += '.';
+      caption += '\n\n' + call;
+      const voices = await tutoVoices();
+      const voice = voices.find(v => v.name === script.voice) || voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: 1.05 });
+      let status = 'queued', err = null;
+      try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
+      const { data, error: e2 } = await sb.from('social_posts').update({ caption, video_script: { ...script, beats, segments, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
       if (e2) throw e2;
       return res.status(200).json({ post: data });
     }

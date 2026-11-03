@@ -44,6 +44,7 @@ const TOOL_OF = {
   'se-payer-en-premier': 'budget', 'budget-50-30-20': 'budget', augmentation: 'budget', 'suivre-budget': 'budget', 'credit-conso': 'credit', 'paiement-4-fois': 'credit',
   'dettes-cheres': 'dettes', decouvert: 'dettes', 'argent-qui-dort': 'inflation', objectif: 'objectif', regulier: 'programme', diversifier: 'sante',
 };
+export const duoToolFor = key => DUO_TOOLS[TOOL_OF[key]] || null;
 // Sujets déjà faits à la main (api/_dossier.js) : jamais repris par l'IA
 export const DUO_DONE = ['commencer-tot', 'frais', 'reserve'];
 
