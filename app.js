@@ -9781,7 +9781,7 @@ function renderPortfolio(auto=false) {
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
     <!-- Header tableau -->
     <!-- Barre d'actions groupées (visible en mode sélection) -->
-    <div id="bulk-bar" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:rgba(99,102,241,0.08);border-bottom:1px solid ${borderCol}">
+    <div id="bulk-bar" style="display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 16px;background:rgba(99,102,241,0.08);border-bottom:1px solid ${borderCol}">
       <div style="display:flex;align-items:center;gap:10px">
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:700;color:${textCol}">
           <input type="checkbox" id="bulk-all" onchange="toggleSelectAll(this.checked)" style="width:16px;height:16px;accent-color:#6366f1">
@@ -9789,7 +9789,7 @@ function renderPortfolio(auto=false) {
         </label>
         <span id="bulk-count" style="font-size:12px;color:${subCol}">0 sélectionnée</span>
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="bulkDelete()" style="padding:6px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer">🗑️ Supprimer</button>
         <button onclick="bulkAskAI()" style="padding:6px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser <span style="font-size:10px;opacity:0.7">✨</span></button>
         <button onclick="toggleSelectMode(false)" style="padding:6px 13px;background:transparent;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer">Annuler</button>
