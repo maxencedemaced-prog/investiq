@@ -606,6 +606,33 @@ async function createAds({ short = false } = {}) {
   return made;
 }
 
+// Musique de fond créée par l'IA (ElevenLabs Music) et rangée dans social/music : le rendu la récupère (video/render-job.mjs)
+async function createMusic(prompt, secs, name) {
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key) throw new Error('Clé ElevenLabs absente dans Vercel');
+  const slug = String(name || prompt).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 36) || 'musique';
+  const file = 'ia-' + slug + '-' + Date.now().toString(36).slice(-4) + '.mp3';
+  const r = await fetch('https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128', {
+    method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: prompt + '. Instrumental background music for a short personal-finance video with a voice-over: no vocals, steady energy, clean mix, clean ending.', music_length_ms: secs * 1000, force_instrumental: true }),
+  });
+  if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error('ElevenLabs a refusé (' + r.status + ') : ' + t.slice(0, 240)); }
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (buf.length < 5000) throw new Error('Musique vide, réessaie avec une autre description');
+  const up = await sb.storage.from('social').upload('music/' + file, buf, { contentType: 'audio/mpeg', upsert: true, cacheControl: '86400' });
+  if (up.error) throw up.error;
+  return file;
+}
+// Ambiances dynamiques pour les Reels « Duo » : une nouvelle musique à chaque Reel, style tiré au hasard
+const DUO_MUSIC = [
+  'Upbeat modern pop beat, punchy drums, bright synths, 124 BPM, energetic and positive',
+  'Funky groove with slap bass, crisp claps and brass stabs, 118 BPM, playful and dynamic',
+  'Energetic electro house, driving four-on-the-floor kick, plucky synth hook, 126 BPM',
+  'Bouncy hip-hop instrumental, snappy snare, warm keys, catchy melody, 95 BPM, confident',
+  'Fresh future bass, wide chords, punchy beat drops kept light, 128 BPM, uplifting',
+  'Upbeat indie pop with claps, bright guitar riff and tambourine, 120 BPM, feel-good',
+];
+
 // Nombre de Reels « Duo » déjà créés : sert à faire tourner les duos de prénoms
 async function duoCount() {
   const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo');
@@ -953,17 +980,8 @@ export default async function handler(req, res) {
       const prompt = String(b.prompt || '').trim().slice(0, 500);
       if (prompt.length < 5) return res.status(400).json({ error: 'Décris la musique voulue (style, ambiance, tempo…)' });
       const secs = Math.max(10, Math.min(120, parseInt(b.seconds, 10) || 45));
-      const slug = String(b.name || prompt).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 36) || 'musique';
-      const file = 'ia-' + slug + '-' + Date.now().toString(36).slice(-4) + '.mp3';
-      const r = await fetch('https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128', {
-        method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt + '. Instrumental background music for a short personal-finance video with a voice-over: no vocals, steady energy, clean mix, clean ending.', music_length_ms: secs * 1000, force_instrumental: true }),
-      });
-      if (!r.ok) { const t = await r.text().catch(() => ''); return res.status(400).json({ error: 'ElevenLabs a refusé (' + r.status + ') : ' + t.slice(0, 240) }); }
-      const buf = Buffer.from(await r.arrayBuffer());
-      if (buf.length < 5000) return res.status(400).json({ error: 'Musique vide, réessaie avec une autre description' });
-      const up = await sb.storage.from('social').upload('music/' + file, buf, { contentType: 'audio/mpeg', upsert: true, cacheControl: '86400' });
-      if (up.error) throw up.error;
+      let file;
+      try { file = await createMusic(prompt, secs, b.name); } catch (e) { return res.status(400).json({ error: e.message }); }
       return res.status(200).json({ file, url: sb.storage.from('social').getPublicUrl('music/' + file).data.publicUrl, seconds: secs });
     }
     if (b.action === 'music-delete') {
@@ -1006,13 +1024,15 @@ export default async function handler(req, res) {
       const subjects = pickDuoSubjects(n, usedKeys);
       const first = await duoCount();
       const made = await Promise.allSettled(subjects.map(async (s, i) => {
+        // Musique créée en même temps que le scénario ; si elle échoue, le rendu prend une musique de la bibliothèque
+        const music = createMusic(DUO_MUSIC[Math.floor(Math.random() * DUO_MUSIC.length)], 50, 'duo-' + s.key).catch(e => { console.warn('[duo] musique :', e.message); return undefined; });
         // Scénario refusé par le contrôle (prénoms manquants, trop court…) : une 2e tentative
         let d;
         for (let attempt = 0; !d; attempt++) {
           try { const [raw] = await askClaude(duoPrompt(s, usedTitles), DUO_SYSTEM); d = { ...cleanDuoScript(raw), num: 'IA' }; }
           catch (e) { if (attempt) throw e; }
         }
-        return dossierReel(d, { voice, pair: first + i, topic: s.key });
+        return dossierReel(d, { voice, pair: first + i, topic: s.key, music: await music });
       }));
       const posts = made.filter(r => r.status === 'fulfilled').map(r => r.value);
       const errors = made.filter(r => r.status === 'rejected').map(r => r.reason && r.reason.message || String(r.reason));
