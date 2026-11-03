@@ -85,8 +85,8 @@
       + legend([['Solde affiché', '#9ca3af'], ['Pouvoir d’achat avec ton rendement', '#16a34a'], ['Pouvoir d’achat sans rendement', '#dc2626']]);
   }
 
-  // Menu de tous les calculateurs, classés par thème : '#frais' et '#infl' s'affichent ici même, les autres (pages publiques,
-  // aussi listées sur /outils) s'ouvrent dans un nouvel onglet
+  // Menu de tous les calculateurs, classés par thème, tous affichés dans la page : '#frais' et '#infl' sont dessinés ici,
+  // les autres sont les pages publiques (aussi listées sur /outils) dans un cadre intégré, en mode « app » (voir simcta.js)
   var TOOLS = [
     ['Budget et dépenses', [['/budget-50-30-20', '🧾', 'Budget 50/30/20'], ['/calculateur-petites-depenses', '☕', 'Petites dépenses'], ['/calculateur-abonnements', '📺', 'Abonnements']]],
     ['Crédits et dettes', [['/cout-credit-consommation', '💳', 'Coût d’un crédit conso'], ['/remboursement-dettes', '🧮', 'Rembourser ses dettes']]],
@@ -97,18 +97,25 @@
       + TOOLS.map(function (g) {
         return '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary,#71717a);margin:6px 2px 7px">' + g[0] + '</div>'
           + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">' + g[1].map(function (t) {
-            var inApp = t[0][0] === '#', on = inApp && TAB === t[0].slice(1);
-            var style = 'display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:inherit;font-size:13px;font-weight:' + (on ? 800 : 600) + ';text-decoration:none;cursor:pointer;'
+            var key = t[0][0] === '#' ? t[0].slice(1) : t[0], on = TAB === key;
+            var style = 'display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font:inherit;font-size:13px;font-weight:' + (on ? 800 : 600) + ';cursor:pointer;'
               + 'border:1px solid ' + (on ? '#16a34a' : 'var(--color-border,#e4e4e7)') + ';background:' + (on ? 'rgba(22,163,74,.1)' : 'var(--color-bg,#f7f8fa)') + ';color:' + (on ? '#15803d' : 'var(--color-text,#1c1c1e)');
-            return inApp
-              ? '<button type="button" onclick="calcTab(\'' + t[0].slice(1) + '\')" style="' + style + '">' + t[1] + ' ' + t[2] + '</button>'
-              : '<a href="' + t[0] + '" target="_blank" rel="noopener" style="' + style + '">' + t[1] + ' ' + t[2] + ' <span style="color:var(--color-text-secondary,#71717a);font-size:11px">↗</span></a>';
+            return '<button type="button" onclick="calcTab(\'' + key + '\')" style="' + style + '">' + t[1] + ' ' + t[2] + '</button>';
           }).join('') + '</div>';
-      }).join('') + '<div style="font-size:11.5px;color:var(--color-text-secondary,#71717a);margin:4px 2px 0">↗ s’ouvre dans un nouvel onglet</div></div>';
+      }).join('') + '</div>';
   }
+  // Hauteur du cadre intégré : envoyée par la page de l'outil (simcta.js), pour éviter une barre de défilement interne
+  window.addEventListener('message', function (e) {
+    var f = document.getElementById('calc-frame');
+    if (f && e.origin === location.origin && e.data && e.data.kpCalcHeight) f.style.height = Math.max(400, e.data.kpCalcHeight) + 'px';
+  });
 
   window.renderCalc = function () {
     var root = document.getElementById('calc-root'); if (!root) return;
+    if (TAB[0] === '/') {   // calculateur public, affiché dans la page
+      root.innerHTML = menuHTML() + '<iframe id="calc-frame" src="' + TAB + '" title="Calculateur" loading="lazy" style="display:block;width:100%;height:900px;border:0;border-radius:16px;background:transparent"></iframe>';
+      return;
+    }
     root.innerHTML = menuHTML()
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' + PRESETS[TAB].map(function (p, k) { return '<button type="button" onclick="calcPreset(' + k + ')" style="padding:6px 12px;border-radius:99px;border:1px solid var(--color-border,#e4e4e7);background:var(--color-surface,#fff);color:var(--color-text,#1c1c1e);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer">' + p[0] + '</button>'; }).join('') + '</div>'
       + '<div class="calc-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:12px;align-items:start">'
