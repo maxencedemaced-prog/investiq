@@ -144,11 +144,12 @@ export const TUTOS_EN = {
       'You set a goal, for example fifty thousand in ten years, and Kapitaro shows you how to get there, month after month.',
       'Each month, a plan suggests how you could split your contribution, based on real prices and the latest news.',
       'And the AI assistant answers your questions, in plain English.',
-      'To get started, a short guided tour helps you create your first goal. Just follow along.',
+      'Looking for a calculator? Budget, small expenses, subscriptions, loans, debt or savings: they’re all free, and gathered in the Calculators menu.',
+      'To get started, a short guided tour helps you create your first goal. It’s on us: your goal and your monthly plan are free for thirty days. Just follow along.',
       'After that, on every page, the play button explains what it is for in thirty seconds.',
       'Kapitaro is an educational tool: it does not replace a licensed financial adviser, and investing involves the risk of losing money.',
     ],
-    do: { 6: [{ js: "showOnboarding(true); var k = document.getElementById('ob-btn-skip'); if (k) k.textContent = 'Skip';" }, { wait: 900 }, { click: '#onboarding-modal .ob-profile-card' }] },
+    do: { 7: [{ js: "showOnboarding(true); var k = document.getElementById('ob-btn-skip'); if (k) k.textContent = 'Skip';" }, { wait: 900 }, { click: '#onboarding-modal .ob-profile-card' }] },
   },
   accueil: {
     title: 'The home page',
@@ -174,7 +175,7 @@ export const TUTOS_EN = {
   objectif: {
     title: 'Your goal',
     say: [
-      'Your goal is the amount you want to reach, and by when. Everything starts from there.',
+      'Your goal is the amount you want to reach, and by when. Everything starts from there. Your goal and your monthly plan are free for thirty days.',
       'The curve shows where your contributions could take you: the solid line is the value with returns, the dotted line is the money you put in. Drag the slider to see any year.',
       'Just below, your real progress: what your investments are worth today, compared with your goal.',
       'You can have up to three goals. If one is out of reach, Kapitaro tells you what would need to change: the time frame, the contribution or the return.',
@@ -190,7 +191,7 @@ export const TUTOS_EN = {
     say: [
       'The AI assistant knows your portfolio, your goal and your profile.',
       'Ask it a question as you would a friend who knows the subject: it explains things using real prices and the news, and you make the call.',
-      'On the free plan, you get fifteen questions to start, then three per day.',
+      'On the free plan, you can ask it three questions a day.',
       'With Premium, questions are unlimited, and the agent works for you every day: a portfolio verdict, alerts, priorities and AI signals.',
     ],
   },
