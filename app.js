@@ -14115,7 +14115,8 @@ async function bulkDelete() {
   if (!confirm(`Supprimer ${ids.length} position${ids.length>1?'s':''} ?\n\n${names.slice(0,8).join('\n')}${names.length>8 ? '\n…et '+(names.length-8)+' autre(s)' : ''}`)) return;
 
   if (!isDemo && currentUser) {
-    try { await sb.from('positions').delete().in('id', ids); } catch(e) { showToast('Erreur: ' + e.message); return; }
+    // supabase-js ne lève pas d'exception en cas d'échec : il renvoie { error }, à vérifier
+    try { const { error } = await sb.from('positions').delete().in('id', ids); if (error) throw error; } catch(e) { showToast('Erreur: ' + e.message); return; }
   }
   positions = positions.filter(p => !ids.includes(String(p.id)));
   toggleSelectMode(false);
@@ -14193,7 +14194,7 @@ async function deletePosConfirm(id) {
   if (!p) return;
   if (!confirm(`Supprimer ${displayName(p.name)} de ton portefeuille ?`)) return;
   if (!isDemo && currentUser) {
-    try { await sb.from('positions').delete().eq('id', id); } catch(e) { showToast('Erreur: ' + e.message); return; }
+    try { const { error } = await sb.from('positions').delete().eq('id', id); if (error) throw error; } catch(e) { showToast('Erreur: ' + e.message); return; }
   }
   positions = positions.filter(x => String(x.id) !== String(id));
   refreshPortfolioUI();
