@@ -1000,8 +1000,12 @@ export default async function handler(req, res) {
       const subjects = pickDuoSubjects(n, usedKeys);
       const first = await duoCount();
       const made = await Promise.allSettled(subjects.map(async (s, i) => {
-        const [raw] = await askClaude(duoPrompt(s, usedTitles), DUO_SYSTEM);
-        const d = { ...cleanDuoScript(raw), num: 'IA' };
+        // Scénario refusé par le contrôle (prénoms manquants, trop court…) : une 2e tentative
+        let d;
+        for (let attempt = 0; !d; attempt++) {
+          try { const [raw] = await askClaude(duoPrompt(s, usedTitles), DUO_SYSTEM); d = { ...cleanDuoScript(raw), num: 'IA' }; }
+          catch (e) { if (attempt) throw e; }
+        }
         return dossierReel(d, { voice, pair: first + i, topic: s.key });
       }));
       const posts = made.filter(r => r.status === 'fulfilled').map(r => r.value);
