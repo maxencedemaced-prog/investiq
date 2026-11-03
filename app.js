@@ -10092,15 +10092,16 @@ async function addPos() {
   if (existing) {
     const totalQty = existing.qty + qty;
     const newPru = (existing.qty * existing.pru + qty * pru) / totalQty;
-    existing.qty = Math.round(totalQty * 1e8) / 1e8;
-    existing.pru = Math.round(newPru * 100) / 100;
-    existing.price = price;
-    if (alertPrice) existing.alert_price = alertPrice;
+    // Nouvelles valeurs appliquées à la position seulement après l'enregistrement réussi (sinon l'écran et la base divergent)
+    const upd = { qty: Math.round(totalQty * 1e8) / 1e8, pru: Math.round(newPru * 100) / 100, price, alert_price: alertPrice || existing.alert_price };
     if (!isDemo && currentUser) {
       const { error } = await sb.from('positions')
-        .update({ qty: existing.qty, pru: existing.pru, price: existing.price, alert_price: existing.alert_price })
+        .update(upd)
         .eq('id', existing.id);
       if (error) { showToast('Erreur: ' + error.message); return false; }
+    }
+    Object.assign(existing, upd);
+    if (!isDemo && currentUser) {
       await addTransaction(name, 'achat', qty, pru, 'Renforcement de position');
       trackEvent('position_added', { type, renforcement: true });
     }
@@ -12246,12 +12247,13 @@ async function prConfirm(btn, openAfter) {
         if (!(window._prOpts && window._prOpts.merge)) { skipped++; continue; }
         const tq = existing.qty + qty;
         const newPru = (existing.qty * existing.pru + qty * price) / tq;
-        existing.qty = Math.round(tq * 1e8) / 1e8; existing.pru = Math.round(newPru * 100) / 100; existing.price = price;
-        if (typeof isDemo !== 'undefined' && isDemo) { added++; }
+        // Appliqué à la position seulement si l'enregistrement réussit (sinon la ligne « non ajoutée » restait renforcée à l'écran)
+        const upd = { qty: Math.round(tq * 1e8) / 1e8, pru: Math.round(newPru * 100) / 100, price };
+        if (typeof isDemo !== 'undefined' && isDemo) { Object.assign(existing, upd); added++; }
         else if (currentUser) {
-          const { error } = await sb.from('positions').update({ qty: existing.qty, pru: existing.pru, price: existing.price }).eq('id', existing.id);
-          if (!error) { added++; try { await addTransaction(l.ticker, 'achat', qty, price, window._prOpts.label || 'Plan du mois'); } catch {} } else { skipped++; }
-        } else { added++; }
+          const { error } = await sb.from('positions').update(upd).eq('id', existing.id);
+          if (!error) { Object.assign(existing, upd); added++; try { await addTransaction(l.ticker, 'achat', qty, price, window._prOpts.label || 'Plan du mois'); } catch {} } else { skipped++; }
+        } else { Object.assign(existing, upd); added++; }
         continue;
       }
       const pos = { name: l.ticker, qty, pru: Math.round(price * 100) / 100, price: price, type: l.type || 'ETF', sector: '', platform, alert_price: null };
