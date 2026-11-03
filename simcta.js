@@ -14,6 +14,8 @@
     try { new ResizeObserver(send).observe(document.documentElement); } catch (e) { setInterval(send, 1000); }
     return;
   }
+  // Pages publiques anglaises (dossier en/) : seul le mode « embed » ci-dessus sert, l'appel à l'inscription est dans la page
+  if (document.documentElement.getAttribute('data-kp-lang') === 'en') return;
   var TEXT = {
     'simulateur-interets-composes': 'Enregistre ce calcul comme objectif et suis ta vraie progression, mois après mois.',
     'calculateur-objectif-epargne': 'Transforme ce calcul en objectif : Kapitaro suit ta progression réelle avec les vrais cours.',

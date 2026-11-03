@@ -65,4 +65,52 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://kapitaro.com/50-30-20-budget-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/50-30-20-budget-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/budget-50-30-20"/>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/small-expenses-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/small-expenses-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/calculateur-petites-depenses"/>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/subscription-cost-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/subscription-cost-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/calculateur-abonnements"/>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/personal-loan-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/personal-loan-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/cout-credit-consommation"/>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/debt-payoff-calculator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/debt-payoff-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/remboursement-dettes"/>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kapitaro.com/tools</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://kapitaro.com/tools"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kapitaro.fr/outils"/>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>
