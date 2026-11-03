@@ -512,7 +512,7 @@ RÉFÉRENCEMENT :
 - "title" : la question ou l'expression que tape un débutant sur Google, max 65 caractères (ex. « C'est quoi un ETF ? Explication simple pour débuter »).
 - "description" : résumé accrocheur de 140 à 155 caractères.
 - "slug" : 3 à 6 mots en minuscules, sans accents, séparés par des tirets (ex. « etf-explication-simple »).
-- Intègre naturellement 1 ou 2 liens internes au format [texte du lien](/chemin) vers les outils gratuits pertinents : /simulateur-interets-composes, /calculateur-objectif-epargne, /rendement-etf-msci-world, /epargne-de-precaution, /simulateur-investissement-programme, /calculateur-frais-placement, /calculateur-inflation, /faq.
+- Intègre naturellement 1 ou 2 liens internes au format [texte du lien](/chemin) vers les outils gratuits pertinents : /simulateur-interets-composes, /calculateur-objectif-epargne, /rendement-etf-msci-world, /epargne-de-precaution, /simulateur-investissement-programme, /calculateur-frais-placement, /calculateur-inflation, /budget-50-30-20, /calculateur-petites-depenses, /calculateur-abonnements, /cout-credit-consommation, /remboursement-dettes, /faq.
 
 FORMAT : réponds UNIQUEMENT par un tableau JSON contenant UN seul objet :
 [{"title": "…", "description": "…", "slug": "…", "intro": ["2 paragraphes d'introduction"],
@@ -998,7 +998,8 @@ export default async function handler(req, res) {
       if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
       const voice = voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
       const n = Math.max(1, Math.min(3, parseInt(b.count, 10) || 3));
-      const { data: done } = await sb.from('social_posts').select('title, video_script->duo_topic').eq('video_script->>style', 'duo');
+      // Sujets déjà traités = Reels Duo non rejetés (un sujet rejeté, raté par exemple, peut être refait)
+      const { data: done } = await sb.from('social_posts').select('title, video_script->duo_topic').eq('video_script->>style', 'duo').neq('status', 'rejected');
       const usedKeys = (done || []).map(r => r.duo_topic).filter(Boolean);
       const usedTitles = [...new Set([...DUO_DONE, ...usedKeys].map(k => (DUO_SUBJECTS.find(s => s.key === k) || {}).title || k)
         .concat((done || []).map(r => String(r.title || '').split('·').pop().trim()).filter(Boolean)))];

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261021110000" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <script src="/simcta.js?v=20261103200000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rembourser ses dettes : dans quel ordre ? Calculateur gratuit — Kapitaro</title>
+  <meta name="description" content="Crédit renouvelable, crédit conso, découvert : compare la méthode avalanche (la dette la plus chère d'abord) et la méthode boule de neige, et vois combien d'intérêts et de mois tu peux économiser. Gratuit, sans inscription.">
+  <link rel="canonical" href="https://kapitaro.fr/remboursement-dettes">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/remboursement-dettes">
+  <meta property="og:title" content="Rembourser ses dettes : dans quel ordre ? — Kapitaro">
+  <meta property="og:description" content="Avalanche ou boule de neige : vois combien de mois et d'intérêts tu économises en remboursant dans le bon ordre.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Calculateur de remboursement de dettes — Kapitaro",
+        "url": "https://kapitaro.fr/remboursement-dettes",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "fr",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Quelle dette rembourser en premier ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Mathématiquement, rembourser en avance la dette au taux le plus élevé (méthode avalanche) fait payer le moins d'intérêts. On continue de payer les mensualités minimales des autres dettes." } },
+          { "@type": "Question", "name": "Qu'est-ce que la méthode boule de neige ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "On rembourse d'abord la plus petite dette, quel que soit son taux. Elle coûte souvent un peu plus d'intérêts, mais une dette soldée vite motive à continuer." } },
+          { "@type": "Question", "name": "Combien coûte un découvert ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Un découvert génère des agios (intérêts) et parfois des frais. En France, la commission d'intervention est plafonnée à 8 € par opération et 80 € par mois, avec des plafonds plus bas pour les clients fragiles." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+  <style>
+    .debts{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+    .debt{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+    .debt input[type=text]{font:inherit;font-size:14px;font-weight:700;border:0;background:transparent;color:var(--text);width:100%;margin-bottom:6px;padding:0}
+    .debt .row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .debt label{font-size:11px;color:var(--muted);font-weight:600;display:block}
+    .debt .row input{width:100%;font:inherit;font-weight:700;font-size:13.5px;text-align:right;padding:6px 7px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)}
+    .warn{background:#fff7ed;border-left:3px solid #ea580c;border-radius:10px;padding:10px 14px;font-size:13.5px;color:#9a3412;margin-top:10px}
+    @media (prefers-color-scheme: dark){.warn{background:rgba(234,88,12,.14);color:#fdba74}}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Rembourser ses dettes : dans quel ordre ?</h1>
+      <p>Indique tes crédits et ce que tu peux rembourser en plus chaque mois : le calculateur compare les méthodes et te montre combien de mois et d'intérêts tu peux économiser.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="debts" id="debts"></div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="x">Je peux rembourser en plus chaque mois</label><span class="field-val"><input type="number" id="x-n" min="0" max="10000" step="10" aria-label="Montant supplémentaire mensuel en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="x" min="0" max="1000" step="10" value="100">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">En remboursant d'abord la dette la plus chère</div>
+          <div class="result-total result-big-green" id="out-gain">—</div>
+          <div class="result-sub" id="out-gain-sub"></div>
+          <table>
+            <thead><tr><th>Méthode</th><th>Sans dette dans</th><th>Intérêts payés</th></tr></thead>
+            <tbody>
+              <tr><td>Minimum seulement</td><td id="m-min">—</td><td id="i-min">—</td></tr>
+              <tr><td><strong>Avalanche</strong> (la plus chère d'abord)</td><td id="m-av">—</td><td id="i-av">—</td></tr>
+              <tr><td>Boule de neige (la plus petite d'abord)</td><td id="m-sb">—</td><td id="i-sb">—</td></tr>
+            </tbody>
+          </table>
+          <div id="out-order" class="example" style="font-size:14px;margin-top:12px"></div>
+          <div id="out-warn"></div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>Avalanche ou boule de neige ?</h2>
+      <p>Dans les deux méthodes, tu continues de payer la mensualité minimale de chaque dette, et tu mets tout l'argent en plus sur <strong>une seule</strong> dette à la fois. Quand elle est soldée, sa mensualité s'ajoute au montant en plus, et tu passes à la suivante : l'effort grossit à chaque étape.</p>
+      <ul>
+        <li><strong>Avalanche</strong> : on commence par la dette au taux le plus élevé, souvent le crédit renouvelable ou le découvert. C'est la méthode qui fait payer le moins d'intérêts.</li>
+        <li><strong>Boule de neige</strong> : on commence par la plus petite dette. Elle coûte souvent un peu plus, mais une première dette soldée rapidement aide à tenir.</li>
+      </ul>
+      <div class="example">
+        <p style="margin:0">L'essentiel n'est pas la méthode parfaite, c'est de <strong>rembourser un peu plus que le minimum</strong>, chaque mois, et de ne pas recréer de nouvelles dettes en parallèle.</p>
+      </div>
+
+      <h2>Pourquoi le minimum ne suffit pas</h2>
+      <p>Sur un crédit renouvelable, la mensualité minimale couvre parfois à peine les intérêts : la dette baisse très lentement. Ajouter même 50 ou 100 € par mois peut raccourcir le remboursement de plusieurs années.</p>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>Combien coûte un découvert ?</h3>
+        <p>Un découvert génère des agios (intérêts) et parfois des frais. En France, la commission d'intervention est plafonnée à 8 € par opération et 80 € par mois, avec des plafonds plus bas pour les clients en situation de fragilité. Garder un petit coussin sur son compte évite ces frais.</p>
+        <h3>Faut-il épargner ou rembourser ses dettes ?</h3>
+        <p>Une petite réserve d'abord (par exemple un mois de dépenses), pour ne pas retomber dans le découvert au premier imprévu. Ensuite, rembourser les dettes chères rapporte souvent plus que l'épargne ne rapporte. Voir l'<a href="/epargne-de-precaution">épargne de précaution</a>.</p>
+        <h3>Je n'arrive plus à payer mes crédits, que faire ?</h3>
+        <p>Parle-en tôt à ta banque. En France, la Banque de France peut aussi être saisie gratuitement d'un dossier de surendettement, et des Points conseil budget accompagnent gratuitement les personnes en difficulté.</p>
+        <h3>Ce calculateur est-il gratuit ?</h3>
+        <p>Oui, sans inscription, et rien n'est enregistré. Les résultats sont des estimations.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Une fois tes dettes remboursées</h2>
+      <p>Transforme tes anciennes mensualités en épargne : fixe un objectif, Kapitaro suit ta progression. Gratuit pour commencer.</p>
+      <a href="/?inscription=1" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+
+    <section class="others">
+      <h2>Autres outils gratuits</h2>
+      <a href="/cout-credit-consommation"><div>Coût d'un crédit conso<span>Intérêts payés, ou épargner avant d'acheter</span></div>›</a>
+      <a href="/budget-50-30-20"><div>Budget 50/30/20<span>Répartis ton salaire entre besoins, envies et épargne</span></div>›</a>
+      <a href="/epargne-de-precaution"><div>Épargne de précaution<span>Combien garder de côté avant d'investir</span></div>›</a>
+      <a href="/calculateur-abonnements"><div>Calculateur d'abonnements<span>Ce que tes abonnements te coûtent vraiment par an</span></div>›</a>
+      <a href="/calculateur-petites-depenses"><div>Coût de tes petites dépenses<span>Café, livraison, snacks : le vrai coût sur un an</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Calcul indicatif à but pédagogique (taux constants, sans nouveaux emprunts). Il ne remplace pas les tableaux d'amortissement de tes organismes et ne constitue pas un conseil personnalisé.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a><br><a href="/mentions-legales">Mentions légales</a> · <a href="/cgu">CGU / CGV</a> · <a href="/confidentialite">Confidentialité</a> · <a href="/risques">Risques</a> · <a href="/faq">FAQ</a> · <a href="/blog">Blog</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var dur = function (n) { if (!isFinite(n)) return 'jamais'; var y = Math.floor(n / 12), m = n % 12; return (y ? y + ' an' + (y > 1 ? 's' : '') : '') + (y && m ? ' ' : '') + (m || !y ? m + ' mois' : ''); };
+    // Exemples de départ (modifiables) : nom, reste dû, TAEG, mensualité minimale
+    var DEFAULTS = [['Crédit renouvelable', 2500, 19, 70], ['Crédit voiture', 6000, 5, 180], ['Paiements fractionnés', 400, 0, 100]];
+    var box = document.getElementById('debts');
+    DEFAULTS.forEach(function (x) {
+      var d = document.createElement('div'); d.className = 'debt';
+      d.innerHTML = '<input type="text" aria-label="Nom de la dette"><div class="row">' +
+        '<div><label>Reste dû (€)</label><input type="number" data-k="b" min="0" step="50"></div>' +
+        '<div><label>TAEG (%)</label><input type="number" data-k="r" min="0" max="30" step="0.1"></div>' +
+        '<div><label>Mensualité (€)</label><input type="number" data-k="m" min="0" step="5"></div></div>';
+      d.querySelector('input[type=text]').value = x[0];
+      d.querySelector('[data-k=b]').value = x[1]; d.querySelector('[data-k=r]').value = x[2]; d.querySelector('[data-k=m]').value = x[3];
+      d.addEventListener('input', update);
+      box.appendChild(d);
+    });
+
+    // Simulation mois par mois : intérêts, mensualités minimales, puis l'argent en plus (et les mensualités des dettes soldées)
+    // sur la dette prioritaire selon l'ordre donné. Renvoie { months, interest } (months = Infinity si la dette ne baisse jamais).
+    function simulate(debts, extra, order) {
+      var ds = debts.map(function (d) { return { b: d.b, i: Math.pow(1 + d.r / 100, 1 / 12) - 1, m: d.m }; });
+      var interest = 0, month = 0, budget = ds.reduce(function (s, d) { return s + d.m; }, 0) + extra;
+      while (ds.some(function (d) { return d.b > 0.005; }) && month < 600) {
+        month++;
+        ds.forEach(function (d) { if (d.b > 0) { var it = d.b * d.i; interest += it; d.b += it; } });
+        var left = budget;
+        ds.forEach(function (d) { if (d.b > 0) { var p = Math.min(d.m, d.b, left); d.b -= p; left -= p; } });
+        order(ds).forEach(function (d) { if (d.b > 0 && left > 0) { var p = Math.min(d.b, left); d.b -= p; left -= p; } });
+      }
+      return { months: month >= 600 ? Infinity : month, interest: interest };
+    }
+    var byRate = function (ds) { return ds.slice().sort(function (a, b) { return b.i - a.i; }); };
+    var bySize = function (ds) { return ds.slice().sort(function (a, b) { return a.b - b.b; }); };
+
+    var x = document.getElementById('x'), xn = document.getElementById('x-n');
+    xn.value = x.value;
+    x.addEventListener('input', function () { xn.value = x.value; update(); });
+    xn.addEventListener('input', function () { x.value = xn.value; update(); });
+
+    function update() {
+      var debts = [];
+      box.querySelectorAll('.debt').forEach(function (d) {
+        var v = function (k) { var n = parseFloat(d.querySelector('[data-k=' + k + ']').value); return isFinite(n) && n > 0 ? n : 0; };
+        if (v('b') > 0) debts.push({ name: d.querySelector('input[type=text]').value || 'Dette', b: v('b'), r: v('r'), m: v('m') });
+      });
+      var extra = Math.max(0, parseFloat(xn.value) || 0);
+      var warn = document.getElementById('out-warn');
+      warn.innerHTML = debts.filter(function (d) { return d.m <= d.b * (Math.pow(1 + d.r / 100, 1 / 12) - 1); })
+        .map(function (d) { return '<div class="warn">⚠ La mensualité de « ' + esc(d.name) + ' » ne couvre pas les intérêts : sans effort en plus, cette dette ne baisse pas.</div>'; }).join('');
+      if (!debts.length) { document.getElementById('out-gain').textContent = '—'; return; }
+      var mn = simulate(debts, 0, function () { return []; }), av = simulate(debts, extra, byRate), sb = simulate(debts, extra, bySize);
+      var set = function (id, t) { document.getElementById(id).textContent = t; };
+      set('m-min', dur(mn.months)); set('i-min', isFinite(mn.months) ? fmt(mn.interest) : '—');
+      set('m-av', dur(av.months)); set('i-av', isFinite(av.months) ? fmt(av.interest) : '—');
+      set('m-sb', dur(sb.months)); set('i-sb', isFinite(sb.months) ? fmt(sb.interest) : '—');
+      if (isFinite(mn.months) && isFinite(av.months)) {
+        set('out-gain', fmt(Math.max(0, mn.interest - av.interest)) + ' d\'intérêts en moins');
+        set('out-gain-sub', 'et sans dette ' + dur(Math.max(0, mn.months - av.months)) + ' plus tôt qu\'en payant le minimum');
+      } else {
+        set('out-gain', isFinite(av.months) ? 'Sans dette dans ' + dur(av.months) : '—');
+        set('out-gain-sub', isFinite(av.months) ? 'alors qu\'en payant le minimum, une dette ne baisse jamais' : 'Augmente le montant en plus pour que les dettes baissent.');
+      }
+      var first = debts.slice().sort(function (a, b) { return b.r - a.r; })[0];
+      document.getElementById('out-order').innerHTML = 'Ordre conseillé (avalanche) : commence par <strong>' + esc(first.name) + '</strong> (' + first.r.toLocaleString('fr-FR') + ' %), en payant le minimum sur les autres. Ensuite, passe à la suivante avec tout ce qui se libère.';
+    }
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'dettes', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+    update();
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20260930"></script>
+</body>
+</html>
