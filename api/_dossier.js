@@ -256,16 +256,16 @@ export const DOSSIERS = {
 };
 
 // Duos de prénoms pour le style « Duo » ({A} = celui qui fait le bon choix) : on tourne pour ne pas revoir toujours les mêmes.
-// Apparence neutre : cheveux longs ou courts, couleurs de cheveux et de peau variées, aucun signe distinctif.
+// look = personnage 3D des planches (video/public/duo/<look>-<humeur>.webp) ; le prénom peut changer, l'apparence suit le look.
 export const DUO_PAIRS = [
-  [{ name: 'Léa', long: true, hair: '#6b3f22' }, { name: 'Tom', hair: '#2b2b2b', skin: '#e0ac86' }],
-  [{ name: 'Camille', long: true, hair: '#c58a3a', skin: '#f3d0b0' }, { name: 'Hugo', hair: '#3b2a20' }],
-  [{ name: 'Sarah', long: true, hair: '#2b2b2b', skin: '#c98f6b' }, { name: 'Nathan', hair: '#8a5a32' }],
-  [{ name: 'Karim', hair: '#1f1a17', skin: '#c98f6b' }, { name: 'Emma', long: true, hair: '#d8a657', skin: '#f6d5b8' }],
-  [{ name: 'Inès', long: true, hair: '#1f1a17', skin: '#d9a27e' }, { name: 'Lucas', hair: '#a0662f', skin: '#f3d0b0' }],
-  [{ name: 'Julien', hair: '#5a3a22' }, { name: 'Chloé', long: true, hair: '#7a4a2a', skin: '#f3d0b0' }],
-  [{ name: 'Manon', long: true, hair: '#3b2a20', skin: '#e0ac86' }, { name: 'Mehdi', hair: '#2b2b2b', skin: '#b97a56' }],
-  [{ name: 'Yanis', hair: '#1f1a17', skin: '#8d5a3b' }, { name: 'Zoé', long: true, hair: '#b5651d', skin: '#f6d5b8' }],
+  [{ name: 'Léa', look: 'lea', long: true, hair: '#d8a657' }, { name: 'Tom', look: 'tom', hair: '#3b2a20' }],
+  [{ name: 'Camille', look: 'camille', long: true, hair: '#7a4a2a' }, { name: 'Hugo', look: 'hugo', hair: '#3b2a20' }],
+  [{ name: 'Sarah', look: 'sarah', long: true, hair: '#2b2b2b' }, { name: 'Nathan', look: 'nathan', hair: '#5a3a22' }],
+  [{ name: 'Karim', look: 'nathan', hair: '#5a3a22' }, { name: 'Emma', look: 'lea', long: true, hair: '#d8a657' }],
+  [{ name: 'Inès', look: 'sarah', long: true, hair: '#2b2b2b' }, { name: 'Lucas', look: 'hugo', hair: '#3b2a20' }],
+  [{ name: 'Julien', look: 'tom', hair: '#3b2a20' }, { name: 'Chloé', look: 'camille', long: true, hair: '#7a4a2a' }],
+  [{ name: 'Manon', look: 'camille', long: true, hair: '#7a4a2a' }, { name: 'Mehdi', look: 'nathan', hair: '#5a3a22' }],
+  [{ name: 'Yanis', look: 'hugo', hair: '#3b2a20' }, { name: 'Zoé', look: 'lea', long: true, hair: '#d8a657' }],
 ];
 
 // Remplace {A} / {B} par les prénoms du duo n° k : renvoie titre, légende, scènes et l'apparence à passer au rendu.
