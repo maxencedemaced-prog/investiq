@@ -104,6 +104,17 @@
           }).join('') + '</div>';
       }).join('') + '</div>';
   }
+  // Petites dépenses et abonnements : le calcul à la main est un avant-goût de « Mes dépenses » (Premium), qui lit le relevé
+  // bancaire et retrouve tout automatiquement ; encart au-dessus du calculateur (ouvre la page pour un compte Premium)
+  function depensesPromoHTML() {
+    if (TAB !== '/calculateur-petites-depenses' && TAB !== '/calculateur-abonnements') return '';
+    var premium = typeof isPremiumUser === 'function' && isPremiumUser();
+    var what = TAB === '/calculateur-abonnements' ? 'tous tes abonnements, même ceux que tu as oubliés' : 'toutes tes petites dépenses du mois';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:linear-gradient(135deg,#0b1220,#14532d);color:#fff;border-radius:16px;padding:14px 16px;margin-bottom:14px">'
+      + '<div style="font-size:13.5px;line-height:1.5;min-width:220px;flex:1"><b style="font-size:14.5px">' + (premium ? '✨ Fais-le automatiquement' : '✨ Tu ne sais pas tout ce que tu paies ?') + '</b><br>'
+      + '<span style="color:rgba(255,255,255,.8)">Avec Mes dépenses, Kapitaro lit ton relevé bancaire et retrouve ' + what + ', sans rien taper.</span></div>'
+      + '<button type="button" onclick="' + (premium ? 'nav(\'depenses\')' : 'showPlansModal()') + '" style="background:#22c55e;border:none;color:#052e16;font:inherit;font-size:13px;font-weight:800;padding:10px 14px;border-radius:10px;cursor:pointer;white-space:nowrap">' + (premium ? 'Ouvrir Mes dépenses' : 'Essayer Premium') + '</button></div>';
+  }
   // Hauteur du cadre intégré : envoyée par la page de l'outil (simcta.js), pour éviter une barre de défilement interne
   window.addEventListener('message', function (e) {
     var f = document.getElementById('calc-frame');
@@ -113,7 +124,7 @@
   window.renderCalc = function () {
     var root = document.getElementById('calc-root'); if (!root) return;
     if (TAB[0] === '/') {   // calculateur public, affiché dans la page
-      root.innerHTML = menuHTML() + '<iframe id="calc-frame" src="' + TAB + '" title="Calculateur" loading="lazy" style="display:block;width:100%;height:900px;border:0;border-radius:16px;background:transparent"></iframe>';
+      root.innerHTML = menuHTML() + depensesPromoHTML() + '<iframe id="calc-frame" src="' + TAB + '" title="Calculateur" loading="lazy" style="display:block;width:100%;height:900px;border:0;border-radius:16px;background:transparent"></iframe>';
       return;
     }
     root.innerHTML = menuHTML()
