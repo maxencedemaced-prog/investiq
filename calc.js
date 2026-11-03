@@ -112,7 +112,7 @@
     var what = TAB === '/calculateur-abonnements' ? 'tous tes abonnements, même ceux que tu as oubliés' : 'toutes tes petites dépenses du mois';
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:linear-gradient(135deg,#0b1220,#14532d);color:#fff;border-radius:16px;padding:14px 16px;margin-bottom:14px">'
       + '<div style="font-size:13.5px;line-height:1.5;min-width:220px;flex:1"><b style="font-size:14.5px">' + (premium ? '✨ Fais-le automatiquement' : '✨ Tu ne sais pas tout ce que tu paies ?') + '</b><br>'
-      + '<span style="color:rgba(255,255,255,.8)">Avec Mes dépenses, Kapitaro lit ton relevé bancaire et retrouve ' + what + ', sans rien taper.</span></div>'
+      + '<span style="color:rgba(255,255,255,.8)">Avec <a href="#" onclick="nav(\'depenses\');return false" style="color:#4ade80;font-weight:800;text-decoration:underline;text-underline-offset:3px">Mes dépenses</a>, Kapitaro lit ton relevé bancaire et retrouve ' + what + ', sans rien taper.</span></div>'
       + '<button type="button" onclick="' + (premium ? 'nav(\'depenses\')' : 'showPlansModal()') + '" style="background:#22c55e;border:none;color:#052e16;font:inherit;font-size:13px;font-weight:800;padding:10px 14px;border-radius:10px;cursor:pointer;white-space:nowrap">' + (premium ? 'Ouvrir Mes dépenses' : 'Essayer Premium') + '</button></div>';
   }
   // Hauteur du cadre intégré : envoyée par la page de l'outil (simcta.js), pour éviter une barre de défilement interne
