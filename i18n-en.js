@@ -1188,6 +1188,74 @@
     agentSample: { title: 'AI agent example', note: 'Static preview: nothing is calculated on your data. With Premium, everything is based on your real portfolio.', text: 'Here’s what the AI agent gives you with Premium: score, alerts, figures and portfolio analysis. These are sample numbers.' },
   };
 
+  // ════════════ NOUVEAUTÉS DE DEV (novembre 2026) : essai de l'objectif, questions du jour, calculateurs ════════════
+  add({
+    // Accueil : lien vers les calculateurs, message sous l'inscription, tarifs
+    'Calculateurs gratuits': 'Free calculators',
+    ', sans inscription : budget, dépenses, crédit, dettes, épargne': ', no sign-up: budget, spending, loans, debt, savings',
+    'Ton objectif et ton plan du mois offerts 30 jours': 'Your goal and monthly plan free for 30 days',
+    '. Puis 3 questions par jour à l’assistant.': '. Then 3 questions a day to the assistant.',
+    'Objectifs avec faisabilité, plan du mois offert 30 jours': 'Goals with feasibility check, monthly plan free for 30 days',
+    "3 questions par jour à l'assistant IA": '3 questions a day to the AI assistant',
+    'Ton plan du mois et ta répartition, chaque mois': 'Your monthly plan and allocation, every month',
+    '🧮 Tous les calculateurs': '🧮 All calculators',
+    'Budget 50/30/20': '50/30/20 budget',
+    'Combien coûtent tes petites dépenses': 'What your small daily spending really costs',
+    'Combien coûtent tes abonnements': 'What your subscriptions really cost',
+    "Coût d'un crédit conso": 'Cost of a personal loan',
+    'Rembourser ses dettes dans le bon ordre': 'Pay off your debts in the right order',
+    'Frais, inflation, et tous les calculateurs gratuits : budget, dépenses, crédits, épargne.': 'Fees, inflation and all the free calculators: budget, spending, loans, savings.',
+    // Page Calculateurs de l'app (calc.js) : menu classé, cadre, encart « Mes dépenses »
+    'Budget et dépenses': 'Budget & spending', 'Crédits et dettes': 'Loans & debt', 'Épargne et placements': 'Savings & investing',
+    '🧾 Budget 50/30/20': '🧾 50/30/20 budget', '☕ Petites dépenses': '☕ Small expenses', '📺 Abonnements': '📺 Subscriptions',
+    '💳 Coût d’un crédit conso': '💳 Personal loan cost', '🧮 Rembourser ses dettes': '🧮 Pay off debts',
+    '💸 Impact des frais': '💸 Fee impact', '📉 Inflation': '📉 Inflation', '☂️ Épargne de précaution': '☂️ Emergency fund',
+    '🎯 Objectif d’épargne': '🎯 Savings goal', '📈 Intérêts composés': '📈 Compound interest', '🗓️ Investir chaque mois': '🗓️ Invest every month',
+    '🌍 ETF MSCI World': '🌍 MSCI World ETF', 'Calculateur': 'Calculator',
+    '✨ Fais-le automatiquement': '✨ Let Kapitaro do it for you', '✨ Tu ne sais pas tout ce que tu paies ?': '✨ Not sure what you’re really paying for?',
+    'Avec': 'With', 'Mes dépenses': 'My spending',
+    ', Kapitaro lit ton relevé bancaire et retrouve tous tes abonnements, même ceux que tu as oubliés, sans rien taper.': ', Kapitaro reads your bank statement and finds all your subscriptions, even the ones you forgot, without typing anything.',
+    ', Kapitaro lit ton relevé bancaire et retrouve toutes tes petites dépenses du mois, sans rien taper.': ', Kapitaro reads your bank statement and finds all your small expenses for the month, without typing anything.',
+    'Ouvrir Mes dépenses': 'Open My spending', 'Essayer Premium': 'Try Premium',
+    // Essai gratuit de l'objectif (30 jours) : bandeaux, page Objectif en lecture seule, Paramètres, offres
+    'Ton objectif et ton plan du mois te sont offerts pendant 30 jours.': 'Your goal and your monthly plan are free for 30 days.',
+    'Voir Premium': 'See Premium',
+    "⏸ Ton programme d'épargne est en pause": '⏸ Your savings plan is on pause',
+    "Ton essai gratuit de 30 jours est terminé. Ton objectif et ta courbe restent visibles, mais le plan du mois, la répartition et les modifications sont réservés à Premium : c'est ce qui permet à Kapitaro de suivre les marchés et d'ajuster ton plan chaque mois.":
+      'Your 30-day free trial has ended. Your goal and your chart stay visible, but the monthly plan, the allocation and any changes are part of Premium: that’s what lets Kapitaro follow the markets and adjust your plan every month.',
+    '🔒 Ton plan du mois est réservé à Premium depuis la fin de ton essai.': '🔒 Your monthly plan is part of Premium since your trial ended.',
+    '🔒 Ta répartition est réservée à Premium depuis la fin de ton essai.': '🔒 Your allocation is part of Premium since your trial ended.',
+    '🔒 Essai terminé : le plan du mois et la répartition de ton objectif sont réservés à Premium.': '🔒 Trial ended: the monthly plan and the allocation for your goal are part of Premium.',
+    'Ton essai de 30 jours est terminé': 'Your 30-day trial has ended',
+    'Ton objectif et ta courbe restent visibles.': 'Your goal and your chart stay visible.',
+    'Avec Premium : un nouveau plan chaque mois, adapté aux marchés et à ton portefeuille.': 'With Premium: a new plan every month, adjusted to the markets and to your portfolio.',
+    "Créer, modifier et suivre jusqu'à trois objectifs.": 'Create, edit and track up to three goals.',
+    'Analyses IA illimitées et agent IA complet.': 'Unlimited AI analyses and the full AI agent.',
+    "Programme d'épargne — Premium": 'Savings plan — Premium',
+    "Objectifs : simulation, faisabilité et leviers d'ajustement": 'Goals: simulation, feasibility check and levers',
+    "Programme d'épargne :": 'Savings plan:', 'plan du mois': 'monthly plan',
+    'et répartition IA pour tes objectifs, chaque mois': 'and AI allocation for your goals, every month',
+    "15 analyses IA offertes, puis 3 par jour · 3 questions par jour à l'assistant · plan du mois offert 30 jours": '15 free AI analyses, then 3 per day · 3 questions a day to the assistant · monthly plan free for 30 days',
+    // Agent IA : questions du jour
+    '⏳ Tu as posé tes 3 questions gratuites du jour': '⏳ You’ve asked your 3 free questions for today',
+    "Ce n'est pas un bug : chaque question est analysée par une IA avec tes données, et cela a un coût. En version gratuite, tu peux poser 3 questions par jour : elles reviennent demain matin. Avec Premium, tu poses autant de questions que tu veux, et l'agent analyse ton portefeuille chaque jour.":
+      'This isn’t a bug: each question is analysed by an AI using your data, and that has a cost. On the free plan you can ask 3 questions a day: they come back tomorrow morning. With Premium, you can ask as many questions as you like, and the agent reviews your portfolio every day.',
+    'Passer à Premium — questions illimitées': 'Go Premium — unlimited questions',
+    "💬 C'était ta dernière question gratuite du jour": '💬 That was your last free question for today',
+    'illimité avec Premium': 'unlimited with Premium', '·': '·',
+    "🔒 Questions du jour utilisées : tu as posé tes 3 questions gratuites d'aujourd'hui à l'assistant.": '🔒 Today’s questions used: you’ve asked the assistant your 3 free questions for today.',
+    // Messages du serveur (api/claude.js)
+    'Ton essai gratuit de 30 jours est terminé : le plan du mois et la répartition de ton objectif sont réservés à Premium.': 'Your 30-day free trial has ended: the monthly plan and the allocation for your goal are part of Premium.',
+    "Tu as posé tes 3 questions gratuites du jour à l'assistant. 3 nouvelles reviennent demain, ou passe à Premium pour des questions illimitées.": 'You’ve asked the assistant your 3 free questions for today. 3 new ones come back tomorrow, or go Premium for unlimited questions.',
+    "Beaucoup de plans générés aujourd'hui : la génération reprend demain matin.": 'Lots of plans generated today: generation resumes tomorrow morning.',
+  });
+  K.patterns.push(
+    [/^🎁 Essai gratuit : (\d+) jours? restants?$/, function (m, n) { return '🎁 Free trial: ' + n + ' day' + (n === '1' ? '' : 's') + ' left'; }],
+    [/^Continuer avec Premium — (.+)\/mois$/, 'Continue with Premium — $1/month'],
+    [/^Offre gratuite · 🎁 essai objectif : (\d+) j$/, function (m, n) { return 'Free plan · 🎁 goal trial: ' + n + ' day' + (n === '1' ? '' : 's') + ' left'; }],
+    [/^💬 Encore (\d+) questions? gratuites? aujourd'hui$/, function (m, n) { return '💬 ' + n + ' free question' + (n === '1' ? '' : 's') + ' left today'; }]
+  );
+
   // ═══════════════════════════ MOTEUR DE TRADUCTION ═══════════════════════════
   var dbg = false;
   try { dbg = !(window.kpI18n && kpI18n.prod) && /[?&]i18n_debug=1/.test(location.search); } catch (e) {}
@@ -1393,6 +1461,9 @@
     '/epargne-de-precaution': '/emergency-fund-calculator', '/simulateur-investissement-programme': '/dollar-cost-averaging-calculator',
     '/rendement-etf-msci-world': '/msci-world-etf-returns', '/faq': '/faq', '/cgu': '/terms', '/confidentialite': '/privacy',
     '/risques': '/risks', '/mentions-legales': '/legal',
+    '/budget-50-30-20': '/50-30-20-budget-calculator', '/calculateur-petites-depenses': '/small-expenses-calculator',
+    '/calculateur-abonnements': '/subscription-cost-calculator', '/cout-credit-consommation': '/personal-loan-calculator',
+    '/remboursement-dettes': '/debt-payoff-calculator', '/outils': '/tools',
   };
   var ON_COM = location.hostname.indexOf('kapitaro.com') >= 0;
   function fixLinks(root) {
@@ -1405,4 +1476,6 @@
     }
   }
   K.fixLinks = fixLinks;
+  // Page Calculateurs de l'app (calc.js) : le cadre intégré charge la page anglaise du calculateur
+  K.enPath = function (p) { return EN_PAGES[p] ? (ON_COM ? '' : '/en') + EN_PAGES[p] : p; };
 })();
