@@ -195,8 +195,8 @@ export async function writeReelScript({ post, duo, askClaude, facts, style }) {
   return beats;
 }
 
-// Voix qui montent trop en fin de mot en mode « créatif » : stabilité « naturelle » (v3/v4) et moins d'expressivité (v2)
-const CALM_VOICES = [/vaud/];
+// Voix (David Vautrin…) qui montent trop en fin de mot en mode « créatif » : stabilité « naturelle » (v3/v4) et moins d'expressivité (v2)
+const CALM_VOICES = [/vautrin/];
 export const calmVoice = name => CALM_VOICES.some(re => re.test(nk(name)));
 export function ttsSettings(model, speed, calm) {
   if (model === 'eleven_multilingual_v2') return calm
