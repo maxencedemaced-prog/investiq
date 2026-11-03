@@ -2,6 +2,30 @@
 
 > Document destiné au propriétaire (Maxence). Branche de travail : `i18n-en` (créée depuis `dev`), pull request en brouillon vers `dev`.
 > **Rien n'est en production** : `main` et `dev` ne sont pas modifiées, aucun réglage Vercel / Supabase / Stripe / Google n'a été touché, aucun SQL n'a été lancé.
+> **Mise à jour du 04/11/2026** : la branche a reçu toutes les nouveautés de `dev` (essai de l'objectif, quotas IA, calculateurs, Reels Duo…) et elles sont traduites — voir la section 0 juste en dessous.
+
+---
+
+## 0. Mise à jour du 04/11/2026 : fusion de `dev` et traduction des nouveautés
+
+**Fusion** : `dev` (≈ 30 changements depuis le 31/10) fusionnée dans `i18n-en`. 9 conflits résolus en gardant tout ce qui vient de `dev` **et** la mécanique de traduction. La version française a été comparée à `dev` dans un navigateur headless (accueil, 12 onglets en mode démo, page Calculateurs et ses cadres, 5 nouveaux calculateurs, /outils, intérêts composés, épargne de précaution, CGU, confidentialité, mentions légales, FAQ) : **texte visible identique**. Les 3 seules différences existaient déjà avant (travail du 31/10) : réglage « Devise d'affichage » dans Paramètres, option « CHF » des simulateurs français déjà existants, et sélecteur de langue visible **uniquement sur les hôtes de test** (sur kapitaro.fr il reste masqué, vérifié en simulant le domaine). Prix « 9,99 € », formats « 1 234,50 », PEA… inchangés.
+
+| Nouveauté de `dev` | Version anglaise |
+|---|---|
+| Essai gratuit de l'objectif (30 jours) : bandeau « jours restants », page Objectif en lecture seule après l'essai, `objectifGate`, ligne de Paramètres, offres | ✅ traduit (dictionnaire + formules avec nombres : « 🎁 Free trial: 5 days left », « Free plan · 🎁 goal trial: 12 days left ») |
+| Quotas IA séparés, message de l'agent quand les 3 questions du jour sont utilisées, « Encore 2 questions gratuites aujourd'hui » | ✅ traduit, y compris les nouveaux messages du serveur (`api/claude.js` : essai terminé, questions du jour, trop de plans générés) |
+| E-mails `trial_j7`, `trial_j1`, `trial_end` (`api/_email.js`) | ✅ version anglaise dans `EMAILS_EN`, choisie automatiquement pour les comptes anglais (`user_metadata.lang = 'en'`, mécanisme déjà en place) ; bouton vers `kapitaro.com/?plans=1` |
+| Page Calculateurs de l'app (`calc.js`) : menu classé, cadre intégré, encart « Mes dépenses » | ✅ traduite ; en anglais le cadre charge la page anglaise (`KP_EN.enPath`, ex. `/en/50-30-20-budget-calculator` sur les hôtes de test, `/50-30-20-budget-calculator` sur kapitaro.com). En français, `calc.js` fait exactement la même chose qu'avant |
+| 5 nouveaux calculateurs publics + page /outils | ✅ versions anglaises **adaptées** (pas traduites mot à mot) : `en/50-30-20-budget-calculator.html`, `en/small-expenses-calculator.html`, `en/subscription-cost-calculator.html`, `en/personal-loan-calculator.html`, `en/debt-payoff-calculator.html`, `en/tools.html`. $/€/£/CHF, hreflang croisés (2 balises ajoutées dans l'en-tête des 6 pages françaises), `sitemap-en.xml`, routage kapitaro.com (`vercel.json`, règles limitées à l'hôte kapitaro.com). Retirés : plafond français de la commission d'intervention (→ « overdraft fees vary by bank and country »), loi de juin 2023 sur la résiliation, Banque de France / Points conseil budget (→ aide gratuite au surendettement en général), TAEG (→ APR, avec la différence US / UE-UK expliquée). **Calculs vérifiés** : mêmes résultats que les pages françaises avec les mêmes valeurs (5 calculateurs) |
+| Mode « embed » de `simcta.js` | ✅ actif aussi sur les 12 pages anglaises (sans en-tête, bas de page ni appel à l'inscription dans le cadre de l'app). Les pages anglaises gardent leur propre appel à l'inscription hors de l'app ; les pages françaises ne changent pas |
+| Accueil : lien « Calculateurs gratuits », message sous l'inscription, tableau des offres, liens du pied de page | ✅ traduits ; liens vers les pages anglaises. Corrigé au passage (oubli du 31/10) : prix du tableau des offres affichés « 9.99 € » au lieu de « €9.99 » |
+| FAQ (30 jours offerts, 3 questions par jour, Premium) | ✅ `faq-data-en.js` (bulle d'aide et page `/faq` anglaise) |
+| Tutoriels (TUTOS_EN) : menu Calculateurs, 30 jours offerts, 3 questions par jour | ✅ textes anglais mis à jour ; la vidéo de présentation avait une phrase de moins que la française (elle aurait été refusée) : réalignée. **Aucune voix générée** |
+| Studio, Reels Duo, `api/social.js` | Usage interne : non traduits (comme avant) |
+
+**Textes juridiques anglais** : finalisés au plus prudent selon ta décision (pas d'avocat pour le moment) — voir section 5 et « Risques juridiques restants (sans avocat) ».
+
+**Contrôles** : `node --check` sur tous les JS modifiés ; app anglaise parcourue onglet par onglet avec `?lang=en&i18n_debug=1` : 0 texte français relevé (hors nom « LVMH Moët Hennessy Louis Vuitton » de l'exemple de l'accueil, remplacé une fois la région connue) ; pages juridiques anglaises affichées sans erreur.
 
 ---
 
@@ -31,15 +55,17 @@
 
 ## 3. Ce que tu devras faire toi-même (rien de cela n'a été fait)
 
-1. **Acheter kapitaro.com** et l'ajouter au projet Vercel (avec `www.kapitaro.com`, déjà redirigé vers `kapitaro.com` par `vercel.json`).
+1. **Acheter kapitaro.com** et l'ajouter au projet Vercel (avec `www.kapitaro.com`, déjà redirigé vers `kapitaro.com` par `vercel.json`). Les nouvelles adresses anglaises (`/tools`, `/50-30-20-budget-calculator`, `/small-expenses-calculator`, `/subscription-cost-calculator`, `/personal-loan-calculator`, `/debt-payoff-calculator`) sont déjà routées.
 2. **Supabase → Authentication → URL Configuration** : ajouter `https://kapitaro.com` et `https://kapitaro.com/**` aux « Redirect URLs ». Les e-mails Supabase (confirmation d'inscription, mot de passe oublié) n'existent qu'en français : prévoir un modèle bilingue ou un envoi via Resend selon `user_metadata.lang` (décision ci-dessous).
 3. **Google Cloud (connexion Google)** : ajouter `https://kapitaro.com` aux « Authorized JavaScript origins » ; l'écran de consentement Google affiche le nom de l'app, à vérifier.
 4. **Stripe** : créer les prix en USD (et éventuellement GBP) — proposition **9,99 $/mois et 79,99 $/an [À CONFIRMER]** — puis donner les identifiants de prix (`price_…`) pour les brancher dans `api/create-checkout.js` selon la devise ; activer la langue anglaise des reçus Stripe ; vérifier la fiscalité : **taxe de vente US** (Stripe Tax, seuils par État), **TVA UE** (guichet unique OSS), **TVA UK**. Les URL de retour après paiement sont déjà prévues pour kapitaro.com. Ensuite seulement : passer `usdReady: true` dans `i18n.js`.
 5. **Variables Vercel** : rien d'obligatoire. `APP_URL` reste `https://kapitaro.fr` ; le retour sur kapitaro.com est déduit automatiquement de l'origine de la demande.
 6. **Publicité** : si tu fais de la pub en anglais, déclarer kapitaro.com dans Google Ads / Meta (le bandeau cookies anglais respecte déjà le signal GPC et a le lien « Do Not Sell or Share »).
 7. Passer `enDomainLive: true` dans `i18n.js` quand kapitaro.com est en ligne (le sélecteur de langue apparaîtra alors sur kapitaro.fr et renverra vers kapitaro.com).
-8. Après relecture juridique : retirer `noindex` des pages juridiques `en/terms|privacy|cookies|risks|legal.html` et les ajouter à `sitemap-en.xml`.
-9. **Faire relire tous les textes juridiques anglais par un avocat** (section 5).
+8. Quand les marques restantes des textes juridiques sont traitées (section « Risques juridiques restants ») : retirer le bandeau « Draft » (`LEGAL_DRAFT_NOTE_EN` dans `legal-docs.js`), retirer `noindex` des pages `en/terms|privacy|cookies|risks|legal.html` et les ajouter à `sitemap-en.xml`.
+9. Relecture par un avocat : **pas pour le moment** (ta décision du 04/11). Les textes ont été finalisés au plus prudent ; ce qui reste est listé plus bas.
+10. **Voix anglaises des tutoriels** : à fabriquer depuis le Studio (mode d'emploi plus bas) ; coût ElevenLabs mis à jour ≈ 4 850 caractères.
+11. **Avant un lancement aux US** : mettre en place l'e-mail de confirmation d'abonnement (conditions de renouvellement + comment résilier) et le rappel avant renouvellement annuel ; **avant un lancement au Royaume-Uni** : vérifier les règles d'abonnement du DMCC Act 2024.
 
 ## 4. Ce qui est fait (branche `i18n-en`)
 
@@ -66,9 +92,18 @@
 | Blog | Laissé en français : lien masqué sur la version anglaise ; `kapitaro.com/blog` renvoie vers `kapitaro.fr/blog`. Je n'ai pas traduit automatiquement les articles (exactitude non garantie) |
 | Contrôles finaux : syntaxe des 28 fichiers JS modifiés ; page anglaise parcourue onglet par onglet en mode démo (il ne reste que les données d'exemple françaises : libellés bancaires du relevé fictif) ; pages françaises identiques (titre, textes, « 9,99 € », « 1 234,50 », « 47,3 k€ », lexique avec PEA, CGU françaises) ; pages françaises modifiées uniquement par 2 balises hreflang | ✅ |
 
-## 5. Textes juridiques à faire relire (brouillons)
+## 5. Textes juridiques anglais
 
-Chaque page porte en haut : « **Draft – to be reviewed by a qualified lawyer before publication** » (et un commentaire HTML). Les pages sont en `noindex`.
+**04/11/2026 — finalisés au plus prudent, sans avocat (ta décision)** :
+- Éditeur établi en France (faits repris exactement des textes français : Maxence De Macedo, entrepreneur individuel, nom commercial Quorvia, SIREN 902 642 016, 21 Le Routoir, 38240 Meylan, contact@kapitaro.fr).
+- **Droit français** pour toutes les régions, sans priver l'utilisateur des protections impératives de son pays / État ; **pas d'arbitrage, pas de renonciation aux actions collectives** ; tentative amiable d'abord ; tribunaux français ou ceux du domicile quand la loi le permet.
+- Outil pédagogique, pas de conseil : US « **not a registered investment adviser or broker-dealer** » (mentions légales, conditions, risques) ; UE/UK « **not investment advice, capital at risk, past performance is not a reliable indicator of future results** ».
+- Rétractation UE **au prorata** (et remboursement total si l'utilisateur n'a pas demandé expressément le démarrage immédiat) ; même logique pour l'annulation UK.
+- Données : **RGPD pour tous** les utilisateurs (éditeur en France) + droits **CCPA/CPRA** pour les Californiens (et autres États), UK GDPR pour le Royaume-Uni.
+- Essai gratuit de 30 jours décrit dans les conditions (pas de carte, pas de passage automatique au payant).
+- Le bandeau « Draft » et le `noindex` restent tant que les marques ci-dessous existent.
+
+Tableau d'origine (brouillons du 29/10), pour mémoire :
 
 | Document | Fichier | Points à faire valider ([TO CONFIRM] dans le texte) |
 |---|---|---|
@@ -77,6 +112,23 @@ Chaque page porte en haut : « **Draft – to be reviewed by a qualified lawyer 
 | Cookie notice | `LEGAL_DOCS_EN.cookies`, `/cookies` | Durées et liste exacte des cookies Meta/Google. |
 | Risk disclosure | `LEGAL_DOCS_EN.risk`, `/risks` | Formulations réglementaires UE/UK (« past performance… », « capital at risk »). |
 | Legal notice | `LEGAL_DOCS_EN.mentions`, `/legal` | Agent DMCA (US) ; « financial promotions » UK (FCA, section 21 FSMA). |
+
+## Risques juridiques restants (sans avocat)
+
+Marques encore présentes dans `legal-docs.js` (visibles sur les pages anglaises, qui ne sont pas en ligne) — elles demandent une décision de ta part ou un professionnel :
+
+| Marque | Région | Ce qu'il faut | Risque si on lance sans |
+|---|---|---|---|
+| `[TO CONFIRM by US counsel: …investment-adviser registration]` | US | Avis d'un avocat US : le score de santé, les réponses de l'IA sur le portefeuille et le plan du mois peuvent être vus comme du conseil personnalisé (exclusion « éditeur », arrêt *Lowe v. SEC*). | Enregistrement comme conseiller exigé par la SEC ou un État. Option prudente sans avocat : ne pas lancer aux US, ou y désactiver les fonctions personnalisées. |
+| `[TO CONFIRM — registration with the U.S. Copyright Office…]` | US | Désigner un agent DMCA et l'enregistrer (formulaire en ligne, payant). | Pas de protection « safe harbor » si un utilisateur publie un contenu protégé (risque faible : peu de contenu publié par les utilisateurs). |
+| `[TO IMPLEMENT before any US launch: …]` | US | Coder l'e-mail de confirmation d'abonnement (renouvellement automatique + résiliation) et le rappel avant renouvellement annuel. | Lois d'État sur le renouvellement automatique (Californie…). |
+| `[TO CONFIRM: CCPA thresholds…]` et `[TO CONFIRM list and thresholds by US counsel.]` | US | Vérifier si les seuils (chiffre d'affaires, nombre de résidents) s'appliquent ; on applique déjà les droits par prudence. | Faible : les droits sont déjà offerts. |
+| `[TO CONFIRM by UK counsel: … "financial promotion" … section 21 FSMA]` | UK | Avis d'un avocat UK : certains textes (accueil, pubs, simulateurs) pourraient être des « financial promotions » à faire approuver par une entreprise agréée FCA. | Infraction pénale au Royaume-Uni. Option prudente : pas de publicité ciblant le Royaume-Uni avant avis. |
+| `[TO CONFIRM — likely required if we target UK users]` | UK | Nommer un représentant UK (art. 27 UK GDPR), prestataire payant. | Sanction ICO si on cible le Royaume-Uni sans représentant. |
+| `[TO CHECK before any UK launch: … DMCC Act 2024 …]` | UK | Vérifier la date d'entrée en vigueur et les obligations (rappels, délai de réflexion au renouvellement). | Non-conformité des abonnements UK. |
+| `[TO CONFIRM — name and website of the consumer mediator…]` | UE | Adhérer à un médiateur de la consommation (obligation française, déjà valable pour kapitaro.fr) et donner son nom. | Amende administrative (DGCCRF) ; concerne aussi la version française. |
+
+Autres points sans marque, à garder en tête : la version française des CGU ne mentionne pas encore l'essai de 30 jours (je n'y ai pas touché : la version française doit rester identique à `dev`) ; le démarrage immédiat de Premium n'est pas demandé expressément au paiement, donc en cas de rétractation UE le remboursement doit être **total** (c'est ce que dit le texte) ; vérifier que chaque prestataire (Vercel, Anthropic, Stripe, Resend) a bien des clauses types ou la certification DPF dans ses conditions.
 
 ## 6. Où le contenu change selon la région (liste complète)
 
@@ -157,7 +209,7 @@ Données **fictives** dans `i18n-en.js` (`KP_EN.demo()`), lues par `app.js` (dé
 6. Regarder le résultat dans le Studio ; si un geste rate, « ▶ Relancer le tournage (même voix) » ne coûte aucun caractère.
 7. Les vidéos apparaissent ensuite automatiquement dans la version anglaise de l'appli (manifest mis à jour, ≈ 1 min).
 
-**Coût ElevenLabs estimé** : **≈ 4 600 caractères** pour les 9 vidéos (somme des textes anglais : 4 570), la voix étant fabriquée une seule fois par vidéo puis réutilisée pour les versions téléphone et ordinateur ; + ≈ 100 caractères par écoute d'essai. Détail : présentation 893, accueil 454, portefeuille 535, objectif 1 192, assistant 408, bilan 299, santé 221, dépenses 357, actualités 211. Le Studio affiche ce total en mode English. Refaire une vidéo (« ↻ Refaire la vidéo ») recompte ses caractères ; « Relancer le tournage » non.
+**Coût ElevenLabs estimé** (mis à jour le 04/11 avec les nouvelles phrases) : **≈ 4 850 caractères** pour les 9 vidéos (somme des textes anglais : 4 824), la voix étant fabriquée une seule fois par vidéo puis réutilisée pour les versions téléphone et ordinateur ; + ≈ 100 caractères par écoute d'essai. Détail : présentation 1 107, accueil 454, portefeuille 535, objectif 1 250, assistant 390, bilan 299, santé 221, dépenses 357, actualités 211. Les vidéos françaises de présentation, objectif et assistant ont aussi changé de texte sur `dev` : à refaire en français si ce n'est pas déjà fait. Le Studio affiche ce total en mode English. Refaire une vidéo (« ↻ Refaire la vidéo ») recompte ses caractères ; « Relancer le tournage » non.
 
 ## 7. Ce qui reste (non fait) et textes non traduits
 
@@ -170,7 +222,9 @@ Diagnostic : ajouter `?lang=en&i18n_debug=1` à l'adresse, puis `Object.keys(_kp
 - **Vidéos du tutoriel** : tout est prêt pour la version anglaise (voir « Mode démo et vidéos tutoriels en anglais ») mais **aucune voix ni vidéo anglaise n'a été fabriquée** ; tant qu'elles n'existent pas, les boutons vidéo sont masqués en anglais. Vidéos animées (`video/`), pubs et images avec du texte : françaises.
 - **Page 404** : Vercel affiche sa page par défaut (en anglais) sur les deux domaines ; je n'ai pas ajouté de page 404 pour ne rien changer côté français.
 - **Données structurées FAQ** de l'accueil anglais : retirées en anglais ; la page `/faq` anglaise a ses propres données structurées.
-- Exclus volontairement : Studio et tableau de bord admin (usage interne).
+- Exclus volontairement : Studio, Reels Duo et tableau de bord admin (usage interne).
+- **Simulateurs français ajoutés sur `dev`** (5 nouveaux et /outils) : pas de sélecteur « € / CHF » (`sim-cur.js`), pour ne rien changer à la version française de `dev` ; à ajouter si tu veux le même comportement que les 7 autres.
+- **E-mails de fin d'essai** : montants et liens corrects, mais la devise d'affichage choisie n'est pas utilisée (les e-mails ne citent pas de prix).
 
 ## 8. Décisions qui restent à prendre
 
