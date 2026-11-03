@@ -12580,6 +12580,10 @@ function aiQuotaMessage() {
 // Vrai si le dernier appel IA vient d'être refusé pour cause de quota (utile dans les catch génériques)
 function aiJustHitQuota() { return Date.now() - (window._aiQuotaHitAt || 0) < 8000; }
 function isAIQuotaMessage(t) { return typeof t === 'string' && t.startsWith('🔒 Limite du jour atteinte'); }
+// Essai gratuit de l'objectif (voir objTrialEnd) : 30 jours sans carte ; comptes existants : à partir du lancement
+const OBJ_TRIAL_DAYS = 30;
+const OBJ_TRIAL_LAUNCH = Date.parse('2026-11-04T00:00:00Z');
+const OBJ_AI = { feature: 'objectif' };
 // Agent IA : questions du jour comptées à part des analyses (on peut toujours en poser quelques-unes)
 const AI_AGENT_DAILY = 3;
 let aiAgentQuota = null;   // { used, limit } renvoyé par le serveur (comptes gratuits)
@@ -14012,10 +14016,7 @@ function isPremiumUser() {
 // ═══ ESSAI GRATUIT DE L'OBJECTIF : 30 jours sans carte à partir de l'inscription ═══
 // Plan du mois, répartition et plan IA de l'objectif offerts pendant l'essai, puis réservés à Premium (lecture seule du
 // programme déjà généré). Comptes créés avant le lancement : les 30 jours partent du lancement. Le serveur applique la même
-// règle (api/claude.js, OBJ_TRIAL_*).
-const OBJ_TRIAL_DAYS = 30;
-const OBJ_TRIAL_LAUNCH = Date.parse('2026-11-04T00:00:00Z');
-const OBJ_AI = { feature: 'objectif' };
+// règle (api/claude.js, OBJ_TRIAL_*). Constantes définies plus haut, avec les quotas IA (utilisées dès le chargement).
 function objTrialEnd() {
   const c = Date.parse(currentUser?.created_at || '') || Date.now();
   return Math.max(c, OBJ_TRIAL_LAUNCH) + OBJ_TRIAL_DAYS * 86400000;
