@@ -14021,7 +14021,7 @@ function objTrialEnd() {
   const c = Date.parse(currentUser?.created_at || '') || Date.now();
   return Math.max(c, OBJ_TRIAL_LAUNCH) + OBJ_TRIAL_DAYS * 86400000;
 }
-function objTrialDaysLeft() { return Math.max(0, Math.ceil((objTrialEnd() - Date.now()) / 86400000)); }
+function objTrialDaysLeft() { return Math.max(0, Math.min(OBJ_TRIAL_DAYS, Math.ceil((objTrialEnd() - Date.now()) / 86400000))); }
 function objectifAccess() { return isDemo || !currentUser || isPremiumUser() || objTrialDaysLeft() > 0; }
 // Bandeau de la page Objectif : jours d'essai restants, ou programme en pause une fois l'essai terminé
 function objTrialBannerHTML() {
