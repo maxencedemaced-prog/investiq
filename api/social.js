@@ -16,9 +16,10 @@
 // La clé Anthropic et la clé service Supabase ne quittent jamais le serveur.
 
 import { createClient } from '@supabase/supabase-js';
-import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns } from './_reel.js';
+import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns, ttsSettings, calmVoice } from './_reel.js';
 import { TUTOS, TUTOS_EN, tutoFor } from './_tuto.js';
-import { DOSSIERS } from './_dossier.js';
+import { DOSSIERS, duoScript } from './_dossier.js';
+import { DUO_SYSTEM, DUO_SUBJECTS, DUO_DONE, duoPrompt, pickDuoSubjects, cleanDuoScript, duoToolFor } from './_duo.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
 // Tutoriels : langue demandée par le Studio ('fr' par défaut). En anglais, fichiers « <id>__en » (les vidéos françaises ne bougent pas).
@@ -518,7 +519,7 @@ RÉFÉRENCEMENT :
 - "title" : la question ou l'expression que tape un débutant sur Google, max 65 caractères (ex. « C'est quoi un ETF ? Explication simple pour débuter »).
 - "description" : résumé accrocheur de 140 à 155 caractères.
 - "slug" : 3 à 6 mots en minuscules, sans accents, séparés par des tirets (ex. « etf-explication-simple »).
-- Intègre naturellement 1 ou 2 liens internes au format [texte du lien](/chemin) vers les outils gratuits pertinents : /simulateur-interets-composes, /calculateur-objectif-epargne, /rendement-etf-msci-world, /epargne-de-precaution, /simulateur-investissement-programme, /calculateur-frais-placement, /calculateur-inflation, /faq.
+- Intègre naturellement 1 ou 2 liens internes au format [texte du lien](/chemin) vers les outils gratuits pertinents : /simulateur-interets-composes, /calculateur-objectif-epargne, /rendement-etf-msci-world, /epargne-de-precaution, /simulateur-investissement-programme, /calculateur-frais-placement, /calculateur-inflation, /budget-50-30-20, /calculateur-petites-depenses, /calculateur-abonnements, /cout-credit-consommation, /remboursement-dettes, /faq.
 
 FORMAT : réponds UNIQUEMENT par un tableau JSON contenant UN seul objet :
 [{"title": "…", "description": "…", "slug": "…", "intro": ["2 paragraphes d'introduction"],
@@ -612,6 +613,62 @@ async function createAds({ short = false } = {}) {
   return made;
 }
 
+// Musique de fond créée par l'IA (ElevenLabs Music) et rangée dans social/music : le rendu la récupère (video/render-job.mjs)
+async function createMusic(prompt, secs, name) {
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key) throw new Error('Clé ElevenLabs absente dans Vercel');
+  const slug = String(name || prompt).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 36) || 'musique';
+  const file = 'ia-' + slug + '-' + Date.now().toString(36).slice(-4) + '.mp3';
+  const r = await fetch('https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128', {
+    method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: prompt + '. Instrumental background music for a short personal-finance video with a voice-over: no vocals, steady energy, clean mix, clean ending.', music_length_ms: secs * 1000, force_instrumental: true }),
+  });
+  if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error('ElevenLabs a refusé (' + r.status + ') : ' + t.slice(0, 240)); }
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (buf.length < 5000) throw new Error('Musique vide, réessaie avec une autre description');
+  const up = await sb.storage.from('social').upload('music/' + file, buf, { contentType: 'audio/mpeg', upsert: true, cacheControl: '86400' });
+  if (up.error) throw up.error;
+  return file;
+}
+// Ambiances dynamiques pour les Reels « Duo » : une nouvelle musique à chaque Reel, style tiré au hasard
+const DUO_MUSIC = [
+  'Upbeat modern pop beat, punchy drums, bright synths, 124 BPM, energetic and positive',
+  'Funky groove with slap bass, crisp claps and brass stabs, 118 BPM, playful and dynamic',
+  'Energetic electro house, driving four-on-the-floor kick, plucky synth hook, 126 BPM',
+  'Bouncy hip-hop instrumental, snappy snare, warm keys, catchy melody, 95 BPM, confident',
+  'Fresh future bass, wide chords, punchy beat drops kept light, 128 BPM, uplifting',
+  'Upbeat indie pop with claps, bright guitar riff and tambourine, 120 BPM, feel-good',
+];
+
+// Nombre de Reels « Duo » déjà créés : sert à faire tourner les duos de prénoms
+async function duoCount() {
+  const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo');
+  return count || 0;
+}
+// Reel à partir d'un scénario écrit (dossier à la main ou duo de l'IA) : brouillon, voix, puis rendu sur GitHub Actions
+async function dossierReel(d, { voice, pair = 0, music, topic }) {
+  let duo = null, title = d.title, caption = d.caption, beats = d.beats.map(x => ({ ...x }));
+  if (d.style === 'duo') ({ duo, title, caption, beats } = duoScript(d, pair));
+  const subject = title.split('·').pop().trim().toLowerCase();
+  const { data: post, error } = await sb.from('social_posts').insert({
+    kind: 'weekly', format: 'reel', status: 'draft',
+    title: duo ? `Duo · ${duo.A.name} et ${duo.B.name} · ${subject}` : 'Dossier décodé · ' + title.charAt(0) + title.slice(1).toLowerCase(),
+    slides: [{ t: 'text', kicker: 'DOSSIER ' + d.num, title, body: '' }], caption, hashtags: d.hashtags,
+    platforms: ['instagram', 'facebook'], scheduled_at: new Date(Date.now() + 86400000).toISOString(),
+  }).select().single();
+  if (error) throw error;
+  const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: d.speed || 1.05 });
+  const script = { v: 1, style: d.style || 'dossier', dossier: { num: d.num, title, chapters: d.chapters }, duo, duo_topic: topic, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
+  // Musique de fond : 'none' = sans musique, un nom de fichier = ce morceau, sinon au hasard
+  if (music === 'none') script.music = false;
+  else if (typeof music === 'string' && /^[\w.-]+\.mp3$/.test(music)) script.music_file = music;
+  let status = 'queued', err = null;
+  try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
+  const { data: row, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
+  if (e2) throw e2;
+  return row;
+}
+
 async function createReel(post, { voice, style }) {
   const voices = await reelVoices(), duo = voice === 'duo' && voices.length > 1;
   const pick = duo ? voices.slice(0, 2) : [voices[Math.min(Math.max(parseInt(voice, 10) || 0, 0), voices.length - 1)]];
@@ -685,10 +742,15 @@ export default async function handler(req, res) {
     if (!(await isAdmin(req))) return res.status(403).json({ error: 'Accès réservé.' });
 
     if (req.method === 'GET') {
-      const { data, error } = await sb.from('social_posts').select('*').neq('status', 'rejected')
-        .order('scheduled_at', { ascending: true, nullsFirst: false }).limit(100);
-      if (error) throw error;
-      return res.status(200).json({ posts: data });
+      // Tous les posts encore à traiter (à valider, programmés, pubs…) + les 60 derniers publiés : avec une seule limite de
+      // 100 triée par date, les publiés les plus anciens finissaient par cacher les nouveaux brouillons
+      const [open, done] = await Promise.all([
+        sb.from('social_posts').select('*').not('status', 'in', '(rejected,published)').order('scheduled_at', { ascending: true, nullsFirst: false }).limit(300),
+        sb.from('social_posts').select('*').eq('status', 'published').order('scheduled_at', { ascending: false, nullsFirst: false }).limit(60),
+      ]);
+      if (open.error || done.error) throw open.error || done.error;
+      const t = p => (p.scheduled_at ? Date.parse(p.scheduled_at) : Infinity);
+      return res.status(200).json({ posts: [...open.data, ...done.data].sort((a, b) => t(a) - t(b)) });
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -802,7 +864,7 @@ export default async function handler(req, res) {
       for (const model of [...new Set([process.env.ELEVENLABS_MODEL || 'eleven_v4', 'eleven_v3', 'eleven_multilingual_v2'])]) {
         const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voice.id + '?output_format=mp3_44100_64', {
           method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-          body: JSON.stringify({ text, model_id: model }), signal: AbortSignal.timeout(30000),
+          body: JSON.stringify({ text, model_id: model, ...(calmVoice(voice.name) ? { voice_settings: ttsSettings(model, 1.0, true) } : {}) }), signal: AbortSignal.timeout(30000),
         });
         if (r.ok) return res.status(200).json({ voice: voice.name, audio: 'data:audio/mpeg;base64,' + Buffer.from(await r.arrayBuffer()).toString('base64') });
         last = r.status + ' ' + (await r.text()).slice(0, 160);
@@ -931,17 +993,8 @@ export default async function handler(req, res) {
       const prompt = String(b.prompt || '').trim().slice(0, 500);
       if (prompt.length < 5) return res.status(400).json({ error: 'Décris la musique voulue (style, ambiance, tempo…)' });
       const secs = Math.max(10, Math.min(120, parseInt(b.seconds, 10) || 45));
-      const slug = String(b.name || prompt).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 36) || 'musique';
-      const file = 'ia-' + slug + '-' + Date.now().toString(36).slice(-4) + '.mp3';
-      const r = await fetch('https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128', {
-        method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt + '. Instrumental background music for a short personal-finance video with a voice-over: no vocals, steady energy, clean mix, clean ending.', music_length_ms: secs * 1000, force_instrumental: true }),
-      });
-      if (!r.ok) { const t = await r.text().catch(() => ''); return res.status(400).json({ error: 'ElevenLabs a refusé (' + r.status + ') : ' + t.slice(0, 240) }); }
-      const buf = Buffer.from(await r.arrayBuffer());
-      if (buf.length < 5000) return res.status(400).json({ error: 'Musique vide, réessaie avec une autre description' });
-      const up = await sb.storage.from('social').upload('music/' + file, buf, { contentType: 'audio/mpeg', upsert: true, cacheControl: '86400' });
-      if (up.error) throw up.error;
+      let file;
+      try { file = await createMusic(prompt, secs, b.name); } catch (e) { return res.status(400).json({ error: e.message }); }
       return res.status(200).json({ file, url: sb.storage.from('social').getPublicUrl('music/' + file).data.publicUrl, seconds: secs });
     }
     if (b.action === 'music-delete') {
@@ -956,7 +1009,7 @@ export default async function handler(req, res) {
       const def = Math.max(0, voices.findIndex(v => /vautrin|david/i.test(v.name)));
       const { data: mus } = await sb.storage.from('social').list('music', { limit: 100 });
       const music = (mus || []).filter(f => /\.mp3$/i.test(f.name)).map(f => ({ file: f.name, url: sb.storage.from('social').getPublicUrl('music/' + f.name).data.publicUrl }));
-      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.title })).sort((a, b) => a.num.localeCompare(b.num)), voices: voices.map(v => v.name), defaultVoice: def, music });
+      return res.status(200).json({ dossiers: Object.entries(DOSSIERS).map(([id, d]) => ({ id, num: d.num, title: d.style === 'duo' ? 'DUO · ' + d.title.split('· ').pop() : d.title })).sort((a, b) => a.num.localeCompare(b.num)), voices: voices.map(v => v.name), defaultVoice: def, music });
     }
     if (b.action === 'dossier-create') {
       const d = DOSSIERS[b.topic];
@@ -965,23 +1018,43 @@ export default async function handler(req, res) {
       if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
       // Même voix que les tutoriels (David Vautrin) par défaut, sinon la première
       const voice = (b.voice != null && voices[parseInt(b.voice, 10)]) || voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
-      const beats = d.beats.map(x => ({ ...x }));
-      const { data: post, error } = await sb.from('social_posts').insert({
-        kind: 'weekly', format: 'reel', status: 'draft', title: 'Dossier décodé · ' + d.title.charAt(0) + d.title.slice(1).toLowerCase(),
-        slides: [{ t: 'text', kicker: 'DOSSIER ' + d.num, title: d.title, body: '' }], caption: d.caption, hashtags: d.hashtags,
-        platforms: ['instagram', 'facebook'], scheduled_at: new Date(Date.now() + 86400000).toISOString(),
-      }).select().single();
-      if (error) throw error;
-      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: d.speed || 1.05 });
-      const script = { v: 1, style: 'dossier', dossier: { num: d.num, title: d.title, chapters: d.chapters }, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
-      // Musique de fond : 'none' = sans musique, un nom de fichier = ce morceau, sinon au hasard
-      if (b.music === 'none') script.music = false;
-      else if (typeof b.music === 'string' && /^[\w.-]+\.mp3$/.test(b.music)) script.music_file = b.music;
-      let status = 'queued', err = null;
-      try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
-      const { data: row, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
-      if (e2) throw e2;
-      return res.status(200).json({ post: row });
+      // Style « Duo » : prénoms tournants (un duo différent à chaque vidéo de ce style, b.pair pour forcer un duo)
+      let pair = parseInt(b.pair, 10);
+      if (d.style === 'duo' && !Number.isFinite(pair)) pair = await duoCount();
+      return res.status(200).json({ post: await dossierReel(d, { voice, pair, music: b.music, topic: d.style === 'duo' ? b.topic.replace(/^duo-/, '') : undefined }) });
+    }
+    // 3 Reels « Duo » d'un coup : sujets jamais traités, scénarios écrits par l'IA (en parallèle), voix puis rendu
+    if (b.action === 'duo-batch') {
+      const voices = await tutoVoices();
+      if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
+      const voice = voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
+      const n = Math.max(1, Math.min(3, parseInt(b.count, 10) || 3));
+      // Sujets déjà traités = Reels Duo non rejetés (un sujet rejeté, raté par exemple, peut être refait)
+      const { data: done } = await sb.from('social_posts').select('title, video_script->duo_topic').eq('video_script->>style', 'duo').neq('status', 'rejected');
+      const usedKeys = (done || []).map(r => r.duo_topic).filter(Boolean);
+      const usedTitles = [...new Set([...DUO_DONE, ...usedKeys].map(k => (DUO_SUBJECTS.find(s => s.key === k) || {}).title || k)
+        .concat((done || []).map(r => String(r.title || '').split('·').pop().trim()).filter(Boolean)))];
+      const subjects = pickDuoSubjects(n, usedKeys);
+      const first = await duoCount();
+      const made = await Promise.allSettled(subjects.map(async (s, i) => {
+        // Musique créée en même temps que le scénario ; si elle échoue, le rendu prend une musique de la bibliothèque
+        // Créations décalées (ElevenLabs limite les musiques simultanées), et une 2e tentative en cas de refus
+        const style = DUO_MUSIC[Math.floor(Math.random() * DUO_MUSIC.length)], wait = ms => new Promise(r => setTimeout(r, ms));
+        const music = wait(i * 6000).then(() => createMusic(style, 50, 'duo-' + s.key))
+          .catch(e => { console.warn('[duo] musique, 2e essai :', e.message); return wait(8000).then(() => createMusic(style, 50, 'duo-' + s.key)); })
+          .catch(e => { console.warn('[duo] musique :', e.message); return undefined; });
+        // Scénario refusé par le contrôle (prénoms manquants, trop court…) : une 2e tentative
+        let d;
+        for (let attempt = 0; !d; attempt++) {
+          try { const [raw] = await askClaude(duoPrompt(s, usedTitles), DUO_SYSTEM); d = { ...cleanDuoScript(raw), num: 'IA' }; }
+          catch (e) { if (attempt) throw e; }
+        }
+        return dossierReel(d, { voice, pair: first + i, topic: s.key, music: await music });
+      }));
+      const posts = made.filter(r => r.status === 'fulfilled').map(r => r.value);
+      const errors = made.filter(r => r.status === 'rejected').map(r => r.reason && r.reason.message || String(r.reason));
+      if (!posts.length) return res.status(500).json({ error: errors[0] || 'Aucun Reel Duo créé' });
+      return res.status(200).json({ posts, errors });
     }
     if (b.action === 'reel-create' || b.action === 'reel-render') {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
@@ -993,6 +1066,33 @@ export default async function handler(req, res) {
       let status = 'queued', err = null;
       try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
       const { data, error: e2 } = await sb.from('social_posts').update({ video_script: { ...script, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
+      if (e2) throw e2;
+      return res.status(200).json({ post: data });
+    }
+    // Reel Duo déjà fabriqué : refait la fin (voix, bouton, légende) pour renvoyer vers le bon outil Kapitaro, puis voix et vidéo
+    if (b.action === 'duo-refresh-end') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
+      const { data: post, error } = await sb.from('social_posts').select('*').eq('id', b.id).single();
+      if (error) throw error;
+      const script = post.video_script || {}, A = script.duo && script.duo.A && script.duo.A.name, B = script.duo && script.duo.B && script.duo.B.name;
+      const beats = Array.isArray(script.beats) ? script.beats.map(x => ({ ...x })) : [];
+      const end = beats[beats.length - 1];
+      if (script.style !== 'duo' || !A || !B || !end || end.visual !== 'end') return res.status(400).json({ error: 'Ce post n’est pas un Reel Duo' });
+      const tool = duoToolFor(script.duo_topic);
+      end.say = `Et toi, tu es plutôt ${A} ou ${B} ? ` + (tool ? tool.cta.replace(/ sur kapitaro\.fr$/, ', gratuitement, sur kapitaro point f r') + '.' : 'Suis Kapitaro pour d’autres astuces.');
+      end.cta = tool ? tool.cta.replace(/ sur kapitaro\.fr$/, ' · kapitaro.fr') : 'Suis Kapitaro · kapitaro.fr';
+      // Légende : l'ancien appel de fin (« … sur kapitaro.fr ») est retiré, l'appel vers l'outil est ajouté à la ligne
+      // (le reste, dont la mention « Exemple pédagogique », est gardé tel quel)
+      const call = tool ? tool.cta : 'Suis Kapitaro pour d’autres astuces : kapitaro.fr';
+      let caption = String(post.caption || '').replace(/\s*(…\s*sur kapitaro\.fr|Fais le point gratuitement sur kapitaro\.fr)\s*$/i, '').trim();
+      if (!/[.!?👇)]$/u.test(caption)) caption += '.';
+      caption += '\n\n' + call;
+      const voices = await tutoVoices();
+      const voice = voices.find(v => v.name === script.voice) || voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: 1.05 });
+      let status = 'queued', err = null;
+      try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
+      const { data, error: e2 } = await sb.from('social_posts').update({ caption, video_script: { ...script, beats, segments, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
       if (e2) throw e2;
       return res.status(200).json({ post: data });
     }

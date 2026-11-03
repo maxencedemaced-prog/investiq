@@ -75,7 +75,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="style.css?v=20261014140000">
+  <link rel="stylesheet" href="style.css?v=20261103210000">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -176,6 +176,7 @@
       </div>
       <div class="kh-note">Sans carte bancaire · prêt en 2 minutes</div>
       <div class="kh-alt"><button type="button" class="kh-alt-demo" onclick="enterDemo()">👁 Essayer sans compte</button><span>·</span><button type="button" class="kh-link" onclick="heroStart('login')">J’ai déjà un compte</button></div>
+      <a class="kh-tools" href="/outils">🧮 <b>Calculateurs gratuits</b>, sans inscription : budget, dépenses, crédit, dettes, épargne<span>›</span></a>
 
       <div class="kh-safe">
         <span class="kh-safe-ico">🔒</span>
@@ -261,7 +262,7 @@
           <label class="kh-label" for="signup-pass2">Confirmer le mot de passe</label>
           <input class="kh-input" type="password" id="signup-pass2" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')signup()">
           <button type="button" class="kh-submit" onclick="signup()">Créer mon compte →</button>
-          <div class="kh-gift">🎁 <b>15 analyses IA offertes</b> à l’inscription, puis 3 par jour. Premium : illimité.</div>
+          <div class="kh-gift">🎁 <b>Ton objectif et ton plan du mois offerts 30 jours</b>. Puis 3 questions par jour à l’assistant.</div>
         </div>
 
         <div id="auth-msg" class="auth-msg"></div>
@@ -376,10 +377,10 @@
           <ul>
             <li>Suivi du portefeuille avec prix à jour</li>
             <li>Score de santé et analyse de la répartition</li>
-            <li>Objectifs avec faisabilité et plan</li>
+            <li>Objectifs avec faisabilité, plan du mois offert 30 jours</li>
             <li>Simulateur d'investissement régulier et scénarios de crise</li>
             <li>Alertes chiffrées et agenda économique</li>
-            <li>15 analyses IA offertes, puis 3 par jour</li>
+            <li>3 questions par jour à l'assistant IA</li>
           </ul>
           <button type="button" class="lp-cta lp-cta-ghost" onclick="lpSignup()">Commencer gratuitement</button>
         </div>
@@ -388,6 +389,7 @@
           <div class="lp-price"><b>9,99 €</b><span>par mois, ou 79,99 € par an</span></div>
           <ul>
             <li><strong>Tout le gratuit</strong>, plus :</li>
+            <li>Ton plan du mois et ta répartition, chaque mois</li>
             <li>Analyses IA illimitées</li>
             <li>Agent IA complet sur tout ton portefeuille</li>
             <li>Bilan patrimonial complet et export PDF</li>
@@ -417,6 +419,7 @@
       <div class="lp-kicker">Sans compte</div>
       <h2 class="lp-h2">Nos outils gratuits</h2>
       <div class="lp-tools">
+        <a href="/outils"><b>🧮 Tous les calculateurs</b><span>›</span></a>
         <a href="/simulateur-interets-composes">Simulateur d'intérêts composés<span>›</span></a>
         <a href="/calculateur-objectif-epargne">Combien épargner par mois ?<span>›</span></a>
         <a href="/rendement-etf-msci-world">Combien rapporte un ETF MSCI World<span>›</span></a>
@@ -424,6 +427,11 @@
         <a href="/simulateur-investissement-programme">Investir chaque mois : 3 scénarios<span>›</span></a>
         <a href="/calculateur-frais-placement">Ce que les frais te coûtent<span>›</span></a>
         <a href="/calculateur-inflation">Calculateur d'inflation<span>›</span></a>
+        <a href="/budget-50-30-20">Budget 50/30/20<span>›</span></a>
+        <a href="/calculateur-petites-depenses">Combien coûtent tes petites dépenses<span>›</span></a>
+        <a href="/calculateur-abonnements">Combien coûtent tes abonnements<span>›</span></a>
+        <a href="/cout-credit-consommation">Coût d'un crédit conso<span>›</span></a>
+        <a href="/remboursement-dettes">Rembourser ses dettes dans le bon ordre<span>›</span></a>
       </div>
     </section>
 
@@ -1569,7 +1577,7 @@ function heroStart(tab) {
       <div class="page-header">
         <div>
           <h1>Calculateurs</h1>
-          <p class="page-sub">Ce que les frais te coûtent, et ce que l’inflation fait à ton épargne.</p>
+          <p class="page-sub">Frais, inflation, et tous les calculateurs gratuits : budget, dépenses, crédits, épargne.</p>
         </div>
       </div>
       <div id="calc-root"></div>
@@ -1789,10 +1797,10 @@ function heroStart(tab) {
       </div>
     </div>
 <script src="legal-docs.js?v=20261001180000"></script>
-<script src="glossary.js?v=20261031180000"></script>
-<script src="calc.js?v=20261014130000"></script>
-<script src="app.js?v=20261031180000"></script>
-<script src="depenses.js?v=20261031180000"></script>
+<script src="glossary.js?v=20261104120000"></script>
+<script src="calc.js?v=20261104120000"></script>
+<script src="app.js?v=20261104120000"></script>
+<script src="depenses.js?v=20261104120000"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20261014100000"></script>
 <script src="push.js?v=20261014100000"></script>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261021110000" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <script src="/simcta.js?v=20261103230000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget 50/30/20 : calculateur gratuit pour répartir ton salaire — Kapitaro</title>
+  <meta name="description" content="Applique la règle 50/30/20 à ton salaire : 50 % pour les besoins, 30 % pour les envies, 20 % pour l'épargne. Compare avec tes vraies dépenses et ajuste les pourcentages. Gratuit, sans inscription.">
+  <link rel="canonical" href="https://kapitaro.fr/budget-50-30-20">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/budget-50-30-20">
+  <meta property="og:title" content="Budget 50/30/20 : répartis ton salaire — Kapitaro">
+  <meta property="og:description" content="Besoins, envies, épargne : la règle 50/30/20 appliquée à ton salaire, en un instant.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Calculateur de budget 50/30/20 — Kapitaro",
+        "url": "https://kapitaro.fr/budget-50-30-20",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "fr",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Qu'est-ce que la règle 50/30/20 ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "C'est une façon simple de répartir son revenu net : environ 50 % pour les besoins (logement, courses, transport, factures), 30 % pour les envies (loisirs, restaurants, achats plaisir) et 20 % pour l'épargne et le remboursement anticipé des dettes." } },
+          { "@type": "Question", "name": "Et si mon loyer dépasse 50 % de mon salaire ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "C'est fréquent dans les grandes villes. La règle est un repère, pas une obligation : on peut adapter, par exemple 60/25/15, en gardant l'idée d'épargner chaque mois, même un petit montant." } },
+          { "@type": "Question", "name": "Faut-il compter les primes et le 13e mois ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Le plus simple est de faire le budget sur le salaire mensuel habituel, et de décider à part de ce que l'on fait des primes, par exemple en épargner une grande partie." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+  <style>
+    .split{display:flex;height:16px;border-radius:99px;overflow:hidden;margin:14px 0 8px;border:1px solid var(--border)}
+    .split div{height:100%;transition:width .2s}
+    .buckets{display:grid;gap:8px;margin-top:12px}
+    .bucket{display:grid;grid-template-columns:12px 1fr auto;gap:10px;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+    .bucket i{width:12px;height:12px;border-radius:4px}
+    .bucket b{font-size:14px}
+    .bucket span{display:block;font-size:12px;color:var(--muted);font-weight:400}
+    .bucket em{font-style:normal;font-weight:800;font-size:16px;white-space:nowrap}
+    .bucket small{display:block;font-size:11.5px;font-weight:700;text-align:right}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Budget 50/30/20 : répartis ton salaire</h1>
+      <p>50 % pour les besoins, 30 % pour les envies, 20 % pour l'épargne. Entre ton salaire, compare avec tes vraies dépenses, et ajuste si besoin.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" id="presets">
+            <button type="button" data-r="50,30,20">50/30/20</button>
+            <button type="button" data-r="60,25,15">60/25/15</button>
+            <button type="button" data-r="70,20,10">70/20/10</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="s">Mon salaire net par mois</label><span class="field-val"><input type="number" id="s-n" min="0" max="50000" step="50" aria-label="Salaire net mensuel en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="s" min="500" max="8000" step="50" value="2000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="b">Mes besoins aujourd'hui</label><span class="field-val"><input type="number" id="b-n" min="0" max="50000" step="10" aria-label="Dépenses de besoins en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="b" min="0" max="6000" step="10" value="1100">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="e">Mon épargne aujourd'hui</label><span class="field-val"><input type="number" id="e-n" min="0" max="50000" step="10" aria-label="Épargne mensuelle en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="e" min="0" max="3000" step="10" value="150">
+          </div>
+          <div class="range-note">Besoins : logement, charges, courses, transport, assurances, factures. Le reste de ton salaire est compté dans les envies.</div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Selon la règle <span id="out-rule">50/30/20</span>, tu pourrais épargner</div>
+          <div class="result-total result-big-green" id="out-save">—</div>
+          <div class="result-sub" id="out-save-sub"></div>
+          <div class="split" aria-hidden="true"><div id="bar-b" style="background:#2563eb"></div><div id="bar-w" style="background:#f59e0b"></div><div id="bar-e" style="background:#16a34a"></div></div>
+          <div class="buckets">
+            <div class="bucket"><i style="background:#2563eb"></i><div><b>Besoins</b><span id="cmp-b"></span></div><div><em id="out-b">—</em><small id="tag-b"></small></div></div>
+            <div class="bucket"><i style="background:#f59e0b"></i><div><b>Envies</b><span id="cmp-w"></span></div><div><em id="out-w">—</em><small id="tag-w"></small></div></div>
+            <div class="bucket"><i style="background:#16a34a"></i><div><b>Épargne</b><span id="cmp-e"></span></div><div><em id="out-e">—</em><small id="tag-e"></small></div></div>
+          </div>
+          <div class="example" id="out-advice" style="font-size:14px;margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>La règle 50/30/20, c'est quoi ?</h2>
+      <p>C'est une façon simple de répartir ton revenu net chaque mois, sans tableur compliqué :</p>
+      <ul>
+        <li><strong>50 % pour les besoins</strong> : ce que tu dois payer quoi qu'il arrive (loyer ou crédit immobilier, charges, courses, transport, assurances, factures).</li>
+        <li><strong>30 % pour les envies</strong> : ce qui te fait plaisir mais n'est pas indispensable (restaurants, sorties, voyages, vêtements, abonnements de loisirs).</li>
+        <li><strong>20 % pour l'épargne</strong> : ton épargne de précaution, tes projets, et le remboursement en avance des dettes chères.</li>
+      </ul>
+      <div class="example">
+        <p style="margin:0">Exemple : avec <strong>2 000 € nets</strong> par mois, la règle donne 1 000 € pour les besoins, 600 € pour les envies et <strong>400 € pour l'épargne</strong>.</p>
+      </div>
+
+      <h2>Et si ça ne colle pas à ma situation ?</h2>
+      <p>C'est un repère, pas une loi. Avec un loyer élevé, un petit salaire ou des enfants, les besoins dépassent souvent 50 %. Dans ce cas, une répartition 60/25/15 ou 70/20/10 est plus réaliste. L'important est de garder une part pour l'épargne chaque mois, même petite, et de l'augmenter dès que ta situation s'améliore, par exemple à chaque augmentation de salaire.</p>
+
+      <h2>L'astuce : se payer en premier</h2>
+      <p>Programme un virement automatique vers ton épargne le jour où tu reçois ton salaire, au lieu d'épargner « ce qui reste » à la fin du mois. Tu dépenses ensuite le reste librement, sans culpabiliser.</p>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>Où ranger les abonnements ?</h3>
+        <p>Ça dépend : un forfait mobile ou une assurance sont des besoins, une plateforme de streaming est une envie. Le <a href="/calculateur-abonnements">calculateur d'abonnements</a> t'aide à faire le total.</p>
+        <h3>Le remboursement d'un crédit, c'est un besoin ?</h3>
+        <p>La mensualité obligatoire, oui. Ce que tu rembourses en plus, en avance, se range dans les 20 % d'épargne. Pour savoir quelle dette rembourser d'abord, essaie le <a href="/remboursement-dettes">calculateur de remboursement de dettes</a>.</p>
+        <h3>Où placer les 20 % d'épargne ?</h3>
+        <p>D'abord une <a href="/epargne-de-precaution">épargne de précaution</a> de 3 à 6 mois de dépenses sur un livret disponible. Ensuite, pour les projets à long terme, le <a href="/calculateur-objectif-epargne">calculateur d'objectif d'épargne</a> te montre combien mettre de côté chaque mois.</p>
+        <h3>Ce calculateur est-il gratuit ?</h3>
+        <p>Oui, sans inscription, et rien n'est enregistré.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Donne un but à tes 20 %</h2>
+      <p>Fixe un objectif d'épargne : Kapitaro te montre comment l'atteindre et suit ta progression. Gratuit pour commencer.</p>
+      <a href="/?inscription=1" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+
+    <section class="others">
+      <h2>Autres outils gratuits</h2>
+      <a href="/calculateur-petites-depenses"><div>Coût de tes petites dépenses<span>Café, livraison, snacks : le vrai coût sur un an</span></div>›</a>
+      <a href="/calculateur-abonnements"><div>Calculateur d'abonnements<span>Ce que tes abonnements te coûtent vraiment par an</span></div>›</a>
+      <a href="/epargne-de-precaution"><div>Épargne de précaution<span>Combien garder de côté avant d'investir</span></div>›</a>
+      <a href="/calculateur-objectif-epargne"><div>Calculateur d'objectif d'épargne<span>Combien mettre de côté chaque mois pour atteindre ton objectif</span></div>›</a>
+      <a href="/remboursement-dettes"><div>Rembourser ses dettes<span>Dans quel ordre, et combien d'intérêts économiser</span></div>›</a>
+      <a href="/simulateur-interets-composes"><div>Simulateur d'intérêts composés<span>Ce que devient ton épargne avec le temps</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Calcul indicatif à but pédagogique, basé sur une règle courante. Il ne constitue pas un conseil financier personnalisé. Aucune donnée saisie n'est enregistrée.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a><br><a href="/mentions-legales">Mentions légales</a> · <a href="/cgu">CGU / CGV</a> · <a href="/confidentialite">Confidentialité</a> · <a href="/risques">Risques</a> · <a href="/faq">FAQ</a> · <a href="/blog">Blog</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var rule = [50, 30, 20];
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+    var set = function (id, t) { document.getElementById(id).textContent = t; };
+    function tag(id, diff, goodIfPositive) {
+      var el = document.getElementById(id), ok = goodIfPositive ? diff >= 0 : diff <= 0;
+      el.textContent = Math.abs(diff) < 1 ? 'pile dans la cible' : (diff > 0 ? '+' : '−') + fmt(Math.abs(diff)) + ' vs cible';
+      el.style.color = ok ? '#16a34a' : '#ea580c';
+    }
+    function update() {
+      var s = get('s'), b = Math.min(get('b'), s), e = Math.min(get('e'), Math.max(0, s - b)), w = Math.max(0, s - b - e);
+      var tb = s * rule[0] / 100, tw = s * rule[1] / 100, te = s * rule[2] / 100;
+      set('out-rule', rule.join('/'));
+      set('out-save', fmt(te) + ' / mois');
+      set('out-save-sub', 'soit ' + fmt(te * 12) + ' par an');
+      set('out-b', fmt(tb)); set('out-w', fmt(tw)); set('out-e', fmt(te));
+      set('cmp-b', 'Aujourd\'hui : ' + fmt(b)); set('cmp-w', 'Aujourd\'hui : ' + fmt(w)); set('cmp-e', 'Aujourd\'hui : ' + fmt(e));
+      tag('tag-b', b - tb, false); tag('tag-w', w - tw, false); tag('tag-e', e - te, true);
+      document.getElementById('bar-b').style.width = rule[0] + '%';
+      document.getElementById('bar-w').style.width = rule[1] + '%';
+      document.getElementById('bar-e').style.width = rule[2] + '%';
+      var adv = document.getElementById('out-advice');
+      if (s <= 0) adv.textContent = 'Indique ton salaire net.';
+      else if (b > tb + 1) adv.innerHTML = 'Tes besoins dépassent la cible de <strong>' + fmt(b - tb) + '</strong>. C\'est fréquent avec un loyer élevé : essaie une répartition 60/25/15, et regarde ce qui peut baisser (contrats, <a href="/calculateur-abonnements">abonnements</a>).';
+      else if (e + 1 >= te) adv.innerHTML = 'Bravo : tu épargnes déjà au moins ' + rule[2] + ' % de ton salaire. Donne un objectif à cette épargne pour savoir où elle te mène.';
+      else adv.innerHTML = 'Pour atteindre la cible, il manque <strong>' + fmt(te - e) + ' d\'épargne par mois</strong>, à prendre sur les envies. Un virement automatique le jour de la paie aide à s\'y tenir.';
+    }
+    ['s', 'b', 'e'].forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    document.querySelectorAll('#presets button').forEach(function (btn) {
+      btn.addEventListener('click', function () { rule = btn.dataset.r.split(',').map(Number); update(); });
+    });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'budget-50-30-20', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+    update();
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20260930"></script>
+</body>
+</html>

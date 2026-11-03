@@ -1,6 +1,19 @@
 // simcta.js — pages simulateurs publiques : appel à l'inscription juste après le calcul + barre fixe en bas sur téléphone.
 // Le visiteur arrive souvent par Google (100 % mobile) : on lui propose de passer du calcul à son vrai suivi, sans gêner l'outil.
 (function () {
+  // Affiché dans l'app (page Calculateurs, cadre intégré du même site) : seulement l'outil et ses explications, sans en-tête,
+  // bas de page ni appel à l'inscription ; la hauteur est envoyée à l'app pour que le cadre s'ajuste
+  if (window.self !== window.top) {
+    document.documentElement.classList.add('embed');
+    var st = document.createElement('style');
+    st.textContent = 'html.embed .top,html.embed .hero,html.embed .cta,html.embed .others,html.embed footer,html.embed #kp-help-btn,html.embed #kp-help{display:none!important}'
+      + 'html.embed body{background:transparent}html.embed main{margin:0 auto;padding:0 0 10px}html.embed .content{margin-top:20px}';
+    document.head.appendChild(st);
+    var send = function () { try { parent.postMessage({ kpCalcHeight: document.documentElement.scrollHeight }, location.origin); } catch (e) {} };
+    addEventListener('load', send); addEventListener('resize', send);
+    try { new ResizeObserver(send).observe(document.documentElement); } catch (e) { setInterval(send, 1000); }
+    return;
+  }
   var TEXT = {
     'simulateur-interets-composes': 'Enregistre ce calcul comme objectif et suis ta vraie progression, mois après mois.',
     'calculateur-objectif-epargne': 'Transforme ce calcul en objectif : Kapitaro suit ta progression réelle avec les vrais cours.',
@@ -9,6 +22,11 @@
     'epargne-de-precaution': 'Fixe ton objectif de réserve et suis toute ton épargne au même endroit.',
     'rendement-etf-msci-world': 'Suis tes ETF en direct, avec leur performance réelle et leurs frais.',
     'simulateur-investissement-programme': 'Fixe ton versement mensuel et suis chaque mois où tu en es par rapport à ton objectif.',
+    'calculateur-petites-depenses': 'Transforme ce que tu économises en objectif : Kapitaro te montre comment l’atteindre, mois après mois.',
+    'calculateur-abonnements': 'Avec Premium, importe ton relevé bancaire : Kapitaro repère tes abonnements et tes dépenses pour toi.',
+    'budget-50-30-20': 'Donne un but à ton épargne : fixe un objectif et suis ta progression réelle.',
+    'cout-credit-consommation': 'Crée un objectif pour ton prochain achat : Kapitaro te dit combien mettre de côté chaque mois.',
+    'remboursement-dettes': 'Une fois tes dettes soldées, transforme tes anciennes mensualités en épargne avec un objectif.',
   };
   var page = location.pathname.replace(/^\/|\.html$/g, '');
   var msg = TEXT[page] || 'Passe de la simulation à ton vrai portefeuille : objectif chiffré, suivi en direct, assistant IA.';

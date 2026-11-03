@@ -2,10 +2,15 @@
 name: Aperçu Dossier décodé
 on:
   workflow_dispatch:
+    inputs:
+      topics:
+        description: 'Dossiers à prévisualiser (séparés par des virgules, vide = style Duo)'
+        required: false
   push:
     branches: [dev]
     paths:
       - 'video/src/Dossier.jsx'
+      - 'video/src/Duo.jsx'
       - 'video/preview-dossier.mjs'
       - 'api/_dossier.js'
       - 'video/src/Slideshow.jsx'
@@ -29,4 +34,5 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TOPICS: ${{ github.event.inputs.topics }}
         run: node preview-dossier.mjs

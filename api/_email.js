@@ -86,6 +86,36 @@ export const EMAILS = {
     ],
     cta: { label: 'Compléter mon portefeuille', url: SITE },
   },
+  // Essai gratuit de l'objectif (30 jours, voir api/claude.js) : rappels avant la fin, puis le jour de la fin
+  trial_j7: {
+    subject: 'Ton essai gratuit se termine dans 7 jours',
+    title: 'Plus que 7 jours d\'essai',
+    paragraphs: [
+      'Ton objectif et ton plan du mois te sont offerts pendant 30 jours : il te reste une semaine pour en profiter.',
+      'Ensuite, ton objectif et ta courbe restent visibles, mais le nouveau plan de chaque mois, la répartition et les modifications passent avec Premium.',
+    ],
+    cta: { label: 'Voir mon plan du mois', url: SITE },
+  },
+  trial_j1: {
+    subject: 'Dernier jour de ton essai gratuit',
+    title: 'Ton essai se termine demain',
+    paragraphs: [
+      'Demain, ton essai gratuit de 30 jours se termine.',
+      'Pour continuer à recevoir ton plan du mois, adapté aux marchés et à ton portefeuille, tu peux passer à Premium en quelques secondes depuis l\'app.',
+      'Sinon, rien à faire : ton compte gratuit reste actif, avec ton portefeuille, ton score de santé et 3 questions par jour à l\'assistant.',
+    ],
+    cta: { label: 'Passer à Premium', url: SITE + '/?plans=1' },
+  },
+  trial_end: {
+    subject: 'Ton programme d\'épargne est en pause',
+    title: 'Ton essai gratuit est terminé',
+    paragraphs: [
+      'Tes 30 jours d\'essai sont terminés. Ton objectif et ta courbe restent visibles dans l\'app.',
+      'Pour reprendre ton plan du mois et continuer à avancer vers ton objectif, passe à Premium.',
+      'Ton compte gratuit reste actif : portefeuille, score de santé et 3 questions par jour à l\'assistant.',
+    ],
+    cta: { label: 'Reprendre mon programme', url: SITE + '/?plans=1' },
+  },
   winback: {
     subject: 'Où en est ton objectif ?',
     title: 'On ne t\'a pas vu depuis quelques jours',

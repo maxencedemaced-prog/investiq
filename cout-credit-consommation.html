@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261021110000" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <script src="/simcta.js?v=20261103230000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coût d'un crédit conso : calculateur de mensualité et d'intérêts — Kapitaro</title>
+  <meta name="description" content="Calcule la mensualité et le coût total d'un crédit à la consommation selon le montant, le TAEG et la durée, et compare avec le fait d'épargner avant d'acheter. Gratuit, sans inscription.">
+  <link rel="canonical" href="https://kapitaro.fr/cout-credit-consommation">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:url" content="https://kapitaro.fr/cout-credit-consommation">
+  <meta property="og:title" content="Combien coûte vraiment un crédit conso ? — Kapitaro">
+  <meta property="og:description" content="Mensualité, intérêts payés, et combien de mois il faudrait pour épargner la même somme.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Calculateur du coût d'un crédit à la consommation — Kapitaro",
+        "url": "https://kapitaro.fr/cout-credit-consommation",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "fr",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Qu'est-ce que le TAEG ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Le taux annuel effectif global regroupe le taux d'intérêt et les frais obligatoires du crédit (frais de dossier, assurance exigée…). C'est le chiffre à comparer entre deux offres : il doit figurer sur toute publicité et toute offre de crédit." } },
+          { "@type": "Question", "name": "Le paiement en 3 ou 4 fois est-il gratuit ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Pas toujours : certains paiements fractionnés sont sans frais, d'autres ajoutent des frais ou des intérêts. Surtout, en enchaîner plusieurs rend difficile de savoir combien on doit chaque mois." } },
+          { "@type": "Question", "name": "Vaut-il mieux épargner avant d'acheter ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Pour un achat qui peut attendre, épargner la même mensualité avant d'acheter évite de payer des intérêts. Le crédit peut se justifier pour un besoin urgent, à condition que la mensualité tienne dans le budget." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Créer un compte gratuit</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>Combien coûte vraiment un crédit conso ?</h1>
+      <p>Téléphone, télé, voyage, voiture : calcule ta mensualité et les intérêts que tu paieras, puis compare avec le fait d'épargner la même somme avant d'acheter.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" id="presets">
+            <button type="button" data-a="800" data-t="12" data-d="12">📱 Téléphone</button>
+            <button type="button" data-a="1500" data-t="8" data-d="24">📺 Télé, électroménager</button>
+            <button type="button" data-a="3000" data-t="6" data-d="36">✈️ Voyage</button>
+            <button type="button" data-a="12000" data-t="5" data-d="60">🚗 Voiture</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="a">Montant emprunté</label><span class="field-val"><input type="number" id="a-n" min="0" max="100000" step="50" aria-label="Montant emprunté en euros"><span class="unit">€</span></span></div>
+            <input type="range" id="a" min="100" max="30000" step="50" value="1500">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="t">TAEG</label><span class="field-val"><input type="number" id="t-n" min="0" max="30" step="0.1" aria-label="TAEG en pourcentage"><span class="unit">%/an</span></span></div>
+            <input type="range" id="t" min="0" max="22" step="0.1" value="8">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="field-head"><label for="d">Durée</label><span class="field-val"><input type="number" id="d-n" min="1" max="120" step="1" aria-label="Durée en mois"><span class="unit">mois</span></span></div>
+            <input type="range" id="d" min="3" max="84" step="1" value="24">
+          </div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Ta mensualité</div>
+          <div class="result-total" id="out-m">—</div>
+          <div class="result-sub" id="out-m-sub"></div>
+          <div class="kpis">
+            <div class="kpi"><b id="out-cost">—</b><span>Intérêts payés</span></div>
+            <div class="kpi"><b id="out-total">—</b><span>Total remboursé</span></div>
+            <div class="kpi gain"><b id="out-save">—</b><span>Pour l'épargner</span></div>
+          </div>
+          <div class="compare">
+            <div><b id="cmp-credit">—</b>À crédit : tu l'as tout de suite, mais tu paies <span id="cmp-credit-x"></span> de plus.</div>
+            <div><b id="cmp-save">—</b>En épargnant la même mensualité avant : 0 € d'intérêts.</div>
+          </div>
+          <div class="example" id="out-advice" style="font-size:14px;margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>Comment est calculé le coût d'un crédit ?</h2>
+      <p>Chaque mois, tu rembourses une partie du montant emprunté et des intérêts. Plus le <strong>TAEG</strong> est élevé et plus la durée est longue, plus le total des intérêts grimpe. Le calculateur utilise la formule classique d'un prêt à mensualités constantes, avec le taux mensuel équivalent au TAEG.</p>
+      <div class="formula">mensualité = montant × t / (1 − (1 + t)<sup>−durée</sup>)   avec t = (1 + TAEG)<sup>1/12</sup> − 1</div>
+      <div class="example">
+        <p style="margin:0">Exemple : <strong>1 500 €</strong> empruntés à <strong>8 %</strong> de TAEG sur <strong>24 mois</strong> donnent une mensualité d'environ <strong>68 €</strong> et environ <strong>124 € d'intérêts</strong>. En mettant 68 € de côté chaque mois, la même somme serait réunie en 23 mois, sans intérêts.</p>
+      </div>
+
+      <h2>Crédit ou épargne : comment choisir ?</h2>
+      <ul>
+        <li><strong>L'achat peut attendre</strong> (nouveau téléphone, télé, voyage) : épargner d'abord coûte moins cher, et laisse le temps de vérifier que l'envie dure.</li>
+        <li><strong>Le besoin est urgent</strong> (voiture indispensable pour travailler, appareil en panne) : un crédit peut se justifier, si la mensualité tient dans ton budget et que tu compares le TAEG de plusieurs offres.</li>
+        <li><strong>Évite d'empiler</strong> les crédits et les paiements fractionnés : au bout de quelques-uns, on ne sait plus combien on doit chaque mois.</li>
+      </ul>
+
+      <section class="faq">
+        <h2>Questions fréquentes</h2>
+        <h3>Qu'est-ce que le TAEG ?</h3>
+        <p>Le taux annuel effectif global regroupe le taux d'intérêt et les frais obligatoires (frais de dossier, assurance exigée…). C'est le chiffre à comparer entre deux offres : il doit figurer sur toute publicité et toute offre de crédit.</p>
+        <h3>Le paiement en 3 ou 4 fois est-il gratuit ?</h3>
+        <p>Pas toujours : certains sont sans frais, d'autres ajoutent des frais ou des intérêts. Lis les conditions, et additionne ce que tu dois déjà chaque mois avant d'en ajouter un.</p>
+        <h3>J'ai déjà plusieurs crédits, par lequel commencer ?</h3>
+        <p>En général, rembourser en avance le crédit au taux le plus élevé fait économiser le plus d'intérêts. Le <a href="/remboursement-dettes">calculateur de remboursement de dettes</a> te le montre.</p>
+        <h3>Ce calculateur est-il gratuit ?</h3>
+        <p>Oui, sans inscription, et rien n'est enregistré. Le résultat est indicatif : seule l'offre de crédit de ton organisme fait foi.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Épargne pour ton prochain achat</h2>
+      <p>Crée un objectif (téléphone, voyage, voiture) : Kapitaro te dit combien mettre de côté chaque mois et suit ta progression.</p>
+      <a href="/?inscription=1" data-cta="bottom">Créer mon compte gratuit</a>
+    </section>
+
+    <section class="others">
+      <h2>Autres outils gratuits</h2>
+      <a href="/remboursement-dettes"><div>Rembourser ses dettes<span>Dans quel ordre, et combien d'intérêts économiser</span></div>›</a>
+      <a href="/calculateur-objectif-epargne"><div>Calculateur d'objectif d'épargne<span>Combien mettre de côté chaque mois pour atteindre ton objectif</span></div>›</a>
+      <a href="/budget-50-30-20"><div>Budget 50/30/20<span>Répartis ton salaire entre besoins, envies et épargne</span></div>›</a>
+      <a href="/calculateur-petites-depenses"><div>Coût de tes petites dépenses<span>Café, livraison, snacks : le vrai coût sur un an</span></div>›</a>
+      <a href="/epargne-de-precaution"><div>Épargne de précaution<span>Combien garder de côté avant d'investir</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Calcul indicatif à but pédagogique (mensualités constantes, hors assurance facultative). Il ne remplace pas l'offre de crédit de ton organisme et ne constitue pas un conseil personnalisé. Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager.</p>
+    <p>Kapitaro · Maxence De Macedo, entrepreneur individuel (Quorvia) · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.fr</a><br><a href="/mentions-legales">Mentions légales</a> · <a href="/cgu">CGU / CGV</a> · <a href="/confidentialite">Confidentialité</a> · <a href="/risques">Risques</a> · <a href="/faq">FAQ</a> · <a href="/blog">Blog</a></p>
+  </footer>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Math.round(n).toLocaleString('fr-FR') + ' €'; };
+    var get = function (id) { var v = parseFloat(document.getElementById(id + '-n').value); return isFinite(v) && v >= 0 ? v : 0; };
+    var set = function (id, t) { document.getElementById(id).textContent = t; };
+    var months = function (n) { return n < 12 ? n + ' mois' : Math.floor(n / 12) + ' an' + (n >= 24 ? 's' : '') + (n % 12 ? ' ' + (n % 12) + ' mois' : ''); };
+    function update() {
+      var a = get('a'), taeg = get('t'), d = Math.max(1, Math.round(get('d')));
+      var i = Math.pow(1 + taeg / 100, 1 / 12) - 1;
+      var m = i > 0 ? a * i / (1 - Math.pow(1 + i, -d)) : a / d;
+      var total = m * d, cost = total - a, save = m > 0 ? Math.ceil(a / m) : 0;
+      set('out-m', m.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €');
+      set('out-m-sub', 'pendant ' + months(d));
+      set('out-cost', fmt(cost)); set('out-total', fmt(total)); set('out-save', months(save));
+      set('cmp-credit', fmt(total)); set('cmp-credit-x', fmt(cost)); set('cmp-save', fmt(a));
+      document.getElementById('out-advice').innerHTML = a <= 0 ? 'Indique un montant.' :
+        'Ce crédit te coûte <strong>' + fmt(cost) + ' d\'intérêts</strong>. En mettant la même mensualité de côté, tu réunirais ' + fmt(a) + ' en <strong>' + months(save) + '</strong>, sans intérêts. Si l\'achat peut attendre, épargner d\'abord revient moins cher.';
+    }
+    ['a', 't', 'd'].forEach(function (id) {
+      var range = document.getElementById(id), num = document.getElementById(id + '-n');
+      num.value = range.value;
+      range.addEventListener('input', function () { num.value = range.value; update(); });
+      num.addEventListener('input', function () { range.value = num.value; update(); });
+    });
+    document.querySelectorAll('#presets button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        [['a', b.dataset.a], ['t', b.dataset.t], ['d', b.dataset.d]].forEach(function (x) { document.getElementById(x[0]).value = x[1]; document.getElementById(x[0] + '-n').value = x[1]; });
+        update();
+      });
+    });
+    document.querySelectorAll('[data-cta]').forEach(function (a) {
+      a.addEventListener('click', function () { try { window.va && window.va('event', { name: 'seo_cta', data: { page: 'credit-conso', where: a.getAttribute('data-cta') } }); } catch (e) {} });
+    });
+    update();
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20260930"></script>
+</body>
+</html>

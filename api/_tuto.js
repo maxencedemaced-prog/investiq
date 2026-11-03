@@ -30,7 +30,8 @@ export const TUTOS = {
       { say: 'Tu fixes un objectif, par exemple cinquante mille euros dans dix ans, et Kapitaro te montre comment y arriver, mois après mois.', do: [{ click: '#bnav-objectif' }, { wait: 1200 }, { point: '#obj-results canvas, #obj-results' }] },
       { say: 'Chaque mois, un plan te propose comment répartir ton versement, en s’appuyant sur les vrais cours et l’actualité.', do: [{ scroll: '#monthly-addall-btn' }, { wait: 400 }, { point: '#monthly-addall-btn' }] },
       { say: 'Et l’assistant IA répond à tes questions, simplement.', do: [{ click: '#bnav-ai' }, { wait: 900 }, { js: 'window.__tutoAiDemo && window.__tutoAiDemo()' }] },
-      { say: 'Pour commencer, un petit tutoriel va se lancer pour créer ton premier objectif. Laisse-toi guider.', do: [{ js: "showOnboarding(true); var k = document.getElementById('ob-btn-skip'); if (k) k.textContent = 'Passer';" }, { wait: 900 }, { click: '#onboarding-modal .ob-profile-card' }] },
+      { say: 'Tu cherches un calculateur ? Budget, petites dépenses, abonnements, crédit, dettes ou épargne : ils sont tous gratuits, et réunis dans le menu Calculateurs.', do: [{ js: "nav('calc')" }, { wait: 1000 }, { scroll: '#calc-tools' }, { point: '#calc-tools' }] },
+      { say: 'Pour commencer, un petit tutoriel va se lancer pour créer ton premier objectif. Il t’est offert : tu profites de ton objectif et de ton plan du mois gratuitement pendant trente jours. Laisse-toi guider.', do: [{ js: "showOnboarding(true); var k = document.getElementById('ob-btn-skip'); if (k) k.textContent = 'Passer';" }, { wait: 900 }, { click: '#onboarding-modal .ob-profile-card' }] },
       { say: 'Ensuite, sur chaque page, le bouton lecture t’explique à quoi elle sert en trente secondes.', do: [{ js: "document.getElementById('onboarding-modal').style.display='none'; nav('portfolio')" }, { wait: 900 }, { click: '.kp-tuto-btn' }] },
       { say: 'Kapitaro est un outil pédagogique : il ne remplace pas un conseiller agréé, et investir comporte un risque de perte en capital.', do: [{ js: 'window.__tutoEndCard && window.__tutoEndCard()' }] },
     ],
@@ -68,7 +69,7 @@ export const TUTOS = {
     title: 'L’objectif',
     page: 'objectif',
     beats: [
-      { say: 'L’objectif, c’est la somme que tu veux atteindre, et quand. Tout part de là.', do: [{ click: '#bnav-objectif' }, { wait: 1000 }, { point: '#obj-chart-amount, #obj-results' }] },
+      { say: 'L’objectif, c’est la somme que tu veux atteindre, et quand. Tout part de là. Ton objectif et ton plan du mois te sont offerts pendant trente jours.', do: [{ click: '#bnav-objectif' }, { wait: 1000 }, { point: '#obj-chart-amount, #obj-results' }] },
       { say: 'La courbe montre où te mènent tes versements : en plein, la valeur avec les intérêts, en pointillé, l’argent versé. Fais glisser le curseur pour voir n’importe quelle année.', do: [{ point: '#obj-chart' }, { wait: 1500 }, { point: '#obj-slider' }, { js: "(async () => { const s = document.getElementById('obj-slider'); if (!s) return; const go = async (a, b) => { const st = a > b ? -3 : 3; for (let v = a; st < 0 ? v >= b : v <= b; v += st) { s.value = v; try { updateObjSlider(v); } catch (e) {} await new Promise(r => setTimeout(r, 45)); } }; await go(100, 25); await new Promise(r => setTimeout(r, 400)); await go(25, 100); })()" }] },
       { say: 'Juste en dessous, ta progression réelle : ce que valent aujourd’hui tes placements, comparé à ton objectif.', do: [{ point: '#obj-real-bar' }] },
       { say: 'Tu peux avoir jusqu’à trois objectifs. Si l’un n’est pas atteignable, Kapitaro te dit ce qu’il faudrait changer : la durée, le versement ou le rendement.', do: [{ scroll: '#obj-tabs' }, { point: '#obj-tabs' }, { wait: 1200 }, { point: '#obj-feasibility, #obj-tabs' }] },
@@ -85,7 +86,7 @@ export const TUTOS = {
     beats: [
       { say: 'L’assistant IA connaît ton portefeuille, ton objectif et ton profil.', do: [{ js: 'window.isPremiumUser = () => false' }, { click: '#bnav-ai' }, { wait: 900 }, { point: '#ai-chat' }] },
       { say: 'Pose-lui une question comme à un ami qui s’y connaît : il t’explique avec les vrais cours et l’actualité, et c’est toi qui décides.', do: [{ scroll: '#ai-in' }, { point: '#ai-in' }, { js: 'window.__tutoAiDemo && window.__tutoAiDemo()' }] },
-      { say: 'En version gratuite, tu as quinze questions offertes, puis trois par jour.', do: [{ point: '#ai-chat' }] },
+      { say: 'En version gratuite, tu peux lui poser trois questions par jour.', do: [{ point: '#ai-chat' }] },
       { say: 'Avec Premium, les questions sont illimitées, et l’agent travaille pour toi chaque jour : verdict sur ton portefeuille, alertes, priorités et signaux IA.', do: [{ js: "try { renderAgentTabs(); setAgentView('sample'); } catch (e) {}" }, { wait: 900 }, { scroll: '#agent-tabs' }, { point: '#agent-tabs button:nth-child(2), #agent-tabs' }, { wait: 1200 }, { scroll: '#agent-verdict' }, { point: '#agent-verdict' }] },
     ],
   },

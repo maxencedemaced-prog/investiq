@@ -2,6 +2,7 @@
 // Relances automatiques, chacune envoyée au plus une fois par personne :
 //   - nudge_empty : compte créé il y a 1 à 7 jours, e-mail confirmé, aucune position
 //   - winback     : aucune activité depuis 10 jours (compte de plus de 10 jours)
+//   - trial_j7 / trial_j1 / trial_end : fin de l'essai gratuit de l'objectif (30 jours sans carte), comptes non Premium
 // Respecte la désinscription (profiles.email_opt_out) et plafonne le nombre d'envois par jour.
 //   ?mode=newsletter (cron du dimanche) : la lettre de la semaine à tous les inscrits (articles du blog, agenda, point perso)
 //   POST (compte admin) : m'envoyer un aperçu de la lettre de la semaine
@@ -12,7 +13,9 @@ import { EMAILS, renderEmail, sendEmail, escapeHtml as esc, emailFor, userLang }
 const SITE = 'https://kapitaro.fr';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'maxencedemacedo@gmail.com';
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || 'sb_publishable_3_8eb6YbCfJ04Qihdy9ivw_NsQ4H_cu';
-const eur = n => Math.round(n).toLocaleString('fr-FR').replace(/\s/g, '\u202f') + '\u00a0€';
+// Fin de l'essai gratuit de l'objectif : 30 jours après l'inscription, ou après le lancement de l'essai (même règle que api/claude.js)
+const trialEnd = createdAt => Math.max(Date.parse(createdAt) || 0, Date.parse('2026-11-04T00:00:00Z')) + 30 * 86400000;
+const eur = n =>Math.round(n).toLocaleString('fr-FR').replace(/\s/g, '\u202f') + '\u00a0€';
 // Numéro de semaine ISO (clé d'envoi : une seule lettre par personne et par semaine)
 function isoWeek(d = new Date()) {
   const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -174,11 +177,15 @@ export default async function handler(req, res) {
     const now = Date.now();
     const age = u => now - new Date(u.created_at).getTime();
 
-    const [{ data: optOut }, { data: logs }] = await Promise.all([
+    const [{ data: optOut }, { data: logs }, { data: prem }] = await Promise.all([
       sb.from('profiles').select('id').eq('email_opt_out', true),
       sb.from('email_log').select('user_id, kind'),
+      sb.from('profiles').select('id, is_premium, subscription_status, premium_until').or('is_premium.eq.true,premium_until.not.is.null'),
     ]);
     const optedOut = new Set((optOut || []).map(p => p.id));
+    // Comptes Premium (même règle que api/claude.js) : pas de rappel de fin d'essai
+    const premium = new Set((prem || []).filter(p => p.subscription_status !== 'canceled' && p.subscription_status !== 'unpaid' &&
+      (p.premium_until ? Date.parse(p.premium_until) > now : p.is_premium === true)).map(p => p.id));
     const already = new Set((logs || []).map(l => l.user_id + '|' + l.kind));
 
     // Positions par utilisateur et dernière activité (hors signaux de présence)
@@ -197,6 +204,12 @@ export default async function handler(req, res) {
       if (a >= 1 * DAY && a < 7 * DAY && !hasPositions.has(u.id) && !already.has(u.id + '|nudge_empty')) {
         todo.push({ u, kind: 'nudge_empty' });
         continue;   // une seule relance par jour et par personne
+      }
+      // Essai gratuit de l'objectif : 7 jours avant la fin, la veille, puis le jour de la fin (dans les 3 jours qui suivent)
+      if (!premium.has(u.id)) {
+        const left = trialEnd(u.created_at) - now;
+        const kind = left > 0 && left <= DAY ? 'trial_j1' : left > DAY && left <= 7 * DAY ? 'trial_j7' : left <= 0 && left > -3 * DAY ? 'trial_end' : null;
+        if (kind && !already.has(u.id + '|' + kind)) { todo.push({ u, kind }); continue; }
       }
       const seen = lastSeen[u.id] || new Date(u.last_sign_in_at || u.created_at).getTime();
       if (a >= 10 * DAY && now - seen >= 10 * DAY && now - seen < 60 * DAY && !already.has(u.id + '|winback')) {
