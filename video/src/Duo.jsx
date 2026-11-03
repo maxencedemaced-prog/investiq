@@ -127,7 +127,7 @@ function card(x, y, s, f, dark) {
 // Montant qui défile (pastille blanche « libellé + valeur »)
 function counter(x, y, label, v, f, at = 8, len = 26, col = INK) {
   const val = v * io(f, at, at + len, 0, 1, Easing.out(Easing.quad));
-  const txt = eur(val), w = txt.length * 13 + (label ? label.length * 6 + 26 : 24);
+  const txt = eur(val), w = txt.length * 16 + (label ? label.length * 7 + 34 : 28);
   return `<g opacity="${io(f, at - 4, at, 0, 1)}"><rect x="${x - w / 2}" y="${y - 20}" width="${w}" height="40" rx="12" fill="#fff" stroke="#dbe3ef"/>` +
     (label ? `<text x="${x - w / 2 + 14}" y="${y + 4}" font-family="${fontFamily}" font-size="9" font-weight="800" fill="#94a3b8">${esc(label)}</text>` : '') +
     `<text x="${x + w / 2 - 14}" y="${y + 9}" text-anchor="end" font-family="${head}" font-weight="900" font-size="24" fill="${col}">${txt}</text></g>`;
@@ -231,9 +231,9 @@ const V = {
   show: (s, f, dark) => {
     const p = who(s), k = io(f, 2, 12, 0, 1, Easing.out(Easing.back(2.2))), fy = Math.sin(f / 8) * 5 * io(f, 12, 18, 0, 1);
     const tone = s.who === 'B' ? (s.col === 'r' ? RED : s.top || BLUE) : GREEN;
-    return shadow(250, 556, 62 * k, dark) + `<g transform="translate(250 ${470 + fy}) scale(${k}) rotate(${io(f, 2, 12, -14, 0)}) translate(-250 -470)">${spr(s.o, 250, 550, s.oh || 170)}</g>` +
-      person(105, 600, p, 2.3 * io(f, 0, 8, .8, 1, Easing.out(Easing.back(1.6))), { pose: s.pose || 'montre', shake: s.pose === 'choque' && f < 30 }, f) +
-      pill(250, 330, s.pill, tone, '#fff', io(f, 10, 16, 0, 1), 15);
+    return shadow(258, 556, 58 * k, dark) + `<g transform="translate(258 ${470 + fy}) scale(${k}) rotate(${io(f, 2, 12, -14, 0)}) translate(-258 -470)">${spr(s.o, 258, 550, s.oh || 160)}</g>` +
+      person(118, 600, p, 1.95 * io(f, 0, 8, .8, 1, Easing.out(Easing.back(1.6))), { pose: s.pose || 'montre', shake: s.pose === 'choque' && f < 30 }, f) +
+      pill(180, 300, s.pill, tone, '#fff', io(f, 10, 16, 0, 1), 15);
   },
   // Gros chiffre (HTML, voir Big) : ici seulement les pièces qui jaillissent
   big: (s, f) => burst(180, 470, f, 14) + burst(180, 470, f, 22),
