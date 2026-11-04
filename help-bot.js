@@ -38,9 +38,10 @@
   }
 
   // ── Interface ──
+  // bulle sous les fenêtres (.modal-overlay = 1000) : sur téléphone elle masquait leurs boutons et choix (ex. « Confirmé » du questionnaire)
   var css = document.createElement('style');
   css.textContent = [
-    '#kp-help-btn{position:fixed;right:20px;bottom:20px;z-index:9000;width:58px;height:58px;border-radius:50%;border:none;background:#16a34a;color:#fff;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;transition:transform .15s}',
+    '#kp-help-btn{position:fixed;right:20px;bottom:20px;z-index:999;width:58px;height:58px;border-radius:50%;border:none;background:#16a34a;color:#fff;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;transition:transform .15s}',
     '#kp-help-btn:hover{transform:scale(1.06)}',
     '#kp-help-btn svg{width:28px;height:28px}',
     '#kp-help{position:fixed;right:20px;bottom:90px;z-index:9001;width:370px;max-width:calc(100vw - 24px);height:540px;max-height:calc(100vh - 120px);background:#fff;color:#0b1220;border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.4);display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}',
