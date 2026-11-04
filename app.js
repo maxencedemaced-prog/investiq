@@ -448,7 +448,7 @@ function getCachedMonthlyPlan() {
 
 // ═══ ANALYSE RÉELLE AVANT LE PLAN DU MOIS ═══
 // Liste fermée de grandes valeurs (France, Europe, États-Unis) : l'IA ne peut choisir QUE dedans (ou parmi ce que l'utilisateur détient déjà).
-const PLAN_UNIVERSE = [
+const PLAN_UNIVERSE_BASE = [
   ['MC.PA','LVMH','Luxe','France'], ['RMS.PA','Hermès','Luxe','France'], ['OR.PA',"L'Oréal",'Consommation','France'], ['BN.PA','Danone','Consommation de base','France'],
   ['AI.PA','Air Liquide','Industrie','France'], ['SU.PA','Schneider Electric','Industrie','France'], ['AIR.PA','Airbus','Aéronautique','France'], ['SAF.PA','Safran','Aéronautique','France'],
   ['DG.PA','Vinci','Construction','France'], ['SAN.PA','Sanofi','Santé','France'], ['EL.PA','EssilorLuxottica','Santé','France'], ['TTE.PA','TotalEnergies','Énergie','France'],
@@ -468,6 +468,16 @@ const PLAN_ETFS_BY_REGION = {
 };
 const PLAN_REGION = (() => { try { const r = window.kpI18n && window.kpI18n.isEN && window.kpI18n.region; return r === 'US' || r === 'UK' ? r : 'EU'; } catch (e) { return 'EU'; } })();
 const PLAN_ETFS = PLAN_ETFS_BY_REGION[PLAN_REGION];
+// Actions proposées : aux États-Unis, uniquement des valeurs américaines (cotées en dollars, sans frais de change), avec plus de secteurs.
+// Ailleurs : liste habituelle (France, Europe, États-Unis), comme décidé pour la version française.
+const PLAN_US_EXTRA = [
+  ['UNH','UnitedHealth','Santé','États-Unis'], ['LLY','Eli Lilly','Santé','États-Unis'], ['MRK','Merck & Co','Santé','États-Unis'],
+  ['MA','Mastercard','Finance','États-Unis'], ['BRK-B','Berkshire Hathaway','Finance','États-Unis'], ['HD','Home Depot','Consommation','États-Unis'],
+  ['COST','Costco','Consommation de base','États-Unis'], ['PEP','PepsiCo','Consommation de base','États-Unis'], ['WMT','Walmart','Consommation de base','États-Unis'],
+  ['CAT','Caterpillar','Industrie','États-Unis'], ['HON','Honeywell','Industrie','États-Unis'], ['NEE','NextEra Energy','Services publics','États-Unis'],
+  ['VZ','Verizon','Télécoms','États-Unis'], ['CVX','Chevron','Énergie','États-Unis'], ['LIN','Linde','Matériaux','États-Unis'],
+];
+const PLAN_UNIVERSE = PLAN_REGION === 'US' ? [...PLAN_UNIVERSE_BASE.filter(u => u[3] === 'États-Unis'), ...PLAN_US_EXTRA] : PLAN_UNIVERSE_BASE;
 let PLAN_GOLD = null;
 const PLAN_GOLD_OF = () => PLAN_ETFS.find(e => /gold|or physique/i.test(e[1] + ' ' + e[2])) || null;   // ETC or de la région (aucun au Royaume-Uni)
 
