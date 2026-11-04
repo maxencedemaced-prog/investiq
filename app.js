@@ -11737,6 +11737,23 @@ function qaJson(o) { return JSON.stringify(o).replace(/"/g, '&quot;'); }
 // Curseur animé qui montre où cliquer (coach mark réutilisable sur n'importe quelle page).
 // Tour guidé du plan : la page se grise, un curseur va sur "Tout ajouter" puis sur une ligne, avec des légendes.
 // Visite guidée générique : le curseur passe sur une liste de cibles, chacune avec sa légende centrée.
+// Premier élément VISIBLE d'un sélecteur : une même classe existe souvent en double (version ordinateur cachée sur téléphone, et inversement)
+function kpVisibleEl(sel) {
+  try { for (const s of String(sel).split(',')) { const el = [...document.querySelectorAll(s.trim())].find(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }); if (el) return el; } } catch (e) {}
+  return null;
+}
+// Attend la fin du défilement doux avant de pointer : sa durée varie selon le téléphone et la distance
+// (élément immobile pendant ~150 ms, au moins 250 ms, 1,8 s au plus)
+function kpAfterScroll(el, cb) {
+  const t0 = performance.now(); let last = '', still = 0;
+  const tick = () => {
+    const r = el.getBoundingClientRect(); const k = Math.round(r.top) + ',' + Math.round(r.left);
+    if (k === last) still++; else { still = 0; last = k; }
+    const dt = performance.now() - t0;
+    if ((still >= 3 && dt > 250) || dt > 1800) cb(); else setTimeout(tick, 50);
+  };
+  setTimeout(tick, 50);
+}
 function kpTour(steps, key) {
   if (document.getElementById('kp-tour')) { setTimeout(() => kpTour(steps, key), 3000); return; }   // une visite en cours n'est jamais interrompue
   try { if (key && localStorage.getItem('kp_hint_' + key)) return; } catch (e) {}
@@ -11748,7 +11765,7 @@ function kpTour(steps, key) {
   wrap.innerHTML = `
     <div id="kp-tour-ov" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9100;transition:opacity .35s"></div>
     <div id="kp-tour-cur" style="position:fixed;z-index:9102;pointer-events:none;transition:left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)">
-      <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
+      <span style="position:absolute;left:-14px;top:-18px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
       <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
     </div>
     <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:40%;display:flex;justify-content:center;padding:0 16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
@@ -11758,25 +11775,47 @@ function kpTour(steps, key) {
   const _lifted = [];
   const lift = (el) => { try { if (_lifted.some(x => x.el === el)) return; _lifted.push({ el, pos: el.style.position, z: el.style.zIndex, pe: el.style.pointerEvents }); if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; el.style.pointerEvents = 'none'; } catch (e) {} };
   const _unlift = () => { _lifted.forEach(x => { try { x.el.style.position = x.pos; x.el.style.zIndex = x.z; x.el.style.pointerEvents = x.pe; } catch (e) {} }); };
+  // Position recalculée à chaque défilement, rotation, changement de hauteur (barre d'adresse mobile) ou contenu qui se charge :
+  // la pointe de la flèche (7 px, 3 px dans le dessin) et le cercle vert tombent au centre de la cible
+  let _target = null;
+  const place = () => {
+    if (!_target || !cur || !_target.isConnected) return;
+    const r = _target.getBoundingClientRect();
+    if (!r.width && !r.height) return;
+    cur.style.left = (r.left + r.width * 0.5 - 7) + 'px';
+    cur.style.top = (r.top + r.height * 0.5 - 3) + 'px';
+    if (tip) { const _s = tip.querySelector('span'); const _th = (_s && _s.getBoundingClientRect().height) || 50; const _vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight; let _top = r.top - _th - 28; if (_top < 12) _top = r.bottom + 28; if (_top + _th > _vh - 12) _top = Math.max(12, _vh - _th - 12); tip.style.top = _top + 'px'; }
+  };
+  const _vv = window.visualViewport;
+  window.addEventListener('scroll', place, true); window.addEventListener('resize', place);
+  if (_vv) { _vv.addEventListener('resize', place); _vv.addEventListener('scroll', place); }
+  const _iv = setInterval(place, 400);
+  const _unfollow = () => { clearInterval(_iv); window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place); if (_vv) { _vv.removeEventListener('resize', place); _vv.removeEventListener('scroll', place); } };
   const moveTo = (el, legend) => {
     if (!el || !cur) return;
-    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
-    setTimeout(() => {
-      const r = el.getBoundingClientRect();
-      cur.style.left = (r.left + r.width * 0.5) + 'px';
-      cur.style.top = (r.top + r.height * 0.5) + 'px';
+    _target = null;   // le curseur attend la fin du défilement avant de repartir
+    // élément de la barre du bas (position fixe) : déjà à l'écran, et scrollIntoView ferait descendre la page jusqu'en bas
+    let _fixed = false; for (let a = el; a && a !== document.body; a = a.parentElement) { if (getComputedStyle(a).position === 'fixed') { _fixed = true; break; } }
+    if (!_fixed) { try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }
+    kpAfterScroll(el, () => {
+      if (!document.getElementById('kp-tour')) return;
+      // défilement doux interrompu ou ignoré par le navigateur : on amène la cible à l'écran sans animation
+      if (!_fixed) { const _r = el.getBoundingClientRect(), _vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight; if (_r.top < 0 || _r.bottom > _vh || _r.left < 0 || _r.right > window.innerWidth) { try { el.scrollIntoView({ block: 'center', behavior: 'instant' }); } catch (e) { try { el.scrollIntoView(true); } catch (e2) {} } } }
+      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; }
+      _target = el;
+      place();
       lift(el);
-      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; const _th = (_s && _s.getBoundingClientRect().height) || 50; let _top = r.top - _th - 28; if (_top < 12) _top = r.bottom + 28; if (_top + _th > window.innerHeight - 12) _top = Math.max(12, window.innerHeight - _th - 12); tip.style.top = _top + 'px'; tip.style.opacity = '1'; }
-    }, 650);
+      if (tip) tip.style.opacity = '1';
+    });
   };
-  const end = () => { _unlift(); try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {} const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => document.getElementById('kp-tour')?.remove(), 400); };
+  const end = () => { _unfollow(); _unlift(); try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {} const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => document.getElementById('kp-tour')?.remove(), 400); };
   { const _ov = document.getElementById('kp-tour-ov'); const _stop = e => { e.preventDefault(); e.stopPropagation(); }; ['click', 'mousedown', 'touchstart', 'wheel', 'touchmove'].forEach(t => _ov.addEventListener(t, _stop, { passive: false })); _ov.style.touchAction = 'none'; }
   try { cur.style.transition = 'none'; cur.style.left = (window.innerWidth / 2) + 'px'; cur.style.top = (window.innerHeight / 2) + 'px'; void cur.offsetWidth; cur.style.transition = 'left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)'; } catch (e) {}
   let i = 0;
   const run = () => {
     if (i >= steps.length) { setTimeout(end, 1800); return; }
     const s = steps[i];
-    const el = document.querySelector(s.sel);
+    const el = kpVisibleEl(s.sel);
     const _rr = el ? el.getBoundingClientRect() : null;
     i++;
     if (!_rr || _rr.width === 0 || _rr.height === 0) { run(); return; }
@@ -11813,47 +11852,19 @@ function showGoToPortfolioHint() {
 }
 function showPlanTour() {
   try { if (localStorage.getItem('kp_tour_plan')) return; } catch (e) {}
-  const allBtn = document.getElementById('plan-addall-btn');
-  if (!allBtn) return;
-  document.getElementById('kp-tour')?.remove();
-  const wrap = document.createElement('div');
-  wrap.id = 'kp-tour';
-  wrap.innerHTML = `
-    <div id="kp-tour-ov" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9100;transition:opacity .35s"></div>
-    <div id="kp-tour-cur" style="position:fixed;z-index:9102;pointer-events:none;transition:left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)">
-      <span style="position:absolute;left:-6px;top:-6px;width:42px;height:42px;border-radius:50%;background:rgba(34,197,94,0.55);animation:kpTap 1.1s ease-out infinite"></span>
-      <svg width="34" height="34" viewBox="0 0 24 24" style="position:relative;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
-    </div>
-    <div id="kp-tour-tip" style="position:fixed;left:0;right:0;top:40%;display:flex;justify-content:center;padding:0 16px;z-index:9103;pointer-events:none;opacity:0;transition:opacity .3s"><span style="max-width:min(88vw,360px);background:#111827;color:#fff;font-size:15px;font-weight:800;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.5);text-align:center"></span></div>`;
-  document.body.appendChild(wrap);
-  const cur = document.getElementById('kp-tour-cur');
-  const tip = document.getElementById('kp-tour-tip');
-  const _lifted = [];
-  const lift = (el) => { try { if (_lifted.some(x => x.el === el)) return; _lifted.push({ el, pos: el.style.position, z: el.style.zIndex, pe: el.style.pointerEvents }); if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '9101'; el.style.pointerEvents = 'none'; } catch (e) {} };
-  const _unlift = () => { _lifted.forEach(x => { try { x.el.style.position = x.pos; x.el.style.zIndex = x.z; x.el.style.pointerEvents = x.pe; } catch (e) {} }); };
-  const moveTo = (el, legend) => {
-    if (!el || !cur) return;
-    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
-    setTimeout(() => {
-      const r = el.getBoundingClientRect();
-      cur.style.left = (r.left + r.width * 0.5) + 'px';
-      cur.style.top = (r.top + r.height * 0.5) + 'px';
-      lift(el);
-      if (tip) { const _s = tip.querySelector('span'); if (_s) _s.textContent = legend; const _th = (_s && _s.getBoundingClientRect().height) || 50; let _top = r.top - _th - 28; if (_top < 12) _top = r.bottom + 28; if (_top + _th > window.innerHeight - 12) _top = Math.max(12, window.innerHeight - _th - 12); tip.style.top = _top + 'px'; tip.style.opacity = '1'; }
-    }, 650);
-  };
-  const end = () => { _unlift(); try { localStorage.setItem('kp_tour_plan', '1'); } catch (e) {} const ov = document.getElementById('kp-tour-ov'); if (ov) ov.style.opacity = '0'; if (cur) cur.style.opacity = '0'; setTimeout(() => { document.getElementById('kp-tour')?.remove(); }, 400); };
-  { const _ov = document.getElementById('kp-tour-ov'); const _stop = e => { e.preventDefault(); e.stopPropagation(); }; ['click', 'mousedown', 'touchstart', 'wheel', 'touchmove'].forEach(t => _ov.addEventListener(t, _stop, { passive: false })); _ov.style.touchAction = 'none'; }
-  try { cur.style.transition = 'none'; cur.style.left = (window.innerWidth / 2) + 'px'; cur.style.top = (window.innerHeight / 2) + 'px'; void cur.offsetWidth; cur.style.transition = 'left .9s cubic-bezier(.45,0,.2,1),top .9s cubic-bezier(.45,0,.2,1)'; } catch (e) {}
-  moveTo(allBtn, 'Ajouter toutes les positions de votre plan d\'un coup');
-  setTimeout(() => { const line = document.querySelector('.kp-line-add'); if (line) moveTo(line, 'ou les ajouter une par une'); }, 3000);
-  setTimeout(end, 6800);
+  if (!document.getElementById('plan-addall-btn')) return;
+  try { localStorage.setItem('kp_tour_plan', '1'); } catch (e) {}
+  // même visite que les autres (kpTour) : le curseur suit la cible pendant le défilement et sur tous les formats d'écran
+  kpTour([
+    { sel: '#plan-addall-btn', legend: 'Ajouter toutes les positions de votre plan d\'un coup' },
+    { sel: '.kp-line-add', legend: 'ou les ajouter une par une' },
+  ], 'tour_plan');
 }
 
 function showCursorHint(selector, key, opts) {
   opts = opts || {};
   try { if (key && localStorage.getItem('kp_hint_' + key)) return; } catch (e) {}
-  const el = document.querySelector(selector);
+  const el = kpVisibleEl(selector) || document.querySelector(selector);   // l'exemplaire visible (ordinateur ou téléphone)
   if (!el) { const _n = opts._tries || 0; if (_n < 6) setTimeout(() => showCursorHint(selector, key, Object.assign({}, opts, { _tries: _n + 1 })), 1000); return; }
   const r = el.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return;
@@ -11861,13 +11872,18 @@ function showCursorHint(selector, key, opts) {
   const hint = document.createElement('div');
   hint.id = 'kp-cursor-hint';
   hint.style.cssText = 'position:fixed;z-index:9000;pointer-events:none;transition:opacity .3s;width:48px;height:48px';
-  hint.innerHTML = '<span style="position:absolute;left:2px;top:2px;width:34px;height:34px;border-radius:50%;background:rgba(22,163,74,0.45);animation:kpTap 1.1s ease-out infinite"></span><svg width="30" height="30" viewBox="0 0 24 24" style="position:absolute;left:8px;top:8px;animation:kpBob 1.1s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.45))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+  hint.innerHTML = '<span style="position:absolute;left:-3px;top:-7px;width:34px;height:34px;border-radius:50%;background:rgba(22,163,74,0.45);animation:kpTap 1.1s ease-out infinite"></span><svg width="30" height="30" viewBox="0 0 24 24" style="position:absolute;left:8px;top:8px;animation:kpBob 1.1s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.45))"><path d="M5 2 L5 20 L10 15 L13 22 L16 20.8 L13 14 L20 14 Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>';
   document.body.appendChild(hint);
-  const place = () => { const rr = el.getBoundingClientRect(); hint.style.left = (rr.left + rr.width * 0.5) + 'px'; hint.style.top = (rr.top + rr.height * 0.55) + 'px'; };
+  // la pointe de la flèche (14 px, 10 px dans le bloc) et le cercle vert tombent au centre de la cible
+  const place = () => { const rr = el.getBoundingClientRect(); hint.style.left = (rr.left + rr.width * 0.5 - 14) + 'px'; hint.style.top = (rr.top + rr.height * 0.5 - 10) + 'px'; };
   place();
   const onMove = () => place();
+  // recalcul aussi quand la barre d'adresse du téléphone change la hauteur visible (visualViewport) ou que le contenu se décale
+  const _vv = window.visualViewport;
   window.addEventListener('scroll', onMove, true); window.addEventListener('resize', onMove);
-  const done = () => { try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {} window.removeEventListener('scroll', onMove, true); window.removeEventListener('resize', onMove); hint.remove(); };
+  if (_vv) { _vv.addEventListener('resize', onMove); _vv.addEventListener('scroll', onMove); }
+  const _iv = setInterval(onMove, 400);
+  const done = () => { try { if (key) localStorage.setItem('kp_hint_' + key, '1'); } catch (e) {} clearInterval(_iv); window.removeEventListener('scroll', onMove, true); window.removeEventListener('resize', onMove); if (_vv) { _vv.removeEventListener('resize', onMove); _vv.removeEventListener('scroll', onMove); } hint.remove(); };
   try { el.addEventListener('click', done, { once: true }); } catch (e) {}
   setTimeout(() => { hint.style.opacity = '0'; setTimeout(done, 300); }, opts.duration || 8000);
 }
