@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "fr.kapitaro.app",
+        "sha256_cert_fingerprints": ["A2:75:1B:B5:36:57:1C:96:A7:24:DE:DF:0F:FD:4F:54:F4:19:21:FA:6F:82:C7:AB:C7:E1:72:78:83:67:A3:B7"]
+      }
+    }]
