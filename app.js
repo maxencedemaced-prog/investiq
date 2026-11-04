@@ -15442,5 +15442,6 @@ async function requestMonthlyPlanNow() {
 window.addEventListener('load', () => {
   let page = null;
   try { page = sessionStorage.getItem('kp_resume_demo'); sessionStorage.removeItem('kp_resume_demo'); } catch {}
-  if (page) setTimeout(() => { if (!currentUser && !isDemo) { enterDemo(); try { nav(page); } catch (e) {} } }, 600);
+  // (sans rouvrir le questionnaire de départ, déjà vu en entrant dans la démo)
+  if (page) setTimeout(() => { if (!currentUser && !isDemo) { enterDemo(); document.getElementById('onboarding-modal').style.display = 'none'; try { nav(page); } catch (e) {} } }, 600);
 });
