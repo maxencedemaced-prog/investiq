@@ -458,6 +458,20 @@ const PLAN_UNIVERSE_BASE = [
   ['AAPL','Apple','Technologie','États-Unis'], ['MSFT','Microsoft','Technologie','États-Unis'], ['NVDA','Nvidia','Technologie','États-Unis'], ['GOOGL','Alphabet','Technologie','États-Unis'],
   ['AMZN','Amazon','Consommation','États-Unis'], ['JNJ','Johnson & Johnson','Santé','États-Unis'], ['JPM','JPMorgan','Finance','États-Unis'], ['V','Visa','Finance','États-Unis'],
   ['KO','Coca-Cola','Consommation de base','États-Unis'], ['PG','Procter & Gamble','Consommation de base','États-Unis'], ['XOM','ExxonMobil','Énergie','États-Unis'],
+  // Élargissement (nov. 2026) : CAC 40 et grandes valeurs européennes ; le plan en présélectionne une quarantaine selon le marché
+  ['KER.PA','Kering','Luxe','France'], ['GLE.PA','Société Générale','Finance','France'], ['ACA.PA','Crédit Agricole','Finance','France'], ['RI.PA','Pernod Ricard','Consommation de base','France'],
+  ['CAP.PA','Capgemini','Technologie','France'], ['DSY.PA','Dassault Systèmes','Technologie','France'], ['STMPA.PA','STMicroelectronics','Technologie','France'], ['SGO.PA','Saint-Gobain','Construction','France'],
+  ['ENGI.PA','Engie','Services publics','France'], ['VIE.PA','Veolia','Services publics','France'], ['HO.PA','Thales','Aéronautique','France'], ['LR.PA','Legrand','Industrie','France'],
+  ['ML.PA','Michelin','Automobile','France'], ['RNO.PA','Renault','Automobile','France'], ['STLAP.PA','Stellantis','Automobile','France'], ['PUB.PA','Publicis','Médias','France'],
+  ['EN.PA','Bouygues','Construction','France'], ['CA.PA','Carrefour','Consommation de base','France'], ['AC.PA','Accor','Consommation','France'], ['ERF.PA','Eurofins Scientific','Santé','France'],
+  ['BVI.PA','Bureau Veritas','Industrie','France'],
+  ['UBSG.SW','UBS','Finance','Europe'], ['ZURN.SW','Zurich Insurance','Finance','Europe'], ['ABBN.SW','ABB','Industrie','Europe'], ['DTE.DE','Deutsche Telekom','Télécoms','Europe'],
+  ['MUV2.DE','Munich Re','Finance','Europe'], ['BAS.DE','BASF','Matériaux','Europe'], ['BMW.DE','BMW','Automobile','Europe'], ['MBG.DE','Mercedes-Benz','Automobile','Europe'],
+  ['IFX.DE','Infineon','Technologie','Europe'], ['ADS.DE','Adidas','Consommation','Europe'], ['RHM.DE','Rheinmetall','Aéronautique','Europe'], ['DB1.DE','Deutsche Börse','Finance','Europe'],
+  ['SAN.MC','Banco Santander','Finance','Europe'], ['ITX.MC','Inditex','Consommation','Europe'], ['ENEL.MI','Enel','Services publics','Europe'], ['ISP.MI','Intesa Sanpaolo','Finance','Europe'],
+  ['RACE.MI','Ferrari','Automobile','Europe'], ['UCG.MI','UniCredit','Finance','Europe'], ['INGA.AS','ING','Finance','Europe'], ['AD.AS','Ahold Delhaize','Consommation de base','Europe'],
+  ['PRX.AS','Prosus','Technologie','Europe'], ['HEIA.AS','Heineken','Consommation de base','Europe'], ['ABI.BR','AB InBev','Consommation de base','Europe'], ['NOKIA.HE','Nokia','Télécoms','Europe'],
+  ['ATCO-A.ST','Atlas Copco','Industrie','Europe'], ['VOLV-B.ST','Volvo','Industrie','Europe'], ['EQNR.OL','Equinor','Énergie','Europe'], ['ENI.MI','Eni','Énergie','Europe'],
 ];
 // ETF proposés dans les plans : lignes cotées dans la devise de l'utilisateur, sur une place locale (pas de frais de change).
 // France / UE / autres : ETF UCITS en euros. Royaume-Uni : lignes en livres (GBP, pas en pence). États-Unis : ETF américains (les UCITS n'y sont pas accessibles).
@@ -469,28 +483,73 @@ const PLAN_ETFS_BY_REGION = {
 const PLAN_REGION = (() => { try { const r = window.kpI18n && window.kpI18n.isEN && window.kpI18n.region; return r === 'US' || r === 'UK' ? r : 'EU'; } catch (e) { return 'EU'; } })();
 const PLAN_ETFS = PLAN_ETFS_BY_REGION[PLAN_REGION];
 // Actions proposées : aux États-Unis, uniquement des valeurs américaines (cotées en dollars, sans frais de change), avec plus de secteurs.
-// Ailleurs : liste habituelle (France, Europe, États-Unis), comme décidé pour la version française.
+// Ailleurs : France, Europe et États-Unis (environ 125 valeurs), comme décidé pour la version française.
 const PLAN_US_EXTRA = [
   ['UNH','UnitedHealth','Santé','États-Unis'], ['LLY','Eli Lilly','Santé','États-Unis'], ['MRK','Merck & Co','Santé','États-Unis'],
   ['MA','Mastercard','Finance','États-Unis'], ['BRK-B','Berkshire Hathaway','Finance','États-Unis'], ['HD','Home Depot','Consommation','États-Unis'],
   ['COST','Costco','Consommation de base','États-Unis'], ['PEP','PepsiCo','Consommation de base','États-Unis'], ['WMT','Walmart','Consommation de base','États-Unis'],
   ['CAT','Caterpillar','Industrie','États-Unis'], ['HON','Honeywell','Industrie','États-Unis'], ['NEE','NextEra Energy','Services publics','États-Unis'],
   ['VZ','Verizon','Télécoms','États-Unis'], ['CVX','Chevron','Énergie','États-Unis'], ['LIN','Linde','Matériaux','États-Unis'],
+  ['META','Meta Platforms','Technologie','États-Unis'], ['AVGO','Broadcom','Technologie','États-Unis'], ['ORCL','Oracle','Technologie','États-Unis'], ['CRM','Salesforce','Technologie','États-Unis'],
+  ['ADBE','Adobe','Technologie','États-Unis'], ['AMD','AMD','Technologie','États-Unis'], ['CSCO','Cisco','Technologie','États-Unis'], ['IBM','IBM','Technologie','États-Unis'],
+  ['TSLA','Tesla','Automobile','États-Unis'], ['NFLX','Netflix','Médias','États-Unis'], ['DIS','Disney','Médias','États-Unis'], ['MCD',"McDonald's",'Consommation','États-Unis'],
+  ['NKE','Nike','Consommation','États-Unis'], ['BAC','Bank of America','Finance','États-Unis'], ['GS','Goldman Sachs','Finance','États-Unis'], ['BLK','BlackRock','Finance','États-Unis'],
+  ['ABBV','AbbVie','Santé','États-Unis'], ['PFE','Pfizer','Santé','États-Unis'], ['TMO','Thermo Fisher','Santé','États-Unis'], ['T','AT&T','Télécoms','États-Unis'],
+  ['UPS','UPS','Industrie','États-Unis'], ['GE','GE Aerospace','Aéronautique','États-Unis'], ['RTX','RTX','Aéronautique','États-Unis'], ['DUK','Duke Energy','Services publics','États-Unis'],
+  ['SO','Southern Company','Services publics','États-Unis'], ['MDLZ','Mondelez','Consommation de base','États-Unis'],
 ];
-const PLAN_UNIVERSE = PLAN_REGION === 'US' ? [...PLAN_UNIVERSE_BASE.filter(u => u[3] === 'États-Unis'), ...PLAN_US_EXTRA] : PLAN_UNIVERSE_BASE;
+const PLAN_UNIVERSE = PLAN_REGION === 'US' ? [...PLAN_UNIVERSE_BASE.filter(u => u[3] === 'États-Unis'), ...PLAN_US_EXTRA] : [...PLAN_UNIVERSE_BASE, ...PLAN_US_EXTRA];
+const PLAN_SHORTLIST_SIZE = 40;   // nombre de valeurs remises à l'IA, présélectionnées parmi tout l'univers selon le marché du moment
+let PLAN_SHORT = null;            // présélection du dernier chargement des cours (sous-ensemble de PLAN_UNIVERSE)
 let PLAN_GOLD = null;
 const PLAN_GOLD_OF = () => PLAN_ETFS.find(e => /gold|or physique/i.test(e[1] + ' ' + e[2])) || null;   // ETC or de la région (aucun au Royaume-Uni)
 
 // Cours réels sur 1 an : performances, baisse maximale, volatilité (+ PER, marge, dividende pour les valeurs américaines)
 async function fetchPlanMarketData() {
   const held = apos().map(p => kpTickerOf(p.name)).filter(t => /^[A-Z0-9.\-]{1,14}$/.test(t));
-  const syms = [...new Set([...PLAN_UNIVERSE.map(u => u[0]), ...PLAN_ETFS.map(e => e[0]), ...held])].slice(0, 60);
-  const names = [...PLAN_UNIVERSE.map(u => u[0] + ':' + u[1]), ...held.filter(h => !PLAN_UNIVERSE.some(u => u[0] === h)).map(h => h + ':' + displayName(h))];
-  const r = await fetch('/api/market-data?symbols=' + encodeURIComponent(syms.join(',')) + '&names=' + encodeURIComponent(names.join(',')));
-  if (!r.ok) throw new Error('market-data ' + r.status);
-  const j = await r.json();
-  _planCtx = { market: j.market || [], news: j.news || {} };
-  return j.data || {};
+  const all = [...new Set([...PLAN_UNIVERSE.map(u => u[0]), ...PLAN_ETFS.map(e => e[0]), ...held])];
+  // 1) cours de tout l'univers, par paquets de 60 (limite du service de cours)
+  const chunks = []; for (let i = 0; i < all.length; i += 60) chunks.push(all.slice(i, i + 60));
+  const res = await Promise.all(chunks.map(c => fetch('/api/market-data?symbols=' + encodeURIComponent(c.join(','))).then(r => r.ok ? r.json() : null).catch(() => null)));
+  if (!res.some(Boolean)) throw new Error('market-data indisponible');
+  const data = {}; let market = [];
+  res.forEach(j => { if (!j) return; Object.assign(data, j.data || {}); if (!market.length && (j.market || []).length) market = j.market; });
+  // 2) présélection des meilleures valeurs du moment, puis 3) actualités de ces valeurs (et des positions détenues)
+  PLAN_SHORT = planShortlist(data);
+  const shortT = PLAN_SHORT.map(u => u[0]);
+  const names = [...PLAN_SHORT.map(u => u[0] + ':' + u[1]), ...held.filter(h => !shortT.includes(h)).map(h => h + ':' + displayName(h))].slice(0, 45);
+  let news = {};
+  try {
+    const r = await fetch('/api/market-data?symbols=' + encodeURIComponent(shortT.slice(0, 60).join(',')) + '&names=' + encodeURIComponent(names.join(',')));
+    if (r.ok) { const j = await r.json(); news = j.news || {}; if (!market.length) market = j.market || []; }
+  } catch (e) {}
+  _planCtx = { market, news };
+  return data;
+}
+
+// Présélection : parmi tout l'univers, ~40 valeurs solides et adaptées au marché du moment.
+// Écarte les cas extrêmes, note chaque valeur (tendance 6 mois et 1 an, baisse maximale, volatilité, secteur absent du
+// portefeuille), puis pioche secteur par secteur pour garder un éventail large (jamais 40 valeurs tech).
+function planShortlist(md) {
+  const tv = apos().reduce((s, p) => s + (p.qty || 0) * (p.price || 0), 0) || 1;
+  const bySector = {};
+  apos().forEach(p => { const u = PLAN_UNIVERSE.find(x => x[0] === kpTickerOf(p.name)); const sec = p.sector || (u && u[2]); if (sec) bySector[sec] = (bySector[sec] || 0) + (p.qty || 0) * (p.price || 0) / tv * 100; });
+  const scored = [];
+  PLAN_UNIVERSE.forEach(u => {
+    const m = md[u[0]];
+    if (!m || m.dd < -50 || m.vol > 50 || m.price < 1) return;
+    const w = bySector[u[2]] || 0;
+    const score = 0.25 * (m.p6m || 0) + 0.15 * (m.p1y || 0) + 0.6 * (m.dd || 0) - 0.4 * (m.vol || 0) + (w < 3 ? 8 : w > 25 ? -10 : 0);
+    scored.push({ u, score });
+  });
+  scored.sort((a, b) => b.score - a.score);
+  const groups = {}; scored.forEach(x => (groups[x.u[2]] = groups[x.u[2]] || []).push(x));
+  const order = Object.keys(groups).sort((a, b) => groups[b][0].score - groups[a][0].score);
+  const out = [];
+  while (out.length < PLAN_SHORTLIST_SIZE && order.some(k => groups[k].length)) {
+    for (const k of order) { if (out.length >= PLAN_SHORTLIST_SIZE) break; const x = groups[k].shift(); if (x) out.push(x.u); }
+  }
+  return out.length ? out : PLAN_UNIVERSE.slice(0, PLAN_SHORTLIST_SIZE);
 }
 let _planCtx = { market: [], news: {} };   // tendance des indices + actualités récentes, remplis par fetchPlanMarketData
 const kpAgoDays = ts => { const d = Math.max(0, Math.round((Date.now() - ts) / 864e5)); return d === 0 ? "aujourd'hui" : d === 1 ? 'hier' : 'il y a ' + d + ' j'; };
@@ -512,7 +571,7 @@ function planMetricsLine(m) {
 // Tableau remis à l'IA : uniquement des valeurs dont on a de vraies données, sans cas extrêmes (baisse > 50 % ou volatilité > 50 %)
 function planCandidateTable(md) {
   const ok = [], out = [];
-  PLAN_UNIVERSE.forEach(([t, name, sector, zone]) => {
+  (PLAN_SHORT || PLAN_UNIVERSE).forEach(([t, name, sector, zone]) => {
     const m = md[t];
     if (!m) return;
     if (m.dd < -50 || m.vol > 50 || m.price < 1) { out.push(name); return; }
