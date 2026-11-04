@@ -539,6 +539,13 @@ input:focus,select:focus{outline:none;background:#ebebeb}
   .form-grid.three{grid-template-columns:repeat(3,1fr)}
 }
 
+/* Tablettes et petits écrans avec menu latéral : les boutons d'en-tête passent sous le titre au lieu d'être écrasés
+   (Portefeuille : « Importer mes positions » sur 3 lignes, boutons de 92 px de haut à 768-1024 px) */
+@media(min-width:768px) and (max-width:1199px){
+  .page-header{flex-wrap:wrap}
+  .page-header > div:not(:first-child){flex-wrap:wrap}
+}
+
 /* ===== RESPONSIVE MOBILE ===== */
 @media(max-width:767px){
   #bottom-nav{display:block !important}
