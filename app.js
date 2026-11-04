@@ -448,7 +448,7 @@ function getCachedMonthlyPlan() {
 
 // ═══ ANALYSE RÉELLE AVANT LE PLAN DU MOIS ═══
 // Liste fermée de grandes valeurs (France, Europe, États-Unis) : l'IA ne peut choisir QUE dedans (ou parmi ce que l'utilisateur détient déjà).
-const PLAN_UNIVERSE = [
+const PLAN_UNIVERSE_BASE = [
   ['MC.PA','LVMH','Luxe','France'], ['RMS.PA','Hermès','Luxe','France'], ['OR.PA',"L'Oréal",'Consommation','France'], ['BN.PA','Danone','Consommation de base','France'],
   ['AI.PA','Air Liquide','Industrie','France'], ['SU.PA','Schneider Electric','Industrie','France'], ['AIR.PA','Airbus','Aéronautique','France'], ['SAF.PA','Safran','Aéronautique','France'],
   ['DG.PA','Vinci','Construction','France'], ['SAN.PA','Sanofi','Santé','France'], ['EL.PA','EssilorLuxottica','Santé','France'], ['TTE.PA','TotalEnergies','Énergie','France'],
@@ -458,19 +458,158 @@ const PLAN_UNIVERSE = [
   ['AAPL','Apple','Technologie','États-Unis'], ['MSFT','Microsoft','Technologie','États-Unis'], ['NVDA','Nvidia','Technologie','États-Unis'], ['GOOGL','Alphabet','Technologie','États-Unis'],
   ['AMZN','Amazon','Consommation','États-Unis'], ['JNJ','Johnson & Johnson','Santé','États-Unis'], ['JPM','JPMorgan','Finance','États-Unis'], ['V','Visa','Finance','États-Unis'],
   ['KO','Coca-Cola','Consommation de base','États-Unis'], ['PG','Procter & Gamble','Consommation de base','États-Unis'], ['XOM','ExxonMobil','Énergie','États-Unis'],
+  // Élargissement (nov. 2026) : CAC 40 et grandes valeurs européennes ; le plan en présélectionne une quarantaine selon le marché
+  ['KER.PA','Kering','Luxe','France'], ['GLE.PA','Société Générale','Finance','France'], ['ACA.PA','Crédit Agricole','Finance','France'], ['RI.PA','Pernod Ricard','Consommation de base','France'],
+  ['CAP.PA','Capgemini','Technologie','France'], ['DSY.PA','Dassault Systèmes','Technologie','France'], ['STMPA.PA','STMicroelectronics','Technologie','France'], ['SGO.PA','Saint-Gobain','Construction','France'],
+  ['ENGI.PA','Engie','Services publics','France'], ['VIE.PA','Veolia','Services publics','France'], ['HO.PA','Thales','Aéronautique','France'], ['LR.PA','Legrand','Industrie','France'],
+  ['ML.PA','Michelin','Automobile','France'], ['RNO.PA','Renault','Automobile','France'], ['STLAP.PA','Stellantis','Automobile','France'], ['PUB.PA','Publicis','Médias','France'],
+  ['EN.PA','Bouygues','Construction','France'], ['CA.PA','Carrefour','Consommation de base','France'], ['AC.PA','Accor','Consommation','France'], ['ERF.PA','Eurofins Scientific','Santé','France'],
+  ['BVI.PA','Bureau Veritas','Industrie','France'],
+  ['UBSG.SW','UBS','Finance','Europe'], ['ZURN.SW','Zurich Insurance','Finance','Europe'], ['ABBN.SW','ABB','Industrie','Europe'], ['DTE.DE','Deutsche Telekom','Télécoms','Europe'],
+  ['MUV2.DE','Munich Re','Finance','Europe'], ['BAS.DE','BASF','Matériaux','Europe'], ['BMW.DE','BMW','Automobile','Europe'], ['MBG.DE','Mercedes-Benz','Automobile','Europe'],
+  ['IFX.DE','Infineon','Technologie','Europe'], ['ADS.DE','Adidas','Consommation','Europe'], ['RHM.DE','Rheinmetall','Aéronautique','Europe'], ['DB1.DE','Deutsche Börse','Finance','Europe'],
+  ['SAN.MC','Banco Santander','Finance','Europe'], ['ITX.MC','Inditex','Consommation','Europe'], ['ENEL.MI','Enel','Services publics','Europe'], ['ISP.MI','Intesa Sanpaolo','Finance','Europe'],
+  ['RACE.MI','Ferrari','Automobile','Europe'], ['UCG.MI','UniCredit','Finance','Europe'], ['INGA.AS','ING','Finance','Europe'], ['AD.AS','Ahold Delhaize','Consommation de base','Europe'],
+  ['PRX.AS','Prosus','Technologie','Europe'], ['HEIA.AS','Heineken','Consommation de base','Europe'], ['ABI.BR','AB InBev','Consommation de base','Europe'], ['NOKIA.HE','Nokia','Télécoms','Europe'],
+  ['ATCO-A.ST','Atlas Copco','Industrie','Europe'], ['VOLV-B.ST','Volvo','Industrie','Europe'], ['EQNR.OL','Equinor','Énergie','Europe'], ['ENI.MI','Eni','Énergie','Europe'],
+  // Élargissement 2 : SBF 120 et grandes valeurs européennes (Suisse, Allemagne, Pays-Bas, Europe du Sud, pays nordiques)
+  ['ALO.PA','Alstom','Industrie','France'], ['AMUN.PA','Amundi','Finance','France'], ['BIM.PA','bioMérieux','Santé','France'], ['COFA.PA','Coface','Finance','France'],
+  ['DIM.PA','Sartorius Stedim','Santé','France'], ['EDEN.PA','Edenred','Finance','France'], ['ELIS.PA','Elis','Industrie','France'], ['ERA.PA','Eramet','Matériaux','France'],
+  ['FGR.PA','Eiffage','Construction','France'], ['GET.PA','Getlink','Industrie','France'], ['RXL.PA','Rexel','Industrie','France'], ['SK.PA','SEB','Consommation','France'],
+  ['SOP.PA','Sopra Steria','Technologie','France'], ['SPIE.PA','Spie','Industrie','France'], ['TFI.PA','TF1','Médias','France'], ['VK.PA','Vallourec','Industrie','France'],
+  ['IPN.PA','Ipsen','Santé','France'], ['NEX.PA','Nexans','Industrie','France'], ['RCO.PA','Rémy Cointreau','Consommation de base','France'], ['SW.PA','Sodexo','Consommation','France'],
+  ['TE.PA','Technip Energies','Énergie','France'], ['DEC.PA','JCDecaux','Médias','France'], ['AKE.PA','Arkema','Matériaux','France'], ['IPS.PA','Ipsos','Médias','France'],
+  ['GTT.PA','GTT','Énergie','France'], ['SCR.PA','SCOR','Finance','France'], ['VIV.PA','Vivendi','Médias','France'], ['BOL.PA','Bolloré','Industrie','France'],
+  ['LI.PA','Klépierre','Immobilier','France'], ['URW.PA','Unibail-Rodamco-Westfield','Immobilier','France'], ['COV.PA','Covivio','Immobilier','France'], ['GFC.PA','Gecina','Immobilier','France'],
+  ['TRI.PA','Trigano','Consommation','France'], ['VCT.PA','Vicat','Construction','France'], ['FR.PA','Valeo','Automobile','France'], ['FRVIA.PA','Forvia','Automobile','France'],
+  ['SOI.PA','Soitec','Technologie','France'], ['AYV.PA','Ayvens','Finance','France'], ['AF.PA','Air France-KLM','Industrie','France'], ['UBI.PA','Ubisoft','Technologie','France'],
+  ['RO.SW','Roche','Santé','Europe'], ['CFR.SW','Richemont','Luxe','Europe'], ['LONN.SW','Lonza','Santé','Europe'], ['SIKA.SW','Sika','Matériaux','Europe'],
+  ['GIVN.SW','Givaudan','Matériaux','Europe'], ['SREN.SW','Swiss Re','Finance','Europe'], ['ALC.SW','Alcon','Santé','Europe'], ['HOLN.SW','Holcim','Construction','Europe'],
+  ['SCMN.SW','Swisscom','Télécoms','Europe'], ['LOGN.SW','Logitech','Technologie','Europe'], ['PGHN.SW','Partners Group','Finance','Europe'], ['BAYN.DE','Bayer','Santé','Europe'],
+  ['BEI.DE','Beiersdorf','Consommation de base','Europe'], ['CON.DE','Continental','Automobile','Europe'], ['DHL.DE','DHL Group','Industrie','Europe'], ['DBK.DE','Deutsche Bank','Finance','Europe'],
+  ['EOAN.DE','E.ON','Services publics','Europe'], ['RWE.DE','RWE','Services publics','Europe'], ['HEN3.DE','Henkel','Consommation de base','Europe'], ['MRK.DE','Merck KGaA','Santé','Europe'],
+  ['MTX.DE','MTU Aero Engines','Aéronautique','Europe'], ['VOW3.DE','Volkswagen','Automobile','Europe'], ['P911.DE','Porsche','Automobile','Europe'], ['SHL.DE','Siemens Healthineers','Santé','Europe'],
+  ['ENR.DE','Siemens Energy','Énergie','Europe'], ['HNR1.DE','Hannover Re','Finance','Europe'], ['CBK.DE','Commerzbank','Finance','Europe'], ['ZAL.DE','Zalando','Consommation','Europe'],
+  ['SY1.DE','Symrise','Matériaux','Europe'], ['HEI.DE','Heidelberg Materials','Construction','Europe'], ['VNA.DE','Vonovia','Immobilier','Europe'], ['QIA.DE','Qiagen','Santé','Europe'],
+  ['PUM.DE','Puma','Consommation','Europe'], ['ADYEN.AS','Adyen','Finance','Europe'], ['ASM.AS','ASM International','Technologie','Europe'], ['BESI.AS','BE Semiconductor','Technologie','Europe'],
+  ['PHIA.AS','Philips','Santé','Europe'], ['WKL.AS','Wolters Kluwer','Médias','Europe'], ['KPN.AS','KPN','Télécoms','Europe'], ['NN.AS','NN Group','Finance','Europe'],
+  ['ASRNL.AS','ASR Nederland','Finance','Europe'], ['UMG.AS','Universal Music Group','Médias','Europe'], ['AKZA.AS','Akzo Nobel','Matériaux','Europe'], ['DSFIR.AS','DSM-Firmenich','Matériaux','Europe'],
+  ['RAND.AS','Randstad','Industrie','Europe'], ['IMCD.AS','IMCD','Matériaux','Europe'], ['EXO.AS','Exor','Finance','Europe'], ['MT.AS','ArcelorMittal','Matériaux','Europe'],
+  ['UNA.AS','Unilever','Consommation de base','Europe'], ['SHELL.AS','Shell','Énergie','Europe'], ['BBVA.MC','BBVA','Finance','Europe'], ['CABK.MC','CaixaBank','Finance','Europe'],
+  ['TEF.MC','Telefónica','Télécoms','Europe'], ['AMS.MC','Amadeus','Technologie','Europe'], ['REP.MC','Repsol','Énergie','Europe'], ['FER.MC','Ferrovial','Construction','Europe'],
+  ['AENA.MC','Aena','Industrie','Europe'], ['CLNX.MC','Cellnex','Télécoms','Europe'], ['ELE.MC','Endesa','Services publics','Europe'], ['IAG.MC','IAG','Industrie','Europe'],
+  ['GRF.MC','Grifols','Santé','Europe'], ['G.MI','Generali','Finance','Europe'], ['MONC.MI','Moncler','Luxe','Europe'], ['PRY.MI','Prysmian','Industrie','Europe'],
+  ['LDO.MI','Leonardo','Aéronautique','Europe'], ['SRG.MI','Snam','Services publics','Europe'], ['TRN.MI','Terna','Services publics','Europe'], ['MB.MI','Mediobanca','Finance','Europe'],
+  ['PST.MI','Poste Italiane','Finance','Europe'], ['CPR.MI','Campari','Consommation de base','Europe'], ['UCB.BR','UCB','Santé','Europe'], ['KBC.BR','KBC','Finance','Europe'],
+  ['ARGX.BR','argenx','Santé','Europe'], ['SOLB.BR','Solvay','Matériaux','Europe'], ['AGS.BR','Ageas','Finance','Europe'], ['EDP.LS','EDP','Services publics','Europe'],
+  ['GALP.LS','Galp Energia','Énergie','Europe'], ['JMT.LS','Jerónimo Martins','Consommation de base','Europe'], ['OMV.VI','OMV','Énergie','Europe'], ['EBS.VI','Erste Group','Finance','Europe'],
+  ['VER.VI','Verbund','Services publics','Europe'], ['DSV.CO','DSV','Industrie','Europe'], ['MAERSK-B.CO','Maersk','Industrie','Europe'], ['ORSTED.CO','Ørsted','Services publics','Europe'],
+  ['CARL-B.CO','Carlsberg','Consommation de base','Europe'], ['VWS.CO','Vestas','Industrie','Europe'], ['COLO-B.CO','Coloplast','Santé','Europe'], ['GMAB.CO','Genmab','Santé','Europe'],
+  ['NDA-FI.HE','Nordea','Finance','Europe'], ['SAMPO.HE','Sampo','Finance','Europe'], ['KNEBV.HE','Kone','Industrie','Europe'], ['NESTE.HE','Neste','Énergie','Europe'],
+  ['UPM.HE','UPM','Matériaux','Europe'], ['ERIC-B.ST','Ericsson','Télécoms','Europe'], ['INVE-B.ST','Investor AB','Finance','Europe'], ['SAND.ST','Sandvik','Industrie','Europe'],
+  ['HM-B.ST','H&M','Consommation','Europe'], ['SEB-A.ST','SEB','Finance','Europe'], ['ASSA-B.ST','Assa Abloy','Industrie','Europe'], ['EVO.ST','Evolution','Jeux','Europe'],
+  ['DNB.OL','DNB','Finance','Europe'], ['TEL.OL','Telenor','Télécoms','Europe'], ['MOWI.OL','Mowi','Consommation de base','Europe'], ['NHY.OL','Norsk Hydro','Matériaux','Europe'],
 ];
-const PLAN_ETFS = [['IWDA.L','iShares Core MSCI World','ETF actions monde développées'], ['VWCE.DE','Vanguard FTSE All-World','ETF actions monde entier'], ['EIMI.L','iShares Core MSCI EM IMI','ETF marchés émergents'], ['WSML.L','iShares MSCI World Small Cap','ETF petites capitalisations'], ['AGGH.AS','iShares Core Global Aggregate Bond (EUR couvert)','ETF obligataire'], ['SXR8.DE','iShares Core S&P 500','ETF actions États-Unis'], ['4GLD.DE','Xetra-Gold','ETC or physique']];
+// ETF proposés dans les plans : lignes cotées dans la devise de l'utilisateur, sur une place locale (pas de frais de change).
+// France / UE / autres : ETF UCITS en euros. Royaume-Uni : lignes en livres (GBP, pas en pence). États-Unis : ETF américains (les UCITS n'y sont pas accessibles).
+const PLAN_ETFS_BY_REGION = {
+  EU: [['IWDA.AS','iShares Core MSCI World','ETF actions monde développées (EUR)'], ['VWCE.DE','Vanguard FTSE All-World','ETF actions monde entier (EUR)'], ['IS3N.DE','iShares Core MSCI EM IMI','ETF marchés émergents (EUR)'], ['IUSN.DE','iShares MSCI World Small Cap','ETF petites capitalisations (EUR)'], ['AGGH.AS','iShares Core Global Aggregate Bond (EUR couvert)','ETF obligataire (EUR)'], ['SXR8.DE','iShares Core S&P 500','ETF actions États-Unis (EUR)'], ['4GLD.DE','Xetra-Gold','ETC or physique (EUR)']],
+  UK: [['VEVE.L','Vanguard FTSE Developed World','ETF developed-world shares (GBP)'], ['VWRP.L','Vanguard FTSE All-World','ETF all-world shares (GBP)'], ['VFEG.L','Vanguard FTSE Emerging Markets','ETF emerging markets (GBP)'], ['WLDS.L','iShares MSCI World Small Cap','ETF small caps (GBP)'], ['AGBP.L','iShares Core Global Aggregate Bond (GBP hedged)','ETF bonds (GBP)'], ['IGLT.L','iShares Core UK Gilts','ETF UK government bonds (GBP)']],
+  US: [['VTI','Vanguard Total Stock Market','ETF US total market (USD)'], ['VT','Vanguard Total World Stock','ETF all-world shares (USD)'], ['VXUS','Vanguard Total International Stock','ETF international shares (USD)'], ['VSS','Vanguard FTSE All-World ex-US Small-Cap','ETF small caps (USD)'], ['BND','Vanguard Total Bond Market','ETF US bonds (USD)'], ['VOO','Vanguard S&P 500','ETF S&P 500 (USD)'], ['IAU','iShares Gold Trust','ETF gold (USD)']],
+};
+const PLAN_REGION = (() => { try { const r = window.kpI18n && window.kpI18n.isEN && window.kpI18n.region; return r === 'US' || r === 'UK' ? r : 'EU'; } catch (e) { return 'EU'; } })();
+const PLAN_ETFS = PLAN_ETFS_BY_REGION[PLAN_REGION];
+// Actions proposées : aux États-Unis, uniquement des valeurs américaines (cotées en dollars, sans frais de change), avec plus de secteurs.
+// Ailleurs : France, Europe et États-Unis (environ 360 valeurs), comme décidé pour la version française.
+const PLAN_US_EXTRA = [
+  ['UNH','UnitedHealth','Santé','États-Unis'], ['LLY','Eli Lilly','Santé','États-Unis'], ['MRK','Merck & Co','Santé','États-Unis'],
+  ['MA','Mastercard','Finance','États-Unis'], ['BRK-B','Berkshire Hathaway','Finance','États-Unis'], ['HD','Home Depot','Consommation','États-Unis'],
+  ['COST','Costco','Consommation de base','États-Unis'], ['PEP','PepsiCo','Consommation de base','États-Unis'], ['WMT','Walmart','Consommation de base','États-Unis'],
+  ['CAT','Caterpillar','Industrie','États-Unis'], ['HON','Honeywell','Industrie','États-Unis'], ['NEE','NextEra Energy','Services publics','États-Unis'],
+  ['VZ','Verizon','Télécoms','États-Unis'], ['CVX','Chevron','Énergie','États-Unis'], ['LIN','Linde','Matériaux','États-Unis'],
+  ['META','Meta Platforms','Technologie','États-Unis'], ['AVGO','Broadcom','Technologie','États-Unis'], ['ORCL','Oracle','Technologie','États-Unis'], ['CRM','Salesforce','Technologie','États-Unis'],
+  ['ADBE','Adobe','Technologie','États-Unis'], ['AMD','AMD','Technologie','États-Unis'], ['CSCO','Cisco','Technologie','États-Unis'], ['IBM','IBM','Technologie','États-Unis'],
+  ['TSLA','Tesla','Automobile','États-Unis'], ['NFLX','Netflix','Médias','États-Unis'], ['DIS','Disney','Médias','États-Unis'], ['MCD',"McDonald's",'Consommation','États-Unis'],
+  ['NKE','Nike','Consommation','États-Unis'], ['BAC','Bank of America','Finance','États-Unis'], ['GS','Goldman Sachs','Finance','États-Unis'], ['BLK','BlackRock','Finance','États-Unis'],
+  ['ABBV','AbbVie','Santé','États-Unis'], ['PFE','Pfizer','Santé','États-Unis'], ['TMO','Thermo Fisher','Santé','États-Unis'], ['T','AT&T','Télécoms','États-Unis'],
+  ['UPS','UPS','Industrie','États-Unis'], ['GE','GE Aerospace','Aéronautique','États-Unis'], ['RTX','RTX','Aéronautique','États-Unis'], ['DUK','Duke Energy','Services publics','États-Unis'],
+  ['SO','Southern Company','Services publics','États-Unis'], ['MDLZ','Mondelez','Consommation de base','États-Unis'],
+  ['INTC','Intel','Technologie','États-Unis'], ['QCOM','Qualcomm','Technologie','États-Unis'], ['TXN','Texas Instruments','Technologie','États-Unis'], ['INTU','Intuit','Technologie','États-Unis'],
+  ['NOW','ServiceNow','Technologie','États-Unis'], ['AMAT','Applied Materials','Technologie','États-Unis'], ['MU','Micron','Technologie','États-Unis'], ['ACN','Accenture','Technologie','États-Unis'],
+  ['PANW','Palo Alto Networks','Technologie','États-Unis'], ['SNPS','Synopsys','Technologie','États-Unis'], ['CDNS','Cadence','Technologie','États-Unis'], ['ANET','Arista Networks','Technologie','États-Unis'],
+  ['KLAC','KLA','Technologie','États-Unis'], ['LRCX','Lam Research','Technologie','États-Unis'], ['ADI','Analog Devices','Technologie','États-Unis'], ['MSI','Motorola Solutions','Technologie','États-Unis'],
+  ['UBER','Uber','Technologie','États-Unis'], ['PYPL','PayPal','Finance','États-Unis'], ['AXP','American Express','Finance','États-Unis'], ['MS','Morgan Stanley','Finance','États-Unis'],
+  ['C','Citigroup','Finance','États-Unis'], ['WFC','Wells Fargo','Finance','États-Unis'], ['SCHW','Charles Schwab','Finance','États-Unis'], ['SPGI','S&P Global','Finance','États-Unis'],
+  ['CB','Chubb','Finance','États-Unis'], ['PGR','Progressive','Finance','États-Unis'], ['ICE','Intercontinental Exchange','Finance','États-Unis'], ['CME','CME Group','Finance','États-Unis'],
+  ['ABT','Abbott','Santé','États-Unis'], ['DHR','Danaher','Santé','États-Unis'], ['BMY','Bristol-Myers Squibb','Santé','États-Unis'], ['AMGN','Amgen','Santé','États-Unis'],
+  ['GILD','Gilead','Santé','États-Unis'], ['ISRG','Intuitive Surgical','Santé','États-Unis'], ['MDT','Medtronic','Santé','États-Unis'], ['SYK','Stryker','Santé','États-Unis'],
+  ['CVS','CVS Health','Santé','États-Unis'], ['ELV','Elevance Health','Santé','États-Unis'], ['CI','Cigna','Santé','États-Unis'], ['VRTX','Vertex','Santé','États-Unis'],
+  ['REGN','Regeneron','Santé','États-Unis'], ['ZTS','Zoetis','Santé','États-Unis'], ['LOW',"Lowe's",'Consommation','États-Unis'], ['SBUX','Starbucks','Consommation','États-Unis'],
+  ['BKNG','Booking','Consommation','États-Unis'], ['TJX','TJX','Consommation','États-Unis'], ['CMG','Chipotle','Consommation','États-Unis'], ['MAR','Marriott','Consommation','États-Unis'],
+  ['ABNB','Airbnb','Consommation','États-Unis'], ['F','Ford','Automobile','États-Unis'], ['GM','General Motors','Automobile','États-Unis'], ['CL','Colgate-Palmolive','Consommation de base','États-Unis'],
+  ['KMB','Kimberly-Clark','Consommation de base','États-Unis'], ['GIS','General Mills','Consommation de base','États-Unis'], ['TGT','Target','Consommation de base','États-Unis'], ['DE','Deere','Industrie','États-Unis'],
+  ['MMM','3M','Industrie','États-Unis'], ['UNP','Union Pacific','Industrie','États-Unis'], ['ETN','Eaton','Industrie','États-Unis'], ['EMR','Emerson','Industrie','États-Unis'],
+  ['ADP','ADP','Industrie','États-Unis'], ['FDX','FedEx','Industrie','États-Unis'], ['WM','Waste Management','Industrie','États-Unis'], ['LMT','Lockheed Martin','Aéronautique','États-Unis'],
+  ['BA','Boeing','Aéronautique','États-Unis'], ['NOC','Northrop Grumman','Aéronautique','États-Unis'], ['GD','General Dynamics','Aéronautique','États-Unis'], ['COP','ConocoPhillips','Énergie','États-Unis'],
+  ['SLB','SLB','Énergie','États-Unis'], ['EOG','EOG Resources','Énergie','États-Unis'], ['PSX','Phillips 66','Énergie','États-Unis'], ['D','Dominion Energy','Services publics','États-Unis'],
+  ['AEP','American Electric Power','Services publics','États-Unis'], ['EXC','Exelon','Services publics','États-Unis'], ['SRE','Sempra','Services publics','États-Unis'], ['AMT','American Tower','Immobilier','États-Unis'],
+  ['PLD','Prologis','Immobilier','États-Unis'], ['CCI','Crown Castle','Immobilier','États-Unis'], ['SPG','Simon Property','Immobilier','États-Unis'], ['O','Realty Income','Immobilier','États-Unis'],
+  ['EQIX','Equinix','Immobilier','États-Unis'], ['CMCSA','Comcast','Médias','États-Unis'], ['CHTR','Charter','Médias','États-Unis'], ['TMUS','T-Mobile US','Télécoms','États-Unis'],
+  ['APD','Air Products','Matériaux','États-Unis'], ['SHW','Sherwin-Williams','Matériaux','États-Unis'], ['ECL','Ecolab','Matériaux','États-Unis'], ['FCX','Freeport-McMoRan','Matériaux','États-Unis'],
+  ['NEM','Newmont','Matériaux','États-Unis'], ['DOW','Dow','Matériaux','États-Unis'],
+];
+const PLAN_UNIVERSE = PLAN_REGION === 'US' ? [...PLAN_UNIVERSE_BASE.filter(u => u[3] === 'États-Unis'), ...PLAN_US_EXTRA] : [...PLAN_UNIVERSE_BASE, ...PLAN_US_EXTRA];
+const PLAN_SHORTLIST_SIZE = 40;   // nombre de valeurs remises à l'IA, présélectionnées parmi tout l'univers selon le marché du moment
+let PLAN_SHORT = null;            // présélection du dernier chargement des cours (sous-ensemble de PLAN_UNIVERSE)
+let PLAN_GOLD = null;
+const PLAN_GOLD_OF = () => PLAN_ETFS.find(e => /gold|or physique/i.test(e[1] + ' ' + e[2])) || null;   // ETC or de la région (aucun au Royaume-Uni)
 
 // Cours réels sur 1 an : performances, baisse maximale, volatilité (+ PER, marge, dividende pour les valeurs américaines)
 async function fetchPlanMarketData() {
   const held = apos().map(p => kpTickerOf(p.name)).filter(t => /^[A-Z0-9.\-]{1,14}$/.test(t));
-  const syms = [...new Set([...PLAN_UNIVERSE.map(u => u[0]), ...PLAN_ETFS.map(e => e[0]), ...held])].slice(0, 60);
-  const names = [...PLAN_UNIVERSE.map(u => u[0] + ':' + u[1]), ...held.filter(h => !PLAN_UNIVERSE.some(u => u[0] === h)).map(h => h + ':' + displayName(h))];
-  const r = await fetch('/api/market-data?symbols=' + encodeURIComponent(syms.join(',')) + '&names=' + encodeURIComponent(names.join(',')));
-  if (!r.ok) throw new Error('market-data ' + r.status);
-  const j = await r.json();
-  _planCtx = { market: j.market || [], news: j.news || {} };
-  return j.data || {};
+  const all = [...new Set([...PLAN_UNIVERSE.map(u => u[0]), ...PLAN_ETFS.map(e => e[0]), ...held])];
+  // 1) cours de tout l'univers, par paquets de 60 (limite du service de cours)
+  const chunks = []; for (let i = 0; i < all.length; i += 60) chunks.push(all.slice(i, i + 60));
+  const res = await Promise.all(chunks.map(c => fetch('/api/market-data?symbols=' + encodeURIComponent(c.join(','))).then(r => r.ok ? r.json() : null).catch(() => null)));
+  if (!res.some(Boolean)) throw new Error('market-data indisponible');
+  const data = {}; let market = [];
+  res.forEach(j => { if (!j) return; Object.assign(data, j.data || {}); if (!market.length && (j.market || []).length) market = j.market; });
+  // 2) présélection des meilleures valeurs du moment, puis 3) actualités de ces valeurs (et des positions détenues)
+  PLAN_SHORT = planShortlist(data);
+  const shortT = PLAN_SHORT.map(u => u[0]);
+  const names = [...PLAN_SHORT.map(u => u[0] + ':' + u[1]), ...held.filter(h => !shortT.includes(h)).map(h => h + ':' + displayName(h))].slice(0, 45);
+  let news = {};
+  try {
+    const r = await fetch('/api/market-data?symbols=' + encodeURIComponent(shortT.slice(0, 60).join(',')) + '&names=' + encodeURIComponent(names.join(',')));
+    if (r.ok) { const j = await r.json(); news = j.news || {}; if (!market.length) market = j.market || []; }
+  } catch (e) {}
+  _planCtx = { market, news };
+  return data;
+}
+
+// Présélection : parmi tout l'univers, ~40 valeurs solides et adaptées au marché du moment.
+// Écarte les cas extrêmes, note chaque valeur (tendance 6 mois et 1 an, baisse maximale, volatilité, secteur absent du
+// portefeuille), puis pioche secteur par secteur pour garder un éventail large (jamais 40 valeurs tech).
+function planShortlist(md) {
+  const tv = apos().reduce((s, p) => s + (p.qty || 0) * (p.price || 0), 0) || 1;
+  const bySector = {};
+  apos().forEach(p => { const u = PLAN_UNIVERSE.find(x => x[0] === kpTickerOf(p.name)); const sec = p.sector || (u && u[2]); if (sec) bySector[sec] = (bySector[sec] || 0) + (p.qty || 0) * (p.price || 0) / tv * 100; });
+  const scored = [];
+  PLAN_UNIVERSE.forEach(u => {
+    const m = md[u[0]];
+    if (!m || m.dd < -50 || m.vol > 50 || m.price < 1) return;
+    const w = bySector[u[2]] || 0;
+    const score = 0.25 * (m.p6m || 0) + 0.15 * (m.p1y || 0) + 0.6 * (m.dd || 0) - 0.4 * (m.vol || 0) + (w < 3 ? 8 : w > 25 ? -10 : 0);
+    scored.push({ u, score });
+  });
+  scored.sort((a, b) => b.score - a.score);
+  const groups = {}; scored.forEach(x => (groups[x.u[2]] = groups[x.u[2]] || []).push(x));
+  const order = Object.keys(groups).sort((a, b) => groups[b][0].score - groups[a][0].score);
+  const out = [];
+  while (out.length < PLAN_SHORTLIST_SIZE && order.some(k => groups[k].length)) {
+    for (const k of order) { if (out.length >= PLAN_SHORTLIST_SIZE) break; const x = groups[k].shift(); if (x) out.push(x.u); }
+  }
+  return out.length ? out : PLAN_UNIVERSE.slice(0, PLAN_SHORTLIST_SIZE);
 }
 let _planCtx = { market: [], news: {} };   // tendance des indices + actualités récentes, remplis par fetchPlanMarketData
 const kpAgoDays = ts => { const d = Math.max(0, Math.round((Date.now() - ts) / 864e5)); return d === 0 ? "aujourd'hui" : d === 1 ? 'hier' : 'il y a ' + d + ' j'; };
@@ -492,7 +631,7 @@ function planMetricsLine(m) {
 // Tableau remis à l'IA : uniquement des valeurs dont on a de vraies données, sans cas extrêmes (baisse > 50 % ou volatilité > 50 %)
 function planCandidateTable(md) {
   const ok = [], out = [];
-  PLAN_UNIVERSE.forEach(([t, name, sector, zone]) => {
+  (PLAN_SHORT || PLAN_UNIVERSE).forEach(([t, name, sector, zone]) => {
     const m = md[t];
     if (!m) return;
     if (m.dd < -50 || m.vol > 50 || m.price < 1) { out.push(name); return; }
@@ -514,8 +653,8 @@ function planHeldSectors() {
 // Le plan ne garde que des valeurs de la liste fermée (ou déjà détenues) ; montants recalés sur le budget
 function planKeepKnown(data, budget, allowed) {
   const keep = (data.lignes || []).filter(l => allowed.has(String(l.ticker).toUpperCase()));
-  if (keep.length === (data.lignes || []).length) return;
   const kept = keep.reduce((s, l) => s + (Number(l.montant) || 0), 0);
+  if (keep.length === (data.lignes || []).length && Math.abs(kept - budget) <= 1) return;   // total juste : rien à corriger (sinon on remet les montants à l'échelle du budget)
   if (keep.length && kept > 0) {
     keep.forEach(l => { l.montant = Math.round((Number(l.montant) || 0) / kept * budget); l.pct = Math.round(l.montant / budget * 100); });
     const diff = budget - keep.reduce((s, l) => s + l.montant, 0);
@@ -673,7 +812,7 @@ async function planDataSuffix(riskLabel) {
       return '\n\n' + planDataPromptBlock(cand) + '\n\n' + planAnalysisRulesText(riskLabel || '') + '\nUtilise UNIQUEMENT les tickers et ETF des données ci-dessus, et appuie chaque choix sur un chiffre réel de ces données.' + planUserTail();
     }
   } catch (e) {}
-  return "\n\nDONNÉES DE MARCHÉ : aucune donnée disponible actuellement. Ne cite AUCUN chiffre de cours, de performance ni aucune actualité ; propose uniquement des ETF larges et diversifiés (IWDA.L, VWCE.DE, AGGH.AS), sans sélection d'actions individuelles, et dis que l'analyse détaillée n'est pas disponible pour l'instant." + planUserTail();
+  return "\n\nDONNÉES DE MARCHÉ : aucune donnée disponible actuellement. Ne cite AUCUN chiffre de cours, de performance ni aucune actualité ; propose uniquement des ETF larges et diversifiés (IWDA.AS, VWCE.DE, AGGH.AS), sans sélection d'actions individuelles, et dis que l'analyse détaillée n'est pas disponible pour l'instant." + planUserTail();
 }
 // ═══ GRAPHIQUES DE COURS (bibliothèque libre « Lightweight Charts » de TradingView, données Yahoo via /api/chart) ═══
 // Information seulement : aucun signal d'achat ou de vente, aucun outil de dessin.
@@ -1003,23 +1142,23 @@ EXERCICE "PLAN DU MOIS" : répartis ses ${budget}€ de ce mois pour RESPECTER s
 RÈGLES STRICTES SUR LA RÉPARTITION :
 ${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (ou quasi tout) en ACTIONS individuelles. NE propose AUCUN ETF (ou 1 seul minoritaire si ${objStockPct}<100).` : objStockPct <= 10 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (ou quasi tout) en ETF. NE propose quasiment AUCUNE action individuelle.` : `- Respecte le ratio ${objStockPct}% actions / ${100-objStockPct}% ETF dans la répartition des montants.`}
 - Rééquilibrage par apports : regarde ce qu'il détient DÉJÀ et oriente le budget vers ce qui est sous-pondéré vs sa cible, sans vendre.
-- DIVERSIFICATION QUI GRANDIT AVEC LE BUDGET : ${(() => { const s = planSizing(0, budget, objStockPct); const nbMois = s.nbStocks > 0 ? Math.max(1, Math.min(s.nbStocks, Math.round(s.stockMonthly / 40) || 1)) : 0; return nbMois > 0 ? `sur la part actions (~${Math.round(s.stockMonthly)}€ ce mois-ci) propose ${nbMois} action${nbMois > 1 ? 's' : ''} DIFFÉRENTE${nbMois > 1 ? 'S' : ''}, avec au plus 2 valeurs du même secteur, plusieurs zones (France, Europe, États-Unis), aucune au-dessus de ${s.maxWeight}% du montant actions, ~20€ minimum par ligne. Plus le budget est élevé, plus il faut de valeurs distinctes (jamais tout sur une seule).` : 'aucune action individuelle ce mois-ci.'; })()}
+- DIVERSIFICATION QUI GRANDIT AVEC LE BUDGET : ${(() => { const s = planSizing(0, budget, objStockPct); const nbMois = s.nbStocks > 0 ? Math.max(1, Math.min(s.nbStocks, Math.round(s.stockMonthly / 40) || 1)) : 0; return nbMois > 0 ? `sur la part actions (~${Math.round(s.stockMonthly)}€ ce mois-ci) propose ${nbMois} action${nbMois > 1 ? 's' : ''} DIFFÉRENTE${nbMois > 1 ? 'S' : ''}, avec au plus 2 valeurs du même secteur, ${PLAN_REGION === 'US' ? 'uniquement des valeurs américaines de la liste' : 'plusieurs zones (France, Europe, États-Unis)'}, aucune au-dessus de ${s.maxWeight}% du montant actions, ~20€ minimum par ligne. Plus le budget est élevé, plus il faut de valeurs distinctes (jamais tout sur une seule).` : 'aucune action individuelle ce mois-ci.'; })()}
 - ANALYSE OBLIGATOIRE : tu disposes ci-dessous de VRAIES données de marché (cours du jour, calculées sur 1 an). Tu choisis UNIQUEMENT parmi les valeurs de ces tableaux (ou parmi ce qu'il détient déjà), jamais une autre. Tu n'as AUCUNE autre donnée : n'invente ni résultats d'entreprise, ni actualité, ni valorisation absente du tableau.
 - CHAQUE ligne doit avoir une "raison" CHIFFRÉE tirée du tableau ou du portefeuille (ex : "baisse max 1 an −14 %, volatilité modérée", "Santé : 0 % du portefeuille, volatilité 18 %"). INTERDIT : "secteur absent" ou "diversifie" comme seule raison, et tout argument du type "déjà performant / a bien monté" pour justifier un achat (la performance passée ne prédit pas l'avenir).
 - AVANT de choisir, tiens compte de 3 choses : (1) l'historique chiffré de chaque valeur, (2) la TENDANCE du marché (indices ci-dessus : marché en repli ou en hausse, niveau de peur) pour ajuster la prudence, (3) l'ACTUALITÉ récente de l'entreprise. Si une actualité est clairement négative (enquête, avertissement sur résultats, procès, chute brutale), écarte la valeur ou signale-le dans la raison ; si elle n'a aucune actualité exploitable, base-toi sur les chiffres sans rien inventer.
 - Équilibre le risque : mélange valeurs peu volatiles et plus volatiles selon son profil (${riskLabel}), et évite les secteurs qu'il détient déjà en excès.
 - Évite de racheter ce qui pèse déjà plus de 25% de son portefeuille.
 - INTERDIT : renforcer une ligne marquée "EFFONDRÉE" (perte de plus de 60 %) ; une ligne qui pèse peu parce qu'elle s'est effondrée n'est PAS sous-pondérée.
-- Choisis uniquement des grandes entreprises solides et liquides (grandes capitalisations) et de grands ETF UCITS. JAMAIS d'action à moins de 1 €, de "penny stock", de petite valeur spéculative ou d'entreprise en difficulté financière (redressement, liquidation).
+- Choisis uniquement des grandes entreprises solides et liquides (grandes capitalisations) et de grands ETF de la liste fournie (cotés dans sa devise, donc sans frais de change). JAMAIS d'action à moins de 1 €, de "penny stock", de petite valeur spéculative ou d'entreprise en difficulté financière (redressement, liquidation).
 - La somme des montants "actions" doit représenter ~${objStockPct}% du budget, et les ETF ~${100-objStockPct}%.
 ${objStockPct < 100 ? `POCHE ETF : UN SEUL ETF actions monde (MSCI World OU All-World, jamais les deux : ils se recoupent presque totalement). ${objRisk === 'agressif' ? '' : objRisk === 'dynamique' ? 'Profil DYNAMIQUE : ajoute éventuellement un petit ETF obligataire (10 à 15 % de la poche ETF) pour amortir les secousses.' : objRisk === 'equilibre' ? 'Ajoute un ETF obligataire pour environ 20 % de la poche ETF.' : 'Profil PRUDENT : ajoute un ETF obligataire (type Global Aggregate) pour environ 30 à 40 % de la poche ETF, comme dans son plan de départ.'} Aucune ligne inférieure à 20 €.` : ''}
-${objRisk !== 'agressif' && objStockPct < 100 && budget >= 400 ? `OPTION DIVERSIFIANTE (facultative) : tu peux prélever jusqu'à 5 % du budget sur la poche ETF pour UN SEUL ETC sur l'or physique, ticker 4GLD.DE (Xetra-Gold), role "diversifiant". Jamais d'autre matière première (pétrole, argent…), jamais plus d'une telle ligne, et seulement si ça ne casse pas la règle des 20 € minimum par ligne.` : ''}
+${(PLAN_GOLD = PLAN_GOLD_OF(), objRisk !== 'agressif' && objStockPct < 100 && budget >= 400 && PLAN_GOLD) ? `OPTION DIVERSIFIANTE (facultative) : tu peux prélever jusqu'à 5 % du budget sur la poche ETF pour UN SEUL ETC sur l'or physique, ticker ${PLAN_GOLD ? PLAN_GOLD[0] + ' (' + PLAN_GOLD[1] + ')' : '4GLD.DE (Xetra-Gold)'}, role "diversifiant". Jamais d'autre matière première (pétrole, argent…), jamais plus d'une telle ligne, et seulement si ça ne casse pas la règle des 20 € minimum par ligne.` : ''}
 
 Réponds UNIQUEMENT en JSON valide sans backticks :
 {
   "synthese": "1 phrase chaleureuse (tutoiement) sur l'esprit du mois",
   "lignes": [
-    {"ticker":"IWDA.L","name":"iShares Core MSCI World","montant":120,"pct":60,"role":"socle","raison":"max 10 mots, concret"}
+    {"ticker":"${PLAN_ETFS[0][0]}","name":"${PLAN_ETFS[0][1]}","montant":120,"pct":60,"role":"socle","raison":"max 10 mots, concret"}
   ],
   "note_marche": "1 phrase de discipline d'investisseur (régularité, lissage du prix d'entrée, patience), tu peux t'appuyer UNIQUEMENT sur la tendance des indices fournie ci-dessus (ex : "le CAC 40 recule de 5,6 % sur un mois") ; aucune prévision, aucune affirmation sur les valorisations, taux ou actualités absents des données"
 }
@@ -1253,12 +1392,12 @@ ${planAnalysisRulesText(riskLabel)}
 1) POCHE ETF (${100-objStockPct}% du total) — propose exactement ${objStockPct >= 85 ? '1 à 2' : '3'} ETF. Les pct_capital/pct_mensuel sont relatifs à cette poche (somme = 100). RÈGLE ABSOLUE : le 1er ETF est TOUJOURS un socle Monde diversifié (MSCI World ou FTSE All-World) avec au minimum ${socleMin}% de la poche. Les autres sont des satellites adaptés (émergents, small caps, obligations pour prudent), choisis UNIQUEMENT dans la liste « ETF / ETC AUTORISÉS » avec leurs tickers exacts. "role" = "socle" pour le 1er, "satellite" pour les autres.
 ${wantStocks ? `
 2) POCHE ACTIONS (${objStockPct}% du total, soit ~${fmtI(sizing.stockCap)}€ au départ et ~${fmtI(sizing.stockMonthly)}€/mois) — propose EXACTEMENT ${sizing.nbStocks} actions individuelles DIFFÉRENTES. Les pct_capital/pct_mensuel sont relatifs à cette poche (somme = 100).
-RÈGLES DE DIVERSIFICATION : au plus 2 valeurs du même secteur, plusieurs zones (France, Europe, États-Unis), uniquement des valeurs de la liste des candidates, aucune action au-dessus de ${sizing.maxWeight}% de la poche, montant minimum ~${sizing.minTicket}€ par ligne. Plus la somme investie est élevée, plus il faut de lignes : c'est pour ça que tu dois en proposer ${sizing.nbStocks}.` : ''}
+RÈGLES DE DIVERSIFICATION : au plus 2 valeurs du même secteur, ${PLAN_REGION === 'US' ? 'uniquement des valeurs américaines' : 'plusieurs zones (France, Europe, États-Unis)'}, uniquement des valeurs de la liste des candidates, aucune action au-dessus de ${sizing.maxWeight}% de la poche, montant minimum ~${sizing.minTicket}€ par ligne. Plus la somme investie est élevée, plus il faut de lignes : c'est pour ça que tu dois en proposer ${sizing.nbStocks}.` : ''}
 
 Réponds UNIQUEMENT en JSON valide sans markdown, sous cette forme exacte :
 {
   "etfs": [
-    {"ticker":"IWDA.L","name":"iShares Core MSCI World","desc":"1600+ entreprises mondiales","pct_capital":70,"pct_mensuel":70,"role":"socle","color":"#1a7f5a","pourquoi":"Cœur du portefeuille — diversification maximale"}
+    {"ticker":"IWDA.AS","name":"iShares Core MSCI World","desc":"1600+ entreprises mondiales","pct_capital":70,"pct_mensuel":70,"role":"socle","color":"#1a7f5a","pourquoi":"Cœur du portefeuille — diversification maximale"}
   ],
   "actions": [
     ${wantStocks ? '{"ticker":"MC.PA","name":"LVMH","desc":"Leader mondial du luxe","secteur":"Luxe","pct_capital":25,"pct_mensuel":25,"color":"#8b5cf6","pourquoi":"max 14 mots avec un chiffre réel du tableau ou un fait du portefeuille"}' : ''}
@@ -1314,18 +1453,18 @@ Utilise les tickers EXACTS des tableaux. Couleurs hex variées.`;
   // Fallback
   const fallback = objRisk === 'agressif'
     ? [
-        { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',      pct_capital:55, pct_mensuel:55, color:'#1a7f5a', pourquoi:'Socle diversifié — indispensable même en agressif' },
-        { ticker:'EIMI.L',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents (Chine, Inde...)', role:'satellite', type:'ETF Émergents',  pct_capital:25, pct_mensuel:25, color:'#f59e0b', pourquoi:'Potentiel de croissance supérieur, plus volatil' },
-        { ticker:'WSML.L',  name:'iShares MSCI World Small Cap', desc:'Petites capitalisations mondiales', role:'satellite', type:'ETF Small Cap', pct_capital:20, pct_mensuel:20, color:'#6366f1', pourquoi:'Booster de performance sur horizon 10 ans+' },
+        { ticker:'IWDA.AS',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',      pct_capital:55, pct_mensuel:55, color:'#1a7f5a', pourquoi:'Socle diversifié — indispensable même en agressif' },
+        { ticker:'IS3N.DE',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents (Chine, Inde...)', role:'satellite', type:'ETF Émergents',  pct_capital:25, pct_mensuel:25, color:'#f59e0b', pourquoi:'Potentiel de croissance supérieur, plus volatil' },
+        { ticker:'IUSN.DE',  name:'iShares MSCI World Small Cap', desc:'Petites capitalisations mondiales', role:'satellite', type:'ETF Small Cap', pct_capital:20, pct_mensuel:20, color:'#6366f1', pourquoi:'Booster de performance sur horizon 10 ans+' },
       ]
     : objRisk === 'equilibre'
     ? [
-        { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:70, pct_mensuel:70, color:'#1a7f5a', pourquoi:'Cœur du portefeuille' },
-        { ticker:'EIMI.L',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents diversifiés',      role:'satellite', type:'ETF Émergents',   pct_capital:15, pct_mensuel:15, color:'#f59e0b', pourquoi:'Diversification géographique' },
+        { ticker:'IWDA.AS',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:70, pct_mensuel:70, color:'#1a7f5a', pourquoi:'Cœur du portefeuille' },
+        { ticker:'IS3N.DE',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents diversifiés',      role:'satellite', type:'ETF Émergents',   pct_capital:15, pct_mensuel:15, color:'#f59e0b', pourquoi:'Diversification géographique' },
         { ticker:'AGGH.AS',  name:'iShares Global Aggregate',   desc:'Obligations mondiales stables',      role:'satellite', type:'ETF Obligations', pct_capital:15, pct_mensuel:15, color:'#0ea5e9', pourquoi:'Amortisseur en cas de crise' },
       ]
     : [
-        { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Diversification maximale' },
+        { ticker:'IWDA.AS',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Diversification maximale' },
         { ticker:'AGGH.AS',  name:'iShares Global Aggregate',   desc:'Obligations mondiales stables',      role:'satellite', type:'ETF Obligations', pct_capital:40, pct_mensuel:40, color:'#0ea5e9', pourquoi:'Stabilité et protection du capital' },
       ];
   // Plus de plan de secours « à l'aveugle » présenté comme une vraie analyse : on le dit et on propose de réessayer
@@ -1500,7 +1639,7 @@ RÈGLES ABSOLUES DE RÉALISME :
 - Horizon réaliste : 6-18 mois minimum, pas de "3-6 mois" pour les ETF
 
 Réponds UNIQUEMENT en JSON valide, sans markdown :
-[{"ticker":"IWDA.L","name":"iShares MSCI World","gain":"","horizon":"12+ mois","desc":"ETF monde diversifié, avec un chiffre réel des données","color":"#1a7f5a","montant":${Math.round(capital*0.5)}}]
+[{"ticker":"IWDA.AS","name":"iShares MSCI World","gain":"","horizon":"12+ mois","desc":"ETF monde diversifié, avec un chiffre réel des données","color":"#1a7f5a","montant":${Math.round(capital*0.5)}}]
 
 Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Colors hex variées.`;
 
@@ -1523,18 +1662,18 @@ Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Co
   // Fallback réaliste : socle ETF + blue chips, horizons 12 mois+, fourchettes HISTORIQUES (pas des promesses)
   return risk === 'agressif' || risk === 'eleve'
     ? [
-        { ticker:'IWDA.L', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Socle obligatoire même en agressif', color:'#1a7f5a', montant: Math.round(capital*0.5) },
+        { ticker:'IWDA.AS', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Socle obligatoire même en agressif', color:'#1a7f5a', montant: Math.round(capital*0.5) },
         { ticker:'NVDA',   name:'Nvidia',             gain:'volatil ±30%',  horizon:'12+ mois', desc:'Leader IA — forte volatilité assumée', color:'#6366f1', montant: Math.round(capital*0.3) },
         { ticker:'MC.PA',  name:'LVMH',               gain:'~8%/an hist.',  horizon:'12+ mois', desc:'Leader luxe mondial',                 color:'#f59e0b', montant: Math.round(capital*0.2) },
       ]
     : risk === 'equilibre' || risk === 'modere'
     ? [
-        { ticker:'IWDA.L', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification mondiale',    color:'#1a7f5a', montant: Math.round(capital*0.6) },
+        { ticker:'IWDA.AS', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification mondiale',    color:'#1a7f5a', montant: Math.round(capital*0.6) },
         { ticker:'MSFT',   name:'Microsoft',          gain:'~10%/an hist.', horizon:'12+ mois', desc:'Cloud & IA, bilan solide',    color:'#0ea5e9', montant: Math.round(capital*0.2) },
         { ticker:'AI.PA',  name:'Air Liquide',        gain:'~6%/an hist.',  horizon:'12+ mois', desc:'Dividende croissant 40 ans',  color:'#10b981', montant: Math.round(capital*0.2) },
       ]
     : [
-        { ticker:'IWDA.L', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification maximale',    color:'#1a7f5a', montant: Math.round(capital*0.5) },
+        { ticker:'IWDA.AS', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification maximale',    color:'#1a7f5a', montant: Math.round(capital*0.5) },
         { ticker:'AI.PA',  name:'Air Liquide',        gain:'~6%/an hist.',  horizon:'12+ mois', desc:'Défensif, dividendes stables', color:'#10b981', montant: Math.round(capital*0.25) },
         { ticker:'TTE.PA', name:'TotalEnergies',      gain:'~5% div./an',   horizon:'12+ mois', desc:'Rendement du dividende',       color:'#f97316', montant: Math.round(capital*0.25) },
       ];
@@ -2265,7 +2404,7 @@ ${portfolioCtx}
 Génère un plan d'action CONCRET en 4 blocs avec des titres en gras :
 
 **🏦 Quoi acheter avec ton apport initial de ${s>0?s.toLocaleString('fr-FR')+'€':m.toLocaleString('fr-FR')+'€ (premier mois)'}**
-Liste les actifs précis avec les montants exacts (ex: 300€ → IWDA.L sur Trade Republic)
+Liste les actifs précis avec les montants exacts (ex: 300€ → IWDA.AS sur Trade Republic)
 
 **📅 Chaque mois : ${m.toLocaleString('fr-FR')}€ à répartir comme suit**
 Répartition exacte mensuelle avec tickers et montants
@@ -2276,7 +2415,7 @@ Répartition exacte mensuelle avec tickers et montants
 **⚡ 3 actions concrètes pour démarrer cette semaine**
 Étapes simples et actionnables (ouvrir compte, faire le 1er achat, activer DCA auto)
 
-Sois ULTRA concret. Donne de vrais tickers (IWDA.L, VWCE.DE, AAPL, etc.) et de vrais montants.`;
+Sois ULTRA concret. Donne de vrais tickers (IWDA.AS, VWCE.DE, AAPL, etc.), en privilégiant les ETF cotés en euros (pas de frais de change) et de vrais montants.`;
 
   try {
     const r_resp = await callClaude(prompt + (await planDataSuffix(riskLabel)), 'Tu es conseiller financier pédagogue. Sois concret et donne des vrais noms et montants.', undefined, undefined, OBJ_AI);
@@ -4509,7 +4648,7 @@ const POPULAR = [
   {ticker:'AI.PA', name:'Air Liquide', sector:'Industrie'},
   {ticker:'TTE.PA', name:'TotalEnergies', sector:'Énergie'},
   {ticker:'BNP.PA', name:'BNP Paribas', sector:'Finance'},
-  {ticker:'IWDA.L', name:'iShares MSCI World', sector:'ETF'},
+  {ticker:'IWDA.AS', name:'iShares MSCI World', sector:'ETF'},
   {ticker:'VWCE.DE', name:'Vanguard FTSE All-World', sector:'ETF'},
 ];
 
@@ -7094,6 +7233,7 @@ function getCompanyLogo(ticker, name, size, radius) {
     'EDF.PA':'edf.fr',
     'ENGI.PA':'engie.com',
     'EIMI.L':'ishares.com', 'IS3N.DE':'ishares.com', 'WSML.L':'ishares.com',
+    'IUSN.DE':'ishares.com', 'WLDS.L':'ishares.com', 'AGBP.L':'ishares.com', 'IGLT.L':'ishares.com', 'IAU':'ishares.com', 'VEVE.L':'vanguard.com', 'VWRP.L':'vanguard.com', 'VFEG.L':'vanguard.com', 'VTI':'vanguard.com', 'VT':'vanguard.com', 'VXUS':'vanguard.com', 'VSS':'vanguard.com', 'BND':'vanguard.com', 'VOO':'vanguard.com',
     'IITU.L':'ishares.com', 'AGGH.L':'ishares.com', 'AGGH.AS':'ishares.com', 'EUNL.DE':'ishares.com',
     'VUSA.L':'vanguard.com', 'VWRL.L':'vanguard.com',
     'BAC':'bankofamerica.com', 'RACE':'ferrari.com', 'XOM':'exxonmobil.com',
@@ -9587,7 +9727,7 @@ ${_dc.text}
 
 Donne un avis prudent et concret. N'invente AUCUNE actualité ni évènement : appuie-toi uniquement sur le constat, les données de marché ci-dessus et des principes connus (diversification, discipline).
 Réponds UNIQUEMENT en JSON valide sans backticks :
-{"verdict":"alléger|vendre|garder","raison":"1 à 2 phrases chiffrées, tutoiement","remplacement":{"ticker":"IWDA.L","name":"iShares Core MSCI World","raison":"max 12 mots"}}
+{"verdict":"alléger|vendre|garder","raison":"1 à 2 phrases chiffrées, tutoiement","remplacement":{"ticker":"IWDA.AS","name":"iShares Core MSCI World","raison":"max 12 mots"}}
 Pour "remplacement", propose un actif plus diversifié cohérent avec sa cible (souvent un ETF monde), choisi UNIQUEMENT parmi ces tickers : ${PLAN_ETFS.map(e => e[0]).join(', ')} ; si verdict "garder", mets remplacement à null.`;
   try {
     const raw = await callClaude(prompt, "Tu es Kapitaro, copilote financier prudent. Tu ne fournis pas de conseil réglementé. Réponds UNIQUEMENT en JSON valide.", 600, HAIKU_MODEL);
@@ -12552,7 +12692,7 @@ const COMPANY_NAMES = {
   'VWCE.DE':'Vanguard FTSE All-World', 'VWCE':'Vanguard FTSE All-World',
   'SWRD.L':'SPDR MSCI World', 'SPPW.DE':'SPDR MSCI World',
   'CSPX.L':'iShares Core S&P 500', 'AMEM.DE':'Amundi MSCI Emerging Markets',
-  'EIMI.L':'iShares Core MSCI EM IMI', 'IS3N.DE':'iShares Core MSCI EM IMI',
+  'EIMI.L':'iShares Core MSCI EM IMI', 'IS3N.DE':'iShares Core MSCI EM IMI', 'IUSN.DE':'iShares MSCI World Small Cap', 'WLDS.L':'iShares MSCI World Small Cap', 'AGBP.L':'iShares Core Global Aggregate Bond', 'IGLT.L':'iShares Core UK Gilts', 'IAU':'iShares Gold Trust', 'VEVE.L':'Vanguard FTSE Developed World', 'VWRP.L':'Vanguard FTSE All-World', 'VFEG.L':'Vanguard FTSE Emerging Markets', 'VTI':'Vanguard Total Stock Market', 'VT':'Vanguard Total World Stock', 'VXUS':'Vanguard Total International Stock', 'VSS':'Vanguard FTSE All-World ex-US Small-Cap', 'BND':'Vanguard Total Bond Market', 'VOO':'Vanguard S&P 500',
   'WSML.L':'iShares MSCI World Small Cap', 'IITU.L':'iShares S&P 500 IT',
   'AGGH.L':'iShares Global Aggregate Bond', 'AGGH.AS':'iShares Global Aggregate Bond',
   'LVMH':'LVMH', 'MC.PA':'LVMH',
@@ -13020,7 +13160,7 @@ Réponds UNIQUEMENT en JSON valide, sans backticks :
 {
   "synthese": "1-2 phrases au ton chaleureux et direct (tutoiement) expliquant la lecture d'ensemble, sans instruction personnelle",
   "decisions": [
-    {"ticker":"IWDA.L","name":"IWDA","action":"conserver|renforcer|reduire|vendre","raison":"max 10 mots, le critère chiffré qui justifie ce signal"}
+    {"ticker":"IWDA.AS","name":"IWDA","action":"conserver|renforcer|reduire|vendre","raison":"max 10 mots, le critère chiffré qui justifie ce signal"}
   ],
   "achat_semaine": "phrase courte, à titre d'exemple pédagogique : quel type d'arbitrage un profil comme celui-ci pourrait envisager cette semaine, et pourquoi — ou pourquoi aucun ne se justifie",
   "impacts": {"risque": -4, "diversification": 6, "score": 5}
