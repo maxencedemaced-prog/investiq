@@ -3,7 +3,7 @@
 // L'adresse vient du compte vérifié par le jeton, jamais du navigateur : impossible d'écrire à quelqu'un d'autre.
 
 import { createClient } from '@supabase/supabase-js';
-import { EMAILS, renderEmail, sendEmail } from './_email.js';
+import { renderEmail, sendEmail, emailFor, userLang } from './_email.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://soyyznyceqzimhoaffaw.supabase.co';
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || 'sb_publishable_3_8eb6YbCfJ04Qihdy9ivw_NsQ4H_cu';
@@ -38,8 +38,8 @@ export default async function handler(req, res) {
     const { error: logErr } = await supabaseAdmin.from('email_log').insert({ user_id: user.id, kind: 'welcome' });
     if (logErr) return res.status(200).json({ sent: false, reason: 'déjà envoyé' });
 
-    const e = EMAILS.welcome;
-    const { html, text, unsub } = renderEmail({ title: e.title, paragraphs: e.paragraphs, cta: e.cta, userId: user.id });
+    const e = emailFor('welcome', user);   // anglais pour les comptes créés sur kapitaro.com
+    const { html, text, unsub } = renderEmail({ title: e.title, paragraphs: e.paragraphs, cta: e.cta, userId: user.id, lang: userLang(user) });
     try {
       await sendEmail({ to: user.email, subject: e.subject, html, text, unsub });
     } catch (err) {

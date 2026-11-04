@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" data-kp-lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="/i18n.js?v=20261031180000"></script>
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/ads.js?v=20261029" defer></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <script src="/simcta.js?v=20261104120000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>50/30/20 Budget Calculator: split your take-home pay — Kapitaro</title>
+  <meta name="description" content="Apply the 50/30/20 rule to your take-home pay: 50% for needs, 30% for wants, 20% for savings. Compare with what you actually spend and adjust the split. Free, no sign-up.">
+  <link rel="canonical" href="https://kapitaro.com/50-30-20-budget-calculator">
+  <link rel="alternate" hreflang="en" href="https://kapitaro.com/50-30-20-budget-calculator">
+  <link rel="alternate" hreflang="fr" href="https://kapitaro.fr/budget-50-30-20">
+  <link rel="alternate" hreflang="x-default" href="https://kapitaro.com/50-30-20-budget-calculator">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Kapitaro">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://kapitaro.com/50-30-20-budget-calculator">
+  <meta property="og:title" content="50/30/20 budget: split your take-home pay — Kapitaro">
+  <meta property="og:description" content="Needs, wants, savings: the 50/30/20 rule applied to your pay in seconds.">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebApplication", "name": "50/30/20 Budget Calculator: split your take-home pay — Kapitaro", "url": "https://kapitaro.com/50-30-20-budget-calculator", "applicationCategory": "FinanceApplication", "operatingSystem": "Web", "inLanguage": "en", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}, {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is the 50/30/20 rule?", "acceptedAnswer": {"@type": "Answer", "text": "A simple way to split your take-home pay: about 50% for needs (housing, groceries, transport, bills), 30% for wants (leisure, eating out, treats) and 20% for savings and paying off debt early."}}, {"@type": "Question", "name": "What if my rent is more than 50% of my pay?", "acceptedAnswer": {"@type": "Answer", "text": "That’s common in big cities. The rule is a guide, not an obligation: you can adapt it, for example 60/25/15, while keeping the habit of saving something every month."}}, {"@type": "Question", "name": "Should I count bonuses?", "acceptedAnswer": {"@type": "Answer", "text": "The simplest is to budget on your usual monthly pay, and decide separately what to do with bonuses, for example save a large part of them."}}]}]}</script>
+  <link rel="stylesheet" href="/outils.css?v=20260929b">
+  <style>
+    .cur-switch{display:inline-flex;gap:4px;margin-left:auto}
+    .cur-switch button{border:1px solid var(--border);background:transparent;color:inherit;border-radius:8px;padding:3px 9px;font-weight:700;cursor:pointer}
+    .cur-switch button.on{background:var(--green);border-color:var(--green);color:#fff}
+    .split{display:flex;height:16px;border-radius:99px;overflow:hidden;margin:14px 0 8px;border:1px solid var(--border)}
+    .split div{height:100%;transition:width .2s}
+    .buckets{display:grid;gap:8px;margin-top:12px}
+    .bucket{display:grid;grid-template-columns:12px 1fr auto;gap:10px;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+    .bucket i{width:12px;height:12px;border-radius:4px}
+    .bucket b{font-size:14px}
+    .bucket span{display:block;font-size:12px;color:var(--muted);font-weight:400}
+    .bucket em{font-style:normal;font-weight:800;font-size:16px;white-space:nowrap}
+    .bucket small{display:block;font-size:11.5px;font-weight:700;text-align:right}
+  </style>
+  <script src="/en/sim-en.js?v=20261104120000"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="/icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/?inscription=1" data-cta="header">Create a free account</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-in">
+      <h1>50/30/20 budget: split your take-home pay</h1>
+      <p>50% for needs, 30% for wants, 20% for savings. Enter your take-home pay, compare with what you actually spend, and adjust if needed.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="card">
+      <div class="sim">
+        <div>
+          <div class="presets" id="presets" aria-label="Splits">
+            <button type="button" data-r="50,30,20">50/30/20</button>
+            <button type="button" data-r="60,25,15">60/25/15</button>
+            <button type="button" data-r="70,20,10">70/20/10</button>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="s">My take-home pay per month</label><span class="field-val"><input type="number" id="s-n" min="0" max="50000" step="50" aria-label="Monthly take-home pay"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="s" min="500" max="8000" step="50" value="2000">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="b">What I spend on needs today</label><span class="field-val"><input type="number" id="b-n" min="0" max="50000" step="10" aria-label="Monthly spending on needs"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="b" min="0" max="6000" step="10" value="1100">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="e">What I save today</label><span class="field-val"><input type="number" id="e-n" min="0" max="50000" step="10" aria-label="Monthly savings"><span class="unit cur-sym">$</span></span></div>
+            <input type="range" id="e" min="0" max="3000" step="10" value="150">
+          </div>
+          <div class="range-note">Needs: housing, utilities, groceries, transport, insurance, bills. The rest of your pay is counted as wants.</div>
+        </div>
+
+        <div>
+          <div class="result-sub" style="margin-top:0">Following the <span id="out-rule">50/30/20</span> rule, you could save</div>
+          <div class="result-total result-big-green" id="out-save">—</div>
+          <div class="result-sub" id="out-save-sub"></div>
+          <div class="split" aria-hidden="true"><div id="bar-b" style="background:#2563eb"></div><div id="bar-w" style="background:#f59e0b"></div><div id="bar-e" style="background:#16a34a"></div></div>
+          <div class="buckets">
+            <div class="bucket"><i style="background:#2563eb"></i><div><b>Needs</b><span id="cmp-b"></span></div><div><em id="out-b">—</em><small id="tag-b"></small></div></div>
+            <div class="bucket"><i style="background:#f59e0b"></i><div><b>Wants</b><span id="cmp-w"></span></div><div><em id="out-w">—</em><small id="tag-w"></small></div></div>
+            <div class="bucket"><i style="background:#16a34a"></i><div><b>Savings</b><span id="cmp-e"></span></div><div><em id="out-e">—</em><small id="tag-e"></small></div></div>
+          </div>
+          <div class="example" id="out-advice" style="font-size:14px;margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <article class="content">
+      <h2>What is the 50/30/20 rule?</h2>
+      <p>It’s a simple way to split your take-home pay (after tax) each month, without a complicated spreadsheet:</p>
+      <ul>
+        <li><strong>50% for needs</strong>: what you have to pay whatever happens (rent or mortgage, utilities, groceries, transport, insurance, bills).</li>
+        <li><strong>30% for wants</strong>: what you enjoy but could live without (eating out, going out, travel, clothes, entertainment subscriptions).</li>
+        <li><strong>20% for savings</strong>: your emergency fund, your projects, and paying off expensive debt early.</li>
+      </ul>
+      <div class="example">
+        <p style="margin:0">Example: with a take-home pay of <strong>2,000 a month</strong>, the rule gives 1,000 for needs, 600 for wants and <strong>400 for savings</strong>.</p>
+      </div>
+
+      <h2>What if it doesn’t fit my situation?</h2>
+      <p>It’s a rule of thumb, not a law. With high rent, a modest income or children, needs often take more than 50%. In that case, a 60/25/15 or 70/20/10 split is more realistic. What matters is to keep a share for savings every month, even a small one, and to increase it when your situation improves, for example with each pay rise.</p>
+
+      <h2>The trick: pay yourself first</h2>
+      <p>Set up an automatic transfer to your savings on payday, instead of saving “whatever is left” at the end of the month. You can then spend the rest freely, without guilt.</p>
+
+      <section class="faq">
+        <h2>Frequently asked questions</h2>
+        <h3>Where do subscriptions go?</h3>
+        <p>It depends: a phone plan or insurance is a need, a streaming service is a want. The <a href="/subscription-cost-calculator">subscription cost calculator</a> helps you add them up.</p>
+        <h3>Is a loan repayment a need?</h3>
+        <p>The required monthly payment, yes. Anything you pay on top, ahead of schedule, belongs in the 20% savings. To see which debt to tackle first, try the <a href="/debt-payoff-calculator">debt payoff calculator</a>.</p>
+        <h3>Where do people put the 20%?</h3>
+        <p>Many start with an <a href="/emergency-fund-calculator">emergency fund</a> of 3 to 6 months of expenses in an easy-access savings account. For longer-term projects, the <a href="/savings-goal-calculator">savings goal calculator</a> shows how much to set aside each month. This is general information, not personal advice.</p>
+        <h3>Is this calculator free?</h3>
+        <p>Yes, no sign-up needed, and nothing you enter is saved.</p>
+      </section>
+    </article>
+
+    <section class="cta">
+      <h2>Give your 20% a purpose</h2>
+      <p>Set a savings goal: Kapitaro shows you a path to reach it and tracks your progress. Free to start.</p>
+      <a href="/?inscription=1" data-cta="bottom">Create my free account</a>
+    </section>
+
+    <section class="others">
+      <h2>Other free tools</h2>
+      <a href="/small-expenses-calculator"><div>Small expenses calculator<span>Coffee, takeout, snacks: the real cost over a year</span></div>›</a>
+      <a href="/subscription-cost-calculator"><div>Subscription cost calculator<span>What your subscriptions really cost per year</span></div>›</a>
+      <a href="/debt-payoff-calculator"><div>Debt payoff calculator<span>Which debt first, and how much interest you can save</span></div>›</a>
+      <a href="/emergency-fund-calculator"><div>Emergency fund calculator<span>How much to keep aside before investing</span></div>›</a>
+      <a href="/savings-goal-calculator"><div>Savings goal calculator<span>How much to set aside each month to reach a goal</span></div>›</a>
+      <a href="/compound-interest-calculator"><div>Compound interest calculator<span>What your savings become over time</span></div>›</a>
+      <a href="/tools"><div>All free calculators<span>Budget, spending, loans, debt, savings and investing</span></div>›</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>Illustrative, educational calculation based on a common rule of thumb. It is not personal financial advice. Nothing you enter is saved.</p>
+    <p>Kapitaro · Maxence De Macedo, sole proprietor (Quorvia), France · SIREN 902 642 016 · <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a> · <a href="/">kapitaro.com</a><br><a href="/legal">Legal notice</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/risks">Risks</a> · <a href="/faq">FAQ</a> · <a href="#" onclick="window.kpAds&&kpAds.optOut&&kpAds.optOut();return false">Do Not Sell or Share My Personal Information</a> · <a href="https://kapitaro.fr/budget-50-30-20" hreflang="fr" lang="fr">Version française</a></p>
+  </footer>
+  <script>
+  (function () {
+    var fmt = KS.fmt, rule = [50, 30, 20];
+    var set = function (id, t) { document.getElementById(id).textContent = t; };
+    function tag(id, diff, goodIfPositive) {
+      var el = document.getElementById(id), ok = goodIfPositive ? diff >= 0 : diff <= 0;
+      el.textContent = Math.abs(diff) < 1 ? 'right on target' : (diff > 0 ? '+' : '−') + fmt(Math.abs(diff)) + ' vs target';
+      el.style.color = ok ? '#16a34a' : '#ea580c';
+    }
+    function update() {
+      var s = KS.get('s'), b = Math.min(KS.get('b'), s), e = Math.min(KS.get('e'), Math.max(0, s - b)), w = Math.max(0, s - b - e);
+      var tb = s * rule[0] / 100, tw = s * rule[1] / 100, te = s * rule[2] / 100;
+      set('out-rule', rule.join('/'));
+      set('out-save', fmt(te) + ' / month');
+      set('out-save-sub', 'that’s ' + fmt(te * 12) + ' a year');
+      set('out-b', fmt(tb)); set('out-w', fmt(tw)); set('out-e', fmt(te));
+      set('cmp-b', 'Today: ' + fmt(b)); set('cmp-w', 'Today: ' + fmt(w)); set('cmp-e', 'Today: ' + fmt(e));
+      tag('tag-b', b - tb, false); tag('tag-w', w - tw, false); tag('tag-e', e - te, true);
+      document.getElementById('bar-b').style.width = rule[0] + '%';
+      document.getElementById('bar-w').style.width = rule[1] + '%';
+      document.getElementById('bar-e').style.width = rule[2] + '%';
+      var adv = document.getElementById('out-advice');
+      if (s <= 0) adv.textContent = 'Enter your take-home pay.';
+      else if (b > tb + 1) adv.innerHTML = 'Your needs are <strong>' + fmt(b - tb) + '</strong> above the target. That’s common with high rent: try a 60/25/15 split, and look at what could come down (contracts, <a href="/subscription-cost-calculator">subscriptions</a>).';
+      else if (e + 1 >= te) adv.innerHTML = 'Well done: you already save at least ' + rule[2] + '% of your pay. Give those savings a goal to see where they can take you.';
+      else adv.innerHTML = 'To reach the target, you’re <strong>' + fmt(te - e) + ' a month</strong> short on savings, which would come out of wants. An automatic transfer on payday helps you stick to it.';
+    }
+    KS.bind(['s', 'b', 'e'], update, '50-30-20-budget');
+    document.querySelectorAll('#presets button[data-r]').forEach(function (btn) {
+      btn.addEventListener('click', function () { rule = btn.getAttribute('data-r').split(',').map(Number); update(); });
+    });
+    update();
+  })();
+  </script>
+  <script defer src="/help-bot.js?v=20261029"></script>
+</body>
+</html>

@@ -18,6 +18,8 @@ const TAB_HINTS = {
   settings:  { title: 'Paramètres', text: 'Ton compte, ton abonnement, tes notifications et l\'apparence de l\'application (thème clair ou sombre).' },
   agentSample: { title: "Exemple de l'Agent IA", premium: true, emoji: '✦', note: "Aperçu figé : rien n'est calculé sur tes données. Avec Premium, tout porte sur ton vrai portefeuille.", text: "Voici ce que l'Agent IA te donne avec Premium : score, alertes, conseils chiffrés et analyse de ton portefeuille. Ici, ce sont des chiffres d'exemple." },
 };
+// Version anglaise : textes traduits (i18n-en.js, chargé seulement en anglais)
+if (window.KP_EN && KP_EN.applyData) KP_EN.applyData();
 
 const tabSeenKey = () => 'iq_seen_tabs_' + (currentUser?.id || 'demo');
 const tabPageOf = b => String((b && b.id) || '').replace(/^(bnav|nav)-/, '');

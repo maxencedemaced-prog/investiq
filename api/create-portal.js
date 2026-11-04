@@ -9,12 +9,16 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const ALLOWED_ORIGINS = [
   'https://kapitaro.fr',
   'https://www.kapitaro.fr',
+  'https://kapitaro.com',      // version anglaise (domaine à brancher)
+  'https://www.kapitaro.com',
   'https://investiq-kappa.vercel.app',
   'http://localhost:3000',
   'http://127.0.0.1:5500',
 ];
 
 const APP_URL = process.env.APP_URL || 'https://kapitaro.fr';
+// Version anglaise : un paiement lancé depuis kapitaro.com revient sur kapitaro.com, avec Stripe en anglais
+const EN_ORIGIN = { test: o => o === 'https://kapitaro.com' || o === 'https://www.kapitaro.com' };
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -51,8 +55,8 @@ export default async function handler(req, res) {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
-      return_url: `${APP_URL}?page=settings`,
-      locale: 'fr',
+      return_url: `${EN_ORIGIN.test(req.headers.origin || '') ? 'https://kapitaro.com' : APP_URL}?page=settings`,
+      locale: EN_ORIGIN.test(req.headers.origin || '') ? 'en' : 'fr',
     });
 
     return res.status(200).json({ url: session.url });

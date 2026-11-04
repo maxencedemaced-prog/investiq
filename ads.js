@@ -13,6 +13,10 @@
   const CONSENT_KEY = 'kp_consent', CONSENT_VERSION = 1, CONSENT_DAYS = 180;
   const SOURCE_KEY = 'kp_source';
   const enabled = !!(CONFIG.metaPixel || CONFIG.googleTag);
+  // Version anglaise (kapitaro.com) : textes en anglais, signal Global Privacy Control respecté (CCPA/CPRA),
+  // lien « Do Not Sell or Share ». En français, comportement inchangé.
+  const EN = !!(window.kpI18n && window.kpI18n.isEN) || document.documentElement.lang === 'en';
+  const GPC = EN && navigator.globalPrivacyControl === true;
   const ls = {
     get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
@@ -52,6 +56,7 @@
 
   // ── Consentement ──
   function consent() {
+    if (GPC) return { ads: false, v: CONSENT_VERSION, at: Date.now(), gpc: true };   // GPC = refus automatique
     const c = ls.get(CONSENT_KEY);
     if (!c || c.v !== CONSENT_VERSION || Date.now() - (c.at || 0) > CONSENT_DAYS * 86400000) return null;
     return c;
@@ -92,10 +97,15 @@
     const b = document.createElement('div');
     b.id = 'kp-consent';
     b.setAttribute('role', 'dialog');
-    b.setAttribute('aria-label', 'Cookies publicitaires');
+    b.setAttribute('aria-label', EN ? 'Advertising cookies' : 'Cookies publicitaires');
     // Bandeau compact (il ne doit pas cacher la moitié de l'écran) ; Refuser et Accepter restent de même taille (règle CNIL)
     b.style.cssText = 'position:fixed;left:10px;right:10px;bottom:10px;z-index:30000;max-width:520px;margin:0 auto;background:#fff;color:#0b1220;border:1px solid #e4e7ec;border-radius:14px;padding:12px 14px;box-shadow:0 12px 40px rgba(16,24,40,0.18);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
-    b.innerHTML = '<div style="color:#344054">🍪 <b style="color:#0b1220">Cookies publicitaires</b> (Meta, Google) pour mesurer nos pubs, seulement avec ton accord. Si tu refuses, rien n’est déposé et l’app fonctionne pareil. '
+    if (EN) b.innerHTML = '<div style="color:#344054">🍪 <b style="color:#0b1220">Advertising cookies</b> (Meta, Google) to measure our ads, only if you agree. If you refuse, nothing is stored and the app works the same. '
+      + '<a href="' + ((window.kpI18n && kpI18n.legalUrl('cookies')) || '/cookies') + '" style="color:#15803d;font-weight:600">Learn more</a></div>'
+      + '<div style="display:flex;gap:8px;margin-top:10px">'
+      + '<button type="button" data-c="0" style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #d0d5dd;background:#fff;color:#0b1220;font-weight:700;font-size:14px;cursor:pointer">Refuse</button>'
+      + '<button type="button" data-c="1" style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #16a34a;background:#16a34a;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Accept</button></div>';
+    else b.innerHTML = '<div style="color:#344054">🍪 <b style="color:#0b1220">Cookies publicitaires</b> (Meta, Google) pour mesurer nos pubs, seulement avec ton accord. Si tu refuses, rien n’est déposé et l’app fonctionne pareil. '
       + '<a href="/confidentialite" style="color:#15803d;font-weight:600">En savoir plus</a></div>'
       + '<div style="display:flex;gap:8px;margin-top:10px">'
       + '<button type="button" data-c="0" style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #d0d5dd;background:#fff;color:#0b1220;font-weight:700;font-size:14px;cursor:pointer">Refuser</button>'
@@ -130,7 +140,13 @@
 
   window.kpAds = {
     enabled, track, sourceLabel, source: () => ls.get(SOURCE_KEY),
-    openConsent() { if (!enabled) { alert('Kapitaro n\'utilise actuellement aucun cookie publicitaire.'); return; } showBanner(); },
+    openConsent() {
+      if (!enabled) { alert(EN ? 'Kapitaro does not currently use any advertising cookies.' : 'Kapitaro n\'utilise actuellement aucun cookie publicitaire.'); return; }
+      if (GPC) { alert('Your browser sends a Global Privacy Control signal: advertising cookies stay off.'); return; }
+      showBanner();
+    },
+    // « Do Not Sell or Share My Personal Information » (version anglaise) : refus des cookies publicitaires, mémorisé
+    optOut() { setConsent(false); alert(window.kpT ? kpT('dns.done') : 'Done: advertising cookies are off and we will not share your data for advertising.'); },
   };
 
   function start() {

@@ -64,6 +64,29 @@ const DEP_RULES = [
   [/^(VIR|VIREMENT)\b|RETRAIT|\bDAB\b|CHEQUE|\bCHQ\b|REMISE/, 'virement'],
 ];
 
+// Version anglaise uniquement (i18n-en.js chargé) : libellés bancaires américains, britanniques et européens en anglais,
+// essayés AVANT les règles françaises. En français, ces deux constantes sont vides : rien ne change.
+const DEP_RULES_EN = window.KP_EN ? [
+  [/\bRENT\b|LANDLORD|MORTGAGE|LETTING AGENT|HOA DUES/, 'logement'],
+  [/STUDENT LOAN|CAR LOAN|AUTO LOAN|LOAN PAYMENT|LOAN REPAYMENT|NAVIENT|SALLIE MAE/, 'credit'],
+  [/VANGUARD|FIDELITY|SCHWAB|ROBINHOOD|ETORO|HARGREAVES|AJ BELL|ISA TRANSFER|SAVINGS TRANSFER/, 'epargne'],
+  [/WHOLE FOODS|TRADER JOE|SAFEWAY|KROGER|WALMART|COSTCO|PUBLIX|ALBERTSONS|WEGMENS|TESCO|SAINSBURY|ASDA|WAITROSE|MORRISONS|OCADO|CO-OP FOOD|GROCERY|SUPERMARKET/, 'alimentation'],
+  [/DOORDASH|GRUBHUB|INSTACART|POSTMATES/, 'livraison'],
+  [/DRAFTKINGS|FANDUEL|BETMGM|BET365|WILLIAM HILL|PADDY POWER|LADBROKES|SKY BET|BETFAIR|LOTTERY|POWERBALL|MEGA MILLIONS|NATIONAL LOTTERY/, 'jeux_argent'],
+  [/HULU|PEACOCK|SLING TV|NOW TV|BRITBOX/, 'streaming'],
+  [/PLANET FITNESS|EQUINOX|PURE ?GYM|GOLD'?S GYM|LA FITNESS|ANYTIME FITNESS|DAVID LLOYD/, 'sport'],
+  [/VERIZON|AT&T|T-MOBILE|COMCAST|XFINITY|SPECTRUM|VODAFONE|\bBT GROUP\b|\bEE LIMITED\b|VIRGIN MEDIA|\bO2\b|THREE UK|SKY DIGITAL/, 'telecom'],
+  [/ELECTRIC|CON EDISON|PG&E|DUKE ENERGY|BRITISH GAS|OCTOPUS ENERGY|OVO ENERGY|E\.ON|THAMES WATER|WATER UTILITY|GAS BILL|UTILITIES/, 'energie'],
+  [/GEICO|STATE FARM|PROGRESSIVE|ALLSTATE|AVIVA|DIRECT LINE|INSURANCE/, 'assurance'],
+  [/\bCVS\b|WALGREENS|BOOTS|PHARMACY|DENTAL|HOSPITAL|CLINIC/, 'sante'],
+  [/\bIRS\b|COUNCIL TAX|HMRC|TAX PAYMENT|DMV/, 'impots'],
+  [/\bTFL\b|\bMTA\b|TRANSIT|\bLYFT\b|CHEVRON|EXXON|GAS STATION|NATIONAL RAIL|AMTRAK|PARKING|TOLL/, 'transport'],
+  [/\bTARGET\b|BEST BUY|HOME DEPOT|MARKS ?& ?SPENCER|ARGOS|PRIMARK/, 'shopping'],
+  [/^(TRANSFER|ATM)\b|ATM WITHDRAWAL|CASH WITHDRAWAL|ZELLE|VENMO/, 'virement'],
+] : [];
+const DEP_CLEAN_EN = window.KP_EN ? /\b(CARD|DEBIT|POS|PURCHASE|ACH|PMT|PAYMENT|DD|RECURRING|AUTOPAY|CONTACTLESS)\b/g : null;
+const DEP_RULES_ALL = DEP_RULES_EN.length ? DEP_RULES_EN.concat(DEP_RULES) : DEP_RULES;
+
 // Abonnements courants pour la saisie rapide (prix indicatifs, à corriger par l'utilisateur)
 const DEP_PRESETS = [
   { key: 'netflix',  label: 'Netflix',                 cat: 'streaming',   price: 13.49 },
@@ -110,6 +133,7 @@ const depNormalize = s => String(s || '').toUpperCase().normalize('NFD').replace
 // Libellé propre + clé de regroupement (« CARTE 12/09 NETFLIX.COM 1234 » → « NETFLIX.COM »)
 function depClean(raw) {
   let s = depNormalize(raw);
+  if (DEP_CLEAN_EN) s = s.replace(DEP_CLEAN_EN, ' ');
   s = s.replace(/\b(CARTE|CB|PAIEMENT|PAIEMT|PRLV|PRELEVEMENT|SEPA|VIR|VIREMENT|ACHAT|FACTURE|FACT|REF|MANDAT|ECH|ECHEANCE|TPE|PAYPAL|SUMUP|X\d{3,4})\b/g, ' ')
        .replace(/\b\d{1,2}[\/.]\d{1,2}([\/.]\d{2,4})?\b/g, ' ')
        .replace(/[*#]/g, ' ')
@@ -125,7 +149,7 @@ const depTitle = s => s.toLowerCase().replace(/(^|[\s\-'.])(\p{L})/gu, (m, a, b)
 // (« WINAMAX » et « WINAMAX FR » = même poste) ; pour restaurants, transport… chaque commerçant reste distinct.
 const DEP_MERGE_CATS = ['streaming', 'musique', 'jeux_video', 'jeux_argent', 'apps', 'presse', 'sport', 'telecom', 'energie', 'assurance', 'livraison', 'alimentation', 'credit', 'logement'];
 function depMatch(rawNorm) {
-  for (const [re, cat] of DEP_RULES) { const m = rawNorm.match(re); if (m) return [cat, m[0].trim()]; }
+  for (const [re, cat] of DEP_RULES_ALL) { const m = rawNorm.match(re); if (m) return [cat, m[0].trim()]; }
   return ['autre', ''];
 }
 function depCategorize(rawNorm) { return depMatch(rawNorm)[0]; }
@@ -926,7 +950,7 @@ function depDrawChart() {
     options: {
       responsive: true, maintainAspectRatio: false, animation: false, cutout: '58%',
       devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),     // rendu net sur écrans HD et pendant les zooms
-      plugins: { legend: { display: false }, tooltip: { callbacks: { title: () => '', label: c => ` ${c.label} : ${depFmt0(c.parsed)}/mois` } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: () => '', label: c => ` ${c.label} : ${kpCurTxt(depFmt0(c.parsed))}/mois` } } },
     },
   });
 }
@@ -949,7 +973,8 @@ function depRequirePremium() {
 }
 function depSampleState() {
   const d = (day, l, a) => ({ date: new Date(new Date().getFullYear(), new Date().getMonth(), day), label: l, amount: a });
-  const { months, items, txs } = depBuildItems([
+  const en = (typeof kpDemoSet === 'function') ? kpDemoSet() : null;   // version anglaise : relevé d'exemple de la région
+  const { months, items, txs } = depBuildItems(en ? en.bank.map(b => d(b[0], b[1], b[2])) : [
     d(1, 'PRLV SEPA LOYER APPARTEMENT', 850), d(2, 'PRLV SEPA NETFLIX.COM', 13.49), d(2, 'PRLV SEPA DISNEY PLUS', 9.99), d(3, 'PRLV SEPA BASIC-FIT', 24.99),
     d(3, 'PRLV SEPA SPOTIFY', 11.99), d(4, 'PRLV SEPA SFR MOBILE', 19.99), d(5, 'PRLV SEPA EDF', 62.4), d(5, 'PRLV SEPA MAIF ASSURANCE', 28.5),
     d(6, 'CARTE 06/09 CARREFOUR MARKET', 92.3), d(9, 'CARTE 09/09 CARREFOUR MARKET', 71.6), d(7, 'CARTE 07/09 WINAMAX', 60), d(14, 'CARTE 14/09 WINAMAX', 45),

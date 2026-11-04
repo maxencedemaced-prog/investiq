@@ -124,7 +124,7 @@
   window.renderCalc = function () {
     var root = document.getElementById('calc-root'); if (!root) return;
     if (TAB[0] === '/') {   // calculateur public, affiché dans la page
-      root.innerHTML = menuHTML() + depensesPromoHTML() + '<iframe id="calc-frame" src="' + TAB + '" title="Calculateur" loading="lazy" style="display:block;width:100%;height:900px;border:0;border-radius:16px;background:transparent"></iframe>';
+      root.innerHTML = menuHTML() + depensesPromoHTML() + '<iframe id="calc-frame" src="' + (window.KP_EN && KP_EN.enPath ? KP_EN.enPath(TAB) : TAB) + '" title="Calculateur" loading="lazy" style="display:block;width:100%;height:900px;border:0;border-radius:16px;background:transparent"></iframe>';
       return;
     }
     root.innerHTML = menuHTML()

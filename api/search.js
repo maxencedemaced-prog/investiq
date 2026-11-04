@@ -1,6 +1,8 @@
 const ALLOWED_ORIGINS = [
   'https://kapitaro.fr',
   'https://www.kapitaro.fr',
+  'https://kapitaro.com',      // version anglaise (domaine à brancher)
+  'https://www.kapitaro.com',
   'https://investiq-kappa.vercel.app',
   'http://localhost:3000',
   'http://127.0.0.1:5500',
