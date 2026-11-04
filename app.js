@@ -663,6 +663,25 @@ function planKeepKnown(data, budget, allowed) {
   data.lignes = keep;
 }
 
+// Minimum par ligne (petits budgets) : jamais d'achat de quelques euros. Les lignes sous le minimum sont retirées
+// (les plus petites d'abord) et leur montant va à la plus grosse ligne du même rôle, sinon à la plus grosse ligne.
+const PLAN_MIN_LINE = 20;
+function planEnforceMin(data, budget, min = PLAN_MIN_LINE) {
+  const L = data?.lignes || [];
+  let changed = false;
+  while (L.length > 1) {
+    const small = [...L].sort((a, b) => (a.montant || 0) - (b.montant || 0))[0];
+    if ((small.montant || 0) >= min) break;
+    L.splice(L.indexOf(small), 1);
+    const same = L.filter(l => l.role === small.role);
+    const to = (same.length ? same : L).sort((a, b) => (b.montant || 0) - (a.montant || 0))[0];
+    to.montant = (to.montant || 0) + (small.montant || 0);
+    changed = true;
+  }
+  if (changed) L.forEach(l => { l.pct = Math.round((l.montant || 0) / (budget || 1) * 100); });
+  return changed;
+}
+
 // Données réelles à joindre à un prompt de plan (même matière pour tous les générateurs)
 function planUserTail() {
   const mp = (typeof kpMainPlatform === 'function') ? kpMainPlatform() : '';
@@ -1071,7 +1090,7 @@ async function generateMonthlyPlan(force = false) {
   const cached = getCachedMonthlyPlan();
   if (cached && !force) {
     // Un plan déjà généré ce mois peut contenir une ligne effondrée depuis : on la retire aussi
-    if (sanitizePlanLines(cached.data, cached.budget, {}) && cached.data.lignes.length) {
+    if ((sanitizePlanLines(cached.data, cached.budget, {}) | planEnforceMin(cached.data, cached.budget)) && cached.data.lignes.length) {
       try { localStorage.setItem(MONTHLY_PLAN_KEY, JSON.stringify(cached)); } catch {}
     }
     if (cached.data.lignes.length) { renderMonthlyPlan(cached, false); return; }
@@ -1151,6 +1170,7 @@ ${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (o
 - INTERDIT : renforcer une ligne marquée "EFFONDRÉE" (perte de plus de 60 %) ; une ligne qui pèse peu parce qu'elle s'est effondrée n'est PAS sous-pondérée.
 - Choisis uniquement des grandes entreprises solides et liquides (grandes capitalisations) et de grands ETF de la liste fournie (cotés dans sa devise, donc sans frais de change). JAMAIS d'action à moins de 1 €, de "penny stock", de petite valeur spéculative ou d'entreprise en difficulté financière (redressement, liquidation).
 - La somme des montants "actions" doit représenter ~${objStockPct}% du budget, et les ETF ~${100-objStockPct}%.
+- MINIMUM ${PLAN_MIN_LINE} € PAR LIGNE, sans exception : avec ${budget} € ce mois-ci, propose AU PLUS ${Math.max(1, Math.floor(budget / PLAN_MIN_LINE))} ligne(s) au total (ETF + actions). Si le budget est petit, mieux vaut 1 ou 2 lignes bien choisies que plusieurs miettes : les autres valeurs seront renforcées les mois suivants.
 ${objStockPct < 100 ? `POCHE ETF : UN SEUL ETF actions monde (MSCI World OU All-World, jamais les deux : ils se recoupent presque totalement). ${objRisk === 'agressif' ? '' : objRisk === 'dynamique' ? 'Profil DYNAMIQUE : ajoute éventuellement un petit ETF obligataire (10 à 15 % de la poche ETF) pour amortir les secousses.' : objRisk === 'equilibre' ? 'Ajoute un ETF obligataire pour environ 20 % de la poche ETF.' : 'Profil PRUDENT : ajoute un ETF obligataire (type Global Aggregate) pour environ 30 à 40 % de la poche ETF, comme dans son plan de départ.'} Aucune ligne inférieure à 20 €.` : ''}
 ${(PLAN_GOLD = PLAN_GOLD_OF(), objRisk !== 'agressif' && objStockPct < 100 && budget >= 400 && PLAN_GOLD) ? `OPTION DIVERSIFIANTE (facultative) : tu peux prélever jusqu'à 5 % du budget sur la poche ETF pour UN SEUL ETC sur l'or physique, ticker ${PLAN_GOLD ? PLAN_GOLD[0] + ' (' + PLAN_GOLD[1] + ')' : '4GLD.DE (Xetra-Gold)'}, role "diversifiant". Jamais d'autre matière première (pétrole, argent…), jamais plus d'une telle ligne, et seulement si ça ne casse pas la règle des 20 € minimum par ligne.` : ''}
 
@@ -1187,6 +1207,7 @@ La somme des montants doit faire exactement ${budget}.`;
       l._price = live[String(l.ticker).toUpperCase()] || p?.price || null;
     });
     sanitizePlanLines(data, budget, live);
+    planEnforceMin(data, budget);
     if (!data.lignes.length) throw new Error('plan vide après filtrage');
 
     const plan = { month: currentMonthId(), objId: activeObjId, stockPct: objStockPct, budget, data, ts: Date.now(), analysis: { n: cand.ok.length + PLAN_ETFS.filter(e => _md[e[0]]).length, news: Object.keys(_planCtx.news || {}).length, indices: (_planCtx.market || []).length, asOf: Date.now() } };
@@ -1584,7 +1605,7 @@ function renderETFCards(etfs, containerEl, actions = []) {
         <div style="text-align:right;flex-shrink:0">
           ${mCap > 0 ? `<div style="font-size:14px;font-weight:900;color:${e.color}">${mCap.toLocaleString('fr-FR')} €</div>
           <div style="font-size:9px;color:${sub}">mise initiale · ${pctC}%</div>` : ''}
-          <div style="font-size:13px;font-weight:800;color:${text};margin-top:${mCap>0?'6px':'0'}">+${mMens.toLocaleString('fr-FR')} €<span style="font-size:10px;color:${sub}">/mois</span></div>
+          <div style="font-size:13px;font-weight:800;color:${text};margin-top:${mCap>0?'6px':'0'}">${mMens > 0 && mMens < PLAN_MIN_LINE ? `+${PLAN_MIN_LINE} €<span style="font-size:10px;color:${sub}"> tous les ${Math.min(12, Math.max(2, Math.round(PLAN_MIN_LINE / mMens)))} mois</span>` : `+${mMens.toLocaleString('fr-FR')} €<span style="font-size:10px;color:${sub}">/mois</span>`}</div>
           <div style="font-size:9px;color:${sub}">${pctM}% du versement</div>
         </div>
       </div>
