@@ -534,8 +534,8 @@ function planHeldSectors() {
 // Le plan ne garde que des valeurs de la liste fermée (ou déjà détenues) ; montants recalés sur le budget
 function planKeepKnown(data, budget, allowed) {
   const keep = (data.lignes || []).filter(l => allowed.has(String(l.ticker).toUpperCase()));
-  if (keep.length === (data.lignes || []).length) return;
   const kept = keep.reduce((s, l) => s + (Number(l.montant) || 0), 0);
+  if (keep.length === (data.lignes || []).length && Math.abs(kept - budget) <= 1) return;   // total juste : rien à corriger (sinon on remet les montants à l'échelle du budget)
   if (keep.length && kept > 0) {
     keep.forEach(l => { l.montant = Math.round((Number(l.montant) || 0) / kept * budget); l.pct = Math.round(l.montant / budget * 100); });
     const diff = budget - keep.reduce((s, l) => s + l.montant, 0);
