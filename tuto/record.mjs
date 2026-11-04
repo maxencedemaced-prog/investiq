@@ -193,8 +193,21 @@ const SETUP = () => {
     for (const s of sel.split(',')) { el = [...document.querySelectorAll(s.trim())].find(e => e.getBoundingClientRect().width > 0); if (el) break; }
     return el || null;
   };
-  window.__ttMove = sel => { const el = window.__ttTarget(sel); if (!el) return false; const r = el.getBoundingClientRect(); cur.style.left = (r.left + Math.min(r.width / 2, 60)) + 'px'; cur.style.top = (r.top + r.height / 2) + 'px'; return true; };
+  // le curseur reste accroché à sa cible : si la page bouge ensuite (contenu qui se charge, bouton décalé), il la suit
+  let ttFollow = null;
+  const ttPlace = el => { const r = el.getBoundingClientRect(); if (!r.width && !r.height) return; cur.style.left = (r.left + Math.min(r.width / 2, 60)) + 'px'; cur.style.top = (r.top + r.height / 2) + 'px'; };
+  window.__ttMove = sel => { const el = window.__ttTarget(sel); if (!el) return false; ttFollow = el; ttPlace(el); return true; };
+  setInterval(() => { if (ttFollow && ttFollow.isConnected) ttPlace(ttFollow); }, 120);
   window.__ttScroll = sel => { const el = window.__ttTarget(sel); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); return !!el; };
+  // « point » sur un élément hors écran (ou caché par la barre du bas) : on le fait d'abord venir au centre
+  window.__ttReveal = sel => { const el = window.__ttTarget(sel); if (!el) return false; const r = el.getBoundingClientRect(); if (r.top < 0 || r.bottom > window.innerHeight - 70) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); return true; };
+  // attend la fin du défilement doux (élément immobile ~150 ms) : sinon le curseur visait l'endroit où l'élément se trouvait en cours de défilement
+  window.__ttSettle = (sel, max) => new Promise(res => {
+    const el = window.__ttTarget(sel); if (!el) return res(false);
+    const t0 = performance.now(); let last = '', still = 0;
+    const tick = () => { const r = el.getBoundingClientRect(), k = Math.round(r.top) + ',' + Math.round(r.left); if (k === last) still++; else { still = 0; last = k; } const dt = performance.now() - t0; if ((still >= 3 && dt > 200) || dt > (max || 1500)) { if (r.bottom < 0 || r.top > window.innerHeight) el.scrollIntoView({ block: 'center', behavior: 'instant' }); res(true); } else setTimeout(tick, 50); };   // défilement doux non fait : la cible est amenée à l'écran
+    setTimeout(tick, 50);
+  });
   window.__ttTap = sel => { const el = window.__ttTarget(sel); cur.classList.remove('tap'); void cur.offsetWidth; cur.classList.add('tap'); if (el) { try { el.click(); } catch (e) {} } };
 };
 
@@ -294,10 +307,10 @@ async function run() {
       try {
         if (a.wait) await sleep(a.wait);
         else if (a.js) { await page.evaluate(code => { try { (0, eval)(code); } catch (e) { console.log(e.message); } }, a.js); if (/\bnav\(/.test(a.js)) { await sleep(150); await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' })); } }   // changement de page : on repart du haut
-        else if (a.scroll) { await page.evaluate(s => window.__ttScroll(s), a.scroll); await sleep(700); }
-        else if (a.point) { await page.evaluate(s => window.__ttMove(s), a.point); await sleep(800); }
+        else if (a.scroll) { await page.evaluate(s => window.__ttScroll(s), a.scroll); await page.evaluate(s => window.__ttSettle(s, 1500), a.scroll); }
+        else if (a.point) { await page.evaluate(s => window.__ttReveal(s), a.point); await page.evaluate(s => window.__ttSettle(s, 1500), a.point); await page.evaluate(s => window.__ttMove(s), a.point); await sleep(800); }
         else if (a.click && /^#b?nav-/.test(a.click)) { await page.evaluate(s => window.__ttMove(s), a.click); await sleep(780); await page.evaluate(s => window.__ttTap(s), a.click); await sleep(250); await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' })); }
-        else if (a.click) { const ok = await page.evaluate(s => { window.__ttScroll(s); return true; }, a.click); await sleep(350); await page.evaluate(s => window.__ttMove(s), a.click); await sleep(780); if (ok) await page.evaluate(s => window.__ttTap(s), a.click); await sleep(250); }
+        else if (a.click) { const ok = await page.evaluate(s => { window.__ttScroll(s); return true; }, a.click); await page.evaluate(s => window.__ttSettle(s, 1500), a.click); await page.evaluate(s => window.__ttMove(s), a.click); await sleep(780); if (ok) await page.evaluate(s => window.__ttTap(s), a.click); await sleep(250); }
         else if (a.type) { await page.evaluate(async ([s, t]) => { const el = window.__ttTarget(s); if (!el) return; el.focus(); el.value = ''; for (const ch of t) { el.value += ch; el.dispatchEvent(new Event('input', { bubbles: true })); await new Promise(r => setTimeout(r, 110)); } el.dispatchEvent(new Event('change', { bubbles: true })); }, a.type); }
         else if (a.upload) { await page.setInputFiles(a.upload[0], path.resolve('assets', a.upload[1])); }
       } catch (e) { console.log('geste ignoré', JSON.stringify(a), e.message); }
