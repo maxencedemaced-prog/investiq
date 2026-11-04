@@ -168,7 +168,11 @@ const SETUP = () => {
     for (const s of sel.split(',')) { el = [...document.querySelectorAll(s.trim())].find(e => e.getBoundingClientRect().width > 0); if (el) break; }
     return el || null;
   };
-  window.__ttMove = sel => { const el = window.__ttTarget(sel); if (!el) return false; const r = el.getBoundingClientRect(); cur.style.left = (r.left + Math.min(r.width / 2, 60)) + 'px'; cur.style.top = (r.top + r.height / 2) + 'px'; return true; };
+  // le curseur reste accroché à sa cible : si la page bouge ensuite (contenu qui se charge, bouton décalé), il la suit
+  let ttFollow = null;
+  const ttPlace = el => { const r = el.getBoundingClientRect(); if (!r.width && !r.height) return; cur.style.left = (r.left + Math.min(r.width / 2, 60)) + 'px'; cur.style.top = (r.top + r.height / 2) + 'px'; };
+  window.__ttMove = sel => { const el = window.__ttTarget(sel); if (!el) return false; ttFollow = el; ttPlace(el); return true; };
+  setInterval(() => { if (ttFollow && ttFollow.isConnected) ttPlace(ttFollow); }, 120);
   window.__ttScroll = sel => { const el = window.__ttTarget(sel); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); return !!el; };
   // « point » sur un élément hors écran (ou caché par la barre du bas) : on le fait d'abord venir au centre
   window.__ttReveal = sel => { const el = window.__ttTarget(sel); if (!el) return false; const r = el.getBoundingClientRect(); if (r.top < 0 || r.bottom > window.innerHeight - 70) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); return true; };
