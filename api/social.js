@@ -29,7 +29,7 @@ const tutoBase = (id, lang) => (lang === 'en' ? id + '__en' : id);
 const tutoAllIds = () => Object.keys(TUTOS).flatMap(id => [id, id + '__desktop', ...(TUTOS_EN[id] ? [id + '__en', id + '__en__desktop'] : [])]);
 // Lancement GitHub : l'entrée « lang » n'est envoyée qu'en anglais (en français, appel identique à avant)
 const tutoDispatch = (id, variant, lang) => dispatchWorkflow('tuto.yml', lang === 'en' ? { tuto_id: id, variant, lang: 'en' } : { tuto_id: id, variant });
-const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ'];
+const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ', '4N8zjn9tVNuDEBFWVHAq'];   // dernière : voix anglaise des tutoriels
 async function tutoVoices() {
   const base = (await reelVoices()).filter(v => v.id);
   if (!process.env.ELEVENLABS_API_KEY) return base;
