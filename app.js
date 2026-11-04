@@ -8683,7 +8683,7 @@ async function checkAndGenerateNotifications() {
   }
 
   // ── 3. MARCHÉ EN BAISSE — opportunité DCA ──
-  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/apos().length : 0;   // même liste au numérateur et au dénominateur
   if (avgChange < -3) {
     newNotifs.push({ titre:'📉 Marché en baisse — opportunité !', texte:`Ton portefeuille baisse de ${Math.abs(avgChange).toFixed(1).replace(".", ",")} % aujourd'hui. Historiquement, c'est le bon moment pour renforcer en DCA, pas pour vendre.`, action:'Simulateur DCA', impact:'medium', heure:"Aujourd'hui", type:'marche' });
   } else if (avgChange < -1.5) {
@@ -9331,13 +9331,13 @@ async function renderHome() {
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">🏆 Meilleure performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${best.name}</div>
-        <div style="font-size:20px;font-weight:900;color:#16a34a;letter-spacing:-0.04em;margin-bottom:8px">+${(best.change_pct||0).toFixed(2).replace(".", ",")} %</div>
+        <div style="font-size:20px;font-weight:900;color:${(best.change_pct||0)>=0?'#16a34a':'#dc2626'};letter-spacing:-0.04em;margin-bottom:8px">${(best.change_pct||0)>=0?'+':''}${(best.change_pct||0).toFixed(2).replace(".", ",")} %</div>
         <div style="opacity:0.7">${sparkline(bestData,'#4ade80',120,32,true)}</div>
       </div>
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">📉 Plus faible performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${worst.name}</div>
-        <div style="font-size:20px;font-weight:900;color:#dc2626;letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0).toFixed(2).replace(".", ",")} %</div>
+        <div style="font-size:20px;font-weight:900;color:${(worst.change_pct||0)>=0?'#16a34a':'#dc2626'};letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0)>0?'+':''}${(worst.change_pct||0).toFixed(2).replace(".", ",")} %</div>
         <div style="opacity:0.7">${sparkline(worstData,'#f87171',120,32,true)}</div>
       </div>
     </div>`;
@@ -9743,7 +9743,10 @@ function renderPortfolio(auto=false) {
     if (!dedupMap[key]) {
       dedupMap[key] = {...p};
     } else {
-      dedupMap[key].qty += p.qty;
+      // Prix de revient moyen pondéré : sinon la ligne regroupée gardait le PRU de la 1re ligne (investi et perf. faux)
+      const d = dedupMap[key], q = d.qty + p.qty;
+      if (q > 0) d.pru = (d.qty * d.pru + p.qty * p.pru) / q;
+      d.qty = q;
     }
   });
   const dedupPositions = Object.values(dedupMap);
@@ -9778,7 +9781,7 @@ function renderPortfolio(auto=false) {
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
     <!-- Header tableau -->
     <!-- Barre d'actions groupées (visible en mode sélection) -->
-    <div id="bulk-bar" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:rgba(99,102,241,0.08);border-bottom:1px solid ${borderCol}">
+    <div id="bulk-bar" style="display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 16px;background:rgba(99,102,241,0.08);border-bottom:1px solid ${borderCol}">
       <div style="display:flex;align-items:center;gap:10px">
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:700;color:${textCol}">
           <input type="checkbox" id="bulk-all" onchange="toggleSelectAll(this.checked)" style="width:16px;height:16px;accent-color:#6366f1">
@@ -9786,7 +9789,7 @@ function renderPortfolio(auto=false) {
         </label>
         <span id="bulk-count" style="font-size:12px;color:${subCol}">0 sélectionnée</span>
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="bulkDelete()" style="padding:6px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer">🗑️ Supprimer</button>
         <button onclick="bulkAskAI()" style="padding:6px 13px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;font-size:12px;font-weight:700;color:#6366f1;cursor:pointer">🤖 Analyser <span style="font-size:10px;opacity:0.7">✨</span></button>
         <button onclick="toggleSelectMode(false)" style="padding:6px 13px;background:transparent;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer">Annuler</button>
@@ -10092,15 +10095,16 @@ async function addPos() {
   if (existing) {
     const totalQty = existing.qty + qty;
     const newPru = (existing.qty * existing.pru + qty * pru) / totalQty;
-    existing.qty = Math.round(totalQty * 1e8) / 1e8;
-    existing.pru = Math.round(newPru * 100) / 100;
-    existing.price = price;
-    if (alertPrice) existing.alert_price = alertPrice;
+    // Nouvelles valeurs appliquées à la position seulement après l'enregistrement réussi (sinon l'écran et la base divergent)
+    const upd = { qty: Math.round(totalQty * 1e8) / 1e8, pru: Math.round(newPru * 100) / 100, price, alert_price: alertPrice || existing.alert_price };
     if (!isDemo && currentUser) {
       const { error } = await sb.from('positions')
-        .update({ qty: existing.qty, pru: existing.pru, price: existing.price, alert_price: existing.alert_price })
+        .update(upd)
         .eq('id', existing.id);
       if (error) { showToast('Erreur: ' + error.message); return false; }
+    }
+    Object.assign(existing, upd);
+    if (!isDemo && currentUser) {
       await addTransaction(name, 'achat', qty, pru, 'Renforcement de position');
       trackEvent('position_added', { type, renforcement: true });
     }
@@ -10187,7 +10191,7 @@ async function renderSante() {
   apos().forEach(p => {
     const key = p.name + '|' + (p.platform||'');
     if (!dedupMap[key]) dedupMap[key] = {...p};
-    else dedupMap[key].qty += p.qty;
+    else { const d = dedupMap[key], q = d.qty + p.qty; if (q > 0) d.pru = (d.qty * d.pru + p.qty * p.pru) / q; d.qty = q; }   // PRU moyen pondéré
   });
   const dedupPos = Object.values(dedupMap);
   if (!dedupPos.length && positions.some(isTrackOnly)) {
@@ -12246,12 +12250,13 @@ async function prConfirm(btn, openAfter) {
         if (!(window._prOpts && window._prOpts.merge)) { skipped++; continue; }
         const tq = existing.qty + qty;
         const newPru = (existing.qty * existing.pru + qty * price) / tq;
-        existing.qty = Math.round(tq * 1e8) / 1e8; existing.pru = Math.round(newPru * 100) / 100; existing.price = price;
-        if (typeof isDemo !== 'undefined' && isDemo) { added++; }
+        // Appliqué à la position seulement si l'enregistrement réussit (sinon la ligne « non ajoutée » restait renforcée à l'écran)
+        const upd = { qty: Math.round(tq * 1e8) / 1e8, pru: Math.round(newPru * 100) / 100, price };
+        if (typeof isDemo !== 'undefined' && isDemo) { Object.assign(existing, upd); added++; }
         else if (currentUser) {
-          const { error } = await sb.from('positions').update({ qty: existing.qty, pru: existing.pru, price: existing.price }).eq('id', existing.id);
-          if (!error) { added++; try { await addTransaction(l.ticker, 'achat', qty, price, window._prOpts.label || 'Plan du mois'); } catch {} } else { skipped++; }
-        } else { added++; }
+          const { error } = await sb.from('positions').update(upd).eq('id', existing.id);
+          if (!error) { Object.assign(existing, upd); added++; try { await addTransaction(l.ticker, 'achat', qty, price, window._prOpts.label || 'Plan du mois'); } catch {} } else { skipped++; }
+        } else { Object.assign(existing, upd); added++; }
         continue;
       }
       const pos = { name: l.ticker, qty, pru: Math.round(price * 100) / 100, price: price, type: l.type || 'ETF', sector: '', platform, alert_price: null };
@@ -13503,19 +13508,20 @@ async function confirmCSVImport() {
   document.getElementById('csv-preview-modal')?.remove();
   if (!rows.length) return;
 
-  let added = 0, updated = 0;
+  let added = 0, updated = 0, failed = 0;
   for (let r of rows) {
     const existing = positions.find(p => kpTickerOf(p.name) === kpTickerOf(r.name));
     const basePru = r.pru > 0 ? r.pru : (existing ? existing.pru : r.price);
     r = { ...r, pru: basePru > 0 ? csvRowPru({ ...r, pru: basePru }) : 0 };
     if (existing) {
-      existing.qty = r.qty;
-      if (r.pru > 0) existing.pru = r.pru;
-      if (r.price > 0) existing.price = r.price;
-      existing.platform = platform;
+      const upd = { qty: r.qty, pru: r.pru > 0 ? r.pru : existing.pru, price: r.price > 0 ? r.price : existing.price, platform };
+      // supabase-js renvoie { error } sans lever d'exception : une ligne non enregistrée n'est pas modifiée à l'écran
       if (!isDemo && currentUser) {
-        try { await sb.from('positions').update({ qty: existing.qty, pru: existing.pru, price: existing.price, platform }).eq('id', existing.id); } catch(e) {}
+        let err = null;
+        try { ({ error: err } = await sb.from('positions').update(upd).eq('id', existing.id)); } catch(e) { err = e; }
+        if (err) { failed++; continue; }
       }
+      Object.assign(existing, upd);
       updated++;
     } else {
       const pos = { name: r.name, qty: r.qty, pru: r.pru || r.price || 0, price: r.price || r.pru || 0,
@@ -13525,6 +13531,8 @@ async function confirmCSVImport() {
           const { data } = await sb.from('positions').insert({ ...pos, user_id: currentUser.id }).select().single();
           if (data) pos.id = data.id;
         } catch(e) {}
+        // Insertion refusée : pas de ligne fantôme (visible ici, disparue au rechargement, impossible à supprimer)
+        if (!pos.id) { failed++; continue; }
       }
       if (!pos.id) pos.id = 'csv_' + Date.now() + '_' + added;
       positions.push(pos);
@@ -13533,7 +13541,7 @@ async function confirmCSVImport() {
   }
   refreshPortfolioUI();
   refreshPrices();
-  showToast(`✓ Import terminé : ${added} ajoutée${added>1?'s':''}, ${updated} mise${updated>1?'s':''} à jour`);
+  showToast(`${failed ? '⚠️' : '✓'} Import terminé : ${added} ajoutée${added>1?'s':''}, ${updated} mise${updated>1?'s':''} à jour${failed ? `, ${failed} non enregistrée${failed>1?'s':''} (réessaie)` : ''}`);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -14115,7 +14123,8 @@ async function bulkDelete() {
   if (!confirm(`Supprimer ${ids.length} position${ids.length>1?'s':''} ?\n\n${names.slice(0,8).join('\n')}${names.length>8 ? '\n…et '+(names.length-8)+' autre(s)' : ''}`)) return;
 
   if (!isDemo && currentUser) {
-    try { await sb.from('positions').delete().in('id', ids); } catch(e) { showToast('Erreur: ' + e.message); return; }
+    // supabase-js ne lève pas d'exception en cas d'échec : il renvoie { error }, à vérifier
+    try { const { error } = await sb.from('positions').delete().in('id', ids); if (error) throw error; } catch(e) { showToast('Erreur: ' + e.message); return; }
   }
   positions = positions.filter(p => !ids.includes(String(p.id)));
   toggleSelectMode(false);
@@ -14193,7 +14202,7 @@ async function deletePosConfirm(id) {
   if (!p) return;
   if (!confirm(`Supprimer ${displayName(p.name)} de ton portefeuille ?`)) return;
   if (!isDemo && currentUser) {
-    try { await sb.from('positions').delete().eq('id', id); } catch(e) { showToast('Erreur: ' + e.message); return; }
+    try { const { error } = await sb.from('positions').delete().eq('id', id); if (error) throw error; } catch(e) { showToast('Erreur: ' + e.message); return; }
   }
   positions = positions.filter(x => String(x.id) !== String(id));
   refreshPortfolioUI();
@@ -14916,7 +14925,7 @@ function renderAgentDashboard() {
   const tv = apos().reduce((a,p)=>a+p.qty*p.price, 0);
   const ti = apos().reduce((a,p)=>a+p.qty*p.pru, 0);
   const tpnl = tv - ti;
-  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/positions.length : 0;
+  const avgChange = apos().length ? apos().reduce((a,p)=>a+(p.change_pct||0),0)/apos().length : 0;   // même liste au numérateur et au dénominateur
   const {score, items: scoreItems} = calcScore();
   const scoreColor = score>=7?'#16a34a':score>=5?'#f59e0b':'#dc2626';
   const sorted = [...apos()].sort((a,b)=>(b.change_pct||0)-(a.change_pct||0));
