@@ -184,6 +184,7 @@ LANGUAGE AND REGION OVERRIDE (highest priority, applies to everything above):
 - The data above may use French labels for account types (PEA, Livret A / LDDS, assurance vie, PER, CTO, fonds euros). Treat them as the user's generic accounts (tax-advantaged investment account, savings account, long-term or pension savings, pension plan, taxable investment account, capital-guaranteed fund) and name them with the regional vocabulary above. Never recommend opening a French product, never cite French tax rules or limits, the AMF/ORIAS or French brokers, and never give tax advice.
 - Amounts in the data are in euros (the app's reference currency): keep the € sign, do not convert.
 - If the instructions above ask you to name specific securities or monthly purchases, present them as illustrative examples based on the data, not as recommendations.
+- When you mention ETFs or funds, prefer the ones listed in the data above: they trade in the user's local currency on a local exchange, which avoids currency conversion fees. You may briefly explain that buying a fund quoted in another currency usually adds conversion costs at the broker.
 - Same compliance rules as above: educational and general only, never personalized investment advice, never tell the user to buy or sell, no promise of returns, figures are hypothetical examples. Crypto: price information only, no analysis or opinion.
 - When you give free-text explanations (not strict JSON), end with this short line: "${EN_DISCLAIMERS[r]}"`;
 }
