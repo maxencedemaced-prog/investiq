@@ -564,7 +564,7 @@
     'Enregistré sur cet appareil': 'Saved on this device', '(étape': '(step', "L'analyse IA n'a pas pu être générée": 'The AI analysis couldn’t be generated', '📅 Bilan du': '📅 Check-up of',
     'Ajustée pour respecter ton profil « ': 'Adjusted to match your profile “', '€/mois · cible': '€/month · target', 'Ça fait': 'It’s been', 'jours sans nouvel investissement. Pense à placer tes': 'days without a new investment. Remember your planned',
     '€/mois pour profiter des intérêts composés.': '€/month to benefit from compound growth.', 'Voir Portefeuille': 'See Portfolio', 'Voir Santé du portefeuille': 'See Portfolio health',
-    'Créer un objectif': 'Create a goal', 'Ajouter tes placements': 'Add your investments', 'Découvrir ton score de santé': 'See your health score', 'Je débute': 'I’m just starting',
+    '🚀 Mise en route': '🚀 Getting started', 'Mise en route': 'Getting started', 'Créer un objectif': 'Create a goal', 'Ajouter tes placements': 'Add your investments', 'Découvrir ton score de santé': 'See your health score', 'Je débute': 'I’m just starting',
     "L'essentiel : accueil, portefeuille, objectif et assistant IA.": 'The essentials: home, portfolio, goal and AI assistant.', "J'ai déjà quelques placements": 'I already have a few investments',
     'En plus : le score de santé, le calculateur de dépenses et les actualités.': 'Plus: health score, spending calculator and news.', 'Je gère un vrai portefeuille': 'I manage a real portfolio',
     'Tous les outils, avec en plus : scénario de crise, simulateur DCA, aide à la décision.': 'All tools, plus: crash scenario, regular-investing simulator, decision helper.', 'ajouté à ton menu': 'added to your menu',
