@@ -11,7 +11,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const hits = new Map();
-function rateLimited(key, max = 12, windowMs = 60_000) {
+function rateLimited(key, max = 40, windowMs = 60_000) {
   const now = Date.now();
   const entry = hits.get(key) || { count: 0, start: now };
   if (now - entry.start > windowMs) { entry.count = 0; entry.start = now; }
