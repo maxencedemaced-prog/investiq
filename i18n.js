@@ -70,12 +70,18 @@
   }
   function storedRegion() { var r = safeGet('kp_region'); return REGIONS.indexOf(r) >= 0 ? r : null; }
   var region = EN ? (storedRegion() && storedRegion() !== 'FR' ? storedRegion() : inferRegion()) : 'FR';
+  // Rechargement après un changement de réglage : en mode démo, on retient la page pour y revenir (sinon retour à l'accueil)
+  function reloadKeepDemo() {
+    try { if (typeof isDemo !== 'undefined' && isDemo) sessionStorage.setItem('kp_resume_demo', sessionStorage.getItem('iq_last_page') || 'settings'); } catch (e) {}
+    location.reload();
+  }
+  window.kpReloadKeepDemo = reloadKeepDemo;
   function setRegion(r, noReload) {
     if (REGIONS.indexOf(r) < 0) return;
     safeSet('kp_region', r);
     try { if (typeof sb !== 'undefined' && sb && sb.auth) sb.auth.updateUser({ data: { region: r } }).catch(function () {}); } catch (e) {}
     if (r === 'FR' && EN) { setLang('fr'); return; }
-    if (!noReload) location.reload();
+    if (!noReload) reloadKeepDemo();
   }
   // Région enregistrée dans le profil (user_metadata.region) : appelée par app.js après connexion
   function syncRegionFromUser(user) {

@@ -15437,3 +15437,10 @@ async function requestMonthlyPlanNow() {
   try { renderNextPlanCard(false); } catch {}
   document.getElementById('obj-monthly-plan')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+
+// Mode démo après un changement de langue, région ou devise (rechargement de la page, voir i18n.js) : on y revient, sur la même page
+window.addEventListener('load', () => {
+  let page = null;
+  try { page = sessionStorage.getItem('kp_resume_demo'); sessionStorage.removeItem('kp_resume_demo'); } catch {}
+  if (page) setTimeout(() => { if (!currentUser && !isDemo) { enterDemo(); try { nav(page); } catch (e) {} } }, 600);
+});

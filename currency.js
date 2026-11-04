@@ -304,7 +304,7 @@
     if (LIST.indexOf(c) < 0) return;
     safeSet('kp_currency', c);
     try { if (typeof sb !== 'undefined' && sb && sb.auth) sb.auth.updateUser({ data: { currency: c } }).catch(function () {}); } catch (e) {}
-    if (c !== code) setTimeout(function () { location.reload(); }, 150);
+    if (c !== code) setTimeout(function () { if (window.kpReloadKeepDemo) kpReloadKeepDemo(); else location.reload(); }, 150);
   }
   // Devise enregistrée dans le profil (user_metadata.currency) : appelée par app.js après connexion
   function syncFromUser(user) {
