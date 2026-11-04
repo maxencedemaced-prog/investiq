@@ -468,6 +468,8 @@ const PLAN_ETFS_BY_REGION = {
 };
 const PLAN_REGION = (() => { try { const r = window.kpI18n && window.kpI18n.isEN && window.kpI18n.region; return r === 'US' || r === 'UK' ? r : 'EU'; } catch (e) { return 'EU'; } })();
 const PLAN_ETFS = PLAN_ETFS_BY_REGION[PLAN_REGION];
+let PLAN_GOLD = null;
+const PLAN_GOLD_OF = () => PLAN_ETFS.find(e => /gold|or physique/i.test(e[1] + ' ' + e[2])) || null;   // ETC or de la région (aucun au Royaume-Uni)
 
 // Cours réels sur 1 an : performances, baisse maximale, volatilité (+ PER, marge, dividende pour les valeurs américaines)
 async function fetchPlanMarketData() {
@@ -1018,16 +1020,16 @@ ${objStockPct >= 90 ? `- Il veut ${objStockPct}% actions : ce mois, mets TOUT (o
 - Équilibre le risque : mélange valeurs peu volatiles et plus volatiles selon son profil (${riskLabel}), et évite les secteurs qu'il détient déjà en excès.
 - Évite de racheter ce qui pèse déjà plus de 25% de son portefeuille.
 - INTERDIT : renforcer une ligne marquée "EFFONDRÉE" (perte de plus de 60 %) ; une ligne qui pèse peu parce qu'elle s'est effondrée n'est PAS sous-pondérée.
-- Choisis uniquement des grandes entreprises solides et liquides (grandes capitalisations) et de grands ETF UCITS. JAMAIS d'action à moins de 1 €, de "penny stock", de petite valeur spéculative ou d'entreprise en difficulté financière (redressement, liquidation).
+- Choisis uniquement des grandes entreprises solides et liquides (grandes capitalisations) et de grands ETF de la liste fournie (cotés dans sa devise, donc sans frais de change). JAMAIS d'action à moins de 1 €, de "penny stock", de petite valeur spéculative ou d'entreprise en difficulté financière (redressement, liquidation).
 - La somme des montants "actions" doit représenter ~${objStockPct}% du budget, et les ETF ~${100-objStockPct}%.
 ${objStockPct < 100 ? `POCHE ETF : UN SEUL ETF actions monde (MSCI World OU All-World, jamais les deux : ils se recoupent presque totalement). ${objRisk === 'agressif' ? '' : objRisk === 'dynamique' ? 'Profil DYNAMIQUE : ajoute éventuellement un petit ETF obligataire (10 à 15 % de la poche ETF) pour amortir les secousses.' : objRisk === 'equilibre' ? 'Ajoute un ETF obligataire pour environ 20 % de la poche ETF.' : 'Profil PRUDENT : ajoute un ETF obligataire (type Global Aggregate) pour environ 30 à 40 % de la poche ETF, comme dans son plan de départ.'} Aucune ligne inférieure à 20 €.` : ''}
-${objRisk !== 'agressif' && objStockPct < 100 && budget >= 400 ? `OPTION DIVERSIFIANTE (facultative) : tu peux prélever jusqu'à 5 % du budget sur la poche ETF pour UN SEUL ETC sur l'or physique, ticker 4GLD.DE (Xetra-Gold), role "diversifiant". Jamais d'autre matière première (pétrole, argent…), jamais plus d'une telle ligne, et seulement si ça ne casse pas la règle des 20 € minimum par ligne.` : ''}
+${(PLAN_GOLD = PLAN_GOLD_OF(), objRisk !== 'agressif' && objStockPct < 100 && budget >= 400 && PLAN_GOLD) ? `OPTION DIVERSIFIANTE (facultative) : tu peux prélever jusqu'à 5 % du budget sur la poche ETF pour UN SEUL ETC sur l'or physique, ticker ${PLAN_GOLD ? PLAN_GOLD[0] + ' (' + PLAN_GOLD[1] + ')' : '4GLD.DE (Xetra-Gold)'}, role "diversifiant". Jamais d'autre matière première (pétrole, argent…), jamais plus d'une telle ligne, et seulement si ça ne casse pas la règle des 20 € minimum par ligne.` : ''}
 
 Réponds UNIQUEMENT en JSON valide sans backticks :
 {
   "synthese": "1 phrase chaleureuse (tutoiement) sur l'esprit du mois",
   "lignes": [
-    {"ticker":"IWDA.AS","name":"iShares Core MSCI World","montant":120,"pct":60,"role":"socle","raison":"max 10 mots, concret"}
+    {"ticker":"${PLAN_ETFS[0][0]}","name":"${PLAN_ETFS[0][1]}","montant":120,"pct":60,"role":"socle","raison":"max 10 mots, concret"}
   ],
   "note_marche": "1 phrase de discipline d'investisseur (régularité, lissage du prix d'entrée, patience), tu peux t'appuyer UNIQUEMENT sur la tendance des indices fournie ci-dessus (ex : "le CAC 40 recule de 5,6 % sur un mois") ; aucune prévision, aucune affirmation sur les valorisations, taux ou actualités absents des données"
 }
