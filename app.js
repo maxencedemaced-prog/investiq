@@ -459,7 +459,15 @@ const PLAN_UNIVERSE = [
   ['AMZN','Amazon','Consommation','États-Unis'], ['JNJ','Johnson & Johnson','Santé','États-Unis'], ['JPM','JPMorgan','Finance','États-Unis'], ['V','Visa','Finance','États-Unis'],
   ['KO','Coca-Cola','Consommation de base','États-Unis'], ['PG','Procter & Gamble','Consommation de base','États-Unis'], ['XOM','ExxonMobil','Énergie','États-Unis'],
 ];
-const PLAN_ETFS = [['IWDA.L','iShares Core MSCI World','ETF actions monde développées'], ['VWCE.DE','Vanguard FTSE All-World','ETF actions monde entier'], ['EIMI.L','iShares Core MSCI EM IMI','ETF marchés émergents'], ['WSML.L','iShares MSCI World Small Cap','ETF petites capitalisations'], ['AGGH.AS','iShares Core Global Aggregate Bond (EUR couvert)','ETF obligataire'], ['SXR8.DE','iShares Core S&P 500','ETF actions États-Unis'], ['4GLD.DE','Xetra-Gold','ETC or physique']];
+// ETF proposés dans les plans : lignes cotées dans la devise de l'utilisateur, sur une place locale (pas de frais de change).
+// France / UE / autres : ETF UCITS en euros. Royaume-Uni : lignes en livres (GBP, pas en pence). États-Unis : ETF américains (les UCITS n'y sont pas accessibles).
+const PLAN_ETFS_BY_REGION = {
+  EU: [['IWDA.AS','iShares Core MSCI World','ETF actions monde développées (EUR)'], ['VWCE.DE','Vanguard FTSE All-World','ETF actions monde entier (EUR)'], ['IS3N.DE','iShares Core MSCI EM IMI','ETF marchés émergents (EUR)'], ['IUSN.DE','iShares MSCI World Small Cap','ETF petites capitalisations (EUR)'], ['AGGH.AS','iShares Core Global Aggregate Bond (EUR couvert)','ETF obligataire (EUR)'], ['SXR8.DE','iShares Core S&P 500','ETF actions États-Unis (EUR)'], ['4GLD.DE','Xetra-Gold','ETC or physique (EUR)']],
+  UK: [['VEVE.L','Vanguard FTSE Developed World','ETF developed-world shares (GBP)'], ['VWRP.L','Vanguard FTSE All-World','ETF all-world shares (GBP)'], ['VFEG.L','Vanguard FTSE Emerging Markets','ETF emerging markets (GBP)'], ['WLDS.L','iShares MSCI World Small Cap','ETF small caps (GBP)'], ['AGBP.L','iShares Core Global Aggregate Bond (GBP hedged)','ETF bonds (GBP)'], ['IGLT.L','iShares Core UK Gilts','ETF UK government bonds (GBP)']],
+  US: [['VTI','Vanguard Total Stock Market','ETF US total market (USD)'], ['VT','Vanguard Total World Stock','ETF all-world shares (USD)'], ['VXUS','Vanguard Total International Stock','ETF international shares (USD)'], ['VSS','Vanguard FTSE All-World ex-US Small-Cap','ETF small caps (USD)'], ['BND','Vanguard Total Bond Market','ETF US bonds (USD)'], ['VOO','Vanguard S&P 500','ETF S&P 500 (USD)'], ['IAU','iShares Gold Trust','ETF gold (USD)']],
+};
+const PLAN_REGION = (() => { try { const r = window.kpI18n && window.kpI18n.isEN && window.kpI18n.region; return r === 'US' || r === 'UK' ? r : 'EU'; } catch (e) { return 'EU'; } })();
+const PLAN_ETFS = PLAN_ETFS_BY_REGION[PLAN_REGION];
 
 // Cours réels sur 1 an : performances, baisse maximale, volatilité (+ PER, marge, dividende pour les valeurs américaines)
 async function fetchPlanMarketData() {
@@ -673,7 +681,7 @@ async function planDataSuffix(riskLabel) {
       return '\n\n' + planDataPromptBlock(cand) + '\n\n' + planAnalysisRulesText(riskLabel || '') + '\nUtilise UNIQUEMENT les tickers et ETF des données ci-dessus, et appuie chaque choix sur un chiffre réel de ces données.' + planUserTail();
     }
   } catch (e) {}
-  return "\n\nDONNÉES DE MARCHÉ : aucune donnée disponible actuellement. Ne cite AUCUN chiffre de cours, de performance ni aucune actualité ; propose uniquement des ETF larges et diversifiés (IWDA.L, VWCE.DE, AGGH.AS), sans sélection d'actions individuelles, et dis que l'analyse détaillée n'est pas disponible pour l'instant." + planUserTail();
+  return "\n\nDONNÉES DE MARCHÉ : aucune donnée disponible actuellement. Ne cite AUCUN chiffre de cours, de performance ni aucune actualité ; propose uniquement des ETF larges et diversifiés (IWDA.AS, VWCE.DE, AGGH.AS), sans sélection d'actions individuelles, et dis que l'analyse détaillée n'est pas disponible pour l'instant." + planUserTail();
 }
 // ═══ GRAPHIQUES DE COURS (bibliothèque libre « Lightweight Charts » de TradingView, données Yahoo via /api/chart) ═══
 // Information seulement : aucun signal d'achat ou de vente, aucun outil de dessin.
@@ -1019,7 +1027,7 @@ Réponds UNIQUEMENT en JSON valide sans backticks :
 {
   "synthese": "1 phrase chaleureuse (tutoiement) sur l'esprit du mois",
   "lignes": [
-    {"ticker":"IWDA.L","name":"iShares Core MSCI World","montant":120,"pct":60,"role":"socle","raison":"max 10 mots, concret"}
+    {"ticker":"IWDA.AS","name":"iShares Core MSCI World","montant":120,"pct":60,"role":"socle","raison":"max 10 mots, concret"}
   ],
   "note_marche": "1 phrase de discipline d'investisseur (régularité, lissage du prix d'entrée, patience), tu peux t'appuyer UNIQUEMENT sur la tendance des indices fournie ci-dessus (ex : "le CAC 40 recule de 5,6 % sur un mois") ; aucune prévision, aucune affirmation sur les valorisations, taux ou actualités absents des données"
 }
@@ -1258,7 +1266,7 @@ RÈGLES DE DIVERSIFICATION : au plus 2 valeurs du même secteur, plusieurs zones
 Réponds UNIQUEMENT en JSON valide sans markdown, sous cette forme exacte :
 {
   "etfs": [
-    {"ticker":"IWDA.L","name":"iShares Core MSCI World","desc":"1600+ entreprises mondiales","pct_capital":70,"pct_mensuel":70,"role":"socle","color":"#1a7f5a","pourquoi":"Cœur du portefeuille — diversification maximale"}
+    {"ticker":"IWDA.AS","name":"iShares Core MSCI World","desc":"1600+ entreprises mondiales","pct_capital":70,"pct_mensuel":70,"role":"socle","color":"#1a7f5a","pourquoi":"Cœur du portefeuille — diversification maximale"}
   ],
   "actions": [
     ${wantStocks ? '{"ticker":"MC.PA","name":"LVMH","desc":"Leader mondial du luxe","secteur":"Luxe","pct_capital":25,"pct_mensuel":25,"color":"#8b5cf6","pourquoi":"max 14 mots avec un chiffre réel du tableau ou un fait du portefeuille"}' : ''}
@@ -1314,18 +1322,18 @@ Utilise les tickers EXACTS des tableaux. Couleurs hex variées.`;
   // Fallback
   const fallback = objRisk === 'agressif'
     ? [
-        { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',      pct_capital:55, pct_mensuel:55, color:'#1a7f5a', pourquoi:'Socle diversifié — indispensable même en agressif' },
-        { ticker:'EIMI.L',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents (Chine, Inde...)', role:'satellite', type:'ETF Émergents',  pct_capital:25, pct_mensuel:25, color:'#f59e0b', pourquoi:'Potentiel de croissance supérieur, plus volatil' },
-        { ticker:'WSML.L',  name:'iShares MSCI World Small Cap', desc:'Petites capitalisations mondiales', role:'satellite', type:'ETF Small Cap', pct_capital:20, pct_mensuel:20, color:'#6366f1', pourquoi:'Booster de performance sur horizon 10 ans+' },
+        { ticker:'IWDA.AS',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',      pct_capital:55, pct_mensuel:55, color:'#1a7f5a', pourquoi:'Socle diversifié — indispensable même en agressif' },
+        { ticker:'IS3N.DE',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents (Chine, Inde...)', role:'satellite', type:'ETF Émergents',  pct_capital:25, pct_mensuel:25, color:'#f59e0b', pourquoi:'Potentiel de croissance supérieur, plus volatil' },
+        { ticker:'IUSN.DE',  name:'iShares MSCI World Small Cap', desc:'Petites capitalisations mondiales', role:'satellite', type:'ETF Small Cap', pct_capital:20, pct_mensuel:20, color:'#6366f1', pourquoi:'Booster de performance sur horizon 10 ans+' },
       ]
     : objRisk === 'equilibre'
     ? [
-        { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:70, pct_mensuel:70, color:'#1a7f5a', pourquoi:'Cœur du portefeuille' },
-        { ticker:'EIMI.L',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents diversifiés',      role:'satellite', type:'ETF Émergents',   pct_capital:15, pct_mensuel:15, color:'#f59e0b', pourquoi:'Diversification géographique' },
+        { ticker:'IWDA.AS',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:70, pct_mensuel:70, color:'#1a7f5a', pourquoi:'Cœur du portefeuille' },
+        { ticker:'IS3N.DE',  name:'iShares Core MSCI EM IMI',   desc:'Marchés émergents diversifiés',      role:'satellite', type:'ETF Émergents',   pct_capital:15, pct_mensuel:15, color:'#f59e0b', pourquoi:'Diversification géographique' },
         { ticker:'AGGH.AS',  name:'iShares Global Aggregate',   desc:'Obligations mondiales stables',      role:'satellite', type:'ETF Obligations', pct_capital:15, pct_mensuel:15, color:'#0ea5e9', pourquoi:'Amortisseur en cas de crise' },
       ]
     : [
-        { ticker:'IWDA.L',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Diversification maximale' },
+        { ticker:'IWDA.AS',  name:'iShares Core MSCI World',    desc:'1600+ entreprises mondiales',        role:'socle',     type:'ETF Monde',       pct_capital:60, pct_mensuel:60, color:'#1a7f5a', pourquoi:'Diversification maximale' },
         { ticker:'AGGH.AS',  name:'iShares Global Aggregate',   desc:'Obligations mondiales stables',      role:'satellite', type:'ETF Obligations', pct_capital:40, pct_mensuel:40, color:'#0ea5e9', pourquoi:'Stabilité et protection du capital' },
       ];
   // Plus de plan de secours « à l'aveugle » présenté comme une vraie analyse : on le dit et on propose de réessayer
@@ -1500,7 +1508,7 @@ RÈGLES ABSOLUES DE RÉALISME :
 - Horizon réaliste : 6-18 mois minimum, pas de "3-6 mois" pour les ETF
 
 Réponds UNIQUEMENT en JSON valide, sans markdown :
-[{"ticker":"IWDA.L","name":"iShares MSCI World","gain":"","horizon":"12+ mois","desc":"ETF monde diversifié, avec un chiffre réel des données","color":"#1a7f5a","montant":${Math.round(capital*0.5)}}]
+[{"ticker":"IWDA.AS","name":"iShares MSCI World","gain":"","horizon":"12+ mois","desc":"ETF monde diversifié, avec un chiffre réel des données","color":"#1a7f5a","montant":${Math.round(capital*0.5)}}]
 
 Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Colors hex variées.`;
 
@@ -1523,18 +1531,18 @@ Profil ${profil} — répartis ${capital}€ de façon PRUDENTE et RÉALISTE. Co
   // Fallback réaliste : socle ETF + blue chips, horizons 12 mois+, fourchettes HISTORIQUES (pas des promesses)
   return risk === 'agressif' || risk === 'eleve'
     ? [
-        { ticker:'IWDA.L', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Socle obligatoire même en agressif', color:'#1a7f5a', montant: Math.round(capital*0.5) },
+        { ticker:'IWDA.AS', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Socle obligatoire même en agressif', color:'#1a7f5a', montant: Math.round(capital*0.5) },
         { ticker:'NVDA',   name:'Nvidia',             gain:'volatil ±30%',  horizon:'12+ mois', desc:'Leader IA — forte volatilité assumée', color:'#6366f1', montant: Math.round(capital*0.3) },
         { ticker:'MC.PA',  name:'LVMH',               gain:'~8%/an hist.',  horizon:'12+ mois', desc:'Leader luxe mondial',                 color:'#f59e0b', montant: Math.round(capital*0.2) },
       ]
     : risk === 'equilibre' || risk === 'modere'
     ? [
-        { ticker:'IWDA.L', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification mondiale',    color:'#1a7f5a', montant: Math.round(capital*0.6) },
+        { ticker:'IWDA.AS', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification mondiale',    color:'#1a7f5a', montant: Math.round(capital*0.6) },
         { ticker:'MSFT',   name:'Microsoft',          gain:'~10%/an hist.', horizon:'12+ mois', desc:'Cloud & IA, bilan solide',    color:'#0ea5e9', montant: Math.round(capital*0.2) },
         { ticker:'AI.PA',  name:'Air Liquide',        gain:'~6%/an hist.',  horizon:'12+ mois', desc:'Dividende croissant 40 ans',  color:'#10b981', montant: Math.round(capital*0.2) },
       ]
     : [
-        { ticker:'IWDA.L', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification maximale',    color:'#1a7f5a', montant: Math.round(capital*0.5) },
+        { ticker:'IWDA.AS', name:'iShares MSCI World', gain:'~7%/an hist.',  horizon:'12+ mois', desc:'Diversification maximale',    color:'#1a7f5a', montant: Math.round(capital*0.5) },
         { ticker:'AI.PA',  name:'Air Liquide',        gain:'~6%/an hist.',  horizon:'12+ mois', desc:'Défensif, dividendes stables', color:'#10b981', montant: Math.round(capital*0.25) },
         { ticker:'TTE.PA', name:'TotalEnergies',      gain:'~5% div./an',   horizon:'12+ mois', desc:'Rendement du dividende',       color:'#f97316', montant: Math.round(capital*0.25) },
       ];
@@ -2265,7 +2273,7 @@ ${portfolioCtx}
 Génère un plan d'action CONCRET en 4 blocs avec des titres en gras :
 
 **🏦 Quoi acheter avec ton apport initial de ${s>0?s.toLocaleString('fr-FR')+'€':m.toLocaleString('fr-FR')+'€ (premier mois)'}**
-Liste les actifs précis avec les montants exacts (ex: 300€ → IWDA.L sur Trade Republic)
+Liste les actifs précis avec les montants exacts (ex: 300€ → IWDA.AS sur Trade Republic)
 
 **📅 Chaque mois : ${m.toLocaleString('fr-FR')}€ à répartir comme suit**
 Répartition exacte mensuelle avec tickers et montants
@@ -2276,7 +2284,7 @@ Répartition exacte mensuelle avec tickers et montants
 **⚡ 3 actions concrètes pour démarrer cette semaine**
 Étapes simples et actionnables (ouvrir compte, faire le 1er achat, activer DCA auto)
 
-Sois ULTRA concret. Donne de vrais tickers (IWDA.L, VWCE.DE, AAPL, etc.) et de vrais montants.`;
+Sois ULTRA concret. Donne de vrais tickers (IWDA.AS, VWCE.DE, AAPL, etc.), en privilégiant les ETF cotés en euros (pas de frais de change) et de vrais montants.`;
 
   try {
     const r_resp = await callClaude(prompt + (await planDataSuffix(riskLabel)), 'Tu es conseiller financier pédagogue. Sois concret et donne des vrais noms et montants.', undefined, undefined, OBJ_AI);
@@ -4509,7 +4517,7 @@ const POPULAR = [
   {ticker:'AI.PA', name:'Air Liquide', sector:'Industrie'},
   {ticker:'TTE.PA', name:'TotalEnergies', sector:'Énergie'},
   {ticker:'BNP.PA', name:'BNP Paribas', sector:'Finance'},
-  {ticker:'IWDA.L', name:'iShares MSCI World', sector:'ETF'},
+  {ticker:'IWDA.AS', name:'iShares MSCI World', sector:'ETF'},
   {ticker:'VWCE.DE', name:'Vanguard FTSE All-World', sector:'ETF'},
 ];
 
@@ -7094,6 +7102,7 @@ function getCompanyLogo(ticker, name, size, radius) {
     'EDF.PA':'edf.fr',
     'ENGI.PA':'engie.com',
     'EIMI.L':'ishares.com', 'IS3N.DE':'ishares.com', 'WSML.L':'ishares.com',
+    'IUSN.DE':'ishares.com', 'WLDS.L':'ishares.com', 'AGBP.L':'ishares.com', 'IGLT.L':'ishares.com', 'IAU':'ishares.com', 'VEVE.L':'vanguard.com', 'VWRP.L':'vanguard.com', 'VFEG.L':'vanguard.com', 'VTI':'vanguard.com', 'VT':'vanguard.com', 'VXUS':'vanguard.com', 'VSS':'vanguard.com', 'BND':'vanguard.com', 'VOO':'vanguard.com',
     'IITU.L':'ishares.com', 'AGGH.L':'ishares.com', 'AGGH.AS':'ishares.com', 'EUNL.DE':'ishares.com',
     'VUSA.L':'vanguard.com', 'VWRL.L':'vanguard.com',
     'BAC':'bankofamerica.com', 'RACE':'ferrari.com', 'XOM':'exxonmobil.com',
@@ -9587,7 +9596,7 @@ ${_dc.text}
 
 Donne un avis prudent et concret. N'invente AUCUNE actualité ni évènement : appuie-toi uniquement sur le constat, les données de marché ci-dessus et des principes connus (diversification, discipline).
 Réponds UNIQUEMENT en JSON valide sans backticks :
-{"verdict":"alléger|vendre|garder","raison":"1 à 2 phrases chiffrées, tutoiement","remplacement":{"ticker":"IWDA.L","name":"iShares Core MSCI World","raison":"max 12 mots"}}
+{"verdict":"alléger|vendre|garder","raison":"1 à 2 phrases chiffrées, tutoiement","remplacement":{"ticker":"IWDA.AS","name":"iShares Core MSCI World","raison":"max 12 mots"}}
 Pour "remplacement", propose un actif plus diversifié cohérent avec sa cible (souvent un ETF monde), choisi UNIQUEMENT parmi ces tickers : ${PLAN_ETFS.map(e => e[0]).join(', ')} ; si verdict "garder", mets remplacement à null.`;
   try {
     const raw = await callClaude(prompt, "Tu es Kapitaro, copilote financier prudent. Tu ne fournis pas de conseil réglementé. Réponds UNIQUEMENT en JSON valide.", 600, HAIKU_MODEL);
@@ -12552,7 +12561,7 @@ const COMPANY_NAMES = {
   'VWCE.DE':'Vanguard FTSE All-World', 'VWCE':'Vanguard FTSE All-World',
   'SWRD.L':'SPDR MSCI World', 'SPPW.DE':'SPDR MSCI World',
   'CSPX.L':'iShares Core S&P 500', 'AMEM.DE':'Amundi MSCI Emerging Markets',
-  'EIMI.L':'iShares Core MSCI EM IMI', 'IS3N.DE':'iShares Core MSCI EM IMI',
+  'EIMI.L':'iShares Core MSCI EM IMI', 'IS3N.DE':'iShares Core MSCI EM IMI', 'IUSN.DE':'iShares MSCI World Small Cap', 'WLDS.L':'iShares MSCI World Small Cap', 'AGBP.L':'iShares Core Global Aggregate Bond', 'IGLT.L':'iShares Core UK Gilts', 'IAU':'iShares Gold Trust', 'VEVE.L':'Vanguard FTSE Developed World', 'VWRP.L':'Vanguard FTSE All-World', 'VFEG.L':'Vanguard FTSE Emerging Markets', 'VTI':'Vanguard Total Stock Market', 'VT':'Vanguard Total World Stock', 'VXUS':'Vanguard Total International Stock', 'VSS':'Vanguard FTSE All-World ex-US Small-Cap', 'BND':'Vanguard Total Bond Market', 'VOO':'Vanguard S&P 500',
   'WSML.L':'iShares MSCI World Small Cap', 'IITU.L':'iShares S&P 500 IT',
   'AGGH.L':'iShares Global Aggregate Bond', 'AGGH.AS':'iShares Global Aggregate Bond',
   'LVMH':'LVMH', 'MC.PA':'LVMH',
@@ -13020,7 +13029,7 @@ Réponds UNIQUEMENT en JSON valide, sans backticks :
 {
   "synthese": "1-2 phrases au ton chaleureux et direct (tutoiement) expliquant la lecture d'ensemble, sans instruction personnelle",
   "decisions": [
-    {"ticker":"IWDA.L","name":"IWDA","action":"conserver|renforcer|reduire|vendre","raison":"max 10 mots, le critère chiffré qui justifie ce signal"}
+    {"ticker":"IWDA.AS","name":"IWDA","action":"conserver|renforcer|reduire|vendre","raison":"max 10 mots, le critère chiffré qui justifie ce signal"}
   ],
   "achat_semaine": "phrase courte, à titre d'exemple pédagogique : quel type d'arbitrage un profil comme celui-ci pourrait envisager cette semaine, et pourquoi — ou pourquoi aucun ne se justifie",
   "impacts": {"risque": -4, "diversification": 6, "score": 5}
