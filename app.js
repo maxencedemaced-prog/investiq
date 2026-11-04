@@ -13730,9 +13730,9 @@ async function confirmCSVImport() {
 //  💳 ABONNEMENT PREMIUM — souscription et gestion
 // ═══════════════════════════════════════════════════════════
 
-const PREMIUM_PRICE = '9,99 €';
-const PREMIUM_PRICE_ANNUAL = '79,99 €';
-const PREMIUM_ANNUAL_SAVINGS_PCT = 33; // (9,99×12 − 79,99) ⁄ (9,99×12) ≈ 33 %
+const PREMIUM_PRICE = '11,99 €';
+const PREMIUM_PRICE_ANNUAL = '94,99 €';
+const PREMIUM_ANNUAL_SAVINGS_PCT = 34; // (11,99×12 − 94,99) ⁄ (11,99×12) ≈ 34 %
 
 // Lance le paiement Stripe
 async function startCheckout(btn, plan) {
@@ -13809,8 +13809,8 @@ const PLAN_PREMIUM_ONLY = [
 
 // Choix de facturation (annuel par défaut) — partagé par la fenêtre et les Paramètres
 let plansBilling = 'annual';
-const PROMO_PRICE = '4,99 €';   // 1er mois d'un filleul (coupon Stripe PARRAINAGE50)
-const PRICE_MONTHLY_NUM = 9.99, PRICE_ANNUAL_NUM = 79.99;
+const PROMO_PRICE = '5,99 €';   // 1er mois d'un filleul (coupon Stripe PARRAINAGE50)
+const PRICE_MONTHLY_NUM = 11.99, PRICE_ANNUAL_NUM = 94.99;
 const _eur = n => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 function setPlansBilling(b) {
@@ -13998,7 +13998,7 @@ async function handleStripeReturn() {
   try {
     const ck = JSON.parse(localStorage.getItem('kp_checkout') || 'null');
     localStorage.removeItem('kp_checkout');
-    if (ck && Date.now() - ck.at < 3 * 3600000 && window.kpAds) kpAds.track('subscribe', { value: ck.plan === 'annual' ? 79.99 : ck.promo ? 4.99 : 9.99, ltv: ck.plan === 'annual' ? 79.99 : 9.99 * 6 });
+    if (ck && Date.now() - ck.at < 3 * 3600000 && window.kpAds) kpAds.track('subscribe', { value: ck.plan === 'annual' ? 94.99 : ck.promo ? 5.99 : 11.99, ltv: ck.plan === 'annual' ? 94.99 : 11.99 * 6 });
   } catch (e) {}
 
   // Le webhook peut mettre quelques secondes : on interroge le profil jusqu'à 5 fois

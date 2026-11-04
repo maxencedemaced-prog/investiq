@@ -114,7 +114,7 @@
   var loaded = null;
   function loadData() {
     if (window.KAPITARO_FAQ) return Promise.resolve();
-    if (!loaded) loaded = new Promise(function (ok) { var s = document.createElement('script'); s.src = '/faq-data.js?v=20260930'; s.onload = ok; s.onerror = ok; document.head.appendChild(s); });
+    if (!loaded) loaded = new Promise(function (ok) { var s = document.createElement('script'); s.src = '/faq-data.js?v=20261104'; s.onload = ok; s.onerror = ok; document.head.appendChild(s); });
     return loaded;
   }
   var started = false;
