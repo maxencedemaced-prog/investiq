@@ -35,8 +35,11 @@ function periodEndISO(sub) {
 function planFromSub(sub) {
   const priceId = sub?.items?.data?.[0]?.price?.id;
   if (!priceId) return null;
-  if (priceId === process.env.STRIPE_PRICE_ID_ANNUAL) return 'annual';
-  if (priceId === process.env.STRIPE_PRICE_ID) return 'monthly';
+  const interval = sub?.items?.data?.[0]?.price?.recurring?.interval;   // le plus fiable : la période du tarif Stripe
+  if (interval === 'year') return 'annual';
+  if (interval === 'month') return 'monthly';
+  if (priceId === process.env.STRIPE_PRICE_ID_ANNUAL || priceId === 'price_1UY7JFV05PeKC3YIbubqwziu') return 'annual';
+  if (priceId === process.env.STRIPE_PRICE_ID || priceId === 'price_1UY7GqV05PeKC3YIQRDvuLYe') return 'monthly';
   return null; // prix inconnu (changé manuellement dans Stripe, etc.) : on ne devine pas
 }
 
