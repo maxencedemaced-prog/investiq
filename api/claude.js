@@ -298,7 +298,7 @@ export default async function handler(req, res) {
           max_tokens: finalMaxTokens,
           system: SERVER_FRAME + (system || 'Tu es le copilote financier IA de Kapitaro. Tutoie, sois chaleureux, direct et concret comme un ami compétent qui travaille en finance. Commence par le positif, jamais alarmiste. Réponds en français. Tu ne fournis pas de conseil financier réglementé.')
             + (req.body.lang === 'en' ? englishFrame(req.body.region) : ''),
-          messages: [{ role: 'user', content: prompt }],
+          messages: [{ role: 'user', content: req.body.lang === 'en' ? prompt + '\n\nIMPORTANT: write every human-readable text (including all text values inside the JSON) in English, even though the instructions above are in French. Keep JSON keys and enum values unchanged.' : prompt }],
           ...extra
         })
       });
