@@ -261,11 +261,11 @@ export const DUO_PAIRS = [
   [{ name: 'Léa', look: 'lea', long: true, hair: '#d8a657' }, { name: 'Tom', look: 'tom', hair: '#3b2a20' }],
   [{ name: 'Camille', look: 'camille', long: true, hair: '#7a4a2a' }, { name: 'Hugo', look: 'hugo', hair: '#3b2a20' }],
   [{ name: 'Sarah', look: 'sarah', long: true, hair: '#2b2b2b' }, { name: 'Nathan', look: 'nathan', hair: '#5a3a22' }],
-  [{ name: 'Karim', look: 'nathan', hair: '#5a3a22' }, { name: 'Emma', look: 'lea', long: true, hair: '#d8a657' }],
-  [{ name: 'Inès', look: 'sarah', long: true, hair: '#2b2b2b' }, { name: 'Lucas', look: 'hugo', hair: '#3b2a20' }],
+  [{ name: 'Antoine', look: 'nathan', hair: '#5a3a22' }, { name: 'Emma', look: 'lea', long: true, hair: '#d8a657' }],
+  [{ name: 'Clara', look: 'sarah', long: true, hair: '#2b2b2b' }, { name: 'Lucas', look: 'hugo', hair: '#3b2a20' }],
   [{ name: 'Julien', look: 'tom', hair: '#3b2a20' }, { name: 'Chloé', look: 'camille', long: true, hair: '#7a4a2a' }],
-  [{ name: 'Manon', look: 'camille', long: true, hair: '#7a4a2a' }, { name: 'Mehdi', look: 'nathan', hair: '#5a3a22' }],
-  [{ name: 'Yanis', look: 'hugo', hair: '#3b2a20' }, { name: 'Zoé', look: 'lea', long: true, hair: '#d8a657' }],
+  [{ name: 'Manon', look: 'camille', long: true, hair: '#7a4a2a' }, { name: 'Paul', look: 'nathan', hair: '#5a3a22' }],
+  [{ name: 'Louis', look: 'hugo', hair: '#3b2a20' }, { name: 'Zoé', look: 'lea', long: true, hair: '#d8a657' }],
 ];
 
 // Remplace {A} / {B} par les prénoms du duo n° k : renvoie titre, légende, scènes et l'apparence à passer au rendu.

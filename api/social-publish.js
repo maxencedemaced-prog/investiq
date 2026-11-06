@@ -240,12 +240,24 @@ export default async function handler(req, res) {
       }
       // Débloque un post resté « en cours » (publication interrompue par un délai dépassé)
       await sb.from('social_posts').update({ status: 'approved' }).eq('status', 'publishing').lt('locked_at', new Date(Date.now() - 10 * 60000).toISOString());
-      let dueQ = sb.from('social_posts').select('id, publish_log, platforms')
+      let dueQ = sb.from('social_posts').select('id, publish_log, platforms, format')
         .eq('status', 'approved').lte('scheduled_at', new Date().toISOString());
       if (storiesOnly) dueQ = dueQ.eq('format', 'story').gte('scheduled_at', new Date(Date.now() - 6 * 3600000).toISOString());
-      const { data: due } = await dueQ.order('scheduled_at').limit(storiesOnly ? 1 : 3);
+      const { data: dueAll } = await dueQ.order('scheduled_at').limit(20);
+      // Étalement : jamais deux Reels ou posts d'affilée (3 h d'écart), jamais deux stories d'affilée (45 min).
+      // En cas de retard, les suivants partent aux passages d'après au lieu de partir tous en même temps.
+      const lastAt = async story => {
+        let q = sb.from('social_posts').select('published_at').eq('status', 'published').not('published_at', 'is', null);
+        q = story ? q.eq('format', 'story') : q.neq('format', 'story');
+        const { data } = await q.order('published_at', { ascending: false }).limit(1).maybeSingle();
+        return data ? Date.parse(data.published_at) : 0;
+      };
+      const pick = async (list, story, gap) => (list.length && Date.now() - await lastAt(story) >= gap ? [list[0]] : []);
+      const pendingOf = p => automatedFor(p.platforms).some(pl => !p.publish_log?.[pl]?.ok && (p.publish_log?.[pl]?.attempts || 0) < MAX_ATTEMPTS);
+      const ready = (dueAll || []).filter(pendingOf);
+      const due = [...await pick(ready.filter(isStory), true, 45 * 60000), ...await pick(ready.filter(p => !isStory(p)), false, 3 * 3600000)];
       const results = [];
-      for (const p of due || []) {
+      for (const p of due) {
         // Réseaux automatisés encore à publier, sans avoir épuisé les essais
         const pending = automatedFor(p.platforms).filter(pl => !p.publish_log?.[pl]?.ok && (p.publish_log?.[pl]?.attempts || 0) < MAX_ATTEMPTS);
         if (!pending.length) continue;
