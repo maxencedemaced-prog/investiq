@@ -638,6 +638,24 @@ async function duoCount() {
   const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo');
   return count || 0;
 }
+// Prochains créneaux libres pour des Reels : 12 h 30 et 18 h 30 (heure de Paris) à partir de demain, à 3 h minimum de tout autre post
+async function nextReelSlots(n, ignoreIds = []) {
+  const from = Date.now(), to = from + 30 * 86400000;
+  const { data: taken } = await sb.from('social_posts').select('id, scheduled_at').not('status', 'in', '(rejected,published)').neq('format', 'story')
+    .gte('scheduled_at', new Date(from).toISOString()).lte('scheduled_at', new Date(to).toISOString());
+  const times = (taken || []).filter(p => !ignoreIds.includes(p.id)).map(p => Date.parse(p.scheduled_at));
+  const out = [];
+  for (let day = 1; day <= 30 && out.length < n; day++) {
+    const { y, m, d } = parisParts(from + day * 86400000);
+    for (const [h, mi] of [[12, 30], [18, 30]]) {
+      const at = parisISO(y, m, d, h, mi), t = Date.parse(at);
+      if (out.length >= n || times.some(x => Math.abs(x - t) < 3 * 3600000)) continue;
+      out.push(at); times.push(t);
+    }
+  }
+  while (out.length < n) out.push(new Date(from + (31 + out.length) * 86400000).toISOString());
+  return out;
+}
 // Reel à partir d'un scénario écrit (dossier à la main ou duo de l'IA) : brouillon, voix, puis rendu sur GitHub Actions
 async function dossierReel(d, { voice, pair = 0, music, topic }) {
   let duo = null, title = d.title, caption = d.caption, beats = d.beats.map(x => ({ ...x }));
@@ -1039,6 +1057,12 @@ export default async function handler(req, res) {
         return dossierReel(d, { voice, pair: first + i, topic: s.key, music: await music });
       }));
       const posts = made.filter(r => r.status === 'fulfilled').map(r => r.value);
+      // Chaque Reel a son propre créneau (sinon ils se suivent à une minute d'écart, 24 h après leur création)
+      const when = await nextReelSlots(posts.length, posts.map(x => x.id));
+      for (let i = 0; i < posts.length; i++) {
+        const { error: se } = await sb.from('social_posts').update({ scheduled_at: when[i] }).eq('id', posts[i].id);
+        if (!se) posts[i].scheduled_at = when[i];
+      }
       const errors = made.filter(r => r.status === 'rejected').map(r => r.reason && r.reason.message || String(r.reason));
       if (!posts.length) return res.status(500).json({ error: errors[0] || 'Aucun Reel Duo créé' });
       return res.status(200).json({ posts, errors });
