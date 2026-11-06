@@ -395,7 +395,7 @@ FORMAT : un tableau JSON, sans texte autour :
 [{"ref": numéro de la dépêche, "company": "nom court de l'entreprise ou de l'indice", "kicker": "ACTU" ou "MARCHÉS",
   "title": "titre factuel en français, max 60 caractères", "facts": "1 ou 2 phrases factuelles en français, max 170 caractères",
   "source": "nom du média source", "value": "variation chiffrée si elle est fournie, ex. « −1,8 % » (sinon vide)",
-  "photo": "2 à 4 mots EN ANGLAIS décrivant une vraie photo du SECTEUR d'activité, jamais la marque ni un logo : ex. « computer chips close up », « oil refinery », « airplane assembly line », « pharmaceutical laboratory », « luxury boutique window », « stock market screen »"}]`;
+  "photo": "2 à 4 mots EN ANGLAIS décrivant une vraie photo du SECTEUR d'activité, jamais la marque ni un logo : ex. « computer chips close up », « oil refinery », « airplane assembly line », « pharmaceutical laboratory », « luxury boutique window », « stock exchange trading chart ». Pour les indices et la bourse, écris toujours « stock exchange trading chart », jamais le mot « market » seul (il ramène des marchés alimentaires)"}]`;
 
 // ── Week-end (bourses fermées, pas d'actu) : stories pédagogiques à la place des stories d'actu ──
 // 2 par jour au plus, espacées d'au moins 4 h, entre 10 h et 19 h ; jamais le même sujet deux fois en 60 jours.
