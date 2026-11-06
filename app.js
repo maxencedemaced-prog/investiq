@@ -13734,8 +13734,20 @@ const PREMIUM_PRICE = '11,99 €';
 const PREMIUM_PRICE_ANNUAL = '94,99 €';
 const PREMIUM_ANNUAL_SAVINGS_PCT = 34; // (11,99×12 − 94,99) ⁄ (11,99×12) ≈ 34 %
 
+// Appli Android (Google Play) : l'abonnement n'y passe pas par Stripe (règle Google), les boutons sont donc masqués
+// en attendant le paiement Google Play. Détection : referrer de l'appli au lancement, gardée pour la session
+// (sessionStorage et pas localStorage : l'appli partage son stockage avec Chrome, le site resterait bloqué dans le navigateur).
+const KP_ANDROID_APP = (() => {
+  try {
+    if (document.referrer.startsWith('android-app://fr.kapitaro.app') || /[?&]android_app=1/.test(location.search)) sessionStorage.setItem('kp_android_app', '1');
+    return sessionStorage.getItem('kp_android_app') === '1';
+  } catch (e) { return false; }
+})();
+const KP_ANDROID_APP_MSG = 'L’abonnement Premium arrive bientôt dans l’appli Android.';
+
 // Lance le paiement Stripe
 async function startCheckout(btn, plan) {
+  if (KP_ANDROID_APP) { showToast(KP_ANDROID_APP_MSG); return; }
   if (isDemo || !currentUser) {
     showToast('🔒 Crée un compte pour t\'abonner');
     return;
@@ -13862,7 +13874,7 @@ function plansComparisonHTML(lapsed) {
              <div class="plan-save">Tu économises ${_eur(yearSaving)} par an</div>`
           : `<div class="plan-note">facturé chaque mois · sans engagement</div>
              <div class="plan-save plan-save-link" onclick="setPlansBilling('annual')">Passe à l'annuel et économise ${_eur(yearSaving)} par an →</div>`}
-        <button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>
+        ${KP_ANDROID_APP ? `<div class="plan-btn plan-btn-main" style="cursor:default;opacity:.75">${KP_ANDROID_APP_MSG}</div>` : `<button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>`}
         <div class="plan-foot">Résiliable à tout moment</div>
       </div>
       <div class="plan-list">
