@@ -638,7 +638,7 @@ async function duoCount() {
   const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo');
   return count || 0;
 }
-// Prochains créneaux libres pour des Reels : 12 h 30 et 18 h 30 (heure de Paris) à partir de demain, à 3 h minimum de tout autre post
+// Prochains créneaux libres pour des Reels : un seul par jour, à 20 h (heure de Paris, le pic d'audience du soir), à partir de demain
 async function nextReelSlots(n, ignoreIds = []) {
   const from = Date.now(), to = from + 30 * 86400000;
   const { data: taken } = await sb.from('social_posts').select('id, scheduled_at').not('status', 'in', '(rejected,published)').neq('format', 'story')
@@ -647,11 +647,9 @@ async function nextReelSlots(n, ignoreIds = []) {
   const out = [];
   for (let day = 1; day <= 30 && out.length < n; day++) {
     const { y, m, d } = parisParts(from + day * 86400000);
-    for (const [h, mi] of [[12, 30], [18, 30]]) {
-      const at = parisISO(y, m, d, h, mi), t = Date.parse(at);
-      if (out.length >= n || times.some(x => Math.abs(x - t) < 3 * 3600000)) continue;
-      out.push(at); times.push(t);
-    }
+    const at = parisISO(y, m, d, 20, 0), t = Date.parse(at);
+    if (times.some(x => Math.abs(x - t) < 12 * 3600000)) continue;   // jour déjà pris
+    out.push(at); times.push(t);
   }
   while (out.length < n) out.push(new Date(from + (31 + out.length) * 86400000).toISOString());
   return out;

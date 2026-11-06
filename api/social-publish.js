@@ -240,7 +240,7 @@ export default async function handler(req, res) {
       }
       // Débloque un post resté « en cours » (publication interrompue par un délai dépassé)
       await sb.from('social_posts').update({ status: 'approved' }).eq('status', 'publishing').lt('locked_at', new Date(Date.now() - 10 * 60000).toISOString());
-      let dueQ = sb.from('social_posts').select('id, publish_log, platforms, format')
+      let dueQ = sb.from('social_posts').select('id, publish_log, platforms, format, scheduled_at')
         .eq('status', 'approved').lte('scheduled_at', new Date().toISOString());
       if (storiesOnly) dueQ = dueQ.eq('format', 'story').gte('scheduled_at', new Date(Date.now() - 6 * 3600000).toISOString());
       const { data: dueAll } = await dueQ.order('scheduled_at').limit(20);
@@ -253,8 +253,14 @@ export default async function handler(req, res) {
         return data ? Date.parse(data.published_at) : 0;
       };
       const pick = async (list, story, gap) => (list.length && Date.now() - await lastAt(story) >= gap ? [list[0]] : []);
+      // Reels : un seul par jour, et un Reel en retard attend 20 h (jamais de publication en pleine nuit)
+      const parisDay = ts => new Date(ts).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
+      const parisHour = parseInt(new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }), 10);
+      const { data: lastReel } = await sb.from('social_posts').select('published_at').eq('status', 'published').eq('format', 'reel').not('published_at', 'is', null).order('published_at', { ascending: false }).limit(1).maybeSingle();
+      const reelToday = lastReel && parisDay(lastReel.published_at) === parisDay(Date.now());
+      const allowed = p => p.format !== 'reel' || (!reelToday && (parisHour >= 20 || parisDay(p.scheduled_at) === parisDay(Date.now())));
       const pendingOf = p => automatedFor(p.platforms).some(pl => !p.publish_log?.[pl]?.ok && (p.publish_log?.[pl]?.attempts || 0) < MAX_ATTEMPTS);
-      const ready = (dueAll || []).filter(pendingOf);
+      const ready = (dueAll || []).filter(pendingOf).filter(allowed);
       const due = [...await pick(ready.filter(isStory), true, 45 * 60000), ...await pick(ready.filter(p => !isStory(p)), false, 3 * 3600000)];
       const results = [];
       for (const p of due) {
