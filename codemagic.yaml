@@ -1,5 +1,5 @@
 # Compilation de l'appli iOS sur les Mac de Codemagic (aucun Mac nécessaire chez nous).
-# À compléter une fois le compte Apple actif : nom de l'intégration App Store Connect.
+# Certificat et profil sont enregistrés dans Codemagic (kapitaro-distribution, kapitaro-app-store), valables jusqu'au 07/11/2027.
 workflows:
   ios-testflight:
     name: Kapitaro iOS vers TestFlight
@@ -31,6 +31,12 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string fr.kapitaro.app" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string fr.kapitaro.app" "$PLIST"
+      - name: Icône Kapitaro et déclaration de chiffrement
+        script: |
+          ICON=ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+          sips -s format jpeg -z 1024 1024 ../icons/icon-512.png --out /tmp/icon.jpg
+          sips -s format png /tmp/icon.jpg --out "$ICON"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
       - name: Numéro de version
         script: |
           cd ios/App
