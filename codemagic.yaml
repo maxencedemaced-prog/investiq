@@ -23,6 +23,14 @@ workflows:
         script: |
           npx cap add ios
           npx cap sync ios
+      - name: Lien de retour de connexion (fr.kapitaro.app://)
+        script: |
+          PLIST=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string fr.kapitaro.app" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string fr.kapitaro.app" "$PLIST"
       - name: Numéro de version
         script: |
           cd ios/App

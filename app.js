@@ -6601,7 +6601,39 @@ function setAuthMsg(msg, ok=false) {
   const el = document.getElementById('auth-msg');
   el.textContent = msg; el.className = 'auth-msg ' + (ok?'success':'error');
 }
+// Appli iPhone (Capacitor) : Google et Apple refusent la connexion dans la vue web de l'appli.
+// La connexion s'ouvre donc dans le navigateur sécurisé du téléphone, puis revient par le lien fr.kapitaro.app://auth-callback.
+const KP_NATIVE_REDIRECT = 'fr.kapitaro.app://auth-callback';
+const kpIsNative = () => { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } };
+async function kpNativeOAuth(provider, label) {
+  setAuthMsg('Ouverture de ' + label + '…', true);
+  const { data, error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: KP_NATIVE_REDIRECT, skipBrowserRedirect: true } });
+  if (error || !data?.url) { setAuthMsg('Connexion ' + label + ' indisponible pour l’instant.'); return; }
+  await window.Capacitor.Plugins.Browser.open({ url: data.url, presentationStyle: 'popover' });
+}
+async function loginWithApple() {
+  if (kpIsNative()) return kpNativeOAuth('apple', 'Apple');
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin + window.location.pathname } });
+  if (error) setAuthMsg('Connexion Apple indisponible pour l’instant.');
+}
+// Retour de la connexion : on récupère la session (jetons dans le lien, ou code à échanger)
+if (kpIsNative()) {
+  try {
+    document.documentElement.classList.add('kp-native');
+    window.Capacitor.Plugins.App.addListener('appUrlOpen', async ({ url }) => {
+      if (!String(url).startsWith(KP_NATIVE_REDIRECT)) return;
+      try { await window.Capacitor.Plugins.Browser.close(); } catch (e) {}
+      const u = new URL(url.replace(KP_NATIVE_REDIRECT, 'https://kapitaro.fr/auth-callback'));
+      const hash = new URLSearchParams(u.hash.replace(/^#/, ''));
+      const access_token = hash.get('access_token'), refresh_token = hash.get('refresh_token'), code = u.searchParams.get('code');
+      const { error } = access_token && refresh_token ? await sb.auth.setSession({ access_token, refresh_token })
+        : code ? await sb.auth.exchangeCodeForSession(code) : { error: new Error('lien de connexion incomplet') };
+      if (error) setAuthMsg('La connexion n’a pas abouti. Réessaie.');
+    });
+  } catch (e) { console.warn('[natif] retour de connexion :', e); }
+}
 async function loginWithGoogle() {
+  if (kpIsNative()) return kpNativeOAuth('google', 'Google');
   // Android, navigateur d'Instagram / Facebook : on rouvre la page dans Chrome (fin du lien utm gardée), qui lance la connexion Google
   if (document.documentElement.classList.contains('kp-inapp-android')) {
     const q = new URLSearchParams(location.search); q.delete('inscription'); q.set('google', '1');
