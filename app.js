@@ -11740,6 +11740,13 @@ async function resolveDecisionText(text) {
   } catch { return null; }
 }
 
+// Amène l'écran sur le résultat : sur téléphone il est sous le formulaire, donc invisible sans ça.
+// On ferme d'abord le clavier, sinon sa fermeture décale la page juste après le défilement.
+function scrollToDecisionResult() {
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) a.blur();
+  setTimeout(() => document.getElementById('d-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+}
 async function analyseDecision() {
   let name = getDecisionTicker();
   const nameInput = document.getElementById('d-name');
@@ -11776,6 +11783,7 @@ async function analyseDecision() {
   // Analyse réelle d'abord : historique, tendance du marché, actualités. Sans accès aux données, pas d'avis à l'aveugle.
   const _res0 = document.getElementById('d-result');
   _res0.innerHTML = '<div class="card" style="text-align:center;padding:32px"><div style="font-size:32px;margin-bottom:8px">🔎</div><div style="font-weight:700;color:#1c1c1e">Lecture des cours, de la tendance du marché et des actualités…</div><div style="font-size:13px;color:#8e8e93;margin-top:4px">Avant tout avis, Kapitaro regarde les données réelles</div></div>';
+  scrollToDecisionResult();
   let _ctx;
   try { _ctx = await fetchAssetContext(name, displayName(name)); }
   catch (e) {
@@ -11883,6 +11891,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
       <div style="margin-top:8px;padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center">
         ⚠ Simulation éducative — pas un conseil financier réglementé.
       </div>`;
+    scrollToDecisionResult();
   } catch(e) {
     result.innerHTML = `<div class="card"><div style="color:#cc2f26;font-weight:700">Erreur d'analyse</div><div style="font-size:13px;margin-top:4px">Réessaie dans quelques secondes.</div></div>`;
   }
