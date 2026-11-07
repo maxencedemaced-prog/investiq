@@ -2,6 +2,8 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <!-- Applis iOS et Android, et appli installée : écran de connexion seul, sans la présentation du site -->
+  <script>try { var kpc = window.Capacitor; if ((kpc && kpc.isNativePlatform && kpc.isNativePlatform()) || document.referrer.indexOf('android-app://fr.kapitaro.app') === 0 || /[?&]android_app=1/.test(location.search) || sessionStorage.getItem('kp_android_app') === '1' || matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) document.documentElement.classList.add('kp-app'); } catch (e) {}</script>
   <script src="/errlog.js?v=20261002"></script>
   <script src="/ads.js?v=20261021110000" defer></script>
   <script src="/inapp.js?v=20261107210000" defer></script>
@@ -70,7 +72,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="style.css?v=20261104113223">
+  <link rel="stylesheet" href="style.css?v=20261107241000">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -221,6 +223,7 @@
 
       <!-- FORMULAIRE -->
       <div id="auth-form-card" class="kh-form">
+        <div class="kh-app-brand"><img src="icons/kapitaro-tile.svg" width="64" height="64" alt=""><span>Kapitaro</span></div>
 
         <!-- ONGLETS -->
         <div class="kh-tabs">
@@ -267,11 +270,11 @@
 
         <div id="auth-msg" class="auth-msg"></div>
 
-        <div class="kh-sep" style="margin:18px 0"><i></i><span>ou</span><i></i></div>
+        <div class="kh-sep kh-demo-sep" style="margin:18px 0"><i></i><span>ou</span><i></i></div>
         <button type="button" class="kh-demo" onclick="enterDemo()">👁 Essayer sans compte</button>
 
         <div class="kh-form-foot">
-          Gratuit pour commencer · <b>Premium 11,99 €/mois</b> ou 94,99 €/an, sans engagement<br>
+          <span class="kh-form-price">Gratuit pour commencer · <b>Premium 11,99 €/mois</b> ou 94,99 €/an, sans engagement<br></span>
           Kapitaro est un outil éducatif, pas un conseiller financier agréé.
         </div>
         <div class="kh-legal">
@@ -523,7 +526,7 @@ window.addEventListener('load', function() {
   const orig = window.switchAuth;
   if (orig) window.switchAuth = function(tab) { orig(tab); _switchAuthStyle(tab); };
   if (window.__pendingAuthTab) { window.switchAuth(window.__pendingAuthTab); window.__pendingAuthTab = null; }
-  else if (_isNewVisitor()) window.switchAuth('signup');
+  else if (_isNewVisitor() && !document.documentElement.classList.contains('kp-app')) window.switchAuth('signup');
   // Arrivée depuis la page de publicité (/commencer) : inscription ouverte directement
   if (/[?&]inscription=1/.test(location.search) && document.getElementById('auth-screen').style.display !== 'none') setTimeout(function() { heroStart('signup'); }, 300);
   if (/[?&]google=1/.test(location.search) && !document.documentElement.classList.contains('kp-inapp') && document.getElementById('auth-screen').style.display !== 'none') setTimeout(function() { loginWithGoogle(); }, 400);
@@ -1787,7 +1790,7 @@ function heroStart(tab) {
 <script src="legal-docs.js?v=20261107190000"></script>
 <script src="glossary.js?v=20261014120000"></script>
 <script src="calc.js?v=20261103235000"></script>
-<script src="app.js?v=20261107230000"></script>
+<script src="app.js?v=20261107240000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20261014100000"></script>
