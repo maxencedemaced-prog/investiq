@@ -31,6 +31,14 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string fr.kapitaro.app" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string fr.kapitaro.app" "$PLIST"
+      - name: Connexion par la méthode système d'Apple (KpAuth)
+        script: |
+          DELEGATE=ios/App/App/AppDelegate.swift
+          BOARD=ios/App/App/Base.lproj/Main.storyboard
+          cat "$DELEGATE" KpAuth.swift > "$DELEGATE.new"
+          mv "$DELEGATE.new" "$DELEGATE"
+          sed -i '' 's/customClass="CAPBridgeViewController" customModule="Capacitor"/customClass="KpBridgeViewController" customModule="App" customModuleProvider="target"/' "$BOARD"
+          grep -q 'customClass="KpBridgeViewController"' "$BOARD"
       - name: Icône Kapitaro et déclaration de chiffrement
         script: |
           ICON=ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
