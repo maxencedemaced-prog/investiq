@@ -151,18 +151,8 @@ async function pushTest(silent) {
 }
 
 // À la connexion : enregistre le service worker et resynchronise l'abonnement (le navigateur peut le renouveler).
-// Applis : la demande d'autorisation (notifications et son) arrive d'elle-même à la première connexion, une seule fois par appareil
-async function pushFirstAsk() {
-  if (isDemo || !currentUser || !document.documentElement.classList.contains('kp-app')) return;
-  try {
-    if (localStorage.getItem('kp_push_asked')) return;
-    localStorage.setItem('kp_push_asked', '1');
-  } catch { return; }
-  if (await pushState() === 'off') pushEnable();
-}
 async function pushInit() {
   if (isDemo || !currentUser) return;
-  setTimeout(() => { pushFirstAsk().catch(() => {}); }, 1500);
   if (pushNative()) {
     // Apple peut changer le jeton de l'appareil : on le resynchronise à chaque ouverture
     try {
