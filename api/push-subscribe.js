@@ -69,6 +69,22 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // ── Enregistrement d'un appareil de l'appli iOS (jeton Apple) ──
+    if (typeof body.apns === 'string') {
+      if (!/^[0-9a-f]{32,200}$/i.test(body.apns)) return res.status(400).json({ error: 'Jeton Apple invalide' });
+      const row = {
+        user_id: userId,
+        endpoint: 'apns:' + body.apns,
+        subscription: JSON.stringify({ apns: body.apns }),
+        user_agent: String(req.headers['user-agent'] || '').slice(0, 200),
+        updated_at: new Date().toISOString(),
+      };
+      if (typeof body.moves === 'boolean') row.moves = body.moves;
+      const { error } = await supabase.from('push_devices').upsert(row, { onConflict: 'endpoint' });
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ ok: true });
+    }
+
     // ── Enregistrement de l'appareil ──
     const sub = body.subscription;
     // Le serveur enverra des requêtes à cette adresse : uniquement une URL https de service push, jamais une adresse arbitraire
