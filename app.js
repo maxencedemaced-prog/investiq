@@ -6609,7 +6609,7 @@ async function kpNativeOAuth(provider, label) {
   setAuthMsg('Ouverture de ' + label + '…', true);
   const { data, error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: KP_NATIVE_REDIRECT, skipBrowserRedirect: true } });
   if (error || !data?.url) { setAuthMsg('Connexion ' + label + ' indisponible pour l’instant.'); return; }
-  await window.Capacitor.Plugins.Browser.open({ url: data.url, presentationStyle: 'popover' });
+  await window.Capacitor.Plugins.Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
 }
 async function loginWithApple() {
   if (kpIsNative()) return kpNativeOAuth('apple', 'Apple');
