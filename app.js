@@ -9208,7 +9208,7 @@ async function kpOpenTuto(id, opts) {
     + '<div style="position:relative;container-type:inline-size;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:' + (wide ? '1280/800' : '390/844') + ';box-shadow:0 20px 60px rgba(0,0,0,0.5)">'
     + '<video playsinline controls preload="auto" poster="' + _escHtml(v.poster || '') + '" src="' + _escHtml(v.url) + '" style="width:100%;height:100%;display:block;object-fit:contain"></video>'
     + (Array.isArray(v.captions) && v.captions.length ? '<div id="kp-tuto-cap" style="position:absolute;left:4%;right:4%;bottom:' + (wide ? '11%' : '12%') + ';display:flex;justify-content:center;pointer-events:none"></div><button type="button" id="kp-tuto-cc" style="position:absolute;right:10px;top:10px;padding:6px 11px;border-radius:999px;border:1px solid rgba(255,255,255,0.35);background:rgba(9,9,11,0.7);color:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer"></button>' : '')
-    + ('<button type="button" id="kp-tuto-sound" style="display:none;position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 14px;border-radius:999px;border:none;background:#16a34a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.35)">🔊 Activer le son</button>' : '')
+    + ('<button type="button" id="kp-tuto-sound" style="display:none;position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 14px;border-radius:999px;border:none;background:#16a34a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.35)">🔊 Activer le son</button>')
     + '</div></div>';
   document.body.appendChild(o);
   const vd = o.querySelector('video');
