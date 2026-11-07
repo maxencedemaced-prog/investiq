@@ -4439,7 +4439,7 @@ async function obGeneratePlan() {
 En 2-3 phrases MAX, donne un conseil de départ simple et encourageant. Pas de jargon. Commence par "Pour toi,"`;
     const advice = await callClaude(prompt, undefined, undefined, undefined, OBJ_AI);
     const el = document.getElementById('ob-ai-advice');
-    if (el) el.innerHTML = `<div style="background:#f9f9f9;border-radius:12px;padding:12px 14px;font-size:13px;color:#3c3c43;line-height:1.6">💬 ${advice}</div>`;
+    if (el) el.innerHTML = isAIQuotaMessage(advice) ? aiFailureHTML(advice) : `<div style="background:#f9f9f9;border-radius:12px;padding:12px 14px;font-size:13px;color:#3c3c43;line-height:1.6">💬 ${advice}</div>`;
   } catch(e) {}
 }
 
@@ -5336,6 +5336,7 @@ En 3 points courts et simples pour un débutant, explique :
 Sois très concret (ex: "Les actions tech montent", "L'euro baisse"). Max 4 lignes au total.`;
 
     const resp = await callClaude(prompt, 'Tu es un expert financier pédagogue. Sois bref et clair.');
+    if (isAIQuotaMessage(resp)) { el.innerHTML = aiFailureHTML(resp); return; }
     el.innerHTML = '<div style="background:rgba(255,255,255,0.9);border-radius:10px;padding:10px 12px;margin-top:6px;font-size:12px;color:#1c1c1e;line-height:1.6">' + resp.split('\n').join('<br>') + '</div>';
   } catch(e) {
     el.innerHTML = '<span style="color:#cc2f26;font-size:12px">Impossible de charger l\'analyse</span>';
@@ -5707,6 +5708,7 @@ Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`;
       return JSON.parse(clean.slice(s, e+1)).map(x => ({ ...x, objectif: 0, stop_loss: 0 }));   // aucun objectif de cours ni stop inventé
     } catch(err) {
       console.error('[fetchSignaux] error:', err.message);
+      if (aiJustHitQuota()) throw err;   // limite gratuite : on l'explique au lieu de faux signaux de repli
       // Fallback statique
       return tickers.map(t => ({
         ticker: t, name: t, signal: 'attendre', conviction: 'faible',
@@ -5785,6 +5787,7 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
         </div>`;
     }
   } catch(e) {
+    if (aiJustHitQuota()) { list.innerHTML = `<div style="padding:8px 0">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
     list.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
       <div style="font-size:20px;margin-bottom:8px">⚠️</div>
       <div style="font-size:13px">Impossible de charger les signaux.<br>Réessaie dans quelques secondes.</div>
@@ -6147,6 +6150,12 @@ Sois pédagogue, concis et direct. Utilise des termes simples.`;
   const signalEl = document.getElementById('co-signal');
 
   if (!data) {
+    if (isAIQuotaMessage(raw)) {
+      if (analysisEl) analysisEl.innerHTML = aiFailureHTML(raw);
+      if (newsEl) newsEl.innerHTML = '';
+      if (signalEl) signalEl.innerHTML = '';
+      return;
+    }
     if (analysisEl) analysisEl.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Analyse indisponible. Réessaie dans quelques secondes.</p>';
     if (newsEl) newsEl.innerHTML = '<p style="color:#c7c7cc;font-size:13px">Contexte indisponible.</p>';
     return;
@@ -11909,6 +11918,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
       </div>`;
     scrollToDecisionResult();
   } catch(e) {
+    if (aiJustHitQuota()) { result.innerHTML = aiFailureHTML(aiQuotaMessage()); scrollToDecisionResult(); decisionIntention = null; return; }
     result.innerHTML = `<div class="card"><div style="color:#cc2f26;font-weight:700">Erreur d'analyse</div><div style="font-size:13px;margin-top:4px">Réessaie dans quelques secondes.</div></div>`;
   }
   decisionIntention = null;
