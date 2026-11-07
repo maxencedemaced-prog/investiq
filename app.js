@@ -6609,7 +6609,39 @@ function setAuthMsg(msg, ok=false) {
   const el = document.getElementById('auth-msg');
   el.textContent = msg; el.className = 'auth-msg ' + (ok?'success':'error');
 }
+// Appli iPhone (Capacitor) : Google et Apple refusent la connexion dans la vue web de l'appli.
+// La connexion s'ouvre donc dans le navigateur sécurisé du téléphone, puis revient par le lien fr.kapitaro.app://auth-callback.
+const KP_NATIVE_REDIRECT = 'fr.kapitaro.app://auth-callback';
+const kpIsNative = () => { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } };
+async function kpNativeOAuth(provider, label) {
+  setAuthMsg('Ouverture de ' + label + '…', true);
+  const { data, error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: KP_NATIVE_REDIRECT, skipBrowserRedirect: true } });
+  if (error || !data?.url) { setAuthMsg('Connexion ' + label + ' indisponible pour l’instant.'); return; }
+  await window.Capacitor.Plugins.Browser.open({ url: data.url, presentationStyle: 'popover' });
+}
+async function loginWithApple() {
+  if (kpIsNative()) return kpNativeOAuth('apple', 'Apple');
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin + window.location.pathname } });
+  if (error) setAuthMsg('Connexion Apple indisponible pour l’instant.');
+}
+// Retour de la connexion : on récupère la session (jetons dans le lien, ou code à échanger)
+if (kpIsNative()) {
+  try {
+    document.documentElement.classList.add('kp-native');
+    window.Capacitor.Plugins.App.addListener('appUrlOpen', async ({ url }) => {
+      if (!String(url).startsWith(KP_NATIVE_REDIRECT)) return;
+      try { await window.Capacitor.Plugins.Browser.close(); } catch (e) {}
+      const u = new URL(url.replace(KP_NATIVE_REDIRECT, 'https://kapitaro.fr/auth-callback'));
+      const hash = new URLSearchParams(u.hash.replace(/^#/, ''));
+      const access_token = hash.get('access_token'), refresh_token = hash.get('refresh_token'), code = u.searchParams.get('code');
+      const { error } = access_token && refresh_token ? await sb.auth.setSession({ access_token, refresh_token })
+        : code ? await sb.auth.exchangeCodeForSession(code) : { error: new Error('lien de connexion incomplet') };
+      if (error) setAuthMsg('La connexion n’a pas abouti. Réessaie.');
+    });
+  } catch (e) { console.warn('[natif] retour de connexion :', e); }
+}
 async function loginWithGoogle() {
+  if (kpIsNative()) return kpNativeOAuth('google', 'Google');
   // Android, navigateur d'Instagram / Facebook : on rouvre la page dans Chrome (fin du lien utm gardée), qui lance la connexion Google
   if (document.documentElement.classList.contains('kp-inapp-android')) {
     const q = new URLSearchParams(location.search); q.delete('inscription'); q.set('google', '1');
@@ -11742,6 +11774,13 @@ async function resolveDecisionText(text) {
   } catch { return null; }
 }
 
+// Amène l'écran sur le résultat : sur téléphone il est sous le formulaire, donc invisible sans ça.
+// On ferme d'abord le clavier, sinon sa fermeture décale la page juste après le défilement.
+function scrollToDecisionResult() {
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) a.blur();
+  setTimeout(() => document.getElementById('d-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+}
 async function analyseDecision() {
   let name = getDecisionTicker();
   const nameInput = document.getElementById('d-name');
@@ -11778,6 +11817,7 @@ async function analyseDecision() {
   // Analyse réelle d'abord : historique, tendance du marché, actualités. Sans accès aux données, pas d'avis à l'aveugle.
   const _res0 = document.getElementById('d-result');
   _res0.innerHTML = '<div class="card" style="text-align:center;padding:32px"><div style="font-size:32px;margin-bottom:8px">🔎</div><div style="font-weight:700;color:#1c1c1e">Lecture des cours, de la tendance du marché et des actualités…</div><div style="font-size:13px;color:#8e8e93;margin-top:4px">Avant tout avis, Kapitaro regarde les données réelles</div></div>';
+  scrollToDecisionResult();
   let _ctx;
   try { _ctx = await fetchAssetContext(name, displayName(name)); }
   catch (e) {
@@ -11885,6 +11925,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
       <div style="margin-top:8px;padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center">
         ⚠ Simulation éducative — pas un conseil financier réglementé.
       </div>`;
+    scrollToDecisionResult();
   } catch(e) {
     result.innerHTML = `<div class="card"><div style="color:#cc2f26;font-weight:700">Erreur d'analyse</div><div style="font-size:13px;margin-top:4px">Réessaie dans quelques secondes.</div></div>`;
   }
@@ -13766,12 +13807,25 @@ async function confirmCSVImport() {
 //  💳 ABONNEMENT PREMIUM — souscription et gestion
 // ═══════════════════════════════════════════════════════════
 
-const PREMIUM_PRICE = window.kpI18n ? kpI18n.price('monthly') : '9,99 €';   // version anglaise : prix affiché selon la devise (i18n.js)
-const PREMIUM_PRICE_ANNUAL = window.kpI18n ? kpI18n.price('annual') : '79,99 €';
-const PREMIUM_ANNUAL_SAVINGS_PCT = 33; // (9,99×12 − 79,99) ⁄ (9,99×12) ≈ 33 %
+const PREMIUM_PRICE = window.kpI18n ? kpI18n.price('monthly') : '11,99 €';   // version anglaise : prix affiché selon la devise (i18n.js)
+const PREMIUM_PRICE_ANNUAL = window.kpI18n ? kpI18n.price('annual') : '94,99 €';
+const PREMIUM_ANNUAL_SAVINGS_PCT = 34; // (11,99×12 − 94,99) ⁄ (11,99×12) ≈ 34 %
+
+// Appli Android (Google Play) : l'abonnement n'y passe pas par Stripe (règle Google), les boutons sont donc masqués
+// en attendant le paiement Google Play. Détection : referrer de l'appli au lancement, gardée pour la session
+// (sessionStorage et pas localStorage : l'appli partage son stockage avec Chrome, le site resterait bloqué dans le navigateur).
+const KP_ANDROID_APP = (() => {
+  try {
+    if (document.referrer.startsWith('android-app://fr.kapitaro.app') || /[?&]android_app=1/.test(location.search)) sessionStorage.setItem('kp_android_app', '1');
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return true;   // appli iOS (Capacitor)
+    return sessionStorage.getItem('kp_android_app') === '1';
+  } catch (e) { return false; }
+})();
+const KP_ANDROID_APP_MSG = 'L’abonnement Premium arrive bientôt dans l’appli.';
 
 // Lance le paiement Stripe
 async function startCheckout(btn, plan) {
+  if (KP_ANDROID_APP) { showToast(KP_ANDROID_APP_MSG); return; }
   if (isDemo || !currentUser) {
     showToast('🔒 Crée un compte pour t\'abonner');
     return;
@@ -13845,8 +13899,8 @@ const PLAN_PREMIUM_ONLY = [
 
 // Choix de facturation (annuel par défaut) — partagé par la fenêtre et les Paramètres
 let plansBilling = 'annual';
-const PROMO_PRICE = window.kpCur ? kpCur.tag('4,99 €') : '4,99 €';   // 1er mois d'un filleul (coupon Stripe PARRAINAGE50)
-const PRICE_MONTHLY_NUM = 9.99, PRICE_ANNUAL_NUM = 79.99;
+const PROMO_PRICE = window.kpCur ? kpCur.tag('5,99 €') : '5,99 €';   // 1er mois d'un filleul (coupon Stripe PARRAINAGE50)
+const PRICE_MONTHLY_NUM = 11.99, PRICE_ANNUAL_NUM = 94.99;
 const _eur = n => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 function setPlansBilling(b) {
@@ -13898,7 +13952,7 @@ function plansComparisonHTML(lapsed) {
              <div class="plan-save">Tu économises ${_eur(yearSaving)} par an</div>`
           : `<div class="plan-note">facturé chaque mois · sans engagement</div>
              <div class="plan-save plan-save-link" onclick="setPlansBilling('annual')">Passe à l'annuel et économise ${_eur(yearSaving)} par an →</div>`}
-        <button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>
+        ${KP_ANDROID_APP ? `<div class="plan-btn plan-btn-main" style="cursor:default;opacity:.75">${KP_ANDROID_APP_MSG}</div>` : `<button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>`}
         <div class="plan-foot">Résiliable à tout moment</div>
       </div>
       <div class="plan-list">
@@ -14036,7 +14090,7 @@ async function handleStripeReturn() {
   try {
     const ck = JSON.parse(localStorage.getItem('kp_checkout') || 'null');
     localStorage.removeItem('kp_checkout');
-    if (ck && Date.now() - ck.at < 3 * 3600000 && window.kpAds) kpAds.track('subscribe', { value: ck.plan === 'annual' ? 79.99 : ck.promo ? 4.99 : 9.99, ltv: ck.plan === 'annual' ? 79.99 : 9.99 * 6 });
+    if (ck && Date.now() - ck.at < 3 * 3600000 && window.kpAds) kpAds.track('subscribe', { value: ck.plan === 'annual' ? 94.99 : ck.promo ? 5.99 : 11.99, ltv: ck.plan === 'annual' ? 94.99 : 11.99 * 6 });
   } catch (e) {}
 
   // Le webhook peut mettre quelques secondes : on interroge le profil jusqu'à 5 fois
@@ -14081,7 +14135,6 @@ function showPremiumWelcome() {
 
 // ═══════════════════════════════════════════════════════════
 //  ⚖️ CONTENUS LÉGAUX — À FAIRE VALIDER PAR UN AVOCAT
-//  Reste à compléter : le nom du médiateur de la consommation (CGU/CGV, article 8).
 // ═══════════════════════════════════════════════════════════
 
 // Textes légaux (LEGAL_DOCS, LEGAL_LAST_UPDATE, legalDateFR) : voir legal-docs.js, chargé avant ce fichier.

@@ -145,17 +145,22 @@ async function fetchBroll(beats) {
 }
 
 // ── Story d'actualité : photo réelle du secteur (Pixabay), texte par-dessus, publication tout de suite ──
+// Sujet boursier : une photo doit vraiment parler de finance. « market » seul ramène des marchés alimentaires.
+const OFF_TOPIC = /cheese|fromage|food|fruit|vegetable|meat|fish|bakery|bread|grocer|spice|farmer|flea|bazaar|stall|vendor|restaurant|kitchen|cooking|flower/i;
+const FINANCE_TAGS = /stock|trading|trader|chart|graph|finance|financial|exchange|economy|investment|bank|currency|skyscraper/i;
 async function storyPhoto(query) {
   const key = (process.env.PIXABAY_API_KEY || '').trim();
   if (!key) return null;
-  for (const q of [query, 'business district skyscrapers', 'stock market screen']) {
+  const financeQuery = q => /stock|market|financ|trading|index|nasdaq|bourse/i.test(q);
+  for (const q of [query, 'business district skyscrapers', 'stock exchange trading chart']) {
     if (!q) continue;
     const r = await fetch(`https://pixabay.com/api/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&image_type=photo&safesearch=true&per_page=40`);
     const j = await r.json().catch(() => ({}));
     const words = q.split(/\s+/).filter(w => w.length > 2 && !STOP.has(w.toLowerCase())).map(stem);
     const ok = (j.hits || []).filter(h => {
       const tags = String(h.tags || ''), toks = tags.split(',').flatMap(t => t.trim().split(/\s+/)).map(stem);
-      if (SENSITIVE.test(tags) || NOT_REAL.test(tags)) return false;
+      if (SENSITIVE.test(tags) || NOT_REAL.test(tags) || OFF_TOPIC.test(tags)) return false;
+      if (financeQuery(q) && !FINANCE_TAGS.test(tags)) return false;
       return words.some(w => toks.some(t => t === w || t.startsWith(w) || w.startsWith(t)));
     }).sort((a, b) => (b.imageHeight / b.imageWidth) - (a.imageHeight / a.imageWidth)).slice(0, 6);
     for (const h of shuffleArr(ok)) {

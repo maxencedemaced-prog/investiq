@@ -1,1 +1,5 @@
 video/
+
+# Appli iOS : compilée par Codemagic, jamais servie par le site
+ios-app
+codemagic.yaml

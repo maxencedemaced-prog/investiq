@@ -35,8 +35,11 @@ function periodEndISO(sub) {
 function planFromSub(sub) {
   const priceId = sub?.items?.data?.[0]?.price?.id;
   if (!priceId) return null;
-  if (priceId === process.env.STRIPE_PRICE_ID_ANNUAL) return 'annual';
-  if (priceId === process.env.STRIPE_PRICE_ID) return 'monthly';
+  const interval = sub?.items?.data?.[0]?.price?.recurring?.interval;   // le plus fiable : la période du tarif Stripe
+  if (interval === 'year') return 'annual';
+  if (interval === 'month') return 'monthly';
+  if (priceId === process.env.STRIPE_PRICE_ID_ANNUAL || priceId === 'price_1UY7JFV05PeKC3YIbubqwziu') return 'annual';
+  if (priceId === process.env.STRIPE_PRICE_ID || priceId === 'price_1UY7GqV05PeKC3YIQRDvuLYe') return 'monthly';
   return null; // prix inconnu (changé manuellement dans Stripe, etc.) : on ne devine pas
 }
 
@@ -89,7 +92,7 @@ async function setPremium(userId, { active, until, customerId, subscriptionId, s
 }
 
 // Parrainage : au 1er paiement réel du filleul, le parrain gagne 1 mois (avoir Stripe s'il est abonné, sinon 30 jours de Premium offerts)
-const REFERRAL_CREDIT_CENTS = 999, MAX_REWARDS_PER_YEAR = 12;
+const REFERRAL_CREDIT_CENTS = 1199, MAX_REWARDS_PER_YEAR = 12;
 async function rewardReferrer(refereeId, invoice) {
   if (!invoice || !(invoice.amount_paid > 0)) return;
   const { data: ref } = await supabase.from('referrals').select('id, referrer_id, paid_at').eq('referee_id', refereeId).is('rewarded_at', null).maybeSingle();
@@ -119,7 +122,7 @@ async function rewardReferrer(refereeId, invoice) {
     const to = au?.user?.email;
     if (to) {
       const e = renderEmail({ title: 'Merci : 1 mois offert 🎁', userId: ref.referrer_id,
-        paragraphs: ['Un ami que tu as invité vient de s\'abonner à Kapitaro Premium.', reward === 'credit' ? 'Pour te remercier, **9,99 € seront déduits de ta prochaine facture**, automatiquement.' : 'Pour te remercier, **tu as 1 mois de Premium offert**, déjà actif sur ton compte.', 'Continue de partager ton lien depuis Paramètres → Parrainage : chaque ami qui s\'abonne te fait gagner un mois.'],
+        paragraphs: ['Un ami que tu as invité vient de s\'abonner à Kapitaro Premium.', reward === 'credit' ? 'Pour te remercier, **11,99 € seront déduits de ta prochaine facture**, automatiquement.' : 'Pour te remercier, **tu as 1 mois de Premium offert**, déjà actif sur ton compte.', 'Continue de partager ton lien depuis Paramètres → Parrainage : chaque ami qui s\'abonne te fait gagner un mois.'],
         cta: { label: 'Ouvrir Kapitaro', url: 'https://kapitaro.fr' } });
       await sendEmail({ to, subject: 'Tu as gagné 1 mois Kapitaro Premium 🎁', html: e.html, text: e.text, unsub: e.unsub });
     }

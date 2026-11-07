@@ -5,7 +5,7 @@
 
 // Date de dernière révision des documents contractuels.
 // À METTRE À JOUR à chaque modification substantielle des textes.
-const LEGAL_LAST_UPDATE = '2026-09-29';
+const LEGAL_LAST_UPDATE = '2026-11-07';
 
 function legalDateFR() {
   try {
@@ -24,6 +24,7 @@ const LEGAL_DOCS = {
 <h3>Article 1 — Éditeur du service</h3>
 <p>Le service Kapitaro est édité par Maxence De Macedo, entrepreneur individuel (EI) exerçant sous le nom commercial Quorvia, immatriculé sous le numéro SIREN 902 642 016, dont le siège est situé 21 Le Routoir, 38240 Meylan, France.</p>
 <p>Directeur de la publication : Maxence De Macedo<br>Contact : contact@kapitaro.fr</p>
+<p>Médiateur de la consommation : CM2C, 49 rue de Ponthieu, 75008 Paris, <a href="https://www.cm2c.net/declarer-un-litige.php" target="_blank" rel="noopener">www.cm2c.net</a>.</p>
 
 <h3>Article 2 — Hébergement</h3>
 <p>Le site est hébergé par Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis.</p>
@@ -65,12 +66,12 @@ const LEGAL_DOCS = {
 <p>L'accès nécessite la création d'un compte avec une adresse email valide. L'utilisateur doit être majeur et juridiquement capable. Il est responsable de la confidentialité de ses identifiants.</p>
 
 <h3>Article 4 — Offre Premium et abonnement</h3>
-<p>L'offre Premium est proposée selon deux formules au choix : 9,99 € TTC par mois, ou 79,99 € TTC par an, sans engagement de durée. Le paiement s'effectue par carte bancaire via notre prestataire Stripe. L'utilisateur peut changer de formule à tout moment depuis les paramètres du compte.</p>
+<p>L'offre Premium est proposée selon deux formules au choix : 11,99 € TTC par mois, ou 94,99 € TTC par an, sans engagement de durée. Le paiement s'effectue par carte bancaire via notre prestataire Stripe. L'utilisateur peut changer de formule à tout moment depuis les paramètres du compte.</p>
 <p><strong>Analyses IA illimitées :</strong> l'offre Premium donne un accès illimité à l'assistant IA pour un usage personnel normal. Afin de protéger le service contre les abus et les usages automatisés, une utilisation anormale (au-delà de 300 analyses IA sur une même journée) suspend l'accès à l'IA jusqu'au lendemain, sans autre conséquence sur l'abonnement.</p>
 <p><strong>Reconduction :</strong> l'abonnement est reconduit tacitement à l'identique (mensuellement ou annuellement selon la formule choisie) jusqu'à résiliation. Celle-ci peut intervenir à tout moment depuis les paramètres du compte et prend effet à la fin de la période en cours.</p>
 <p><strong>Droit de rétractation :</strong> conformément aux articles L. 221-18 et suivants du Code de la consommation, l'utilisateur dispose d'un délai de quatorze (14) jours pour se rétracter. En demandant l'accès immédiat au service, il accepte de commencer à en bénéficier avant la fin de ce délai ; il reste redevable du montant correspondant à la période consommée.</p>
 
-<p><strong>Parrainage :</strong> chaque utilisateur dispose d'un lien de parrainage personnel. La personne qui crée son compte avec ce lien (filleul) bénéficie de 50 % de réduction sur la première mensualité de l'abonnement Premium mensuel, si elle n'a jamais été abonnée. Lorsque le filleul a réglé cette première mensualité, le parrain reçoit un mois offert : un avoir de 9,99 € sur sa prochaine facture s'il est abonné, ou 30 jours d'accès Premium sinon. Le parrainage de soi-même est interdit ; les récompenses sont limitées à douze par an et par parrain, n'ont pas de valeur monétaire et ne sont ni remboursables ni cessibles. Kapitaro peut annuler une récompense obtenue de manière abusive.</p>
+<p><strong>Parrainage :</strong> chaque utilisateur dispose d'un lien de parrainage personnel. La personne qui crée son compte avec ce lien (filleul) bénéficie de 50 % de réduction sur la première mensualité de l'abonnement Premium mensuel, si elle n'a jamais été abonnée. Lorsque le filleul a réglé cette première mensualité, le parrain reçoit un mois offert : un avoir de 11,99 € sur sa prochaine facture s'il est abonné, ou 30 jours d'accès Premium sinon. Le parrainage de soi-même est interdit ; les récompenses sont limitées à douze par an et par parrain, n'ont pas de valeur monétaire et ne sont ni remboursables ni cessibles. Kapitaro peut annuler une récompense obtenue de manière abusive.</p>
 
 <h3>Article 5 — Données de marché</h3>
 <p>Les cours affichés proviennent de fournisseurs tiers, peuvent être différés et sont communiqués à titre indicatif. L'éditeur ne garantit ni leur exactitude, ni leur exhaustivité, ni leur disponibilité continue.</p>
@@ -83,7 +84,9 @@ const LEGAL_DOCS = {
 <p>L'utilisateur peut supprimer son compte à tout moment depuis ses paramètres. L'éditeur se réserve le droit de suspendre un compte en cas de manquement aux présentes conditions.</p>
 
 <h3>Article 8 — Droit applicable et litiges</h3>
-<p>Les présentes sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité. À défaut, les tribunaux français seront compétents. L'utilisateur peut recourir gratuitement à un médiateur de la consommation.</p>
+<p>Les présentes sont soumises au droit français. En cas de litige, l'utilisateur adresse d'abord une réclamation écrite à contact@kapitaro.fr.</p>
+<p><strong>Médiation de la consommation :</strong> conformément aux articles L. 612-1 et suivants du Code de la consommation, si cette démarche n'aboutit pas, l'utilisateur consommateur peut recourir gratuitement au médiateur suivant : CM2C (Centre de la Médiation de la Consommation de Conciliateurs de Justice), 49 rue de Ponthieu, 75008 Paris, <a href="https://www.cm2c.net/declarer-un-litige.php" target="_blank" rel="noopener">www.cm2c.net</a>.</p>
+<p>À défaut de solution amiable, les tribunaux français seront compétents.</p>
 `
   },
 
@@ -257,7 +260,7 @@ const LEGAL_DOCS_EN = {
 <p><strong>Immediate access.</strong> If you ask for Premium to start immediately, you expressly request performance during the withdrawal period. Under art. 14(3) of Directive 2011/83/EU you then pay a proportionate amount for the service supplied until you withdraw, and we refund the rest. If you did not make this express request, we refund you in full.</p>
 <p><em>Model withdrawal form:</em> "To Maxence De Macedo (Quorvia), 21 Le Routoir, 38240 Meylan, France, contact@kapitaro.fr — I hereby give notice that I withdraw from my contract for the Kapitaro Premium subscription ordered on [date], account email [email]. Date, name."</p>
 <p><strong>Legal guarantee of conformity.</strong> You benefit from the legal guarantee of conformity for digital services (Directive (EU) 2019/770).</p>
-<p><strong>Disputes.</strong> These Terms are governed by French law, without depriving you of the protection of mandatory provisions of the law of your country of residence. You may bring proceedings in the courts of your country of residence. Please contact us first at contact@kapitaro.fr so we can try to resolve the issue amicably. You may also use a consumer mediator free of charge: [TO CONFIRM — name and website of the consumer mediator once appointed].</p>
+<p><strong>Disputes.</strong> These Terms are governed by French law, without depriving you of the protection of mandatory provisions of the law of your country of residence. You may bring proceedings in the courts of your country of residence. Please contact us first at contact@kapitaro.fr so we can try to resolve the issue amicably. You may also use a consumer mediator free of charge: CM2C, 49 rue de Ponthieu, 75008 Paris, France, <a href="https://www.cm2c.net/declarer-un-litige.php" target="_blank" rel="noopener">www.cm2c.net</a>.</p>
 <p><strong>Digital Services Act.</strong> Contact point for users and authorities: contact@kapitaro.fr. You can report illegal content to that address.</p>`,
     UK: `
 <h3 id="uk">Additional terms for consumers in the United Kingdom</h3>
@@ -390,7 +393,7 @@ function legalDocEN(key, all) {
   if (!d) return null;
   const region = (window.kpI18n && kpI18n.region) || 'OTHER';
   const parts = all ? ['US', 'EU', 'UK', 'OTHER'].map(r => d[r] || '') : [d[region] || ''];
-  const price = p => (window.kpI18n ? kpI18n.price(p) : (p === 'monthly' ? '€9.99' : '€79.99'));
+  const price = p => (window.kpI18n ? kpI18n.price(p) : (p === 'monthly' ? '€11.99' : '€94.99'));
   const content = (LEGAL_DRAFT_NOTE_EN + d.common + parts.join(''))
     .replace(/\{\{PRICE_MONTHLY\}\}/g, price('monthly')).replace(/\{\{PRICE_ANNUAL\}\}/g, price('annual'));
   return { title: d.title, icon: d.icon, content, en: true };

@@ -189,7 +189,7 @@ export default async function handler(req, res) {
     const payingNow = (premiumRows || []).filter(p => p.id !== adminId);
     const monthlySubs = payingNow.filter(p => p.subscription_plan !== 'annual').length;
     const annualSubs = payingNow.filter(p => p.subscription_plan === 'annual').length;
-    let mrr = Math.round((monthlySubs * 9.99 + annualSubs * 79.99 / 12) * 100) / 100;
+    let mrr = Math.round((monthlySubs * 11.99 + annualSubs * 94.99 / 12) * 100) / 100;   // tarif depuis nov. 2026 (les anciens abonnés à 9,99 € sont légèrement surestimés)
     // Revenu réel : abonnements Stripe actifs, réductions en cours comprises (ex. code AMIS2026 = 0 € ce mois-ci)
     const stripeRev = await (async () => {
       if (!process.env.STRIPE_SECRET_KEY) return null;

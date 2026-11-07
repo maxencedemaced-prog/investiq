@@ -402,7 +402,7 @@ FORMAT : un tableau JSON, sans texte autour :
 [{"ref": numéro de la dépêche, "company": "nom court de l'entreprise ou de l'indice", "kicker": "ACTU" ou "MARCHÉS",
   "title": "titre factuel en français, max 60 caractères", "facts": "1 ou 2 phrases factuelles en français, max 170 caractères",
   "source": "nom du média source", "value": "variation chiffrée si elle est fournie, ex. « −1,8 % » (sinon vide)",
-  "photo": "2 à 4 mots EN ANGLAIS décrivant une vraie photo du SECTEUR d'activité, jamais la marque ni un logo : ex. « computer chips close up », « oil refinery », « airplane assembly line », « pharmaceutical laboratory », « luxury boutique window », « stock market screen »"}]`;
+  "photo": "2 à 4 mots EN ANGLAIS décrivant une vraie photo du SECTEUR d'activité, jamais la marque ni un logo : ex. « computer chips close up », « oil refinery », « airplane assembly line », « pharmaceutical laboratory », « luxury boutique window », « stock exchange trading chart ». Pour les indices et la bourse, écris toujours « stock exchange trading chart », jamais le mot « market » seul (il ramène des marchés alimentaires)"}]`;
 
 // ── Week-end (bourses fermées, pas d'actu) : stories pédagogiques à la place des stories d'actu ──
 // 2 par jour au plus, espacées d'au moins 4 h, entre 10 h et 19 h ; jamais le même sujet deux fois en 60 jours.
@@ -644,6 +644,22 @@ const DUO_MUSIC = [
 async function duoCount() {
   const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo');
   return count || 0;
+}
+// Prochains créneaux libres pour des Reels : un seul par jour, à 20 h (heure de Paris, le pic d'audience du soir), à partir de demain
+async function nextReelSlots(n, ignoreIds = []) {
+  const from = Date.now(), to = from + 30 * 86400000;
+  const { data: taken } = await sb.from('social_posts').select('id, scheduled_at').not('status', 'in', '(rejected,published)').neq('format', 'story')
+    .gte('scheduled_at', new Date(from).toISOString()).lte('scheduled_at', new Date(to).toISOString());
+  const times = (taken || []).filter(p => !ignoreIds.includes(p.id)).map(p => Date.parse(p.scheduled_at));
+  const out = [];
+  for (let day = 1; day <= 30 && out.length < n; day++) {
+    const { y, m, d } = parisParts(from + day * 86400000);
+    const at = parisISO(y, m, d, 20, 0), t = Date.parse(at);
+    if (times.some(x => Math.abs(x - t) < 12 * 3600000)) continue;   // jour déjà pris
+    out.push(at); times.push(t);
+  }
+  while (out.length < n) out.push(new Date(from + (31 + out.length) * 86400000).toISOString());
+  return out;
 }
 // Reel à partir d'un scénario écrit (dossier à la main ou duo de l'IA) : brouillon, voix, puis rendu sur GitHub Actions
 async function dossierReel(d, { voice, pair = 0, music, topic }) {
@@ -1052,6 +1068,12 @@ export default async function handler(req, res) {
         return dossierReel(d, { voice, pair: first + i, topic: s.key, music: await music });
       }));
       const posts = made.filter(r => r.status === 'fulfilled').map(r => r.value);
+      // Chaque Reel a son propre créneau (sinon ils se suivent à une minute d'écart, 24 h après leur création)
+      const when = await nextReelSlots(posts.length, posts.map(x => x.id));
+      for (let i = 0; i < posts.length; i++) {
+        const { error: se } = await sb.from('social_posts').update({ scheduled_at: when[i] }).eq('id', posts[i].id);
+        if (!se) posts[i].scheduled_at = when[i];
+      }
       const errors = made.filter(r => r.status === 'rejected').map(r => r.reason && r.reason.message || String(r.reason));
       if (!posts.length) return res.status(500).json({ error: errors[0] || 'Aucun Reel Duo créé' });
       return res.status(200).json({ posts, errors });

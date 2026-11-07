@@ -47,7 +47,12 @@ export default async function handler(req, res) {
 
     // ── 2. TARIF CÔTÉ SERVEUR (le client choisit la formule, jamais le prix) ──
     const plan = req.body?.plan === 'annual' ? 'annual' : 'monthly';
-    const priceId = plan === 'annual' ? process.env.STRIPE_PRICE_ID_ANNUAL : process.env.STRIPE_PRICE_ID;
+    // Tarifs en production (clé Stripe live) : fixés ici, ils ne dépendent plus des variables Vercel.
+    // Nov. 2026 : 11,99 €/mois et 94,99 €/an (avec versions USD et GBP dans le même tarif Stripe).
+    // En aperçu (clé de test), on garde les variables d'environnement.
+    const LIVE_PRICES = { monthly: 'price_1UY7GqV05PeKC3YIQRDvuLYe', annual: 'price_1UY7JFV05PeKC3YIbubqwziu' };
+    const isLive = String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live') || String(process.env.STRIPE_SECRET_KEY || '').startsWith('rk_live');
+    const priceId = isLive ? LIVE_PRICES[plan] : (plan === 'annual' ? (process.env.STRIPE_PRICE_ID_ANNUAL || process.env.STRIPE_PRICE_ID_ANNUA) : process.env.STRIPE_PRICE_ID);
     if (!priceId) {
       console.error(`[create-checkout] ${plan === 'annual' ? 'STRIPE_PRICE_ID_ANNUAL' : 'STRIPE_PRICE_ID'} manquant dans les variables Vercel`);
       return res.status(500).json({ error: 'Configuration serveur incomplète.' });

@@ -82,8 +82,12 @@
     'à l’inscription, puis 3 par jour. Premium : illimité.': 'when you sign up, then 3 per day. Premium: unlimited.',
     'ou': 'or',
     'Gratuit pour commencer ·': 'Free to start ·',
-    'Premium 9,99 €/mois': 'Premium {{monthly}}/month',
-    'ou 79,99 €/an, sans engagement': 'or {{annual}}/year, no commitment',
+    'Premium 11,99 €/mois': 'Premium {{monthly}}/month',
+    'Continuer avec Apple': 'Continue with Apple',
+    'Connexion Apple indisponible pour l’instant.': 'Sign in with Apple is unavailable right now.',
+    'La connexion n’a pas abouti. Réessaie.': 'Sign-in didn’t work. Please try again.',
+    'L’abonnement Premium arrive bientôt dans l’appli.': 'Premium subscriptions are coming soon to the app.',
+    'ou 94,99 €/an, sans engagement': 'or {{annual}}/year, no commitment',
     'Kapitaro est un outil éducatif, pas un conseiller financier agréé.': {
       _: 'Kapitaro is an educational tool, not a licensed financial adviser.',
       US: 'Kapitaro is an educational tool, not a registered investment adviser or broker-dealer.' },
@@ -154,8 +158,8 @@
     '15 analyses IA offertes, puis 3 par jour': '15 free AI analyses, then 3 per day',
     'Commencer gratuitement': 'Start for free',
     'Premium': 'Premium',
-    '9,99 €': '{{monthly}}',
-    'par mois, ou 79,99 € par an': 'per month, or {{annual}} per year',
+    '11,99 €': '{{monthly}}',
+    'par mois, ou 94,99 € par an': 'per month, or {{annual}} per year',
     'Tout le gratuit': 'Everything in Free',
     ', plus :': ', plus:',
     'Analyses IA illimitées': 'Unlimited AI analyses',
@@ -1270,7 +1274,7 @@
     return String(s).replace(/\{\{(\w+)\}\}/g, function (m, k) {
       var p = window.kpI18n;
       if (p && (k === 'monthly' || k === 'annual')) return p.price(k);
-      if (p && k === 'half') { var c = p.currency(), h = c === 'USD' ? '$5.00' : '€5.00'; return window.kpCur ? kpCur.tag(h) : h; }
+      if (p && k === 'half') { var c = p.currency(), h = c === 'USD' ? '$5.99' : '€5.99'; return window.kpCur ? kpCur.tag(h) : h; }
       return m;
     });
   }

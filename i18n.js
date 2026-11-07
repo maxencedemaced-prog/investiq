@@ -23,8 +23,8 @@
   // (sinon on afficherait $ alors que le paiement serait en euros). Aperçu possible avec ?currency=usd sur un hôte de test.
   var PRICING = {
     usdReady: false,
-    EUR: { fr: { monthly: '9,99 €', annual: '79,99 €' }, en: { monthly: '€9.99', annual: '€79.99' } },
-    USD: { en: { monthly: '$9.99', annual: '$79.99' } },   // [À CONFIRMER] par le propriétaire
+    EUR: { fr: { monthly: '11,99 €', annual: '94,99 €' }, en: { monthly: '€11.99', annual: '€94.99' } },
+    USD: { en: { monthly: '$11.99', annual: '$94.99' } },   // [À CONFIRMER] par le propriétaire
   };
 
   var PROD = !!CONFIG.hosts[location.hostname];
@@ -201,6 +201,6 @@
     document.documentElement.setAttribute('lang', 'en');
     document.documentElement.setAttribute('data-region', region);   // CSS : [data-region="US"] .fr-only { display:none }
     // Chargement synchrone du dictionnaire : il doit exister avant que le corps de la page soit lu
-    document.write('<script src="/i18n-en.js?v=20261104160000"><\/script>');
+    document.write('<script src="/i18n-en.js?v=20261107200000"><\/script>');
   }
 })();

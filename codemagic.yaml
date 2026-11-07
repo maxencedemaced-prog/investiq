@@ -1,0 +1,48 @@
+# Compilation de l'appli iOS sur les Mac de Codemagic (aucun Mac nécessaire chez nous).
+# À compléter une fois le compte Apple actif : nom de l'intégration App Store Connect.
+workflows:
+  ios-testflight:
+    name: Kapitaro iOS vers TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    working_directory: ios-app
+    integrations:
+      app_store_connect: Kapitaro
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: fr.kapitaro.app
+      xcode: latest
+      node: 20
+    triggering:
+      events: []
+    scripts:
+      - name: Installer Capacitor
+        script: npm install
+      - name: Créer le projet iOS
+        script: |
+          npx cap add ios
+          npx cap sync ios
+      - name: Lien de retour de connexion (fr.kapitaro.app://)
+        script: |
+          PLIST=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string fr.kapitaro.app" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string fr.kapitaro.app" "$PLIST"
+      - name: Numéro de version
+        script: |
+          cd ios/App
+          agvtool new-version -all "$BUILD_NUMBER"
+      - name: Signature
+        script: xcode-project use-profiles --project ios/App/App.xcodeproj
+      - name: Compiler
+        script: |
+          xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
