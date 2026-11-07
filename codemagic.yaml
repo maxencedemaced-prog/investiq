@@ -37,6 +37,7 @@ workflows:
           sips -s format jpeg -z 1024 1024 ../icons/icon-512.png --out /tmp/icon.jpg
           sips -s format png /tmp/icon.jpg --out "$ICON"
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 14.0/IPHONEOS_DEPLOYMENT_TARGET = 15.0/g' ios/App/App.xcodeproj/project.pbxproj
       - name: Numéro de version
         script: |
           cd ios/App
@@ -51,4 +52,3 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
