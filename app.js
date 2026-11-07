@@ -13740,10 +13740,11 @@ const PREMIUM_ANNUAL_SAVINGS_PCT = 34; // (11,99×12 − 94,99) ⁄ (11,99×12) 
 const KP_ANDROID_APP = (() => {
   try {
     if (document.referrer.startsWith('android-app://fr.kapitaro.app') || /[?&]android_app=1/.test(location.search)) sessionStorage.setItem('kp_android_app', '1');
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return true;   // appli iOS (Capacitor)
     return sessionStorage.getItem('kp_android_app') === '1';
   } catch (e) { return false; }
 })();
-const KP_ANDROID_APP_MSG = 'L’abonnement Premium arrive bientôt dans l’appli Android.';
+const KP_ANDROID_APP_MSG = 'L’abonnement Premium arrive bientôt dans l’appli.';
 
 // Lance le paiement Stripe
 async function startCheckout(btn, plan) {
