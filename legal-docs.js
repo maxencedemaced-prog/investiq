@@ -4,7 +4,7 @@
 
 // Date de dernière révision des documents contractuels.
 // À METTRE À JOUR à chaque modification substantielle des textes.
-const LEGAL_LAST_UPDATE = '2026-09-29';
+const LEGAL_LAST_UPDATE = '2026-11-07';
 
 function legalDateFR() {
   try {
@@ -23,6 +23,7 @@ const LEGAL_DOCS = {
 <h3>Article 1 — Éditeur du service</h3>
 <p>Le service Kapitaro est édité par Maxence De Macedo, entrepreneur individuel (EI) exerçant sous le nom commercial Quorvia, immatriculé sous le numéro SIREN 902 642 016, dont le siège est situé 21 Le Routoir, 38240 Meylan, France.</p>
 <p>Directeur de la publication : Maxence De Macedo<br>Contact : contact@kapitaro.fr</p>
+<p>Médiateur de la consommation : CM2C, 49 rue de Ponthieu, 75008 Paris, <a href="https://www.cm2c.net/declarer-un-litige.php" target="_blank" rel="noopener">www.cm2c.net</a>.</p>
 
 <h3>Article 2 — Hébergement</h3>
 <p>Le site est hébergé par Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis.</p>
@@ -82,7 +83,9 @@ const LEGAL_DOCS = {
 <p>L'utilisateur peut supprimer son compte à tout moment depuis ses paramètres. L'éditeur se réserve le droit de suspendre un compte en cas de manquement aux présentes conditions.</p>
 
 <h3>Article 8 — Droit applicable et litiges</h3>
-<p>Les présentes sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité. À défaut, les tribunaux français seront compétents. L'utilisateur peut recourir gratuitement à un médiateur de la consommation.</p>
+<p>Les présentes sont soumises au droit français. En cas de litige, l'utilisateur adresse d'abord une réclamation écrite à contact@kapitaro.fr.</p>
+<p><strong>Médiation de la consommation :</strong> conformément aux articles L. 612-1 et suivants du Code de la consommation, si cette démarche n'aboutit pas, l'utilisateur consommateur peut recourir gratuitement au médiateur suivant : CM2C (Centre de la Médiation de la Consommation de Conciliateurs de Justice), 49 rue de Ponthieu, 75008 Paris, <a href="https://www.cm2c.net/declarer-un-litige.php" target="_blank" rel="noopener">www.cm2c.net</a>.</p>
+<p>À défaut de solution amiable, les tribunaux français seront compétents.</p>
 `
   },
 

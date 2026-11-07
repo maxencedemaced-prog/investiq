@@ -14097,7 +14097,6 @@ function showPremiumWelcome() {
 
 // ═══════════════════════════════════════════════════════════
 //  ⚖️ CONTENUS LÉGAUX — À FAIRE VALIDER PAR UN AVOCAT
-//  Reste à compléter : le nom du médiateur de la consommation (CGU/CGV, article 8).
 // ═══════════════════════════════════════════════════════════
 
 // Textes légaux (LEGAL_DOCS, LEGAL_LAST_UPDATE, legalDateFR) : voir legal-docs.js, chargé avant ce fichier.
