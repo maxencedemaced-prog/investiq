@@ -9208,18 +9208,19 @@ async function kpOpenTuto(id, opts) {
     + '<div style="position:relative;container-type:inline-size;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:' + (wide ? '1280/800' : '390/844') + ';box-shadow:0 20px 60px rgba(0,0,0,0.5)">'
     + '<video playsinline controls preload="auto" poster="' + _escHtml(v.poster || '') + '" src="' + _escHtml(v.url) + '" style="width:100%;height:100%;display:block;object-fit:contain"></video>'
     + (Array.isArray(v.captions) && v.captions.length ? '<div id="kp-tuto-cap" style="position:absolute;left:4%;right:4%;bottom:' + (wide ? '11%' : '12%') + ';display:flex;justify-content:center;pointer-events:none"></div><button type="button" id="kp-tuto-cc" style="position:absolute;right:10px;top:10px;padding:6px 11px;border-radius:999px;border:1px solid rgba(255,255,255,0.35);background:rgba(9,9,11,0.7);color:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer"></button>' : '')
-    + (opts.auto ? '<button type="button" id="kp-tuto-sound" style="position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 14px;border-radius:999px;border:none;background:#16a34a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.35)">🔊 Activer le son</button>' : '')
+    + ('<button type="button" id="kp-tuto-sound" style="display:none;position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 14px;border-radius:999px;border:none;background:#16a34a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.35)">🔊 Activer le son</button>')
     + '</div></div>';
   document.body.appendChild(o);
   const vd = o.querySelector('video');
-  vd.muted = !!opts.auto;
+  vd.muted = false;   // le son est actif d'office ; le navigateur peut le refuser sans geste préalable (voir plus bas)
   vd.addEventListener('ended', finish);
   o.querySelector('#kp-tuto-skip').onclick = finish;
   const sb2 = o.querySelector('#kp-tuto-sound');
   if (sb2) sb2.onclick = () => { vd.muted = false; try { vd.currentTime = 0; } catch (e) {} vd.play().catch(() => {}); sb2.remove(); };
   vd.addEventListener('volumechange', () => { if (!vd.muted && sb2 && sb2.isConnected) sb2.remove(); });
   kpTutoCaptions(o, vd, v.captions, wide);
-  vd.play().catch(() => { vd.muted = true; vd.play().catch(() => {}); });
+  // Son refusé par le navigateur : la vidéo démarre muette et le bouton « Activer le son » apparaît
+  vd.play().catch(() => { vd.muted = true; if (sb2) sb2.style.display = 'block'; vd.play().catch(() => {}); });
   try { trackEvent('tuto_open', { id, auto: !!opts.auto }); } catch (e) {}
 }
 // Sous-titres des vidéos : affichés par-dessus la vidéo (pas incrustés), bouton pour les masquer, choix mémorisé
