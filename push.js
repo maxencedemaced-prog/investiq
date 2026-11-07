@@ -11,8 +11,43 @@ if ('serviceWorker' in navigator) {
 }
 
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+// Appli iOS : pas de Web Push dans l'appli, on passe par les notifications natives d'Apple (fr.kapitaro.app)
+const pushNative = () => { try { const c = window.Capacitor; return !!(c && c.isNativePlatform && c.isNativePlatform() && c.isPluginAvailable && c.isPluginAvailable('PushNotifications')); } catch { return false; } };
+const pushNativePlugin = () => window.Capacitor.Plugins.PushNotifications || window.Capacitor.registerPlugin('PushNotifications');
+const PUSH_NATIVE_KEY = 'kp_apns_token';
+const pushNativeToken = () => { try { return localStorage.getItem(PUSH_NATIVE_KEY) || ''; } catch { return ''; } };
+// Demande à Apple le jeton de cet appareil
+async function pushNativeRegister() {
+  const P = pushNativePlugin();
+  const handles = [];
+  try {
+    return await new Promise(async (resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Apple ne répond pas, réessaie')), 20000);
+      handles.push(await P.addListener('registration', r => { clearTimeout(timer); resolve(r.value); }));
+      handles.push(await P.addListener('registrationError', e => { clearTimeout(timer); reject(new Error(e?.error || 'Enregistrement Apple impossible')); }));
+      await P.register();
+    });
+  } finally {
+    handles.forEach(h => { try { h.remove(); } catch {} });
+  }
+}
+async function pushNativeSave(token) {
+  const h = await pushHeaders(); if (!h) throw new Error('Session expirée, reconnecte-toi');
+  const r = await fetch('/api/push-subscribe', { method: 'POST', headers: h, body: JSON.stringify({ apns: token, moves: pushMovesOn() }) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Enregistrement impossible');
+  try { localStorage.setItem(PUSH_NATIVE_KEY, token); } catch {}
+}
+// Appui sur une notification : ouvre la page visée
+if (pushNative()) {
+  try {
+    pushNativePlugin().addListener('pushNotificationActionPerformed', a => {
+      const u = a?.notification?.data?.url;
+      if (typeof u === 'string' && u.startsWith('/') && !u.startsWith('//') && u !== '/') location.href = u;
+    });
+  } catch (e) { console.warn('[push] appui sur une notification :', e); }
+}
 // iPhone/iPad : les notifications n'existent que si l'app est ajoutée à l'écran d'accueil
-const pushNeedsInstall = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
+const pushNeedsInstall = () => !pushNative() && /iphone|ipad|ipod/i.test(navigator.userAgent)
   && !(window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
 
 function pushB64ToBytes(b64) {
@@ -32,11 +67,22 @@ async function pushRegSW() {
   try { await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }); return await navigator.serviceWorker.ready; } catch (e) { console.warn('[push] service worker :', e.message); return null; }
 }
 async function pushCurrentSub() {
+  if (pushNative()) {
+    const t = pushNativeToken();
+    return t ? { endpoint: 'apns:' + t, unsubscribe: async () => { try { localStorage.removeItem(PUSH_NATIVE_KEY); } catch {} } } : null;
+  }
   if (!pushSupported()) return null;
   try { const reg = await navigator.serviceWorker.getRegistration(); return reg ? await reg.pushManager.getSubscription() : null; } catch { return null; }
 }
 // Renvoie l'un de : 'unsupported' | 'install' | 'denied' | 'on' | 'off'
 async function pushState() {
+  if (pushNative()) {
+    try {
+      const p = await pushNativePlugin().checkPermissions();
+      if (p.receive === 'denied') return 'denied';
+      return p.receive === 'granted' && pushNativeToken() ? 'on' : 'off';
+    } catch { return 'off'; }
+  }
   if (!pushSupported()) return pushNeedsInstall() ? 'install' : 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
   return (Notification.permission === 'granted' && await pushCurrentSub()) ? 'on' : 'off';
@@ -47,6 +93,17 @@ async function pushEnable() {
   if (pushNeedsInstall()) { renderPushCard(); return; }
   const btn = document.getElementById('push-btn'); if (btn) { btn.disabled = true; btn.textContent = 'Activation…'; }
   try {
+    if (pushNative()) {
+      const P = pushNativePlugin();
+      const p = await P.requestPermissions();
+      if (p.receive !== 'granted') { renderPushCard(); return; }
+      await pushNativeSave(await pushNativeRegister());
+      showToast('🔔 Notifications activées');
+      try { trackEvent('push_enabled'); } catch(e) {}
+      pushTest(true);
+      renderPushCard(); renderNotifications();
+      return;
+    }
     const perm = await Notification.requestPermission();   // doit partir d'un clic
     if (perm !== 'granted') { renderPushCard(); return; }
     const reg = await pushRegSW(); if (!reg) throw new Error('Service worker indisponible');
@@ -95,7 +152,16 @@ async function pushTest(silent) {
 
 // À la connexion : enregistre le service worker et resynchronise l'abonnement (le navigateur peut le renouveler).
 async function pushInit() {
-  if (isDemo || !currentUser || !pushSupported()) return;
+  if (isDemo || !currentUser) return;
+  if (pushNative()) {
+    // Apple peut changer le jeton de l'appareil : on le resynchronise à chaque ouverture
+    try {
+      if (!pushNativeToken() || (await pushNativePlugin().checkPermissions()).receive !== 'granted') return;
+      await pushNativeSave(await pushNativeRegister());
+    } catch (e) { console.warn('[push] jeton Apple :', e.message); }
+    return;
+  }
+  if (!pushSupported()) return;
   const reg = await pushRegSW(); if (!reg) return;
   if (Notification.permission !== 'granted') return;
   try {
@@ -142,7 +208,7 @@ async function renderPushCard() {
   const sub = {
     unsupported: 'Ce navigateur ne gère pas les notifications. Essaie Chrome, Edge, Firefox ou Safari récent.',
     install: 'Sur iPhone, ajoute d\'abord Kapitaro à l\'écran d\'accueil (Partager, puis « Sur l\'écran d\'accueil »), ouvre l\'app depuis cette icône et reviens ici.',
-    denied: 'Bloquées pour ce site. Autorise-les dans les réglages du navigateur (cadenas à côté de l\'adresse), puis recharge la page.',
+    denied: pushNative() ? 'Bloquées pour cette appli. Autorise-les dans Réglages, Notifications, Kapitaro, puis reviens ici.' : 'Bloquées pour ce site. Autorise-les dans les réglages du navigateur (cadenas à côté de l\'adresse), puis recharge la page.',
     on: 'Activées',
     off: 'Désactivées',
   }[st];
@@ -176,7 +242,7 @@ async function pushBellPromptHTML() {
 // iPhone / iPad : Apple ne permet pas d'installer par un bouton, on explique le geste Partager → « Sur l'écran d'accueil ».
 const INSTALL_DISMISS_KEY = 'iq_install_dismissed';            // bloc de la page de connexion
 const INSTALL_HOME_DISMISS_KEY = 'iq_install_home_dismissed';  // bandeau de l'Accueil (utilisateur connecté)
-const appIsInstalled = () => window._appJustInstalled === true || window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+const appIsInstalled = () => window._appJustInstalled === true || window.navigator.standalone === true || document.documentElement.classList.contains('kp-app') || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
 const isMobileDevice = () => /android|mobile/i.test(navigator.userAgent);
 const isIOSDevice = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const installDismissedRecently = key => { try { return Date.now() - Number(localStorage.getItem(key) || 0) < 14 * 86400000; } catch { return false; } };
