@@ -6609,26 +6609,42 @@ async function kpNativeOAuth(provider, label) {
   setAuthMsg('Ouverture de ' + label + '…', true);
   const { data, error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: KP_NATIVE_REDIRECT, skipBrowserRedirect: true } });
   if (error || !data?.url) { setAuthMsg('Connexion ' + label + ' indisponible pour l’instant.'); return; }
-  await window.Capacitor.Plugins.Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
+  // Méthode système d'Apple (build 3 et suivants) ; les builds plus anciens gardent le navigateur intégré
+  const cap = window.Capacitor;
+  const kpAuth = cap.isPluginAvailable && cap.isPluginAvailable('KpAuth') ? (cap.Plugins.KpAuth || cap.registerPlugin('KpAuth')) : null;
+  if (kpAuth) {
+    try {
+      const { url } = await kpAuth.start({ url: data.url, scheme: 'fr.kapitaro.app' });
+      setAuthMsg('Connexion…', true);
+      await kpNativeFinish(url);
+    } catch (e) {
+      setAuthMsg(e?.code === 'CANCELED' ? '' : 'La connexion n’a pas abouti. Réessaie.');
+    }
+    return;
+  }
+  await cap.Plugins.Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
+}
+// Retour de la connexion : on récupère la session (jetons dans le lien, ou code à échanger)
+async function kpNativeFinish(url) {
+  const u = new URL(url.replace(KP_NATIVE_REDIRECT, 'https://kapitaro.fr/auth-callback'));
+  const hash = new URLSearchParams(u.hash.replace(/^#/, ''));
+  const access_token = hash.get('access_token'), refresh_token = hash.get('refresh_token'), code = u.searchParams.get('code');
+  const { error } = access_token && refresh_token ? await sb.auth.setSession({ access_token, refresh_token })
+    : code ? await sb.auth.exchangeCodeForSession(code) : { error: new Error('lien de connexion incomplet') };
+  if (error) setAuthMsg('La connexion n’a pas abouti. Réessaie.');
 }
 async function loginWithApple() {
   if (kpIsNative()) return kpNativeOAuth('apple', 'Apple');
   const { error } = await sb.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin + window.location.pathname } });
   if (error) setAuthMsg('Connexion Apple indisponible pour l’instant.');
 }
-// Retour de la connexion : on récupère la session (jetons dans le lien, ou code à échanger)
 if (kpIsNative()) {
   try {
     document.documentElement.classList.add('kp-native');
     window.Capacitor.Plugins.App.addListener('appUrlOpen', async ({ url }) => {
       if (!String(url).startsWith(KP_NATIVE_REDIRECT)) return;
       try { await window.Capacitor.Plugins.Browser.close(); } catch (e) {}
-      const u = new URL(url.replace(KP_NATIVE_REDIRECT, 'https://kapitaro.fr/auth-callback'));
-      const hash = new URLSearchParams(u.hash.replace(/^#/, ''));
-      const access_token = hash.get('access_token'), refresh_token = hash.get('refresh_token'), code = u.searchParams.get('code');
-      const { error } = access_token && refresh_token ? await sb.auth.setSession({ access_token, refresh_token })
-        : code ? await sb.auth.exchangeCodeForSession(code) : { error: new Error('lien de connexion incomplet') };
-      if (error) setAuthMsg('La connexion n’a pas abouti. Réessaie.');
+      await kpNativeFinish(url);
     });
   } catch (e) { console.warn('[natif] retour de connexion :', e); }
 }
