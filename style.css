@@ -2246,3 +2246,4 @@ button.set-row:hover,a.set-row:hover{background:var(--color-bg-subtle)}
 .kp-app .kh-app-brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px}
 .kp-app .kh-app-brand img{border-radius:16px;display:block}
 .kp-app .kh-app-brand span{font-size:24px;font-weight:800;letter-spacing:-.5px;color:#0b1220}
+.kp-app:has(#app[style*="none"]) #kp-help-btn{display:none!important}
