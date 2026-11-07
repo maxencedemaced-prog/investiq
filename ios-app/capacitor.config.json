@@ -1,0 +1,16 @@
+{
+  "appId": "fr.kapitaro.app",
+  "appName": "Kapitaro",
+  "webDir": "www",
+  "server": {
+    "url": "https://kapitaro.fr",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#080e1e"
+  },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#080e1e", "showSpinner": false }
+  }
+}
