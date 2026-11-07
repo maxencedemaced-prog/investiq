@@ -41,6 +41,7 @@ self.addEventListener('push', e => {
     icon:    data.icon  || '/icons/icon-192.png',
     badge:   '/icons/icon-192.png',
     tag:     data.tag   || 'investiq-notif',
+    renotify: true,   // même étiquette qu'une notif encore affichée : on fait quand même sonner et vibrer
     data:    { url: data.url || '/' },
     actions: data.actions || [],
     vibrate: [200, 100, 200],

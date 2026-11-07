@@ -275,7 +275,7 @@ async function handler(req, res) {
         if (inLoss) body += `\n${inLoss} position${inLoss > 1 ? 's' : ''} à plus de 10 % sous ton prix d'achat`;
 
         if (todayEco.length) body += `\n📅 Aujourd'hui : ${todayEco.slice(0, 2).map(e => `${e.titre} à ${parisH(e.utc)}`).join(' · ')}`;
-        if (await notifyUser(u, { title: '☀️ Ton briefing Kapitaro', body, tag: 'investiq-daily' })) sent++;
+        if (await notifyUser(u, { title: '☀️ Ton briefing Kapitaro', body, tag: 'investiq-daily' }, null, 'high')) sent++;
       }
       return res.status(200).json({ mode, users: targets.length, sent, skipped });
     }
