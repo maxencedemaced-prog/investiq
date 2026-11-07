@@ -46,3 +46,14 @@ class KpBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(KpAuthPlugin())
     }
 }
+
+// Notifications : transmet le jeton d'Apple au module Capacitor
+extension AppDelegate {
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+    }
+}

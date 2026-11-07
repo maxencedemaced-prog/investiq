@@ -39,6 +39,11 @@ workflows:
           mv "$DELEGATE.new" "$DELEGATE"
           sed -i '' 's/customClass="CAPBridgeViewController" customModule="Capacitor"/customClass="KpBridgeViewController" customModule="App" customModuleProvider="target"/' "$BOARD"
           grep -q 'customClass="KpBridgeViewController"' "$BOARD"
+      - name: Notifications Apple (droit aps-environment)
+        script: |
+          /usr/libexec/PlistBuddy -c "Add :aps-environment string production" ios/App/App/App.entitlements
+          sed -i '' 's|INFOPLIST_FILE = App/Info.plist;|CODE_SIGN_ENTITLEMENTS = App/App.entitlements; INFOPLIST_FILE = App/Info.plist;|g' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'CODE_SIGN_ENTITLEMENTS = App/App.entitlements' ios/App/App.xcodeproj/project.pbxproj
       - name: Icône Kapitaro et déclaration de chiffrement
         script: |
           ICON=ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
