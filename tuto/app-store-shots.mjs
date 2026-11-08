@@ -1,6 +1,6 @@
 // tuto/app-store-shots.mjs — captures d'écran de la fiche App Store : l'appli en ligne, mode démo, données fictives.
 // Formats : iPhone 6,7 pouces (1290 × 2796) et iPad 12,9 pouces (2048 × 2732). Aucune écriture : mode démo uniquement.
-// Accueil : nouvelle présentation incluse à partir du 08/11.
+// Accueil : nouvelle présentation incluse depuis le 08/11.
 // Les fichiers de cette branche remplacent ceux du site (les /api restent ceux du site) : on voit la version en préparation.
 import { chromium } from 'playwright';
 import fs from 'fs';
