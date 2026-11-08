@@ -4,7 +4,7 @@
 
 // Date de dernière révision des documents contractuels.
 // À METTRE À JOUR à chaque modification substantielle des textes.
-const LEGAL_LAST_UPDATE = '2026-11-07';
+const LEGAL_LAST_UPDATE = '2026-11-08';
 
 function legalDateFR() {
   try {
@@ -65,12 +65,13 @@ const LEGAL_DOCS = {
 <p>L'accès nécessite la création d'un compte avec une adresse email valide. L'utilisateur doit être majeur et juridiquement capable. Il est responsable de la confidentialité de ses identifiants.</p>
 
 <h3>Article 4 — Offre Premium et abonnement</h3>
-<p>L'offre Premium est proposée selon deux formules au choix : 11,99 € TTC par mois, ou 94,99 € TTC par an, sans engagement de durée. Le paiement s'effectue par carte bancaire via notre prestataire Stripe. L'utilisateur peut changer de formule à tout moment depuis les paramètres du compte.</p>
+<p>L'offre Premium est proposée selon deux formules au choix : 11,99 € TTC par mois, ou 94,99 € TTC par an, sans engagement de durée. Sur le site, le paiement s'effectue par carte bancaire via notre prestataire Stripe, et l'utilisateur peut changer de formule à tout moment depuis les paramètres du compte.</p>
+<p><strong>Abonnement dans l'application iOS :</strong> lorsque l'abonnement est souscrit depuis l'application iOS, le paiement, le renouvellement, la résiliation et les demandes de remboursement sont gérés par Apple depuis le compte Apple de l'utilisateur, selon les conditions de l'App Store. La résiliation doit intervenir au moins 24 heures avant la fin de la période en cours pour éviter le renouvellement. Kapitaro reste le fournisseur du service.</p>
 <p><strong>Analyses IA illimitées :</strong> l'offre Premium donne un accès illimité à l'assistant IA pour un usage personnel normal. Afin de protéger le service contre les abus et les usages automatisés, une utilisation anormale (au-delà de 300 analyses IA sur une même journée) suspend l'accès à l'IA jusqu'au lendemain, sans autre conséquence sur l'abonnement.</p>
-<p><strong>Reconduction :</strong> l'abonnement est reconduit tacitement à l'identique (mensuellement ou annuellement selon la formule choisie) jusqu'à résiliation. Celle-ci peut intervenir à tout moment depuis les paramètres du compte et prend effet à la fin de la période en cours.</p>
+<p><strong>Reconduction :</strong> l'abonnement est reconduit tacitement à l'identique (mensuellement ou annuellement selon la formule choisie) jusqu'à résiliation. Celle-ci peut intervenir à tout moment depuis les paramètres du compte ou, pour un abonnement souscrit dans l'application iOS, depuis le compte Apple, et prend effet à la fin de la période en cours.</p>
 <p><strong>Droit de rétractation :</strong> conformément aux articles L. 221-18 et suivants du Code de la consommation, l'utilisateur dispose d'un délai de quatorze (14) jours pour se rétracter. En demandant l'accès immédiat au service, il accepte de commencer à en bénéficier avant la fin de ce délai ; il reste redevable du montant correspondant à la période consommée.</p>
 
-<p><strong>Parrainage :</strong> chaque utilisateur dispose d'un lien de parrainage personnel. La personne qui crée son compte avec ce lien (filleul) bénéficie de 50 % de réduction sur la première mensualité de l'abonnement Premium mensuel, si elle n'a jamais été abonnée. Lorsque le filleul a réglé cette première mensualité, le parrain reçoit un mois offert : un avoir de 11,99 € sur sa prochaine facture s'il est abonné, ou 30 jours d'accès Premium sinon. Le parrainage de soi-même est interdit ; les récompenses sont limitées à douze par an et par parrain, n'ont pas de valeur monétaire et ne sont ni remboursables ni cessibles. Kapitaro peut annuler une récompense obtenue de manière abusive.</p>
+<p><strong>Parrainage :</strong> chaque utilisateur dispose d'un lien de parrainage personnel. La personne qui crée son compte avec ce lien (filleul) bénéficie de 50 % de réduction sur la première mensualité de l'abonnement Premium mensuel, si elle n'a jamais été abonnée. Lorsque le filleul a réglé cette première mensualité, le parrain reçoit un mois offert : un avoir de 11,99 € sur sa prochaine facture s'il est abonné, ou 30 jours d'accès Premium sinon. Le parrainage de soi-même est interdit ; les récompenses sont limitées à douze par an et par parrain, n'ont pas de valeur monétaire et ne sont ni remboursables ni cessibles. Kapitaro peut annuler une récompense obtenue de manière abusive. La réduction de parrainage ne s'applique pas aux achats effectués dans l'application iOS.</p>
 
 <h3>Article 5 — Données de marché</h3>
 <p>Les cours affichés proviennent de fournisseurs tiers, peuvent être différés et sont communiqués à titre indicatif. L'éditeur ne garantit ni leur exactitude, ni leur exhaustivité, ni leur disponibilité continue.</p>
@@ -100,11 +101,12 @@ const LEGAL_DOCS = {
 
 <h3>Article 2 — Données collectées</h3>
 <ul>
-<li><strong>Compte :</strong> adresse email, mot de passe chiffré.</li>
+<li><strong>Compte :</strong> adresse email, mot de passe chiffré ; nom transmis par Google ou Apple en cas de connexion avec ces services.</li>
 <li><strong>Profil d'investisseur :</strong> capital disponible, horizon, tolérance au risque, objectifs.</li>
 <li><strong>Portefeuille :</strong> actifs détenus, quantités, prix d'achat, plateformes.</li>
 <li><strong>Usage :</strong> conversations avec l'assistant IA, recommandations générées et leur suivi, statistiques d'utilisation du service (pages consultées, fonctionnalités utilisées, temps passé dans l'application).</li>
-<li><strong>Paiement :</strong> traité exclusivement par Stripe — aucune donnée bancaire n'est stockée par Kapitaro.</li>
+<li><strong>Paiement :</strong> traité par Stripe sur le site et par Apple dans l'application iOS — aucune donnée bancaire n'est stockée par Kapitaro. Pour les achats dans l'application, Kapitaro reçoit l'état de l'abonnement via RevenueCat.</li>
+<li><strong>Notifications de l'application iOS :</strong> identifiant technique de l'appareil fourni par Apple, si les notifications sont activées.</li>
 </ul>
 
 <h3>Article 3 — Finalités et bases légales</h3>
@@ -116,7 +118,7 @@ const LEGAL_DOCS = {
 </ul>
 
 <h3>Article 4 — Destinataires et sous-traitants</h3>
-<p>Supabase (hébergement des données, Union européenne) · Vercel (hébergement applicatif) · Anthropic (traitement des requêtes IA) · Stripe (paiements) · Finnhub (données de marché) · Resend (envoi des e-mails).</p>
+<p>Supabase (hébergement des données, Union européenne) · Vercel (hébergement applicatif) · Anthropic (traitement des requêtes IA) · Stripe (paiements sur le site) · Apple (paiements et notifications dans l'application iOS, connexion Apple) · Google (connexion Google) · RevenueCat (suivi des abonnements de l'application iOS) · Finnhub (données de marché) · Resend (envoi des e-mails).</p>
 <p><strong>E-mails :</strong> nous t'envoyons un e-mail de bienvenue et, de temps en temps, un rappel utile (par exemple si ton portefeuille est resté vide ou si tu ne t'es pas connecté depuis un moment). Aucune publicité, aucune transmission de ton adresse à des tiers. Tu peux refuser ces e-mails à tout moment via le lien présent dans chacun d'eux ou dans Paramètres → Notifications.</p>
 <p>Certains transferts hors Union européenne sont encadrés par les clauses contractuelles types de la Commission européenne.</p>
 
@@ -130,6 +132,7 @@ const LEGAL_DOCS = {
 <h3>Article 7 — Cookies et traceurs</h3>
 <p>Le stockage local strictement nécessaire au fonctionnement (session, préférences d'affichage, cache) ne requiert pas de consentement préalable.</p>
 <p><strong>Cookies publicitaires, uniquement avec ton accord.</strong> Lorsque Kapitaro diffuse des publicités, des traceurs de <strong>Meta</strong> (pixel Meta) et de <strong>Google</strong> (balise Google Ads) peuvent être utilisés pour mesurer l'efficacité de ces campagnes (par exemple : savoir qu'une inscription provient d'une publicité). Ils ne sont déposés qu'après un clic sur « Accepter » dans le bandeau prévu à cet effet ; refuser est aussi simple qu'accepter et n'a aucune conséquence sur l'utilisation de Kapitaro. Ton choix est conservé 6 mois et peut être modifié à tout moment via le lien « Cookies » en bas de la page d'accueil ou dans Paramètres → Informations légales. Meta et Google traitent ces données selon leurs propres politiques de confidentialité. Aucune donnée de ton portefeuille n'est jamais transmise à ces services.</p>
+<p><strong>Applications mobiles.</strong> Les traceurs publicitaires de Meta et de Google ne sont pas chargés dans les applications.</p>
 <p><strong>Provenance des inscriptions.</strong> Pour savoir quels canaux font connaître Kapitaro, la provenance de ta première visite (lien de campagne ou site d'origine) est conservée sur ton appareil et associée à ton compte lors de l'inscription. Cette information reste interne à Kapitaro et n'est partagée avec personne.</p>
 <p>La fréquentation du site est mesurée par Vercel Web Analytics, de manière anonyme et agrégée, <strong>sans cookie</strong> ni identification des visiteurs. Les statistiques d'utilisation des comptes connectés servent uniquement à améliorer le service et ne sont ni vendues ni partagées. En cas de bug, un rapport technique est enregistré (message d'erreur, page concernée, navigateur utilisé, et compte s'il est connecté) afin de corriger le problème ; il ne contient aucune donnée que tu as saisie et est effacé après 90 jours.</p>
 `
