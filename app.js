@@ -9393,6 +9393,40 @@ function activationCardHTML() {
   </div>`;
 }
 
+// Courbe de l'accueil : vrais cours du dernier mois, avec les quantités actuelles (aucune donnée simulée).
+// Si les cours manquent pour une trop grande part du portefeuille, on n'affiche pas de courbe.
+async function kpHomeCurve() {
+  const el = document.getElementById('home-curve');
+  if (!el || !positions.length) return;
+  const total = positions.reduce((a, p) => a + p.qty * p.price, 0);
+  if (!total) return;
+  const results = await Promise.all(positions.map(async p => {
+    try {
+      const d = await kpFetchChart(kpTickerOf(p.name) || p.name, '1m');
+      const pts = (d.points || []).filter(x => x && x.c > 0);
+      return pts.length > 1 ? { p, pts } : null;
+    } catch (e) { return null; }
+  }));
+  const series = results.filter(Boolean);
+  const covered = series.reduce((a, r) => a + r.p.qty * r.p.price, 0);
+  if (!series.length || covered / total < 0.7) return;
+  const ref = series.reduce((a, r) => r.pts.length > a.pts.length ? r : a).pts;
+  const values = ref.map(point => series.reduce((sum, r) => {
+    const last = r.pts[r.pts.length - 1].c;
+    let c = r.pts[0].c;
+    for (const x of r.pts) { if (x.t <= point.t) c = x.c; else break; }
+    return sum + r.p.qty * r.p.price * c / last;
+  }, 0));
+  const min = Math.min(...values), max = Math.max(...values), range = max - min || 1;
+  const W = 320, H = 64;
+  const line = values.map((v, i) => `${(i / (values.length - 1) * W).toFixed(1)},${(H - 4 - (v - min) / range * (H - 10)).toFixed(1)}`);
+  const up = values[values.length - 1] >= values[0];
+  const color = up ? '#4ade80' : '#f87171';
+  const target = document.getElementById('home-curve');
+  if (!target) return;
+  target.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="M0,${H} L${line.join(' L')} L${W},${H} Z" fill="${color}" opacity="0.13"/><path d="M${line.join(' L')}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg><div class="kph-curve-note">1 mois, à composition actuelle</div>`;
+}
+
 async function renderHome() {
   const h = new Date().getHours();
   const greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
@@ -9451,41 +9485,20 @@ async function renderHome() {
   const pnlColor = tpnl >= 0 ? '#4ade80' : '#f87171';
   const pnlBg = tpnl >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)';
   const chgColor = avgChange >= 0 ? '#4ade80' : '#f87171';
-  const mainSparkData = isEmpty ? Array(30).fill(50) : genSparkData(avgChange > 0 ? 1 : -1, 30);
   const scoreTxt = (isEmpty || !apos().length) ? '—' : score.toFixed(1).replace(".", ",");
   const scoreShownColor = (isEmpty || !apos().length) ? '#8e8e93' : scoreColor;
   const stripItems = (isEmpty || !scoreItems.length)
     ? ['Diversification','Concentration max','Part ETF','Performance'].map(label => ({label, score:0}))
     : scoreItems;
 
-  // ── HERO CARD ──
+  // ── CARTE PRINCIPALE ──
+  const perfSign = tpnl >= 0 ? '+' : '−';
   document.getElementById('home-metrics').innerHTML = `
-    <div onclick="nav('portfolio')" class="home-hover-card" style="cursor:pointer;background:linear-gradient(135deg,#0d0d12,#141420);border-radius:20px;padding:24px 28px;margin-bottom:4px;grid-column:1/-1;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.06)">
-      <div style="position:absolute;top:0;right:0;bottom:0;width:45%;opacity:0.8;pointer-events:none">
-        ${sparkline(mainSparkData, tpnl>=0?'#4ade80':'#f87171', 400, 160, true)}
-      </div>
-      <div class="hero-perf-badge" style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
-        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Performance totale</div>
-        <div style="font-size:20px;font-weight:800;color:${pnlColor};letter-spacing:-0.04em">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
-        <div style="font-size:12px;color:${pnlColor};opacity:0.7;margin-top:2px">${tpnl>=0?'↑':'↓'} ${Math.abs(tpct).toFixed(1).replace(".", ",")} %</div>
-      </div>
-      <div style="position:relative;z-index:2">
-        <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Valeur totale du portefeuille</div>
-        <div style="font-size:clamp(32px,5vw,48px);font-weight:900;color:#fff;letter-spacing:-0.05em;line-height:1;margin-bottom:16px" id="home-tv-counter">—</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
-          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${chgColor}">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1).replace(".", ",")} % aujourd'hui</div>
-          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.6)">${positions.length} positions</div>
-          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${scoreShownColor}">${scoreTxt}/10 santé</div>
-          ${targetVal > 0 ? `<div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#a5b4fc">${pctObj.toFixed(0)}% objectif</div>` : ''}
-        </div>
-        ${targetVal > 0 ? `
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:5px"><span>Progression objectif</span><span>${fmtK(tv)} / ${fmtK(targetVal)}</span></div>
-          <div style="background:rgba(255,255,255,0.08);border-radius:99px;height:5px;overflow:hidden">
-            <div id="home-prog-bar" style="height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;width:0%;transition:width 1.2s cubic-bezier(0.16,1,0.3,1)"></div>
-          </div>
-        </div>` : ''}
-      </div>
+    <div onclick="nav('portfolio')" class="kph-hero home-hover-card">
+      <div class="kph-hero-label">Mon épargne</div>
+      <div class="kph-hero-value" id="home-tv-counter">—</div>
+      <div class="kph-hero-perf" style="color:${pnlColor}">${isEmpty ? 'Ajoute tes placements pour commencer' : `${perfSign}${Math.abs(tpct).toFixed(1).replace('.', ',')} % depuis le début · ${perfSign}${Math.abs(tpnl).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}</div>
+      <div class="kph-curve" id="home-curve"></div>
     </div>`;
 
   // ── STRUCTURE EN 3 NIVEAUX ──
@@ -9494,70 +9507,72 @@ async function renderHome() {
   // 3) "Voir plus d'analyses" : détail replié pour qui veut creuser (répartition...).
   let html = '';
 
-  // Actions rapides — remontées juste après le hero : "que faire maintenant ?"
-  const actions = [
-    { icon:'＋', label:'Ajouter une position', sub:'Ajoutez une action, ETF...', page:'ajouter', color:'#6366f1' },
-    { icon:'🤔', label:'Aide à la décision', sub:'Analyse et recommandations', page:'decision', color:'#f59e0b' },
-    { icon:'🤖', label:'Agent IA', sub:'Discute avec ton assistant', page:'ai', color:'#16a34a' },
-  ];
+  // Santé et objectif, côte à côte
+  const scoreDeg = isEmpty ? 0 : Math.max(0, Math.min(10, score)) * 36;
   html += `
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
-    ${actions.map(a => `
-    <div onclick="nav('${a.page}')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:14px;padding:14px;transition:all 0.2s" class="home-hover-card">
-      <div style="font-size:22px;margin-bottom:8px">${a.icon}</div>
-      <div style="font-size:13px;font-weight:700;color:#09090b;margin-bottom:3px;letter-spacing:-0.02em">${a.label}</div>
-      <div style="font-size:11px;color:var(--color-text-tertiary)">${a.sub}</div>
-    </div>`).join('')}
+  <div class="kph-duo">
+    <div onclick="nav('sante')" class="kph-card home-hover-card">
+      <div class="kph-card-title">Santé du portefeuille</div>
+      <div class="kph-ring" style="background:conic-gradient(${scoreShownColor} ${scoreDeg}deg, var(--color-border-subtle) 0)"><div><b style="color:${scoreShownColor}">${scoreTxt}</b><span>/10</span></div></div>
+      <div class="kph-card-sub">${isEmpty ? 'Pas encore de données' : score >= 7 ? 'Solide' : score >= 5 ? 'Correct' : 'À améliorer'}</div>
+    </div>
+    <div onclick="nav('objectif')" class="kph-card home-hover-card">
+      <div class="kph-card-title">Mon objectif</div>
+      ${targetVal > 0 ? `
+      <div class="kph-goal">${pctObj.toFixed(0)} %</div>
+      <div class="kph-bar"><div id="home-prog-bar"></div></div>
+      <div class="kph-card-sub">${fmtK(tv)} sur ${fmtK(targetVal)}</div>` : `
+      <div class="kph-card-sub" style="margin-top:12px">Fixe ton objectif pour suivre ta progression</div>`}
+    </div>
   </div>`;
 
-  // Bande compacte : score + mini-barres techniques + 1 ligne d'insight IA.
-  // Fusionne les anciennes cartes "Santé" et "Insight IA" en un seul bloc resserré :
-  // montre qu'il y a une vraie analyse derrière (crédibilité) sans occuper tout l'écran.
-  const shortLabel = { 'Diversification':'Diversif.', 'Concentration max':'Concentr.', 'Part ETF':'ETF', 'Performance':'Perf.' };
+  // Le point à regarder aujourd'hui
   html += `
-  <div onclick="nav('sante')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:14px 16px;margin-bottom:10px;transition:all 0.2s" class="home-hover-card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div style="display:flex;align-items:baseline;gap:8px">
-        <div style="font-size:22px;font-weight:900;color:${scoreShownColor};letter-spacing:-0.04em;line-height:1">${scoreTxt}<span style="font-size:12px;color:var(--color-text-tertiary)">/10</span></div>
-        <div style="font-size:12px;font-weight:700;color:${scoreShownColor}">${isEmpty?'Pas encore de données':score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️'}</div>
-      </div>
-      <div style="font-size:11px;font-weight:600;color:var(--color-text-secondary)">Santé détaillée →</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
-      ${stripItems.map(it => `
-      <div>
-        <div style="font-size:8px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortLabel[it.label]||it.label}</div>
-        <div style="background:#f0f0f2;border-radius:99px;height:4px;overflow:hidden">
-          <div style="height:100%;width:${it.score*10}%;border-radius:99px;background:${it.score>=7?'#16a34a':it.score>=5?'#f59e0b':'#dc2626'}"></div>
-        </div>
-      </div>`).join('')}
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--color-border)">
-      <div style="width:6px;height:6px;background:#16a34a;border-radius:50%;flex-shrink:0;animation:pulse-dot 2s infinite"></div>
-      <div id="home-ai-insight" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;flex:1">
-        ${positions.length > 0 ? `${avgChange>=0?'Portef. en hausse de':'Portef. en baisse de'} <strong style="color:${chgColor}">${avgChange>=0?'+':''}${avgChange.toFixed(1).replace(".", ",")} %</strong> aujourd'hui.` : 'Ajoute des positions pour recevoir des insights personnalisés.'}
-      </div>
-      <div onclick="event.stopPropagation();nav('ai')" style="font-size:11px;font-weight:600;color:#16a34a;flex-shrink:0;cursor:pointer">Agent IA →</div>
-    </div>
+  <div onclick="nav('sante')" class="kph-note home-hover-card">
+    <span class="kph-note-dot"></span>
+    <div id="home-ai-insight">${positions.length > 0 ? `${avgChange >= 0 ? 'Portefeuille en hausse de' : 'Portefeuille en baisse de'} <strong style="color:${avgChange >= 0 ? '#16a34a' : '#dc2626'}">${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(1).replace('.', ',')} %</strong> aujourd'hui.` : 'Ajoute une position pour voir ce qui mérite ton attention.'}</div>
+    <span class="kph-arrow">›</span>
+  </div>`;
+
+  // Raccourcis
+  html += `
+  <div class="kph-actions">
+    <button type="button" class="kph-action primary" onclick="nav('ajouter')">＋ Ajouter une position</button>
+    <button type="button" class="kph-action" onclick="nav('ai')">Poser une question</button>
+  </div>`;
+
+  // Tous les outils (icônes reprises du menu)
+  const kphIcon = id => document.getElementById('nav-' + id)?.querySelector('svg')?.outerHTML || '';
+  const kphTools = [
+    ['decision', 'Aide à la décision', "nav('decision')"],
+    ['ai', 'Agent IA', "nav('ai')"],
+    ['crise', 'Scénario crise', "nav('crise')"],
+    ['dca', 'Simulateur DCA', "nav('dca')"],
+    ['calc', 'Calculateurs', "nav('calc')"],
+    ['depenses', 'Mes dépenses', "nav('depenses')"],
+    ['bilan', 'Mon bilan', 'openBilan()'],
+    ['news', 'Actualités', "nav('news')"],
+  ];
+  html += `
+  <div class="kph-tools-title">Mes outils</div>
+  <div class="kph-tools">
+    ${kphTools.map(([id, label, go]) => `<button type="button" class="kph-tool" onclick="${go}"><span class="kph-tool-ico">${kphIcon(id)}</span><span>${label}</span></button>`).join('')}
   </div>`;
 
   // Meilleure + pire performance avec sparkline
+  let bwHtml = '';
   if (best && worst && best !== worst) {
-    const bestData = genSparkData(2, 20);
-    const worstData = genSparkData(-2, 20);
-    html += `
+    bwHtml = `
     <div class="home-bw" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px">
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">🏆 Meilleure performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${best.name}</div>
         <div style="font-size:20px;font-weight:900;color:${(best.change_pct||0)>=0?'#16a34a':'#dc2626'};letter-spacing:-0.04em;margin-bottom:8px">${(best.change_pct||0)>=0?'+':''}${(best.change_pct||0).toFixed(2).replace(".", ",")} %</div>
-        <div style="opacity:0.7">${sparkline(bestData,'#4ade80',120,32,true)}</div>
       </div>
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">📉 Plus faible performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${worst.name}</div>
         <div style="font-size:20px;font-weight:900;color:${(worst.change_pct||0)>=0?'#16a34a':'#dc2626'};letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0)>0?'+':''}${(worst.change_pct||0).toFixed(2).replace(".", ",")} %</div>
-        <div style="opacity:0.7">${sparkline(worstData,'#f87171',120,32,true)}</div>
       </div>
     </div>`;
   }
@@ -9596,6 +9611,7 @@ async function renderHome() {
     <div style="margin-bottom:4px">
       <button onclick="const el=document.getElementById('home-more');const open=el.style.display==='block';el.style.display=open?'none':'block';this.querySelector('span').textContent=open?'Voir plus d\\'analyses  ▾':'Voir moins  ▴'" style="width:100%;padding:10px;background:none;border:1px dashed var(--color-border);border-radius:12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer"><span>Voir plus d'analyses  ▾</span></button>
       <div id="home-more" style="display:none;margin-top:10px">
+        ${bwHtml}
         <div style="background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em">Répartition par plateforme</div>
@@ -9663,6 +9679,7 @@ async function renderHome() {
     });
   }, 80);
   setTimeout(() => fadeInCards('#home-score > div', 90), 150);
+  kpHomeCurve();
 
   // Insight IA asynchrone
   setTimeout(async () => {
