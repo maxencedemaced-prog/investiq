@@ -11124,9 +11124,9 @@ async function saveObjectif() { /* legacy */ }
 function showCriseMethodology() {
   showInfoPopup('Méthodologie des scénarios', `
     <p>Chaque scénario applique un <strong>taux de rendement annuel constant</strong> à ton capital actuel et à tes versements mensuels, sur la durée de ton objectif.</p>
-    <p><strong>Réaliste (+7 %/an)</strong> correspond au rendement historique moyen du MSCI World sur 20 ans, dividendes réinvestis.<br>
-    <strong>Pessimiste (-3 %/an)</strong> et <strong>Optimiste (+12 %/an)</strong> sont des hypothèses d'école pour visualiser l'écart possible, pas une prévision.</p>
-    <p>Les « Chocs de marché » simulent une baisse immédiate et ponctuelle de ton portefeuille actuel, sans lien avec les scénarios ci-dessus.</p>
+    <p><strong>Proche de la moyenne passée (+7 %/an)</strong> correspond au rendement historique moyen du MSCI World sur 20 ans, dividendes réinvestis.<br>
+    <strong>Années difficiles (-3 %/an)</strong> et <strong>Très bonnes années (+12 %/an)</strong> sont des hypothèses d'école pour visualiser l'écart possible, pas une prévision.</p>
+    <p>Le choix d'une baisse simule une baisse immédiate et ponctuelle de ton portefeuille actuel, sans lien avec les scénarios ci-dessus.</p>
     <p style="margin-top:10px">⚠️ Les performances passées ne préjugent pas des performances futures. Ces simulations sont éducatives, pas un conseil en investissement.</p>`);
 }
 
