@@ -13814,8 +13814,86 @@ const KP_ANDROID_APP = (() => {
 })();
 const KP_ANDROID_APP_MSG = 'L’abonnement Premium arrive bientôt dans l’appli.';
 
-// Lance le paiement Stripe
+// ═══ ABONNEMENT DANS L'APPLI iOS (RevenueCat) ═══
+// Clé publique RevenueCat de l'appli (appl_…), ce n'est pas un secret. Tant qu'elle est vide, l'appli garde « arrive bientôt ».
+const KP_RC_IOS_KEY = '';
+const KP_RC_PRODUCTS = { monthly: 'kapitaro_premium_monthly', annual: 'kapitaro_premium_annual' };
+const KP_STORE_SUBS_URL = 'https://apps.apple.com/account/subscriptions';
+let kpStoreUser = null;
+function kpStore() {
+  try {
+    const c = window.Capacitor;
+    if (!KP_RC_IOS_KEY || !c || !c.isNativePlatform || !c.isNativePlatform() || !c.isPluginAvailable || !c.isPluginAvailable('Purchases')) return null;
+    return c.Plugins.Purchases || c.registerPlugin('Purchases');
+  } catch (e) { return null; }
+}
+async function kpStoreReady() {
+  const P = kpStore();
+  if (!P || !currentUser) return null;
+  if (kpStoreUser !== currentUser.id) {
+    if (kpStoreUser === null) await P.configure({ apiKey: KP_RC_IOS_KEY, appUserID: currentUser.id });
+    else await P.logIn({ appUserID: currentUser.id });
+    kpStoreUser = currentUser.id;
+  }
+  return P;
+}
+// Le webhook RevenueCat met le profil à jour : on attend qu'il soit passé
+async function kpStoreWaitPremium() {
+  showToast('⏳ Activation de ton abonnement...');
+  for (let i = 0; i < 8; i++) {
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+      if (data?.is_premium) {
+        profile.is_premium = true;
+        profile.premium_until = data.premium_until;
+        profile.subscription_status = data.subscription_status;
+        profile.subscription_plan = data.subscription_plan;
+        document.getElementById('plans-modal')?.remove();
+        renderSubscriptionCard();
+        showPremiumWelcome();
+        return true;
+      }
+    } catch (e) {}
+  }
+  showToast('✓ Achat reçu : ton accès s\'activera d\'ici une minute');
+  return false;
+}
+async function kpStoreBuy(btn, plan) {
+  if (isDemo || !currentUser) { showToast('🔒 Crée un compte pour t\'abonner'); return; }
+  const label = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Ouverture...'; btn.style.opacity = '0.6'; }
+  try {
+    const P = await kpStoreReady();
+    const offerings = await P.getOfferings();
+    const pkgs = offerings?.current?.availablePackages || [];
+    const id = KP_RC_PRODUCTS[plan === 'annual' ? 'annual' : 'monthly'];
+    const aPackage = pkgs.find(p => p?.product?.identifier === id);
+    if (!aPackage) throw new Error('Offre indisponible pour l\'instant');
+    await P.purchasePackage({ aPackage });
+    trackEvent('store_purchase', { plan });
+    await kpStoreWaitPremium();
+  } catch (e) {
+    if (!(e?.userCancelled || String(e?.code) === '1')) { console.warn('[store] achat :', e); showToast('Achat impossible : ' + (e?.message || 'réessaie plus tard')); }
+  }
+  if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = label; btn.style.opacity = ''; }
+}
+// Bouton exigé par Apple : retrouver un abonnement déjà payé (nouvel appareil, réinstallation)
+async function kpStoreRestore(btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const P = await kpStoreReady();
+    const r = await P.restorePurchases();
+    const active = Object.keys(r?.customerInfo?.entitlements?.active || {}).length > 0;
+    if (active) await kpStoreWaitPremium();
+    else showToast('Aucun abonnement à restaurer sur ce compte Apple');
+  } catch (e) { console.warn('[store] restauration :', e); showToast('Restauration impossible, réessaie plus tard'); }
+  if (btn && btn.isConnected) btn.disabled = false;
+}
+
+// Lance le paiement (App Store dans l'appli iOS, Stripe sur le site)
 async function startCheckout(btn, plan) {
+  if (kpStore()) return kpStoreBuy(btn, plan);
   if (KP_ANDROID_APP) { showToast(KP_ANDROID_APP_MSG); return; }
   if (isDemo || !currentUser) {
     showToast('🔒 Crée un compte pour t\'abonner');
@@ -13847,6 +13925,13 @@ async function startCheckout(btn, plan) {
 
 // Ouvre le portail Stripe (facturation, moyen de paiement, résiliation)
 async function openBillingPortal(btn) {
+  // Abonnement pris dans l'appli : il se gère dans le compte Apple, pas chez Stripe
+  if (!profile?.stripe_customer_id && profile?.subscription_status !== 'gift') {
+    const c = window.Capacitor;
+    if (kpStore() && c.Plugins.Browser) { try { await c.Plugins.Browser.open({ url: KP_STORE_SUBS_URL, presentationStyle: 'fullscreen' }); return; } catch (e) {} }
+    showToast('Abonnement pris sur iPhone ou iPad : il se gère dans Réglages, ton nom, Abonnements');
+    return;
+  }
   const originalLabel = btn ? btn.innerHTML : null;
   if (btn) { btn.disabled = true; btn.innerHTML = 'Ouverture...'; }
   try {
@@ -13908,7 +13993,7 @@ function plansComparisonHTML(lapsed) {
   const seg = (key, label, extra) => `<button type="button" class="plan-seg${plansBilling === key ? ' on' : ''}" onclick="setPlansBilling('${key}')">${label}${extra || ''}</button>`;
   const row = t => `<li><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg><span>${t}</span></li>`;
   const premium = isPremiumUser();
-  const promo = referralPromo && !premium && !lapsed;
+  const promo = referralPromo && !premium && !lapsed && !kpStore();   // pas de réduction parrainage sur l'App Store
   return `
   <div class="plans-grid">
     <div class="plan-card plan-free">
@@ -13943,8 +14028,9 @@ function plansComparisonHTML(lapsed) {
              <div class="plan-save">Tu économises ${_eur(yearSaving)} par an</div>`
           : `<div class="plan-note">facturé chaque mois · sans engagement</div>
              <div class="plan-save plan-save-link" onclick="setPlansBilling('annual')">Passe à l'annuel et économise ${_eur(yearSaving)} par an →</div>`}
-        ${KP_ANDROID_APP ? `<div class="plan-btn plan-btn-main" style="cursor:default;opacity:.75">${KP_ANDROID_APP_MSG}</div>` : `<button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>`}
+        ${KP_ANDROID_APP && !kpStore() ? `<div class="plan-btn plan-btn-main" style="cursor:default;opacity:.75">${KP_ANDROID_APP_MSG}</div>` : `<button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>`}
         <div class="plan-foot">Résiliable à tout moment</div>
+        ${kpStore() ? `<div class="plan-foot" style="line-height:1.5">Abonnement renouvelé automatiquement au même prix, sauf résiliation au moins 24 h avant la fin de la période. Paiement et résiliation via ton compte Apple.<br><button type="button" onclick="kpStoreRestore(this)" style="background:none;border:none;padding:0;color:inherit;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer">Restaurer mes achats</button> · <button type="button" onclick="openLegalDoc('cgu')" style="background:none;border:none;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">Conditions</button> · <button type="button" onclick="openLegalDoc('privacy')" style="background:none;border:none;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">Confidentialité</button></div>` : ''}
       </div>
       <div class="plan-list">
         <div class="plan-list-title">Tout ce qui est inclus dans Gratuit, plus :</div>
