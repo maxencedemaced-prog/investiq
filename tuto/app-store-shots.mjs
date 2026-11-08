@@ -156,7 +156,12 @@ for (const d of DEVICES) {
   await page.waitForFunction(() => typeof enterDemo === 'function' && typeof nav === 'function', null, { timeout: 60000 });
   await sleep(1500);
   await page.evaluate(SETUP);
-  await page.addStyleTag({ content: '#kp-help-btn,#kp-notif-panel,.notif-panel{display:none!important}' });
+  await page.addStyleTag({ content: '#kp-help-btn,#kp-notif-panel,.notif-panel,#tt-cur,#tt-cap,#tt-hook,.kp-tuto-btn,.kp-tuto-row,.nav-dot,.bn-dot,.mn-dot,.menu-dot,.bell-dot{display:none!important}' });
+  await page.evaluate(() => {
+    ['tt-cur', 'tt-cap', 'tt-hook'].forEach(id => document.getElementById(id)?.remove());
+    const email = document.getElementById('topbar-email'), avatar = document.getElementById('topbar-avatar');
+    if (email) email.textContent = 'Marie'; if (avatar) avatar.textContent = 'M';
+  });
   await sleep(2500);
   for (const [file, sec] of SCREENS) {
     await page.evaluate(s => { try { closeNotifPanel && closeNotifPanel(); } catch (e) {} nav(s, true); window.scrollTo(0, 0); }, sec);
@@ -166,6 +171,7 @@ for (const d of DEVICES) {
       const chat = document.getElementById('ai-chat');
       if (chat) chat.innerHTML += '<div class="bubble user">Mon portefeuille est-il bien diversifié ?</div><div class="bubble bot">Tes ETF monde répartissent déjà ton argent sur des milliers d’entreprises. Point d’attention : LVMH pèse lourd dans ton portefeuille. C’est une explication éducative, pas un conseil personnalisé.</div>';
     });
+    if (sec === 'ai') await page.evaluate(() => { const chat = document.getElementById('ai-chat'); if (chat) { chat.scrollIntoView({ block: 'center' }); chat.scrollTop = chat.scrollHeight; } });
     await sleep(500);
     await page.screenshot({ path: `${OUT}/${d.name}-${file}.png` });
     console.log('capture', d.name, file);
