@@ -33,7 +33,7 @@ export function renderEmail({ title, paragraphs, cta, userId, extraHtml = '', ex
 <body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden">
-${hero ? `<tr><td style="padding:0;background:#060b18"><img src="${esc(hero)}" width="560" alt="Kapitaro · Ta semaine en 2 minutes" style="display:block;width:100%;height:auto;border:0"></td></tr>` : `<tr><td style="background:#080e1e;padding:18px 24px"><span style="color:#ffffff;font-weight:800;font-size:18px">Kapitaro</span></td></tr>`}
+${hero ? `<tr><td style="padding:0;background:#060b18"><img src="${esc(hero)}" width="560" alt="Kapitaro · Ton point du mois" style="display:block;width:100%;height:auto;border:0"></td></tr>` : `<tr><td style="background:#080e1e;padding:18px 24px"><span style="color:#ffffff;font-weight:800;font-size:18px">Kapitaro</span></td></tr>`}
 <tr><td style="padding:28px 24px 12px">
 ${title ? `<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#0b1220">${esc(title)}</h1>` : ''}
 ${body}${extraHtml}${button}
@@ -42,7 +42,7 @@ ${body}${extraHtml}${button}
 Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital.<br>
 Maxence De Macedo, entrepreneur individuel (Quorvia) · contact@kapitaro.fr${unsub ? `<br><a href="${esc(unsub)}" style="color:#6b7280">Ne plus recevoir ces e-mails</a>` : ''}
 </td></tr></table></td></tr></table></body></html>`;
-  const text = `${title || 'Ta semaine avec Kapitaro'}\n\n${paragraphs.map(p => p.replace(/\*\*/g, '')).join('\n\n')}${extraText ? '\n\n' + extraText : ''}${cta ? `\n\n${cta.label} : ${cta.url}` : ''}\n\n--\nKapitaro · contact@kapitaro.fr${unsub ? `\nNe plus recevoir ces e-mails : ${unsub}` : ''}`;
+  const text = `${title || 'Ton mois avec Kapitaro'}\n\n${paragraphs.map(p => p.replace(/\*\*/g, '')).join('\n\n')}${extraText ? '\n\n' + extraText : ''}${cta ? `\n\n${cta.label} : ${cta.url}` : ''}\n\n--\nKapitaro · contact@kapitaro.fr${unsub ? `\nNe plus recevoir ces e-mails : ${unsub}` : ''}`;
   return { html, text, unsub };
 }
 
