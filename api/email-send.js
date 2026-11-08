@@ -118,6 +118,19 @@ function newsletterEmail(content, me, userId) {
   });
 }
 
+const NEWSLETTER_INACTIVE_DAYS = 30;
+// Comptes actifs récemment (lecture par pages : la base renvoie 1000 lignes au plus à la fois)
+async function recentlyActive(sb, sinceMs) {
+  const ids = new Set();
+  for (let from = 0; from < 50000; from += 1000) {
+    const { data, error } = await sb.from('events').select('user_id').neq('type', 'heartbeat').gte('created_at', new Date(sinceMs).toISOString()).order('created_at', { ascending: false }).range(from, from + 999);
+    if (error) throw error;
+    (data || []).forEach(e => ids.add(e.user_id));
+    if (!data || data.length < 1000) break;
+  }
+  return ids;
+}
+
 async function sendNewsletter(sb, { onlyEmail = null } = {}) {
   const content = await weeklyContent(sb);
   const week = isoWeek(), kind = 'newsletter:' + week;
@@ -127,9 +140,16 @@ async function sendNewsletter(sb, { onlyEmail = null } = {}) {
   if (onlyEmail) users = users.filter(u => u.email.toLowerCase() === onlyEmail.toLowerCase());
   const { data: optOut } = await sb.from('profiles').select('id').eq('email_opt_out', true);
   const optedOut = new Set((optOut || []).map(p => p.id));
+  // Pas de lettre aux comptes inactifs depuis 30 jours, ni deux e-mails automatiques le même jour
+  const inactiveSince = Date.now() - NEWSLETTER_INACTIVE_DAYS * 24 * 3600 * 1000;
+  const active = onlyEmail ? new Set() : await recentlyActive(sb, inactiveSince);
+  const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+  const { data: todayLogs } = onlyEmail ? { data: [] } : await sb.from('email_log').select('user_id').gte('sent_at', dayStart.toISOString());
+  const mailedToday = new Set((todayLogs || []).map(l => l.user_id));
+  if (!onlyEmail) users = users.filter(u => !optedOut.has(u.id) && !mailedToday.has(u.id)
+    && (active.has(u.id) || new Date(u.created_at).getTime() >= inactiveSince || new Date(u.last_sign_in_at || 0).getTime() >= inactiveSince));
   let sent = 0; const errors = [];
   for (const u of users.slice(0, MAX_PER_RUN)) {
-    if (!onlyEmail && optedOut.has(u.id)) continue;
     if (!onlyEmail) { const { error: logErr } = await sb.from('email_log').insert({ user_id: u.id, kind }); if (logErr) continue; }   // déjà reçue cette semaine
     try {
       const { html, text, unsub } = newsletterEmail(content, await personalData(sb, u.id), u.id);
@@ -174,6 +194,8 @@ export default async function handler(req, res) {
     const { data: page } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
     const users = (page?.users || []).filter(u => u.email && u.email_confirmed_at);
     const now = Date.now();
+    // Le dimanche, seule la lettre part : jamais une relance et une lettre le même jour
+    if (new Date(now).getUTCDay() === 0) return res.status(200).json({ candidates: 0, sent: 0, skipped: 'dimanche' });
     const age = u => now - new Date(u.created_at).getTime();
 
     const [{ data: optOut }, { data: logs }, { data: prem }] = await Promise.all([
