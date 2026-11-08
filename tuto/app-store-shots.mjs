@@ -183,15 +183,33 @@ for (const d of DEVICES) {
     if (sec === 'objectif') await page.evaluate(() => {
       ['obj-chart-amount', 'obj-chart-label', 'obj-chart-kicker'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
       const root = document.getElementById('sec-objectif');
-      [...root.querySelectorAll('*')].filter(e => /^(✓\s*)?Objectif atteignable|^Année \d+/.test((e.textContent || '').trim()) && e.children.length < 3 && e.textContent.length < 90)
-        .forEach(e => { e.style.visibility = 'hidden'; });
+      [...root.querySelectorAll('*')].filter(e => /^(✓\s*)?Objectif atteignable|^Année \d+/.test((e.textContent || '').trim()) && e.textContent.length < 90)
+        .forEach(e => {
+          let n = e;
+          while (n.parentElement && n.parentElement !== root && (n.parentElement.textContent || '').trim().length < 90) n = n.parentElement;
+          if (/^Année/.test((e.textContent || '').trim())) n.style.visibility = 'hidden'; else n.style.display = 'none';
+        });
+      // Seule la carte du graphique reste affichée
+      let card = document.getElementById('obj-chart-amount');
+      while (card.parentElement && card.parentElement !== root) card = card.parentElement;
+      for (let n = card.nextElementSibling; n; n = n.nextElementSibling) n.style.display = 'none';
     });
     if (sec === 'decision') await page.evaluate(() => { const i = document.getElementById('d-name'); if (i) i.value = 'Air Liquide'; });
     if (sec === 'ai') await page.evaluate(() => {
       const chat = document.getElementById('ai-chat');
       if (chat) chat.innerHTML += '<div class="bubble user">Mon portefeuille est-il bien diversifié ?</div><div class="bubble bot">Tes ETF monde répartissent déjà ton argent sur des milliers d’entreprises. Point d’attention : LVMH pèse lourd dans ton portefeuille. C’est une explication éducative, pas un conseil personnalisé.</div>';
     });
-    if (sec === 'ai') await page.evaluate(() => { const chat = document.getElementById('ai-chat'); if (chat) { chat.scrollIntoView({ block: 'center' }); chat.scrollTop = chat.scrollHeight; } });
+    // Assistant : seule la conversation reste affichée
+    if (sec === 'ai') await page.evaluate(() => {
+      const chat = document.getElementById('ai-chat'), input = document.getElementById('ai-in'), root = document.getElementById('sec-ai');
+      if (!chat || !input || !root) return;
+      let card = chat;
+      while (!card.contains(input)) card = card.parentElement;
+      for (let n = card; n && n !== root; n = n.parentElement) {
+        [...n.parentElement.children].forEach(c => { if (c !== n) c.style.display = 'none'; });
+      }
+      window.scrollTo(0, 0);
+    });
     await sleep(500);
     await page.screenshot({ path: `${OUT}/${d.name}-${file}.png` });
     console.log('capture', d.name, file);
