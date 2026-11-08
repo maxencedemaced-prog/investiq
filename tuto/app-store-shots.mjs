@@ -191,8 +191,10 @@ for (const d of DEVICES) {
         });
       // Seule la carte du graphique reste affichée
       let card = document.getElementById('obj-chart-amount');
-      while (card.parentElement && card.parentElement !== root) card = card.parentElement;
-      for (let n = card.nextElementSibling; n; n = n.nextElementSibling) n.style.display = 'none';
+      while (card !== root && !/PROGRESSION RÉELLE/i.test(card.textContent || '')) card = card.parentElement;
+      for (let c = card; c && c !== root; c = c.parentElement) {
+        for (let n = c.nextElementSibling; n; n = n.nextElementSibling) n.style.display = 'none';
+      }
     });
     if (sec === 'decision') await page.evaluate(() => { const i = document.getElementById('d-name'); if (i) i.value = 'Air Liquide'; });
     if (sec === 'ai') await page.evaluate(() => {
@@ -207,7 +209,10 @@ for (const d of DEVICES) {
       while (!card.contains(input)) card = card.parentElement;
       for (let n = card; n && n !== root; n = n.parentElement) {
         [...n.parentElement.children].forEach(c => { if (c !== n) c.style.display = 'none'; });
+        n.style.width = '100%'; n.style.maxWidth = 'none';
+        n.parentElement.style.display = 'block';
       }
+      chat.style.maxHeight = 'none';
       window.scrollTo(0, 0);
     });
     await sleep(500);
