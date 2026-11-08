@@ -7425,7 +7425,7 @@ function updateDecisionAmount(euros) {
   const pctEl = document.getElementById('d-amount-pct');
   if (pctEl) {
     const bk = profile.bankroll || 0;
-    pctEl.textContent = bk > 0 ? `= ${(euros / bk * 100).toFixed(1).replace(".", ",")} % de ta bankroll` : '';
+    pctEl.textContent = bk > 0 ? `= ${(euros / bk * 100).toFixed(1).replace(".", ",")} % de ton capital` : '';
   }
   renderAmountChips();
   updateDecisionCTA();
@@ -8163,7 +8163,7 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
     score_color: '#f59e0b',
     resume_executif: 'Version simplifiée : l\'analyse IA n\'a pas pu être générée. Les chiffres détaillés plus bas (diagnostic, objectifs, plan) sont calculés à partir de tes réponses et restent valables.',
     points_forts: ['Tu as renseigné ta situation en détail', 'Tu épargnes déjà régulièrement', 'Tu as un horizon long terme'],
-    points_attention: ['Relance l\'analyse pour obtenir des recommandations personnalisées', 'Vérifie ta mensualité et ton allocation'],
+    points_attention: ['Relance l\'analyse pour obtenir des pistes d\'amélioration', 'Vérifie ta mensualité et ton allocation'],
     mensualite_recommandee: Math.round(capacite * 0.4),
     mensualite_min: Math.round(capacite * 0.2),
     mensualite_max: Math.round(capacite * 0.6),
@@ -11836,7 +11836,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
   "risque_niveau": "Faible" ou "Moyen" ou "Élevé",
   "risque_explication": "Pourquoi ce niveau de risque (1 phrase)",
   "horizon_conseille": "Ex: 5 à 10 ans minimum",
-  "montant_conseille": "Ex: 300€ maximum (6% de ta bankroll)",
+  "montant_conseille": "Ex: 300€ maximum (6% de ton capital)",
   "pour": ["point positif 1", "point positif 2"],
   "contre": ["point négatif 1", "point négatif 2"],
   "conseil_final": "Conseil concret en 2-3 phrases simples pour un débutant"
@@ -11902,7 +11902,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
 
       <!-- CONSEIL FINAL -->
       <div class="card" style="margin-top:10px;background:#f9f9f9">
-        <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:8px">💬 Conseil personnalisé</div>
+        <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:8px">💬 Ce qu'il faut retenir</div>
         <div style="font-size:14px;color:#1c1c1e;line-height:1.7;font-weight:500">${d.conseil_final}</div>
       </div>
 

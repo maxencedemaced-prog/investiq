@@ -919,7 +919,7 @@ function heroStart(tab) {
       <div class="page-header">
         <div>
           <h1>Santé du portefeuille</h1>
-          <p class="page-sub">Analyse complète de ton portefeuille et recommandations personnalisées.</p>
+          <p class="page-sub">Analyse complète de ton portefeuille et pistes d'amélioration.</p>
         </div>
       </div>
       <div id="sante-content"></div>
@@ -1027,6 +1027,7 @@ function heroStart(tab) {
               <div class="obj-chart-kicker" id="obj-chart-kicker">Projection</div>
               <div class="obj-chart-amount" id="obj-chart-amount">—</div>
               <div class="obj-chart-label" id="obj-chart-label">Valeur projetée</div>
+              <div class="obj-chart-note" style="font-size:11.5px;line-height:1.4;color:rgba(255,255,255,.62);margin-top:8px">Projection indicative, non garantie. Investir comporte un risque de perte en capital.</div>
             </div>
             <div class="obj-badge-box" id="obj-badge-box">
               <span class="obj-badge-ck" id="obj-badge-ck">✓</span>
@@ -1531,7 +1532,7 @@ function heroStart(tab) {
             <div class="bubble bot" id="ai-welcome">Bonjour ! Je suis ton copilote IA. Je connais ton portefeuille, tes objectifs et ton profil. Pose-moi n'importe quelle question ou donne-moi un ordre.</div>
           </div>
           <div class="chat-input-row" style="border-top:1px solid var(--color-border);margin:0;padding:10px 12px">
-            <input type="text" id="ai-in" placeholder="Pose ta question ou donne un ordre..." onkeydown="if(event.key==='Enter')sendAI()" style="font-size:13px;background:var(--color-bg-subtle,#f5f5f5);border-radius:12px;padding:10px 13px">
+            <input type="text" id="ai-in" placeholder="Pose ta question..." onkeydown="if(event.key==='Enter')sendAI()" style="font-size:13px;background:var(--color-bg-subtle,#f5f5f5);border-radius:12px;padding:10px 13px">
             <button onclick="sendAI()" id="ai-send-btn" style="background:#16a34a;color:#fff;border:none;border-radius:12px;padding:10px 13px;cursor:pointer;flex-shrink:0">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
@@ -1790,7 +1791,7 @@ function heroStart(tab) {
 <script src="legal-docs.js?v=20261108110000"></script>
 <script src="glossary.js?v=20261014120000"></script>
 <script src="calc.js?v=20261103235000"></script>
-<script src="app.js?v=20261108100000"></script>
+<script src="app.js?v=20261108120000"></script>
 <script src="depenses.js?v=20260928194433"></script>
 <script src="bilan-extra.js?v=20260928194433"></script>
 <script src="tab-hints.js?v=20261014100000"></script>

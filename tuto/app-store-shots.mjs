@@ -1,7 +1,12 @@
 // tuto/app-store-shots.mjs — captures d'écran de la fiche App Store : l'appli en ligne, mode démo, données fictives.
 // Formats : iPhone 6,7 pouces (1290 × 2796) et iPad 12,9 pouces (2048 × 2732). Aucune écriture : mode démo uniquement.
+// Les fichiers de cette branche remplacent ceux du site (les /api restent ceux du site) : on voit la version en préparation.
 import { chromium } from 'playwright';
 import fs from 'fs';
+import path from 'path';
+
+const ROOT = path.resolve('..');
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.ico': 'image/x-icon' };
 
 const OUT = 'shots';
 fs.mkdirSync(OUT, { recursive: true });
@@ -150,6 +155,14 @@ const SCREENS = [
 const browser = await chromium.launch();
 for (const d of DEVICES) {
   const ctx = await browser.newContext({ viewport: { width: d.width, height: d.height }, deviceScaleFactor: d.scale, isMobile: true, hasTouch: true, locale: 'fr-FR', timezoneId: 'Europe/Paris' });
+  await ctx.route('https://kapitaro.fr/**', route => {
+    const p = decodeURIComponent(new URL(route.request().url()).pathname);
+    if (p.startsWith('/api/')) return route.continue();
+    let f = path.join(ROOT, p === '/' ? 'index.html' : p);
+    if (!fs.existsSync(f) && fs.existsSync(f + '.html')) f += '.html';
+    if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) return route.continue();
+    return route.fulfill({ status: 200, contentType: MIME[path.extname(f)] || 'application/octet-stream', body: fs.readFileSync(f) });
+  });
   const page = await ctx.newPage();
   page.on('pageerror', e => console.warn('[page]', d.name, e.message));
   await page.goto('https://kapitaro.fr/?android_app=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -166,6 +179,13 @@ for (const d of DEVICES) {
   for (const [file, sec] of SCREENS) {
     await page.evaluate(s => { try { closeNotifPanel && closeNotifPanel(); } catch (e) {} nav(s, true); window.scrollTo(0, 0); }, sec);
     await sleep(4500);
+    // Objectif : le graphique et la mention, sans montant projeté mis en avant
+    if (sec === 'objectif') await page.evaluate(() => {
+      ['obj-chart-amount', 'obj-chart-label', 'obj-chart-kicker'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+      const root = document.getElementById('sec-objectif');
+      [...root.querySelectorAll('*')].filter(e => /^(✓\s*)?Objectif atteignable|^Année \d+/.test((e.textContent || '').trim()) && e.children.length < 3 && e.textContent.length < 90)
+        .forEach(e => { e.style.visibility = 'hidden'; });
+    });
     if (sec === 'decision') await page.evaluate(() => { const i = document.getElementById('d-name'); if (i) i.value = 'Air Liquide'; });
     if (sec === 'ai') await page.evaluate(() => {
       const chat = document.getElementById('ai-chat');
