@@ -1275,7 +1275,7 @@ function renderMonthlyPlan(plan, isNew) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:relative">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:7px;text-transform:capitalize">📅 ${monthLabel()}</span>
-        <span style="font-size:14px;font-weight:900;color:#fff">Ton plan du mois</span><span class="kp-tip" role="button" tabindex="0" data-k="dca">?</span>
+        <span style="font-size:14px;font-weight:900;color:#fff">Ton plan du mois (indicatif)</span><span class="kp-tip" role="button" tabindex="0" data-k="dca">?</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px"><button type="button" id="monthly-addall-btn" onclick="monthlyAddAll()" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:none;border-radius:9px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(22,163,74,0.3)">⚡ Tout ajouter</button><button onclick="generateMonthlyPlan(true)" title="Régénérer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button></div>
     </div>
@@ -2049,7 +2049,7 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
       badge.textContent = targetYear ? `✓ Atteint en ${targetYear} ans` : '✓ Objectif atteint';
       badge.className = 'obj-track-badge on-track';
     } else {
-      badge.textContent = '⚠ Ajustement conseillé';
+      badge.textContent = '⚠ Point à revoir';
       badge.className = 'obj-track-badge off-track';
     }
   }
@@ -4415,7 +4415,7 @@ async function obGeneratePlan() {
     </div>`;
   }
 
-  html += `<div id="ob-ai-advice" style="text-align:center;padding:12px;color:#8e8e93;font-size:13px">💬 Conseil IA en cours...</div>`;
+  html += `<div id="ob-ai-advice" style="text-align:center;padding:12px;color:#8e8e93;font-size:13px">💬 Analyse IA en cours...</div>`;
   planEl.innerHTML = html;
 
   // Charge les actions en parallèle
@@ -5772,7 +5772,7 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
       ${mySignaux.length ? `
         <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px">📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:400">${mySignaux.length} actifs</span></div>
         <div id="my-positions-section">${mySignaux.map(s => signalCard(s, true)).join('')}</div>` : ''}
-      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px">🔭 Opportunités du marché</div>
+      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px">🔭 Valeurs à découvrir</div>
       <div id="oppo-loading" style="text-align:center;padding:20px;color:#8e8e93">
         <div style="font-size:20px;margin-bottom:6px">🧠</div>
         <div style="font-size:13px">Analyse des opportunités...</div>
@@ -8887,7 +8887,7 @@ async function checkAndGenerateNotifications() {
     // Si ETF > 80% ou < 50% d'un portefeuille mixte avec actions
     const hasActions = apos().some(p=>p.type==='Action'||p.type==='action');
     if (hasActions && etfPct > 80) {
-      newNotifs.push({ titre:'⚖️ Rééquilibrage conseillé', texte:`Tes ETF représentent ${etfPct.toFixed(0)}% du portefeuille. Tu pourrais réduire légèrement pour garder un bon équilibre.`, action:'Voir Santé du portefeuille', impact:'medium', heure:'Analyse', type:'reequilibrage' });
+      newNotifs.push({ titre:'⚖️ Répartition à regarder', texte:`Tes ETF représentent ${etfPct.toFixed(0)}% du portefeuille. Tu pourrais réduire légèrement pour garder un bon équilibre.`, action:'Voir Santé du portefeuille', impact:'medium', heure:'Analyse', type:'reequilibrage' });
     } else if (hasActions && etfPct < 40) {
       newNotifs.push({ titre:'⚖️ Trop concentré en actions', texte:`Tes ETF ne représentent que ${etfPct.toFixed(0)}% — tu prends plus de risque que nécessaire. Pense à renforcer tes ETF.`, action:'Aide à la décision', impact:'medium', heure:'Analyse', type:'reequilibrage' });
     }
@@ -9795,7 +9795,7 @@ async function getSmartAdvice(a) {
   const tv = apos().reduce((s, p) => s + p.qty * p.price, 0);
   const held = [...new Set(apos().map(p => p.name))].slice(0, 15).join(', ');
   const facts = a.kind === 'concentration'
-    ? `${a.name} (${a.ticker}) représente ${a.pct.toFixed(0)}% du portefeuille (seuil conseillé : ${SMART_CONC_MAX}%).`
+    ? `${a.name} (${a.ticker}) représente ${a.pct.toFixed(0)}% du portefeuille (repère : ${SMART_CONC_MAX}%).`
     : `${a.name} (${a.ticker}) est à ${a.perf.toFixed(0)}% par rapport à ton prix de revient et pèse ${a.pct.toFixed(0)}% du portefeuille.`;
   const _dc = await fetchContextBlock([{ t: a.ticker, name: a.name }]);
   const prompt = `Portefeuille de ${fmtK(tv)} — lignes : ${held}.
@@ -9826,7 +9826,7 @@ async function renderSmartAlerts(containerId) {
   if (!alerts.length) { el.innerHTML = ''; return; }
   const premium = isPremiumUser();
   const kindTxt = a => a.kind === 'concentration'
-    ? `pèse <strong>${a.pct.toFixed(0)}%</strong> de ton portefeuille (conseillé : moins de ${SMART_CONC_MAX}%)`
+    ? `pèse <strong>${a.pct.toFixed(0)}%</strong> de ton portefeuille (repère : moins de ${SMART_CONC_MAX}%)`
     : `est à <strong>${a.perf.toFixed(0)}%</strong> par rapport à ton prix d'achat`;
 
   el.innerHTML = `
@@ -9841,7 +9841,7 @@ async function renderSmartAlerts(containerId) {
       <div id="${containerId}-adv-${i}" style="margin-top:8px">
         ${premium
           ? `<div style="font-size:11px;color:rgba(255,255,255,0.4)">Analyse en cours…</div>`
-          : `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,0.5)"><span>🔒 Conseil IA (que faire + par quoi le remplacer) — Premium</span><button onclick="showPlansModal()" style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer">Débloquer</button></div>`}
+          : `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,0.5)"><span>🔒 Analyse IA de ce point d'attention — Premium</span><button onclick="showPlansModal()" style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer">Débloquer</button></div>`}
       </div>
     </div>`).join('')}
   </div>`;
@@ -9864,13 +9864,13 @@ async function renderSmartAlerts(containerId) {
     const advEl = document.getElementById(`${containerId}-adv-${i}`);
     const adv = await getSmartAdvice(alerts[i]);
     if (!advEl || !document.getElementById(containerId)) return;
-    if (!adv) { advEl.innerHTML = `<div style="font-size:11px;color:rgba(255,255,255,0.4)">Conseil indisponible pour le moment.</div>`; continue; }
+    if (!adv) { advEl.innerHTML = `<div style="font-size:11px;color:rgba(255,255,255,0.4)">Analyse indisponible pour le moment.</div>`; continue; }
     const vColor = adv.verdict === 'vendre' ? '#f87171' : adv.verdict === 'alléger' ? '#fbbf24' : '#4ade80';
     advEl.innerHTML = `
       <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px">
-        <div style="font-size:11px;font-weight:800;color:${vColor};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conseil IA : ${_escHtml(({vendre:'réduire fortement', 'alléger':'alléger', garder:'conserver'})[adv.verdict] || adv.verdict)}</div>
+        <div style="font-size:11px;font-weight:800;color:${vColor};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Point d'attention : ${_escHtml(({vendre:'ligne à réexaminer', 'alléger':'forte concentration', garder:'pas d’urgence'})[adv.verdict] || adv.verdict)}</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.5">${_escHtml(adv.raison)}</div>
-        ${adv.remplacement && adv.remplacement.ticker ? `<div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ À la place : <strong style="color:#fff">${_escHtml(adv.remplacement.name || adv.remplacement.ticker)}</strong> <span style="opacity:.6">${_escHtml(adv.remplacement.ticker)}</span> — ${_escHtml(adv.remplacement.raison || '')}</div>` : ''}
+        ${adv.remplacement && adv.remplacement.ticker ? `<div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ Alternative à étudier : <strong style="color:#fff">${_escHtml(adv.remplacement.name || adv.remplacement.ticker)}</strong> <span style="opacity:.6">${_escHtml(adv.remplacement.ticker)}</span> — ${_escHtml(adv.remplacement.raison || '')}</div>` : ''}
       </div>`;
   }
 }
@@ -10181,7 +10181,7 @@ Réponds UNIQUEMENT en JSON valide sans markdown :
 {
   "action": "acheter" ou "garder" ou "vendre",
   "conviction": "forte" ou "modérée" ou "faible",
-  "texte": "Conseil principal en 1 phrase simple",
+  "texte": "Point principal à comprendre en 1 phrase simple, sans recommandation personnalisée",
   ${isAction ? `
   "prix_cible": 0,
   "stop_loss": 0,
@@ -10535,7 +10535,7 @@ async function renderSante() {
       <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
         <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Nb. positions</div>
         <div style="font-size:28px;font-weight:900;color:${textPrimary};letter-spacing:-0.04em">${nbPos}</div>
-        <div style="font-size:11px;color:${textSec};margin-top:4px">Min conseillé : 8</div>
+        <div style="font-size:11px;color:${textSec};margin-top:4px">Repère : 8</div>
       </div>
       <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
         <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Performance</div>
@@ -10985,7 +10985,7 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
       : formatMD(simpleR)}</div>
     ${!onTrack ? `
     <div style="margin-top:16px;background:#fff5e0;border-radius:14px;padding:16px;border-left:4px solid #f59e0b">
-      <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:8px">⚠ Ajustement conseillé</div>
+      <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:8px">⚠ Point à revoir</div>
       <div style="font-size:13px;color:#78350f;line-height:1.6">
         Pour atteindre <strong>${fmtK(target)}</strong> en <strong>${years} ans</strong>, voici tes options :
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
@@ -11590,7 +11590,7 @@ function renderNewsList() {
   const sigBorderColor = { acheter:'#1a7f5a', attendre:'#f59e0b', 'éviter':'#cc2f26', neutre:'#c7c7cc' };
   const sigBg          = { acheter:'#f0faf6', attendre:'#fffbf0', 'éviter':'#fff5f5', neutre:'#fafafa' };
   const sigCls         = { acheter:'signal-buy', attendre:'signal-wait', 'éviter':'signal-avoid', neutre:'signal-neutral' };
-  const sigLbl         = { acheter:'↑ Opportunité', attendre:'⏸ Attendre', 'éviter':'↓ Éviter', neutre:'→ Neutre' };
+  const sigLbl         = { acheter:'↑ Signal positif', attendre:'⏸ Attendre', 'éviter':'↓ Éviter', neutre:'→ Neutre' };
   const sigIcon        = { acheter:'📈', attendre:'⏸️', 'éviter':'🚫', neutre:'➡️' };
 
   list.innerHTML = filtered.map((n, i) => {
@@ -11660,7 +11660,7 @@ function renderNewsList() {
       'acheter':'Conserver / Renforcer', 'renforcer':'Conserver / Renforcer',
       'garder':'Conserver', 'surveiller':'Surveiller',
       'vendre':"Réduire l'exposition", 'éviter':"Réduire l'exposition",
-      'neutre':'Opportunité'
+      'neutre':'Point à étudier'
     };
     const recoLabel = recoMap[n.signal] || 'Analyser';
     const recoColors = {
@@ -11839,7 +11839,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
   "montant_conseille": "Ex: 300€ maximum (6% de ton capital)",
   "pour": ["point positif 1", "point positif 2"],
   "contre": ["point négatif 1", "point négatif 2"],
-  "conseil_final": "Conseil concret en 2-3 phrases simples pour un débutant"
+  "conseil_final": "Ce qu'il faut retenir en 2-3 phrases simples pour un débutant, à visée éducative et sans recommandation personnalisée"
 }`;
 
   const result = document.getElementById('d-result');
@@ -15223,11 +15223,11 @@ function renderAgentSample() {
   if (alertEl) alertEl.innerHTML = `
   <div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.3);border-radius:16px;padding:16px 18px;margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:15px">⚠️</span><span style="font-size:13px;font-weight:900;color:#fbbf24">À surveiller dans ton portefeuille</span></div>
-    <div style="font-size:12.5px;color:rgba(255,255,255,0.85);line-height:1.5"><strong style="color:#fff">LVMH</strong> pèse <strong>30%</strong> de ton portefeuille (conseillé : moins de 25%).</div>
+    <div style="font-size:12.5px;color:rgba(255,255,255,0.85);line-height:1.5"><strong style="color:#fff">LVMH</strong> pèse <strong>30%</strong> de ton portefeuille (repère : moins de 25%).</div>
     <div style="margin-top:8px;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px">
-      <div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conseil IA : alléger <span style="color:#4ade80">· ✦ Premium</span></div>
+      <div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Point d'attention : forte concentration <span style="color:#4ade80">· ✦ Premium</span></div>
       <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.5">Une seule action pèse près d'un tiers de ton portefeuille : une mauvaise séance sur le luxe te coûterait cher. Alléger de 10 points te ramène sous le seuil.</div>
-      <div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ À la place : <strong style="color:#fff">iShares Core MSCI World</strong> <span style="opacity:.6">IWDA.L</span> — diversifié sur 1 500 entreprises</div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ Alternative à étudier : <strong style="color:#fff">iShares Core MSCI World</strong> <span style="opacity:.6">IWDA.L</span> — diversifié sur 1 500 entreprises</div>
     </div>
   </div>`;
 
@@ -15324,7 +15324,7 @@ function renderAgentDashboard() {
               </div>
               <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
                 <div style="display:flex;align-items:center;justify-content:center;gap:5px;font-size:18px;font-weight:900;color:#fbbf24">✦ <span>${alerts.filter(a=>a.type==='warn').length}</span></div>
-                <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Opportunités</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Points forts</div>
               </div>
               <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
                 <div style="font-size:18px;font-weight:900;color:${pnlColor}">${tpnl>=0?'+':''}${fmtI(tpnl)} €</div>
@@ -15389,9 +15389,9 @@ function renderAgentDashboard() {
       const pPnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
       const isRisk = pPct > 35 || pPnl < -10;
       const isOpp = pPnl > 5 && pPct < 25;
-      const theme = isRisk ? {c:'#dc2626',bg:'#fef2f2',tag:'⚠ Risque évalué',action:'Rééquilibrer'} :
-                    isOpp ? {c:'#16a34a',bg:'#f0fdf4',tag:'✦ Opportunité',action:'Renforcer ?'} :
-                    {c:'#6366f1',bg:'#eef2ff',tag:'Position solide',action:'Conserver'};
+      const theme = isRisk ? {c:'#dc2626',bg:'#fef2f2',tag:'⚠ Point d’attention',action:'Comprendre'} :
+                    isOpp ? {c:'#16a34a',bg:'#f0fdf4',tag:'✦ Point fort',action:'En savoir plus'} :
+                    {c:'#6366f1',bg:'#eef2ff',tag:'Position solide',action:'En savoir plus'};
       return `<div onclick="sq('Analyse ma position ${p.name} : dois-je ${theme.action.toLowerCase().replace(' ?','')} ?')" style="cursor:pointer;background:${theme.bg};border-radius:12px;padding:11px;border:1px solid ${theme.c}22;display:flex;flex-direction:column;min-height:104px">
         <div style="font-size:9px;font-weight:700;color:${theme.c};margin-bottom:5px">${theme.tag}</div>
         <div style="font-size:12px;font-weight:800;color:${txt};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px">${displayName(p.name)}</div>
@@ -15420,7 +15420,7 @@ function renderAgentDashboard() {
     let verb, reason;
     if (pPct > 35) {
       verb = 'reduire';
-      reason = `poids de ${pPct.toFixed(0)}% — au-dessus du seuil de concentration conseillé`;
+      reason = `poids de ${pPct.toFixed(0)}% — au-dessus du repère de concentration`;
     } else if (pPnl < -15) {
       verb = 'surveiller';
       reason = `moins-value de ${pPnl.toFixed(1).replace(".", ",")} % — analyse recommandée avant tout arbitrage`;
@@ -15454,7 +15454,7 @@ function renderAgentDashboard() {
           <div style="font-size:12px;font-weight:800;color:${txt}">Recommandations IA</div>
           <div style="font-size:10px;color:${sub};margin-top:1px">Basées sur ton profil et les conditions de marché</div>
         </div>
-        <button onclick="sq('Donne-moi tes 3 meilleures recommandations actuelles')" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:8px;padding:5px 11px;font-size:10px;font-weight:700;cursor:pointer">🤖 Mon Conseil par IA →</button>
+        <button onclick="sq('Quels points de mon portefeuille devrais-je regarder en priorité ?')" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:8px;padding:5px 11px;font-size:10px;font-weight:700;cursor:pointer">🤖 Mon analyse par IA →</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:7px">
         ${_recosToTrack.map((r,i) => {
@@ -15483,7 +15483,7 @@ function renderAgentDashboard() {
     <div onclick="openBilan()" style="cursor:pointer;background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px">
       <div>
         <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:3px">${savedBilan ? '📄 Ton bilan patrimonial' : '💡 Et si ton portefeuille était optimisé au max ?'}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.45)">${savedBilan ? `Fait le ${bilanDateLabel(savedBilan.ts)} · retrouve-le ici, ou refais-le quand ta situation change.` : "Lance ton Bilan Premium : l'IA analyse tout et te dit où tu perds de l'argent."}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.45)">${savedBilan ? `Fait le ${bilanDateLabel(savedBilan.ts)} · retrouve-le ici, ou refais-le quand ta situation change.` : "Lance ton Bilan Premium : l'IA analyse tout et t'aide à repérer les points à regarder."}</div>
       </div>
       <button style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer;flex-shrink:0">${savedBilan ? 'Voir mon bilan →' : 'Lancer le Bilan →'}</button>
     </div>`;
@@ -15556,7 +15556,7 @@ function renderAgentDashboard() {
       const rConviction = Math.round(Math.max(38, Math.min(90, 50 + Math.min(Math.abs(rPnl), 25)*0.8 + (rPct > 35 ? 12 : 0))));
       return `
     <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
-      <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">💰 Opportunité principale</div>
+      <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">💡 Point à étudier</div>
       <div style="font-size:13px;font-weight:900;color:${txt};margin-bottom:3px">Optimise ${riskiest.ticker||riskiest.name}</div>
       <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:6px">Position leader (${rPct.toFixed(0)}% du portef., ${rGainWord}${rPnl.toFixed(1).replace(".", ",")} %) — ${rMsg}</div>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
