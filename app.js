@@ -1275,7 +1275,7 @@ function renderMonthlyPlan(plan, isNew) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:relative">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:7px;text-transform:capitalize">📅 ${monthLabel()}</span>
-        <span style="font-size:14px;font-weight:900;color:#fff">Ton plan du mois</span><span class="kp-tip" role="button" tabindex="0" data-k="dca">?</span>
+        <span style="font-size:14px;font-weight:900;color:#fff">Ton plan du mois (indicatif)</span><span class="kp-tip" role="button" tabindex="0" data-k="dca">?</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px"><button type="button" id="monthly-addall-btn" onclick="monthlyAddAll()" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:none;border-radius:9px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(22,163,74,0.3)">⚡ Tout ajouter</button><button onclick="generateMonthlyPlan(true)" title="Régénérer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-size:11px;padding:4px 9px;border-radius:7px;cursor:pointer">↻</button></div>
     </div>
@@ -2049,7 +2049,7 @@ function buildObjChart(capital, monthly, target, years, annualRate) {
       badge.textContent = targetYear ? `✓ Atteint en ${targetYear} ans` : '✓ Objectif atteint';
       badge.className = 'obj-track-badge on-track';
     } else {
-      badge.textContent = '⚠ Ajustement conseillé';
+      badge.textContent = '⚠ Point à revoir';
       badge.className = 'obj-track-badge off-track';
     }
   }
@@ -4415,7 +4415,7 @@ async function obGeneratePlan() {
     </div>`;
   }
 
-  html += `<div id="ob-ai-advice" style="text-align:center;padding:12px;color:#8e8e93;font-size:13px">💬 Conseil IA en cours...</div>`;
+  html += `<div id="ob-ai-advice" style="text-align:center;padding:12px;color:#8e8e93;font-size:13px">💬 Analyse IA en cours...</div>`;
   planEl.innerHTML = html;
 
   // Charge les actions en parallèle
@@ -5772,7 +5772,7 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
       ${mySignaux.length ? `
         <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px">📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:400">${mySignaux.length} actifs</span></div>
         <div id="my-positions-section">${mySignaux.map(s => signalCard(s, true)).join('')}</div>` : ''}
-      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px">🔭 Opportunités du marché</div>
+      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px">🔭 Valeurs à découvrir</div>
       <div id="oppo-loading" style="text-align:center;padding:20px;color:#8e8e93">
         <div style="font-size:20px;margin-bottom:6px">🧠</div>
         <div style="font-size:13px">Analyse des opportunités...</div>
@@ -7425,7 +7425,7 @@ function updateDecisionAmount(euros) {
   const pctEl = document.getElementById('d-amount-pct');
   if (pctEl) {
     const bk = profile.bankroll || 0;
-    pctEl.textContent = bk > 0 ? `= ${(euros / bk * 100).toFixed(1).replace(".", ",")} % de ta bankroll` : '';
+    pctEl.textContent = bk > 0 ? `= ${(euros / bk * 100).toFixed(1).replace(".", ",")} % de ton capital` : '';
   }
   renderAmountChips();
   updateDecisionCTA();
@@ -8163,7 +8163,7 @@ Réponds UNIQUEMENT en JSON valide. Sois précis et personnalisé avec les vrais
     score_color: '#f59e0b',
     resume_executif: 'Version simplifiée : l\'analyse IA n\'a pas pu être générée. Les chiffres détaillés plus bas (diagnostic, objectifs, plan) sont calculés à partir de tes réponses et restent valables.',
     points_forts: ['Tu as renseigné ta situation en détail', 'Tu épargnes déjà régulièrement', 'Tu as un horizon long terme'],
-    points_attention: ['Relance l\'analyse pour obtenir des recommandations personnalisées', 'Vérifie ta mensualité et ton allocation'],
+    points_attention: ['Relance l\'analyse pour obtenir des pistes d\'amélioration', 'Vérifie ta mensualité et ton allocation'],
     mensualite_recommandee: Math.round(capacite * 0.4),
     mensualite_min: Math.round(capacite * 0.2),
     mensualite_max: Math.round(capacite * 0.6),
@@ -8887,7 +8887,7 @@ async function checkAndGenerateNotifications() {
     // Si ETF > 80% ou < 50% d'un portefeuille mixte avec actions
     const hasActions = apos().some(p=>p.type==='Action'||p.type==='action');
     if (hasActions && etfPct > 80) {
-      newNotifs.push({ titre:'⚖️ Rééquilibrage conseillé', texte:`Tes ETF représentent ${etfPct.toFixed(0)}% du portefeuille. Tu pourrais réduire légèrement pour garder un bon équilibre.`, action:'Voir Santé du portefeuille', impact:'medium', heure:'Analyse', type:'reequilibrage' });
+      newNotifs.push({ titre:'⚖️ Répartition à regarder', texte:`Tes ETF représentent ${etfPct.toFixed(0)}% du portefeuille. Tu pourrais réduire légèrement pour garder un bon équilibre.`, action:'Voir Santé du portefeuille', impact:'medium', heure:'Analyse', type:'reequilibrage' });
     } else if (hasActions && etfPct < 40) {
       newNotifs.push({ titre:'⚖️ Trop concentré en actions', texte:`Tes ETF ne représentent que ${etfPct.toFixed(0)}% — tu prends plus de risque que nécessaire. Pense à renforcer tes ETF.`, action:'Aide à la décision', impact:'medium', heure:'Analyse', type:'reequilibrage' });
     }
@@ -9393,6 +9393,40 @@ function activationCardHTML() {
   </div>`;
 }
 
+// Courbe de l'accueil : vrais cours du dernier mois, avec les quantités actuelles (aucune donnée simulée).
+// Si les cours manquent pour une trop grande part du portefeuille, on n'affiche pas de courbe.
+async function kpHomeCurve() {
+  const el = document.getElementById('home-curve');
+  if (!el || !positions.length) return;
+  const total = positions.reduce((a, p) => a + p.qty * p.price, 0);
+  if (!total) return;
+  const results = await Promise.all(positions.map(async p => {
+    try {
+      const d = await kpFetchChart(kpTickerOf(p.name) || p.name, '1m');
+      const pts = (d.points || []).filter(x => x && x.c > 0);
+      return pts.length > 1 ? { p, pts } : null;
+    } catch (e) { return null; }
+  }));
+  const series = results.filter(Boolean);
+  const covered = series.reduce((a, r) => a + r.p.qty * r.p.price, 0);
+  if (!series.length || covered / total < 0.7) return;
+  const ref = series.reduce((a, r) => r.pts.length > a.pts.length ? r : a).pts;
+  const values = ref.map(point => series.reduce((sum, r) => {
+    const last = r.pts[r.pts.length - 1].c;
+    let c = r.pts[0].c;
+    for (const x of r.pts) { if (x.t <= point.t) c = x.c; else break; }
+    return sum + r.p.qty * r.p.price * c / last;
+  }, 0));
+  const min = Math.min(...values), max = Math.max(...values), range = max - min || 1;
+  const W = 320, H = 64;
+  const line = values.map((v, i) => `${(i / (values.length - 1) * W).toFixed(1)},${(H - 4 - (v - min) / range * (H - 10)).toFixed(1)}`);
+  const up = values[values.length - 1] >= values[0];
+  const color = up ? '#4ade80' : '#f87171';
+  const target = document.getElementById('home-curve');
+  if (!target) return;
+  target.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="M0,${H} L${line.join(' L')} L${W},${H} Z" fill="${color}" opacity="0.13"/><path d="M${line.join(' L')}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg><div class="kph-curve-note">1 mois, à composition actuelle</div>`;
+}
+
 async function renderHome() {
   const h = new Date().getHours();
   const greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
@@ -9451,41 +9485,20 @@ async function renderHome() {
   const pnlColor = tpnl >= 0 ? '#4ade80' : '#f87171';
   const pnlBg = tpnl >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)';
   const chgColor = avgChange >= 0 ? '#4ade80' : '#f87171';
-  const mainSparkData = isEmpty ? Array(30).fill(50) : genSparkData(avgChange > 0 ? 1 : -1, 30);
   const scoreTxt = (isEmpty || !apos().length) ? '—' : score.toFixed(1).replace(".", ",");
   const scoreShownColor = (isEmpty || !apos().length) ? '#8e8e93' : scoreColor;
   const stripItems = (isEmpty || !scoreItems.length)
     ? ['Diversification','Concentration max','Part ETF','Performance'].map(label => ({label, score:0}))
     : scoreItems;
 
-  // ── HERO CARD ──
+  // ── CARTE PRINCIPALE ──
+  const perfSign = tpnl >= 0 ? '+' : '−';
   document.getElementById('home-metrics').innerHTML = `
-    <div onclick="nav('portfolio')" class="home-hover-card" style="cursor:pointer;background:linear-gradient(135deg,#0d0d12,#141420);border-radius:20px;padding:24px 28px;margin-bottom:4px;grid-column:1/-1;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.06)">
-      <div style="position:absolute;top:0;right:0;bottom:0;width:45%;opacity:0.8;pointer-events:none">
-        ${sparkline(mainSparkData, tpnl>=0?'#4ade80':'#f87171', 400, 160, true)}
-      </div>
-      <div class="hero-perf-badge" style="position:absolute;top:16px;right:20px;background:${pnlBg};border:1px solid ${tpnl>=0?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.25)'};border-radius:10px;padding:8px 14px;text-align:right;pointer-events:none">
-        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">Performance totale</div>
-        <div style="font-size:20px;font-weight:800;color:${pnlColor};letter-spacing:-0.04em">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
-        <div style="font-size:12px;color:${pnlColor};opacity:0.7;margin-top:2px">${tpnl>=0?'↑':'↓'} ${Math.abs(tpct).toFixed(1).replace(".", ",")} %</div>
-      </div>
-      <div style="position:relative;z-index:2">
-        <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Valeur totale du portefeuille</div>
-        <div style="font-size:clamp(32px,5vw,48px);font-weight:900;color:#fff;letter-spacing:-0.05em;line-height:1;margin-bottom:16px" id="home-tv-counter">—</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
-          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${chgColor}">${avgChange>=0?'↑':'↓'} ${Math.abs(avgChange).toFixed(1).replace(".", ",")} % aujourd'hui</div>
-          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.6)">${positions.length} positions</div>
-          <div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:${scoreShownColor}">${scoreTxt}/10 santé</div>
-          ${targetVal > 0 ? `<div class="a-chip" style="background:rgba(255,255,255,0.08);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#a5b4fc">${pctObj.toFixed(0)}% objectif</div>` : ''}
-        </div>
-        ${targetVal > 0 ? `
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:5px"><span>Progression objectif</span><span>${fmtK(tv)} / ${fmtK(targetVal)}</span></div>
-          <div style="background:rgba(255,255,255,0.08);border-radius:99px;height:5px;overflow:hidden">
-            <div id="home-prog-bar" style="height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;width:0%;transition:width 1.2s cubic-bezier(0.16,1,0.3,1)"></div>
-          </div>
-        </div>` : ''}
-      </div>
+    <div onclick="nav('portfolio')" class="kph-hero home-hover-card">
+      <div class="kph-hero-label">Mon épargne</div>
+      <div class="kph-hero-value" id="home-tv-counter">—</div>
+      <div class="kph-hero-perf" style="color:${pnlColor}">${isEmpty ? 'Ajoute tes placements pour commencer' : `${perfSign}${Math.abs(tpct).toFixed(1).replace('.', ',')} % depuis le début · ${perfSign}${Math.abs(tpnl).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}</div>
+      <div class="kph-curve" id="home-curve"></div>
     </div>`;
 
   // ── STRUCTURE EN 3 NIVEAUX ──
@@ -9494,70 +9507,72 @@ async function renderHome() {
   // 3) "Voir plus d'analyses" : détail replié pour qui veut creuser (répartition...).
   let html = '';
 
-  // Actions rapides — remontées juste après le hero : "que faire maintenant ?"
-  const actions = [
-    { icon:'＋', label:'Ajouter une position', sub:'Ajoutez une action, ETF...', page:'ajouter', color:'#6366f1' },
-    { icon:'🤔', label:'Aide à la décision', sub:'Analyse et recommandations', page:'decision', color:'#f59e0b' },
-    { icon:'🤖', label:'Agent IA', sub:'Discute avec ton assistant', page:'ai', color:'#16a34a' },
-  ];
+  // Santé et objectif, côte à côte
+  const scoreDeg = isEmpty ? 0 : Math.max(0, Math.min(10, score)) * 36;
   html += `
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
-    ${actions.map(a => `
-    <div onclick="nav('${a.page}')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:14px;padding:14px;transition:all 0.2s" class="home-hover-card">
-      <div style="font-size:22px;margin-bottom:8px">${a.icon}</div>
-      <div style="font-size:13px;font-weight:700;color:#09090b;margin-bottom:3px;letter-spacing:-0.02em">${a.label}</div>
-      <div style="font-size:11px;color:var(--color-text-tertiary)">${a.sub}</div>
-    </div>`).join('')}
+  <div class="kph-duo">
+    <div onclick="nav('sante')" class="kph-card home-hover-card">
+      <div class="kph-card-title">Santé du portefeuille</div>
+      <div class="kph-ring" style="background:conic-gradient(${scoreShownColor} ${scoreDeg}deg, var(--color-border-subtle) 0)"><div><b style="color:${scoreShownColor}">${scoreTxt}</b><span>/10</span></div></div>
+      <div class="kph-card-sub">${isEmpty ? 'Pas encore de données' : score >= 7 ? 'Solide' : score >= 5 ? 'Correct' : 'À améliorer'}</div>
+    </div>
+    <div onclick="nav('objectif')" class="kph-card home-hover-card">
+      <div class="kph-card-title">Mon objectif</div>
+      ${targetVal > 0 ? `
+      <div class="kph-goal">${pctObj.toFixed(0)} %</div>
+      <div class="kph-bar"><div id="home-prog-bar"></div></div>
+      <div class="kph-card-sub">${fmtK(tv)} sur ${fmtK(targetVal)}</div>` : `
+      <div class="kph-card-sub" style="margin-top:12px">Fixe ton objectif pour suivre ta progression</div>`}
+    </div>
   </div>`;
 
-  // Bande compacte : score + mini-barres techniques + 1 ligne d'insight IA.
-  // Fusionne les anciennes cartes "Santé" et "Insight IA" en un seul bloc resserré :
-  // montre qu'il y a une vraie analyse derrière (crédibilité) sans occuper tout l'écran.
-  const shortLabel = { 'Diversification':'Diversif.', 'Concentration max':'Concentr.', 'Part ETF':'ETF', 'Performance':'Perf.' };
+  // Le point à regarder aujourd'hui
   html += `
-  <div onclick="nav('sante')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:14px 16px;margin-bottom:10px;transition:all 0.2s" class="home-hover-card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div style="display:flex;align-items:baseline;gap:8px">
-        <div style="font-size:22px;font-weight:900;color:${scoreShownColor};letter-spacing:-0.04em;line-height:1">${scoreTxt}<span style="font-size:12px;color:var(--color-text-tertiary)">/10</span></div>
-        <div style="font-size:12px;font-weight:700;color:${scoreShownColor}">${isEmpty?'Pas encore de données':score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️'}</div>
-      </div>
-      <div style="font-size:11px;font-weight:600;color:var(--color-text-secondary)">Santé détaillée →</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
-      ${stripItems.map(it => `
-      <div>
-        <div style="font-size:8px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortLabel[it.label]||it.label}</div>
-        <div style="background:#f0f0f2;border-radius:99px;height:4px;overflow:hidden">
-          <div style="height:100%;width:${it.score*10}%;border-radius:99px;background:${it.score>=7?'#16a34a':it.score>=5?'#f59e0b':'#dc2626'}"></div>
-        </div>
-      </div>`).join('')}
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--color-border)">
-      <div style="width:6px;height:6px;background:#16a34a;border-radius:50%;flex-shrink:0;animation:pulse-dot 2s infinite"></div>
-      <div id="home-ai-insight" style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;flex:1">
-        ${positions.length > 0 ? `${avgChange>=0?'Portef. en hausse de':'Portef. en baisse de'} <strong style="color:${chgColor}">${avgChange>=0?'+':''}${avgChange.toFixed(1).replace(".", ",")} %</strong> aujourd'hui.` : 'Ajoute des positions pour recevoir des insights personnalisés.'}
-      </div>
-      <div onclick="event.stopPropagation();nav('ai')" style="font-size:11px;font-weight:600;color:#16a34a;flex-shrink:0;cursor:pointer">Agent IA →</div>
-    </div>
+  <div onclick="nav('sante')" class="kph-note home-hover-card">
+    <span class="kph-note-dot"></span>
+    <div id="home-ai-insight">${positions.length > 0 ? `${avgChange >= 0 ? 'Portefeuille en hausse de' : 'Portefeuille en baisse de'} <strong style="color:${avgChange >= 0 ? '#16a34a' : '#dc2626'}">${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(1).replace('.', ',')} %</strong> aujourd'hui.` : 'Ajoute une position pour voir ce qui mérite ton attention.'}</div>
+    <span class="kph-arrow">›</span>
+  </div>`;
+
+  // Raccourcis
+  html += `
+  <div class="kph-actions">
+    <button type="button" class="kph-action primary" onclick="nav('ajouter')">＋ Ajouter une position</button>
+    <button type="button" class="kph-action" onclick="nav('ai')">Poser une question</button>
+  </div>`;
+
+  // Tous les outils (icônes reprises du menu)
+  const kphIcon = id => document.getElementById('nav-' + id)?.querySelector('svg')?.outerHTML || '';
+  const kphTools = [
+    ['decision', 'Aide à la décision', "nav('decision')"],
+    ['ai', 'Agent IA', "nav('ai')"],
+    ['crise', 'Scénario crise', "nav('crise')"],
+    ['dca', 'Simulateur DCA', "nav('dca')"],
+    ['calc', 'Calculateurs', "nav('calc')"],
+    ['depenses', 'Mes dépenses', "nav('depenses')"],
+    ['bilan', 'Mon bilan', 'openBilan()'],
+    ['news', 'Actualités', "nav('news')"],
+  ];
+  html += `
+  <div class="kph-tools-title">Mes outils</div>
+  <div class="kph-tools">
+    ${kphTools.map(([id, label, go]) => `<button type="button" class="kph-tool" onclick="${go}"><span class="kph-tool-ico">${kphIcon(id)}</span><span>${label}</span></button>`).join('')}
   </div>`;
 
   // Meilleure + pire performance avec sparkline
+  let bwHtml = '';
   if (best && worst && best !== worst) {
-    const bestData = genSparkData(2, 20);
-    const worstData = genSparkData(-2, 20);
-    html += `
+    bwHtml = `
     <div class="home-bw" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px">
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">🏆 Meilleure performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${best.name}</div>
         <div style="font-size:20px;font-weight:900;color:${(best.change_pct||0)>=0?'#16a34a':'#dc2626'};letter-spacing:-0.04em;margin-bottom:8px">${(best.change_pct||0)>=0?'+':''}${(best.change_pct||0).toFixed(2).replace(".", ",")} %</div>
-        <div style="opacity:0.7">${sparkline(bestData,'#4ade80',120,32,true)}</div>
       </div>
       <div onclick="nav('portfolio')" style="cursor:pointer;background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px;transition:all 0.2s" class="home-hover-card">
         <div style="font-size:9px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">📉 Plus faible performance</div>
         <div style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.04em;margin-bottom:2px">${worst.name}</div>
         <div style="font-size:20px;font-weight:900;color:${(worst.change_pct||0)>=0?'#16a34a':'#dc2626'};letter-spacing:-0.04em;margin-bottom:8px">${(worst.change_pct||0)>0?'+':''}${(worst.change_pct||0).toFixed(2).replace(".", ",")} %</div>
-        <div style="opacity:0.7">${sparkline(worstData,'#f87171',120,32,true)}</div>
       </div>
     </div>`;
   }
@@ -9596,6 +9611,7 @@ async function renderHome() {
     <div style="margin-bottom:4px">
       <button onclick="const el=document.getElementById('home-more');const open=el.style.display==='block';el.style.display=open?'none':'block';this.querySelector('span').textContent=open?'Voir plus d\\'analyses  ▾':'Voir moins  ▴'" style="width:100%;padding:10px;background:none;border:1px dashed var(--color-border);border-radius:12px;font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer"><span>Voir plus d'analyses  ▾</span></button>
       <div id="home-more" style="display:none;margin-top:10px">
+        ${bwHtml}
         <div style="background:#fff;border:1px solid var(--color-border);border-radius:16px;padding:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div style="font-size:11px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.08em">Répartition par plateforme</div>
@@ -9663,6 +9679,7 @@ async function renderHome() {
     });
   }, 80);
   setTimeout(() => fadeInCards('#home-score > div', 90), 150);
+  kpHomeCurve();
 
   // Insight IA asynchrone
   setTimeout(async () => {
@@ -9675,7 +9692,7 @@ async function renderHome() {
     const topSector = Object.entries(topSectors).sort((a,b)=>b[1]-a[1])[0];
     const topPct = topSector ? (topSector[1]/tv2*100).toFixed(0) : 0;
     if (topSector && topPct > 35) {
-      insightEl.innerHTML = `Ton exposition au secteur <strong style="color:var(--color-text)">${topSector[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisage une diversification pour réduire le risque.`;
+      insightEl.innerHTML = `Ton exposition au secteur <strong style="color:var(--color-text)">${topSector[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Regarde le détail dans ta page Santé.`;
     }
   }, 800);
 }
@@ -9795,7 +9812,7 @@ async function getSmartAdvice(a) {
   const tv = apos().reduce((s, p) => s + p.qty * p.price, 0);
   const held = [...new Set(apos().map(p => p.name))].slice(0, 15).join(', ');
   const facts = a.kind === 'concentration'
-    ? `${a.name} (${a.ticker}) représente ${a.pct.toFixed(0)}% du portefeuille (seuil conseillé : ${SMART_CONC_MAX}%).`
+    ? `${a.name} (${a.ticker}) représente ${a.pct.toFixed(0)}% du portefeuille (repère : ${SMART_CONC_MAX}%).`
     : `${a.name} (${a.ticker}) est à ${a.perf.toFixed(0)}% par rapport à ton prix de revient et pèse ${a.pct.toFixed(0)}% du portefeuille.`;
   const _dc = await fetchContextBlock([{ t: a.ticker, name: a.name }]);
   const prompt = `Portefeuille de ${fmtK(tv)} — lignes : ${held}.
@@ -9826,7 +9843,7 @@ async function renderSmartAlerts(containerId) {
   if (!alerts.length) { el.innerHTML = ''; return; }
   const premium = isPremiumUser();
   const kindTxt = a => a.kind === 'concentration'
-    ? `pèse <strong>${a.pct.toFixed(0)}%</strong> de ton portefeuille (conseillé : moins de ${SMART_CONC_MAX}%)`
+    ? `pèse <strong>${a.pct.toFixed(0)}%</strong> de ton portefeuille (repère : moins de ${SMART_CONC_MAX}%)`
     : `est à <strong>${a.perf.toFixed(0)}%</strong> par rapport à ton prix d'achat`;
 
   el.innerHTML = `
@@ -9841,7 +9858,7 @@ async function renderSmartAlerts(containerId) {
       <div id="${containerId}-adv-${i}" style="margin-top:8px">
         ${premium
           ? `<div style="font-size:11px;color:rgba(255,255,255,0.4)">Analyse en cours…</div>`
-          : `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,0.5)"><span>🔒 Conseil IA (que faire + par quoi le remplacer) — Premium</span><button onclick="showPlansModal()" style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer">Débloquer</button></div>`}
+          : `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,0.5)"><span>🔒 Analyse IA de ce point d'attention — Premium</span><button onclick="showPlansModal()" style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer">Débloquer</button></div>`}
       </div>
     </div>`).join('')}
   </div>`;
@@ -9864,13 +9881,13 @@ async function renderSmartAlerts(containerId) {
     const advEl = document.getElementById(`${containerId}-adv-${i}`);
     const adv = await getSmartAdvice(alerts[i]);
     if (!advEl || !document.getElementById(containerId)) return;
-    if (!adv) { advEl.innerHTML = `<div style="font-size:11px;color:rgba(255,255,255,0.4)">Conseil indisponible pour le moment.</div>`; continue; }
+    if (!adv) { advEl.innerHTML = `<div style="font-size:11px;color:rgba(255,255,255,0.4)">Analyse indisponible pour le moment.</div>`; continue; }
     const vColor = adv.verdict === 'vendre' ? '#f87171' : adv.verdict === 'alléger' ? '#fbbf24' : '#4ade80';
     advEl.innerHTML = `
       <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px">
-        <div style="font-size:11px;font-weight:800;color:${vColor};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conseil IA : ${_escHtml(({vendre:'réduire fortement', 'alléger':'alléger', garder:'conserver'})[adv.verdict] || adv.verdict)}</div>
+        <div style="font-size:11px;font-weight:800;color:${vColor};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Point d'attention : ${_escHtml(({vendre:'ligne à réexaminer', 'alléger':'forte concentration', garder:'pas d’urgence'})[adv.verdict] || adv.verdict)}</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.5">${_escHtml(adv.raison)}</div>
-        ${adv.remplacement && adv.remplacement.ticker ? `<div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ À la place : <strong style="color:#fff">${_escHtml(adv.remplacement.name || adv.remplacement.ticker)}</strong> <span style="opacity:.6">${_escHtml(adv.remplacement.ticker)}</span> — ${_escHtml(adv.remplacement.raison || '')}</div>` : ''}
+        ${adv.remplacement && adv.remplacement.ticker ? `<div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ Alternative à étudier : <strong style="color:#fff">${_escHtml(adv.remplacement.name || adv.remplacement.ticker)}</strong> <span style="opacity:.6">${_escHtml(adv.remplacement.ticker)}</span> — ${_escHtml(adv.remplacement.raison || '')}</div>` : ''}
       </div>`;
   }
 }
@@ -10181,7 +10198,7 @@ Réponds UNIQUEMENT en JSON valide sans markdown :
 {
   "action": "acheter" ou "garder" ou "vendre",
   "conviction": "forte" ou "modérée" ou "faible",
-  "texte": "Conseil principal en 1 phrase simple",
+  "texte": "Point principal à comprendre en 1 phrase simple, sans recommandation personnalisée",
   ${isAction ? `
   "prix_cible": 0,
   "stop_loss": 0,
@@ -10535,7 +10552,7 @@ async function renderSante() {
       <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
         <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Nb. positions</div>
         <div style="font-size:28px;font-weight:900;color:${textPrimary};letter-spacing:-0.04em">${nbPos}</div>
-        <div style="font-size:11px;color:${textSec};margin-top:4px">Min conseillé : 8</div>
+        <div style="font-size:11px;color:${textSec};margin-top:4px">Repère : 8</div>
       </div>
       <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
         <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Performance</div>
@@ -10985,7 +11002,7 @@ Profil : ${objRisk} (~${riskRates[objRisk]}%/an), objectif ${fmtK(target)} en ${
       : formatMD(simpleR)}</div>
     ${!onTrack ? `
     <div style="margin-top:16px;background:#fff5e0;border-radius:14px;padding:16px;border-left:4px solid #f59e0b">
-      <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:8px">⚠ Ajustement conseillé</div>
+      <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:8px">⚠ Point à revoir</div>
       <div style="font-size:13px;color:#78350f;line-height:1.6">
         Pour atteindre <strong>${fmtK(target)}</strong> en <strong>${years} ans</strong>, voici tes options :
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
@@ -11590,7 +11607,7 @@ function renderNewsList() {
   const sigBorderColor = { acheter:'#1a7f5a', attendre:'#f59e0b', 'éviter':'#cc2f26', neutre:'#c7c7cc' };
   const sigBg          = { acheter:'#f0faf6', attendre:'#fffbf0', 'éviter':'#fff5f5', neutre:'#fafafa' };
   const sigCls         = { acheter:'signal-buy', attendre:'signal-wait', 'éviter':'signal-avoid', neutre:'signal-neutral' };
-  const sigLbl         = { acheter:'↑ Opportunité', attendre:'⏸ Attendre', 'éviter':'↓ Éviter', neutre:'→ Neutre' };
+  const sigLbl         = { acheter:'↑ Signal positif', attendre:'⏸ Attendre', 'éviter':'↓ Éviter', neutre:'→ Neutre' };
   const sigIcon        = { acheter:'📈', attendre:'⏸️', 'éviter':'🚫', neutre:'➡️' };
 
   list.innerHTML = filtered.map((n, i) => {
@@ -11660,7 +11677,7 @@ function renderNewsList() {
       'acheter':'Conserver / Renforcer', 'renforcer':'Conserver / Renforcer',
       'garder':'Conserver', 'surveiller':'Surveiller',
       'vendre':"Réduire l'exposition", 'éviter':"Réduire l'exposition",
-      'neutre':'Opportunité'
+      'neutre':'Point à étudier'
     };
     const recoLabel = recoMap[n.signal] || 'Analyser';
     const recoColors = {
@@ -11836,10 +11853,10 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
   "risque_niveau": "Faible" ou "Moyen" ou "Élevé",
   "risque_explication": "Pourquoi ce niveau de risque (1 phrase)",
   "horizon_conseille": "Ex: 5 à 10 ans minimum",
-  "montant_conseille": "Ex: 300€ maximum (6% de ta bankroll)",
+  "montant_conseille": "Ex: 300€ maximum (6% de ton capital)",
   "pour": ["point positif 1", "point positif 2"],
   "contre": ["point négatif 1", "point négatif 2"],
-  "conseil_final": "Conseil concret en 2-3 phrases simples pour un débutant"
+  "conseil_final": "Ce qu'il faut retenir en 2-3 phrases simples pour un débutant, à visée éducative et sans recommandation personnalisée"
 }`;
 
   const result = document.getElementById('d-result');
@@ -11902,7 +11919,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure :
 
       <!-- CONSEIL FINAL -->
       <div class="card" style="margin-top:10px;background:#f9f9f9">
-        <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:8px">💬 Conseil personnalisé</div>
+        <div style="font-size:12px;font-weight:700;color:#8e8e93;text-transform:uppercase;margin-bottom:8px">💬 Ce qu'il faut retenir</div>
         <div style="font-size:14px;color:#1c1c1e;line-height:1.7;font-weight:500">${d.conseil_final}</div>
       </div>
 
@@ -13814,8 +13831,86 @@ const KP_ANDROID_APP = (() => {
 })();
 const KP_ANDROID_APP_MSG = 'L’abonnement Premium arrive bientôt dans l’appli.';
 
-// Lance le paiement Stripe
+// ═══ ABONNEMENT DANS L'APPLI iOS (RevenueCat) ═══
+// Clé publique RevenueCat de l'appli (appl_…), ce n'est pas un secret. Tant qu'elle est vide, l'appli garde « arrive bientôt ».
+const KP_RC_IOS_KEY = '';
+const KP_RC_PRODUCTS = { monthly: 'kapitaro_premium_monthly', annual: 'kapitaro_premium_annual' };
+const KP_STORE_SUBS_URL = 'https://apps.apple.com/account/subscriptions';
+let kpStoreUser = null;
+function kpStore() {
+  try {
+    const c = window.Capacitor;
+    if (!KP_RC_IOS_KEY || !c || !c.isNativePlatform || !c.isNativePlatform() || !c.isPluginAvailable || !c.isPluginAvailable('Purchases')) return null;
+    return c.Plugins.Purchases || c.registerPlugin('Purchases');
+  } catch (e) { return null; }
+}
+async function kpStoreReady() {
+  const P = kpStore();
+  if (!P || !currentUser) return null;
+  if (kpStoreUser !== currentUser.id) {
+    if (kpStoreUser === null) await P.configure({ apiKey: KP_RC_IOS_KEY, appUserID: currentUser.id });
+    else await P.logIn({ appUserID: currentUser.id });
+    kpStoreUser = currentUser.id;
+  }
+  return P;
+}
+// Le webhook RevenueCat met le profil à jour : on attend qu'il soit passé
+async function kpStoreWaitPremium() {
+  showToast('⏳ Activation de ton abonnement...');
+  for (let i = 0; i < 8; i++) {
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+      if (data?.is_premium) {
+        profile.is_premium = true;
+        profile.premium_until = data.premium_until;
+        profile.subscription_status = data.subscription_status;
+        profile.subscription_plan = data.subscription_plan;
+        document.getElementById('plans-modal')?.remove();
+        renderSubscriptionCard();
+        showPremiumWelcome();
+        return true;
+      }
+    } catch (e) {}
+  }
+  showToast('✓ Achat reçu : ton accès s\'activera d\'ici une minute');
+  return false;
+}
+async function kpStoreBuy(btn, plan) {
+  if (isDemo || !currentUser) { showToast('🔒 Crée un compte pour t\'abonner'); return; }
+  const label = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Ouverture...'; btn.style.opacity = '0.6'; }
+  try {
+    const P = await kpStoreReady();
+    const offerings = await P.getOfferings();
+    const pkgs = offerings?.current?.availablePackages || [];
+    const id = KP_RC_PRODUCTS[plan === 'annual' ? 'annual' : 'monthly'];
+    const aPackage = pkgs.find(p => p?.product?.identifier === id);
+    if (!aPackage) throw new Error('Offre indisponible pour l\'instant');
+    await P.purchasePackage({ aPackage });
+    trackEvent('store_purchase', { plan });
+    await kpStoreWaitPremium();
+  } catch (e) {
+    if (!(e?.userCancelled || String(e?.code) === '1')) { console.warn('[store] achat :', e); showToast('Achat impossible : ' + (e?.message || 'réessaie plus tard')); }
+  }
+  if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = label; btn.style.opacity = ''; }
+}
+// Bouton exigé par Apple : retrouver un abonnement déjà payé (nouvel appareil, réinstallation)
+async function kpStoreRestore(btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const P = await kpStoreReady();
+    const r = await P.restorePurchases();
+    const active = Object.keys(r?.customerInfo?.entitlements?.active || {}).length > 0;
+    if (active) await kpStoreWaitPremium();
+    else showToast('Aucun abonnement à restaurer sur ce compte Apple');
+  } catch (e) { console.warn('[store] restauration :', e); showToast('Restauration impossible, réessaie plus tard'); }
+  if (btn && btn.isConnected) btn.disabled = false;
+}
+
+// Lance le paiement (App Store dans l'appli iOS, Stripe sur le site)
 async function startCheckout(btn, plan) {
+  if (kpStore()) return kpStoreBuy(btn, plan);
   if (KP_ANDROID_APP) { showToast(KP_ANDROID_APP_MSG); return; }
   if (isDemo || !currentUser) {
     showToast('🔒 Crée un compte pour t\'abonner');
@@ -13847,6 +13942,13 @@ async function startCheckout(btn, plan) {
 
 // Ouvre le portail Stripe (facturation, moyen de paiement, résiliation)
 async function openBillingPortal(btn) {
+  // Abonnement pris dans l'appli : il se gère dans le compte Apple, pas chez Stripe
+  if (!profile?.stripe_customer_id && profile?.subscription_status !== 'gift') {
+    const c = window.Capacitor;
+    if (kpStore() && c.Plugins.Browser) { try { await c.Plugins.Browser.open({ url: KP_STORE_SUBS_URL, presentationStyle: 'fullscreen' }); return; } catch (e) {} }
+    showToast('Abonnement pris sur iPhone ou iPad : il se gère dans Réglages, ton nom, Abonnements');
+    return;
+  }
   const originalLabel = btn ? btn.innerHTML : null;
   if (btn) { btn.disabled = true; btn.innerHTML = 'Ouverture...'; }
   try {
@@ -13908,7 +14010,7 @@ function plansComparisonHTML(lapsed) {
   const seg = (key, label, extra) => `<button type="button" class="plan-seg${plansBilling === key ? ' on' : ''}" onclick="setPlansBilling('${key}')">${label}${extra || ''}</button>`;
   const row = t => `<li><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg><span>${t}</span></li>`;
   const premium = isPremiumUser();
-  const promo = referralPromo && !premium && !lapsed;
+  const promo = referralPromo && !premium && !lapsed && !kpStore();   // pas de réduction parrainage sur l'App Store
   return `
   <div class="plans-grid">
     <div class="plan-card plan-free">
@@ -13943,8 +14045,9 @@ function plansComparisonHTML(lapsed) {
              <div class="plan-save">Tu économises ${_eur(yearSaving)} par an</div>`
           : `<div class="plan-note">facturé chaque mois · sans engagement</div>
              <div class="plan-save plan-save-link" onclick="setPlansBilling('annual')">Passe à l'annuel et économise ${_eur(yearSaving)} par an →</div>`}
-        ${KP_ANDROID_APP ? `<div class="plan-btn plan-btn-main" style="cursor:default;opacity:.75">${KP_ANDROID_APP_MSG}</div>` : `<button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>`}
+        ${KP_ANDROID_APP && !kpStore() ? `<div class="plan-btn plan-btn-main" style="cursor:default;opacity:.75">${KP_ANDROID_APP_MSG}</div>` : `<button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>`}
         <div class="plan-foot">Résiliable à tout moment</div>
+        ${kpStore() ? `<div class="plan-foot" style="line-height:1.5">Abonnement renouvelé automatiquement au même prix, sauf résiliation au moins 24 h avant la fin de la période. Paiement et résiliation via ton compte Apple.<br><button type="button" onclick="kpStoreRestore(this)" style="background:none;border:none;padding:0;color:inherit;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer">Restaurer mes achats</button> · <button type="button" onclick="openLegalDoc('cgu')" style="background:none;border:none;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">Conditions</button> · <button type="button" onclick="openLegalDoc('privacy')" style="background:none;border:none;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">Confidentialité</button></div>` : ''}
       </div>
       <div class="plan-list">
         <div class="plan-list-title">Tout ce qui est inclus dans Gratuit, plus :</div>
@@ -15137,11 +15240,11 @@ function renderAgentSample() {
   if (alertEl) alertEl.innerHTML = `
   <div style="background:linear-gradient(135deg,#1a1206,#241a0a);border:1px solid rgba(245,158,11,0.3);border-radius:16px;padding:16px 18px;margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:15px">⚠️</span><span style="font-size:13px;font-weight:900;color:#fbbf24">À surveiller dans ton portefeuille</span></div>
-    <div style="font-size:12.5px;color:rgba(255,255,255,0.85);line-height:1.5"><strong style="color:#fff">LVMH</strong> pèse <strong>30%</strong> de ton portefeuille (conseillé : moins de 25%).</div>
+    <div style="font-size:12.5px;color:rgba(255,255,255,0.85);line-height:1.5"><strong style="color:#fff">LVMH</strong> pèse <strong>30%</strong> de ton portefeuille (repère : moins de 25%).</div>
     <div style="margin-top:8px;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px">
-      <div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conseil IA : alléger <span style="color:#4ade80">· ✦ Premium</span></div>
+      <div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Point d'attention : forte concentration <span style="color:#4ade80">· ✦ Premium</span></div>
       <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.5">Une seule action pèse près d'un tiers de ton portefeuille : une mauvaise séance sur le luxe te coûterait cher. Alléger de 10 points te ramène sous le seuil.</div>
-      <div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ À la place : <strong style="color:#fff">iShares Core MSCI World</strong> <span style="opacity:.6">IWDA.L</span> — diversifié sur 1 500 entreprises</div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:6px">↪ Alternative à étudier : <strong style="color:#fff">iShares Core MSCI World</strong> <span style="opacity:.6">IWDA.L</span> — diversifié sur 1 500 entreprises</div>
     </div>
   </div>`;
 
@@ -15238,7 +15341,7 @@ function renderAgentDashboard() {
               </div>
               <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
                 <div style="display:flex;align-items:center;justify-content:center;gap:5px;font-size:18px;font-weight:900;color:#fbbf24">✦ <span>${alerts.filter(a=>a.type==='warn').length}</span></div>
-                <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Opportunités</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">Points forts</div>
               </div>
               <div style="text-align:center;padding:9px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.07)">
                 <div style="font-size:18px;font-weight:900;color:${pnlColor}">${tpnl>=0?'+':''}${fmtI(tpnl)} €</div>
@@ -15303,9 +15406,9 @@ function renderAgentDashboard() {
       const pPnl = p.pru>0 ? (p.price-p.pru)/p.pru*100 : 0;
       const isRisk = pPct > 35 || pPnl < -10;
       const isOpp = pPnl > 5 && pPct < 25;
-      const theme = isRisk ? {c:'#dc2626',bg:'#fef2f2',tag:'⚠ Risque évalué',action:'Rééquilibrer'} :
-                    isOpp ? {c:'#16a34a',bg:'#f0fdf4',tag:'✦ Opportunité',action:'Renforcer ?'} :
-                    {c:'#6366f1',bg:'#eef2ff',tag:'Position solide',action:'Conserver'};
+      const theme = isRisk ? {c:'#dc2626',bg:'#fef2f2',tag:'⚠ Point d’attention',action:'Comprendre'} :
+                    isOpp ? {c:'#16a34a',bg:'#f0fdf4',tag:'✦ Point fort',action:'En savoir plus'} :
+                    {c:'#6366f1',bg:'#eef2ff',tag:'Position solide',action:'En savoir plus'};
       return `<div onclick="sq('Analyse ma position ${p.name} : dois-je ${theme.action.toLowerCase().replace(' ?','')} ?')" style="cursor:pointer;background:${theme.bg};border-radius:12px;padding:11px;border:1px solid ${theme.c}22;display:flex;flex-direction:column;min-height:104px">
         <div style="font-size:9px;font-weight:700;color:${theme.c};margin-bottom:5px">${theme.tag}</div>
         <div style="font-size:12px;font-weight:800;color:${txt};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px">${displayName(p.name)}</div>
@@ -15334,7 +15437,7 @@ function renderAgentDashboard() {
     let verb, reason;
     if (pPct > 35) {
       verb = 'reduire';
-      reason = `poids de ${pPct.toFixed(0)}% — au-dessus du seuil de concentration conseillé`;
+      reason = `poids de ${pPct.toFixed(0)}% — au-dessus du repère de concentration`;
     } else if (pPnl < -15) {
       verb = 'surveiller';
       reason = `moins-value de ${pPnl.toFixed(1).replace(".", ",")} % — analyse recommandée avant tout arbitrage`;
@@ -15368,7 +15471,7 @@ function renderAgentDashboard() {
           <div style="font-size:12px;font-weight:800;color:${txt}">Recommandations IA</div>
           <div style="font-size:10px;color:${sub};margin-top:1px">Basées sur ton profil et les conditions de marché</div>
         </div>
-        <button onclick="sq('Donne-moi tes 3 meilleures recommandations actuelles')" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:8px;padding:5px 11px;font-size:10px;font-weight:700;cursor:pointer">🤖 Mon Conseil par IA →</button>
+        <button onclick="sq('Quels points de mon portefeuille devrais-je regarder en priorité ?')" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:8px;padding:5px 11px;font-size:10px;font-weight:700;cursor:pointer">🤖 Mon analyse par IA →</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:7px">
         ${_recosToTrack.map((r,i) => {
@@ -15397,7 +15500,7 @@ function renderAgentDashboard() {
     <div onclick="openBilan()" style="cursor:pointer;background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px">
       <div>
         <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:3px">${savedBilan ? '📄 Ton bilan patrimonial' : '💡 Et si ton portefeuille était optimisé au max ?'}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.45)">${savedBilan ? `Fait le ${bilanDateLabel(savedBilan.ts)} · retrouve-le ici, ou refais-le quand ta situation change.` : "Lance ton Bilan Premium : l'IA analyse tout et te dit où tu perds de l'argent."}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.45)">${savedBilan ? `Fait le ${bilanDateLabel(savedBilan.ts)} · retrouve-le ici, ou refais-le quand ta situation change.` : "Lance ton Bilan Premium : l'IA analyse tout et t'aide à repérer les points à regarder."}</div>
       </div>
       <button style="background:#16a34a;border:none;color:#fff;font-size:11px;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer;flex-shrink:0">${savedBilan ? 'Voir mon bilan →' : 'Lancer le Bilan →'}</button>
     </div>`;
@@ -15470,7 +15573,7 @@ function renderAgentDashboard() {
       const rConviction = Math.round(Math.max(38, Math.min(90, 50 + Math.min(Math.abs(rPnl), 25)*0.8 + (rPct > 35 ? 12 : 0))));
       return `
     <div style="background:${surf};border:1px solid ${bord};border-radius:14px;padding:13px;margin-bottom:9px">
-      <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">💰 Opportunité principale</div>
+      <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px">💡 Point à étudier</div>
       <div style="font-size:13px;font-weight:900;color:${txt};margin-bottom:3px">Optimise ${riskiest.ticker||riskiest.name}</div>
       <div style="font-size:10px;color:${sub};line-height:1.5;margin-bottom:6px">Position leader (${rPct.toFixed(0)}% du portef., ${rGainWord}${rPnl.toFixed(1).replace(".", ",")} %) — ${rMsg}</div>
       <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">

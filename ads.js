@@ -12,7 +12,8 @@
   };
   const CONSENT_KEY = 'kp_consent', CONSENT_VERSION = 1, CONSENT_DAYS = 180;
   const SOURCE_KEY = 'kp_source';
-  const enabled = !!(CONFIG.metaPixel || CONFIG.googleTag);
+  // Applis : aucun traceur publicitaire (sur iOS, ils imposeraient la demande de suivi d'Apple)
+  const enabled = !!(CONFIG.metaPixel || CONFIG.googleTag) && !document.documentElement.classList.contains('kp-app');
   const ls = {
     get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },

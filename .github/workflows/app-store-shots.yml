@@ -1,0 +1,33 @@
+# Captures d'écran de la fiche App Store (mode démo de l'appli en ligne), récupérables dans les artefacts de l'exécution.
+name: Captures App Store
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - tuto/app-store-shots.mjs
+      - .github/workflows/app-store-shots.yml
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tuto
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Polices (emojis)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji
+      - name: Dépendances
+        run: npm install --no-audit --no-fund
+      - name: Navigateur
+        run: npx playwright install --with-deps chromium
+      - name: Captures
+        run: node app-store-shots.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-store-shots
+          path: tuto/shots/
