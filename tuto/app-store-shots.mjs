@@ -151,6 +151,7 @@ const SCREENS = [
   ['4-objectif', 'objectif'],
   ['5-decision', 'decision'],
   ['6-assistant', 'ai'],
+  ['7-crise', 'crise'],
 ];
 
 const browser = await chromium.launch();
