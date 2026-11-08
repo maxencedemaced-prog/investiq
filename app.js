@@ -9692,7 +9692,7 @@ async function renderHome() {
     const topSector = Object.entries(topSectors).sort((a,b)=>b[1]-a[1])[0];
     const topPct = topSector ? (topSector[1]/tv2*100).toFixed(0) : 0;
     if (topSector && topPct > 35) {
-      insightEl.innerHTML = `Ton exposition au secteur <strong style="color:var(--color-text)">${topSector[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Envisage une diversification pour réduire le risque.`;
+      insightEl.innerHTML = `Ton exposition au secteur <strong style="color:var(--color-text)">${topSector[0]}</strong> est élevée (<strong style="color:#f59e0b">${topPct}%</strong>). Regarde le détail dans ta page Santé.`;
     }
   }, 800);
 }

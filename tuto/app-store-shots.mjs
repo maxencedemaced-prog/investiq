@@ -180,6 +180,11 @@ for (const d of DEVICES) {
   for (const [file, sec] of SCREENS) {
     await page.evaluate(s => { try { closeNotifPanel && closeNotifPanel(); } catch (e) {} nav(s, true); window.scrollTo(0, 0); }, sec);
     await sleep(4500);
+    // Accueil : sans le bloc de démarrage réservé aux nouveaux comptes
+    if (sec === 'home') await page.evaluate(() => {
+      [...document.querySelectorAll('#home-score > div')].filter(e => /MISE EN ROUTE/i.test(e.textContent || '')).forEach(e => { e.style.display = 'none'; });
+      window.scrollTo(0, 0);
+    });
     // Objectif : le graphique et la mention, sans montant projeté mis en avant
     if (sec === 'objectif') await page.evaluate(() => {
       ['obj-chart-amount', 'obj-chart-label', 'obj-chart-kicker'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
