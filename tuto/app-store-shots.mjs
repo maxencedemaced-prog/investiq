@@ -258,6 +258,22 @@ for (const d of DEVICES) {
     await sleep(600);
     await page.screenshot({ path: `${OUT}/ctrl-import.png` });
     console.log('contrôle', 'import');
+    // Écran d'achat tel qu'il apparaît dans l'appli iOS, pour la vérification des abonnements par Apple
+    await page.evaluate(() => {
+      document.getElementById('csv-preview-modal')?.remove();
+      window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { Purchases: {} } };
+    });
+    for (const [file, billing] of [['abonnement-mensuel', 'monthly'], ['abonnement-annuel', 'annual']]) {
+      await page.evaluate(b => {
+        plansBilling = b;
+        showPlansModal();
+        document.querySelector('#plans-modal .plan-premium')?.scrollIntoView({ block: 'start' });
+      }, billing);
+      await sleep(700);
+      await page.screenshot({ path: `${OUT}/${d.name}-${file}.png` });
+      console.log('capture', d.name, file);
+    }
+    await page.evaluate(() => { document.getElementById('plans-modal')?.remove(); delete window.Capacitor; });
   }
   await ctx.close();
 }
