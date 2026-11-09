@@ -2396,4 +2396,4 @@ button.set-row:hover,a.set-row:hover{background:var(--color-bg-subtle)}
 .kpi-result b{font-weight:800;color:var(--color-text)}
 .kpi-result b.up{color:#16a34a}
 .kpi-result b.down{color:#dc2626}
-.kpi-summary p b{color:var(--color-text)}
+.kpi-summary p b{color:var(--color-text);font-size:inherit;font-weight:700;white-space:normal}
