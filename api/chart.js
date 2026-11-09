@@ -78,14 +78,17 @@ export default async function handler(req, res) {
     if (!main || main.pts.length < 2) return res.status(200).json({ symbol, points: [], unavailable: true });
     let pts = main.pts;
 
-    if (plan.fx) {   // cours en dollars : converti en euros au taux de CHAQUE bougie (et non au taux du jour)
-      const fx = await yahoo('EURUSD=X', cfg.range, cfg.interval);
+    // Cotation hors euro (dollars, livres, francs suisses…) : convertie au taux de CHAQUE bougie, pas au taux du jour
+    const quoted = plan.fx ? 'USD' : (!plan.inv && main.cur && main.cur !== 'EUR' ? main.cur : null);
+    if (quoted) {
+      const pence = quoted === 'GBp' || quoted === 'GBX';
+      const fx = await yahoo(`EUR${pence ? 'GBP' : quoted}=X`, cfg.range, cfg.interval);
       if (!fx || !fx.pts.length) return res.status(200).json({ symbol, points: [], unavailable: true });
       let j = 0;
       pts = pts.map(p => {
         while (j + 1 < fx.pts.length && fx.pts[j + 1].t <= p.t) j++;
-        const rate = fx.pts[j].c;   // dollars pour 1 euro
-        const k = 1 / rate / (plan.per || 1);
+        const rate = fx.pts[j].c;   // unités de devise pour 1 euro
+        const k = 1 / rate / (plan.per || 1) / (pence ? 100 : 1);
         return { t: p.t, o: p.o * k, h: p.h * k, l: p.l * k, c: p.c * k, v: p.v };
       });
     } else if (plan.inv) {   // devise : valeur en euros d'une unité de la devise
@@ -94,7 +97,7 @@ export default async function handler(req, res) {
     pts = pts.map(p => ({ t: p.t, o: sig(p.o), h: sig(p.h), l: sig(p.l), c: sig(p.c), v: p.v }));
 
     res.setHeader('Cache-Control', `s-maxage=${cfg.ttl}, stale-while-revalidate=${cfg.ttl * 2}`);
-    return res.status(200).json({ symbol, currency: plan.cur || main.cur || null, range: req.query?.range || '1y', interval: cfg.interval, points: pts });
+    return res.status(200).json({ symbol, currency: plan.cur || (quoted ? 'EUR' : main.cur) || null, range: req.query?.range || '1y', interval: cfg.interval, points: pts });
   } catch (e) {
     return res.status(200).json({ symbol, points: [], unavailable: true });
   }
