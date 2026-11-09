@@ -13350,7 +13350,8 @@ async function resolveImportTickers(rows) {
       return;
     }
     try {
-      const list = await search(r.isin || label);
+      let list = await search(r.isin || label);
+      if (!list.length && r.isin) list = await search(label);   // ISIN inconnu de la recherche : on tente le nom
       if (!list.length) { r.notFound = true; return; }
       // Du plus sûr au moins sûr : Paris et les places en euros d'abord, les cotations américaines en dernier
       let best = [...list].sort((a, b) => rank(a.ticker) - rank(b.ticker))[0];
