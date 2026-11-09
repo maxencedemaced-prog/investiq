@@ -2351,7 +2351,7 @@ button.set-row:hover,a.set-row:hover{background:var(--color-bg-subtle)}
 .kpi-sub{font-size:12px;color:var(--color-text-secondary);margin-top:2px;overflow-wrap:anywhere}
 .kpi-platform{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:600;margin-top:12px}
 .kpi-platform select{font:inherit;font-size:13px;min-width:0;max-width:60%;padding:7px 8px;border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);color:var(--color-text)}
-.kpi-summary{margin:0 18px 12px;padding:12px 14px;background:var(--color-bg-subtle);border-radius:14px}
+.kpi-summary{margin:12px 18px;padding:12px 14px;background:var(--color-bg-subtle);border-radius:14px}
 .kpi-summary>div{display:flex;justify-content:space-between;gap:12px;font-size:14px;font-weight:600;padding:2px 0}
 .kpi-summary b{font-size:16px;font-weight:800;white-space:nowrap}
 .kpi-summary p{margin:6px 0 0;font-size:12px;line-height:1.45;color:var(--color-text-secondary)}

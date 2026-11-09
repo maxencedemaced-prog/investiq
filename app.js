@@ -13424,14 +13424,18 @@ async function parsePDFStatement(file) {
   return (out.positions || []).map(p => {
     const name = p.ticker || p.name;
     const pru = p.pru || 0, price = p.price || pru;
+    // Contrôle : quantité × cours doit retrouver la valeur de la ligne, sinon la quantité a été mal lue
+    let qty = p.qty;
+    if (p.value > 0 && price > 0 && Math.abs(qty * price - p.value) / p.value > 0.2) qty = p.value / price;
     return {
       isin: p.isin || null,
       tickerKnown: !!p.ticker,
-      name: name.slice(0, 30),
-      fullName: p.ticker ? p.name.slice(0, 50) : '',
-      qty: Math.round(p.qty * 1e8) / 1e8,
-      pru: Math.round(pru * 100) / 100,
-      price: Math.round(price * 100) / 100,
+      name: name.slice(0, 60),
+      fullName: p.ticker ? p.name.slice(0, 60) : (name === p.name ? '' : p.name.slice(0, 60)),
+      qty: Math.round(qty * 1e8) / 1e8,
+      pru: Math.round(pru * 1e6) / 1e6,
+      price: Math.round(price * 1e6) / 1e6,
+      cur: p.currency && p.currency !== 'EUR' ? p.currency : '',
       checked: true,
     };
   });
@@ -13588,8 +13592,8 @@ function showCSVPreview(rows, filename) {
         <div class="kpi-sub">${_escHtml(filename)}</div>
         <label class="kpi-platform">Compte ou courtier <select id="csv-platform-sel">${platformOptionsHTML(platform)}</select></label>
       </div>
-      <div class="kpi-summary" id="csv-summary"></div>
       <div class="kpi-list">
+        <div class="kpi-summary" id="csv-summary"></div>
         ${rows.map((r, i) => {
           const nice = displayName(r.name);
           const title = nice === r.name && r.fullName && r.fullName !== r.name ? r.fullName : nice;

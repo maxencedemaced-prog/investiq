@@ -244,6 +244,20 @@ for (const d of DEVICES) {
     await shot('sante-vide', 'sante', "document.documentElement.setAttribute('data-theme','light');window.__p=positions;positions=[]");
     await shot('crise-vide', 'crise');
     await shot('accueil-vide', 'home');
+    await page.evaluate(() => {
+      positions = window.__p; document.documentElement.setAttribute('data-theme', 'light');
+      const rows = [
+        { name: 'ATE.PA', fullName: 'Alten SA', qty: 3, pru: 87.85, price: 87.5, live: true, checked: true },
+        { name: 'KER.PA', fullName: 'Kering', qty: 2, pru: 0, price: 187.2, live: true, checked: true },
+        { name: 'AAPL', fullName: 'Apple', qty: 2, pru: 160.5, pruOrig: 180, price: 305.9, live: true, converted: true, cur: 'USD', checked: true },
+        { name: 'Société XYZ', qty: 5, pru: 10, price: 10, notFound: true, checked: true },
+      ];
+      showCSVPreview(rows, 'mon-releve.csv');
+      csvRowToggleSold(0); csvRowSet(0, 'pv', '30'); csvRowSign(0, -1);
+    });
+    await sleep(600);
+    await page.screenshot({ path: `${OUT}/ctrl-import.png` });
+    console.log('contrôle', 'import');
   }
   await ctx.close();
 }
