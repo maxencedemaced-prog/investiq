@@ -4,7 +4,7 @@
 //   - winback     : aucune activité depuis 10 jours (compte de plus de 10 jours)
 //   - trial_j7 / trial_j1 / trial_end : fin de l'essai gratuit de l'objectif (30 jours sans carte), comptes non Premium
 // Respecte la désinscription (profiles.email_opt_out) et plafonne le nombre d'envois par jour.
-//   ?mode=newsletter (cron du dimanche) : la lettre de la semaine à tous les inscrits (articles du blog, agenda, point perso)
+//   ?mode=newsletter (cron du dimanche) : le 1er dimanche du mois, la lettre aux inscrits actifs (articles du blog, agenda, point perso)
 //   POST (compte admin) : m'envoyer un aperçu de la lettre de la semaine
 
 import { createClient } from '@supabase/supabase-js';
@@ -71,7 +71,7 @@ function personalCard(me) {
   } else if (me.value > 0) {
     inner = `<div style="font-size:13px;color:#94a3b8;margin-bottom:4px">Ton portefeuille</div>
       <div style="font-size:30px;font-weight:800;color:#ffffff">${esc(eur(me.value))}</div>
-      <div style="font-size:14px;color:#cbd5e1;margin-top:8px">Fixe-toi un objectif dans l'app pour suivre ta progression chaque semaine.</div>`;
+      <div style="font-size:14px;color:#cbd5e1;margin-top:8px">Fixe-toi un objectif dans l'app pour suivre ta progression.</div>`;
   } else {
     inner = `<div style="font-size:17px;font-weight:800;color:#ffffff">Ton portefeuille est encore vide</div>
       <div style="font-size:14px;color:#cbd5e1;margin-top:6px">Ajoute tes placements ou fixe-toi un premier objectif : ça prend deux minutes.</div>`;
@@ -112,24 +112,44 @@ function newsletterEmail(content, me, userId) {
   html += '</table>';
   return renderEmail({
     title: '', hero: `${SITE}/email/hero.gif`,
-    paragraphs: ['Bonjour ! Voici l\'essentiel de ta semaine : où tu en es, de quoi mieux comprendre ton épargne, et ce qui peut faire bouger les marchés.'],
+    paragraphs: ['Bonjour ! Voici ton point du mois : où tu en es, de quoi mieux comprendre ton épargne, et ce qui peut faire bouger les marchés.'],
     extraHtml: html, extraText: text.trim(),
     cta: { label: 'Ouvrir Kapitaro', url: SITE }, userId,
   });
 }
 
+const NEWSLETTER_INACTIVE_DAYS = 30;
+// Comptes actifs récemment (lecture par pages : la base renvoie 1000 lignes au plus à la fois)
+async function recentlyActive(sb, sinceMs) {
+  const ids = new Set();
+  for (let from = 0; from < 50000; from += 1000) {
+    const { data, error } = await sb.from('events').select('user_id').neq('type', 'heartbeat').gte('created_at', new Date(sinceMs).toISOString()).order('created_at', { ascending: false }).range(from, from + 999);
+    if (error) throw error;
+    (data || []).forEach(e => ids.add(e.user_id));
+    if (!data || data.length < 1000) break;
+  }
+  return ids;
+}
+
 async function sendNewsletter(sb, { onlyEmail = null } = {}) {
   const content = await weeklyContent(sb);
   const week = isoWeek(), kind = 'newsletter:' + week;
-  const subject = content.articles.length ? `Ta semaine Kapitaro : ${content.articles[0].title}` : 'Ta semaine avec Kapitaro';
+  const subject = content.articles.length ? `Ton mois Kapitaro : ${content.articles[0].title}` : 'Ton mois avec Kapitaro';
   const { data: page } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
   let users = (page?.users || []).filter(u => u.email && u.email_confirmed_at);
   if (onlyEmail) users = users.filter(u => u.email.toLowerCase() === onlyEmail.toLowerCase());
   const { data: optOut } = await sb.from('profiles').select('id').eq('email_opt_out', true);
   const optedOut = new Set((optOut || []).map(p => p.id));
+  // Pas de lettre aux comptes inactifs depuis 30 jours, ni deux e-mails automatiques le même jour
+  const inactiveSince = Date.now() - NEWSLETTER_INACTIVE_DAYS * 24 * 3600 * 1000;
+  const active = onlyEmail ? new Set() : await recentlyActive(sb, inactiveSince);
+  const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+  const { data: todayLogs } = onlyEmail ? { data: [] } : await sb.from('email_log').select('user_id').gte('sent_at', dayStart.toISOString());
+  const mailedToday = new Set((todayLogs || []).map(l => l.user_id));
+  if (!onlyEmail) users = users.filter(u => !optedOut.has(u.id) && !mailedToday.has(u.id)
+    && (active.has(u.id) || new Date(u.created_at).getTime() >= inactiveSince || new Date(u.last_sign_in_at || 0).getTime() >= inactiveSince));
   let sent = 0; const errors = [];
   for (const u of users.slice(0, MAX_PER_RUN)) {
-    if (!onlyEmail && optedOut.has(u.id)) continue;
     if (!onlyEmail) { const { error: logErr } = await sb.from('email_log').insert({ user_id: u.id, kind }); if (logErr) continue; }   // déjà reçue cette semaine
     try {
       const { html, text, unsub } = newsletterEmail(content, await personalData(sb, u.id), u.id);
@@ -166,6 +186,8 @@ export default async function handler(req, res) {
   }
   const sb = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
   if (req.query.mode === 'newsletter') {
+    // Une seule lettre par mois : le premier dimanche
+    if (new Date().getUTCDate() > 7) return res.status(200).json({ skipped: 'lettre mensuelle : premier dimanche du mois' });
     try { return res.status(200).json(await sendNewsletter(sb)); }
     catch (e) { console.error('[newsletter]', e.message); return res.status(500).json({ error: e.message }); }
   }
@@ -174,6 +196,8 @@ export default async function handler(req, res) {
     const { data: page } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
     const users = (page?.users || []).filter(u => u.email && u.email_confirmed_at);
     const now = Date.now();
+    // Le dimanche, seule la lettre part : jamais une relance et une lettre le même jour
+    if (new Date(now).getUTCDay() === 0) return res.status(200).json({ candidates: 0, sent: 0, skipped: 'dimanche' });
     const age = u => now - new Date(u.created_at).getTime();
 
     const [{ data: optOut }, { data: logs }, { data: prem }] = await Promise.all([

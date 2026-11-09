@@ -10422,227 +10422,125 @@ function exportPDF() {
 
 // ===== SANTE =====
 async function renderSante() {
-  // Dédupliquer les positions
+  const el = document.getElementById('sante-content');
+  if (!el) return;
+  // Mêmes lignes regroupées, prix de revient moyen pondéré
   const dedupMap = {};
   apos().forEach(p => {
-    const key = p.name + '|' + (p.platform||'');
-    if (!dedupMap[key]) dedupMap[key] = {...p};
-    else { const d = dedupMap[key], q = d.qty + p.qty; if (q > 0) d.pru = (d.qty * d.pru + p.qty * p.pru) / q; d.qty = q; }   // PRU moyen pondéré
+    const key = p.name + '|' + (p.platform || '');
+    if (!dedupMap[key]) dedupMap[key] = { ...p };
+    else { const d = dedupMap[key], q = d.qty + p.qty; if (q > 0) d.pru = (d.qty * d.pru + p.qty * p.pru) / q; d.qty = q; }
   });
-  const dedupPos = Object.values(dedupMap);
-  if (!dedupPos.length && positions.some(isTrackOnly)) {
-    const _e = document.getElementById('sante-content');
-    if (_e) _e.innerHTML = '<div style="padding:28px 18px;text-align:center;color:var(--color-text-secondary,#71717a);line-height:1.6"><div style="font-size:30px;margin-bottom:8px">🪙</div><div style="font-size:15px;font-weight:800;color:var(--color-text,#1c1c1e);margin-bottom:4px">Rien à analyser pour l’instant</div>Tes cryptomonnaies et devises sont suivies dans ton portefeuille, mais Kapitaro ne les analyse pas. Ajoute des actions ou des ETF pour obtenir ton score de santé.</div>';
+  const list = Object.values(dedupMap);
+  if (!list.length) {
+    el.innerHTML = positions.some(isTrackOnly)
+      ? '<div class="kps-card kps-empty"><b>Pas de score pour le suivi seul</b><p>Tes cryptomonnaies et devises sont suivies pour leur cours : elles ne comptent pas dans ce score.</p></div>'
+      : '<div class="kps-card kps-empty"><b>Ton score apparaîtra ici</b><p>Ajoute au moins un placement pour voir comment ton argent est réparti.</p><button type="button" class="kps-btn" onclick="nav(\'ajouter\')">Ajouter une position</button></div>';
     return;
   }
 
-  const {score, details} = calcScore();
-  const tv = dedupPos.reduce((a,p)=>a+p.qty*p.price,0);
-  const ti = dedupPos.reduce((a,p)=>a+p.qty*p.pru,0);
-  const tpnl = tv-ti, tpct = ti?tpnl/ti*100:0;
-  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
-  const surface = isDark?'var(--color-surface)':'#fff';
-  const border = isDark?'var(--color-border)':'#e4e4e7';
-  const textPrimary = isDark?'var(--color-text)':'#09090b';
-  const textSec = isDark?'var(--color-text-secondary)':'#71717a';
+  const { score, details } = calcScore();
+  const tv = list.reduce((a, p) => a + p.qty * p.price, 0);
+  const ti = list.reduce((a, p) => a + p.qty * p.pru, 0);
+  const tpnl = tv - ti, tpct = ti ? tpnl / ti * 100 : 0;
+  const nb = list.length;
+  const etfPct = tv > 0 ? list.filter(p => p.type === 'ETF').reduce((a, p) => a + p.qty * p.price, 0) / tv * 100 : 0;
+  const nonEtf = list.filter(p => p.type !== 'ETF');
+  const top = nonEtf.length ? nonEtf.reduce((a, p) => p.qty * p.price > a.qty * a.price ? p : a, nonEtf[0]) : null;
+  const topPct = top && tv > 0 ? top.qty * top.price / tv * 100 : 0;
+  const topName = top ? _escHtml(displayName(top.name)) : '';
+  const pct0 = n => Math.round(n).toLocaleString('fr-FR') + ' %';
+  const scoreColor = score >= 7 ? '#16a34a' : score >= 5 ? '#d97706' : '#dc2626';
+  const scoreLabel = score >= 7 ? 'Solide' : score >= 5 ? 'Correct' : 'À améliorer';
 
-  const scoreColor = score>=7?'#3fb950':score>=5?'#f59e0b':'#f87171';
-  const scoreLabel = score>=7?'Excellent 💪':score>=5?'Correct 👍':'À améliorer ⚠️';
-
-  // Données score
-  const scoreItems = [
-    {label:'Diversification', val:details.diversity, color:'#3fb950'},
-    {label:'Concentration max', val:details.concentration, color:'#3fb950'},
-    {label:'Part ETF', val:details.etfRatio, color:'#3fb950'},
-    {label:'Performance', val:details.performance, color: details.performance>=5?'#3fb950':'#f59e0b'},
+  // Les 4 points notés, expliqués simplement
+  const rows = [
+    { key: 'diversity', note: details.diversity, title: 'Nombre de lignes', value: nb + (nb > 1 ? ' lignes' : ' ligne'), mark: 'Repère : 8 ou plus',
+      why: 'Plus ton argent est réparti, moins une seule ligne peut te faire mal.',
+      focus: `Tu as ${nb} ligne${nb > 1 ? 's' : ''} dans ton portefeuille. Avec peu de lignes, chacune pèse lourd dans ton résultat.` },
+    { key: 'concentration', note: details.concentration, title: 'Ligne la plus lourde', value: top ? `${topName} : ${pct0(topPct)}` : 'Aucune action seule', mark: 'Repère : moins de 25 %',
+      why: 'Si une seule action pèse beaucoup, sa baisse se voit tout de suite sur tout ton portefeuille.',
+      focus: `${topName} représente ${pct0(topPct)} de ton portefeuille. Si cette action chute, tout ton portefeuille le ressent.` },
+    { key: 'etfRatio', note: details.etfRatio, title: "Part d'ETF", value: pct0(etfPct), mark: 'Repère : 60 % ou plus',
+      why: "Un ETF regroupe de nombreuses entreprises d'un coup : il répartit déjà ton argent.",
+      focus: `Les ETF représentent ${pct0(etfPct)} de ton portefeuille. Un ETF regroupe de nombreuses entreprises en une seule ligne.` },
+    { key: 'performance', note: details.performance, title: 'Résultat depuis tes achats', value: `${tpnl >= 0 ? '+' : '−'}${Math.abs(tpct).toFixed(1).replace('.', ',')} %`, mark: `${tpnl >= 0 ? '+' : '−'}${Math.abs(Math.round(tpnl)).toLocaleString('fr-FR')} €`,
+      why: "Ton gain ou ta perte à ce jour. Ce point compte moins : un résultat récent ne dit pas ce qui va se passer." },
   ];
+  const priority = rows.filter(r => r.focus && r.note < 8).sort((x, y) => x.note - y.note)[0];
+  const scoreDeg = Math.max(0, Math.min(10, score)) * 36;
+  const COLORS = ['#16a34a', '#6366f1', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6', '#ef4444', '#14b8a6'];
+  const cryptoNote = positions.some(isTrackOnly) ? '<div class="kps-note">Tes cryptomonnaies et devises sont suivies pour leur cours : elles ne comptent pas dans ce score.</div>' : '';
 
-  // Calcul composition
-  const etfCount = dedupPos.filter(p=>p.type==='ETF').length;
-  const etfVal = dedupPos.filter(p=>p.type==='ETF').reduce((a,p)=>a+p.qty*p.price,0);
-  const etfPct = tv>0?(etfVal/tv*100).toFixed(0):0;
-  const _nonEtf = dedupPos.filter(p=>p.type!=='ETF');   // la concentration ne compte pas les ETF larges
-  const maxPos = _nonEtf.length>0?_nonEtf.reduce((a,p)=>p.qty*p.price>a.qty*a.price?p:a,_nonEtf[0]):null;
-  const maxPct = maxPos&&tv>0?(maxPos.qty*maxPos.price/tv*100).toFixed(0):0;
-  const nbPos = dedupPos.length;
-
-  // Anneau SVG animé
-  const ring = (size, s, color) => {
-    const c=size/2, r=(size-12)/2, circ=2*Math.PI*r;
-    const pct = s/10;
-    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'}" stroke-width="6"/>
-      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${color}" stroke-width="6"
-        stroke-dasharray="${pct*circ} ${circ}" stroke-dashoffset="${circ/4}"
-        stroke-linecap="round" style="transition:stroke-dasharray 1s cubic-bezier(0.16,1,0.3,1)"/>
-    </svg>`;
-  };
-
-  // Points d'attention
+  // Alertes de prix et fortes baisses (la concentration est déjà traitée plus haut)
   const alerts = [];
-  dedupPos.forEach(p=>{
-    if(p.alert_price && p.price < p.alert_price) alerts.push({icon:'🔴',name:p.name,msg:`sous ton alerte ${p.alert_price.toLocaleString('fr-FR')}€`,tag:'Alerte prix',tagColor:'#f87171',tagBg:isDark?'rgba(248,113,113,0.15)':'#fef2f2'});
-  });
-  if(maxPos && parseFloat(maxPct)>25) alerts.push({icon:'🟡',name:maxPos.name,msg:`représente ${maxPct}% du portefeuille`,tag:'Concentration élevée',tagColor:'#f59e0b',tagBg:isDark?'rgba(245,158,11,0.15)':'#fffbeb'});
-  dedupPos.filter(p=>p.qty*p.price<p.qty*p.pru&&(p.price-p.pru)/p.pru*100<-20).forEach(p=>{
-    alerts.push({icon:'🟠',name:p.name,msg:`en forte perte (${((p.price-p.pru)/p.pru*100).toFixed(1).replace(".", ",")} %)`,tag:'Performance faible',tagColor:'#fb923c',tagBg:isDark?'rgba(251,146,60,0.15)':'#fff7ed'});
+  list.forEach(p => {
+    if (p.alert_price && p.price < p.alert_price) alerts.push(`<b>${_escHtml(displayName(p.name))}</b> est passé sous ton alerte de ${p.alert_price.toLocaleString('fr-FR')} €.`);
+    const perf = p.pru ? (p.price - p.pru) / p.pru * 100 : 0;
+    if (perf < -20) alerts.push(`<b>${_escHtml(displayName(p.name))}</b> est à ${perf.toFixed(0).replace('-', '−')} % de ton prix d'achat.`);
   });
 
-  const COLORS = ['#3fb950','#6366f1','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6'];
+  const ask = q => `askAgentFrom(${JSON.stringify(q).replace(/"/g, '&quot;')})`;
+  el.innerHTML = `${cryptoNote}
+  <div class="kps-card kps-score">
+    <div class="kph-ring kps-ring" style="background:conic-gradient(${scoreColor} ${scoreDeg}deg, var(--color-border-subtle) 0)"><div><b style="color:${scoreColor}">${score.toFixed(1).replace('.', ',')}</b><span>/10</span></div></div>
+    <div>
+      <div class="kps-score-label" style="color:${scoreColor}">${scoreLabel}</div>
+      <p>Ce score regarde comment ton argent est réparti. Il ne dit pas si tes placements vont monter.</p>
+    </div>
+  </div>
 
-  const cryptoNote = positions.some(isTrackOnly) ? '<div style="font-size:12px;color:' + textSec + ';margin:0 0 10px;padding:9px 12px;border-radius:10px;border:1px dashed ' + border + '">ℹ️ Tes cryptomonnaies et devises sont suivies dans ton portefeuille mais ne sont pas incluses dans ce score.</div>' : '';
-  const html = cryptoNote + `
-  <!-- SCORE DE SANTÉ -->
-  <div style="background:linear-gradient(135deg,${isDark?'#080c10,#0d1520':'#f0fdf4,#ecfdf5'});border:1px solid ${isDark?'rgba(63,185,80,0.2)':' rgba(22,163,74,0.2)'};border-radius:20px;padding:24px;margin-bottom:14px;position:relative;overflow:hidden">
-    <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(63,185,80,0.12),transparent);pointer-events:none"></div>
-    <div style="font-size:10px;font-weight:700;color:${isDark?'rgba(255,255,255,0.4)':textSec};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px">Score de santé</div>
-    <div class="sante-score-grid" style="display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center">
-      <!-- Score gauche -->
-      <div>
-        <div class="kp-scorepop" style="font-size:56px;font-weight:900;color:${scoreColor};letter-spacing:-0.05em;line-height:1">${score.toFixed(1).replace(".", ",")}</div>
-        <div style="font-size:16px;color:${isDark?'rgba(255,255,255,0.4)':textSec};font-weight:400;margin-bottom:8px">/10</div>
-        <div style="font-size:14px;font-weight:700;color:${scoreColor}">${scoreLabel}</div>
-        ${(() => {
-          const tier = score >= 7 ? { n: 'Or', e: '🥇', c: '#f59e0b', bg: 'rgba(245,158,11,0.14)', next: 'Palier maximum atteint 🎉' } : score >= 5 ? { n: 'Argent', e: '🥈', c: '#9ca3af', bg: 'rgba(156,163,175,0.18)', next: 'Atteins 7/10 pour passer 🥇 Or' } : { n: 'Bronze', e: '🥉', c: '#b45309', bg: 'rgba(180,83,9,0.16)', next: 'Atteins 5/10 pour passer 🥈 Argent' };
-          return `<div style="margin-top:10px;display:inline-flex;align-items:center;gap:7px;background:${tier.bg};border:1px solid ${tier.c}66;border-radius:99px;padding:5px 12px"><span style="font-size:15px">${tier.e}</span><span style="font-size:12px;font-weight:800;color:${tier.c}">Palier ${tier.n}</span></div><div style="font-size:11px;color:${isDark ? 'rgba(255,255,255,0.5)' : textSec};margin-top:7px">${tier.next}</div>`;
-        })()}
-        <div style="margin-top:10px;display:flex;align-items:center;gap:7px;background:${isDark?'rgba(63,185,80,0.1)':'rgba(22,163,74,0.08)'};border-radius:10px;padding:8px 12px;border:1px solid ${isDark?'rgba(63,185,80,0.2)':'rgba(22,163,74,0.2)'}">
-          <span style="font-size:13px">✓</span>
-          <span style="font-size:11px;color:${isDark?'rgba(255,255,255,0.6)':textSec};font-weight:500">${score>=7?'Votre portefeuille est en excellente santé générale.':score>=5?'Quelques améliorations possibles.':'Des actions correctives recommandées.'}</span>
+  ${priority ? `
+  <div class="kps-card kps-priority">
+    <div class="kps-kicker">Le point à regarder en premier</div>
+    <div class="kps-priority-title">${priority.title}</div>
+    <p>${priority.focus}</p>
+    <div class="kps-mark">${priority.mark}</div>
+  </div>` : `
+  <div class="kps-card kps-priority">
+    <div class="kps-kicker">Le point à regarder en premier</div>
+    <p>Aucun point ne ressort : ton portefeuille respecte les repères ci-dessous.</p>
+  </div>`}
+
+  <div class="kps-title">Comment ton score est calculé</div>
+  <div class="kps-card kps-rows">
+    ${rows.map(r => {
+      const c = r.note >= 8 ? '#16a34a' : r.note >= 5 ? '#d97706' : '#dc2626';
+      return `<div class="kps-row">
+        <div class="kps-row-head"><b>${r.title}</b><span style="color:${c}">${String(r.note).replace('.', ',')}/10</span></div>
+        <div class="kph-bar"><div style="width:${r.note * 10}%;background:${c}"></div></div>
+        <div class="kps-row-value"><span>${r.value}</span><span>${r.mark}</span></div>
+        <p>${r.why}</p>
+      </div>`;
+    }).join('')}
+    <div class="kps-foot">Ton score est la moyenne de ces 4 notes.</div>
+  </div>
+
+  <div class="kps-title">Où est ton argent</div>
+  <div class="kps-card kps-alloc">
+    ${[...list].sort((x, y) => y.qty * y.price - x.qty * x.price).map((p, i) => {
+      const w = tv > 0 ? p.qty * p.price / tv * 100 : 0;
+      return `<div class="kps-alloc-row">
+        ${getCompanyLogo(p.name, p.name, 28, 8)}
+        <div class="kps-alloc-main">
+          <div><b>${_escHtml(displayName(p.name))}</b><span>${w.toFixed(1).replace('.', ',')} %</span></div>
+          <div class="kph-bar"><div style="width:${w}%;background:${COLORS[i % COLORS.length]}"></div></div>
         </div>
-      </div>
-      <!-- Barres score -->
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${scoreItems.map(item=>`
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:5px">
-            <span style="color:${isDark?'rgba(255,255,255,0.8)':textPrimary}">${item.label}</span>
-            <span style="color:${item.color}">${item.val}/10</span>
-          </div>
-          <div style="background:${isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)'};border-radius:99px;height:6px;overflow:hidden">
-            <div style="height:100%;background:${item.color};width:${item.val*10}%;border-radius:99px;transition:width 1s cubic-bezier(0.16,1,0.3,1)"></div>
-          </div>
-        </div>`).join('')}
-      </div>
-      <!-- Anneau -->
-      <div style="position:relative;display:flex;align-items:center;justify-content:center;width:100px;height:100px">
-        ${ring(100, score, scoreColor)}
-        <div style="position:absolute;font-size:28px">💚</div>
-      </div>
-    </div>
+      </div>`;
+    }).join('')}
   </div>
 
-  <!-- COMPOSITION -->
-  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:20px;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-      <span style="font-size:16px">🥧</span>
-      <span style="font-size:15px;font-weight:700;color:${textPrimary};letter-spacing:-0.03em">Composition du portefeuille</span>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-      <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
-        <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">ETF</div>
-        <div style="font-size:28px;font-weight:900;color:${parseFloat(etfPct)>=60?'#3fb950':'#f59e0b'};letter-spacing:-0.04em">${etfPct}%</div>
-        <div style="font-size:11px;color:${textSec};margin-top:4px">Idéal : 60%+</div>
-      </div>
-      <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
-        <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Concentration max</div>
-        <div style="font-size:28px;font-weight:900;color:${parseFloat(maxPct)>25?'#f87171':'#3fb950'};letter-spacing:-0.04em">${maxPct}%</div>
-        <div style="font-size:11px;color:${textSec};margin-top:4px">${maxPos?maxPos.name:''} · Max : 25%</div>
-      </div>
-      <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
-        <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Nb. positions</div>
-        <div style="font-size:28px;font-weight:900;color:${textPrimary};letter-spacing:-0.04em">${nbPos}</div>
-        <div style="font-size:11px;color:${textSec};margin-top:4px">Repère : 8</div>
-      </div>
-      <div style="background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border:1px solid ${border};border-radius:14px;padding:16px;text-align:center">
-        <div style="font-size:10px;font-weight:600;color:${textSec};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Performance</div>
-        <div style="font-size:28px;font-weight:900;color:${tpct>=0?'#3fb950':'#f87171'};letter-spacing:-0.04em">${tpct>=0?'+':''}${tpct.toFixed(1).replace(".", ",")} %</div>
-        <div style="font-size:11px;color:${textSec};margin-top:4px">${tpnl>=0?'+':''}${tpnl.toLocaleString('fr-FR',{maximumFractionDigits:0})} €</div>
-      </div>
-    </div>
+  ${alerts.length ? `
+  <div class="kps-title">À noter</div>
+  <div class="kps-card kps-list">${alerts.map(a => `<p>${a}</p>`).join('')}</div>` : ''}
 
-    <!-- Barres allocation -->
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${[...dedupPos].sort((a,b)=>b.qty*b.price-a.qty*a.price).map((p,i)=>{
-        const pct = tv>0?(p.qty*p.price/tv*100):0;
-        const pnl = p.qty*p.price-p.qty*p.pru;
-        const initials = p.name.replace(/[^A-Z0-9]/g,'').slice(0,2)||p.name.slice(0,2).toUpperCase();
-        return `
-        <div style="display:flex;align-items:center;gap:10px">
-          ${getCompanyLogo(p.name, p.name, 28, 8)}
-          <div style="font-size:12px;font-weight:600;color:${textPrimary};min-width:80px">${p.name}</div>
-          <div style="flex:1;background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:5px;overflow:hidden">
-            <div style="height:100%;background:${COLORS[i%COLORS.length]};width:${pct}%;border-radius:99px;transition:width 1s ease"></div>
-          </div>
-          <div style="font-size:11px;font-weight:600;color:${textSec};min-width:42px;text-align:right">${pct.toFixed(1).replace(".", ",")} %</div>
-          <div style="font-size:11px;color:${pnl>=0?'#3fb950':'#f87171'};min-width:70px;text-align:right">${pnl>=0?'+':''}${pnl.toLocaleString('fr-FR',{maximumFractionDigits:0})} €</div>
-        </div>`}).join('')}
-    </div>
+  <div class="kps-title">Comprendre avec l'assistant</div>
+  <div class="kps-card kps-asks">
+    <button type="button" onclick="${ask('Explique-moi mon score de santé avec des mots simples.')}">Explique-moi mon score<span>›</span></button>
+    <button type="button" onclick="${ask("C'est quoi un ETF et à quoi ça sert dans un portefeuille ?")}">C'est quoi un ETF ?<span>›</span></button>
+    <button type="button" onclick="${ask('Pourquoi répartir son argent réduit-il le risque ? Explique avec un exemple simple.')}">Pourquoi répartir son argent ?<span>›</span></button>
   </div>
-
-  <!-- CONSEILS IA -->
-  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:20px;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-      <span style="font-size:16px">🔮</span>
-      <span style="font-size:15px;font-weight:700;color:${textPrimary};letter-spacing:-0.03em">Conseils personnalisés</span>
-      <span style="background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.25);border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700;color:#3fb950">✦ IA</span>
-    </div>
-    <div class="sante-conseils" style="display:flex;gap:16px;align-items:flex-start">
-      <div class="sante-conseils-ico" style="flex-shrink:0;width:80px;height:80px;position:relative">
-        <div style="width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,0.3),rgba(6,182,212,0.2));display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid rgba(99,102,241,0.2)">🌐</div>
-        <div style="position:absolute;inset:0;border-radius:50%;animation:pulse-green 3s infinite;border:1px solid rgba(63,185,80,0.3)"></div>
-      </div>
-      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
-        ${[
-          {icon:'🛡️', title:'Bonne diversification globale', sub:dedupPos.length>=8?'Votre portefeuille est bien diversifié sur plusieurs classes d\'actifs.':`${dedupPos.length} position${dedupPos.length>1?'s':''} — vise 8 ou plus pour bien diversifier.`, ok:dedupPos.length>=8, q:`Comment améliorer la diversification de mon portefeuille (${dedupPos.length} positions actuellement) ?`},
-          {icon:'⭐', title:'Réduire la concentration', sub:`Envisage de réduire l'exposition à ${maxPos?maxPos.name:'ta position principale'} (${maxPct}%) pour limiter le risque.`, ok:parseFloat(maxPct)<=25, q:`Comment réduire progressivement mon exposition à ${maxPos?maxPos.name:'ma position principale'} (${maxPct}% de mon portefeuille) ?`},
-          {icon:'📈', title:'Améliorer la performance', sub:'Certaines positions sous-performent le marché. L\'IA peut t\'aider.', ok:tpct>=0, q:'Quelles positions sous-performent dans mon portefeuille, et que suggères-tu ?'},
-        ].map(c=>`
-        <div onclick="askAgentFrom(${JSON.stringify(c.q).replace(/"/g,'&quot;')})" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px;background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border-radius:12px;border:1px solid ${border};transition:border-color 0.15s"
-          onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='${border}'">
-          <div style="display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1">
-            <span style="font-size:18px;flex-shrink:0;margin-top:1px">${c.icon}</span>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:${textPrimary};margin-bottom:3px">${c.title}</div>
-              <div style="font-size:12px;color:${textSec};line-height:1.5">${c.sub}</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-            ${c.ok?'<span style="font-size:16px;color:#3fb950">✓</span>':''}
-            <span style="font-size:16px;color:${textSec}">›</span>
-          </div>
-        </div>`).join('')}
-      </div>
-    </div>
-  </div>
-
-  ${alerts.length > 0 ? `
-  <!-- POINTS D'ATTENTION -->
-  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:16px">🔔</span>
-        <span style="font-size:15px;font-weight:700;color:${textPrimary};letter-spacing:-0.03em">Points d'attention</span>
-      </div>
-      <button style="font-size:12px;font-weight:600;color:${textSec};background:none;border:none;cursor:pointer">Tout voir</button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${alerts.map(a=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:${isDark?'var(--color-surface-raised)':'#f9fafb'};border-radius:12px;border:1px solid ${border}">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:50%;background:${a.tagBg};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${a.icon}</div>
-          <div>
-            <span style="font-size:13px;font-weight:700;color:${textPrimary}">${a.name}</span>
-            <span style="font-size:12px;color:${textSec}"> ${a.msg}</span>
-          </div>
-        </div>
-        <span style="background:${a.tagBg};color:${a.tagColor};font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;white-space:nowrap">${a.tag}</span>
-      </div>`).join('')}
-    </div>
-  </div>` : ''}`;
-
-  const el = document.getElementById('sante-content');
-  if (el) el.innerHTML = html;
+  <div class="kps-legal">Repères généraux à visée éducative, pas un conseil personnalisé.</div>`;
 }
 
 
@@ -11223,207 +11121,96 @@ function renderObj() { /* legacy - kept for compat */ }
 async function saveObjectif() { /* legacy */ }
 
 // ===== CRISE =====
-let criseShowPct = false;   // false = € · true = % — bascule d'affichage des « Chocs de marché »
-function toggleCriseUnit() { criseShowPct = !criseShowPct; renderCrise(); }
 function showCriseMethodology() {
   showInfoPopup('Méthodologie des scénarios', `
     <p>Chaque scénario applique un <strong>taux de rendement annuel constant</strong> à ton capital actuel et à tes versements mensuels, sur la durée de ton objectif.</p>
-    <p><strong>Réaliste (+7 %/an)</strong> correspond au rendement historique moyen du MSCI World sur 20 ans, dividendes réinvestis.<br>
-    <strong>Pessimiste (-3 %/an)</strong> et <strong>Optimiste (+12 %/an)</strong> sont des hypothèses d'école pour visualiser l'écart possible, pas une prévision.</p>
-    <p>Les « Chocs de marché » simulent une baisse immédiate et ponctuelle de ton portefeuille actuel, sans lien avec les scénarios ci-dessus.</p>
+    <p><strong>Proche de la moyenne passée (+7 %/an)</strong> correspond au rendement historique moyen du MSCI World sur 20 ans, dividendes réinvestis.<br>
+    <strong>Années difficiles (-3 %/an)</strong> et <strong>Très bonnes années (+12 %/an)</strong> sont des hypothèses d'école pour visualiser l'écart possible, pas une prévision.</p>
+    <p>Le choix d'une baisse simule une baisse immédiate et ponctuelle de ton portefeuille actuel, sans lien avec les scénarios ci-dessus.</p>
     <p style="margin-top:10px">⚠️ Les performances passées ne préjugent pas des performances futures. Ces simulations sont éducatives, pas un conseil en investissement.</p>`);
 }
 
+let criseDrop = 30;
+function setCriseDrop(n) { criseDrop = n; renderCrise(); }
 function renderCrise() {
-  const tv = apos().reduce((a,p)=>a+p.qty*p.price, 0);
+  const box = document.getElementById('crise-content');
+  if (!box) return;
+  const tv = apos().reduce((a, p) => a + p.qty * p.price, 0);
+  if (!tv) {
+    box.innerHTML = '<div class="kps-card kps-empty"><b>Voir ce que donnerait une crise</b><p>Ajoute au moins un placement pour simuler une baisse sur ton portefeuille.</p><button type="button" class="kps-btn" onclick="nav(\'ajouter\')">Ajouter une position</button></div>';
+    return;
+  }
+  const eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
   const monthly = objChartMonthly || 200;
   const years = objChartYears || 10;
   const capital = objChartCapital || tv;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const surface = isDark ? 'var(--color-surface)' : '#fff';
-  const raised = isDark ? 'var(--color-surface-raised)' : '#f9fafb';
-  const border = isDark ? 'var(--color-border)' : '#e4e4e7';
-  const text = isDark ? 'var(--color-text)' : '#09090b';
-  const sub = isDark ? 'var(--color-text-secondary)' : '#71717a';
+  const yearsTxt = String(years).replace('.', ',');
 
-  if (!tv) {
-    document.getElementById('crise-content').innerHTML = `<div style="text-align:center;padding:40px;color:${sub}">Ajoute des positions pour simuler des scénarios.</div>`;
-    return;
-  }
-
-  function calcProjection(rate, y, c, m) {
-    const r = rate/100/12;
-    if (r === 0) return c + m*y*12;
-    return Math.round(c * Math.pow(1+r, y*12) + m * (Math.pow(1+r, y*12)-1)/r);
-  }
-
-  // Mini sparkline SVG
-  function spark(trend, color, w=80, h=40) {
-    const pts = [50];
-    for (let i=1;i<20;i++) pts.push(Math.max(5,Math.min(95, pts[i-1]+(Math.random()-0.5)*5+trend*0.8)));
-    const min=Math.min(...pts), max=Math.max(...pts), range=max-min||1;
-    const d = pts.map((v,i)=>`${i/(pts.length-1)*w},${h-((v-min)/range)*(h-4)-2}`);
-    const path = 'M'+d.join(' L');
-    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-      <defs><linearGradient id="cg${color.replace(/[^a-z0-9]/gi,'')}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
-        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-      </linearGradient></defs>
-      <path d="${path} L${w},${h} L0,${h} Z" fill="url(#cg${color.replace(/[^a-z0-9]/gi,'')})"/>
-      <path d="${path}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round"/>
-    </svg>`;
-  }
-
-  const scenarios = [
-    { label:'Pessimiste', icon:'📉', rate:-3, color:'#f87171', riskLabel:'RISQUE ÉLEVÉ', riskColor:'#f87171', riskBg:isDark?'rgba(248,113,113,0.15)':'#fef2f2', desc:'Récession globale, inflation persistante', trend:-2 },
-    { label:'Réaliste', icon:'📊', rate:7, color:'#f59e0b', riskLabel:'RISQUE MODÉRÉ', riskColor:'#f59e0b', riskBg:isDark?'rgba(245,158,11,0.15)':'#fffbeb', desc:'Ralentissement économique (PIB faible)', trend:0.5, active:true },
-    { label:'Optimiste', icon:'📈', rate:12, color:'#3fb950', riskLabel:'RISQUE FAIBLE', riskColor:'#3fb950', riskBg:isDark?'rgba(63,185,80,0.15)':'#f0fdf4', desc:'Rebond de l\'économie, bull run léger', trend:2 },
+  // 1. Une baisse, tout de suite
+  const DROPS = [
+    { pct: 10, name: 'Petite baisse', text: 'Une baisse de cette taille est courante sur les marchés.' },
+    { pct: 20, name: 'Mauvaise année', text: "C'est l'ordre de grandeur des périodes difficiles, comme 2022." },
+    { pct: 30, name: 'Grosse crise', text: "C'est l'ordre de grandeur de la chute de début 2020, au moment du Covid." },
+    { pct: 50, name: 'Crise majeure', text: "C'est l'ordre de grandeur de la crise financière de 2008." },
   ];
+  const drop = DROPS.find(d => d.pct === criseDrop) || DROPS[2];
+  const after = tv * (1 - drop.pct / 100);
+  const loss = tv - after;
+  const rebound = Math.round((tv / after - 1) * 100);
+  const monthsOfSaving = Math.round(loss / monthly);
 
-  const shocks = [
-    {label:'-10%', pct:-10, color:'#f97316', desc:'Correction normale'},
-    {label:'-20%', pct:-20, color:'#ef4444', desc:'Marché baissier'},
-    {label:'-30%', pct:-30, color:'#dc2626', desc:'Crise modérée'},
-    // Rouges foncés illisibles sur fond sombre : variantes plus claires en mode sombre
-    {label:'-40%', pct:-40, color:isDark?'#ef4444':'#b91c1c', desc:'Crise sévère'},
-    {label:'-50%', pct:-50, color:isDark?'#f43f5e':'#991b1b', desc:'Crash 2008'},
-    {label:'-60%', pct:-60, color:isDark?'#fb7185':'#7f1d1d', desc:'Crise extrême'},
-  ];
+  // 2. Sur la durée
+  const project = rate => {
+    const r = rate / 100 / 12, n = years * 12;
+    return r === 0 ? capital + monthly * n : capital * Math.pow(1 + r, n) + monthly * (Math.pow(1 + r, n) - 1) / r;
+  };
+  const invested = capital + monthly * 12 * years;
+  const CASES = [
+    { name: 'Années difficiles', rate: -3, color: '#dc2626' },
+    { name: 'Proche de la moyenne passée', rate: 7, color: '#d97706' },
+    { name: 'Très bonnes années', rate: 12, color: '#16a34a' },
+  ].map(c => ({ ...c, value: project(c.rate) }));
+  const maxValue = Math.max(invested, ...CASES.map(c => c.value));
 
-  const strategies = [
-    {icon:'🌍', title:'Diversification géographique', sub:'Réduire l\'exposition à une seule région et augmenter la diversification mondiale.', priority:'Priorité élevée', priorityColor:'#f87171', priorityBg:isDark?'rgba(248,113,113,0.12)':'#fef2f2'},
-    {icon:'🛡️', title:'Renforcement prudentiel', sub:'Augmenter la part de cash ou d\'actifs peu corrélés (obligations, or, matières premières).', priority:'Priorité moyenne', priorityColor:'#6366f1', priorityBg:isDark?'rgba(99,102,241,0.12)':'#eff6ff'},
-    {icon:'📅', title:'DCA — Investissement régulier', sub:'Investir de manière régulière réduit le risque et permet de profiter des rebonds.', priority:'Priorité moyenne', priorityColor:'#6366f1', priorityBg:isDark?'rgba(99,102,241,0.12)':'#eff6ff'},
-    {icon:'🔒', title:'Fonds de précaution', sub:'Garder 3 à 6 mois de dépenses en liquidités avant d\'investir en bourse.', priority:'Priorité élevée', priorityColor:'#f87171', priorityBg:isDark?'rgba(248,113,113,0.12)':'#fef2f2'},
-  ];
-
-  const html = `
-  <!-- STRUCTURES DE SCÉNARIOS -->
-  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:22px;margin-bottom:14px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;background:${isDark?'rgba(99,102,241,0.15)':'#eff6ff'};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">📊</div>
-        <div>
-          <div style="font-size:15px;font-weight:700;color:${text};letter-spacing:-0.03em">Structures de scénarios</div>
-          <div style="font-size:12px;color:${sub};display:flex;align-items:center;gap:5px">Basé sur le MSCI World et l'historique 20 ans <span onclick="showCriseMethodology()" style="font-size:14px;cursor:pointer">ⓘ</span></div>
-        </div>
-      </div>
-      <button onclick="showCriseMethodology()" style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:${raised};border:1px solid ${border};border-radius:8px;font-size:12px;font-weight:600;color:${sub};cursor:pointer">
-        ⓘ Méthodologie
-      </button>
+  box.innerHTML = `
+  <div class="kps-card kps-crisis">
+    <div class="kps-kicker">Choisis une baisse</div>
+    <div class="kps-chips">${DROPS.map(d => `<button type="button" class="${d.pct === drop.pct ? 'on' : ''}" onclick="setCriseDrop(${d.pct})">−${d.pct} %</button>`).join('')}</div>
+    <div class="kps-crisis-name">${drop.name}</div>
+    <p>${drop.text}</p>
+    <div class="kps-before-after">
+      <div><span>Aujourd'hui</span><b>${eur(tv)}</b></div>
+      <div class="kps-arrow-right">→</div>
+      <div><span>Après la baisse</span><b>${eur(after)}</b></div>
     </div>
-
-    <div class="crise-cards-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;margin-bottom:16px">
-      ${scenarios.map(s => {
-        const proj = calcProjection(s.rate, years, capital, monthly);
-        const invested = capital + monthly*12*years;
-        const gain = proj - invested;
-        const gainPct = invested ? ((proj/invested-1)*100).toFixed(1) : 0;
-        const borderStyle = s.active ? `2px solid ${s.color}` : `1px solid ${border}`;
-        const boxShadow = s.active ? `0 0 24px ${s.color}25` : 'none';
-        return `
-        <div style="background:${raised};border:${borderStyle};border-radius:16px;padding:16px;position:relative;overflow:hidden;box-shadow:${boxShadow}">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-            <div style="width:36px;height:36px;background:${s.color}20;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">${s.icon}</div>
-            <div>
-              <div style="font-size:14px;font-weight:700;color:${text}">${s.label}</div>
-              <div style="font-size:11px;color:${sub};line-height:1.3">${s.desc}</div>
-            </div>
-          </div>
-          <div style="background:${s.riskBg};border-radius:6px;padding:4px 10px;display:inline-block;margin-bottom:12px">
-            <span style="font-size:10px;font-weight:800;color:${s.riskColor};letter-spacing:0.06em">${s.riskLabel}</span>
-          </div>
-          <div style="font-size:10px;font-weight:600;color:${sub};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Rendement annuel</div>
-          <div style="font-size:32px;font-weight:900;color:${s.color};letter-spacing:-0.05em;line-height:1;margin-bottom:12px">${s.rate>0?'+':''}${s.rate}%</div>
-          <div style="margin-bottom:10px">${spark(s.trend, s.color)}</div>
-          <div style="font-size:11px;color:${sub};margin-bottom:4px">Valeur projetée dans ${years} ans</div>
-          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em">${fmtK(proj)}</div>
-          <div style="font-size:12px;font-weight:700;color:${s.color};margin-top:3px">${gain>=0?'+':''}${fmtK(gain)} (${gain>=0?'+':''}${gainPct}%)</div>
-        </div>`;
-      }).join('')}
-    </div>
-
-    <div style="padding:12px 14px;background:${isDark?'rgba(245,158,11,0.08)':'#fffbeb'};border:1px solid ${isDark?'rgba(245,158,11,0.2)':'#fde68a'};border-radius:10px;font-size:12px;color:${sub};display:flex;align-items:center;gap:8px">
-      <span>💡</span>
-      <span>Le scénario <strong style="color:#f59e0b">Réaliste à 7%/an</strong> correspond au rendement historique moyen du MSCI World sur 20 ans (dividendes réinvestis).</span>
+    <div class="kps-loss">Soit −${eur(loss)} sur ton portefeuille</div>
+    <div class="kps-facts">
+      <p><b>Tant que tu ne vends pas</b>, cette perte reste « sur le papier » : tu as toujours le même nombre de parts.</p>
+      <p><b>Pour revenir à ${eur(tv)}</b>, il faudrait ensuite une hausse d'environ ${rebound} %.</p>
+      <p><b>Cette baisse représente environ ${monthsOfSaving} mois</b> de versements à ${eur(monthly)} par mois.</p>
     </div>
   </div>
 
-  <!-- CHOCS DE MARCHÉ -->
-  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:22px;margin-bottom:14px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;background:${isDark?'rgba(239,68,68,0.15)':'#fef2f2'};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">⚡</div>
-        <div>
-          <div style="font-size:15px;font-weight:700;color:${text};letter-spacing:-0.03em">Chocs de marché</div>
-          <div style="font-size:12px;color:${sub}">Impact d'une baisse brutale sur ton portefeuille actuel (${fmtK(tv)})</div>
-        </div>
-      </div>
-      <button onclick="toggleCriseUnit()" style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:${raised};border:1px solid ${border};border-radius:8px;font-size:12px;font-weight:600;color:${sub};cursor:pointer">
-        Afficher en ${criseShowPct ? '€' : '%'} ▾
-      </button>
-    </div>
-
-    <div class="crise-cards-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;margin-bottom:16px">
-      ${shocks.map(s => {
-        const newVal = tv * (1 + s.pct/100);
-        const loss = newVal - tv;
-        return `
-        <div style="background:${raised};border:1px solid ${border};border-radius:14px;padding:16px;transition:border-color 0.15s"
-          onmouseover="this.style.borderColor='${s.color}'" onmouseout="this.style.borderColor='${border}'">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <span style="font-size:16px;font-weight:900;color:${s.color}">${s.label}</span>
-            <span style="font-size:11px;color:${sub}">${s.desc}</span>
-          </div>
-          <div style="font-size:20px;font-weight:800;color:${text};letter-spacing:-0.04em;margin-bottom:4px">${criseShowPct ? (100+s.pct)+'%' : fmtK(newVal)}</div>
-          <div style="font-size:13px;font-weight:700;color:${s.color};margin-bottom:10px">${criseShowPct ? s.pct+'% de perte' : fmtK(loss)+' de perte'}</div>
-          <div style="background:${isDark?'rgba(255,255,255,0.06)':'#f0f0f2'};border-radius:99px;height:5px;overflow:hidden">
-            <div style="height:100%;background:${s.color};width:${100+s.pct}%;border-radius:99px;transition:width 0.8s ease"></div>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-
-    <div style="padding:12px 14px;background:${isDark?'rgba(248,113,113,0.08)':'#fef2f2'};border:1px solid ${isDark?'rgba(248,113,113,0.2)':'#fecaca'};border-radius:10px;font-size:12px;color:${isDark?'rgba(248,113,113,0.9)':'#991b1b'};display:flex;align-items:center;gap:8px">
-      <span>⚠️</span>
-      <span>Ces simulations sont basées sur des baisses extrêmes. En réalité, les actifs réagissent différemment selon leur type et leur horizon.</span>
-    </div>
+  <div class="kps-title">Et sur ${yearsTxt} ans ?</div>
+  <div class="kps-card kps-cases">
+    <p class="kps-cases-intro">Avec ${eur(capital)} au départ et ${eur(monthly)} par mois, tu aurais versé <b>${eur(invested)}</b>. Voici ce que ça pourrait donner selon les années :</p>
+    ${CASES.map(c => `<div class="kps-case">
+      <div class="kps-case-head"><span>${c.name}<small>${c.rate > 0 ? '+' : '−'}${Math.abs(c.rate)} % par an</small></span><b>${eur(c.value)}</b></div>
+      <div class="kph-bar"><div style="width:${c.value / maxValue * 100}%;background:${c.color}"></div></div>
+    </div>`).join('')}
+    <div class="kps-legal" style="margin-top:12px">Ce sont des hypothèses, pas des prévisions. <button type="button" onclick="showCriseMethodology()">Voir la méthode</button></div>
   </div>
 
-  <!-- STRATÉGIES DE RÉSILIENCE -->
-  <div style="background:${surface};border:1px solid ${border};border-radius:20px;padding:22px;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-      <div style="width:36px;height:36px;background:${isDark?'rgba(99,102,241,0.15)':'#eff6ff'};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🛡️</div>
-      <div>
-        <div style="font-size:15px;font-weight:700;color:${text};letter-spacing:-0.03em">Stratégies de résilience</div>
-        <div style="font-size:12px;color:${sub}">Actions recommandées pour protéger et renforcer ton portefeuille en période de crise.</div>
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
-      ${strategies.map(s=>`
-      <div class="crise-strat" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:${raised};border:1px solid ${border};border-radius:12px;transition:border-color 0.15s;cursor:pointer"
-        onmouseover="this.style.borderColor='${s.priorityColor}40'" onmouseout="this.style.borderColor='${border}'">
-        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
-          <div style="width:38px;height:38px;border-radius:10px;background:${isDark?'rgba(255,255,255,0.06)':'#f4f4f5'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${s.icon}</div>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:${text};margin-bottom:3px">${s.title}</div>
-            <div style="font-size:12px;color:${sub};line-height:1.4">${s.sub}</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-          <span style="background:${s.priorityBg};color:${s.priorityColor};font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;white-space:nowrap">${s.priority}</span>
-          <span style="color:${sub};font-size:16px">›</span>
-        </div>
-      </div>`).join('')}
-    </div>
+  <div class="kps-title">Trois réflexes à connaître</div>
+  <div class="kps-card kps-list">
+    <p><b>Garder une épargne de côté.</b> Avoir quelques mois de dépenses disponibles évite de devoir vendre au mauvais moment.</p>
+    <p><b>Répartir son argent.</b> Une baisse touche rarement tous les placements de la même façon.</p>
+    <p><b>Investir régulièrement.</b> Verser la même somme chaque mois évite de tout miser sur un seul moment.</p>
   </div>
-
-  <!-- DISCLAIMER -->
-  <div style="text-align:center;padding:14px;font-size:12px;color:${sub}">
-    ⓘ Les performances passées ne préjugent pas des performances futures.
-  </div>`;
-
-  document.getElementById('crise-content').innerHTML = html;
+  <div class="kps-card kps-asks" style="margin-top:10px">
+    <button type="button" onclick="askAgentFrom(${JSON.stringify(`Explique-moi avec des mots simples ce qu'une baisse de ${drop.pct} % changerait pour mon portefeuille.`).replace(/"/g, '&quot;')})">Poser une question sur ce scénario<span>›</span></button>
+  </div>
+  <div class="kps-legal">Simulation éducative sur l'ensemble du portefeuille : en réalité, chaque placement réagit différemment. Les performances passées ne préjugent pas des performances futures.</div>`;
 }
 
 
@@ -13467,6 +13254,32 @@ function loadScriptOnce(src) {
   });
 }
 
+// Après identification : prix d'achat en euros et vrai cours du jour, pour que l'écran de contrôle montre le résultat réel
+async function enrichImportRows(rows) {
+  try {
+    const curs = [...new Set(rows.map(r => r.cur).filter(Boolean))];
+    if (curs.length) {
+      const q = await (await fetch('/api/prices?symbols=' + curs.map(c => 'CUR-' + c).join(','))).json();
+      const rate = Object.fromEntries((q.quotes || []).map(x => [x.symbol.slice(4), x.price]));
+      rows.forEach(r => {
+        if (!r.cur) return;
+        if (rate[r.cur] > 0) { r.pruOrig = r.pru; r.pru = Math.round(r.pru * rate[r.cur] * 1e6) / 1e6; r.price = Math.round(r.price * rate[r.cur] * 1e6) / 1e6; r.converted = true; }
+        else r.curUnknown = true;
+      });
+    }
+  } catch (e) { console.warn('[import] devise :', e); rows.forEach(r => { if (r.cur && !r.converted) r.curUnknown = true; }); }
+  try {
+    const list = rows.filter(r => !r.notFound).map(r => r.name);
+    for (let i = 0; i < list.length; i += 40) {
+      const q = await (await fetch('/api/prices?symbols=' + encodeURIComponent(list.slice(i, i + 40).join(',')))).json();
+      for (const x of (q.quotes || [])) {
+        const r = rows.find(z => z.name === x.symbol);
+        if (r) { if (x.price > 0) { r.price = Math.round(x.price * 1e6) / 1e6; r.live = true; } else r.noPrice = true; }
+      }
+    }
+  } catch (e) { console.warn('[import] cours :', e); }
+}
+
 // Point d'entrée de l'import : CSV/TXT (lu localement), Excel (converti en CSV), PDF (texte extrait puis analysé par l'IA)
 async function handleCSVImport(file) {
   if (!file) return;
@@ -13478,12 +13291,16 @@ async function handleCSVImport(file) {
     } else if (ext === 'xlsx' || ext === 'xls') {
       await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
       const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-      rows = parseCSVSmart(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ';' }));
+      for (const sheet of wb.SheetNames) {
+        rows = parseCSVSmart(XLSX.utils.sheet_to_csv(wb.Sheets[sheet], { FS: ';', rawNumbers: true }));
+        if (rows.length) break;
+      }
     } else {
       rows = parseCSVSmart(await file.text());
     }
     if (!rows || !rows.length) { showToast('⚠️ Aucune position détectée dans ce fichier'); return; }
     await resolveImportTickers(rows);
+    await enrichImportRows(rows);
     showCSVPreview(rows, file.name);
     trackEvent('import_file', { format: ext, count: rows.length });
   } catch (err) {
@@ -13508,15 +13325,44 @@ async function resolveImportTickers(rows) {
   document.getElementById('import-loading').innerHTML = '<div style="background:#fff;color:#09090b;border-radius:16px;padding:20px 24px;font-size:14px;font-weight:700;text-align:center;max-width:320px">🔎 Identification de tes titres…<div style="font-size:12px;font-weight:500;color:#71717a;margin-top:6px">Pour que les prix se mettent à jour en direct.</div></div>';
   const rank = (sym) => {
     const suf = (sym.match(/\.[A-Z]+$/) || [''])[0];
-    return { '.PA': 0, '.AS': 1, '.DE': 2, '.MI': 3, '.BR': 4, '': 5, '.F': 6, '.L': 9 }[suf] ?? 7;
+    return { '.PA': 0, '.AS': 1, '.BR': 2, '.DE': 3, '.MI': 4, '.MC': 5, '.F': 6, '.L': 9, '': 9 }[suf] ?? 7;
   };
+  const firstWord = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().match(/[a-z0-9]{3,}/)?.[0] || '';
   const search = async (q) => ((await (await fetch('/api/search?q=' + encodeURIComponent(q))).json()).results || []);
   const resolve = async (r) => {
     const label = r.fullName || r.name;
+    // Crypto écrite « Solana (SOL / EUR) » : on la reconnaît à sa paire et on suit son vrai cours
+    const pair = String(label).match(/\(\s*([A-Z0-9]{2,10})\s*\/\s*(EUR|USD)\s*\)/i);
+    if (pair) {
+      r.fullName = r.fullName || r.name;
+      r.name = pair[1].toUpperCase() + '-EUR';
+      r.type = 'Crypto';
+      r.sector = 'Crypto';
+      return;
+    }
+    const w = firstWord(label);
+    const coin = { ether: 'ETH-EUR' }[w] ? { ticker: 'ETH-EUR' } : (typeof AC_DB !== 'undefined' ? AC_DB.find(c => c.type === 'Crypto' && /-EUR$/.test(c.ticker) && firstWord(c.name) === w) : null);
+    if (coin && String(label).trim().split(/\s+/).length <= 2) {
+      r.fullName = r.fullName || r.name;
+      r.name = coin.ticker;
+      r.type = 'Crypto';
+      r.sector = 'Crypto';
+      return;
+    }
     try {
-      const list = await search(r.isin || label);
-      if (!list.length) return;
-      let best = r.isin ? [...list].sort((a, b) => rank(a.ticker) - rank(b.ticker))[0] : list[0];
+      let list = await search(r.isin || label);
+      if (!list.length && r.isin) list = await search(label);   // ISIN inconnu de la recherche : on tente le nom
+      if (!list.length) { r.notFound = true; return; }
+      // Du plus sûr au moins sûr : Paris et les places en euros d'abord, les cotations américaines en dernier
+      let best = [...list].sort((a, b) => rank(a.ticker) - rank(b.ticker))[0];
+      // Yahoo ne donne pas toujours Paris (Alten : Vienne, Xetra, OTC) : on essaie le même symbole à Paris, si c'est bien la même société
+      if (rank(best.ticker) > 0) {
+        const bases = [...new Set(list.map(x => x.ticker.split('.')[0].replace(/P$/, '')).concat(list.map(x => x.ticker.split('.')[0])))];
+        for (const base of bases.slice(0, 4)) {
+          const hit = (await search(base + '.PA')).find(x => x.ticker === base + '.PA');
+          if (hit && firstWord(hit.name) === firstWord(label)) { best = hit; break; }
+        }
+      }
       // L'ISIN ne renvoie parfois qu'une cotation hors euro (ex. Londres) : même titre recherché par son nom
       if (r.isin && rank(best.ticker) > 5) {
         const base = best.ticker.split('.')[0];
@@ -13561,7 +13407,7 @@ async function parsePDFStatement(file) {
   // Données personnelles inutiles à l'analyse : jamais envoyées
   text = text.replace(/\b(?:FR|DE|BE|LU|ES|IT|NL)\d{2}(?:\s?[A-Z0-9]{4}){4,6}(?:\s?[A-Z0-9]{1,3})?\b/g, '[IBAN]')
              .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[EMAIL]')
-             .replace(/(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}/g, '[TEL]');
+             .replace(/(^|[^\w.,])(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}(?![\w,.])/g, '$1[TEL]');
   if (text.replace(/\s/g, '').length < 40) {
     const e = new Error('no text'); e.userMessage = 'Ce PDF est une image scannée, sans texte lisible. Essaie l\'export CSV de ton courtier.'; throw e;
   }
@@ -13579,14 +13425,18 @@ async function parsePDFStatement(file) {
   return (out.positions || []).map(p => {
     const name = p.ticker || p.name;
     const pru = p.pru || 0, price = p.price || pru;
+    // Contrôle : quantité × cours doit retrouver la valeur de la ligne, sinon la quantité a été mal lue
+    let qty = p.qty;
+    if (p.value > 0 && price > 0 && Math.abs(qty * price - p.value) / p.value > 0.2) qty = p.value / price;
     return {
       isin: p.isin || null,
       tickerKnown: !!p.ticker,
-      name: name.slice(0, 30),
-      fullName: p.ticker ? p.name.slice(0, 50) : '',
-      qty: Math.round(p.qty * 1e8) / 1e8,
-      pru: Math.round(pru * 100) / 100,
-      price: Math.round(price * 100) / 100,
+      name: name.slice(0, 60),
+      fullName: p.ticker ? p.name.slice(0, 60) : (name === p.name ? '' : p.name.slice(0, 60)),
+      qty: Math.round(qty * 1e8) / 1e8,
+      pru: Math.round(pru * 1e6) / 1e6,
+      price: Math.round(price * 1e6) / 1e6,
+      cur: p.currency && p.currency !== 'EUR' ? p.currency : '',
       checked: true,
     };
   });
@@ -13594,16 +13444,11 @@ async function parsePDFStatement(file) {
 
 // Parse un CSV avec détection auto (séparateur ; , ou tab · colonnes par mots-clés)
 function parseCSVSmart(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/["'’]/g, ' ').replace(/\s+/g, ' ').trim();
+  const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
   if (lines.length < 2) return [];
 
-  // Détecter le séparateur sur l'en-tête
-  const header = lines[0];
-  const sep = [';', ',', '\t'].reduce((best, s) =>
-    header.split(s).length > header.split(best).length ? s : best, ';');
-
-  const splitLine = (l) => {
-    // Split en respectant les guillemets
+  const splitWith = (l, sep) => {
     const out = []; let cur = '', inQ = false;
     for (const ch of l) {
       if (ch === '"') inQ = !inQ;
@@ -13613,155 +13458,257 @@ function parseCSVSmart(text) {
     out.push(cur.trim());
     return out;
   };
-
-  const cols = splitLine(header).map(c => c.toLowerCase().replace(/"/g,''));
-
-  // Détection heuristique des colonnes (FR/EN, Trade Republic, XTB)
-  const findCol = (keywords) => cols.findIndex(c => keywords.some(k => c.includes(k)));
-  const iName  = findCol(['instrument','produit','name','nom','titre','désignation','designation','asset','position']);
-  const iTicker= findCol(['symbol','symbole','ticker','isin']);
-  const iQty   = findCol(['quantit','quantity','volume','nombre','shares','qty','anzahl']);
-  const iPru   = findCol(['pru','prix moyen','avg','average','achat','open price','prix d\'ouverture','purchase','buy','cost']);
-  const iPrice = findCol(['prix actuel','current','market price','cours','last','close','dernier']);
-
-  if (iQty === -1 || (iName === -1 && iTicker === -1)) return [];
-
-  const num = (s) => {
-    if (!s) return 0;
-    // Gère "1 234,56" et "1,234.56" et "1234.56"
-    s = String(s).replace(/"/g,'').replace(/\s/g,'').replace(/€|\$|USD|EUR/gi,'');
-    if (s.includes(',') && s.includes('.')) s = s.replace(/,/g, s.lastIndexOf(',') > s.lastIndexOf('.') ? '.' : '');
-    else s = s.replace(',', '.');
-    // retire un éventuel 2e point de milliers
-    const parts = s.split('.');
-    if (parts.length > 2) s = parts.slice(0,-1).join('') + '.' + parts[parts.length-1];
-    return parseFloat(s) || 0;
-  };
-
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
-    const c = splitLine(lines[i]);
-    if (c.length < 2) continue;
-    let name = (iTicker >= 0 && c[iTicker]) ? c[iTicker].replace(/"/g,'') : (c[iName]||'').replace(/"/g,'');
-    // Si c'est un ISIN (ex: IE00B4L5Y983), préférer le nom lisible — les prix live utilisent les tickers
-    if (/^[A-Z]{2}[A-Z0-9]{10}$/.test(name) && iName >= 0 && c[iName]) {
-      name = c[iName].replace(/"/g,'');
+  // Mot-clé cherché dans l'ordre de priorité : le plus précis d'abord
+  const find = (cols, keys, skip = []) => {
+    for (const k of keys) {
+      const i = cols.findIndex((c, idx) => !skip.includes(idx) && (k instanceof RegExp ? k.test(c) : c.includes(k)));
+      if (i >= 0) return i;
     }
-    const qty = num(c[iQty]);
-    if (!name || qty <= 0) continue;
-    const pru = iPru >= 0 ? num(c[iPru]) : 0;
-    const price = iPrice >= 0 ? num(c[iPrice]) : pru;
-    const rawT = iTicker >= 0 ? (c[iTicker] || '').replace(/"/g,'').trim() : '';
-    const isIsin = /^[A-Z]{2}[A-Z0-9]{10}$/.test(rawT);
-    rows.push({
-      isin: isIsin ? rawT : null,
-      tickerKnown: !!rawT && !isIsin,
-      name: name.slice(0, 30),
-      fullName: iName >= 0 && iTicker >= 0 ? (c[iName]||'').replace(/"/g,'').slice(0,50) : '',
-      qty: Math.round(qty * 1e8) / 1e8,
-      pru: Math.round(pru * 100) / 100,
-      price: Math.round((price || pru) * 100) / 100,
-      checked: true,
-    });
+    return -1;
+  };
+  const NAME = ['instrument', 'produit', 'designation', 'libelle', 'titre', 'security', 'asset', /^name$/, /\bname\b/, /^nom\b/, /\bnom\b/, /^position$/, /^valeur$/, /^action$/];
+  const TICKER = ['isin', 'symbol', 'symbole', 'ticker', 'code valeur'];
+  const QTY = ['quantit', /\bqte\b/, 'quantity', /\bqty\b/, /\bshares\b/, /\bunits\b/, 'nombre', 'volume', 'anzahl', /\bparts\b/];
+
+  // L'en-tête n'est pas toujours la 1re ligne (titre, date, lignes vides au-dessus)
+  let headerAt = -1, sep = ';', cols = [];
+  for (let i = 0; i < Math.min(lines.length, 15) && headerAt < 0; i++) {
+    for (const cand of [';', '\t', ',']) {
+      const c = splitWith(lines[i], cand).map(norm);
+      if (c.length < 2) continue;
+      if (find(c, QTY) >= 0 && (find(c, NAME) >= 0 || find(c, TICKER) >= 0)) { headerAt = i; sep = cand; cols = c; break; }
+    }
   }
-  return rows.slice(0, 60);
+  if (headerAt < 0) return [];
+
+  const iTicker = find(cols, TICKER);
+  const iName = find(cols, NAME, [iTicker]);
+  const iQty = find(cols, QTY);
+  const used = [iName, iTicker, iQty];
+  const iPru = find(cols, ['pru', /\bpam\b/, 'prix de revient', 'prix moyen', 'cours moyen', 'prix d achat', 'prix achat', 'cours d achat', 'average cost', 'avg cost', 'average price', 'avg price', 'open price', 'prix d ouverture', 'buy price', 'purchase price', 'unit cost', /^avg\b/, /^prix$/, /^price$/], used);
+  const iPrice = find(cols, ['prix actuel', 'cours actuel', 'dernier cours', 'market price', 'current price', 'cours de cloture', 'cloture', 'last price', /^last\b/, /^close\b/, /^current\b/, /^dernier\b/, /^cours$/], [...used, iPru]);
+  const iTotal = find(cols, ['valeur totale investie', 'total investi', 'montant investi', 'valeur investie', 'purchase value', 'cost basis', 'total cost', 'prix de revient total'], [...used, iPru, iPrice]);
+  const iValue = find(cols, ['valorisation', 'valeur actuelle', 'market value', 'montant en eur', 'valeur en eur', 'current value', /^montant$/, /^valeur$/, /^value$/], [...used, iPru, iPrice, iTotal]);
+  const iCur = find(cols, [/^devise\b/, /^currency\b/, /^monnaie\b/], used);
+  const iSide = find(cols, [/^type$/, /^sens$/, /^operation$/, /^action$/, /^side$/], used);
+  const iDate = find(cols, [/\bdate\b/], used);
+  const body = lines.slice(headerAt + 1).map(l => splitWith(l, sep));
+
+  // Format anglais : « 1,250 » = 1 250. Reconnu si le fichier écrit ses décimales avec un point.
+  const numericCols = [iQty, iPru, iPrice, iTotal, iValue].filter(i => i >= 0);
+  const cells = body.flatMap(c => numericCols.map(i => String(c[i] || '')));
+  const dotDecimals = cells.filter(v => /\d\.\d{1,2}(\D|$)/.test(v) && !/,/.test(v)).length;
+  const commaDecimals = cells.filter(v => /\d,\d{1,2}(\D|$)/.test(v) && !/\./.test(v)).length;
+  const english = dotDecimals > commaDecimals;
+
+  const num = (v) => {
+    let t = String(v || '').replace(/["\s\u00A0\u202F']/g, '').replace(/€|\$|£|USD|EUR|GBP|CHF/gi, '');
+    if (!t) return 0;
+    if (t.includes(',') && t.includes('.')) t = t.replace(t.lastIndexOf(',') > t.lastIndexOf('.') ? /\./g : /,/g, '').replace(',', '.');
+    else if (english && /^-?\d{1,3}(,\d{3})+$/.test(t)) t = t.replace(/,/g, '');
+    else t = t.replace(',', '.');
+    const parts = t.split('.');
+    if (parts.length > 2) t = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
+    return parseFloat(t) || 0;
+  };
+  const clean = (v) => String(v || '').replace(/"/g, '').trim();
+  const NOT_A_POSITION = /^(total|totaux|sous[- ]total|cash|especes|liquidites|solde|notes?|source)\b/;
+  const MARKETS = { FR: '.PA', NL: '.AS', BE: '.BR', DE: '.DE', IT: '.MI', ES: '.MC', UK: '.L', US: '' };   // symboles façon XTB : TTE.FR, AAPL.US
+
+  const isTransactions = iDate >= 0 && iSide >= 0;
+  const merged = new Map();
+  for (const c of body) {
+    if (c.length < 2) continue;
+    const label = iName >= 0 ? clean(c[iName]) : '';
+    let raw = iTicker >= 0 ? clean(c[iTicker]) : '';
+    if (NOT_A_POSITION.test(norm(label || raw))) continue;
+    if (!label && !raw) continue;
+    const side = iSide >= 0 ? norm(c[iSide]) : '';
+    const isSell = /(vente|sell|sale|cession)/.test(side) || (isTransactions && num(c[iQty]) < 0);
+    let qty = Math.abs(num(c[iQty]));
+    if (qty <= 0) continue;
+    if (isTransactions && side && !isSell && !/(achat|buy|souscription|purchase)/.test(side)) continue;   // dividendes, frais…
+    let pru = iPru >= 0 ? Math.abs(num(c[iPru])) : 0;
+    const total = iTotal >= 0 ? Math.abs(num(c[iTotal])) : 0;
+    // « 17,998 » dans un fichier en français : si le montant investi le prouve, ce sont 17 998 parts
+    if (total > 0 && pru > 0 && /^\d{1,3},\d{3}$/.test(clean(c[iQty]))) {
+      const big = parseFloat(clean(c[iQty]).replace(',', ''));
+      if (Math.abs(big * pru - total) < Math.abs(qty * pru - total)) qty = big;
+    }
+    if (!pru && total > 0) pru = total / qty;
+    let price = iPrice >= 0 ? Math.abs(num(c[iPrice])) : 0;
+    if (!price && iValue >= 0) { const val = Math.abs(num(c[iValue])); if (val > 0) price = val / qty; }
+
+    let cur = iCur >= 0 ? clean(c[iCur]).toUpperCase() : '';
+    const headCur = (cols[iPru] || '').match(/\b(usd|gbp|chf)\b/);
+    if (!/^[A-Z]{3}$/.test(cur) && headCur) cur = headCur[1].toUpperCase();
+    const mk = raw.match(/^([A-Z0-9-]{1,10})\.(FR|NL|BE|DE|IT|ES|UK|US)$/);
+    if (mk) { raw = mk[1] + MARKETS[mk[2]]; if (mk[2] === 'US' && !cur) cur = 'USD'; if (mk[2] === 'UK' && !cur) cur = 'GBP'; }
+    const isIsin = /^[A-Z]{2}[A-Z0-9]{10}$/.test(raw);
+    const looksLikeTicker = raw && !isIsin && /^[A-Z0-9.\-=]{1,20}$/.test(raw);
+    const name = (looksLikeTicker ? raw : label || raw).slice(0, 60);
+    const key = (isIsin ? raw : norm(name));
+
+    const prev = merged.get(key);
+    if (isSell) {
+      // Une vente réduit le nombre de parts sans changer le prix moyen d'achat
+      if (prev) prev.qty = Math.max(0, prev.qty - qty);
+      continue;
+    }
+    if (prev) {
+      const q = prev.qty + qty;
+      prev.pru = q > 0 ? (prev.qty * prev.pru + qty * pru) / q : prev.pru;
+      prev.qty = q;
+      if (price) prev.price = price;
+      prev.merged = (prev.merged || 1) + 1;
+    } else {
+      merged.set(key, { isin: isIsin ? raw : null, tickerKnown: !!looksLikeTicker, name, fullName: label && label !== name ? label.slice(0, 60) : '', qty, pru, price, cur: cur && cur !== 'EUR' ? cur : '', checked: true });
+    }
+  }
+  return [...merged.values()].filter(r => r.qty > 0).slice(0, 60).map(r => ({
+    ...r,
+    qty: Math.round(r.qty * 1e8) / 1e8,
+    pru: Math.round(r.pru * 1e6) / 1e6,
+    price: Math.round((r.price || r.pru) * 1e6) / 1e6,
+  }));
 }
 
 // Prévisualisation avant import
 function showCSVPreview(rows, filename) {
   window._csvRows = rows;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const surf = isDark ? '#161b26' : '#fff';
-  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
-  const txt  = isDark ? '#f0f0f0' : '#09090b';
-  const sub  = isDark ? '#888' : '#71717a';
-
-  // Détecter la plateforme depuis le nom de fichier
+  rows.forEach(r => { r.pv = 0; r.pvSign = 1; });
   const _dp = detectPlatform(filename);
   const platform = _dp !== 'Autre' ? _dp : (kpMainPlatform() || 'Autre');   // fichier non reconnu : plateforme principale
   window._csvPlatform = platform;
+  const parts = q => { const t = Number(q).toLocaleString('fr-FR', { maximumFractionDigits: 8 }); return t + (q > 1 ? ' parts' : ' part'); };
 
   document.getElementById('csv-preview-modal')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'csv-preview-modal';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.className = 'kpi-overlay';
   overlay.innerHTML = `
-    <div style="background:${surf};border-radius:20px;padding:22px;max-width:560px;width:100%;max-height:82vh;display:flex;flex-direction:column">
-      <div style="font-size:17px;font-weight:800;color:${txt}">📥 ${rows.length} position${rows.length>1?'s':''} détectée${rows.length>1?'s':''}</div>
-      <div style="font-size:12px;color:${sub};margin:4px 0 6px">${filename} · plateforme : 
-        <select id="csv-platform-sel" style="background:transparent;border:1px solid ${bord};border-radius:6px;padding:2px 6px;color:${txt};font-size:12px">
-          ${platformOptionsHTML(platform)}
-        </select>
+    <div class="kpi-box">
+      <div class="kpi-head">
+        <div class="kpi-title">Vérifie tes ${rows.length} ligne${rows.length > 1 ? 's' : ''}</div>
+        <div class="kpi-sub">${_escHtml(filename)}</div>
+        <label class="kpi-platform">Compte ou courtier <select id="csv-platform-sel">${platformOptionsHTML(platform)}</select></label>
       </div>
-      <div style="font-size:11px;color:${sub};margin-bottom:10px;line-height:1.5">Décoche ce que tu ne veux pas importer et corrige le PRU si besoin. Si tu as déjà vendu une partie d'une ligne, indique la <strong style="color:${txt}">plus-value (+) ou moins-value (−) déjà réalisée</strong> : le PRU sera recalculé pour refléter ton vrai gain. Les doublons (même nom) mettent à jour la position existante.</div>
-      <div style="flex:1;overflow-y:auto;border:1px solid ${bord};border-radius:12px">
+      <div class="kpi-list">
+        <div class="kpi-summary" id="csv-summary"></div>
         ${rows.map((r, i) => {
-          r.pv = 0; r.pvSign = 1;
-          const inp = `background:transparent;border:1px solid ${bord};border-radius:7px;padding:4px 6px;color:${txt};font-size:12px;font-weight:600`;
+          const nice = displayName(r.name);
+          const title = nice === r.name && r.fullName && r.fullName !== r.name ? r.fullName : nice;
+          const notes = [];
+          if (r.notFound) notes.push(`<div class="kpi-warn">Titre non reconnu : son cours ne se mettra pas à jour. Décoche-le ou ajoute-le à la main ensuite.</div>`);
+          else if (r.noPrice) notes.push(`<div class="kpi-warn">Cours introuvable pour ce symbole : vérifie qu'il s'agit du bon titre.</div>`);
+          if (r.converted) notes.push(`<div class="kpi-info">Prix d'achat converti depuis ${r.pruOrig.toLocaleString('fr-FR')} ${_escHtml(r.cur)} au taux du jour : corrige-le si tu connais le montant payé en euros.</div>`);
+          if (r.curUnknown) notes.push(`<div class="kpi-warn">Prix en ${_escHtml(r.cur)} non converti : indique ton prix d'achat en euros.</div>`);
+          if (r.merged) notes.push(`<div class="kpi-info">${r.merged} lignes de ce titre regroupées, avec leur prix moyen.</div>`);
           return `
-        <div style="padding:10px 12px;border-bottom:1px solid ${bord}">
-          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
-            <input type="checkbox" checked onchange="window._csvRows[${i}].checked=this.checked" style="width:16px;height:16px;accent-color:#16a34a;flex-shrink:0;margin-top:1px">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:700;color:${txt};overflow-wrap:anywhere">${(() => {
-                const nice = displayName(r.name);
-                // Symbole sans nom connu dans l'app (ex. AEEM.PA) : le nom du relevé passe en titre, le symbole en discret
-                if (nice === r.name && r.fullName && r.fullName !== r.name) return `${_escHtml(r.fullName)} <span style="font-weight:400;color:${sub}">· ${_escHtml(r.name)}</span>`;
-                return _escHtml(nice) + (r.fullName && r.fullName !== r.name ? ` <span style="font-weight:400;color:${sub}">· ${_escHtml(r.fullName)}</span>` : '');
-              })()}</div>
-              <div style="font-size:10px;color:${sub}">${r.qty} part${r.qty>1?'s':''}${r.price>0 ? ' · cours '+r.price.toFixed(2)+' €' : ''}</div>
-            </div>
+        <div class="kpi-row" id="csv-row-${i}">
+          <label class="kpi-row-head">
+            <input type="checkbox" checked onchange="csvRowCheck(${i},this.checked)">
+            <span class="kpi-row-name"><b>${_escHtml(title)}</b><small>${_escHtml(r.name)} · ${parts(r.qty)}${r.price > 0 && r.live ? ` · cours ${fmtImportEur(r.price)}` : ''}</small></span>
           </label>
-          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:8px 0 0 26px;font-size:11px;color:${sub}">
-            <span style="display:inline-flex;align-items:center;gap:5px">PRU
-              <input type="number" min="0" step="0.01" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="?" oninput="csvRowSet(${i},'pru',this.value);this.style.borderColor='';document.getElementById('csv-nopru-${i}')?.remove()" style="${inp};width:78px${r.pru > 0 ? '' : ';border-color:#f59e0b'}"> €</span>
-            ${r.pru > 0 ? '' : `<span id="csv-nopru-${i}" style="flex-basis:100%;color:#d97706;font-weight:600">PRU absent du fichier : sans lui, le cours actuel${r.price > 0 ? ' (' + r.price.toFixed(2) + ' €)' : ''} sera utilisé et ta performance affichera 0 %.</span>`}
-            <span style="display:inline-flex;align-items:center;gap:5px">Déjà réalisé
-              <button type="button" id="csv-pvsign-${i}" onclick="csvRowToggleSign(${i})" title="Plus-value (+) ou moins-value (−)" style="width:26px;height:26px;border-radius:7px;border:none;font-size:15px;font-weight:800;cursor:pointer;background:rgba(22,163,74,0.12);color:#16a34a">+</button>
-              <input type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="csvRowSet(${i},'pv',this.value)" style="${inp};width:78px"> €</span>
-            <span id="csv-pruadj-${i}" style="font-weight:700"></span>
+          ${notes.join('')}
+          <div class="kpi-field">
+            <label for="csv-pru-${i}">Prix d'achat moyen par part</label>
+            <span class="kpi-input"><input id="csv-pru-${i}" type="number" min="0" step="any" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="À remplir" oninput="csvRowSet(${i},'pru',this.value)"> €</span>
+          </div>
+          <div class="kpi-result" id="csv-result-${i}"></div>
+          <button type="button" class="kpi-more" id="csv-more-${i}" onclick="csvRowToggleSold(${i})">J'ai déjà vendu une partie de cette ligne</button>
+          <div class="kpi-sold" id="csv-sold-${i}" hidden>
+            <p>Sur ce que tu as déjà vendu, tu as :</p>
+            <div class="kpi-choice">
+              <button type="button" id="csv-gain-${i}" class="on" onclick="csvRowSign(${i},1)">Gagné</button>
+              <button type="button" id="csv-loss-${i}" onclick="csvRowSign(${i},-1)">Perdu</button>
+            </div>
+            <label class="kpi-input kpi-amount" for="csv-pv-${i}"><input id="csv-pv-${i}" type="number" min="0" step="any" inputmode="decimal" placeholder="Montant" oninput="csvRowSet(${i},'pv',this.value)"> €</label>
+            <div class="kpi-sold-out" id="csv-pruadj-${i}">Ce montant sera compté dans ton résultat, pour qu'il reflète ce que tu as vraiment gagné ou perdu.</div>
           </div>
         </div>`;
         }).join('')}
       </div>
-      <div style="display:flex;gap:10px;margin-top:14px">
-        <button onclick="document.getElementById('csv-preview-modal').remove()" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Annuler</button>
-        <button onclick="confirmCSVImport()" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:13px;font-weight:800;color:#fff;cursor:pointer">Importer la sélection</button>
+      <div class="kpi-actions">
+        <button type="button" onclick="document.getElementById('csv-preview-modal').remove()">Annuler</button>
+        <button type="button" class="primary" onclick="confirmCSVImport()">Importer la sélection</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  rows.forEach((r, i) => csvRowRender(i));
+  csvSummaryRender();
 }
 
-// PRU ajusté des gains/pertes déjà encaissés : une plus-value réalisée réduit le coût net restant, une moins-value l'augmente
+function fmtImportEur(n) {
+  const a = Math.abs(n);
+  return n.toLocaleString('fr-FR', { minimumFractionDigits: a > 0 && a < 1 ? 4 : 2, maximumFractionDigits: a > 0 && a < 1 ? 4 : 2 }) + ' €';
+}
+// Prix de revient net : un gain déjà encaissé réduit le coût restant, une perte l'augmente
 function csvRowPru(r) {
   const base = r.pru > 0 ? r.pru : (r.price || 0);
   if (!r.pv || !r.qty) return base;
-  return Math.max(0.01, Math.round((base - r.pvSign * r.pv / r.qty) * 100) / 100);
+  return Math.max(0.000001, Math.round((base - r.pvSign * r.pv / r.qty) * 1e6) / 1e6);
 }
+// Ce que l'import donnera, ligne par ligne, et le total à comparer avec son relevé
 function csvRowRender(i) {
   const r = window._csvRows[i];
-  const el = document.getElementById('csv-pruadj-' + i);
+  const el = document.getElementById('csv-result-' + i);
   if (!el) return;
-  if (!r.pv) { el.textContent = ''; return; }
-  const adj = csvRowPru(r);
-  el.style.color = r.pvSign > 0 ? '#16a34a' : '#dc2626';
-  el.textContent = '→ PRU ajusté ' + adj.toFixed(2) + ' €' + (adj <= 0.01 ? ' (ligne déjà remboursée)' : '');
+  if (!(r.pru > 0)) {
+    el.className = 'kpi-result warn';
+    el.textContent = 'Sans prix d\u2019achat, le résultat de cette ligne restera à 0 €.';
+  } else if (r.price > 0 && r.live) {
+    const invested = r.qty * r.pru, value = r.qty * r.price, diff = value - invested + (r.pv ? r.pvSign * r.pv : 0);
+    el.className = 'kpi-result ' + (diff >= 0 ? 'up' : 'down');
+    el.textContent = `Investi ${fmtImportEur(invested)} · vaut ${fmtImportEur(value)} · résultat ${diff >= 0 ? '+' : '−'}${fmtImportEur(Math.abs(diff))}`;
+  } else {
+    el.className = 'kpi-result';
+    el.textContent = `Investi ${fmtImportEur(r.qty * r.pru)}`;
+  }
+  const adj = document.getElementById('csv-pruadj-' + i);
+  if (adj) adj.textContent = r.pv
+    ? `Ton résultat comptera ${r.pvSign > 0 ? 'ce gain' : 'cette perte'} de ${fmtImportEur(r.pv)}. Pour cela, ton prix d'achat moyen passera à ${fmtImportEur(csvRowPru(r))}.`
+    : 'Ce montant sera compté dans ton résultat, pour qu\u2019il reflète ce que tu as vraiment gagné ou perdu.';
+}
+function csvSummaryRender() {
+  const el = document.getElementById('csv-summary');
+  if (!el) return;
+  const rows = (window._csvRows || []).filter(r => r.checked);
+  const invested = rows.reduce((a, r) => a + r.qty * (r.pru > 0 ? r.pru : 0), 0);
+  const known = rows.filter(r => r.live && r.pru > 0);
+  const result = known.reduce((a, r) => a + r.qty * (r.price - r.pru) + (r.pv ? r.pvSign * r.pv : 0), 0);
+  const missing = rows.filter(r => !(r.pru > 0)).length;
+  const unknown = rows.filter(r => r.notFound || r.noPrice).length;
+  el.innerHTML = `<div><span>Total investi</span><b>${fmtImportEur(invested)}</b></div>
+    ${known.length ? `<div><span>Résultat estimé</span><b class="${result >= 0 ? 'up' : 'down'}">${result >= 0 ? '+' : '−'}${fmtImportEur(Math.abs(result))}</b></div>` : ''}
+    <p>Compare le total investi avec ton relevé : s'il est différent, regarde les quantités et les prix ci-dessous.</p>
+    ${missing ? `<p class="warn">${missing} ligne${missing > 1 ? 's' : ''} sans prix d'achat.</p>` : ''}
+    ${unknown ? `<p class="warn">${unknown} titre${unknown > 1 ? 's' : ''} à vérifier.</p>` : ''}`;
+}
+function csvRowCheck(i, on) {
+  window._csvRows[i].checked = on;
+  document.getElementById('csv-row-' + i)?.classList.toggle('off', !on);
+  csvSummaryRender();
 }
 function csvRowSet(i, field, val) {
   const n = parseFloat(String(val).replace(',', '.'));
   window._csvRows[i][field] = Number.isFinite(n) && n > 0 ? n : 0;
   csvRowRender(i);
+  csvSummaryRender();
 }
-function csvRowToggleSign(i) {
-  const r = window._csvRows[i];
-  r.pvSign = -r.pvSign;
-  const b = document.getElementById('csv-pvsign-' + i);
-  if (b) {
-    b.textContent = r.pvSign > 0 ? '+' : '−';
-    b.style.background = r.pvSign > 0 ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)';
-    b.style.color = r.pvSign > 0 ? '#16a34a' : '#dc2626';
-  }
+function csvRowToggleSold(i) {
+  const box = document.getElementById('csv-sold-' + i);
+  if (!box) return;
+  box.hidden = !box.hidden;
+  document.getElementById('csv-more-' + i).classList.toggle('open', !box.hidden);
+  if (box.hidden) { window._csvRows[i].pv = 0; const inp = document.getElementById('csv-pv-' + i); if (inp) inp.value = ''; csvRowRender(i); csvSummaryRender(); }
+}
+function csvRowSign(i, sign) {
+  window._csvRows[i].pvSign = sign;
+  document.getElementById('csv-gain-' + i)?.classList.toggle('on', sign > 0);
+  document.getElementById('csv-loss-' + i)?.classList.toggle('on', sign < 0);
   csvRowRender(i);
+  csvSummaryRender();
 }
 
 async function confirmCSVImport() {
