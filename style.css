@@ -2417,3 +2417,8 @@ button.set-row:hover,a.set-row:hover{background:var(--color-bg-subtle)}
 .kh-eye:focus-visible{outline:2px solid #16a34a;outline-offset:-3px}
 .kh-eye .kh-eye-off{display:none}
 .kh-eye[aria-pressed="true"] .kh-eye-off{display:inline}
+
+/* Textes d'exemple des champs : assez contrastés pour être lus, en clair comme en sombre */
+input::placeholder,textarea::placeholder,.search-box input::placeholder,.ac-box input::placeholder{color:#71717a;opacity:1}
+[data-theme="dark"] input::placeholder,[data-theme="dark"] textarea::placeholder,[data-theme="dark"] .search-box input::placeholder,[data-theme="dark"] .ac-box input::placeholder,[data-theme="dark"] #ai-in::placeholder{color:#9aa3ae;opacity:1}
+#auth-login input.kh-input::placeholder,#auth-signup input.kh-input::placeholder{color:#667085 !important;-webkit-text-fill-color:#667085 !important}
