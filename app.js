@@ -5594,6 +5594,31 @@ function removeFromWatchlist(ticker, name) {
 }
 
 
+// Valeurs à découvrir : présélection propre aux signaux, notée sur le risque et la variété des secteurs.
+// La hausse passée n'entre pas dans la note et n'est pas montrée à l'IA pour ce choix. Le plan du mois garde sa propre présélection.
+function sigOppoCandidates(md, heldTickers) {
+  const held = new Set(heldTickers.map(t => kpTickerOf(t)));
+  const groups = {};
+  PLAN_UNIVERSE.forEach(u => {
+    const m = md[u[0]];
+    if (!m || held.has(u[0]) || m.dd < -50 || m.vol > 50 || m.price < 1) return;
+    (groups[u[2]] = groups[u[2]] || []).push({ u, m, score: 0.6 * (m.dd || 0) - 0.4 * (m.vol || 0) });
+  });
+  Object.values(groups).forEach(g => g.sort((a, b) => b.score - a.score));
+  const sectors = Object.keys(groups).sort((a, b) => groups[b][0].score - groups[a][0].score);
+  const out = [];
+  while (out.length < 40 && sectors.some(k => groups[k].length)) {
+    for (const k of sectors) { if (out.length >= 40) break; const x = groups[k].shift(); if (x) out.push(x); }
+  }
+  return out;
+}
+// Médiane sur 1 an des actions suivies : le repère affiché à côté de chaque chiffre
+function sigMarketMedian() {
+  const md = _sigMarket.data;
+  if (!md) return null;
+  const v = PLAN_UNIVERSE.map(u => md[u[0]] && md[u[0]].p1y).filter(x => Number.isFinite(x)).sort((a, b) => a - b);
+  return v.length >= 12 ? { value: v[Math.floor(v.length / 2)], count: v.length } : null;
+}
 let _sigRun = null;   // analyse en cours : on la retrouve si l'utilisateur quitte l'onglet puis revient
 let _sigMarket = { ts: 0, data: null };   // cours de tout l'univers, gardés 15 min
 async function renderSignaux() {
@@ -5614,8 +5639,9 @@ async function renderSignaux() {
   root.innerHTML = `
     <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">⚡ Signaux IA — ${new Date().toLocaleDateString('fr-FR')}</div>
     <div data-sig="status" style="font-size:13px;font-weight:600;color:var(--color-text-secondary)">🧠 L'IA analyse les données de marché...</div>
+    <div data-sig="note" style="font-size:11.5px;color:var(--color-text-secondary);line-height:1.45;margin-top:4px">Une forte hausse passée ne prédit pas l'avenir.</div>
     ${myTickers.length ? secTitle(`📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:400">${myTickers.length} actifs</span>`) + `<div data-sig="mine"></div><div data-sig="mine-skel">${kpSkelCards(myTickers.length)}</div>` : ''}
-    ${secTitle('🔭 Valeurs à découvrir')}
+    ${secTitle('🔭 Valeurs à découvrir <span style="font-size:11px;color:#8e8e93;font-weight:400">choisies sur le risque et la variété des secteurs, pas sur la hausse passée</span>')}
     <div data-sig="oppo"></div><div data-sig="oppo-skel">${kpSkelCards(oppoCount)}</div>`;
   const part = k => root.querySelector(`[data-sig="${k}"]`);
 
@@ -5700,6 +5726,7 @@ async function renderSignaux() {
         <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:9px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">SUR 1 AN</div>
           <div style="font-size:12px;font-weight:800;color:${s.p1y>0?'#3fb950':s.p1y<0?'#f87171':sub}">${kpSigned(s.p1y)}</div>
+          <div data-sigmed style="font-size:9.5px;font-weight:600;color:${sub};margin-top:2px;line-height:1.25"></div>
         </div>
         <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:9px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">BAISSE MAX</div>
@@ -5751,16 +5778,17 @@ Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`;
   // L'IA choisit elle-même les meilleures opportunités du jour
   async function getOppoTickers() {
     const exclude = myTickers.join(', ');
-    let _cand = null;
+    let cands = [];
     try {
       if (!_sigMarket.data || Date.now() - _sigMarket.ts > 15 * 60000) _sigMarket = { ts: Date.now(), data: await fetchPlanMarketData() };
-      if (Object.keys(_sigMarket.data).length >= 12) _cand = planCandidateTable(_sigMarket.data);
+      if (Object.keys(_sigMarket.data).length >= 12) cands = sigOppoCandidates(_sigMarket.data, myTickers);
     } catch (e) { _sigMarket = { ts: 0, data: null }; }
-    if (!_cand) return ['NVDA','ASML','MSFT','TTE.PA','SAN.PA','NOVN.SW','SAP.DE','AAPL','BNP.PA'].filter(t => !myTickers.includes(t)).slice(0, 9);
-    const prompt = `Analyste financier, le ${date}. Sélectionne 9 tickers à étudier aujourd'hui, UNIQUEMENT parmi cette liste de données réelles :
-${planDataPromptBlock(_cand)}
+    if (cands.length < 9) return ['NVDA','ASML','MSFT','TTE.PA','SAN.PA','NOVN.SW','SAP.DE','AAPL','BNP.PA'].filter(t => !myTickers.includes(t)).slice(0, 9);
+    const rows = cands.map(c => c.u[0] + ' | ' + c.u[1] + ' | ' + c.u[2] + ' | ' + c.u[3] + ' | baisse max 1 an ' + kpSigned(c.m.dd) + ' | volatilité ' + String(c.m.vol).replace('.', ',') + ' %').join('\n');
+    const prompt = `Analyste financier, le ${date}. Sélectionne 9 valeurs à étudier aujourd'hui, UNIQUEMENT parmi cette liste (ticker | nom | secteur | zone | risque) :
+${rows}
 
-Mix demandé : 2 valeurs américaines, 2 françaises, 2 européennes hors France et 3 autres au choix, de secteurs variés, en privilégiant celles dont les chiffres et l'actualité sont les plus intéressants à étudier (pas forcément les plus performantes). Exclus : ${exclude || 'aucun'}.
+Mix demandé : 2 valeurs américaines, 2 françaises, 2 européennes hors France et 3 autres au choix, chacune d'un secteur différent autant que possible, pour montrer des entreprises variées. Le choix ne doit pas dépendre d'une hausse passée. Exclus : ${exclude || 'aucun'}.
 Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
     try {
       const raw = await callClaude(prompt, 'Réponds UNIQUEMENT avec un tableau JSON de tickers. Rien d autre.', 300, HAIKU_MODEL);
@@ -5768,28 +5796,37 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
       const s = clean.indexOf('['), e = clean.lastIndexOf(']');
       if (s === -1 || e === -1) throw new Error('no array');
       const tickers = JSON.parse(clean.slice(s, e+1));
-      const okSet = new Set(PLAN_UNIVERSE.map(u => u[0]));
-      return tickers.filter(t => okSet.has(t) && !myTickers.includes(t)).slice(0, 9);
+      const okSet = new Set(cands.map(c => c.u[0]));
+      const picked = [...new Set(tickers)].filter(t => okSet.has(t) && !myTickers.includes(t)).slice(0, 9);
+      if (picked.length) return picked;
+      throw new Error('aucun ticker valide');
     } catch(e) {
-      // Fallback varié si l'IA échoue
-      return ['NVDA','ASML','MSFT','TTE.PA','SAN.PA','NOVO-B.CO','SAP.DE','CRWD','BNP.PA']
-        .filter(t => !myTickers.includes(t)).slice(0, 9);
+      return cands.slice(0, 9).map(c => c.u[0]);   // repli : les premières valeurs, déjà variées par secteur
     }
   }
   // Les deux parties avancent en même temps, chaque carte s'affiche dès qu'elle est prête
   let total = myTickers.length + oppoCount, ready = 0;
   const setStatus = () => { const st = part('status'); if (st) st.textContent = `🧠 L'IA analyse le marché... ${ready}/${total}`; };
+  const fillMedian = () => {
+    const med = sigMarketMedian();
+    if (!med) return;
+    root.querySelectorAll('[data-sigmed]').forEach(e => { e.textContent = 'médiane ' + kpSigned(med.value); });
+    const note = part('note');
+    if (note) note.textContent = `Médiane : la moitié des ${med.count} actions suivies par Kapitaro ont fait moins que ${kpSigned(med.value)} sur 1 an, l'autre moitié plus. Une forte hausse passée ne prédit pas l'avenir. Chiffres en devise locale.`;
+  };
   const addCard = (box, skel, s, isMine) => {
     box.insertAdjacentHTML('beforeend', signalCard(s, isMine));
     skel.lastElementChild?.remove();
     ready++;
     setStatus();
+    fillMedian();
   };
   const failBlock = () => `<div style="text-align:center;padding:16px;color:#8e8e93;font-size:13px">Analyse indisponible pour l'instant.</div>`;
   const results = await Promise.allSettled([
     myTickers.length ? fetchSignaux(myTickers, s => addCard(part('mine'), part('mine-skel'), s, true)) : Promise.resolve(),
     (async () => {
       const oppoTickers = await getOppoTickers();
+      fillMedian();
       total = myTickers.length + oppoTickers.length;
       setStatus();
       const skel = part('oppo-skel');
