@@ -8,10 +8,11 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:5500',
 ];
 
-const FEEDS = [
-  'https://fr.investing.com/rss/news_11.rss',     // actualités matières premières
-  'https://fr.investing.com/rss/commodities.rss', // analyses matières premières
-];
+const FEEDS = {
+  matieres: ['https://fr.investing.com/rss/news_11.rss', 'https://fr.investing.com/rss/commodities.rss'],
+  forex: ['https://fr.investing.com/rss/news_1.rss', 'https://fr.investing.com/rss/forex.rss'],
+  marche: ['https://fr.investing.com/rss/market_overview.rss', 'https://fr.investing.com/rss/news_14.rss', 'https://fr.investing.com/rss/news_95.rss'],
+};
 
 // Limite simple par IP : ce point d'entrée ne doit pas servir de relais
 const hits = new Map();
@@ -55,7 +56,7 @@ export default async function handler(req, res) {
   if (rateLimited(ip)) return res.status(429).json({ error: 'Trop de requêtes.', news: [] });
 
   const all = [];
-  await Promise.all(FEEDS.map(async (url) => {
+  await Promise.all((FEEDS[req.query && req.query.kind] || FEEDS.matieres).map(async (url) => {
     try {
       const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Kapitaro)', Accept: 'application/rss+xml, text/xml' }, signal: AbortSignal.timeout(7000) });
       if (r.ok) all.push(...parseRss(await r.text()));
