@@ -5640,6 +5640,9 @@ async function kpLoadSellSignals() {
 function kpOpenFromNotif() {
   if (new URLSearchParams(location.search).get('open') !== 'signaux') return;
   try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  kpOpenSignaux();
+}
+function kpOpenSignaux() {
   nav('news');
   setTimeout(() => setNewsFilter('signaux', document.getElementById('news-fil-signaux')), 300);
 }
@@ -9155,7 +9158,7 @@ function renderNotificationList() {
         <div style="font-size:11px;color:#8e8e93;white-space:nowrap;margin-left:8px">${_escHtml(n.heure || '')}</div>
       </div>
       <div style="font-size:12px;color:#3c3c43;line-height:1.5;margin-bottom:8px">${_escHtml(n.texte)}</div>
-      <button onclick="closeNotifPanel();${navPage?`nav('${navPage}')`:''}" 
+      <button onclick="closeNotifPanel();${navPage==='signaux'?'kpOpenSignaux()':navPage?`nav('${navPage}')`:''}" 
               style="background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">
         → ${_escHtml(n.action || 'Voir')}
       </button>
