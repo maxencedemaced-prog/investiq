@@ -142,6 +142,7 @@ const SETUP = () => {
 
 const DEVICES = [
   { name: 'iphone', width: 430, height: 932, scale: 3 },
+  { name: 'iphone63', width: 402, height: 874, scale: 3 },   // format obligatoire d'App Store Connect (1206 × 2622)
   { name: 'ipad', width: 1024, height: 1366, scale: 2 },
 ];
 const SCREENS = [
