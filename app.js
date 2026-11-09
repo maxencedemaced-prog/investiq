@@ -5660,7 +5660,7 @@ async function renderSignaux() {
   const run = _sigRun = { root, done: false };
   list.innerHTML = '';
   list.appendChild(root);
-  const myTickers = [...new Set(apos().map(p => p.name))].slice(0, 6);
+  const myTickers = [...new Set(apos().map(p => p.name))];
   const oppoCount = 9;
   const secTitle = t => `<div style="font-size:12px;font-weight:800;color:var(--color-text);margin:16px 0 8px">${t}</div>`;
   root.innerHTML = `
@@ -5850,7 +5850,11 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
   };
   const failBlock = () => `<div style="text-align:center;padding:16px;color:#8e8e93;font-size:13px">Analyse indisponible pour l'instant.</div>`;
   const results = await Promise.allSettled([
-    myTickers.length ? fetchSignaux(myTickers, s => { addCard(part('mine'), part('mine-skel'), s, true); if (s.signal === 'vendre') kpAddSellNotif(s.ticker, s.name, s.raison); }) : Promise.resolve(),
+    (async () => {   // toutes les lignes, par paquets de 12 pour que chaque réponse reste complète
+      for (let i = 0; i < myTickers.length; i += 12) {
+        await fetchSignaux(myTickers.slice(i, i + 12), s => { addCard(part('mine'), part('mine-skel'), s, true); if (s.signal === 'vendre') kpAddSellNotif(s.ticker, s.name, s.raison); });
+      }
+    })(),
     (async () => {
       const oppoTickers = await getOppoTickers();
       fillMedian();
@@ -14303,6 +14307,7 @@ const PLAN_PREMIUM_ONLY = [
   'Analyses IA <strong style="color:#4ade80">illimitées</strong>',
   'Agent IA complet : score, alertes et analyse de tout ton portefeuille',
   'Signaux IA sur tes positions et les opportunités du marché',
+  'Notifications importantes si le marché bouge sur tes lignes (signal Prudence), même écran verrouillé',
   'Bilan patrimonial complet + export PDF',
   'Conseils IA sur tes alertes : que faire et par quoi remplacer',
   'Mes dépenses : analyse de ton relevé, abonnements à résilier, économies investies',
@@ -14530,6 +14535,7 @@ const PREMIUM_WELCOME_ITEMS = [
   ['Plan du mois', 'Ta répartition pour ton objectif, chaque mois', "nav('objectif')"],
   ['Aide à la décision illimitée', 'Autant d\'analyses IA que tu veux', "nav('decision')"],
   ['Agent IA complet', 'Score, alertes et analyse de tout ton portefeuille', "nav('ai')"],
+  ['Notifications importantes', 'Si le marché bouge sur tes lignes, même écran verrouillé', "nav('signaux')"],
   ['Bilan patrimonial complet', 'Ton bilan détaillé, avec export PDF', 'openBilan()'],
   ['Mes dépenses', 'Analyse de ton relevé et abonnements à résilier', "nav('depenses')"],
 ];
@@ -14538,6 +14544,7 @@ function closePremiumWelcome(action) {
   if (action === 'objectif') nav('objectif');
   else if (action === 'decision') nav('decision');
   else if (action === 'ai') nav('ai');
+  else if (action === 'signaux') kpOpenSignaux();
   else if (action === 'bilan') openBilan();
   else if (action === 'depenses') nav('depenses');
 }
