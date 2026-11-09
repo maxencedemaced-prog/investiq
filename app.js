@@ -13601,8 +13601,8 @@ function showCSVPreview(rows, filename) {
           const notes = [];
           if (r.notFound) notes.push(`<div class="kpi-warn">Titre non reconnu : son cours ne se mettra pas à jour. Décoche-le ou ajoute-le à la main ensuite.</div>`);
           else if (r.noPrice) notes.push(`<div class="kpi-warn">Cours introuvable pour ce symbole : vérifie qu'il s'agit du bon titre.</div>`);
-          if (r.converted) notes.push(`<div class="kpi-info">Prix converti depuis ${r.pruOrig.toLocaleString('fr-FR')} ${_escHtml(r.cur)} au taux du jour : corrige-le si tu connais le montant payé en euros.</div>`);
-          if (r.curUnknown) notes.push(`<div class="kpi-warn">Prix en ${_escHtml(r.cur)} non converti : indique le prix payé en euros.</div>`);
+          if (r.converted) notes.push(`<div class="kpi-info">Somme convertie depuis ${(r.pruOrig * r.qty).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ${_escHtml(r.cur)} au taux du jour : corrige-la si tu connais le montant payé en euros.</div>`);
+          if (r.curUnknown) notes.push(`<div class="kpi-warn">Prix en ${_escHtml(r.cur)} non converti : indique la somme payée en euros.</div>`);
           if (r.merged) notes.push(`<div class="kpi-info">${r.merged} lignes de ce titre regroupées, avec leur prix moyen.</div>`);
           return `
         <div class="kpi-row" id="csv-row-${i}">
@@ -13612,8 +13612,8 @@ function showCSVPreview(rows, filename) {
           </label>
           ${notes.join('')}
           <div class="kpi-field">
-            <label for="csv-pru-${i}"><b>Prix payé pour 1 part</b><small>Ton prix d'achat, pas ton gain ni ta perte</small></label>
-            <span class="kpi-input"><input id="csv-pru-${i}" type="number" min="0" step="any" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="À remplir" oninput="csvRowSet(${i},'pru',this.value)"> €</span>
+            <label for="csv-pru-${i}"><b>Somme investie</b><small>Le total que tu as payé à l'achat pour cette ligne</small></label>
+            <span class="kpi-input"><input id="csv-pru-${i}" type="number" min="0" step="any" inputmode="decimal" value="${r.pru > 0 ? Math.round(r.qty * r.pru * 100) / 100 : ''}" placeholder="À remplir" oninput="csvRowSetInvested(${i},this.value)"> €</span>
           </div>
           <div class="kpi-result" id="csv-result-${i}"></div>
           <button type="button" class="kpi-more" id="csv-more-${i}" onclick="csvRowToggleSold(${i})">J'ai déjà vendu une partie de cette ligne</button>
@@ -13656,20 +13656,19 @@ function csvRowRender(i) {
   if (!el) return;
   if (!(r.pru > 0)) {
     el.className = 'kpi-result warn';
-    el.textContent = 'Sans ce prix, le résultat de cette ligne restera à 0 €.';
+    el.textContent = 'Sans somme investie, le résultat de cette ligne restera à 0 €.';
   } else if (r.price > 0 && r.live) {
     const invested = r.qty * r.pru, value = r.qty * r.price, diff = value - invested + (r.pv ? r.pvSign * r.pv : 0);
-    const qtyTxt = Number(r.qty).toLocaleString('fr-FR', { maximumFractionDigits: 8 });
     el.className = 'kpi-result';
-    el.innerHTML = `<span>Tu as investi : ${qtyTxt} × ${fmtImportEur(r.pru)} = <b>${fmtImportEur(invested)}</b></span>
-      <span>Ça vaut aujourd'hui <b>${fmtImportEur(value)}</b>, soit <b class="${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '+' : '−'}${fmtImportEur(Math.abs(diff))}</b></span>`;
+    el.innerHTML = `<span class="kpi-now"><span><b>Somme actuelle</b><small>Ce que cette ligne vaut aujourd'hui</small></span><b>${fmtImportEur(value)}</b></span>
+      <span class="kpi-diff"><span>Résultat</span><b class="${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '+' : '−'}${fmtImportEur(Math.abs(diff))}</b></span>`;
   } else {
     el.className = 'kpi-result';
-    el.innerHTML = `<span>Tu as investi : ${Number(r.qty).toLocaleString('fr-FR', { maximumFractionDigits: 8 })} × ${fmtImportEur(r.pru)} = <b>${fmtImportEur(r.qty * r.pru)}</b></span>`;
+    el.innerHTML = '<span>Somme actuelle indisponible pour ce titre.</span>';
   }
   const adj = document.getElementById('csv-pruadj-' + i);
   if (adj) adj.textContent = r.pv
-    ? `Ton résultat comptera ${r.pvSign > 0 ? 'ce gain' : 'cette perte'} de ${fmtImportEur(r.pv)}. Pour cela, ton prix payé par part sera ajusté à ${fmtImportEur(csvRowPru(r))}.`
+    ? `Ton résultat comptera ${r.pvSign > 0 ? 'ce gain' : 'cette perte'} de ${fmtImportEur(r.pv)}. Pour cela, ta somme investie sera ajustée à ${fmtImportEur(r.qty * csvRowPru(r))}.`
     : 'Ce montant sera compté dans ton résultat, pour qu\u2019il reflète ce que tu as vraiment gagné ou perdu.';
 }
 function csvSummaryRender() {
@@ -13683,9 +13682,8 @@ function csvSummaryRender() {
   const unknown = rows.filter(r => r.notFound || r.noPrice).length;
   el.innerHTML = `<div><span>Total investi</span><b>${fmtImportEur(invested)}</b></div>
     ${known.length ? `<div><span>Résultat estimé</span><b class="${result >= 0 ? 'up' : 'down'}">${result >= 0 ? '+' : '−'}${fmtImportEur(Math.abs(result))}</b></div>` : ''}
-    <p><b>Dans chaque case, indique le prix que tu as payé pour 1 part.</b> Pas besoin de calculer ton gain ou ta perte : Kapitaro le fait tout seul.</p>
-    <p>Compare le total investi avec ton relevé : s'il est différent, regarde les quantités et les prix ci-dessous.</p>
-    ${missing ? `<p class="warn">${missing} ligne${missing > 1 ? 's' : ''} sans prix d'achat.</p>` : ''}
+    <p>Compare le total investi avec ton relevé : s'il est différent, regarde les quantités et les sommes ci-dessous.</p>
+    ${missing ? `<p class="warn">${missing} ligne${missing > 1 ? 's' : ''} sans somme investie.</p>` : ''}
     ${unknown ? `<p class="warn">${unknown} titre${unknown > 1 ? 's' : ''} à vérifier.</p>` : ''}`;
 }
 function csvRowCheck(i, on) {
@@ -13696,6 +13694,14 @@ function csvRowCheck(i, on) {
 function csvRowSet(i, field, val) {
   const n = parseFloat(String(val).replace(',', '.'));
   window._csvRows[i][field] = Number.isFinite(n) && n > 0 ? n : 0;
+  csvRowRender(i);
+  csvSummaryRender();
+}
+// La case contient le total payé : le prix par part en est déduit
+function csvRowSetInvested(i, val) {
+  const r = window._csvRows[i];
+  const n = parseFloat(String(val).replace(',', '.'));
+  r.pru = Number.isFinite(n) && n > 0 && r.qty > 0 ? Math.round(n / r.qty * 1e8) / 1e8 : 0;
   csvRowRender(i);
   csvSummaryRender();
 }
