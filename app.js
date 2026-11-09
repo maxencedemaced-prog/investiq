@@ -5383,7 +5383,7 @@ async function renderEntreprises() {
   ];
 
   // Ajoute mes positions en premier
-  const myCompanies = [...new Set(positions.map(p => ({ ticker: p.name, name: p.name })))];
+  const myCompanies = [...new Set(apos().map(p => p.name))].map(n => ({ ticker: n, name: n }));
   const allCompanies = [...myCompanies, ...featured.filter(f => !myCompanies.find(m => m.ticker === f.ticker))].slice(0, 12);
 
   list.innerHTML = `
@@ -5401,16 +5401,11 @@ async function renderEntreprises() {
     <div style="font-size:11px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">
       📰 Actualités des entreprises — clic pour voir les détails
     </div>
-    <div id="ent-news-list">
-      <div style="text-align:center;padding:30px;color:#8e8e93">
-        <div style="font-size:24px;margin-bottom:8px">🧠</div>
-        <div style="font-size:13px">Chargement des actualités...</div>
-      </div>
-    </div>`;
+    <div id="ent-news-list">${kpSkelCards(Math.min(allCompanies.length, 4))}</div>`;
 
-  // Charge les actualités
+  // Charge les actualités (l'onglet a pu changer entre-temps : on ne met alors rien en cache)
   await loadEntrepriseNews(allCompanies, 'ent-news-list');
-  saveToCache('entreprises');
+  if (newsFilter === 'entreprises') saveToCache('entreprises');
 }
 
 async function loadEntrepriseNews(companies, targetId = 'ent-news-list') {
@@ -5435,16 +5430,6 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, avec une entrée PAR entrepri
 impact: positif/negatif/neutre. categorie: Résultats/Produit/Direction/Marché/Réglementation/Profil.
 Si tu n'as pas d'actualité récente et datée fiable sur une entreprise, utilise categorie "Profil" et fais un résumé général et intemporel (activité, position sur son marché) — mais n'invente jamais un évènement précis, un chiffre ou une date récente dont tu n'es pas sûr.`;
 
-    const raw = await callClaude(prompt, `Tu es analyste financier. Tu réponds pour chaque entreprise demandée. Tu peux donner un profil général quand tu n'as pas d'actualité datée fiable, mais tu n'inventes jamais un fait précis, un chiffre ou une date récente que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`, 4096, HAIKU_MODEL);
-    if (callClaudeFailed(raw)) {
-      throw new Error('callClaude a échoué : ' + raw);
-    }
-    const articles = parseJSONArrayLenient(raw);
-    if (!articles.length) {
-      newsEl.innerHTML = '<p style="color:#c7c7cc;font-size:13px;text-align:center;padding:20px">Pas d\'information fiable disponible pour l\'instant.</p>';
-      return;
-    }
-
     const impactColor = { positif:'#1a7f5a', negatif:'#cc2f26', neutre:'#8e8e93' };
     const impactBg    = { positif:'#e8f8f0', negatif:'#fff0f0', neutre:'#f5f5f5' };
     const impactIcon  = { positif:'📈', negatif:'📉', neutre:'📊' };
@@ -5459,8 +5444,8 @@ Si tu n'as pas d'actualité récente et datée fiable sur une entreprise, utilis
     const impactColorDark = { positif:'#3fb950', negatif:'#f87171', neutre: sub2 };
     const impactBgDark = { positif:isDark2?'rgba(63,185,80,0.12)':'#f0fdf4', negatif:isDark2?'rgba(248,113,113,0.12)':'#fef2f2', neutre:isDark2?'rgba(255,255,255,0.06)':'#f4f4f5' };
 
-    newsEl.innerHTML = articles.map(a => {
-      const myPos = positions.find(p => p.name === a.ticker);
+    const entCard = a => {
+      const myPos = apos().find(p => p.name === a.ticker);
       const myPnl = myPos ? ((myPos.price - myPos.pru) / myPos.pru * 100).toFixed(1) : null;
       const searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(a.entreprise + ' actualité bourse 2026');
       const logoColor = LCOLORS2[(a.ticker||'').charCodeAt(0) % LCOLORS2.length];
@@ -5514,10 +5499,37 @@ Si tu n'as pas d'actualité récente et datée fiable sur une entreprise, utilis
           </button>
         </div>
       </div>`;
-    }).join('') + `
+    };
+
+    // Chaque entreprise s'affiche dès que sa carte est écrite
+    const cardsEl = document.createElement('div'), skelEl = document.createElement('div');
+    skelEl.innerHTML = kpSkelCards(Math.min(capped.length, 4));
+    newsEl.innerHTML = '';
+    newsEl.append(cardsEl, skelEl);
+    let shownCards = 0;
+    const addCards = text => {
+      const items = parseJSONArrayLenient(text);
+      while (shownCards < items.length) {
+        const a = items[shownCards++];
+        if (!a || !a.ticker || !a.titre) continue;
+        cardsEl.insertAdjacentHTML('beforeend', entCard(a));
+        if (shownCards + skelEl.children.length > capped.length) skelEl.lastElementChild?.remove();
+      }
+    };
+    const raw = await callClaudeStream(prompt, `Tu es analyste financier. Tu réponds pour chaque entreprise demandée. Tu peux donner un profil général quand tu n'as pas d'actualité datée fiable, mais tu n'inventes jamais un fait précis, un chiffre ou une date récente que tu ne connais pas avec certitude. Réponds UNIQUEMENT en JSON valide.`, 4096, HAIKU_MODEL, null, addCards);
+    if (callClaudeFailed(raw)) {
+      throw new Error('callClaude a échoué : ' + raw);
+    }
+    addCards(raw);
+    skelEl.remove();
+    if (!cardsEl.children.length) {
+      newsEl.innerHTML = '<p style="color:#c7c7cc;font-size:13px;text-align:center;padding:20px">Pas d\'information fiable disponible pour l\'instant.</p>';
+      return;
+    }
+    newsEl.insertAdjacentHTML('beforeend', `
     <div style="text-align:center;padding:12px;color:#8e8e93;font-size:12px">
       ⚠️ Actualités générées par IA à titre informatif · Vérifiez via les liens fournis
-    </div>`;
+    </div>`);
 
   } catch(e) {
     console.error('[loadEntrepriseNews] échec :', e.message);
@@ -5581,11 +5593,30 @@ function removeFromWatchlist(ticker, name) {
 }
 
 
+let _sigRun = null;   // analyse en cours : on la retrouve si l'utilisateur quitte l'onglet puis revient
+let _sigMarket = { ts: 0, data: null };   // cours de tout l'univers, gardés 15 min
 async function renderSignaux() {
   const list = document.getElementById('news-list');
   if (!list) return;
   if (!currentUser) { list.innerHTML = aiLockedStateHTML("Connecte-toi pour débloquer les signaux IA sur tes positions et les opportunités du marché."); return; }
   if (!isPremiumUser()) { list.innerHTML = premiumLockedStateHTML('Signaux IA', "Signal acheter/garder/vendre sur tes positions + les meilleures opportunités du marché détectées chaque jour par l'IA."); return; }
+  if (_sigRun && !_sigRun.done) { list.innerHTML = ''; list.appendChild(_sigRun.root); return; }
+
+  // Affiché tout de suite : on voit que le clic a marché, les cartes remplaceront les emplacements gris une par une
+  const root = document.createElement('div');
+  const run = _sigRun = { root, done: false };
+  list.innerHTML = '';
+  list.appendChild(root);
+  const myTickers = [...new Set(apos().map(p => p.name))].slice(0, 6);
+  const oppoCount = 9;
+  const secTitle = t => `<div style="font-size:12px;font-weight:800;color:var(--color-text);margin:16px 0 8px">${t}</div>`;
+  root.innerHTML = `
+    <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">⚡ Signaux IA — ${new Date().toLocaleDateString('fr-FR')}</div>
+    <div data-sig="status" style="font-size:13px;font-weight:600;color:var(--color-text-secondary)">🧠 L'IA analyse les données de marché...</div>
+    ${myTickers.length ? secTitle(`📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:400">${myTickers.length} actifs</span>`) + `<div data-sig="mine"></div><div data-sig="mine-skel">${kpSkelCards(myTickers.length)}</div>` : ''}
+    ${secTitle('🔭 Valeurs à découvrir')}
+    <div data-sig="oppo"></div><div data-sig="oppo-skel">${kpSkelCards(oppoCount)}</div>`;
+  const part = k => root.querySelector(`[data-sig="${k}"]`);
 
   // Constants
   const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#8e8e93' };
@@ -5639,11 +5670,11 @@ async function renderSignaux() {
           ${getCompanyLogo(s.ticker, s.name, 42, 12)}
           <div>
             <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px">
-              <span style="font-size:14px;font-weight:700;color:${txt}">${s.name}</span>
+              <span style="font-size:14px;font-weight:700;color:${txt}">${_escHtml(s.name || s.ticker)}</span>
               <span style="font-size:11px;color:${sub};background:${isDark?'rgba(255,255,255,0.08)':'#f4f4f5'};padding:1px 7px;border-radius:4px">${s.ticker}</span>
               ${isMine ? `<span style="background:${isDark?'rgba(63,185,80,0.15)':'#f0fdf4'};border:1px solid ${isDark?'rgba(63,185,80,0.3)':'rgba(34,197,94,0.3)'};color:#3fb950;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px">📦 Portef.</span>` : ''}
             </div>
-            <div style="font-size:11px;color:${sub};margin-bottom:4px">${s.type||'Action'} · ${s.secteur||''}</div>
+            <div style="font-size:11px;color:${sub};margin-bottom:4px">${_escHtml(s.type||'Action')}${s.secteur ? ' · ' + _escHtml(s.secteur) : ''}</div>
             <div style="display:flex;align-items:center;gap:5px">
               <span style="font-size:10px;font-weight:700;color:${sub}">RISQUE</span>
               ${riskBar(s.risque||3)}
@@ -5657,21 +5688,21 @@ async function renderSignaux() {
       </div>
 
       <!-- Raison -->
-      <div style="font-size:13px;color:${txt};font-weight:400;line-height:1.5;margin-bottom:12px;opacity:0.85">${s.raison}</div>
+      <div style="font-size:13px;color:${txt};font-weight:400;line-height:1.5;margin-bottom:12px;opacity:0.85">${_escHtml(s.raison || '')}</div>
 
       <!-- Métriques -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
         <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:9px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">HORIZON</div>
-          <div style="font-size:12px;font-weight:800;color:${txt}">${s.horizon}</div>
+          <div style="font-size:12px;font-weight:800;color:${txt}">${_escHtml(s.horizon || '—')}</div>
         </div>
         <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:9px;font-weight:700;color:#3fb950;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">OBJECTIF ⓘ</div>
-          <div style="font-size:12px;font-weight:800;color:${s.objectif>0?'#3fb950':sub}">${s.objectif>0?s.objectif+'€':'—'}</div>
+          <div style="font-size:9px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">SUR 1 AN</div>
+          <div style="font-size:12px;font-weight:800;color:${s.p1y>0?'#3fb950':s.p1y<0?'#f87171':sub}">${kpSigned(s.p1y)}</div>
         </div>
         <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:9px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">STOP ⓘ</div>
-          <div style="font-size:12px;font-weight:800;color:${s.stop_loss>0?'#f87171':sub}">${s.stop_loss>0?s.stop_loss+'€':'—'}</div>
+          <div style="font-size:9px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">BAISSE MAX</div>
+          <div style="font-size:12px;font-weight:800;color:${s.dd<0?'#f87171':sub}">${kpSigned(s.dd)}</div>
         </div>
         <div style="background:${metricBg};border-radius:8px;padding:8px;text-align:center">
           <div style="font-size:9px;font-weight:700;color:${sub};text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">MA PERF.</div>
@@ -5686,47 +5717,44 @@ async function renderSignaux() {
     </div>`;
   }
 
-  async function fetchSignaux(tickers) {
+  // Chaque carte part vers onCard dès qu'elle est écrite ; un actif sans réponse reçoit une carte « indisponible »
+  async function fetchSignaux(tickers, onCard) {
     const date = new Date().toLocaleDateString('fr-FR');
     const _dc = await fetchContextBlock(tickers.map(t => ({ t, name: (PLAN_UNIVERSE.find(u => u[0] === t) || [])[1] || t })));
-    if (!_dc.ok) return tickers.map(t => ({ ticker: t, name: t, signal: 'attendre', conviction: 'faible', risque: 3, objectif: 0, stop_loss: 0, horizon: '2-4 semaines', raison: 'Données de marché indisponibles', type: t.includes('.') ? 'ETF' : 'Action', secteur: '' }));
+    const fallback = (t, raison) => ({ ticker: t, name: (PLAN_UNIVERSE.find(u => u[0] === t) || [])[1] || t, signal: 'attendre', conviction: 'faible', risque: 3, horizon: '2-4 semaines', raison, type: t.includes('.') ? 'ETF' : 'Action', secteur: '' });
+    const withData = x => { const m = _dc.data && _dc.data[kpTickerOf(x.ticker)]; return { ...x, p1y: m ? m.p1y : null, dd: m ? m.dd : null }; };
+    if (!_dc.ok) { tickers.forEach(t => onCard(withData(fallback(t, 'Données de marché indisponibles')))); return; }
     const prompt = `Analyste financier, le ${date}. Donne un signal pédagogique pour ces actifs : ${tickers.join(', ')}.
 
 ${_dc.text}
 
-RÈGLES : base chaque signal UNIQUEMENT sur les données ci-dessus (historique, tendance, actualités) ; "raison" = max 12 mots avec un chiffre réel des données ; INTERDIT de justifier un signal favorable par la seule hausse passée ou le momentum (la performance passée ne prédit pas l'avenir) ; un signal "acheter" exige un profil de risque cohérent (volatilité, baisse max) et aucune actualité négative, sinon "attendre" ; en cas de doute, "attendre" ; objectif et stop_loss : toujours 0 (Kapitaro n'en fournit pas) ; si un actif n'a aucune donnée, signal "attendre", conviction "faible" et raison "Données indisponibles".
-Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
-[{"ticker":"AAPL","name":"Apple","signal":"attendre","conviction":"modérée","risque":2,"objectif":0,"stop_loss":0,"horizon":"2-4 semaines","raison":"baisse max 1 an −14 %","type":"Action","secteur":"Tech"}]
+RÈGLES : base chaque signal UNIQUEMENT sur les données ci-dessus (historique, tendance, actualités) ; "raison" = max 12 mots avec un chiffre réel des données ; INTERDIT de justifier un signal favorable par la seule hausse passée ou le momentum (la performance passée ne prédit pas l'avenir) ; un signal "acheter" exige un profil de risque cohérent (volatilité, baisse max) et aucune actualité négative, sinon "attendre" ; en cas de doute, "attendre" ; ne donne aucun objectif de cours ni stop (Kapitaro n'en fournit pas) ; si un actif n'a aucune donnée, signal "attendre", conviction "faible" et raison "Données indisponibles".
+Réponds UNIQUEMENT avec ce JSON (rien d'autre), ticker écrit exactement comme demandé :
+[{"ticker":"AAPL","name":"Apple","signal":"attendre","conviction":"modérée","risque":2,"horizon":"2-4 semaines","raison":"baisse max 1 an −14 %","type":"Action","secteur":"Tech"}]
 Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`;
-    try {
-      const raw = await callClaude(prompt, 'Tu es analyste. Réponds UNIQUEMENT avec du JSON valide. Aucun texte avant ou après.');
-      console.log('[fetchSignaux] raw:', raw?.slice(0,200));
-      if (!raw || raw === 'Aucune réponse.' || raw === 'Erreur de connexion.') throw new Error('API error: ' + raw);
-      const clean = raw.replace(/```json|```/g,'').trim();
-      const s = clean.indexOf('['), e = clean.lastIndexOf(']');
-      if (s === -1 || e === -1) throw new Error('No JSON array in: ' + clean.slice(0,100));
-      return JSON.parse(clean.slice(s, e+1)).map(x => ({ ...x, objectif: 0, stop_loss: 0 }));   // aucun objectif de cours ni stop inventé
-    } catch(err) {
-      console.error('[fetchSignaux] error:', err.message);
-      if (aiJustHitQuota()) throw err;   // limite gratuite : on l'explique au lieu de faux signaux de repli
-      // Fallback statique
-      return tickers.map(t => ({
-        ticker: t, name: t, signal: 'attendre', conviction: 'faible',
-        risque: 3, objectif: 0, stop_loss: 0,
-        horizon: '2-4 semaines', raison: 'Analyse temporairement indisponible',
-        type: t.includes('.') ? 'ETF' : 'Action', secteur: ''
-      }));
-    }
+    const wanted = new Set(tickers), shown = new Set();
+    const addAll = text => parseJSONArrayLenient(text).forEach(x => {
+      if (!x || !x.signal || !wanted.has(x.ticker) || shown.has(x.ticker)) return;
+      shown.add(x.ticker);
+      onCard(withData(x));
+    });
+    const raw = await callClaudeStream(prompt, 'Tu es analyste. Réponds UNIQUEMENT avec du JSON valide. Aucun texte avant ou après.', 2048, undefined, null, addAll);
+    addAll(raw);
+    if (aiJustHitQuota()) throw new Error('quota');   // limite gratuite : on l'explique au lieu de faux signaux de repli
+    tickers.filter(t => !shown.has(t)).forEach(t => onCard(withData(fallback(t, 'Analyse temporairement indisponible'))));
   }
 
   const date = new Date().toLocaleDateString('fr-FR');
-  const myTickers = [...new Set(apos().map(p => p.name))].slice(0, 6); // max 6 = 2 batches
+
   
   // L'IA choisit elle-même les meilleures opportunités du jour
   async function getOppoTickers() {
     const exclude = myTickers.join(', ');
     let _cand = null;
-    try { const _md = await fetchPlanMarketData(); if (Object.keys(_md).length >= 12) _cand = planCandidateTable(_md); } catch (e) {}
+    try {
+      if (!_sigMarket.data || Date.now() - _sigMarket.ts > 15 * 60000) _sigMarket = { ts: Date.now(), data: await fetchPlanMarketData() };
+      if (Object.keys(_sigMarket.data).length >= 12) _cand = planCandidateTable(_sigMarket.data);
+    } catch (e) { _sigMarket = { ts: 0, data: null }; }
     if (!_cand) return ['NVDA','ASML','MSFT','TTE.PA','SAN.PA','NOVN.SW','SAP.DE','AAPL','BNP.PA'].filter(t => !myTickers.includes(t)).slice(0, 9);
     const prompt = `Analyste financier, le ${date}. Sélectionne 9 tickers à étudier aujourd'hui, UNIQUEMENT parmi cette liste de données réelles :
 ${planDataPromptBlock(_cand)}
@@ -5734,7 +5762,7 @@ ${planDataPromptBlock(_cand)}
 Mix demandé : 2 valeurs américaines, 2 françaises, 2 européennes hors France et 3 autres au choix, de secteurs variés, en privilégiant celles dont les chiffres et l'actualité sont les plus intéressants à étudier (pas forcément les plus performantes). Exclus : ${exclude || 'aucun'}.
 Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
     try {
-      const raw = await callClaude(prompt, 'Réponds UNIQUEMENT avec un tableau JSON de tickers. Rien d autre.');
+      const raw = await callClaude(prompt, 'Réponds UNIQUEMENT avec un tableau JSON de tickers. Rien d autre.', 300, HAIKU_MODEL);
       const clean = raw.replace(/```json|```/g,'').trim();
       const s = clean.indexOf('['), e = clean.lastIndexOf(']');
       if (s === -1 || e === -1) throw new Error('no array');
@@ -5747,54 +5775,44 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
         .filter(t => !myTickers.includes(t)).slice(0, 9);
     }
   }
-  const oppoTickers = await getOppoTickers();
-
-  list.innerHTML = `<div style="text-align:center;padding:30px;color:#8e8e93">
-    <div style="font-size:28px;margin-bottom:8px">🧠</div>
-    <div style="font-size:13px;font-weight:600">Analyse du marché en cours...</div>
-  </div>`;
-
-  try {
-    // Batch mes positions par 5
-    const myBatches = [];
-    for (let i = 0; i < myTickers.length; i += 3) myBatches.push(myTickers.slice(i, i+3));
-    let mySignaux = [];
-    for (const batch of myBatches) {
-      const res = await fetchSignaux(batch);
-      mySignaux = [...mySignaux, ...res];
-      // Affichage progressif après chaque batch
-      const posSection = document.getElementById('my-positions-section');
-      if (posSection) posSection.innerHTML = mySignaux.map(s => signalCard(s, true)).join('');
-    }
-
-    list.innerHTML = `
-      <div style="font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">⚡ Signaux IA — ${date}</div>
-      ${mySignaux.length ? `
-        <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin-bottom:8px">📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:400">${mySignaux.length} actifs</span></div>
-        <div id="my-positions-section">${mySignaux.map(s => signalCard(s, true)).join('')}</div>` : ''}
-      <div style="font-size:12px;font-weight:800;color:#1c1c1e;margin:16px 0 8px">🔭 Valeurs à découvrir</div>
-      <div id="oppo-loading" style="text-align:center;padding:20px;color:#8e8e93">
-        <div style="font-size:20px;margin-bottom:6px">🧠</div>
-        <div style="font-size:13px">Analyse des opportunités...</div>
-      </div>`;
-
-    const oppoSignaux = await fetchSignaux(oppoTickers);
-    const oppoLoader = document.getElementById('oppo-loading');
-    if (oppoLoader) {
-      oppoLoader.outerHTML = oppoSignaux.map(s => signalCard(s, false)).join('') +
-        `<div style="padding:10px 14px;background:#f5f5f5;border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
-          ⚠️ Signaux éducatifs générés par IA — pas des conseils financiers réglementés
-        </div>`;
-    }
-  } catch(e) {
-    if (aiJustHitQuota()) { list.innerHTML = `<div style="padding:8px 0">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
-    list.innerHTML = `<div style="text-align:center;padding:20px;color:#8e8e93">
-      <div style="font-size:20px;margin-bottom:8px">⚠️</div>
-      <div style="font-size:13px">Impossible de charger les signaux.<br>Réessaie dans quelques secondes.</div>
-      <button onclick="renderSignaux()" style="margin-top:12px;background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">🔄 Réessayer</button>
-    </div>`;
+  // Les deux parties avancent en même temps, chaque carte s'affiche dès qu'elle est prête
+  let total = myTickers.length + oppoCount, ready = 0;
+  const setStatus = () => { const st = part('status'); if (st) st.textContent = `🧠 L'IA analyse le marché... ${ready}/${total}`; };
+  const addCard = (box, skel, s, isMine) => {
+    box.insertAdjacentHTML('beforeend', signalCard(s, isMine));
+    skel.lastElementChild?.remove();
+    ready++;
+    setStatus();
+  };
+  const failBlock = () => `<div style="text-align:center;padding:16px;color:#8e8e93;font-size:13px">Analyse indisponible pour l'instant.</div>`;
+  const results = await Promise.allSettled([
+    myTickers.length ? fetchSignaux(myTickers, s => addCard(part('mine'), part('mine-skel'), s, true)) : Promise.resolve(),
+    (async () => {
+      const oppoTickers = await getOppoTickers();
+      total = myTickers.length + oppoTickers.length;
+      setStatus();
+      const skel = part('oppo-skel');
+      while (skel.children.length > oppoTickers.length) skel.lastElementChild.remove();
+      await fetchSignaux(oppoTickers, s => addCard(part('oppo'), skel, s, false));
+    })(),
+  ]);
+  run.done = true;
+  if (aiJustHitQuota()) { root.innerHTML = `<div style="padding:8px 0">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
+  part('status')?.remove();
+  if (results[0].status === 'rejected') part('mine-skel').outerHTML = failBlock();
+  else part('mine-skel')?.remove();
+  if (results[1].status === 'rejected') part('oppo-skel').outerHTML = failBlock();
+  else part('oppo-skel')?.remove();
+  if (results.some(r => r.status === 'rejected')) {
+    root.insertAdjacentHTML('beforeend', `<div style="text-align:center"><button onclick="renderSignaux()" style="margin-top:4px;background:#1c1c1e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">🔄 Réessayer</button></div>`);
+    return;
   }
-  saveToCache('signaux');
+  root.insertAdjacentHTML('beforeend', `<div style="padding:10px 14px;background:var(--color-surface-raised);border-radius:12px;font-size:12px;color:#8e8e93;text-align:center;margin-top:8px">
+      ⚠️ Signaux éducatifs générés par IA, pas des conseils financiers réglementés. Les performances passées ne préjugent pas des performances futures.
+    </div>`);
+  // Mis en cache même si l'utilisateur a changé d'onglet entre-temps
+  newsTabCache.signaux.html = root.innerHTML;
+  newsTabCache.signaux.ts = Date.now();
 }
 
 function setNewsFilter(filter, el) {
@@ -6541,6 +6559,7 @@ function enterDemo() {
 
 function showAuthScreen(tab) {
   currentUser = null; isDemo = false; positions = []; posSignals = {}; chatHistory = []; bilanData = {}; bilanStep = 0;
+  _sigRun = null; _sigMarket = { ts: 0, data: null }; Object.keys(newsTabCache).forEach(k => { newsTabCache[k].html = ''; newsTabCache[k].ts = 0; });
   document.getElementById('auth-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
   document.getElementById('demo-banner').style.display = 'none';
@@ -11279,6 +11298,7 @@ function parseJSONArrayLenient(raw) {
   return items;
 }
 
+let _newsStreaming = false;
 async function loadNews(force=false) {
   if (!force && loadNewsCache()) { renderNewsList(); return; }
   const list = document.getElementById('news-list');
@@ -11288,20 +11308,10 @@ async function loadNews(force=false) {
   if (ico) ico.classList.add('spinning');
   if (btn) btn.disabled = true;
 
-  // Skeleton loader
-  if (list) list.innerHTML = [1,2,3,4,5,6,7,8].map(() => `
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:10px;border:1.5px solid #f0f0f0;overflow:hidden">
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <div class="skeleton" style="width:70px;height:20px;border-radius:8px"></div>
-        <div class="skeleton" style="width:55px;height:20px;border-radius:8px"></div>
-        <div class="skeleton" style="width:45px;height:20px;border-radius:8px;margin-left:auto"></div>
-      </div>
-      <div class="skeleton" style="height:18px;border-radius:6px;margin-bottom:8px"></div>
-      <div class="skeleton" style="height:14px;border-radius:6px;width:85%;margin-bottom:5px"></div>
-      <div class="skeleton" style="height:14px;border-radius:6px;width:65%"></div>
-    </div>`).join('');
+  _newsStreaming = true;
+  if (list) list.innerHTML = kpSkelCards(5);
 
-  const myAssets = positions.map(p => p.name).join(', ') || 'IWDA, VWCE';
+  const myAssets = apos().map(p => p.name).join(', ') || 'IWDA, VWCE';
   const _hc = await holdingsContextBlock(10);
   const prompt = `Tu es analyste financier senior.
 Développe 5 thèmes économiques et financiers structurants et durables (macro, banques centrales, marchés, géopolitique, secteurs) qui éclairent la situation actuelle des marchés — pas des évènements ponctuels datés que tu ne peux pas vérifier en temps réel.
@@ -11311,7 +11321,19 @@ Appuie tes thèmes sur la tendance des indices et les titres de presse fournis c
 Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
 [{"titre":"Titre accrocheur max 10 mots","resume":"2 phrases concrètes et précises","categorie":"macro|banque|marche|geo|secteur","impact":"élevé|moyen|faible","signal":"acheter|attendre|éviter|neutre","reco_texte":"Conseil actionnable en 2-3 phrases pour débutant, adapté au signal","actifs_cibles":["TICKER1","TICKER2"]}]`;
 
-  const raw = await callClaude(prompt, `Tu es analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n'as pas vérifié — tu t'appuies sur des dynamiques de marché connues et durables, jamais sur des faits inventés. Retourne uniquement du JSON valide sans texte autour ni backticks.`, 4096, HAIKU_MODEL);
+  // Chaque actualité s'affiche dès qu'elle est écrite
+  const newsOnPage = () => ['tous', 'macro', 'banque', 'marche', 'geo', 'secteur'].includes(newsFilter);
+  let shownNews = 0;
+  const raw = await callClaudeStream(prompt, `Tu es analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n'as pas vérifié — tu t'appuies sur des dynamiques de marché connues et durables, jamais sur des faits inventés. Retourne uniquement du JSON valide sans texte autour ni backticks.`, 4096, HAIKU_MODEL, null, text => {
+    const items = parseJSONArrayLenient(text);
+    if (items.length <= shownNews) return;
+    shownNews = items.length;
+    newsData = items;
+    if (!newsOnPage()) return;
+    renderNewsList();
+    if (shownNews < 5) document.getElementById('news-list')?.insertAdjacentHTML('beforeend', kpSkelCards(5 - shownNews));
+  });
+  _newsStreaming = false;
   if (callClaudeFailed(raw)) {
     console.error('[loadNews] callClaude a échoué :', raw);
     newsData = null; // échec réel, distinct d'une liste vide légitime
@@ -11328,7 +11350,7 @@ Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
   saveNewsCache();
   if (ico) ico.classList.remove('spinning');
   if (btn) btn.disabled = false;
-  renderNewsList();
+  if (newsOnPage()) renderNewsList();
   addNewsNotifications();
 }
 
@@ -11366,6 +11388,7 @@ function renderNewsList() {
   if (newsFilter === 'agenda') { if (isCacheValid('agenda')) { restoreFromCache('agenda'); } else { renderAgenda(); } return; }
   if (newsFilter === 'matieres') { renderMatieres(); return; }
 
+  if (_newsStreaming && !(newsData && newsData.length)) { list.innerHTML = kpSkelCards(5); return; }
   if (newsData === null) {
     if (aiJustHitQuota()) { list.innerHTML = `<div style="padding:8px 0">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
     list.innerHTML = `<div style="text-align:center;padding:40px;color:#8e8e93">
@@ -11379,6 +11402,7 @@ function renderNewsList() {
   // Filtrage "Toutes" ou par catégorie
   let filtered = newsFilter === 'tous' ? newsData : newsData.filter(n => n.categorie === newsFilter);
 
+  if (!filtered.length && _newsStreaming) { list.innerHTML = kpSkelCards(2); return; }
   if (!filtered.length) {
     list.innerHTML = `<div style="text-align:center;padding:40px;color:#8e8e93">
       <div style="font-size:32px;margin-bottom:10px">📭</div>
@@ -12802,6 +12826,63 @@ async function callClaude(prompt,sys,maxTokens,model,opts){
     // Les réponses (texte ou JSON) sont souvent insérées telles quelles dans la page : aucune balise HTML ne doit passer
     return String(d.text||d.error||'Aucune réponse.').replace(/<\/?[a-zA-Z!][^>]*>/g, '');
   }catch{return'Erreur de connexion.';}
+}
+
+// Comme callClaude, mais onText reçoit le texte déjà écrit au fur et à mesure.
+// Refus du serveur (quota, session...) ou navigateur trop ancien : callClaude prend le relais et affiche le bon message.
+async function callClaudeStream(prompt, sys, maxTokens, model, opts, onText) {
+  const plain = () => callClaude(prompt, sys, maxTokens, model, opts);
+  if (!window.ReadableStream || !window.TextDecoder) return plain();
+  let full = '';
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return plain();
+    const body = { prompt, system: sys, stream: true };
+    if (maxTokens) body.max_tokens = maxTokens;
+    if (model) body.model = model;
+    if (opts && opts.feature) body.feature = opts.feature;
+    const res = await fetch('/api/claude', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(body) });
+    if (!res.ok || !res.body || !(res.headers.get('content-type') || '').includes('text/event-stream')) return plain();
+    const reader = res.body.getReader(), decoder = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 2);
+        if (!line.startsWith('data:')) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(5)); } catch { continue; }
+        if (ev.t) {
+          full += ev.t;
+          try { if (onText) onText(full.replace(/<\/?[a-zA-Z!][^>]*>/g, '')); } catch (e) { console.warn('[stream]', e); }
+        }
+        if (ev.quota) { aiQuotaState = ev.quota; updateAIQuotaBadge(); }
+      }
+    }
+  } catch (e) {
+    console.warn('[callClaudeStream]', e);
+  }
+  // Coupure en cours de route : on garde ce qui est déjà arrivé
+  return full ? full.replace(/<\/?[a-zA-Z!][^>]*>/g, '') : 'Erreur de connexion.';
+}
+
+// Cartes grises affichées pendant que le contenu arrive
+function kpSkelCards(n) {
+  return Array.from({ length: n }, () => `<div style="background:var(--color-surface);border-radius:14px;padding:16px;margin-bottom:10px;border:1px solid var(--color-border);overflow:hidden">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div class="skeleton" style="width:70px;height:20px;border-radius:8px"></div>
+        <div class="skeleton" style="width:55px;height:20px;border-radius:8px"></div>
+        <div class="skeleton" style="width:45px;height:20px;border-radius:8px;margin-left:auto"></div>
+      </div>
+      <div class="skeleton" style="height:18px;border-radius:6px;margin-bottom:8px"></div>
+      <div class="skeleton" style="height:14px;border-radius:6px;width:85%;margin-bottom:5px"></div>
+      <div class="skeleton" style="height:14px;border-radius:6px;width:65%"></div>
+    </div>`).join('');
 }
 
 // ═══════════════════════════════════════════════════════════
