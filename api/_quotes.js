@@ -32,6 +32,23 @@ async function usdPerEur() {
   throw new Error('taux EUR/USD indisponible');   // pas de prix plutôt qu'un prix faux
 }
 
+// Valeur en euros d'une unité de devise (taux Yahoo gardé 10 minutes). Sans taux : erreur plutôt qu'un prix faux.
+const _fxRates = {};
+async function eurPer(cur) {
+  const c = String(cur || 'EUR');
+  if (c === 'EUR') return 1;
+  if (c === 'GBp' || c === 'GBX') return (await eurPer('GBP')) / 100;   // Londres cote souvent en pence
+  const hit = _fxRates[c];
+  if (hit && Date.now() - hit.t < 10 * 60000) return hit.v;
+  try {
+    const r = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/EUR${c}=X?interval=1d&range=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+    const v = (await r.json())?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (v > 0) { _fxRates[c] = { v: 1 / v, t: Date.now() }; return 1 / v; }
+  } catch {}
+  if (hit) return hit.v;
+  throw new Error('taux ' + c + ' indisponible');
+}
+
 function attemptsFor(symbol) {
   if (/^CUR-[A-Z]{3}$/.test(symbol)) return [{ type: 'yahoo', ticker: 'EUR' + symbol.slice(4) + '=X', inv: true }];   // devise : valeur en euros d'une unité
   if (/^[A-Z0-9]{2,20}-EUR$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol }];   // crypto en euros
@@ -39,8 +56,11 @@ function attemptsFor(symbol) {
   if (/^[A-Z]{1,3}=F$/.test(symbol)) return [{ type: 'yahoo', ticker: symbol, fx: true }];   // matière première (cours en dollars), convertie en euros
   if (METAL_GRAM[symbol]) return [{ type: 'yahoo', ticker: METAL_GRAM[symbol], fx: true, per: 31.1034768 }];   // métal physique : euros par gramme (1 once troy = 31,1035 g)
   const y = NAME_TO_YAHOO[symbol];
-  if (y) return [{ type: 'yahoo', ticker: y }, { type: 'finnhub', ticker: toFinnhubSymbol(y) }];
-  const a = [{ type: 'finnhub', ticker: toFinnhubSymbol(symbol) }, { type: 'yahoo', ticker: symbol }];
+  if (y) return [{ type: 'yahoo', ticker: y }, { type: 'finnhub', ticker: toFinnhubSymbol(y), usd: !y.includes('.') }];
+  const noSuffix = !symbol.includes('.') && !symbol.includes(':');
+  const a = noSuffix || /\.(PA|AS|BR|DE|F|MI|MC|LS|VI|HE|IR|SG|DU|HA|BE|MU|HM|XD|NX|TG)$/.test(symbol)
+    ? [{ type: 'finnhub', ticker: toFinnhubSymbol(symbol), usd: noSuffix }, { type: 'yahoo', ticker: symbol }]
+    : [{ type: 'yahoo', ticker: symbol }];
   if (!symbol.includes('.') && !symbol.includes(':')) {
     a.push({ type: 'yahoo', ticker: symbol + '.PA' });
     a.push({ type: 'finnhub', ticker: 'EURONEXT:' + symbol });
@@ -53,7 +73,7 @@ async function fetchOne(at) {
     if (!process.env.FINNHUB_API_KEY) return null;
     const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(at.ticker)}&token=${process.env.FINNHUB_API_KEY}`, { signal: AbortSignal.timeout(5000) });
     const d = await r.json();
-    if (d && d.c > 0) return { price: d.c, changePct: typeof d.dp === 'number' ? d.dp : 0 };
+    if (d && d.c > 0) return { price: d.c * (at.usd ? await eurPer('USD') : 1), changePct: typeof d.dp === 'number' ? d.dp : 0 };
     return null;
   }
   const r = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(at.ticker)}?interval=1d&range=1d`, {
@@ -63,7 +83,7 @@ async function fetchOne(at) {
   const m = d?.chart?.result?.[0]?.meta;
   if (m?.regularMarketPrice > 0) {
     const prev = m.chartPreviousClose || m.previousClose || m.regularMarketPrice;
-    const k = (at.fx ? 1 / (await usdPerEur()) : 1) / (at.per || 1);   // dollars -> euros (puis par gramme si métal)
+    const k = (at.fx ? 1 / (await usdPerEur()) : at.inv ? 1 : await eurPer(m.currency)) / (at.per || 1);   // tout en euros (puis par gramme si métal)
     if (at.inv) { const pr = 1 / m.regularMarketPrice, pv = 1 / prev; return { price: pr, changePct: (pr - pv) / pv * 100 }; }   // taux inversé : euros par unité
     return { price: m.regularMarketPrice * k, changePct: prev && prev !== m.regularMarketPrice ? (m.regularMarketPrice - prev) / prev * 100 : (m.regularMarketChangePercent || 0) };
   }

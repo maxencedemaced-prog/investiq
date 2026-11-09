@@ -13254,6 +13254,32 @@ function loadScriptOnce(src) {
   });
 }
 
+// Après identification : prix d'achat en euros et vrai cours du jour, pour que l'écran de contrôle montre le résultat réel
+async function enrichImportRows(rows) {
+  try {
+    const curs = [...new Set(rows.map(r => r.cur).filter(Boolean))];
+    if (curs.length) {
+      const q = await (await fetch('/api/prices?symbols=' + curs.map(c => 'CUR-' + c).join(','))).json();
+      const rate = Object.fromEntries((q.quotes || []).map(x => [x.symbol.slice(4), x.price]));
+      rows.forEach(r => {
+        if (!r.cur) return;
+        if (rate[r.cur] > 0) { r.pruOrig = r.pru; r.pru = Math.round(r.pru * rate[r.cur] * 1e6) / 1e6; r.price = Math.round(r.price * rate[r.cur] * 1e6) / 1e6; r.converted = true; }
+        else r.curUnknown = true;
+      });
+    }
+  } catch (e) { console.warn('[import] devise :', e); rows.forEach(r => { if (r.cur && !r.converted) r.curUnknown = true; }); }
+  try {
+    const list = rows.filter(r => !r.notFound).map(r => r.name);
+    for (let i = 0; i < list.length; i += 40) {
+      const q = await (await fetch('/api/prices?symbols=' + encodeURIComponent(list.slice(i, i + 40).join(',')))).json();
+      for (const x of (q.quotes || [])) {
+        const r = rows.find(z => z.name === x.symbol);
+        if (r) { if (x.price > 0) { r.price = Math.round(x.price * 1e6) / 1e6; r.live = true; } else r.noPrice = true; }
+      }
+    }
+  } catch (e) { console.warn('[import] cours :', e); }
+}
+
 // Point d'entrée de l'import : CSV/TXT (lu localement), Excel (converti en CSV), PDF (texte extrait puis analysé par l'IA)
 async function handleCSVImport(file) {
   if (!file) return;
@@ -13265,12 +13291,16 @@ async function handleCSVImport(file) {
     } else if (ext === 'xlsx' || ext === 'xls') {
       await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
       const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-      rows = parseCSVSmart(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ';', rawNumbers: true }));
+      for (const sheet of wb.SheetNames) {
+        rows = parseCSVSmart(XLSX.utils.sheet_to_csv(wb.Sheets[sheet], { FS: ';', rawNumbers: true }));
+        if (rows.length) break;
+      }
     } else {
       rows = parseCSVSmart(await file.text());
     }
     if (!rows || !rows.length) { showToast('⚠️ Aucune position détectée dans ce fichier'); return; }
     await resolveImportTickers(rows);
+    await enrichImportRows(rows);
     showCSVPreview(rows, file.name);
     trackEvent('import_file', { format: ext, count: rows.length });
   } catch (err) {
@@ -13310,9 +13340,18 @@ async function resolveImportTickers(rows) {
       r.sector = 'Crypto';
       return;
     }
+    const w = firstWord(label);
+    const coin = { ether: 'ETH-EUR' }[w] ? { ticker: 'ETH-EUR' } : (typeof AC_DB !== 'undefined' ? AC_DB.find(c => c.type === 'Crypto' && /-EUR$/.test(c.ticker) && firstWord(c.name) === w) : null);
+    if (coin && String(label).trim().split(/\s+/).length <= 2) {
+      r.fullName = r.fullName || r.name;
+      r.name = coin.ticker;
+      r.type = 'Crypto';
+      r.sector = 'Crypto';
+      return;
+    }
     try {
       const list = await search(r.isin || label);
-      if (!list.length) return;
+      if (!list.length) { r.notFound = true; return; }
       // Du plus sûr au moins sûr : Paris et les places en euros d'abord, les cotations américaines en dernier
       let best = [...list].sort((a, b) => rank(a.ticker) - rank(b.ticker))[0];
       // Yahoo ne donne pas toujours Paris (Alten : Vienne, Xetra, OTC) : on essaie le même symbole à Paris, si c'est bien la même société
@@ -13400,16 +13439,11 @@ async function parsePDFStatement(file) {
 
 // Parse un CSV avec détection auto (séparateur ; , ou tab · colonnes par mots-clés)
 function parseCSVSmart(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/["'’]/g, ' ').replace(/\s+/g, ' ').trim();
+  const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
   if (lines.length < 2) return [];
 
-  // Détecter le séparateur sur l'en-tête
-  const header = lines[0];
-  const sep = [';', ',', '\t'].reduce((best, s) =>
-    header.split(s).length > header.split(best).length ? s : best, ';');
-
-  const splitLine = (l) => {
-    // Split en respectant les guillemets
+  const splitWith = (l, sep) => {
     const out = []; let cur = '', inQ = false;
     for (const ch of l) {
       if (ch === '"') inQ = !inQ;
@@ -13419,162 +13453,257 @@ function parseCSVSmart(text) {
     out.push(cur.trim());
     return out;
   };
-
-  const cols = splitLine(header).map(c => c.toLowerCase().replace(/"/g,''));
-
-  // Détection heuristique des colonnes (FR/EN, Trade Republic, XTB)
-  const findCol = (keywords) => cols.findIndex(c => keywords.some(k => c.includes(k)));
-  const iName  = findCol(['instrument','produit','name','nom','titre','désignation','designation','asset','position']);
-  const iTicker= findCol(['symbol','symbole','ticker','isin']);
-  const iQty   = findCol(['quantit','quantity','volume','nombre','shares','qty','anzahl']);
-  const iPru   = findCol(['pru','prix moyen','avg','average','achat','open price','prix d\'ouverture','purchase','buy','cost']);
-  const iPrice = findCol(['prix actuel','current','market price','cours','last','close','dernier']);
-  const iTotal = findCol(['valeur totale','total invest','montant invest','total investi','valeur invest']);
-
-  if (iQty === -1 || (iName === -1 && iTicker === -1)) return [];
-
-  const num = (s) => {
-    if (!s) return 0;
-    // Gère "1 234,56" et "1,234.56" et "1234.56"
-    s = String(s).replace(/"/g,'').replace(/\s/g,'').replace(/€|\$|USD|EUR/gi,'');
-    if (s.includes(',') && s.includes('.')) s = s.replace(/,/g, s.lastIndexOf(',') > s.lastIndexOf('.') ? '.' : '');
-    else s = s.replace(',', '.');
-    // retire un éventuel 2e point de milliers
-    const parts = s.split('.');
-    if (parts.length > 2) s = parts.slice(0,-1).join('') + '.' + parts[parts.length-1];
-    return parseFloat(s) || 0;
+  // Mot-clé cherché dans l'ordre de priorité : le plus précis d'abord
+  const find = (cols, keys, skip = []) => {
+    for (const k of keys) {
+      const i = cols.findIndex((c, idx) => !skip.includes(idx) && (k instanceof RegExp ? k.test(c) : c.includes(k)));
+      if (i >= 0) return i;
+    }
+    return -1;
   };
+  const NAME = ['instrument', 'produit', 'designation', 'libelle', 'titre', 'security', 'asset', /^name$/, /\bname\b/, /^nom\b/, /\bnom\b/, /^position$/, /^valeur$/, /^action$/];
+  const TICKER = ['isin', 'symbol', 'symbole', 'ticker', 'code valeur'];
+  const QTY = ['quantit', /\bqte\b/, 'quantity', /\bqty\b/, /\bshares\b/, /\bunits\b/, 'nombre', 'volume', 'anzahl', /\bparts\b/];
 
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
-    const c = splitLine(lines[i]);
-    if (c.length < 2) continue;
-    let name = (iTicker >= 0 && c[iTicker]) ? c[iTicker].replace(/"/g,'') : (c[iName]||'').replace(/"/g,'');
-    // Si c'est un ISIN (ex: IE00B4L5Y983), préférer le nom lisible — les prix live utilisent les tickers
-    if (/^[A-Z]{2}[A-Z0-9]{10}$/.test(name) && iName >= 0 && c[iName]) {
-      name = c[iName].replace(/"/g,'');
+  // L'en-tête n'est pas toujours la 1re ligne (titre, date, lignes vides au-dessus)
+  let headerAt = -1, sep = ';', cols = [];
+  for (let i = 0; i < Math.min(lines.length, 15) && headerAt < 0; i++) {
+    for (const cand of [';', '\t', ',']) {
+      const c = splitWith(lines[i], cand).map(norm);
+      if (c.length < 2) continue;
+      if (find(c, QTY) >= 0 && (find(c, NAME) >= 0 || find(c, TICKER) >= 0)) { headerAt = i; sep = cand; cols = c; break; }
     }
-    let qty = num(c[iQty]);
-    if (!name || qty <= 0) continue;
-    const pru = iPru >= 0 ? num(c[iPru]) : 0;
-    // « 17,998 » peut vouloir dire 17 998 parts : le montant investi du fichier tranche
-    const lineTotal = iTotal >= 0 ? num(c[iTotal]) : 0;
-    if (lineTotal > 0 && pru > 0 && /^\d{1,3},\d{3}$/.test(String(c[iQty]).trim())) {
-      const asThousands = parseFloat(String(c[iQty]).replace(',', ''));
-      if (Math.abs(asThousands * pru - lineTotal) < Math.abs(qty * pru - lineTotal)) qty = asThousands;
-    }
-    const price = iPrice >= 0 ? num(c[iPrice]) : pru;
-    const rawT = iTicker >= 0 ? (c[iTicker] || '').replace(/"/g,'').trim() : '';
-    const isIsin = /^[A-Z]{2}[A-Z0-9]{10}$/.test(rawT);
-    rows.push({
-      isin: isIsin ? rawT : null,
-      tickerKnown: !!rawT && !isIsin,
-      name: name.slice(0, 30),
-      fullName: iName >= 0 && iTicker >= 0 ? (c[iName]||'').replace(/"/g,'').slice(0,50) : '',
-      qty: Math.round(qty * 1e8) / 1e8,
-      pru: Math.round(pru * 1e6) / 1e6,
-      price: Math.round((price || pru) * 1e6) / 1e6,
-      checked: true,
-    });
   }
-  return rows.slice(0, 60);
+  if (headerAt < 0) return [];
+
+  const iTicker = find(cols, TICKER);
+  const iName = find(cols, NAME, [iTicker]);
+  const iQty = find(cols, QTY);
+  const used = [iName, iTicker, iQty];
+  const iPru = find(cols, ['pru', /\bpam\b/, 'prix de revient', 'prix moyen', 'cours moyen', 'prix d achat', 'prix achat', 'cours d achat', 'average cost', 'avg cost', 'average price', 'avg price', 'open price', 'prix d ouverture', 'buy price', 'purchase price', 'unit cost', /^avg\b/, /^prix$/, /^price$/], used);
+  const iPrice = find(cols, ['prix actuel', 'cours actuel', 'dernier cours', 'market price', 'current price', 'cours de cloture', 'cloture', 'last price', /^last\b/, /^close\b/, /^current\b/, /^dernier\b/, /^cours$/], [...used, iPru]);
+  const iTotal = find(cols, ['valeur totale investie', 'total investi', 'montant investi', 'valeur investie', 'purchase value', 'cost basis', 'total cost', 'prix de revient total'], [...used, iPru, iPrice]);
+  const iValue = find(cols, ['valorisation', 'valeur actuelle', 'market value', 'montant en eur', 'valeur en eur', 'current value', /^montant$/, /^valeur$/, /^value$/], [...used, iPru, iPrice, iTotal]);
+  const iCur = find(cols, [/^devise\b/, /^currency\b/, /^monnaie\b/], used);
+  const iSide = find(cols, [/^type$/, /^sens$/, /^operation$/, /^action$/, /^side$/], used);
+  const iDate = find(cols, [/\bdate\b/], used);
+  const body = lines.slice(headerAt + 1).map(l => splitWith(l, sep));
+
+  // Format anglais : « 1,250 » = 1 250. Reconnu si le fichier écrit ses décimales avec un point.
+  const numericCols = [iQty, iPru, iPrice, iTotal, iValue].filter(i => i >= 0);
+  const cells = body.flatMap(c => numericCols.map(i => String(c[i] || '')));
+  const dotDecimals = cells.filter(v => /\d\.\d{1,2}(\D|$)/.test(v) && !/,/.test(v)).length;
+  const commaDecimals = cells.filter(v => /\d,\d{1,2}(\D|$)/.test(v) && !/\./.test(v)).length;
+  const english = dotDecimals > commaDecimals;
+
+  const num = (v) => {
+    let t = String(v || '').replace(/["\s\u00A0\u202F']/g, '').replace(/€|\$|£|USD|EUR|GBP|CHF/gi, '');
+    if (!t) return 0;
+    if (t.includes(',') && t.includes('.')) t = t.replace(t.lastIndexOf(',') > t.lastIndexOf('.') ? /\./g : /,/g, '').replace(',', '.');
+    else if (english && /^-?\d{1,3}(,\d{3})+$/.test(t)) t = t.replace(/,/g, '');
+    else t = t.replace(',', '.');
+    const parts = t.split('.');
+    if (parts.length > 2) t = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
+    return parseFloat(t) || 0;
+  };
+  const clean = (v) => String(v || '').replace(/"/g, '').trim();
+  const NOT_A_POSITION = /^(total|totaux|sous[- ]total|cash|especes|liquidites|solde|notes?|source)\b/;
+  const MARKETS = { FR: '.PA', NL: '.AS', BE: '.BR', DE: '.DE', IT: '.MI', ES: '.MC', UK: '.L', US: '' };   // symboles façon XTB : TTE.FR, AAPL.US
+
+  const isTransactions = iDate >= 0 && iSide >= 0;
+  const merged = new Map();
+  for (const c of body) {
+    if (c.length < 2) continue;
+    const label = iName >= 0 ? clean(c[iName]) : '';
+    let raw = iTicker >= 0 ? clean(c[iTicker]) : '';
+    if (NOT_A_POSITION.test(norm(label || raw))) continue;
+    if (!label && !raw) continue;
+    const side = iSide >= 0 ? norm(c[iSide]) : '';
+    const isSell = /(vente|sell|sale|cession)/.test(side) || (isTransactions && num(c[iQty]) < 0);
+    let qty = Math.abs(num(c[iQty]));
+    if (qty <= 0) continue;
+    if (isTransactions && side && !isSell && !/(achat|buy|souscription|purchase)/.test(side)) continue;   // dividendes, frais…
+    let pru = iPru >= 0 ? Math.abs(num(c[iPru])) : 0;
+    const total = iTotal >= 0 ? Math.abs(num(c[iTotal])) : 0;
+    // « 17,998 » dans un fichier en français : si le montant investi le prouve, ce sont 17 998 parts
+    if (total > 0 && pru > 0 && /^\d{1,3},\d{3}$/.test(clean(c[iQty]))) {
+      const big = parseFloat(clean(c[iQty]).replace(',', ''));
+      if (Math.abs(big * pru - total) < Math.abs(qty * pru - total)) qty = big;
+    }
+    if (!pru && total > 0) pru = total / qty;
+    let price = iPrice >= 0 ? Math.abs(num(c[iPrice])) : 0;
+    if (!price && iValue >= 0) { const val = Math.abs(num(c[iValue])); if (val > 0) price = val / qty; }
+
+    let cur = iCur >= 0 ? clean(c[iCur]).toUpperCase() : '';
+    const headCur = (cols[iPru] || '').match(/\b(usd|gbp|chf)\b/);
+    if (!/^[A-Z]{3}$/.test(cur) && headCur) cur = headCur[1].toUpperCase();
+    const mk = raw.match(/^([A-Z0-9-]{1,10})\.(FR|NL|BE|DE|IT|ES|UK|US)$/);
+    if (mk) { raw = mk[1] + MARKETS[mk[2]]; if (mk[2] === 'US' && !cur) cur = 'USD'; if (mk[2] === 'UK' && !cur) cur = 'GBP'; }
+    const isIsin = /^[A-Z]{2}[A-Z0-9]{10}$/.test(raw);
+    const looksLikeTicker = raw && !isIsin && /^[A-Z0-9.\-=]{1,20}$/.test(raw);
+    const name = (looksLikeTicker ? raw : label || raw).slice(0, 60);
+    const key = (isIsin ? raw : norm(name));
+
+    const prev = merged.get(key);
+    if (isSell) {
+      // Une vente réduit le nombre de parts sans changer le prix moyen d'achat
+      if (prev) prev.qty = Math.max(0, prev.qty - qty);
+      continue;
+    }
+    if (prev) {
+      const q = prev.qty + qty;
+      prev.pru = q > 0 ? (prev.qty * prev.pru + qty * pru) / q : prev.pru;
+      prev.qty = q;
+      if (price) prev.price = price;
+      prev.merged = (prev.merged || 1) + 1;
+    } else {
+      merged.set(key, { isin: isIsin ? raw : null, tickerKnown: !!looksLikeTicker, name, fullName: label && label !== name ? label.slice(0, 60) : '', qty, pru, price, cur: cur && cur !== 'EUR' ? cur : '', checked: true });
+    }
+  }
+  return [...merged.values()].filter(r => r.qty > 0).slice(0, 60).map(r => ({
+    ...r,
+    qty: Math.round(r.qty * 1e8) / 1e8,
+    pru: Math.round(r.pru * 1e6) / 1e6,
+    price: Math.round((r.price || r.pru) * 1e6) / 1e6,
+  }));
 }
 
 // Prévisualisation avant import
 function showCSVPreview(rows, filename) {
   window._csvRows = rows;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const surf = isDark ? '#161b26' : '#fff';
-  const bord = isDark ? '#2a2f3e' : '#e4e4e7';
-  const txt  = isDark ? '#f0f0f0' : '#09090b';
-  const sub  = isDark ? '#888' : '#71717a';
-
-  // Détecter la plateforme depuis le nom de fichier
+  rows.forEach(r => { r.pv = 0; r.pvSign = 1; });
   const _dp = detectPlatform(filename);
   const platform = _dp !== 'Autre' ? _dp : (kpMainPlatform() || 'Autre');   // fichier non reconnu : plateforme principale
   window._csvPlatform = platform;
+  const parts = q => { const t = Number(q).toLocaleString('fr-FR', { maximumFractionDigits: 8 }); return t + (q > 1 ? ' parts' : ' part'); };
 
   document.getElementById('csv-preview-modal')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'csv-preview-modal';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.className = 'kpi-overlay';
   overlay.innerHTML = `
-    <div style="background:${surf};border-radius:20px;padding:22px;max-width:560px;width:100%;max-height:82vh;display:flex;flex-direction:column">
-      <div style="font-size:17px;font-weight:800;color:${txt}">📥 ${rows.length} position${rows.length>1?'s':''} détectée${rows.length>1?'s':''}</div>
-      <div style="font-size:12px;color:${sub};margin:4px 0 6px">${filename} · plateforme : 
-        <select id="csv-platform-sel" style="background:transparent;border:1px solid ${bord};border-radius:6px;padding:2px 6px;color:${txt};font-size:12px">
-          ${platformOptionsHTML(platform)}
-        </select>
+    <div class="kpi-box">
+      <div class="kpi-head">
+        <div class="kpi-title">Vérifie tes ${rows.length} ligne${rows.length > 1 ? 's' : ''}</div>
+        <div class="kpi-sub">${_escHtml(filename)}</div>
+        <label class="kpi-platform">Compte ou courtier <select id="csv-platform-sel">${platformOptionsHTML(platform)}</select></label>
       </div>
-      <div style="font-size:11px;color:${sub};margin-bottom:10px;line-height:1.5">Décoche ce que tu ne veux pas importer et corrige le PRU si besoin. Si tu as déjà vendu une partie d'une ligne, indique la <strong style="color:${txt}">plus-value (+) ou moins-value (−) déjà réalisée</strong> : le PRU sera recalculé pour refléter ton vrai gain. Les doublons (même nom) mettent à jour la position existante.</div>
-      <div style="flex:1;overflow-y:auto;border:1px solid ${bord};border-radius:12px">
+      <div class="kpi-summary" id="csv-summary"></div>
+      <div class="kpi-list">
         ${rows.map((r, i) => {
-          r.pv = 0; r.pvSign = 1;
-          const inp = `background:transparent;border:1px solid ${bord};border-radius:7px;padding:4px 6px;color:${txt};font-size:12px;font-weight:600`;
+          const nice = displayName(r.name);
+          const title = nice === r.name && r.fullName && r.fullName !== r.name ? r.fullName : nice;
+          const notes = [];
+          if (r.notFound) notes.push(`<div class="kpi-warn">Titre non reconnu : son cours ne se mettra pas à jour. Décoche-le ou ajoute-le à la main ensuite.</div>`);
+          else if (r.noPrice) notes.push(`<div class="kpi-warn">Cours introuvable pour ce symbole : vérifie qu'il s'agit du bon titre.</div>`);
+          if (r.converted) notes.push(`<div class="kpi-info">Prix d'achat converti depuis ${r.pruOrig.toLocaleString('fr-FR')} ${_escHtml(r.cur)} au taux du jour : corrige-le si tu connais le montant payé en euros.</div>`);
+          if (r.curUnknown) notes.push(`<div class="kpi-warn">Prix en ${_escHtml(r.cur)} non converti : indique ton prix d'achat en euros.</div>`);
+          if (r.merged) notes.push(`<div class="kpi-info">${r.merged} lignes de ce titre regroupées, avec leur prix moyen.</div>`);
           return `
-        <div style="padding:10px 12px;border-bottom:1px solid ${bord}">
-          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
-            <input type="checkbox" checked onchange="window._csvRows[${i}].checked=this.checked" style="width:16px;height:16px;accent-color:#16a34a;flex-shrink:0;margin-top:1px">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:700;color:${txt};overflow-wrap:anywhere">${(() => {
-                const nice = displayName(r.name);
-                // Symbole sans nom connu dans l'app (ex. AEEM.PA) : le nom du relevé passe en titre, le symbole en discret
-                if (nice === r.name && r.fullName && r.fullName !== r.name) return `${_escHtml(r.fullName)} <span style="font-weight:400;color:${sub}">· ${_escHtml(r.name)}</span>`;
-                return _escHtml(nice) + (r.fullName && r.fullName !== r.name ? ` <span style="font-weight:400;color:${sub}">· ${_escHtml(r.fullName)}</span>` : '');
-              })()}</div>
-              <div style="font-size:10px;color:${sub}">${r.qty} part${r.qty>1?'s':''}${r.price>0 ? ' · cours '+r.price.toFixed(2)+' €' : ''}</div>
-            </div>
+        <div class="kpi-row" id="csv-row-${i}">
+          <label class="kpi-row-head">
+            <input type="checkbox" checked onchange="csvRowCheck(${i},this.checked)">
+            <span class="kpi-row-name"><b>${_escHtml(title)}</b><small>${_escHtml(r.name)} · ${parts(r.qty)}${r.price > 0 && r.live ? ` · cours ${fmtImportEur(r.price)}` : ''}</small></span>
           </label>
-          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:8px 0 0 26px;font-size:11px;color:${sub}">
-            <span style="display:inline-flex;align-items:center;gap:5px">PRU
-              <input type="number" min="0" step="0.01" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="?" oninput="csvRowSet(${i},'pru',this.value);this.style.borderColor='';document.getElementById('csv-nopru-${i}')?.remove()" style="${inp};width:78px${r.pru > 0 ? '' : ';border-color:#f59e0b'}"> €</span>
-            ${r.pru > 0 ? '' : `<span id="csv-nopru-${i}" style="flex-basis:100%;color:#d97706;font-weight:600">PRU absent du fichier : sans lui, le cours actuel${r.price > 0 ? ' (' + r.price.toFixed(2) + ' €)' : ''} sera utilisé et ta performance affichera 0 %.</span>`}
-            <span style="display:inline-flex;align-items:center;gap:5px">Déjà réalisé
-              <button type="button" id="csv-pvsign-${i}" onclick="csvRowToggleSign(${i})" title="Plus-value (+) ou moins-value (−)" style="width:26px;height:26px;border-radius:7px;border:none;font-size:15px;font-weight:800;cursor:pointer;background:rgba(22,163,74,0.12);color:#16a34a">+</button>
-              <input type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="csvRowSet(${i},'pv',this.value)" style="${inp};width:78px"> €</span>
-            <span id="csv-pruadj-${i}" style="font-weight:700"></span>
+          ${notes.join('')}
+          <div class="kpi-field">
+            <label for="csv-pru-${i}">Prix d'achat moyen par part</label>
+            <span class="kpi-input"><input id="csv-pru-${i}" type="number" min="0" step="any" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="À renseigner" oninput="csvRowSet(${i},'pru',this.value)"> €</span>
+          </div>
+          <div class="kpi-result" id="csv-result-${i}"></div>
+          <button type="button" class="kpi-more" id="csv-more-${i}" onclick="csvRowToggleSold(${i})">J'ai déjà vendu une partie de cette ligne</button>
+          <div class="kpi-sold" id="csv-sold-${i}" hidden>
+            <p>Sur ce que tu as déjà vendu, tu as :</p>
+            <div class="kpi-choice">
+              <button type="button" id="csv-gain-${i}" class="on" onclick="csvRowSign(${i},1)">Gagné</button>
+              <button type="button" id="csv-loss-${i}" onclick="csvRowSign(${i},-1)">Perdu</button>
+            </div>
+            <label class="kpi-input kpi-amount" for="csv-pv-${i}"><input id="csv-pv-${i}" type="number" min="0" step="any" inputmode="decimal" placeholder="Montant" oninput="csvRowSet(${i},'pv',this.value)"> €</label>
+            <div class="kpi-sold-out" id="csv-pruadj-${i}">Ce montant sera compté dans ton résultat, pour qu'il reflète ce que tu as vraiment gagné ou perdu.</div>
           </div>
         </div>`;
         }).join('')}
       </div>
-      <div style="display:flex;gap:10px;margin-top:14px">
-        <button onclick="document.getElementById('csv-preview-modal').remove()" style="flex:1;padding:12px;background:transparent;border:1px solid ${bord};border-radius:12px;font-size:13px;font-weight:600;color:${sub};cursor:pointer">Annuler</button>
-        <button onclick="confirmCSVImport()" style="flex:2;padding:12px;background:#16a34a;border:none;border-radius:12px;font-size:13px;font-weight:800;color:#fff;cursor:pointer">Importer la sélection</button>
+      <div class="kpi-actions">
+        <button type="button" onclick="document.getElementById('csv-preview-modal').remove()">Annuler</button>
+        <button type="button" class="primary" onclick="confirmCSVImport()">Importer la sélection</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  rows.forEach((r, i) => csvRowRender(i));
+  csvSummaryRender();
 }
 
-// PRU ajusté des gains/pertes déjà encaissés : une plus-value réalisée réduit le coût net restant, une moins-value l'augmente
+function fmtImportEur(n) {
+  const a = Math.abs(n);
+  return n.toLocaleString('fr-FR', { minimumFractionDigits: a > 0 && a < 1 ? 4 : 2, maximumFractionDigits: a > 0 && a < 1 ? 4 : 2 }) + ' €';
+}
+// Prix de revient net : un gain déjà encaissé réduit le coût restant, une perte l'augmente
 function csvRowPru(r) {
   const base = r.pru > 0 ? r.pru : (r.price || 0);
   if (!r.pv || !r.qty) return base;
   return Math.max(0.000001, Math.round((base - r.pvSign * r.pv / r.qty) * 1e6) / 1e6);
 }
+// Ce que l'import donnera, ligne par ligne, et le total à comparer avec son relevé
 function csvRowRender(i) {
   const r = window._csvRows[i];
-  const el = document.getElementById('csv-pruadj-' + i);
+  const el = document.getElementById('csv-result-' + i);
   if (!el) return;
-  if (!r.pv) { el.textContent = ''; return; }
-  const adj = csvRowPru(r);
-  el.style.color = r.pvSign > 0 ? '#16a34a' : '#dc2626';
-  el.textContent = '→ PRU ajusté ' + adj.toFixed(2) + ' €' + (adj <= 0.01 ? ' (ligne déjà remboursée)' : '');
+  if (!(r.pru > 0)) {
+    el.className = 'kpi-result warn';
+    el.textContent = 'Sans prix d\u2019achat, le résultat de cette ligne restera à 0 €.';
+  } else if (r.price > 0 && r.live) {
+    const invested = r.qty * r.pru, value = r.qty * r.price, diff = value - invested + (r.pv ? r.pvSign * r.pv : 0);
+    el.className = 'kpi-result ' + (diff >= 0 ? 'up' : 'down');
+    el.textContent = `Investi ${fmtImportEur(invested)} · vaut ${fmtImportEur(value)} · résultat ${diff >= 0 ? '+' : '−'}${fmtImportEur(Math.abs(diff))}`;
+  } else {
+    el.className = 'kpi-result';
+    el.textContent = `Investi ${fmtImportEur(r.qty * r.pru)}`;
+  }
+  const adj = document.getElementById('csv-pruadj-' + i);
+  if (adj) adj.textContent = r.pv
+    ? `Ton résultat comptera ${r.pvSign > 0 ? 'ce gain' : 'cette perte'} de ${fmtImportEur(r.pv)}. Pour cela, ton prix d'achat moyen passera à ${fmtImportEur(csvRowPru(r))}.`
+    : 'Ce montant sera compté dans ton résultat, pour qu\u2019il reflète ce que tu as vraiment gagné ou perdu.';
+}
+function csvSummaryRender() {
+  const el = document.getElementById('csv-summary');
+  if (!el) return;
+  const rows = (window._csvRows || []).filter(r => r.checked);
+  const invested = rows.reduce((a, r) => a + r.qty * (r.pru > 0 ? r.pru : 0), 0);
+  const known = rows.filter(r => r.live && r.pru > 0);
+  const result = known.reduce((a, r) => a + r.qty * (r.price - r.pru) + (r.pv ? r.pvSign * r.pv : 0), 0);
+  const missing = rows.filter(r => !(r.pru > 0)).length;
+  const unknown = rows.filter(r => r.notFound || r.noPrice).length;
+  el.innerHTML = `<div><span>Total investi</span><b>${fmtImportEur(invested)}</b></div>
+    ${known.length ? `<div><span>Résultat estimé</span><b class="${result >= 0 ? 'up' : 'down'}">${result >= 0 ? '+' : '−'}${fmtImportEur(Math.abs(result))}</b></div>` : ''}
+    <p>Compare le total investi avec ton relevé : s'il est différent, regarde les quantités et les prix ci-dessous.</p>
+    ${missing ? `<p class="warn">${missing} ligne${missing > 1 ? 's' : ''} sans prix d'achat.</p>` : ''}
+    ${unknown ? `<p class="warn">${unknown} titre${unknown > 1 ? 's' : ''} à vérifier.</p>` : ''}`;
+}
+function csvRowCheck(i, on) {
+  window._csvRows[i].checked = on;
+  document.getElementById('csv-row-' + i)?.classList.toggle('off', !on);
+  csvSummaryRender();
 }
 function csvRowSet(i, field, val) {
   const n = parseFloat(String(val).replace(',', '.'));
   window._csvRows[i][field] = Number.isFinite(n) && n > 0 ? n : 0;
   csvRowRender(i);
+  csvSummaryRender();
 }
-function csvRowToggleSign(i) {
-  const r = window._csvRows[i];
-  r.pvSign = -r.pvSign;
-  const b = document.getElementById('csv-pvsign-' + i);
-  if (b) {
-    b.textContent = r.pvSign > 0 ? '+' : '−';
-    b.style.background = r.pvSign > 0 ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)';
-    b.style.color = r.pvSign > 0 ? '#16a34a' : '#dc2626';
-  }
+function csvRowToggleSold(i) {
+  const box = document.getElementById('csv-sold-' + i);
+  if (!box) return;
+  box.hidden = !box.hidden;
+  document.getElementById('csv-more-' + i).classList.toggle('open', !box.hidden);
+  if (box.hidden) { window._csvRows[i].pv = 0; const inp = document.getElementById('csv-pv-' + i); if (inp) inp.value = ''; csvRowRender(i); csvSummaryRender(); }
+}
+function csvRowSign(i, sign) {
+  window._csvRows[i].pvSign = sign;
+  document.getElementById('csv-gain-' + i)?.classList.toggle('on', sign > 0);
+  document.getElementById('csv-loss-' + i)?.classList.toggle('on', sign < 0);
   csvRowRender(i);
+  csvSummaryRender();
 }
 
 async function confirmCSVImport() {

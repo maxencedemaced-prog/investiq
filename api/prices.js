@@ -54,6 +54,23 @@ export default async function handler(req, res) {
 }
 
 const METAL_GRAM = { 'XAU-G': 'GC=F', 'XAG-G': 'SI=F', 'XPT-G': 'PL=F' };
+
+// Valeur en euros d'une unité de devise (taux Yahoo gardé 10 minutes). Sans taux : erreur plutôt qu'un prix faux.
+const _fxRates = {};
+async function eurPer(cur) {
+  const c = String(cur || 'EUR');
+  if (c === 'EUR') return 1;
+  if (c === 'GBp' || c === 'GBX') return (await eurPer('GBP')) / 100;   // Londres cote souvent en pence
+  const hit = _fxRates[c];
+  if (hit && Date.now() - hit.t < 10 * 60000) return hit.v;
+  try {
+    const r = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/EUR${c}=X?interval=1d&range=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+    const v = (await r.json())?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (v > 0) { _fxRates[c] = { v: 1 / v, t: Date.now() }; return 1 / v; }
+  } catch {}
+  if (hit) return hit.v;
+  throw new Error('taux ' + c + ' indisponible');
+}
 let _fx = { v: 0, t: 0 };
 async function usdPerEur() {
   if (_fx.v && Date.now() - _fx.t < 10 * 60000) return _fx.v;
@@ -85,14 +102,15 @@ function getSymbolAttempts(symbol) {
   if (yahooTicker) {
     return [
       { type: 'yahoo', ticker: yahooTicker },
-      { type: 'finnhub', ticker: toFinnhubSymbol(yahooTicker) },
+      { type: 'finnhub', ticker: toFinnhubSymbol(yahooTicker), usd: !yahooTicker.includes('.') },
     ];
   }
 
-  const attempts = [
-    { type: 'finnhub', ticker: toFinnhubSymbol(symbol) },
-    { type: 'yahoo', ticker: symbol },
-  ];
+  // Sans suffixe : place américaine, Finnhub répond en dollars. Autre place hors euro (Londres, Zurich…) : Yahoo seul, qui donne la devise.
+  const noSuffix = !symbol.includes('.') && !symbol.includes(':');
+  const attempts = noSuffix || /\.(PA|AS|BR|DE|F|MI|MC|LS|VI|HE|IR|SG|DU|HA|BE|MU|HM|XD|NX|TG)$/.test(symbol)
+    ? [{ type: 'finnhub', ticker: toFinnhubSymbol(symbol), usd: noSuffix }, { type: 'yahoo', ticker: symbol }]
+    : [{ type: 'yahoo', ticker: symbol }];
 
   if (!symbol.includes('.') && !symbol.includes(':')) {
     attempts.push({ type: 'yahoo', ticker: symbol + '.PA' });
@@ -108,7 +126,8 @@ async function fetchQuote(attempt, originalSymbol, apiKey) {
     const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const d = await r.json();
     if (d && d.c && d.c > 0) { // Accept even if price unchanged
-      return { symbol: originalSymbol, price: d.c, changePct: typeof d.dp === 'number' ? d.dp : 0, change: d.d || 0, source: 'finnhub' };
+      const f = attempt.usd ? await eurPer('USD') : 1;
+      return { symbol: originalSymbol, price: d.c * f, changePct: typeof d.dp === 'number' ? d.dp : 0, change: (d.d || 0) * f, source: 'finnhub' };
     }
   } else {
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(attempt.ticker)}?interval=1d&range=1d`;
@@ -119,7 +138,8 @@ async function fetchQuote(attempt, originalSymbol, apiKey) {
     const d = await r.json();
     const meta = d?.chart?.result?.[0]?.meta;
     if (meta?.regularMarketPrice && meta.regularMarketPrice > 0) {
-      const k = (attempt.fx ? 1 / (await usdPerEur()) : 1) / (attempt.per || 1);   // dollars -> euros (puis par gramme si métal)
+      // Devise de la cotation donnée par Yahoo : tout est ramené en euros (puis par gramme si métal)
+      const k = (attempt.fx ? 1 / (await usdPerEur()) : attempt.inv ? 1 : await eurPer(meta.currency)) / (attempt.per || 1);
       const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
       const changePct = prev && prev !== meta.regularMarketPrice
         ? ((meta.regularMarketPrice - prev) / prev * 100)
