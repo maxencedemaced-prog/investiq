@@ -6756,6 +6756,17 @@ async function kpNativeFinish(url) {
     : code ? await sb.auth.exchangeCodeForSession(code) : { error: new Error('lien de connexion incomplet') };
   if (error) setAuthMsg('La connexion n’a pas abouti. Réessaie.');
 }
+// Bouton œil des champs de mot de passe
+function kpTogglePass(btn) {
+  const inp = btn.parentElement.querySelector('input');
+  if (!inp) return;
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+  btn.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+  inp.focus();
+}
+
 async function loginWithApple() {
   if (kpIsNative()) return kpNativeOAuth('apple', 'Apple');
   const { error } = await sb.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin + window.location.pathname } });
