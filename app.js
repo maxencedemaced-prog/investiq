@@ -13406,7 +13406,7 @@ async function parsePDFStatement(file) {
   // Données personnelles inutiles à l'analyse : jamais envoyées
   text = text.replace(/\b(?:FR|DE|BE|LU|ES|IT|NL)\d{2}(?:\s?[A-Z0-9]{4}){4,6}(?:\s?[A-Z0-9]{1,3})?\b/g, '[IBAN]')
              .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[EMAIL]')
-             .replace(/(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}/g, '[TEL]');
+             .replace(/(^|[^\w.,])(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}(?![\w,.])/g, '$1[TEL]');
   if (text.replace(/\s/g, '').length < 40) {
     const e = new Error('no text'); e.userMessage = 'Ce PDF est une image scannée, sans texte lisible. Essaie l\'export CSV de ton courtier.'; throw e;
   }
@@ -13612,7 +13612,7 @@ function showCSVPreview(rows, filename) {
           ${notes.join('')}
           <div class="kpi-field">
             <label for="csv-pru-${i}">Prix d'achat moyen par part</label>
-            <span class="kpi-input"><input id="csv-pru-${i}" type="number" min="0" step="any" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="À renseigner" oninput="csvRowSet(${i},'pru',this.value)"> €</span>
+            <span class="kpi-input"><input id="csv-pru-${i}" type="number" min="0" step="any" inputmode="decimal" value="${r.pru > 0 ? r.pru : ''}" placeholder="À remplir" oninput="csvRowSet(${i},'pru',this.value)"> €</span>
           </div>
           <div class="kpi-result" id="csv-result-${i}"></div>
           <button type="button" class="kpi-more" id="csv-more-${i}" onclick="csvRowToggleSold(${i})">J'ai déjà vendu une partie de cette ligne</button>
