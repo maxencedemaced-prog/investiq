@@ -13837,7 +13837,7 @@ const KP_ANDROID_APP_MSG = 'L’abonnement Premium arrive bientôt dans l’appl
 
 // ═══ ABONNEMENT DANS L'APPLI iOS (RevenueCat) ═══
 // Clé publique RevenueCat de l'appli (appl_…), ce n'est pas un secret. Tant qu'elle est vide, l'appli garde « arrive bientôt ».
-const KP_RC_IOS_KEY = '';
+const KP_RC_IOS_KEY = 'appl_YxEpxQMbbcwtkbWvYHHuqkOzCbS';
 const KP_RC_PRODUCTS = { monthly: 'kapitaro_premium_monthly', annual: 'kapitaro_premium_annual' };
 const KP_STORE_SUBS_URL = 'https://apps.apple.com/account/subscriptions';
 let kpStoreUser = null;
