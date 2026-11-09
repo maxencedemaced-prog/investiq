@@ -6464,6 +6464,7 @@ async function initApp(user) {
   document.getElementById('demo-banner').style.display = 'none';
   openNotifPanelByDefault();
   try { trackEvent('login'); startHeartbeat(); } catch(e) {}
+  setTimeout(() => { try { kpStorePreload(); } catch (e) {} }, 1500);
   requestWelcomeEmail(user);
   attachReferral(user).then(loadReferralPromo);
   try { if (typeof installAfterSignup === 'function') installAfterSignup(user); } catch (e) {}
@@ -13858,10 +13859,31 @@ async function kpStoreReady() {
   }
   return P;
 }
-// Le webhook RevenueCat met le profil à jour : on attend qu'il soit passé
-async function kpStoreWaitPremium() {
-  showToast('⏳ Activation de ton abonnement...');
-  for (let i = 0; i < 8; i++) {
+// Les offres sont préparées à l'avance : la fenêtre d'Apple s'ouvre alors sans attente au clic
+let kpStoreOffers = null;
+function kpStorePreload() {
+  if (!kpStore() || isDemo || !currentUser) return null;
+  if (!kpStoreOffers) {
+    kpStoreOffers = kpStoreReady()
+      .then(P => P.getOfferings())
+      .catch(e => { kpStoreOffers = null; console.warn('[store] offres :', e); return null; });
+  }
+  return kpStoreOffers;
+}
+// Apple confirme l'achat à l'appli, le serveur est prévenu quelques secondes après (webhook RevenueCat)
+function kpStoreEntitled(info) {
+  return Object.keys(info?.entitlements?.active || {}).length > 0;
+}
+function kpStoreShowActive() {
+  profile.is_premium = true;
+  document.getElementById('plans-modal')?.remove();
+  document.getElementById('premium-gate')?.remove();
+  renderSubscriptionCard();
+  showPremiumWelcome();
+}
+async function kpStoreWaitPremium(alreadyShown) {
+  if (!alreadyShown) showToast('⏳ Activation de ton abonnement...');
+  for (let i = 0; i < (alreadyShown ? 20 : 8); i++) {
     await new Promise(r => setTimeout(r, 1500));
     try {
       const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
@@ -13870,14 +13892,13 @@ async function kpStoreWaitPremium() {
         profile.premium_until = data.premium_until;
         profile.subscription_status = data.subscription_status;
         profile.subscription_plan = data.subscription_plan;
-        document.getElementById('plans-modal')?.remove();
-        renderSubscriptionCard();
-        showPremiumWelcome();
+        if (alreadyShown) { renderSubscriptionCard(); return true; }
+        kpStoreShowActive();
         return true;
       }
     } catch (e) {}
   }
-  showToast('✓ Achat reçu : ton accès s\'activera d\'ici une minute');
+  if (!alreadyShown) showToast('✓ Achat reçu : ton accès s\'activera d\'ici une minute');
   return false;
 }
 async function kpStoreBuy(btn, plan) {
@@ -13885,15 +13906,18 @@ async function kpStoreBuy(btn, plan) {
   const label = btn ? btn.innerHTML : null;
   if (btn) { btn.disabled = true; btn.innerHTML = 'Ouverture...'; btn.style.opacity = '0.6'; }
   try {
+    let offerings = await kpStorePreload();
     const P = await kpStoreReady();
-    const offerings = await P.getOfferings();
+    if (!offerings) offerings = await P.getOfferings();
     const pkgs = offerings?.current?.availablePackages || [];
     const id = KP_RC_PRODUCTS[plan === 'annual' ? 'annual' : 'monthly'];
     const aPackage = pkgs.find(p => p?.product?.identifier === id);
-    if (!aPackage) throw new Error('Offre indisponible pour l\'instant');
-    await P.purchasePackage({ aPackage });
+    if (!aPackage) { kpStoreOffers = null; throw new Error('Offre indisponible pour l\'instant'); }
+    const result = await P.purchasePackage({ aPackage });
     trackEvent('store_purchase', { plan });
-    await kpStoreWaitPremium();
+    const entitled = kpStoreEntitled(result?.customerInfo);
+    if (entitled) kpStoreShowActive();
+    await kpStoreWaitPremium(entitled);
   } catch (e) {
     if (!(e?.userCancelled || String(e?.code) === '1')) { console.warn('[store] achat :', e); showToast('Achat impossible : ' + (e?.message || 'réessaie plus tard')); }
   }
@@ -13905,8 +13929,7 @@ async function kpStoreRestore(btn) {
   try {
     const P = await kpStoreReady();
     const r = await P.restorePurchases();
-    const active = Object.keys(r?.customerInfo?.entitlements?.active || {}).length > 0;
-    if (active) await kpStoreWaitPremium();
+    if (kpStoreEntitled(r?.customerInfo)) await kpStoreWaitPremium();
     else showToast('Aucun abonnement à restaurer sur ce compte Apple');
   } catch (e) { console.warn('[store] restauration :', e); showToast('Restauration impossible, réessaie plus tard'); }
   if (btn && btn.isConnected) btn.disabled = false;
@@ -13984,7 +14007,7 @@ const PLAN_COMMON = [
 ];
 const PLAN_FREE_IA = `${AI_FREE_WELCOME} analyses IA offertes, puis ${AI_FREE_DAILY} par jour · ${AI_AGENT_DAILY} questions par jour à l'assistant · plan du mois offert ${OBJ_TRIAL_DAYS} jours`;
 const PLAN_PREMIUM_ONLY = [
-  'Programme d\'épargne :<strong style="color:#4ade80">plan du mois</strong> et répartition IA pour tes objectifs, chaque mois',
+  'Programme d\'épargne : <strong style="color:#4ade80">plan du mois</strong> et répartition IA pour tes objectifs, chaque mois',
   'Analyses IA <strong style="color:#4ade80">illimitées</strong>',
   'Agent IA complet : score, alertes et analyse de tout ton portefeuille',
   'Signaux IA sur tes positions et les opportunités du marché',
@@ -14067,6 +14090,7 @@ function plansComparisonHTML(lapsed) {
 function showPlansModal(opts) {
   try { const _ob = document.getElementById('onboarding-modal'); if (_ob && _ob.style.display === 'flex') return; } catch (e) {}
   trackEvent('paywall_view', { feature: (opts && opts.feature) || 'offre' });
+  try { kpStorePreload(); } catch (e) {}
   document.getElementById('premium-gate')?.remove();
   document.getElementById('plans-modal')?.remove();
   const lapsed = profile?.subscription_status === 'canceled' || profile?.subscription_status === 'unpaid';
@@ -14209,20 +14233,45 @@ async function handleStripeReturn() {
   showToast('✓ Paiement reçu — ton accès s\'activera d\'ici une minute');
 }
 
+// Ce que Premium débloque, avec un accès direct à chaque outil
+const PREMIUM_WELCOME_ITEMS = [
+  ['Plan du mois', 'Ta répartition pour ton objectif, chaque mois', "nav('objectif')"],
+  ['Aide à la décision illimitée', 'Autant d\'analyses IA que tu veux', "nav('decision')"],
+  ['Agent IA complet', 'Score, alertes et analyse de tout ton portefeuille', "nav('ai')"],
+  ['Bilan patrimonial complet', 'Ton bilan détaillé, avec export PDF', 'openBilan()'],
+  ['Mes dépenses', 'Analyse de ton relevé et abonnements à résilier', "nav('depenses')"],
+];
+function closePremiumWelcome(action) {
+  document.getElementById('premium-welcome')?.remove();
+  if (action === 'objectif') nav('objectif');
+  else if (action === 'decision') nav('decision');
+  else if (action === 'ai') nav('ai');
+  else if (action === 'bilan') openBilan();
+  else if (action === 'depenses') nav('depenses');
+}
 function showPremiumWelcome() {
+  document.getElementById('premium-welcome')?.remove();
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10007;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.id = 'premium-welcome';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10007;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto';
+  const rows = PREMIUM_WELCOME_ITEMS.map(([title, sub, call]) => {
+    const key = call === 'openBilan()' ? 'bilan' : call.match(/'(\w+)'/)[1];
+    return `<button type="button" onclick="closePremiumWelcome('${key}')" style="display:flex;align-items:center;gap:11px;width:100%;padding:11px 0;background:none;border:none;border-top:1px solid #f0f0f2;text-align:left;font:inherit;cursor:pointer">
+      <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="#16a34a" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>
+      <span style="flex:1;min-width:0"><b style="display:block;font-size:14px;font-weight:800;color:#18181b">${title}</b><span style="display:block;font-size:12.5px;line-height:1.4;color:#71717a;margin-top:1px">${sub}</span></span>
+      <span style="flex-shrink:0;font-size:16px;font-weight:700;color:#a1a1aa">›</span>
+    </button>`;
+  }).join('');
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:22px;max-width:400px;width:100%;overflow:hidden">
-      <div style="background:linear-gradient(135deg,#0d2818,#16a34a);padding:30px 24px;text-align:center">
-        <div style="font-size:38px;margin-bottom:8px">✨</div>
+    <div style="background:#fff;border-radius:22px;max-width:400px;width:100%;overflow:hidden;margin:auto">
+      <div style="background:linear-gradient(135deg,#0d2818,#16a34a);padding:24px;text-align:center">
         <div style="font-size:21px;font-weight:900;color:#fff;letter-spacing:-0.03em">Bienvenue dans Premium</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.85);margin-top:5px">Ton abonnement est actif</div>
       </div>
-      <div style="padding:22px 24px">
-        <div style="font-size:13.5px;color:#52525b;line-height:1.6;margin-bottom:18px">
-          Ton abonnement est actif. Toutes les fonctionnalités avancées sont débloquées — analyses illimitées, analyse groupée, bilan complet.
-        </div>
-        <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">Commencer</button>
+      <div style="padding:16px 20px 20px">
+        <div style="font-size:13px;font-weight:700;color:#52525b;margin-bottom:9px">Voici ce que tu débloques :</div>
+        ${rows}
+        <button type="button" onclick="closePremiumWelcome()" style="width:100%;margin-top:12px;padding:13px;background:#16a34a;border:none;border-radius:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer">Commencer</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
