@@ -225,6 +225,25 @@ for (const d of DEVICES) {
     await sleep(500);
     await page.screenshot({ path: `${OUT}/${d.name}-${file}.png` });
     console.log('capture', d.name, file);
+    await page.evaluate(() => { const r = document.getElementById('sec-ai'); if (r) r.style.display = ''; });
+  }
+  // Contrôles pleine page (non destinés à la fiche) : Santé et Scénario crise, clair, sombre, compte vide
+  if (d.name === 'iphone') {
+    const shot = async (name, sec, js) => {
+      await page.evaluate(([s, code]) => { if (code) (0, eval)(code); nav(s, true); window.scrollTo(0, 0); }, [sec, js || '']);
+      await sleep(1800);
+      await page.screenshot({ path: `${OUT}/ctrl-${name}.png`, fullPage: true });
+      console.log('contrôle', name);
+    };
+    await shot('sante-clair', 'sante');
+    await shot('crise-clair', 'crise');
+    await shot('crise-50', 'crise', 'setCriseDrop(50)');
+    await shot('crise-10', 'crise', 'setCriseDrop(10)');
+    await shot('sante-sombre', 'sante', "document.documentElement.setAttribute('data-theme','dark')");
+    await shot('crise-sombre', 'crise', 'setCriseDrop(30)');
+    await shot('sante-vide', 'sante', "document.documentElement.setAttribute('data-theme','light');window.__p=positions;positions=[]");
+    await shot('crise-vide', 'crise');
+    await shot('accueil-vide', 'home');
   }
   await ctx.close();
 }
