@@ -279,6 +279,66 @@ export default async function handler(req, res) {
     // ralentissait fortement les réponses et pouvait consommer tout le budget de tokens, laissant un texte vide ou tronqué.
     // Un appel peut la réactiver explicitement avec { thinking: true }.
     const disableThinking = req.body.thinking !== true;
+    // Compteur du jour pour l'affichage côté client (comptes gratuits uniquement)
+    const clientQuota = () => {
+      const q = quota.quota;
+      if (quota.premium || !q || feature !== 'general') return null;
+      const used = q.used + 1; // cet appel vient d'être consommé
+      // Si cet appel épuise les offertes, on bascule l'affichage sur le quota du jour
+      if (q.mode === 'welcome' && used >= q.limit) return { mode: 'daily', used: 0, limit: FREE_DAILY_AFTER_WELCOME, welcome: FREE_WELCOME_CREDITS };
+      return { ...q, used };
+    };
+
+    // Réponse progressive : le texte part vers le navigateur au fur et à mesure qu'il est écrit
+    if (req.body.stream === true) {
+      const open = (extra) => fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: finalModel, max_tokens: finalMaxTokens, stream: true,
+          system: SERVER_FRAME + (system || ''),
+          messages: [{ role: 'user', content: prompt }],
+          ...extra
+        })
+      });
+      let up = await open(disableThinking ? { thinking: { type: 'disabled' } } : {});
+      if (!up.ok && disableThinking && up.status === 400) up = await open({});
+      if (!up.ok || !up.body) {
+        const err = await up.json().catch(() => null);
+        const msg = err?.error?.message || `Anthropic HTTP ${up.status}`;
+        console.error('[api/claude] Anthropic error:', up.status, msg);
+        return res.status(502).json({ error: 'IA indisponible : ' + msg });
+      }
+      res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' });
+      res.flushHeaders?.();
+      const send = (obj) => res.write('data: ' + JSON.stringify(obj) + '\n\n');
+      const usage = { input_tokens: 0, output_tokens: 0 };
+      let buf = '';
+      try {
+        const decoder = new TextDecoder();
+        for await (const chunk of up.body) {
+          buf += decoder.decode(chunk, { stream: true });
+          let i;
+          while ((i = buf.indexOf('\n')) >= 0) {
+            const line = buf.slice(0, i).trim();
+            buf = buf.slice(i + 1);
+            if (!line.startsWith('data:')) continue;
+            let ev;
+            try { ev = JSON.parse(line.slice(5)); } catch { continue; }
+            if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') send({ t: ev.delta.text });
+            else if (ev.type === 'message_start') Object.assign(usage, ev.message?.usage || {});
+            else if (ev.type === 'message_delta' && ev.usage) Object.assign(usage, ev.usage);
+          }
+        }
+        send({ done: true, quota: clientQuota() });
+      } catch (e) {
+        console.error('[api/claude] flux interrompu:', e.message);
+        send({ error: true });
+      }
+      await logUsage({ userId: user.id, model: finalModel, usage, system, feature });
+      return res.end();
+    }
+
     let { response, data } = await callAnthropic(disableThinking ? { thinking: { type: 'disabled' } } : {});
     if (!response.ok && disableThinking && response.status === 400) {   // le modèle refuse ce paramètre : on refait l'appel sans
       ({ response, data } = await callAnthropic({}));
@@ -297,17 +357,10 @@ export default async function handler(req, res) {
       text: text || 'Aucune réponse.',
       // Diagnostic : pourquoi la réponse est vide ou coupée (max_tokens…)
       meta: { stop_reason: data.stop_reason || null, output_tokens: data.usage?.output_tokens ?? null, blocks: (data.content || []).map(b => b.type) },
-      // Compteur du jour pour l'affichage côté client (comptes gratuits uniquement)
-      quota: (() => {
-        const q = quota.quota;
-        if (quota.premium || !q || feature !== 'general') return null;
-        const used = q.used + 1; // cet appel vient d'être consommé
-        // Si cet appel épuise les offertes, on bascule l'affichage sur le quota du jour
-        if (q.mode === 'welcome' && used >= q.limit) return { mode: 'daily', used: 0, limit: FREE_DAILY_AFTER_WELCOME, welcome: FREE_WELCOME_CREDITS };
-        return { ...q, used };
-      })()
+      quota: clientQuota()
     });
   } catch (error) {
+    if (res.headersSent) { console.error('[api/claude]', error.message); return res.end(); }
     res.status(500).json({ error: 'Erreur serveur: ' + error.message });
   }
 }
