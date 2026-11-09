@@ -13426,7 +13426,7 @@ async function parsePDFStatement(file) {
     const name = p.ticker || p.name;
     const pru = p.pru || 0, price = p.price || pru;
     // Contrôle : quantité × cours doit retrouver la valeur de la ligne, sinon la quantité a été mal lue
-    let qty = p.qty;
+    let qty = p.qty || 0;
     if (p.value > 0 && price > 0 && Math.abs(qty * price - p.value) / p.value > 0.2) qty = p.value / price;
     return {
       isin: p.isin || null,
@@ -13437,7 +13437,8 @@ async function parsePDFStatement(file) {
       pru: Math.round(pru * 1e6) / 1e6,
       price: Math.round(price * 1e6) / 1e6,
       cur: p.currency && p.currency !== 'EUR' ? p.currency : '',
-      checked: true,
+      needsQty: !(qty > 0),
+      checked: qty > 0,
     };
   });
 }
@@ -13445,8 +13446,8 @@ async function parsePDFStatement(file) {
 // Parse un CSV avec détection auto (séparateur ; , ou tab · colonnes par mots-clés)
 function parseCSVSmart(text) {
   const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/["'’]/g, ' ').replace(/\s+/g, ' ').trim();
-  const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return [];
+  let lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return [];
 
   const splitWith = (l, sep) => {
     const out = []; let cur = '', inQ = false;
@@ -13479,7 +13480,21 @@ function parseCSVSmart(text) {
       if (find(c, QTY) >= 0 && (find(c, NAME) >= 0 || find(c, TICKER) >= 0)) { headerAt = i; sep = cand; cols = c; break; }
     }
   }
-  if (headerAt < 0) return [];
+  // Pas de colonne de quantité : un tableau avec seulement des noms ou des codes
+  for (let i = 0; i < Math.min(lines.length, 15) && headerAt < 0; i++) {
+    for (const cand of [';', '\t', ',']) {
+      const c = splitWith(lines[i], cand).map(norm);
+      if (find(c, NAME) >= 0 || find(c, TICKER) >= 0) { headerAt = i; sep = cand; cols = c; break; }
+    }
+  }
+  // Aucun en-tête : une simple liste de noms, un par ligne ou séparés par des virgules
+  if (headerAt < 0) {
+    if (lines.length > 1 && lines.some(l => /[;,\t]/.test(l))) return [];
+    const names = lines.flatMap(l => l.split(/[;,\t]/)).map(n => n.trim()).filter(Boolean);
+    if (!names.length || names.some(n => n.length > 60 || !/[a-zA-Z]/.test(n))) return [];
+    lines = ['nom', ...names];
+    headerAt = 0; sep = ';'; cols = ['nom'];
+  }
 
   const iTicker = find(cols, TICKER);
   const iName = find(cols, NAME, [iTicker]);
@@ -13518,15 +13533,15 @@ function parseCSVSmart(text) {
   const isTransactions = iDate >= 0 && iSide >= 0;
   const merged = new Map();
   for (const c of body) {
-    if (c.length < 2) continue;
+    if (c.length < 2 && cols.length >= 2) continue;
     const label = iName >= 0 ? clean(c[iName]) : '';
     let raw = iTicker >= 0 ? clean(c[iTicker]) : '';
     if (NOT_A_POSITION.test(norm(label || raw))) continue;
     if (!label && !raw) continue;
     const side = iSide >= 0 ? norm(c[iSide]) : '';
     const isSell = /(vente|sell|sale|cession)/.test(side) || (isTransactions && num(c[iQty]) < 0);
-    let qty = Math.abs(num(c[iQty]));
-    if (qty <= 0) continue;
+    let qty = iQty >= 0 ? Math.abs(num(c[iQty])) : 0;
+    if (qty <= 0 && isTransactions) continue;
     if (isTransactions && side && !isSell && !/(achat|buy|souscription|purchase)/.test(side)) continue;   // dividendes, frais…
     let pru = iPru >= 0 ? Math.abs(num(c[iPru])) : 0;
     const total = iTotal >= 0 ? Math.abs(num(c[iTotal])) : 0;
@@ -13535,9 +13550,9 @@ function parseCSVSmart(text) {
       const big = parseFloat(clean(c[iQty]).replace(',', ''));
       if (Math.abs(big * pru - total) < Math.abs(qty * pru - total)) qty = big;
     }
-    if (!pru && total > 0) pru = total / qty;
+    if (!pru && total > 0 && qty > 0) pru = total / qty;
     let price = iPrice >= 0 ? Math.abs(num(c[iPrice])) : 0;
-    if (!price && iValue >= 0) { const val = Math.abs(num(c[iValue])); if (val > 0) price = val / qty; }
+    if (!price && iValue >= 0 && qty > 0) { const val = Math.abs(num(c[iValue])); if (val > 0) price = val / qty; }
 
     let cur = iCur >= 0 ? clean(c[iCur]).toUpperCase() : '';
     const headCur = (cols[iPru] || '').match(/\b(usd|gbp|chf)\b/);
@@ -13555,6 +13570,7 @@ function parseCSVSmart(text) {
       if (prev) prev.qty = Math.max(0, prev.qty - qty);
       continue;
     }
+    if (prev && qty <= 0) continue;
     if (prev) {
       const q = prev.qty + qty;
       prev.pru = q > 0 ? (prev.qty * prev.pru + qty * pru) / q : prev.pru;
@@ -13562,10 +13578,10 @@ function parseCSVSmart(text) {
       if (price) prev.price = price;
       prev.merged = (prev.merged || 1) + 1;
     } else {
-      merged.set(key, { isin: isIsin ? raw : null, tickerKnown: !!looksLikeTicker, name, fullName: label && label !== name ? label.slice(0, 60) : '', qty, pru, price, cur: cur && cur !== 'EUR' ? cur : '', checked: true });
+      merged.set(key, { isin: isIsin ? raw : null, tickerKnown: !!looksLikeTicker, name, fullName: label && label !== name ? label.slice(0, 60) : '', qty, pru, price, cur: cur && cur !== 'EUR' ? cur : '', needsQty: qty <= 0, checked: qty > 0 });
     }
   }
-  return [...merged.values()].filter(r => r.qty > 0).slice(0, 60).map(r => ({
+  return [...merged.values()].filter(r => r.qty > 0 || r.needsQty).slice(0, 60).map(r => ({
     ...r,
     qty: Math.round(r.qty * 1e8) / 1e8,
     pru: Math.round(r.pru * 1e6) / 1e6,
@@ -13580,7 +13596,6 @@ function showCSVPreview(rows, filename) {
   const _dp = detectPlatform(filename);
   const platform = _dp !== 'Autre' ? _dp : (kpMainPlatform() || 'Autre');   // fichier non reconnu : plateforme principale
   window._csvPlatform = platform;
-  const parts = q => { const t = Number(q).toLocaleString('fr-FR', { maximumFractionDigits: 8 }); return t + (q > 1 ? ' parts' : ' part'); };
 
   document.getElementById('csv-preview-modal')?.remove();
   const overlay = document.createElement('div');
@@ -13607,16 +13622,20 @@ function showCSVPreview(rows, filename) {
           return `
         <div class="kpi-row" id="csv-row-${i}">
           <label class="kpi-row-head">
-            <input type="checkbox" checked onchange="csvRowCheck(${i},this.checked)">
-            <span class="kpi-row-name"><b>${_escHtml(title)}</b><small>${_escHtml(r.name)} · ${parts(r.qty)}${r.price > 0 && r.live ? ` · cours ${fmtImportEur(r.price)}` : ''}</small></span>
+            <input type="checkbox" id="csv-check-${i}" ${r.checked ? 'checked' : ''} ${r.needsQty ? 'disabled' : ''} onchange="csvRowCheck(${i},this.checked)">
+            <span class="kpi-row-name"><b>${_escHtml(title)}</b><small id="csv-sub-${i}">${csvRowSub(r)}</small></span>
           </label>
           ${notes.join('')}
+          ${r.needsQty ? `<div class="kpi-field">
+            <label for="csv-qty-${i}"><b>Nombre de parts</b><small>Combien de parts tu possèdes</small></label>
+            <span class="kpi-input"><input id="csv-qty-${i}" type="number" min="0" step="any" inputmode="decimal" placeholder="À remplir" oninput="csvRowSetQty(${i},this.value)"><span class="kpi-unit-empty"></span></span>
+          </div>` : ''}
           <div class="kpi-field">
             <label for="csv-pru-${i}"><b>Somme investie</b><small>Le total que tu as payé à l'achat pour cette ligne</small></label>
-            <span class="kpi-input"><input id="csv-pru-${i}" type="number" min="0" step="any" inputmode="decimal" value="${r.pru > 0 ? Math.round(r.qty * r.pru * 100) / 100 : ''}" placeholder="À remplir" oninput="csvRowSetInvested(${i},this.value)"> €</span>
+            <span class="kpi-input"><input id="csv-pru-${i}" type="number" min="0" step="any" inputmode="decimal" value="${r.pru > 0 && r.qty > 0 ? Math.round(r.qty * r.pru * 100) / 100 : ''}" placeholder="À remplir" oninput="csvRowSetInvested(${i},this.value)"> €</span>
           </div>
           <div class="kpi-result" id="csv-result-${i}"></div>
-          <button type="button" class="kpi-more" id="csv-more-${i}" onclick="csvRowToggleSold(${i})">J'ai déjà vendu une partie de cette ligne</button>
+          <button type="button" class="kpi-more" id="csv-more-${i}" ${r.qty > 0 ? '' : 'style="display:none"'} onclick="csvRowToggleSold(${i})">J'ai déjà vendu une partie de cette ligne</button>
           <div class="kpi-sold" id="csv-sold-${i}" hidden>
             <p>Sur ce que tu as déjà vendu, tu as :</p>
             <div class="kpi-choice">
@@ -13639,6 +13658,10 @@ function showCSVPreview(rows, filename) {
   csvSummaryRender();
 }
 
+function csvRowSub(r) {
+  const n = Number(r.qty).toLocaleString('fr-FR', { maximumFractionDigits: 8 });
+  return _escHtml(r.name) + (r.qty > 0 ? ` · ${n} ${r.qty > 1 ? 'parts' : 'part'}` : '') + (r.price > 0 && r.live ? ` · cours ${fmtImportEur(r.price)}` : '');
+}
 function fmtImportEur(n) {
   const a = Math.abs(n);
   return n.toLocaleString('fr-FR', { minimumFractionDigits: a > 0 && a < 1 ? 4 : 2, maximumFractionDigits: a > 0 && a < 1 ? 4 : 2 }) + ' €';
@@ -13654,7 +13677,10 @@ function csvRowRender(i) {
   const r = window._csvRows[i];
   const el = document.getElementById('csv-result-' + i);
   if (!el) return;
-  if (!(r.pru > 0)) {
+  if (!(r.qty > 0)) {
+    el.className = 'kpi-result warn';
+    el.textContent = 'Indique ton nombre de parts pour importer cette ligne.';
+  } else if (!(r.pru > 0)) {
     el.className = 'kpi-result warn';
     el.textContent = 'Sans somme investie, le résultat de cette ligne restera à 0 €.';
   } else if (r.price > 0 && r.live) {
@@ -13674,7 +13700,8 @@ function csvRowRender(i) {
 function csvSummaryRender() {
   const el = document.getElementById('csv-summary');
   if (!el) return;
-  const rows = (window._csvRows || []).filter(r => r.checked);
+  const rows = (window._csvRows || []).filter(r => r.checked && r.qty > 0);
+  const toComplete = (window._csvRows || []).filter(r => !(r.qty > 0)).length;
   const invested = rows.reduce((a, r) => a + r.qty * (r.pru > 0 ? r.pru : 0), 0);
   const known = rows.filter(r => r.live && r.pru > 0);
   const result = known.reduce((a, r) => a + r.qty * (r.price - r.pru) + (r.pv ? r.pvSign * r.pv : 0), 0);
@@ -13683,6 +13710,7 @@ function csvSummaryRender() {
   el.innerHTML = `<div><span>Total investi</span><b>${fmtImportEur(invested)}</b></div>
     ${known.length ? `<div><span>Résultat estimé</span><b class="${result >= 0 ? 'up' : 'down'}">${result >= 0 ? '+' : '−'}${fmtImportEur(Math.abs(result))}</b></div>` : ''}
     <p>Compare le total investi avec ton relevé : s'il est différent, regarde les quantités et les sommes ci-dessous.</p>
+    ${toComplete ? `<p class="warn">${toComplete} ligne${toComplete > 1 ? 's' : ''} à compléter : ${toComplete > 1 ? 'elles ne seront pas importées' : 'elle ne sera pas importée'} sans nombre de parts.</p>` : ''}
     ${missing ? `<p class="warn">${missing} ligne${missing > 1 ? 's' : ''} sans somme investie.</p>` : ''}
     ${unknown ? `<p class="warn">${unknown} titre${unknown > 1 ? 's' : ''} à vérifier.</p>` : ''}`;
 }
@@ -13697,11 +13725,31 @@ function csvRowSet(i, field, val) {
   csvRowRender(i);
   csvSummaryRender();
 }
+// Nombre de parts absent du fichier : la ligne n'est importable qu'une fois complétée
+function csvRowSetQty(i, val) {
+  const r = window._csvRows[i];
+  const n = parseFloat(String(val).replace(',', '.'));
+  r.qty = Number.isFinite(n) && n > 0 ? n : 0;
+  r.checked = r.qty > 0;
+  const box = document.getElementById('csv-check-' + i);
+  if (box) { box.checked = r.checked; box.disabled = !r.checked; }
+  const sub = document.getElementById('csv-sub-' + i);
+  if (sub) sub.innerHTML = csvRowSub(r);
+  document.getElementById('csv-row-' + i)?.classList.remove('off');
+  const more = document.getElementById('csv-more-' + i);
+  if (more) more.style.display = r.qty > 0 ? '' : 'none';
+  const inv = document.getElementById('csv-pru-' + i);
+  if (r.investedTyped > 0) r.pru = r.qty > 0 ? Math.round(r.investedTyped / r.qty * 1e8) / 1e8 : 0;
+  else if (inv && r.pru > 0) inv.value = r.qty > 0 ? Math.round(r.qty * r.pru * 100) / 100 : '';
+  csvRowRender(i);
+  csvSummaryRender();
+}
 // La case contient le total payé : le prix par part en est déduit
 function csvRowSetInvested(i, val) {
   const r = window._csvRows[i];
   const n = parseFloat(String(val).replace(',', '.'));
-  r.pru = Number.isFinite(n) && n > 0 && r.qty > 0 ? Math.round(n / r.qty * 1e8) / 1e8 : 0;
+  r.investedTyped = Number.isFinite(n) && n > 0 ? n : 0;
+  r.pru = r.investedTyped > 0 && r.qty > 0 ? Math.round(r.investedTyped / r.qty * 1e8) / 1e8 : 0;
   csvRowRender(i);
   csvSummaryRender();
 }
@@ -13721,10 +13769,10 @@ function csvRowSign(i, sign) {
 }
 
 async function confirmCSVImport() {
-  const rows = (window._csvRows || []).filter(r => r.checked);
+  const rows = (window._csvRows || []).filter(r => r.checked && r.qty > 0);
   const platform = document.getElementById('csv-platform-sel')?.value || window._csvPlatform || 'Autre';
+  if (!rows.length) { showToast('Complète au moins une ligne pour l\'importer'); return; }
   document.getElementById('csv-preview-modal')?.remove();
-  if (!rows.length) return;
 
   let added = 0, updated = 0, failed = 0;
   for (let r of rows) {
