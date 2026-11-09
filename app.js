@@ -13489,6 +13489,7 @@ function parseCSVSmart(text) {
   }
   // Aucun en-tête : une simple liste de noms, un par ligne ou séparés par des virgules
   if (headerAt < 0) {
+    if (lines.length > 1 && lines.some(l => /[;,\t]/.test(l))) return [];
     const names = lines.flatMap(l => l.split(/[;,\t]/)).map(n => n.trim()).filter(Boolean);
     if (!names.length || names.some(n => n.length > 60 || !/[a-zA-Z]/.test(n))) return [];
     lines = ['nom', ...names];
@@ -13532,7 +13533,7 @@ function parseCSVSmart(text) {
   const isTransactions = iDate >= 0 && iSide >= 0;
   const merged = new Map();
   for (const c of body) {
-    if (c.length < 2) continue;
+    if (c.length < 2 && cols.length >= 2) continue;
     const label = iName >= 0 ? clean(c[iName]) : '';
     let raw = iTicker >= 0 ? clean(c[iTicker]) : '';
     if (NOT_A_POSITION.test(norm(label || raw))) continue;
