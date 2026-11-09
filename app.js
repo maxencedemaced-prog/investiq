@@ -13265,7 +13265,7 @@ async function handleCSVImport(file) {
     } else if (ext === 'xlsx' || ext === 'xls') {
       await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
       const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-      rows = parseCSVSmart(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ';' }));
+      rows = parseCSVSmart(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ';', rawNumbers: true }));
     } else {
       rows = parseCSVSmart(await file.text());
     }
@@ -13295,15 +13295,34 @@ async function resolveImportTickers(rows) {
   document.getElementById('import-loading').innerHTML = '<div style="background:#fff;color:#09090b;border-radius:16px;padding:20px 24px;font-size:14px;font-weight:700;text-align:center;max-width:320px">🔎 Identification de tes titres…<div style="font-size:12px;font-weight:500;color:#71717a;margin-top:6px">Pour que les prix se mettent à jour en direct.</div></div>';
   const rank = (sym) => {
     const suf = (sym.match(/\.[A-Z]+$/) || [''])[0];
-    return { '.PA': 0, '.AS': 1, '.DE': 2, '.MI': 3, '.BR': 4, '': 5, '.F': 6, '.L': 9 }[suf] ?? 7;
+    return { '.PA': 0, '.AS': 1, '.BR': 2, '.DE': 3, '.MI': 4, '.MC': 5, '.F': 6, '.L': 9, '': 9 }[suf] ?? 7;
   };
+  const firstWord = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().match(/[a-z0-9]{3,}/)?.[0] || '';
   const search = async (q) => ((await (await fetch('/api/search?q=' + encodeURIComponent(q))).json()).results || []);
   const resolve = async (r) => {
     const label = r.fullName || r.name;
+    // Crypto écrite « Solana (SOL / EUR) » : on la reconnaît à sa paire et on suit son vrai cours
+    const pair = String(label).match(/\(\s*([A-Z0-9]{2,10})\s*\/\s*(EUR|USD)\s*\)/i);
+    if (pair) {
+      r.fullName = r.fullName || r.name;
+      r.name = pair[1].toUpperCase() + '-EUR';
+      r.type = 'Crypto';
+      r.sector = 'Crypto';
+      return;
+    }
     try {
       const list = await search(r.isin || label);
       if (!list.length) return;
-      let best = r.isin ? [...list].sort((a, b) => rank(a.ticker) - rank(b.ticker))[0] : list[0];
+      // Du plus sûr au moins sûr : Paris et les places en euros d'abord, les cotations américaines en dernier
+      let best = [...list].sort((a, b) => rank(a.ticker) - rank(b.ticker))[0];
+      // Yahoo ne donne pas toujours Paris (Alten : Vienne, Xetra, OTC) : on essaie le même symbole à Paris, si c'est bien la même société
+      if (rank(best.ticker) > 0) {
+        const bases = [...new Set(list.map(x => x.ticker.split('.')[0].replace(/P$/, '')).concat(list.map(x => x.ticker.split('.')[0])))];
+        for (const base of bases.slice(0, 4)) {
+          const hit = (await search(base + '.PA')).find(x => x.ticker === base + '.PA');
+          if (hit && firstWord(hit.name) === firstWord(label)) { best = hit; break; }
+        }
+      }
       // L'ISIN ne renvoie parfois qu'une cotation hors euro (ex. Londres) : même titre recherché par son nom
       if (r.isin && rank(best.ticker) > 5) {
         const base = best.ticker.split('.')[0];
@@ -13410,6 +13429,7 @@ function parseCSVSmart(text) {
   const iQty   = findCol(['quantit','quantity','volume','nombre','shares','qty','anzahl']);
   const iPru   = findCol(['pru','prix moyen','avg','average','achat','open price','prix d\'ouverture','purchase','buy','cost']);
   const iPrice = findCol(['prix actuel','current','market price','cours','last','close','dernier']);
+  const iTotal = findCol(['valeur totale','total invest','montant invest','total investi','valeur invest']);
 
   if (iQty === -1 || (iName === -1 && iTicker === -1)) return [];
 
@@ -13434,9 +13454,15 @@ function parseCSVSmart(text) {
     if (/^[A-Z]{2}[A-Z0-9]{10}$/.test(name) && iName >= 0 && c[iName]) {
       name = c[iName].replace(/"/g,'');
     }
-    const qty = num(c[iQty]);
+    let qty = num(c[iQty]);
     if (!name || qty <= 0) continue;
     const pru = iPru >= 0 ? num(c[iPru]) : 0;
+    // « 17,998 » peut vouloir dire 17 998 parts : le montant investi du fichier tranche
+    const lineTotal = iTotal >= 0 ? num(c[iTotal]) : 0;
+    if (lineTotal > 0 && pru > 0 && /^\d{1,3},\d{3}$/.test(String(c[iQty]).trim())) {
+      const asThousands = parseFloat(String(c[iQty]).replace(',', ''));
+      if (Math.abs(asThousands * pru - lineTotal) < Math.abs(qty * pru - lineTotal)) qty = asThousands;
+    }
     const price = iPrice >= 0 ? num(c[iPrice]) : pru;
     const rawT = iTicker >= 0 ? (c[iTicker] || '').replace(/"/g,'').trim() : '';
     const isIsin = /^[A-Z]{2}[A-Z0-9]{10}$/.test(rawT);
@@ -13446,8 +13472,8 @@ function parseCSVSmart(text) {
       name: name.slice(0, 30),
       fullName: iName >= 0 && iTicker >= 0 ? (c[iName]||'').replace(/"/g,'').slice(0,50) : '',
       qty: Math.round(qty * 1e8) / 1e8,
-      pru: Math.round(pru * 100) / 100,
-      price: Math.round((price || pru) * 100) / 100,
+      pru: Math.round(pru * 1e6) / 1e6,
+      price: Math.round((price || pru) * 1e6) / 1e6,
       checked: true,
     });
   }
@@ -13523,7 +13549,7 @@ function showCSVPreview(rows, filename) {
 function csvRowPru(r) {
   const base = r.pru > 0 ? r.pru : (r.price || 0);
   if (!r.pv || !r.qty) return base;
-  return Math.max(0.01, Math.round((base - r.pvSign * r.pv / r.qty) * 100) / 100);
+  return Math.max(0.000001, Math.round((base - r.pvSign * r.pv / r.qty) * 1e6) / 1e6);
 }
 function csvRowRender(i) {
   const r = window._csvRows[i];
