@@ -2403,3 +2403,22 @@ button.set-row:hover,a.set-row:hover{background:var(--color-bg-subtle)}
 .kpi-result .kpi-now>b,.kpi-result .kpi-diff>b{white-space:nowrap;padding-right:18px}
 .kpi-result .kpi-diff{padding-top:7px;border-top:1px solid var(--color-border-subtle)}
 .kpi-unit-empty{display:inline-block;width:10px}
+
+/* Connexion : texte toujours lisible (les anciennes règles et le thème sombre l'écrivaient en blanc sur fond blanc) */
+#auth-login input.kh-input,#auth-signup input.kh-input,
+#auth-login input.kh-input:focus,#auth-signup input.kh-input:focus{background:#fff !important;color:#0b1220 !important;-webkit-text-fill-color:#0b1220 !important;caret-color:#0b1220 !important;border:1.5px solid #d0d5dd !important}
+#auth-login input.kh-input:focus,#auth-signup input.kh-input:focus{border-color:#16a34a !important}
+#auth-login input.kh-input::placeholder,#auth-signup input.kh-input::placeholder{color:#98a2b3 !important;-webkit-text-fill-color:#98a2b3 !important}
+#auth-login input.kh-input:-webkit-autofill,#auth-signup input.kh-input:-webkit-autofill{-webkit-text-fill-color:#0b1220 !important;caret-color:#0b1220 !important;box-shadow:0 0 0 1000px #fff inset !important}
+.kh-pass{position:relative;margin-bottom:12px}
+.kh-pass .kh-input{margin-bottom:0;padding-right:48px}
+.kh-eye{position:absolute;top:0;right:0;bottom:0;width:46px;display:flex;align-items:center;justify-content:center;background:none;border:none;padding:0;color:#667085;cursor:pointer;border-radius:0 12px 12px 0}
+.kh-eye:hover{color:#0b1220}
+.kh-eye:focus-visible{outline:2px solid #16a34a;outline-offset:-3px}
+.kh-eye .kh-eye-off{display:none}
+.kh-eye[aria-pressed="true"] .kh-eye-off{display:inline}
+
+/* Textes d'exemple des champs : assez contrastés pour être lus, en clair comme en sombre */
+input::placeholder,textarea::placeholder,.search-box input::placeholder,.ac-box input::placeholder{color:#71717a;opacity:1}
+[data-theme="dark"] input::placeholder,[data-theme="dark"] textarea::placeholder,[data-theme="dark"] .search-box input::placeholder,[data-theme="dark"] .ac-box input::placeholder,[data-theme="dark"] #ai-in::placeholder{color:#9aa3ae;opacity:1}
+#auth-login input.kh-input::placeholder,#auth-signup input.kh-input::placeholder{color:#667085 !important;-webkit-text-fill-color:#667085 !important}

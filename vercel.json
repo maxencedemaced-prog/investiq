@@ -27,6 +27,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/push-send?mode=signals",
+      "schedule": "0 8 * * 1-5"
+    },
+    {
       "path": "/api/push-send?mode=alerts",
       "schedule": "*/15 7-20 * * 1-5"
     },

@@ -115,7 +115,8 @@ async function newsFor(name) {
       if (!title || !ts) continue;
       if (/cours (de l[’']?)?action|cotation|objectif de cours|cours\s+\S+\s+bourse|consensus des analystes|\|\s*cours|actionnariat|secteur d.activit/i.test(title)) continue;
       if (!isAbout(title, name)) continue;   // simples pages de cours : aucune information
-      out.push({ title: title.slice(0, 140), source: source.slice(0, 40), ts });
+      const link = pick('link');
+      out.push({ title: title.slice(0, 140), source: source.slice(0, 40), ts, url: /^https:\/\/news\.google\.com\//.test(link) ? link : '' });
       if (out.length >= 3) break;
     }
     return out;
