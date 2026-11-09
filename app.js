@@ -11643,7 +11643,7 @@ function kpSourcesHTML(text, sources) {
       </a>`;
   const usedRows = all.filter(r => cited.has(r.n)), other = all.filter(r => !cited.has(r.n)).slice(0, 5);
   return (usedRows.length ? head('Sources de cette analyse') + usedRows.map(r => row(r, true)).join('')
-      : '<div style="font-size:12px;color:var(--color-text-secondary);margin-top:16px;line-height:1.5">Aucun article précis n'est cité : cette analyse s'appuie sur les données de marché réelles (cours et indices).</div>')
+      : `<div style="font-size:12px;color:var(--color-text-secondary);margin-top:16px;line-height:1.5">Aucun article précis n'est cité : cette analyse s'appuie sur les données de marché réelles (cours et indices).</div>`)
     + (other.length ? head('Autres actualités du marché') + other.map(r => row(r, false)).join('') : '');
 }
 async function kpOpenAnalysis(o) {
