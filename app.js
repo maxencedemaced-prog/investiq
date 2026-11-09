@@ -15254,6 +15254,9 @@ function detectIntent(q) {
 
 let aiBusy = false; // verrou : une seule requête IA à la fois
 
+function kpAgentNoise(text) {
+  return callClaudeFailed(text) || /^🔒|^⏳|^⚠️|Limite du jour atteinte|Limite IA atteinte|Utilisation anormale/.test(String(text || ''));
+}
 // Question sur une matière première : l'agent reçoit les vrais cours et les titres de presse, et peut l'expliquer
 async function kpCommodityContext(q) {
   if (!/p[ée]trole|brent|\bwti\b|\bl['’]or\b|\bprix de l.or\b|platine|gaz naturel|cuivre|mati[èe]res? premi[èe]res?|\bargent m[ée]tal/i.test(q)) return '';
@@ -15288,7 +15291,8 @@ async function sendAI() {
 
   const intent = detectIntent(q);
   const ctx = getFullContext();
-  const histCtx = chatHistory.slice(-8).map(m => `${m.role==='user'?'Utilisateur':'Assistant'}: ${m.content}`).join('\n');
+  // Les messages d'erreur ou de limite ne font pas partie de la conversation : l'IA ne doit pas les recopier
+  const histCtx = chatHistory.filter(m => !kpAgentNoise(m.content)).slice(-8).map(m => `${m.role==='user'?'Utilisateur':'Assistant'}: ${m.content}`).join('\n');
 
   let systemPrompt = `Tu es l'Agent IA de Kapitaro, le copilote financier personnel de cet utilisateur. Tu connais son portefeuille, ses objectifs, son profil et, s'il existe, son DERNIER BILAN PATRIMONIAL complet (contexte ci-dessous : utilise-le pour le résumer, l'expliquer ou ajuster son plan, sans jamais inventer un élément qui n'y figure pas) — appuie-toi dessus pour personnaliser chaque réponse.
 
@@ -15317,7 +15321,8 @@ RÈGLES TECHNIQUES :
       chat.scrollTop = chat.scrollHeight;
       return;
     }
-    chatHistory.push({ role: 'assistant', content: r });
+    if (kpAgentNoise(r)) chatHistory.pop();
+    else chatHistory.push({ role: 'assistant', content: r });
     saveChatHistory();
 
     // Détecte et parse les actions
