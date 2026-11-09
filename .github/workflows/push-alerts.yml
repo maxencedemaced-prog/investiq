@@ -4,13 +4,22 @@
 # Secrets GitHub nécessaires : CRON_SECRET (même valeur que sur Vercel), APP_URL facultatif (https://kapitaro.fr par défaut).
 name: Alertes de prix
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "alerts ou signals"
+        default: alerts
+      only:
+        description: "Mode signals : identifiant d'un seul compte"
+        required: false
 jobs:
   alerts:
     runs-on: ubuntu-latest
     env:
       APP_URL: ${{ secrets.APP_URL }}
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      MODE: ${{ inputs.mode }}
+      ONLY: ${{ inputs.only }}
     steps:
       - name: Vérifier les seuils d'alerte
         run: |
@@ -20,10 +29,12 @@ jobs:
             echo "::error::Le secret CRON_SECRET est absent. GitHub > Settings > Secrets and variables > Actions > New repository secret."
             exit 1
           fi
-          echo "Appel de $APP_URL/api/push-send?mode=alerts"
-          code=$(curl --silent --show-error --max-time 60 -o response.json -w '%{http_code}' \
+          URL="$APP_URL/api/push-send?mode=${MODE:-alerts}"
+          if [ -n "$ONLY" ]; then URL="$URL&only=$ONLY"; fi
+          echo "Appel du mode ${MODE:-alerts}"
+          code=$(curl --silent --show-error --max-time 130 -o response.json -w '%{http_code}' \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/push-send?mode=alerts")
+            "$URL")
           echo "Statut HTTP : $code"
           cat response.json; echo
           if [ "$code" = "401" ]; then echo "::error::401 : CRON_SECRET différent de celui de Vercel (ou absent sur Vercel)."; fi

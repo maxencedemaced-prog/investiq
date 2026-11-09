@@ -5619,6 +5619,30 @@ function sigMarketMedian() {
   const v = PLAN_UNIVERSE.map(u => md[u[0]] && md[u[0]].p1y).filter(x => Number.isFinite(x)).sort((a, b) => a - b);
   return v.length >= 12 ? { value: v[Math.floor(v.length / 2)], count: v.length } : null;
 }
+// Signal Prudence sur une ligne détenue : affiché dans les notifications de l'appli, une seule fois par ligne
+const _sellNotified = new Set();
+function kpAddSellNotif(ticker, name, raison, ts) {
+  if (_sellNotified.has(ticker)) return;
+  _sellNotified.add(ticker);
+  notifications.unshift({ titre: '⚠️ Signal Prudence · ' + (name || ticker), texte: (raison ? raison + ' ' : '') + 'Information éducative, pas un conseil.', action: 'Voir les signaux', impact: 'high', heure: ts ? kpAgo(ts) : 'Maintenant', type: 'signal' });
+  document.getElementById('notif-dot')?.classList.add('show');
+  try { renderNotifications(); } catch (e) {}
+}
+async function kpLoadSellSignals() {
+  if (isDemo || !currentUser) return;
+  try {
+    const since = new Date(Date.now() - 7 * 86400000).toISOString();
+    const { data } = await sb.from('events').select('meta, created_at').eq('user_id', currentUser.id).eq('type', 'sell_signal').gte('created_at', since).order('created_at', { ascending: true });
+    (data || []).forEach(e => { if (e.meta && e.meta.ticker) kpAddSellNotif(e.meta.ticker, e.meta.name, e.meta.raison, Date.parse(e.created_at)); });
+  } catch (e) { console.warn('[signaux]', e); }
+}
+// Notification touchée : ouvre directement l'onglet Signaux
+function kpOpenFromNotif() {
+  if (new URLSearchParams(location.search).get('open') !== 'signaux') return;
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  nav('news');
+  setTimeout(() => setNewsFilter('signaux', document.getElementById('news-fil-signaux')), 300);
+}
 let _sigRun = null;   // analyse en cours : on la retrouve si l'utilisateur quitte l'onglet puis revient
 let _sigMarket = { ts: 0, data: null };   // cours de tout l'univers, gardés 15 min
 async function renderSignaux() {
@@ -5823,7 +5847,7 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
   };
   const failBlock = () => `<div style="text-align:center;padding:16px;color:#8e8e93;font-size:13px">Analyse indisponible pour l'instant.</div>`;
   const results = await Promise.allSettled([
-    myTickers.length ? fetchSignaux(myTickers, s => addCard(part('mine'), part('mine-skel'), s, true)) : Promise.resolve(),
+    myTickers.length ? fetchSignaux(myTickers, s => { addCard(part('mine'), part('mine-skel'), s, true); if (s.signal === 'vendre') kpAddSellNotif(s.ticker, s.name, s.raison); }) : Promise.resolve(),
     (async () => {
       const oppoTickers = await getOppoTickers();
       fillMedian();
@@ -6576,7 +6600,7 @@ async function initApp(user) {
   document.getElementById('demo-banner').style.display = 'none';
   openNotifPanelByDefault();
   try { trackEvent('login'); startHeartbeat(); } catch(e) {}
-  setTimeout(() => { try { kpStorePreload(); } catch (e) {} }, 1500);
+  setTimeout(() => { try { kpStorePreload(); kpLoadSellSignals(); kpOpenFromNotif(); } catch (e) {} }, 1500);
   requestWelcomeEmail(user);
   attachReferral(user).then(loadReferralPromo);
   try { if (typeof installAfterSignup === 'function') installAfterSignup(user); } catch (e) {}
@@ -9099,6 +9123,7 @@ const NOTIF_NAV = {
   'Voir Portefeuille': 'portfolio',
   'Voir Santé du portefeuille': 'sante',
   'Aide à la décision': 'decision',
+  'Voir les signaux': 'signaux',
   'Voir Objectif': 'objectif',
   'Simulateur DCA': 'dca',
   'Ajouter une position': 'ajouter',
@@ -10169,9 +10194,6 @@ function renderPortfolio(auto=false) {
       const pnlColor = pnl>=0?'#3fb950':'#f87171';
       const chgColor = chg>=0?'#3fb950':'#f87171';
       const initials = p.name.replace(/[^A-Z0-9]/g,'').slice(0,2)||p.name.slice(0,2).toUpperCase();
-      const sig = posSignals[p.id];
-      const sigColor = sig?.signal==='BUY'?'#3fb950':sig?.signal==='SELL'?'#f87171':'#f59e0b';
-      const sigLabel = sig?.signal==='BUY'?'Favorable':sig?.signal==='SELL'?'Prudence':'Neutre';
       const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
       return `
       <div id="row-${p.id}" class="pos-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
@@ -10289,77 +10311,10 @@ function renderPortfolio(auto=false) {
     });
   }, 50);
 
-  // Générer signaux en lot — max 6, espacés de 800ms pour éviter les 500.
-  // Sauté si la page se restaure toute seule (auto===true) : évite une rafale IA
-  // silencieuse à chaque ouverture d'app. Ils se génèreront au prochain vrai clic
-  // sur "Portefeuille" (nav() sans auto).
-  if (!auto) {
-    const needSignal = apos().filter(p => !posSignals[p.id]).slice(0, 6);
-    needSignal.forEach((p, i) => setTimeout(() => generatePosSignal(p), i * 800));
-  }
 }
 
 
 
-
-async function generatePosSignal(p) {
-  const pnl = (p.price - p.pru) / p.pru * 100;
-  const isAction = p.type === 'Action' || p.type === 'action';
-
-  const _dc = await fetchContextBlock([{ t: p.name, name: displayName(p.name) }]);
-  const prompt = `Tu es le copilote financier IA de Kapitaro. Analyse cette position pour un investisseur ${RL[profile.risk]}, horizon ${HL[profile.horizon]}.
-TON : tutoiement, direct et chaleureux, concret et chiffré, jamais alarmiste. Assume tes conclusions ("À ta place, je...").
-
-Position : ${p.name} (${p.type})
-PRU : ${p.pru}€ | Prix actuel : ${p.price}€ | Performance : ${pnl.toFixed(1).replace(".", ",")} %
-Quantité : ${p.qty} parts | Valeur totale : ${fmt(p.qty * p.price)}€
-
-${_dc.text}
-
-${isAction ? `C'est une action individuelle — donne un signal court terme précis avec timing.` : `C'est un ETF — signal long terme, pas de timing court terme.`}
-Pour les catalyseurs/risques, appuie-toi sur les actualités et les chiffres fournis ci-dessus et sur des dynamiques durables (secteur, macro) — n'invente jamais un évènement, un chiffre ou une date absents des données.
-
-Réponds UNIQUEMENT en JSON valide sans markdown :
-{
-  "action": "acheter" ou "garder" ou "vendre",
-  "conviction": "forte" ou "modérée" ou "faible",
-  "texte": "Point principal à comprendre en 1 phrase simple, sans recommandation personnalisée",
-  ${isAction ? `
-  "prix_cible": 0,
-  "stop_loss": 0,
-  "horizon_signal": "2-4 semaines",
-  "timing": "Maintenant" ou "Attendre" ou "Progressif",
-  "catalyseurs": ["raison 1", "raison 2"],
-  "risques": ["risque 1"]` : `
-  "horizon_signal": "Long terme",
-  "timing": "DCA régulier",
-  "catalyseurs": ["raison long terme"],
-  "risques": ["risque principal"]`}
-}`;
-
-  try {
-    const raw = await callClaude(prompt, 'Tu es un analyste financier. Tu ne prétends jamais connaître un évènement précis et daté que tu n\'as pas vérifié. Réponds UNIQUEMENT en JSON valide.');
-    if (callClaudeFailed(raw)) throw new Error('callClaude a échoué : ' + raw);
-    const s = raw.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}')+1));
-    posSignals[p.id] = parsed;
-  } catch {
-    posSignals[p.id] = {
-      action: pnl > 5 ? 'garder' : pnl < -15 ? 'vendre' : 'garder',
-      conviction: 'modérée',
-      texte: pnl < -15 ? 'Perte importante — envisage de couper.' : pnl > 15 ? 'Belle performance — sécurise une partie.' : 'Continue à surveiller cette position.',
-      horizon_signal: p.type === 'ETF' ? 'Long terme' : '1-3 mois',
-      timing: 'Attendre',
-      catalyseurs: ['Analyse en cours'],
-      risques: ['Volatilité du marché'],
-      prix_cible: 0,
-      stop_loss: 0
-    };
-  }
-  saveSignalsCache();
-  const sigEl = document.getElementById('sig-'+p.id);
-  if (sigEl && sigEl.style.display === 'block') renderPortfolio();
-}
 
 // Déplie un panneau d'actions sous la ligne de position cliquée
 function togglePos(id) {
