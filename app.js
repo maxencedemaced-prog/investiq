@@ -13635,7 +13635,7 @@ function showCSVPreview(rows, filename) {
             <span class="kpi-input"><input id="csv-pru-${i}" type="number" min="0" step="any" inputmode="decimal" value="${r.pru > 0 && r.qty > 0 ? Math.round(r.qty * r.pru * 100) / 100 : ''}" placeholder="À remplir" oninput="csvRowSetInvested(${i},this.value)"> €</span>
           </div>
           <div class="kpi-result" id="csv-result-${i}"></div>
-          <button type="button" class="kpi-more" id="csv-more-${i}" onclick="csvRowToggleSold(${i})">J'ai déjà vendu une partie de cette ligne</button>
+          <button type="button" class="kpi-more" id="csv-more-${i}" ${r.qty > 0 ? '' : 'style="display:none"'} onclick="csvRowToggleSold(${i})">J'ai déjà vendu une partie de cette ligne</button>
           <div class="kpi-sold" id="csv-sold-${i}" hidden>
             <p>Sur ce que tu as déjà vendu, tu as :</p>
             <div class="kpi-choice">
@@ -13736,6 +13736,8 @@ function csvRowSetQty(i, val) {
   const sub = document.getElementById('csv-sub-' + i);
   if (sub) sub.innerHTML = csvRowSub(r);
   document.getElementById('csv-row-' + i)?.classList.remove('off');
+  const more = document.getElementById('csv-more-' + i);
+  if (more) more.style.display = r.qty > 0 ? '' : 'none';
   const inv = document.getElementById('csv-pru-' + i);
   if (r.investedTyped > 0) r.pru = r.qty > 0 ? Math.round(r.investedTyped / r.qty * 1e8) / 1e8 : 0;
   else if (inv && r.pru > 0) inv.value = r.qty > 0 ? Math.round(r.qty * r.pru * 100) / 100 : '';
