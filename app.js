@@ -11331,7 +11331,7 @@ Retourne UNIQUEMENT un tableau JSON valide (sans backticks, sans commentaires) :
     newsData = items;
     if (!newsOnPage()) return;
     renderNewsList();
-    if (shownNews < 5) document.getElementById('news-list')?.insertAdjacentHTML('beforeend', kpSkelCards(5 - shownNews));
+    if (shownNews < 5) document.getElementById('news-list')?.lastElementChild?.insertAdjacentHTML('beforebegin', kpSkelCards(5 - shownNews));   // au-dessus de la mention légale
   });
   _newsStreaming = false;
   if (callClaudeFailed(raw)) {
