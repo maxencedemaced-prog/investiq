@@ -45,7 +45,7 @@ Réponds UNIQUEMENT avec un tableau JSON, sans texte autour, sans bloc de code. 
 - isin : code ISIN s'il figure dans le document, sinon null.
 - ticker : symbole boursier UNIQUEMENT s'il est écrit dans le document, sinon null. N'invente jamais.
 - Lis l'ordre des colonnes dans l'en-tête du tableau et respecte-le pour chaque ligne. Ne décale jamais une valeur vers une autre colonne, même si elle paraît très petite ou très grande.
-- qty : nombre de parts détenues (nombre décimal, point comme séparateur). Une quantité peut être très grande, par exemple 17998.
+- qty : nombre de parts détenues (nombre décimal, point comme séparateur). Une quantité peut être très grande, par exemple 17998. Si le document ne donne pas la quantité d'un titre, mets null : n'en invente jamais.
 - pru : prix de revient unitaire / prix moyen d'achat en euros s'il figure dans le document, sinon null.
 - price : cours actuel unitaire s'il figure dans le document. Si seule la valeur totale de la ligne est donnée, divise-la par qty.
 - value : valeur totale actuelle de la ligne si elle figure dans le document, sinon null.
@@ -123,7 +123,7 @@ export default async function handler(req, res) {
       price: num(p?.price),
       value: num(p?.value),
       currency: /^[A-Z]{3}$/.test(String(p?.currency || '')) ? p.currency : null,
-    })).filter(p => p.name && p.qty).slice(0, 60);
+    })).filter(p => p.name).slice(0, 60);
 
     res.status(200).json({ positions });
   } catch (e) {
