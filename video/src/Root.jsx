@@ -4,14 +4,15 @@ import { Reel, totalFrames } from './Reel';
 import { Dossier, dossierFrames } from './Dossier';
 import { Duo, duoFrames } from './Duo';
 import { Slideshow, slideshowFrames } from './Slideshow';
+import { Pub, pubFrames } from './Pub';
 import { Story } from './Story';
 import { EmailHero, EMAIL_HERO } from './EmailHero';
 import data from './data.json';
 
 // Même composition « Reel », gabarit selon le style : duo de personnages en 3D (duo), fiche d'enquête (dossier), diaporama d'un carrousel, ou vidéo animée
 const style = data.style;
-const Comp = style === 'duo' ? Duo : style === 'dossier' ? Dossier : style === 'slideshow' ? Slideshow : Reel;
-const frames = style === 'duo' ? duoFrames : style === 'dossier' ? dossierFrames : style === 'slideshow' ? slideshowFrames : totalFrames;
+const Comp = style === 'pub' ? Pub : style === 'duo' ? Duo : style === 'dossier' ? Dossier : style === 'slideshow' ? Slideshow : Reel;
+const frames = style === 'pub' ? pubFrames : style === 'duo' ? duoFrames : style === 'dossier' ? dossierFrames : style === 'slideshow' ? slideshowFrames : totalFrames;
 
 export const Root = () => (
   <>

@@ -242,12 +242,45 @@ async function syncMusic() {
     }
   } catch (e) { console.log('musiques en ligne :', e.message); }
 }
+// ── Pub « scènes réelles » : photos de public/pub/ (accroche, appli, clôture), textes du script, musique, carte de fin ──
+async function pubJob(script) {
+  await patchScript({ status: 'rendering', rendering_at: new Date().toISOString(), error: null });
+  fs.mkdirSync('out', { recursive: true });
+  const scenes = (script.scenes || []).filter(s => s && /^pub\/[\w-]+\.jpg$/.test(s.img || '') && fs.existsSync(path.join('public', s.img))).slice(0, 12)
+    .map(s => ({ img: s.img, kicker: String(s.kicker || '').slice(0, 40), title: String(s.title || '').slice(0, 90), sub: String(s.sub || '').slice(0, 110), pos: s.pos === 'top' ? 'top' : 'bottom', dur: Math.max(1.5, Math.min(6, Number(s.dur) || 3)) }));
+  if (!scenes.length) throw new Error('Aucune scène : les photos doivent être dans video/public/pub/');
+  const end = { dur: 3.4, ...(script.end || {}) };
+  const total = scenes.reduce((n, s) => n + s.dur, 0) + end.dur;
+  const chosen = typeof script.music_file === 'string' && /^[\w.-]+\.mp3$/.test(script.music_file) && fs.existsSync(path.join('public', 'music', script.music_file)) ? 'music/' + script.music_file : null;
+  const musicFile = script.music === false ? null : (chosen || pickMusic(total));
+  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ style: 'pub', beats: [], segments: [], scenes, end, musicFile, jingle: false }));
+  execSync('npx remotion render src/index.js Reel out/reel.mp4 --codec=h264 --crf=19 --concurrency=100% --log=warn', { stdio: 'inherit' });
+  // Couverture : une image de la première scène, avec son texte
+  execSync('npx remotion still src/index.js Reel out/cover.jpg --frame=40 --image-format=jpeg --jpeg-quality=88 --log=warn', { stdio: 'inherit' });
+  const stamp = Date.now();
+  const send = async (name, file, type) => {
+    const up = await sb.storage.from('social').upload(`${ID}/${name}`, fs.readFileSync(file), { contentType: type, upsert: true });
+    if (up.error) throw up.error;
+    return sb.storage.from('social').getPublicUrl(`${ID}/${name}`).data.publicUrl;
+  };
+  const url = await send(`pub-${stamp}.mp4`, 'out/reel.mp4', 'video/mp4');
+  const coverUrl = await send(`cover-${stamp}.jpg`, 'out/cover.jpg', 'image/jpeg');
+  const { data: cur } = await sb.from('social_posts').select('video_script').eq('id', ID).single();
+  const { error } = await sb.from('social_posts').update({
+    video_url: url, image_urls: [coverUrl],
+    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: fs.statSync('out/reel.mp4').size, error: null },
+  }).eq('id', ID);
+  if (error) throw error;
+  console.log('Pub prête :', url);
+}
+
 async function main() {
   await syncMusic();
   const { data: post, error } = await sb.from('social_posts').select('id, format, video_script').eq('id', ID).single();
   if (error) throw error;
   if (post.format === 'story') return storyJob(post);
   if ((post.video_script || {}).style === 'slideshow') return slideshowJob(post.video_script);
+  if ((post.video_script || {}).style === 'pub') return pubJob(post.video_script);
   const script = post.video_script || {};
   if (!Array.isArray(script.beats) || !script.beats.length) throw new Error('Script vidéo absent : relance la création depuis le Studio');
   await patchScript({ status: 'rendering', rendering_at: new Date().toISOString(), error: null });
