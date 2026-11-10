@@ -1,6 +1,7 @@
 // api/feed.js — contenus IA communs à tous les utilisateurs, calculés une fois puis partagés (table shared_feed).
 //   GET ?kind=news      → les thèmes d'actualité du marché (tout compte connecté)
 //   GET ?kind=signals   → les « valeurs à découvrir » et leurs signaux (comptes Premium)
+//   GET ?kind=signals_track → fiabilité des signaux passés (comptes Premium) ; GET ?cron=track (CRON_SECRET) la recalcule
 //   &refresh=1          → recalcule si le contenu est périmé ; l'appli l'appelle en arrière-plan, sans attendre la réponse
 // L'appli affiche tout de suite le contenu enregistré, même un peu ancien : plus d'attente, et un seul calcul pour tout le monde.
 const { createClient } = require('@supabase/supabase-js');
@@ -8,7 +9,7 @@ const { PLAN_UNIVERSE_BASE, PLAN_US_EXTRA } = require('../universe.js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const DATA = 'https://kapitaro.fr';   // cours et titres de presse : points d'entrée publics du site
-const TTL_MIN = { news: 180, signals: 120 };
+const TTL_MIN = { news: 180, signals: 120, signals_track: 60 * 24 * 7 };   // signals_track : bilan recalculé par la tâche planifiée (?cron=track)
 const LOCK_MIN = 4;
 const SONNET = 'claude-sonnet-5', HAIKU = 'claude-haiku-4-5-20251001';
 const PRICE = { [SONNET]: [2, 10], [HAIKU]: [1, 5] };   // dollars par million de tokens (entrée, sortie)
@@ -164,7 +165,162 @@ Valeurs signal: acheter, attendre, vendre, eviter. risque: 1 a 5.`, 2500, 'signa
   }));
   if (items.length < 9) throw new Error('trop peu de signaux (' + items.length + ')');
   const all = UNIVERSE.map(u => md[u[0]] && md[u[0]].p1y).filter(Number.isFinite).sort((a, b) => a - b);
-  return { items, median: { value: all[Math.floor(all.length / 2)], count: all.length } };
+  return { items, median: { value: all[Math.floor(all.length / 2)], count: all.length }, history: historyRows(items, data, ctx.market) };
+}
+
+// ── Fiabilité des signaux passés ──
+// RÈGLE D'ÉVALUATION (simple, vérifiable, sans embellir) :
+//  • Chaque valeur à découvrir est enregistrée (table signal_history) avec son signal, son horizon et son cours du moment,
+//    une seule fois par action et par semaine (le premier signal de la semaine) : les recalculs toutes les 2 h
+//    ne gonflent pas le nombre de signaux avec des doublons.
+//  • Échéance = date du signal + horizon annoncé, borne HAUTE (« 2-4 semaines » → 28 jours ; illisible → 28 jours ; entre 7 et 365 jours).
+//  • Cours final = clôture du jour d'échéance (ou du dernier jour de bourse avant), en devise locale, comme le cours de départ.
+//  • Référence = l'indice de la zone de l'action, sur la même période : CAC 40 (France), Euro Stoxx 50 (Europe), S&P 500 (États-Unis).
+//    Écart = performance de l'action − performance de l'indice (en points).
+//  • « acheter » (Favorable) est JUSTE si l'écart est > 0 ; « vendre » (Prudence) et « eviter » (Risqué) sont JUSTES si l'écart est < 0.
+//    Égalité parfaite = faux (on ne compte pas un match nul comme une réussite).
+//  • « attendre » (Neutre) n'est ni juste ni faux : compté à part, hors du taux.
+//  • Cours introuvables 21 jours après l'échéance : signal écarté (« indispo »), et ce nombre est affiché.
+//  • Aucun signal n'est retiré après coup : tous les signaux arrivés à échéance entrent dans le taux, bons comme mauvais.
+//  Limites connues : actions suisses, danoises ou britanniques comparées à l'Euro Stoxx 50 (petit effet de change) ;
+//  les horizons se chevauchent d'une semaine à l'autre, les résultats ne sont donc pas totalement indépendants.
+const TRACK_MIN = 20;   // en dessous, l'appli affiche « Pas encore assez de recul » au lieu d'un pourcentage
+const DAY = 86400000;
+const BENCH = { 'France': '^FCHI', 'Europe': '^STOXX50E', 'États-Unis': '^GSPC' };
+
+function horizonDays(h) {
+  const s = String(h || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const nums = (s.match(/\d+(?:[.,]\d+)?/g) || []).map(x => parseFloat(x.replace(',', '.'))).filter(x => Number.isFinite(x) && x > 0);
+  const unit = /\bans?\b|annee/.test(s) ? 365 : /mois/.test(s) ? 30 : /sem/.test(s) ? 7 : /jour|\bj\b/.test(s) ? 1 : 0;
+  if (!nums.length || !unit) return 28;
+  return Math.min(365, Math.max(7, Math.round(Math.max(...nums) * unit)));
+}
+// Lundi de la semaine (heure de Paris), clé du « un signal par action et par semaine »
+function parisWeekStart(ms) {
+  const p = new Date(new Date(ms).toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+  p.setDate(p.getDate() - (p.getDay() + 6) % 7);
+  return p.getFullYear() + '-' + String(p.getMonth() + 1).padStart(2, '0') + '-' + String(p.getDate()).padStart(2, '0');
+}
+// Lignes à historiser : actions seulement (jamais de crypto ni de devise), avec un cours de départ réel
+function historyRows(items, data, market) {
+  const now = Date.now(), week = parisWeekStart(now);
+  const idx = {}; (market || []).forEach(m => { if (m && Number.isFinite(m.price) && m.price > 0) idx[m.symbol] = m.price; });
+  return items.filter(x => x.type === 'Action' && !/-(EUR|USD)$|=X$|=F$/.test(x.ticker)).map(x => {
+    const u = UNIVERSE.find(v => v[0] === x.ticker) || [];
+    const m = data[x.ticker] || {}, bench = BENCH[u[3]] || null, days = horizonDays(x.horizon);
+    return {
+      ticker: x.ticker, name: x.name, zone: u[3] || null, signal: x.signal, conviction: x.conviction || null,
+      horizon: x.horizon || null, horizon_days: days, week_start: week,
+      signaled_at: new Date(now).toISOString(), due_at: new Date(now + days * DAY).toISOString(),
+      price_start: Number.isFinite(m.price) && m.price > 0 ? m.price : null, currency: m.cur || null,
+      bench_symbol: bench, bench_start: bench && idx[bench] ? idx[bench] : null,
+    };
+  }).filter(r => r.price_start && r.bench_symbol);
+}
+// Enregistrement : si la table n'existe pas encore, on le note dans le journal et on continue (le flux reste servi)
+async function recordSignals(rows) {
+  if (!rows || !rows.length) return;
+  try {
+    const { error } = await supabase.from('signal_history').upsert(rows, { onConflict: 'ticker,week_start', ignoreDuplicates: true });
+    if (error) console.warn('[feed] historique des signaux non enregistré :', error.message);
+  } catch (e) { console.warn('[feed] historique des signaux non enregistré :', e.message); }
+}
+
+// Clôtures quotidiennes Yahoo en devise locale (pas de conversion : même base que le cours de départ)
+async function yahooDaily(symbol, fromMs, toMs) {
+  const r = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&period1=${Math.floor(fromMs / 1000)}&period2=${Math.ceil(toMs / 1000)}`,
+    { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) return null;
+  const res = (await r.json())?.chart?.result?.[0];
+  const ts = res?.timestamp || [], c = res?.indicators?.quote?.[0]?.close || [];
+  const pts = [];
+  ts.forEach((t, i) => { if (Number.isFinite(c[i]) && c[i] > 0) pts.push({ t: t * 1000, c: c[i] }); });
+  return pts;
+}
+// Dernière séance ouverte au plus tard à « ms » (et pas plus de 7 jours avant : sinon donnée trop ancienne)
+function closeAt(pts, ms) {
+  let v = null;
+  for (const p of pts || []) { if (p.t <= ms) { if (ms - p.t <= 7 * DAY) v = p.c; } else break; }
+  return v;
+}
+function judge(signal, excess) {
+  if (signal === 'attendre') return 'neutre';
+  if (signal === 'acheter') return excess > 0 ? 'juste' : 'faux';
+  return excess < 0 ? 'juste' : 'faux';   // vendre (Prudence) et eviter (Risqué)
+}
+
+// Juge les signaux arrivés à échéance depuis au moins un jour (la clôture du jour d'échéance est alors connue)
+async function evaluateSignals() {
+  const now = Date.now();
+  const { data: rows, error } = await supabase.from('signal_history')
+    .select('id, ticker, signal, signaled_at, due_at, price_start, bench_symbol, bench_start')
+    .is('outcome', null).lte('due_at', new Date(now - DAY).toISOString()).order('due_at').limit(300);
+  if (error) throw new Error('signal_history : ' + error.message);
+  if (!rows || !rows.length) return { evaluated: 0 };
+  const from = Math.min(...rows.map(r => Date.parse(r.signaled_at))) - 10 * DAY;
+  const syms = [...new Set(rows.flatMap(r => [r.ticker, r.bench_symbol]).filter(Boolean))];
+  const hist = {}; let i = 0;
+  await Promise.all(Array.from({ length: 6 }, async () => {
+    while (i < syms.length) { const s = syms[i++]; hist[s] = await yahooDaily(s, from, now).catch(() => null); }
+  }));
+  let done = 0;
+  for (const r of rows) {
+    const due = Date.parse(r.due_at), start = Date.parse(r.signaled_at);
+    const p0 = Number(r.price_start), p1 = closeAt(hist[r.ticker], due), b1 = closeAt(hist[r.bench_symbol], due);
+    // Indice de départ manquant : dernière clôture connue au moment du signal (séance ouverte au moins 9 h avant)
+    const b0 = Number(r.bench_start) > 0 ? Number(r.bench_start) : closeAt(hist[r.bench_symbol], start - 9 * 3600e3);
+    let patch;
+    if (p0 > 0 && p1 && b0 && b1) {
+      const perf = p1 / p0 - 1, bench = b1 / b0 - 1, excess = perf - bench;
+      const r4 = x => Math.round(x * 10000) / 10000;
+      patch = { price_end: p1, bench_start: b0, bench_end: b1, perf: r4(perf), bench_perf: r4(bench), excess: r4(excess), outcome: judge(r.signal, excess) };
+    } else if (now - due > 21 * DAY) {
+      patch = { outcome: 'indispo' };
+    } else continue;   // cours pas encore disponibles : nouvel essai au prochain passage
+    patch.evaluated_at = new Date().toISOString();
+    const { error: e } = await supabase.from('signal_history').update(patch).eq('id', r.id).is('outcome', null);
+    if (e) console.warn('[feed] évaluation', r.ticker, e.message); else done++;
+  }
+  return { evaluated: done };
+}
+
+// Bilan affiché dans l'onglet Signaux (shared_feed, kind = 'signals_track')
+async function buildTrack() {
+  const { data: rows, error } = await supabase.from('signal_history')
+    .select('signal, signaled_at, due_at, perf, bench_perf, excess, outcome')
+    .not('outcome', 'is', null).order('signaled_at', { ascending: false }).limit(5000);
+  if (error) throw new Error('signal_history : ' + error.message);
+  const { count: pending } = await supabase.from('signal_history').select('id', { count: 'exact', head: true }).is('outcome', null);
+  const pct1 = x => Math.round(x * 1000) / 10;
+  const avg = (list, k) => list.length ? pct1(list.reduce((s, r) => s + Number(r[k] || 0), 0) / list.length) : null;
+  const group = list => ({ n: list.length, justes: list.filter(r => r.outcome === 'juste').length, avgExcess: avg(list, 'excess'), avgPerf: avg(list, 'perf'), avgBench: avg(list, 'bench_perf') });
+  const scored = rows.filter(r => r.outcome === 'juste' || r.outcome === 'faux');
+  const justes = scored.filter(r => r.outcome === 'juste').length;
+  const neutres = rows.filter(r => r.outcome === 'neutre');
+  const dated = rows.filter(r => r.outcome !== 'indispo');
+  return {
+    min: TRACK_MIN,
+    evaluated: scored.length, justes, faux: scored.length - justes,
+    rate: scored.length ? pct1(justes / scored.length) : null,
+    favorable: group(scored.filter(r => r.signal === 'acheter')),
+    prudence: group(scored.filter(r => r.signal === 'vendre' || r.signal === 'eviter')),
+    neutre: { n: neutres.length, avgExcess: avg(neutres, 'excess') },
+    indispo: rows.filter(r => r.outcome === 'indispo').length,
+    pending: pending || 0,
+    from: dated.length ? dated.reduce((m, r) => r.signaled_at < m ? r.signaled_at : m, dated[0].signaled_at) : null,
+    to: dated.length ? dated.reduce((m, r) => r.due_at > m ? r.due_at : m, dated[0].due_at) : null,
+    benchmarks: 'CAC 40 (France), Euro Stoxx 50 (Europe), S&P 500 (États-Unis)',
+  };
+}
+
+async function saveShared(kind, payload) {
+  const at = new Date().toISOString();
+  const { data, error } = await supabase.from('shared_feed').update({ payload, generated_at: at }).eq('kind', kind).select('kind');
+  if (error) throw new Error('shared_feed : ' + error.message);
+  if (!data || !data.length) {
+    const { error: e2 } = await supabase.from('shared_feed').insert({ kind, payload, generated_at: at });
+    if (e2) throw new Error('shared_feed : ' + e2.message);
+  }
 }
 
 const hits = new Map();
@@ -177,6 +333,19 @@ function rateLimited(key, max, windowMs) {
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  // Tâche planifiée (vercel.json, jours de semaine) : juge les signaux arrivés à échéance puis met à jour le bilan
+  if (req.query.cron === 'track') {
+    if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({ error: 'Non autorisé' });
+    try {
+      const ev = await evaluateSignals();
+      const track = await buildTrack();
+      await saveShared('signals_track', track);
+      return res.status(200).json({ ok: true, evaluated_now: ev.evaluated, scored: track.evaluated, pending: track.pending });
+    } catch (e) {
+      console.warn('[feed] suivi des signaux :', e.message);   // ex. table signal_history pas encore créée
+      return res.status(200).json({ ok: false, error: 'suivi indisponible' });
+    }
+  }
   const kind = String(req.query.kind || '');
   if (!TTL_MIN[kind]) return res.status(400).json({ error: 'kind inconnu' });
   res.setHeader('Cache-Control', 'private, no-store');
@@ -187,7 +356,7 @@ module.exports = async function handler(req, res) {
     const { data: auth, error: authError } = await supabase.auth.getUser(token);
     const user = auth && auth.user;
     if (authError || !user) return res.status(401).json({ error: 'Session invalide' });
-    if (kind === 'signals') {
+    if (kind === 'signals' || kind === 'signals_track') {
       const { data: profile } = await supabase.from('profiles').select('is_premium, subscription_status, premium_until').eq('id', user.id).maybeSingle();
       if (!isPremiumProfile(profile)) return res.status(403).json({ error: 'Réservé à Premium' });
     }
@@ -202,6 +371,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Recalcul : seulement si périmé, et un seul à la fois (verrou de quelques minutes dans la table)
+    if (kind === 'signals_track') return res.status(200).json({ ok: true, skipped: 'cron' });   // calculé par la tâche planifiée
     if (!stale) return res.status(200).json({ ok: true, skipped: 'fresh' });
     if (rateLimited(user.id + kind, 3, 600000)) return res.status(200).json({ ok: true, skipped: 'limit' });
     const lockLimit = new Date(Date.now() - LOCK_MIN * 60000).toISOString();
@@ -209,8 +379,9 @@ module.exports = async function handler(req, res) {
       .eq('kind', kind).eq('generated_at', row.generated_at).or(`refreshing_at.is.null,refreshing_at.lt.${lockLimit}`).select('kind');
     if (!lock || !lock.length) return res.status(200).json({ ok: true, skipped: 'busy' });
     try {
-      const payload = kind === 'news' ? await buildNews() : await buildSignals();
-      await supabase.from('shared_feed').update({ payload, generated_at: new Date().toISOString(), refreshing_at: null }).eq('kind', kind);
+      const { history, ...payload } = kind === 'news' ? await buildNews() : await buildSignals();
+      const { error: saveError } = await supabase.from('shared_feed').update({ payload, generated_at: new Date().toISOString(), refreshing_at: null }).eq('kind', kind);
+      if (!saveError) await recordSignals(history);   // fiabilité des signaux : sans effet sur le flux si la table manque
       return res.status(200).json({ ok: true, refreshed: true, count: payload.items.length });
     } catch (e) {
       console.error('[feed]', kind, e.message);   // le verrou reste posé quelques minutes : pas de nouvel essai immédiat

@@ -1000,6 +1000,52 @@ function kpOpenSignaux() {
   nav('news');
   setTimeout(() => setNewsFilter('signaux', document.getElementById('news-fil-signaux')), 300);
 }
+// Fiabilité des signaux passés (valeurs à découvrir partagées) : bilan calculé côté serveur (api/feed.js, ?kind=signals_track).
+// null = encart masqué (démo, hors zone Europe, erreur) ; { evaluated: 0 } = rien encore évalué.
+const KP_TRACK_MIN = 20;   // en dessous : « Pas encore assez de recul », jamais de pourcentage
+async function kpSignalTrack() {
+  if (PLAN_REGION !== 'EU' || isDemo || !currentUser) return null;
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return null;
+    const r = await fetch('/api/feed?kind=signals_track', { headers: { Authorization: 'Bearer ' + token } });
+    if (r.status === 503) return { evaluated: 0 };
+    if (!r.ok) return null;
+    const j = await r.json();
+    return Number.isFinite(j.evaluated) ? j : { evaluated: 0 };
+  } catch (e) { return null; }
+}
+function kpSignalTrackHTML(t) {
+  const n = Math.max(0, Math.round(Number(t && t.evaluated) || 0));
+  const num = x => Math.max(0, Math.round(Number(x) || 0));
+  const plural = (k, one, many) => k + ' ' + (k === 1 ? one : many);
+  const day = s => { const d = new Date(s); return s && !isNaN(d) ? d.toLocaleDateString('fr-FR') : ''; };
+  const pts = x => Number.isFinite(x) ? (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(1).replace('.', ',') + ' pt' : '—';
+  const line = s => `<div style="font-size:12px;color:var(--color-text);line-height:1.5;margin-top:4px">${s}</div>`;
+  const small = s => `<div style="font-size:11px;color:var(--color-text-secondary);line-height:1.45;margin-top:6px">${s}</div>`;
+  const rule = `Règle : chaque signal est jugé à la fin de son horizon (ex. 4 semaines). Un signal Favorable est juste si l’action a fait mieux que son indice (CAC 40, Euro Stoxx 50 ou S&P 500) ; un Signal Prudence ou Risqué est juste si elle a fait moins bien. Les signaux Neutres ne sont pas comptés.`;
+  const legal = `Les performances passées ne préjugent pas des performances futures. Ce n’est pas un conseil en investissement.`;
+  let body;
+  if (n < KP_TRACK_MIN) {
+    body = `<div data-track="peu" style="font-size:13px;font-weight:700;color:var(--color-text);margin-top:4px">Pas encore assez de recul (${plural(n, 'signal évalué', 'signaux évalués')})</div>`
+      + small(`Le taux de signaux justes s’affichera à partir de ${KP_TRACK_MIN} signaux évalués.${num(t && t.pending) ? ' ' + plural(num(t.pending), 'signal est', 'signaux sont') + ' en cours.' : ''}`);
+  } else {
+    const justes = Math.min(n, num(t.justes)), faux = n - justes, rate = Math.round(justes / n * 100);
+    const g = (label, x) => x && num(x.n) ? line(`${label} : ${num(x.justes)} juste${num(x.justes) > 1 ? 's' : ''} sur ${num(x.n)} · écart moyen avec l’indice ${pts(x.avgExcess)}`) : '';
+    const from = day(t.from), to = day(t.to);
+    const extra = [num(t.neutre && t.neutre.n) ? plural(num(t.neutre.n), 'signal Neutre non compté', 'signaux Neutres non comptés') : '', num(t.indispo) ? plural(num(t.indispo), 'signal écarté faute de cours', 'signaux écartés faute de cours') : '', num(t.pending) ? plural(num(t.pending), 'signal en cours', 'signaux en cours') : ''].filter(Boolean).join(' · ');
+    body = `<div data-track="taux" style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:4px"><span style="font-size:24px;font-weight:800;color:var(--color-text)">${rate} %</span><span style="font-size:12.5px;color:var(--color-text)">de signaux justes : ${justes} sur ${n}, ${plural(faux, 'faux', 'faux')}</span></div>`
+      + (from && to ? small(`Période : signaux du ${from}, jugés jusqu’au ${to}.`) : '')
+      + g('↑ Favorable', t.favorable) + g('↓ Prudence et Risqué', t.prudence)
+      + small(`Repère : en choisissant au hasard, on serait autour de 50 %.${extra ? ' ' + extra + '.' : ''}`);
+  }
+  return `<div data-sig-track style="border:1px solid var(--color-border);background:var(--color-surface-raised);border-radius:12px;padding:12px 14px;margin:14px 0 4px">
+    <div style="font-size:12px;font-weight:800;color:var(--color-text)">📊 Fiabilité des signaux passés <span style="font-size:11px;color:#8e8e93;font-weight:400">valeurs à découvrir</span></div>
+    ${body}${small(rule)}${small('⚠️ ' + legal)}
+  </div>`;
+}
+
 let _sigRun = null;   // analyse en cours : on la retrouve si l'utilisateur quitte l'onglet puis revient
 let _sigMarket = { ts: 0, data: null };   // cours de tout l'univers, gardés 15 min
 async function renderSignaux() {
@@ -1023,8 +1069,11 @@ async function renderSignaux() {
     <div data-sig="note" style="font-size:11.5px;color:var(--color-text-secondary);line-height:1.45;margin-top:4px">Une forte hausse passée ne prédit pas l'avenir.</div>
     ${myTickers.length ? secTitle(`📦 Mes positions <span style="font-size:11px;color:#8e8e93;font-weight:400">${myTickers.length} actifs</span>`) + `<div data-sig="mine"></div><div data-sig="mine-skel">${kpSkelCards(myTickers.length)}</div>` : ''}
     ${secTitle('🔭 Valeurs à découvrir <span style="font-size:11px;color:#8e8e93;font-weight:400">choisies sur le risque et la variété des secteurs, pas sur la hausse passée</span>')}
-    <div data-sig="oppo"></div><div data-sig="oppo-skel">${kpSkelCards(oppoCount)}</div>`;
+    <div data-sig="oppo"></div><div data-sig="oppo-skel">${kpSkelCards(oppoCount)}</div>
+    <div data-sig="track"></div>`;
   const part = k => root.querySelector(`[data-sig="${k}"]`);
+  // Fiabilité des signaux passés : chargée en même temps que les cartes, sans les retarder
+  const trackDone = kpSignalTrack().then(t => { const box = part('track'); if (box) { if (t) box.innerHTML = kpSignalTrackHTML(t); else box.remove(); } }).catch(() => { part('track')?.remove(); });
 
   // Constants
   const sigColor = { acheter:'#1a7f5a', attendre:'#f59e0b', vendre:'#cc2f26', eviter:'#8e8e93' };
@@ -1234,6 +1283,7 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
       await fetchSignaux(oppoTickers, s => addCard(part('oppo'), skel, s, false));
     })(),
   ]);
+  await trackDone;
   run.done = true;
   if (aiJustHitQuota()) { root.innerHTML = `<div style="padding:8px 0">${aiFailureHTML(aiQuotaMessage())}</div>`; return; }
   part('status')?.remove();

@@ -100,6 +100,8 @@ const ORIGIN = 'https://kapitaro.fr';
 
 // Flux partagé simulé : « vide » = rien de calculé (l'appli doit reprendre son calcul habituel), « plein » = contenu prêt
 const FEED = { mode: 'vide' };
+// Bilan simulé de la fiabilité des signaux passés (api/feed?kind=signals_track) : null = pas encore calculé (réponse 503)
+const TRACK = { data: null };
 // Réponses de l'IA simulée, choisies d'après la demande envoyée par l'appli
 function claudeText(body) {
   const p = String(body.prompt || '');
@@ -137,6 +139,7 @@ function api(route, u, req, calls) {
   if (name === 'agenda') return json({ events: [], unavailable: true });
   if (name === 'search') return json({ results: [] });
   if (name === 'feed') {
+    if (u.searchParams.get('kind') === 'signals_track') return TRACK.data ? json({ ...TRACK.data, generated_at: new Date().toISOString(), stale: false }) : json({ error: 'Contenu indisponible' }, 503);
     if (FEED.mode === 'vide') return json({ generated_at: '2000-01-01T00:00:00Z', stale: true });
     if (u.searchParams.get('refresh') === '1') return json({ ok: true, skipped: 'fresh' });
     if (u.searchParams.get('kind') === 'news') return json({ items: Array.from({ length: 10 }, (_, i) => ({ titre: 'Thème partagé ' + (i + 1), resume: 'Résumé partagé.', categorie: ['macro', 'banque', 'marche', 'geo', 'secteur'][i % 5], impact: 'moyen', signal: 'neutre', reco_texte: 'Texte partagé.', actifs_cibles: i === 7 ? ['VWCE.DE'] : [] })), generated_at: new Date().toISOString(), stale: false });
@@ -546,6 +549,36 @@ await run('Signaux : toutes les positions, repère du marché, alerte Prudence',
   assert(r.notif, "Un signal Prudence sur une position n'apparaît pas dans les notifications");
   assert(r.cached, 'Les signaux ne sont pas gardés en mémoire');
   console.log(`    (signaux complets en ${Date.now() - t0} ms avec une IA simulée)`);
+});
+
+await run('Signaux : fiabilité des signaux passés, peu puis assez de recul', premium, {}, async page => {
+  const trackText = async () => {
+    await page.waitForFunction(() => _sigRun && _sigRun.done, null, { timeout: 30000 });
+    return page.evaluate(() => { const b = _sigRun.root.querySelector('[data-sig-track]'); return b ? b.innerText : ''; });
+  };
+  TRACK.data = { min: 20, evaluated: 7, justes: 6, faux: 1, rate: 85.7, pending: 30, favorable: { n: 4, justes: 4, avgExcess: 3.1 }, prudence: { n: 3, justes: 2, avgExcess: -0.5 }, neutre: { n: 5 }, indispo: 0, from: '2026-09-01T10:00:00Z', to: '2026-11-06T10:00:00Z' };
+  try {
+    await page.evaluate(() => nav('news'));
+    await sleep(500);
+    await page.evaluate(() => document.getElementById('news-fil-signaux').click());
+    const few = await trackText();
+    assert(few, "L'encart « Fiabilité des signaux passés » est absent");
+    assert(/Pas encore assez de recul \(7 signaux évalués\)/.test(few), 'Message « pas encore assez de recul » absent : ' + few);
+    assert(!/\d\s*%/.test(few), 'Un pourcentage est affiché avec trop peu de signaux : ' + few);
+    assert(/ne préjugent pas des performances futures/.test(few) && /pas un conseil/.test(few), 'Mentions obligatoires absentes : ' + few);
+
+    // Assez de recul, et un résultat décevant : il doit être affiché tel quel
+    TRACK.data = { min: 20, evaluated: 60, justes: 26, faux: 34, rate: 43.3, pending: 40, favorable: { n: 35, justes: 14, avgExcess: -1.2 }, prudence: { n: 25, justes: 12, avgExcess: 0.4 }, neutre: { n: 18 }, indispo: 2, from: '2026-09-01T10:00:00Z', to: '2026-11-06T10:00:00Z' };
+    await page.evaluate(() => { newsTabCache.signaux.ts = 0; _sigRun = null; renderSignaux(); });
+    const many = await trackText();
+    assert(/43 %/.test(many) && /26 sur 60/.test(many) && /34 faux/.test(many), 'Taux, signaux justes ou faux absents : ' + many);
+    assert(/Favorable : 14 justes sur 35/.test(many) && /−1,2 pt/.test(many), 'Le mauvais résultat des signaux Favorables est masqué : ' + many);
+    assert(/Prudence et Risqué : 12 justes sur 25/.test(many), 'Détail Prudence absent : ' + many);
+    assert(/01\/09\/2026/.test(many) && /06\/11\/2026/.test(many), 'Période absente : ' + many);
+    assert(/50 %/.test(many), 'Le repère du hasard est absent : ' + many);
+    assert(/ne préjugent pas des performances futures/.test(many) && /pas un conseil/.test(many), 'Mentions obligatoires absentes : ' + many);
+    assert(!/Pas encore assez de recul/.test(many), 'Le message « pas assez de recul » reste affiché');
+  } finally { TRACK.data = null; }
 });
 
 await run('Entreprises, matières premières et forex', premium, {}, async (page, s) => {
