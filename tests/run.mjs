@@ -559,6 +559,18 @@ await run('Page Applis : « Bientôt » tant que les applis ne sont pas publiée
   assert(/apps\.apple\.com/.test(apres.ios || '') && /play\.google\.com/.test(apres.android || ''), 'Liens des magasins absents : ' + JSON.stringify(apres));
 });
 
+await run('Déconnexion : seulement sur cet appareil (les autres restent connectés)', demo, {}, async page => {
+  const scope = await page.evaluate(async () => {
+    let got = 'aucun';
+    isDemo = false;
+    window.pushOnLogout = async () => {};
+    sb.auth.signOut = async o => { got = (o && o.scope) || 'global'; return { error: null }; };
+    try { await logout(); } catch (e) {}
+    return got;
+  });
+  assert(scope === 'local', 'La déconnexion doit rester locale à l’appareil, reçu : ' + scope);
+});
+
 await run('Offres : les prix affichés sont 11,99 € et 94,99 €', demo, {}, async page => {
   const r = await page.evaluate(() => {
     plansBilling = 'monthly'; showPlansModal();
