@@ -68,6 +68,7 @@ async function buildNews() {
   const names = UNIVERSE.slice(0, 90).map(u => u[0] + ' ' + u[1]).join(', ');
   const prompt = `Tu es analyste financier senior.
 Développe 10 thèmes économiques et financiers structurants et durables, en couvrant toutes les catégories (macro, banques centrales, marchés, géopolitique, secteurs), qui éclairent la situation actuelle des marchés — pas des évènements ponctuels datés que tu ne peux pas vérifier.
+PUBLIC : des épargnants français. Au moins 8 thèmes sur 10 doivent porter sur l'Europe (zone euro, France) ou les États-Unis. Un thème sur une autre région (Chine, Japon, Australie…) n'est retenu que s'il pèse nettement sur les marchés européens ou américains, et le résumé doit alors dire en quoi.
 
 TENDANCE DU MARCHÉ (grands indices, données réelles) :
 ${market}

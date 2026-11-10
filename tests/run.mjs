@@ -364,6 +364,29 @@ await run('Import : une ligne sans nombre de parts reste à compléter', demo, {
   assert(r.added === 1 && r.closed, `Une seule ligne devait être importée (${r.added})`);
 });
 
+await run('Portefeuille : le tri des lignes', demo, {}, async page => {
+  const r = await page.evaluate(async () => {
+    try { localStorage.removeItem('kp_port_sort'); } catch (e) {}
+    nav('portfolio');
+    await new Promise(x => setTimeout(x, 700));
+    const names = () => [...document.querySelectorAll('#sec-portfolio .pos-row')].map(e => e.id.replace('row-', ''));
+    const byId = Object.fromEntries(positions.map(p => [String(p.id), p]));
+    const metric = { valeur: p => p.qty * p.price, investi: p => p.qty * p.pru, perf_haut: p => (p.price - p.pru) / p.pru, perf_bas: p => -(p.price - p.pru) / p.pru, gain_haut: p => p.qty * (p.price - p.pru), gain_bas: p => -p.qty * (p.price - p.pru) };
+    const out = { select: !!document.getElementById('port-sort'), rows: names().length, bad: [] };
+    for (const [k, f] of Object.entries(metric)) {
+      kpSetPortSort(k);
+      await new Promise(x => setTimeout(x, 300));
+      const v = names().map(id => f(byId[id]));
+      if (v.some((x, i) => i && x > v[i - 1] + 1e-9)) out.bad.push(k + ' : ' + names().join(','));
+      if (document.getElementById('port-sort').value !== k) out.bad.push(k + ' : le menu ne garde pas le choix');
+    }
+    kpSetPortSort('valeur');
+    return out;
+  });
+  assert(r.select && r.rows >= 4, 'Le menu de tri ou les lignes sont absents');
+  assert(!r.bad.length, 'Tri incorrect : ' + r.bad.join(' | '));
+});
+
 await run('Offres : les prix affichés sont 11,99 € et 94,99 €', demo, {}, async page => {
   const r = await page.evaluate(() => {
     plansBilling = 'monthly'; showPlansModal();

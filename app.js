@@ -9996,6 +9996,31 @@ function buildAlerts() {
 }
 
 // ===== PORTFOLIO =====
+// Tri des lignes du portefeuille, mémorisé sur l'appareil
+const KP_PORT_SORTS = [
+  ['valeur', 'Valeur actuelle (la plus grosse)', (a, b) => b.val - a.val],
+  ['investi', 'Somme investie (la plus grosse)', (a, b) => b.inv - a.inv],
+  ['perf_haut', 'Les plus rentables (en %)', (a, b) => b.pct - a.pct],
+  ['perf_bas', 'Les moins rentables (en %)', (a, b) => a.pct - b.pct],
+  ['gain_haut', 'Plus gros gains (en €)', (a, b) => b.pnl - a.pnl],
+  ['gain_bas', 'Plus grosses pertes (en €)', (a, b) => a.pnl - b.pnl],
+  ['jour', "Variation d'aujourd'hui", (a, b) => b.chg - a.chg],
+  ['nom', 'Nom (A à Z)', (a, b) => a.label.localeCompare(b.label, 'fr')],
+];
+function kpPortSort() {
+  try { const k = localStorage.getItem('kp_port_sort'); if (KP_PORT_SORTS.some(x => x[0] === k)) return k; } catch (e) {}
+  return 'valeur';
+}
+function kpSetPortSort(k) {
+  try { localStorage.setItem('kp_port_sort', k); } catch (e) {}
+  renderPortfolio(true);
+}
+function kpSortPositions(list) {
+  const cmp = (KP_PORT_SORTS.find(x => x[0] === kpPortSort()) || KP_PORT_SORTS[0])[2];
+  const key = p => { const val = p.qty * p.price, inv = p.qty * p.pru; return { val, inv, pnl: val - inv, pct: inv ? (val - inv) / inv * 100 : 0, chg: p.change_pct || 0, label: displayName(p.name) }; };
+  return list.map(p => ({ p, k: key(p) })).sort((a, b) => cmp(a.k, b.k) || b.k.val - a.k.val).map(x => x.p);
+}
+
 function renderPortfolio(auto=false) {
   const tv = positions.reduce((a,p)=>a+p.qty*p.price, 0);
   const ti = positions.reduce((a,p)=>a+p.qty*p.pru, 0);
@@ -10086,7 +10111,7 @@ function renderPortfolio(auto=false) {
 
   // Tableau des positions
   setTimeout(() => { if (typeof selectMode !== 'undefined' && selectMode) toggleSelectMode(true); }, 30);
-  const sorted = [...dedupPositions].sort((a,b)=>b.qty*b.price - a.qty*a.price);
+  const sorted = kpSortPositions(dedupPositions);
   const tableHtml = `
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
     <!-- Header tableau -->
@@ -10105,6 +10130,12 @@ function renderPortfolio(auto=false) {
         <button onclick="toggleSelectMode(false)" style="padding:6px 13px;background:transparent;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer">Annuler</button>
       </div>
     </div>
+    ${dedupPositions.length > 1 ? `<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 16px;border-bottom:1px solid ${borderCol}">
+      <label for="port-sort" style="font-size:12px;font-weight:600;color:${subCol};white-space:nowrap">Trier par</label>
+      <select id="port-sort" onchange="kpSetPortSort(this.value)" style="width:auto;max-width:70%;padding:7px 10px;font-size:13px;font-weight:600;border:1px solid ${borderCol};border-radius:9px">
+        ${KP_PORT_SORTS.map(([k, label]) => `<option value="${k}"${k === kpPortSort() ? ' selected' : ''}>${label}</option>`).join('')}
+      </select>
+    </div>` : ''}
     <div class="pos-row-head" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:10px 16px;border-bottom:1px solid ${borderCol}">
       ${['ACTIF','INVESTI','PRIX MOY.','VALEUR','PERF.','',''].map(h=>`<div style="font-size:10px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.06em">${h}</div>`).join('')}
     </div>
