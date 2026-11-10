@@ -1,0 +1,9 @@
+{
+  "name": "kapitaro-tests",
+  "private": true,
+  "type": "module",
+  "description": "Filet de sécurité : vérifications automatiques lancées à chaque envoi sur dev et main (.github/workflows/tests.yml)",
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
