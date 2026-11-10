@@ -495,7 +495,7 @@ function backToLoginAfterSignup(email) {
   document.getElementById('login-pass')?.focus();
 }
 async function logout() {
-  if (!isDemo) { try { await pushOnLogout(); } catch(e) {} await sb.auth.signOut(); }
+  if (!isDemo) { try { await pushOnLogout(); } catch(e) {} await sb.auth.signOut({ scope: 'local' }); }   // « local » : se déconnecter ici ne déconnecte pas tes autres appareils
   clearUserCaches(); try { localStorage.removeItem('iq_cache_uid'); } catch {}
   showAuthScreen();
   closeSidebar();
