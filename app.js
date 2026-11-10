@@ -2314,6 +2314,18 @@ function renderVerdict(data, ts) {
 //  avant import, fusion intelligente avec les positions existantes.
 // ═══════════════════════════════════════════════════════════
 
+// Où trouver l'export, courtier par courtier : seulement les chemins confirmés par une source (aide du courtier, guides d'import)
+const KP_IMPORT_HELP = [
+  ['Trade Republic', 'Dans l’appli : <b>Profil</b> → <b>Relevés de compte</b> → <b>Export des transactions</b>, puis partage le fichier CSV. Kapitaro calcule tes positions et ton prix moyen à partir de tes achats et ventes.'],
+  ['Degiro', 'Sur le site : <b>Boîte de réception</b> → <b>Transactions</b> → bouton <b>Exporter</b> → format CSV. Le fichier du portefeuille marche aussi, mais il ne contient pas tes prix d’achat.'],
+  ['XTB', 'Sur xStation 5, version web : <b>Historique du compte</b>, puis <b>Exporter</b> (Excel). Kapitaro lit l’onglet des positions ouvertes, ou à défaut tes opérations.'],
+  ['BoursoBank', 'Ton compte Bourse (PEA ou compte-titres) → onglet <b>Positions</b> → <b>Exporter en CSV</b>.'],
+  ['Bourse Direct', '<b>Mes comptes</b> → <b>Portefeuille temps réel</b> → bouton de téléchargement (fichier Excel).'],
+  ['Revolut', 'Dans l’appli, rubrique Investir : <b>Documents</b> → <b>Relevé de compte</b>, format Excel (c’est en fait un fichier CSV).'],
+  ['Interactive Brokers', 'Portail client : <b>Performance et rapports</b> → <b>Relevés</b> → <b>Relevé d’activité</b>, format CSV.'],
+];
+const KP_IMPORT_KNOWN = ['Trade Republic', 'Degiro', 'XTB', 'Revolut', 'Interactive Brokers', 'Trading 212', 'Saxo'];
+
 // Écran d'aide : explique à quoi sert l'import et comment obtenir le fichier
 function showCSVHelp() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -2332,30 +2344,13 @@ function showCSVHelp() {
       <div style="font-size:19px;font-weight:800;color:${txt};margin-bottom:5px">📥 Importer tes positions</div>
       <div style="font-size:13px;color:${sub};line-height:1.55;margin-bottom:18px">Au lieu de saisir chaque ligne à la main, importe le fichier d'export de ton courtier : Kapitaro ajoutera automatiquement toutes tes positions avec leurs quantités et prix d'achat.</div>
 
-      <!-- Trade Republic -->
-      <div style="background:${bg};border:1px solid ${bord};border-radius:14px;padding:14px 16px;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:#eef2ff;color:#4f46e5">Trade Republic</span>
-        </div>
-        <ol style="margin:0;padding-left:18px;font-size:12px;color:${sub};line-height:1.75">
-          <li>Ouvre l'app Trade Republic sur ton téléphone</li>
-          <li>Profil (en bas à droite) → <strong style="color:${txt}">Relevés et documents</strong></li>
-          <li>Choisis <strong style="color:${txt}">Relevé de portefeuille</strong> et exporte-le</li>
-          <li>Envoie-le sur ton ordinateur (mail, AirDrop...)</li>
-        </ol>
-      </div>
-
-      <!-- XTB -->
-      <div style="background:${bg};border:1px solid ${bord};border-radius:14px;padding:14px 16px;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:#fff7ed;color:#ea580c">XTB</span>
-        </div>
-        <ol style="margin:0;padding-left:18px;font-size:12px;color:${sub};line-height:1.75">
-          <li>Connecte-toi à <strong style="color:${txt}">xStation 5</strong> sur ordinateur</li>
-          <li>Onglet <strong style="color:${txt}">Positions ouvertes</strong> (en bas)</li>
-          <li>Clic droit dans le tableau → <strong style="color:${txt}">Exporter</strong> → CSV</li>
-        </ol>
-      </div>
+      <div style="font-size:12px;font-weight:700;color:${txt};margin-bottom:8px">Où trouver le fichier de ton courtier</div>
+      ${KP_IMPORT_HELP.map(([name, where]) => `
+      <details style="background:${bg};border:1px solid ${bord};border-radius:12px;padding:10px 14px;margin-bottom:8px">
+        <summary style="font-size:13px;font-weight:700;color:${txt};cursor:pointer">${name}</summary>
+        <div style="font-size:12px;color:${sub};line-height:1.6;margin-top:6px">${where}</div>
+      </details>`).join('')}
+      <div style="font-size:11px;color:${sub};line-height:1.5;margin:4px 0 14px">Reconnus automatiquement : ${KP_IMPORT_KNOWN.join(', ')}. Les fichiers des autres courtiers sont lus aussi, colonne par colonne.</div>
 
       <div style="font-size:11px;color:${sub};background:${bg};border-radius:10px;padding:10px 13px;margin-bottom:16px;line-height:1.5">
         💡 Formats acceptés : <strong style="color:${txt}">PDF, CSV ou Excel</strong> de n'importe quel courtier. Kapitaro repère tout seul les positions (nom, quantité, prix d'achat) ; pour un PDF, le texte du relevé est lu par l'IA (tes coordonnées bancaires sont masquées avant). Tu verras un aperçu pour décocher, corriger le PRU et indiquer tes plus/moins-values déjà réalisées avant de valider — rien n'est importé sans ton accord.
@@ -2415,18 +2410,23 @@ async function handleCSVImport(file) {
     } else if (ext === 'xlsx' || ext === 'xls') {
       await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
       const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-      for (const sheet of wb.SheetNames) {
+      // Classeur à plusieurs onglets (XTB : positions fermées, ouvertes, ordres en attente, opérations) :
+      // les positions ouvertes d'abord, jamais l'historique des positions fermées ni les ordres en attente
+      const sheets = [...wb.SheetNames].filter(n => !/closed|ferm|pending|attente/i.test(n))
+        .sort((a, b) => (/open|ouvert/i.test(b) ? 1 : 0) - (/open|ouvert/i.test(a) ? 1 : 0));
+      for (const sheet of (sheets.length ? sheets : wb.SheetNames)) {
         rows = parseCSVSmart(XLSX.utils.sheet_to_csv(wb.Sheets[sheet], { FS: ';', rawNumbers: true }));
         if (rows.length) break;
       }
     } else {
       rows = parseCSVSmart(await file.text());
     }
-    if (!rows || !rows.length) { showToast('⚠️ Aucune position détectée dans ce fichier'); return; }
+    if (!rows || !rows.length) { showToast(rows && rows.broker ? `⚠️ Fichier ${rows.broker} reconnu, mais aucune position en cours dedans` : '⚠️ Aucune position détectée dans ce fichier'); return; }
+    const broker = rows.broker || '';
     await resolveImportTickers(rows);
     await enrichImportRows(rows);
-    showCSVPreview(rows, file.name);
-    trackEvent('import_file', { format: ext, count: rows.length });
+    showCSVPreview(rows, file.name, broker);
+    trackEvent('import_file', { format: ext, count: rows.length, broker: broker || 'inconnu' });
   } catch (err) {
     console.error('Import:', err);
     showToast('⚠️ ' + (err.userMessage || 'Fichier illisible — essaie un export CSV, Excel ou PDF de ton courtier'));
@@ -2567,8 +2567,409 @@ async function parsePDFStatement(file) {
   });
 }
 
-// Parse un CSV avec détection auto (séparateur ; , ou tab · colonnes par mots-clés)
+// ═══ Modèles par courtier ═══
+// Un export connu (reconnu à ses en-têtes) est lu avec ses colonnes exactes ; s'il ne contient que des
+// opérations, elles sont regroupées en positions avec leur prix moyen d'achat (frais exclus, ventes déduites).
+// Formats relevés sur des exemples publics d'exports réels (convertisseurs open source, forums, aide des courtiers).
+// Fichier inconnu : lecture générique (parseCSVGeneric), inchangée.
 function parseCSVSmart(text) {
+  let found = null;
+  try { found = kpImpBroker(text); } catch (e) { console.warn('[import] modèle courtier :', e); }
+  if (!found) return parseCSVGeneric(text);
+  const rows = found.rows;
+  rows.broker = found.broker;
+  return rows;
+}
+
+function kpImpNorm(t) {
+  return String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/["'’]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+// Lignes du fichier, sans couper un champ entre guillemets qui contiendrait un retour à la ligne
+function kpImpRecords(text) {
+  const s = String(text || '').replace(/^\uFEFF/, '');
+  const out = [];
+  let cur = '', inQ = false;
+  for (let k = 0; k < s.length; k++) {
+    const ch = s[k];
+    if (ch === '"') inQ = !inQ;
+    if ((ch === '\n' || ch === '\r') && !inQ) { if (cur.trim()) out.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  if (cur.trim()) out.push(cur);
+  return out;
+}
+function kpImpSplit(line, sep) {
+  const out = [];
+  let cur = '', inQ = false;
+  for (let k = 0; k < line.length; k++) {
+    const ch = line[k];
+    if (ch === '"') { if (inQ && line[k + 1] === '"') { cur += '"'; k++; } else inQ = !inQ; }
+    else if (ch === sep && !inQ) { out.push(cur.trim()); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+// Nombre écrit à la française (1 234,56 €) ou à l'anglaise ($1,234.56). dec = '.' : la virgule sert aux milliers si elle sépare des groupes de 3 chiffres.
+function kpImpNum(v, dec) {
+  let t = String(v == null ? '' : v).replace(/[\s\u00A0\u202F'"]/g, '').replace(/[A-Za-z€$£]/g, '').replace(/^\((.*)\)$/, '-$1');
+  if (!t || t === '-' || t === '.') return 0;
+  if (t.includes(',') && t.includes('.')) t = t.lastIndexOf(',') > t.lastIndexOf('.') ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
+  else if (t.includes(',')) t = (/^-?\d{1,3}(,\d{3}){2,}$/.test(t) || (dec === '.' && /^-?\d{1,3}(,\d{3})+$/.test(t))) ? t.replace(/,/g, '') : t.replace(',', '.');
+  else if (/^-?\d{1,3}(\.\d{3}){2,}$/.test(t) || (dec === ',' && /^-?[1-9]\d{0,2}(\.\d{3})+$/.test(t))) t = t.replace(/\./g, '');
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : 0;
+}
+// Montant suivi ou précédé de sa devise, dans la même case (« 33,9 USD ») ou dans la case voisine
+function kpImpNumCur(c, i, dec) {
+  const a = String(c[i] == null ? '' : c[i]).trim(), b = String(c[i + 1] == null ? '' : c[i + 1]).trim();
+  if (/^[A-Z]{3}$/.test(a)) return { n: kpImpNum(b, dec), cur: a };
+  const m = a.match(/\b([A-Z]{3})\b/);
+  return { n: kpImpNum(a, dec), cur: m ? m[1] : (/^[A-Z]{3}$/.test(b) ? b : '') };
+}
+// Date en millisecondes : 2024-04-16T21:35, 16/04/2024, 16-04-2024 18:33, 12.04.2024, 20240416, 02-Apr-2025, numéro de jour Excel
+function kpImpDate(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return NaN;
+  const hms = (h, mi, se) => ((+h || 0) * 3600 + (+mi || 0) * 60 + (+se || 0)) * 1000;
+  let m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ,;]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/))) return Date.UTC(+m[1], m[2] - 1, +m[3]) + hms(m[4], m[5], m[6]);
+  if ((m = s.match(/^(\d{4})(\d{2})(\d{2})(?:[;, ]+(\d{2}):?(\d{2}):?(\d{2})?)?$/))) return Date.UTC(+m[1], m[2] - 1, +m[3]) + hms(m[4], m[5], m[6]);
+  if ((m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})(?:[T ,;]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/))) {
+    const y = +m[3] < 100 ? 2000 + +m[3] : +m[3];
+    return Date.UTC(y, m[2] - 1, +m[1]) + hms(m[4], m[5], m[6]);
+  }
+  if ((m = s.match(/^(\d{1,2})[\s\-]([a-zA-Z\u00C0-\u00FF]{3,9})\.?[\s\-](\d{4})(?:[T ,;]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/))) {
+    const k = kpImpNorm(m[2]);
+    const mo = [['juin', 5], ['juil', 6], ['jan', 0], ['fe', 1], ['mar', 2], ['ap', 3], ['av', 3], ['may', 4], ['mai', 4], ['jun', 5], ['jul', 6], ['au', 7], ['ao', 7], ['se', 8], ['oc', 9], ['no', 10], ['de', 11], ['dic', 11]].find(([p]) => k.startsWith(p));
+    if (mo) return Date.UTC(+m[3], mo[1], +m[1]) + hms(m[4], m[5], m[6]);
+  }
+  if (/^\d{5}(\.\d+)?$/.test(s)) { const n = parseFloat(s); if (n > 20000 && n < 80000) return Math.round((n - 25569) * 86400000); }
+  return NaN;
+}
+function kpImpCol(cols, keys) {
+  for (const k of keys) {
+    const i = cols.findIndex(c => k instanceof RegExp ? k.test(c) : c === k);
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+const KP_IMP_ISIN = /^[A-Z]{2}[A-Z0-9]{9}\d$/;
+// Symboles façon XTB : TTE.FR, AAPL.US, SPYL.DE → symboles de cotation habituels
+function kpImpMarketSymbol(raw) {
+  const s = String(raw || '').trim().toUpperCase();
+  const m = s.match(/^([A-Z0-9-]{1,12})\.(FR|NL|BE|DE|IT|ES|UK|US|PT)$/);
+  if (!m) return { ticker: s, cur: '' };
+  const suf = { FR: '.PA', NL: '.AS', BE: '.BR', DE: '.DE', IT: '.MI', ES: '.MC', UK: '.L', US: '', PT: '.LS' }[m[2]];
+  return { ticker: m[1] + suf, cur: m[2] === 'US' ? 'USD' : m[2] === 'UK' ? 'GBP' : '' };
+}
+
+// Opérations → positions. Prix moyen pondéré des achats ; une vente retire des parts sans changer le prix moyen ;
+// un mouvement de titres sans paiement (division, titres reçus) change le nombre de parts, pas la somme investie.
+function kpImpAggregate(ops, isTx) {
+  const list = ops.map((o, i) => ({ ...o, i, key: o.key || o.isin || o.ticker || kpImpNorm(o.label) })).filter(o => o.key && o.qty);
+  if (isTx && list.every(o => Number.isFinite(o.ts))) list.sort((a, b) => a.ts - b.ts || a.i - b.i);
+  const pos = new Map();
+  for (const o of list) {
+    let p = pos.get(o.key);
+    if (!p) { p = { isin: o.isin || '', ticker: o.ticker || '', label: o.label || '', type: o.type || '', qty: 0, cost: 0, cur: '', n: 0, last: 0, noCost: false }; pos.set(o.key, p); }
+    if (!p.label && o.label) p.label = o.label;
+    if (o.side === 'buy') {
+      if (!(o.price > 0)) p.noCost = true;
+      p.cost += o.qty * (o.price > 0 ? o.price : 0);
+      p.qty += o.qty;
+      p.n++;
+      if (o.cur) p.cur = o.cur;
+      if (o.last > 0) p.last = o.last; else if (o.price > 0) p.last = o.price;
+      continue;
+    }
+    const out = o.side === 'sell' ? o.qty : -o.qty;   // mouvement : quantité signée (+ = titres reçus)
+    if (out < 0) { p.qty -= out; continue; }
+    const q = Math.min(out, p.qty);
+    if (p.qty > 0) p.cost -= p.cost * q / p.qty;
+    p.qty -= q;
+    if (p.qty < 1e-9) { p.qty = 0; p.cost = 0; p.noCost = false; }
+  }
+  return [...pos.values()].filter(p => p.qty > 1e-9).slice(0, 100).map(p => {
+    const name = (p.ticker || p.label || p.isin).slice(0, 60);
+    const pru = p.noCost ? 0 : p.cost / p.qty;
+    const r = {
+      isin: p.isin || null, tickerKnown: !!p.ticker, name,
+      fullName: p.label && p.label !== name ? p.label.slice(0, 60) : '',
+      qty: Math.round(p.qty * 1e8) / 1e8,
+      pru: Math.round(pru * 1e6) / 1e6,
+      price: Math.round((p.last || pru) * 1e6) / 1e6,
+      cur: p.cur && p.cur !== 'EUR' ? p.cur : '',
+      needsQty: false, checked: true,
+    };
+    if (p.type) { r.type = p.type; r.sector = p.type; }
+    if (p.n > 1) { r.merged = p.n; if (isTx) r.fromOps = true; }
+    return r;
+  });
+}
+
+// Chaque modèle : en-têtes qui le reconnaissent (match), colonnes utiles (setup), lecture d'une ligne en opération (read).
+// tx : le fichier contient des opérations (achats, ventes) et non des positions.
+const KP_IMP_MODELS = [
+  // Trade Republic, export des transactions (CSV) : datetime,date,account_type,category,type,asset_class,name,symbol,shares,price,amount,fee,tax,currency,…
+  // Achats et ventes : category TRADING, type BUY / SELL, prix en euros. Titres reçus ou retirés sans paiement : DELIVERY, CORPORATE_ACTION.
+  {
+    broker: 'Trade Republic', tx: true,
+    match: c => c.includes('shares') && c.includes('asset_class') && c.includes('category') && c.includes('symbol'),
+    setup: c => ({ d: c.includes('datetime') ? c.indexOf('datetime') : c.indexOf('date'), cat: c.indexOf('category'), type: c.indexOf('type'), cls: c.indexOf('asset_class'), name: c.indexOf('name'), sym: c.indexOf('symbol'), sh: c.indexOf('shares'), pr: c.indexOf('price'), am: c.indexOf('amount'), cur: c.indexOf('currency') }),
+    read(c, I) {
+      const sym = String(c[I.sym] || '').trim().toUpperCase(), sh = kpImpNum(c[I.sh], '.');
+      if (!sym || !sh) return null;
+      const cat = kpImpNorm(c[I.cat]), type = kpImpNorm(c[I.type]);
+      const label = String(c[I.name] || '').trim() || sym;
+      const op = { label, ts: kpImpDate(c[I.d]), cur: String(c[I.cur] || '').trim().toUpperCase() };
+      // Cryptos : code interne (pas un vrai ISIN) ; le titre est retrouvé par son nom
+      if (/crypto/.test(kpImpNorm(c[I.cls]))) op.key = sym;
+      else if (KP_IMP_ISIN.test(sym)) op.isin = sym;
+      else op.ticker = sym;
+      if (cat === 'trading') {
+        const side = /sell/.test(type) ? 'sell' : /buy|savings/.test(type) ? 'buy' : '';
+        if (!side) return null;
+        const qty = Math.abs(sh);
+        let price = Math.abs(kpImpNum(c[I.pr], '.'));
+        if (!price) price = Math.abs(kpImpNum(c[I.am], '.')) / qty;
+        return { ...op, side, qty, price };
+      }
+      if (/delivery|corporate/.test(cat)) return { ...op, side: 'move', qty: sh };
+      return null;
+    },
+  },
+  // Degiro, Transactions.csv : Date,Heure,Produit,Code ISIN,…,Quantité,Cours,(devise),…,Valeur (EUR),…,ID Ordre (aussi en anglais, néerlandais, allemand)
+  // Quantité négative = vente. Prix moyen en euros d'après la colonne Valeur quand elle est en euros, sinon le cours dans sa devise.
+  {
+    broker: 'Degiro', tx: true,
+    match: c => kpImpCol(c, [/^(code )?isin$/]) >= 0 && kpImpCol(c, [/^(quantite|quantity|aantal|anzahl|cantidad|quantita)$/]) >= 0
+      && kpImpCol(c, [/^(cours|price|koers|kurs|precio|prezzo)$/]) >= 0 && kpImpCol(c, [/order|ordre|auftrag/]) >= 0,
+    setup(c) {
+      const val = kpImpCol(c, [/^(valeur|value|waarde|wert|valor|valore)( en)?( eur)?$/]);
+      return { d: kpImpCol(c, [/^(date|datum|fecha|data)$/]), t: kpImpCol(c, [/^(heure|time|tijd|zeit|uhrzeit|hora|ora)$/]), p: kpImpCol(c, [/^(produit|product|produkt|producto|prodotto)$/]),
+        isin: kpImpCol(c, [/^(code )?isin$/]), q: kpImpCol(c, [/^(quantite|quantity|aantal|anzahl|cantidad|quantita)$/]), pr: kpImpCol(c, [/^(cours|price|koers|kurs|precio|prezzo)$/]),
+        val, valEur: val >= 0 && /eur/.test(c[val]) };
+    },
+    read(c, I) {
+      const isin = String(c[I.isin] || '').trim().toUpperCase(), q = kpImpNum(c[I.q]);
+      if (!isin || !q) return null;
+      const qty = Math.abs(q), pc = kpImpNumCur(c, I.pr);
+      let price = Math.abs(pc.n), cur = pc.cur;
+      const vc = I.val >= 0 ? kpImpNumCur(c, I.val) : { n: 0, cur: '' };
+      if (vc.n && (I.valEur || vc.cur === 'EUR')) { price = Math.abs(vc.n) / qty; cur = 'EUR'; }
+      return { isin, label: String(c[I.p] || '').trim() || isin, side: q < 0 ? 'sell' : 'buy', qty, price, cur, ts: kpImpDate((c[I.d] || '') + (I.t >= 0 ? ' ' + (c[I.t] || '') : '')) };
+    },
+  },
+  // Degiro, relevé de compte (Account.csv) : Date,Heure,Date de valeur,Produit,Code ISIN,Description,FX,Mouvements,,Solde,,ID Ordre
+  // Les achats et ventes se lisent dans la description : « Achat 5 VANGUARD FTSE AW@104,28 EUR », « Koop 1 @ 33,9 USD ».
+  {
+    broker: 'Degiro', tx: true,
+    match: c => kpImpCol(c, [/^(code )?isin$/]) >= 0 && kpImpCol(c, [/^(description|omschrijving|beschreibung|descripcion|descrizione)$/]) >= 0 && kpImpCol(c, [/^(solde|saldo|balance)$/]) >= 0,
+    setup: c => ({ d: kpImpCol(c, [/^(date|datum|fecha|data)$/]), t: kpImpCol(c, [/^(heure|time|tijd|zeit|uhrzeit|hora|ora)$/]), p: kpImpCol(c, [/^(produit|product|produkt|producto|prodotto)$/]),
+      isin: kpImpCol(c, [/^(code )?isin$/]), desc: kpImpCol(c, [/^(description|omschrijving|beschreibung|descripcion|descrizione)$/]) }),
+    read(c, I) {
+      const isin = String(c[I.isin] || '').trim().toUpperCase();
+      const m = String(c[I.desc] || '').match(/^\s*(achat|vente|buy|sell|koop|verkoop|kauf|verkauf|compra|venta|acquisto|vendita)\s+([\d.,]+)\s*(.*?)\s*(?:@|zu je)\s*([\d.,]+)\s*([A-Z]{3})?/i);
+      if (!isin || !m) return null;
+      const qty = kpImpNum(m[2]);
+      if (!(qty > 0)) return null;
+      return { isin, label: String(c[I.p] || '').trim() || isin, side: /^(vente|sell|verkoop|verkauf|venta|vendita)$/i.test(m[1]) ? 'sell' : 'buy', qty,
+        price: kpImpNum(m[4]), cur: (m[5] || '').toUpperCase(), ts: kpImpDate((c[I.d] || '') + (I.t >= 0 ? ' ' + (c[I.t] || '') : '')) };
+    },
+  },
+  // XTB, historique des opérations de trésorerie : ID;Type;Time;Symbol;Comment;Amount
+  // « Stocks/ETF purchase » + « OPEN BUY 34/42.5658 @ 11.7480 », « Stocks/ETF sale » + « CLOSE BUY 1 @ 26.280 ».
+  // Le montant est dans la devise du compte (euros pour un compte français) : il donne le prix d'achat en euros.
+  {
+    broker: 'XTB', tx: true,
+    match: c => kpImpCol(c, [/^(symbol|symbole)$/]) >= 0 && kpImpCol(c, [/^(comment|commentaire)$/]) >= 0 && kpImpCol(c, [/^(amount|montant)$/]) >= 0 && kpImpCol(c, [/^type$/]) >= 0,
+    setup: c => ({ type: kpImpCol(c, [/^type$/]), t: kpImpCol(c, [/^(time|heure|date)$/]), sym: kpImpCol(c, [/^(symbol|symbole)$/]), com: kpImpCol(c, [/^(comment|commentaire)$/]), am: kpImpCol(c, [/^(amount|montant)$/]) }),
+    read(c, I) {
+      const type = kpImpNorm(c[I.type]);
+      const side = /purchase|achat|compra|kauf|acquisto|zakup/.test(type) ? 'buy' : /sale|vente|vende|verkauf|vendita|sprzeda/.test(type) ? 'sell' : '';
+      const m = String(c[I.com] || '').match(/(?:OPEN|CLOSE)\s+BUY\s+([\d.]+)(?:\/[\d.]+)?\s*@\s*([\d.]+)/i);
+      if (!side || !m) return null;
+      const qty = parseFloat(m[1]), s = kpImpMarketSymbol(c[I.sym]);
+      if (!(qty > 0) || !s.ticker) return null;
+      const amount = Math.abs(kpImpNum(c[I.am], '.'));
+      return { ticker: s.ticker, side, qty, price: amount > 0 ? amount / qty : parseFloat(m[2]), cur: amount > 0 ? 'EUR' : s.cur, ts: kpImpDate(c[I.t]) };
+    },
+  },
+  // XTB, positions ouvertes (fichier Excel de xStation) : Position;Symbol;Type;Volume;Open time;Open price;Market price;Purchase value;…
+  // Une ligne par ordre : les lignes d'un même titre sont regroupées avec leur prix moyen.
+  {
+    broker: 'XTB',
+    match: c => c.includes('symbol') && c.includes('volume') && c.includes('open price'),
+    setup: c => ({ sym: c.indexOf('symbol'), type: c.indexOf('type'), vol: c.indexOf('volume'), op: c.indexOf('open price'), mp: c.indexOf('market price') }),
+    read(c, I) {
+      const type = I.type >= 0 ? kpImpNorm(c[I.type]) : '';
+      if (type && !/buy|achat/.test(type)) return null;
+      const s = kpImpMarketSymbol(c[I.sym]), qty = kpImpNum(c[I.vol], '.');
+      if (!s.ticker || !(qty > 0)) return null;
+      return { ticker: s.ticker, side: 'buy', qty, price: kpImpNum(c[I.op], '.'), last: I.mp >= 0 ? kpImpNum(c[I.mp], '.') : 0, cur: s.cur };
+    },
+  },
+  // Revolut, relevé du compte de trading (CSV) : Date,Ticker,Type,Quantity,Price per share,Total Amount,Currency,FX Rate
+  // Types « BUY - MARKET », « SELL - LIMIT », « STOCK SPLIT » ; prix écrits « $52.07 » ou « €88.94 ».
+  {
+    broker: 'Revolut', tx: true,
+    match: c => c.includes('ticker') && c.includes('price per share') && c.includes('type'),
+    setup: c => ({ d: c.indexOf('date'), tk: c.indexOf('ticker'), type: c.indexOf('type'), q: c.indexOf('quantity'), pr: c.indexOf('price per share'), tot: c.indexOf('total amount'), cur: c.indexOf('currency') }),
+    read(c, I) {
+      const sym = String(c[I.tk] || '').trim().toUpperCase(), q = kpImpNum(c[I.q], '.');
+      if (!sym || !q) return null;
+      const type = kpImpNorm(c[I.type]), cur = String(c[I.cur] || '').trim().toUpperCase();
+      // Actions américaines : le symbole suffit ; ailleurs, il est vérifié par la recherche
+      const op = cur === 'USD' ? { ticker: sym, cur } : { label: sym, cur };
+      op.ts = kpImpDate(c[I.d]);
+      if (/^buy/.test(type)) {
+        let price = Math.abs(kpImpNum(c[I.pr], '.'));
+        if (!price && I.tot >= 0) price = Math.abs(kpImpNum(c[I.tot], '.')) / Math.abs(q);
+        return { ...op, side: 'buy', qty: Math.abs(q), price };
+      }
+      if (/^sell/.test(type)) return { ...op, side: 'sell', qty: Math.abs(q) };
+      if (/split/.test(type)) return { ...op, side: 'move', qty: q };
+      return null;
+    },
+  },
+  // Trading 212, historique (CSV) : Action,Time,ISIN,Ticker,Name,No. of shares,Price / share,Currency (Price / share),Exchange rate,…,Total,Currency (Total),…
+  // « Market buy », « Limit sell »… Le cours est ramené en euros avec le taux de change de l'opération.
+  {
+    broker: 'Trading 212', tx: true,
+    match: c => c.includes('action') && c.includes('no. of shares') && c.includes('price / share'),
+    setup: c => ({ a: c.indexOf('action'), d: c.indexOf('time'), isin: c.indexOf('isin'), tk: c.indexOf('ticker'), name: c.indexOf('name'), q: c.indexOf('no. of shares'),
+      pr: c.indexOf('price / share'), prCur: c.indexOf('currency (price / share)'), fx: c.indexOf('exchange rate'), totCur: c.indexOf('currency (total)') }),
+    read(c, I) {
+      const a = kpImpNorm(c[I.a]);
+      const side = /buy/.test(a) ? 'buy' : /sell/.test(a) ? 'sell' : '';
+      const qty = Math.abs(kpImpNum(c[I.q], '.'));
+      const isin = String(c[I.isin] || '').trim().toUpperCase(), tk = String(c[I.tk] || '').trim().toUpperCase();
+      if (!side || !qty || !(isin || tk)) return null;
+      let price = kpImpNum(c[I.pr], '.'), cur = String(c[I.prCur] || '').trim().toUpperCase();
+      const fx = I.fx >= 0 ? kpImpNum(c[I.fx], '.') : 0, acc = I.totCur >= 0 ? String(c[I.totCur] || '').trim().toUpperCase() : '';
+      if (cur && cur !== 'EUR' && cur !== 'GBX' && acc === 'EUR' && fx > 0) { price = price / fx; cur = 'EUR'; }
+      const op = { label: String(c[I.name] || '').trim() || tk, side, qty, price, cur, ts: kpImpDate(c[I.d]) };
+      if (KP_IMP_ISIN.test(isin)) op.isin = isin; else op.label = tk || op.label;
+      return op;
+    },
+  },
+  // Interactive Brokers, requête Flex des transactions : Buy/Sell,TradeDate,ISIN,Quantity,TradePrice,…,CurrencyPrimary
+  {
+    broker: 'Interactive Brokers', tx: true,
+    match: c => c.includes('buy/sell') && c.includes('tradeprice') && c.includes('quantity'),
+    setup: c => ({ s: c.indexOf('buy/sell'), d: kpImpCol(c, ['tradedate', 'datetime', 'date/time']), isin: c.indexOf('isin'), sym: c.indexOf('symbol'), desc: c.indexOf('description'), q: c.indexOf('quantity'), pr: c.indexOf('tradeprice'), cur: kpImpCol(c, ['currencyprimary', 'currency']) }),
+    read(c, I) {
+      const s = kpImpNorm(c[I.s]), q = kpImpNum(c[I.q], '.');
+      const side = /sell/.test(s) ? 'sell' : /buy/.test(s) ? 'buy' : '';
+      const isin = I.isin >= 0 ? String(c[I.isin] || '').trim().toUpperCase() : '', sym = I.sym >= 0 ? String(c[I.sym] || '').trim().toUpperCase() : '';
+      if (!side || !q || !(isin || sym)) return null;
+      const cur = I.cur >= 0 ? String(c[I.cur] || '').trim().toUpperCase() : '';
+      const op = { side, qty: Math.abs(q), price: Math.abs(kpImpNum(c[I.pr], '.')), cur, ts: kpImpDate(c[I.d]), label: (I.desc >= 0 && c[I.desc]) || sym };
+      if (KP_IMP_ISIN.test(isin)) op.isin = isin; else if (cur === 'USD') op.ticker = sym; else op.label = sym;
+      return op;
+    },
+  },
+  // Saxo, export des transactions : …,Type,Instrument,Instrument ISIN,Instrument currency,Exchange Description,Instrument Symbol,Event,Amount,…
+  // Type « Trade », événement « Buy 3 @ 139.74 USD » / « Sell 3 @ 139.74 USD ».
+  {
+    broker: 'Saxo', tx: true,
+    match: c => c.includes('instrument isin') && c.includes('event'),
+    setup: c => ({ d: kpImpCol(c, ['trade date', 'date']), name: c.indexOf('instrument'), isin: c.indexOf('instrument isin'), cur: c.indexOf('instrument currency'), sym: c.indexOf('instrument symbol'), ev: c.indexOf('event') }),
+    read(c, I) {
+      const m = String(c[I.ev] || '').match(/^\s*(buy|sell|achat|vente|acheter|vendre|kopen|verkopen|kauf|verkauf)\s+(-?[\d.,]+)\s*@\s*([\d.,]+)\s*([A-Z]{3})?/i);
+      const isin = String(c[I.isin] || '').trim().toUpperCase();
+      if (!m || !isin) return null;
+      const qty = Math.abs(kpImpNum(m[2], '.'));
+      if (!qty) return null;
+      const op = { isin, label: String(c[I.name] || '').trim() || isin, side: /^(sell|vente|vendre|verkopen|verkauf)$/i.test(m[1]) ? 'sell' : 'buy', qty,
+        price: kpImpNum(m[3], '.'), cur: (m[4] || String(c[I.cur] || '')).trim().toUpperCase(), ts: kpImpDate(c[I.d]) };
+      // « NVDA:xnas » → NVDA, « VWRA:xlon » → VWRA.L : le cours se suit directement
+      const sm = String(I.sym >= 0 ? c[I.sym] || '' : '').match(/^([A-Za-z0-9.\-]+):([a-z]+)$/i);
+      const suf = sm ? { xpar: '.PA', xams: '.AS', xbru: '.BR', xetr: '.DE', xmil: '.MI', xmad: '.MC', xlon: '.L', xnas: '', xnys: '', arcx: '' }[sm[2].toLowerCase()] : undefined;
+      if (suf !== undefined) op.ticker = sm[1].toUpperCase() + suf;
+      return op;
+    },
+  },
+  // BoursoBank, export des positions (onglet Positions) : name;isin;quantity;buyingPrice;lastPrice;… (en-têtes non confirmés par une source publique)
+  {
+    broker: 'Boursorama',
+    match: c => c.includes('buyingprice') && c.includes('isin') && c.includes('quantity'),
+    setup: c => ({ name: kpImpCol(c, ['name', 'libelle']), isin: c.indexOf('isin'), q: c.indexOf('quantity'), pru: c.indexOf('buyingprice'), last: c.indexOf('lastprice') }),
+    read(c, I) {
+      const isin = String(c[I.isin] || '').trim().toUpperCase(), qty = kpImpNum(c[I.q], ',');
+      const label = I.name >= 0 ? String(c[I.name] || '').trim() : '';
+      if (!(qty > 0) || !(isin || label)) return null;
+      const op = { label: label || isin, side: 'buy', qty, price: kpImpNum(c[I.pru], ','), last: I.last >= 0 ? kpImpNum(c[I.last], ',') : 0 };
+      if (KP_IMP_ISIN.test(isin)) op.isin = isin;
+      return op;
+    },
+  },
+  // Degiro, export du portefeuille (Portfolio.csv) : Produit,Symbole/ISIN,Quantité,Clôture,Valeur locale,,Valeur en EUR — sans prix d'achat
+  {
+    broker: 'Degiro',
+    match: c => /^(produit|product|produkt|producto|prodotto)$/.test(c[0] || '') && /^symbo(le|l|ol)?\/isin$/.test(c[1] || ''),
+    read(c) {
+      const label = String(c[0] || '').trim(), raw = String(c[1] || '').trim().toUpperCase(), qty = kpImpNum(c[2]);
+      if (!label || !(qty > 0) || /^(cash|especes|liquidites)/.test(kpImpNorm(label))) return null;
+      const cur = [c[4], c[5]].map(x => String(x || '').trim()).find(x => /^[A-Z]{3}$/.test(x)) || '';
+      const op = { label, side: 'buy', qty, price: 0, last: kpImpNum(c[3]), cur };
+      if (KP_IMP_ISIN.test(raw)) op.isin = raw; else if (raw) op.ticker = raw;
+      return op;
+    },
+  },
+];
+
+// Relevé d'activité Interactive Brokers (CSV à sections) : « Open Positions,Header,DataDiscriminator,Asset Category,Currency,Symbol,Quantity,…,Cost Price,…,Close Price,… »
+function kpImpIbkrStatement(recs) {
+  let head = null, seen = false;
+  const ops = [];
+  for (const l of recs) {
+    const c = kpImpSplit(l, ',');
+    if (!/^(open positions|positions ouvertes)$/.test(kpImpNorm(c[0]))) continue;
+    const kind = kpImpNorm(c[1]);
+    if (kind === 'header') { head = c.map(kpImpNorm); seen = true; continue; }
+    if (kind !== 'data' || !head) continue;
+    const at = k => head.indexOf(k);
+    const disc = at('datadiscriminator'), cat = at('asset category'), sym = String(c[at('symbol')] || '').trim().toUpperCase();
+    if (disc >= 0 && !/summary/.test(kpImpNorm(c[disc]))) continue;
+    if (cat >= 0 && /forex|cash/.test(kpImpNorm(c[cat]))) continue;
+    const qty = kpImpNum(c[at('quantity')], '.');
+    if (!sym || !(qty > 0)) continue;
+    const cur = String(c[at('currency')] || '').trim().toUpperCase();
+    const op = { side: 'buy', qty, price: kpImpNum(c[at('cost price')], '.'), last: kpImpNum(c[at('close price')], '.'), cur };
+    if (cur === 'USD') op.ticker = sym; else op.label = sym;
+    ops.push(op);
+  }
+  return seen ? { broker: 'Interactive Brokers', rows: kpImpAggregate(ops, false) } : null;
+}
+
+// Reconnaît le courtier à l'en-tête du fichier (cherché dans les 40 premières lignes) et lit le fichier avec son modèle
+function kpImpBroker(text) {
+  const recs = kpImpRecords(text);
+  if (!recs.length) return null;
+  const ib = kpImpIbkrStatement(recs);
+  if (ib) return ib;
+  for (let i = 0; i < Math.min(recs.length, 40); i++) {
+    for (const sep of [';', '\t', ',']) {
+      const raw = kpImpSplit(recs[i], sep);
+      if (raw.length < 3) continue;
+      const cols = raw.map(kpImpNorm);
+      const model = KP_IMP_MODELS.find(m => m.match(cols));
+      if (!model) continue;
+      const I = model.setup ? model.setup(cols) : {};
+      const ops = [];
+      for (const l of recs.slice(i + 1)) {
+        try { const op = model.read(kpImpSplit(l, sep), I); if (op) ops.push(op); } catch (e) {}
+      }
+      return { broker: model.broker, rows: kpImpAggregate(ops, !!model.tx) };
+    }
+  }
+  return null;
+}
+
+// Lecture générique d'un CSV (séparateur ; , ou tab · colonnes par mots-clés) pour les formats non reconnus
+function parseCSVGeneric(text) {
   const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/["'’]/g, ' ').replace(/\s+/g, ' ').trim();
   let lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
   if (!lines.length) return [];
@@ -2714,10 +3115,12 @@ function parseCSVSmart(text) {
 }
 
 // Prévisualisation avant import
-function showCSVPreview(rows, filename) {
+function showCSVPreview(rows, filename, broker) {
   window._csvRows = rows;
   rows.forEach(r => { r.pv = 0; r.pvSign = 1; });
-  const _dp = detectPlatform(filename);
+  broker = broker || rows.broker || '';
+  window._csvBroker = broker;
+  const _dp = broker || detectPlatform(filename);   // format reconnu : son courtier ; sinon d'après le nom du fichier
   const platform = _dp !== 'Autre' ? _dp : (kpMainPlatform() || 'Autre');   // fichier non reconnu : plateforme principale
   window._csvPlatform = platform;
 
@@ -2730,6 +3133,7 @@ function showCSVPreview(rows, filename) {
       <div class="kpi-head">
         <div class="kpi-title">Vérifie tes ${rows.length} ligne${rows.length > 1 ? 's' : ''}</div>
         <div class="kpi-sub">${_escHtml(filename)}</div>
+        ${broker ? `<div class="kpi-sub" id="csv-broker" style="color:#16a34a;font-weight:700">✓ Format reconnu : ${_escHtml(broker)}</div>` : ''}
         <label class="kpi-platform">Compte ou courtier <select id="csv-platform-sel">${platformOptionsHTML(platform)}</select></label>
       </div>
       <div class="kpi-list">
@@ -2742,7 +3146,7 @@ function showCSVPreview(rows, filename) {
           else if (r.noPrice) notes.push(`<div class="kpi-warn">Cours introuvable pour ce symbole : vérifie qu'il s'agit du bon titre.</div>`);
           if (r.converted) notes.push(`<div class="kpi-info">Somme convertie depuis ${(r.pruOrig * r.qty).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ${_escHtml(r.cur)} au taux du jour : corrige-la si tu connais le montant payé en euros.</div>`);
           if (r.curUnknown) notes.push(`<div class="kpi-warn">Prix en ${_escHtml(r.cur)} non converti : indique la somme payée en euros.</div>`);
-          if (r.merged) notes.push(`<div class="kpi-info">${r.merged} lignes de ce titre regroupées, avec leur prix moyen.</div>`);
+          if (r.merged) notes.push(`<div class="kpi-info">${r.fromOps ? `${r.merged} achats de ce titre regroupés, avec leur prix moyen d'achat (ventes déduites, frais non comptés).` : `${r.merged} lignes de ce titre regroupées, avec leur prix moyen.`}</div>`);
           return `
         <div class="kpi-row" id="csv-row-${i}">
           <label class="kpi-row-head">

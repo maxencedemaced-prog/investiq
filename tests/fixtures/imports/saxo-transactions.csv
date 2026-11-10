@@ -1,0 +1,6 @@
+Client ID,Trade Date,Value Date,Type,Instrument,Instrument ISIN,Instrument currency,Exchange Description,Instrument Symbol,Event,Amount,Order ID,Conversion Rate
+,05-Mar-2026,07-Mar-2026,Trade,Vanguard FTSE All-World UCITS ETF,IE00BK5BQT80,USD,London Stock Exchange (ETFs),VWRA:xlon,Sell 2 @ 140.00 USD,"279,00",,1
+,05-Feb-2026,09-Feb-2026,Trade,Vanguard FTSE All-World UCITS ETF,IE00BK5BQT80,USD,London Stock Exchange (ETFs),VWRA:xlon,Buy 6 @ 130.00 USD,"-781,00",,1
+,02-Jan-2026,02-Jan-2026,Cash amount,,,USD,,,Custody Fee,"-3,91",,1
+,10-Jan-2026,12-Jan-2026,Trade,Air Liquide SA,FR0000120073,EUR,Euronext Paris,AI:xpar,Buy 3 @ 160.00 EUR,"-482,00",,1
+,05-Jan-2026,07-Jan-2026,Trade,Vanguard FTSE All-World UCITS ETF,IE00BK5BQT80,USD,London Stock Exchange (ETFs),VWRA:xlon,Buy 4 @ 120.00 USD,"-481,00",,1
