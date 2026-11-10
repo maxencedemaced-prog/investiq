@@ -4,7 +4,7 @@
 // Animations : transitions variées entre les scènes, texte qui apparaît mot par mot au rythme de la voix,
 // étiquettes qui surgissent, barre de progression façon « story », bouton de fin qui bat.
 import React from 'react';
-import { AbsoluteFill, Audio, Img, Sequence, staticFile, useCurrentFrame, interpolate, spring, Easing } from 'remotion';
+import { AbsoluteFill, Audio, Img, OffthreadVideo, Sequence, staticFile, useCurrentFrame, interpolate, spring, Easing } from 'remotion';
 import { loadFont } from '@remotion/google-fonts/Inter';
 import data from './data.json';
 
@@ -68,16 +68,40 @@ const enter = (f, i) => {
   return { opacity: t, transform: `scale(${1.35 - 0.35 * t})` };
 };
 
+// Enregistrement réel de l'appli (tutoriel du Studio), lu dans le téléphone
+const Screen = ({ s, style }) => <OffthreadVideo src={staticFile(`screen-${s.screen}.mp4`)} muted startFrom={Math.round((s.screenFrom || 0) * FPS)} playbackRate={s.screenRate || 1} style={{ objectFit: 'cover', objectPosition: 'top', background: '#fff', ...style }} />;
+
+// Grand téléphone en 3D qui arrive, pivote et flotte, avec l'appli qui tourne dedans
+const Phone = ({ s }) => {
+  const f = useCurrentFrame(), p = pop(f, 4, { damping: 15, stiffness: 110 });
+  const ry = interpolate(f, [0, s.frames + OVER], [20, -10], clamp), rx = interpolate(f, [0, s.frames + OVER], [8, 2], clamp);
+  const W = 600, H = Math.round(W * 1558 / 720);
+  return (
+    <div style={{ position: 'absolute', left: (1080 - W) / 2 - 16, top: 500, perspective: 1900 }}>
+      <div style={{ width: W + 32, height: H + 32, borderRadius: 84, background: '#0a0a0c', padding: 16, boxShadow: '0 60px 120px rgba(0,0,0,.65), 0 0 0 3px rgba(255,255,255,.14), 0 0 90px rgba(52,211,153,.28)', transform: `translateY(${(1 - p) * 900 + Math.sin(f / 16) * 10}px) rotateY(${ry}deg) rotateX(${rx}deg) scale(${0.9 + 0.1 * p})` }}>
+        <div style={{ width: W, height: H, borderRadius: 70, overflow: 'hidden', background: '#fff' }}><Screen s={s} style={{ width: W, height: H }} /></div>
+      </div>
+    </div>
+  );
+};
+
 const Scene = ({ s, i }) => {
   const f = useCurrentFrame();
   const z = interpolate(f, [0, s.frames + OVER], i % 2 ? [1.16, 1.04] : [1.04, 1.16], clamp);
   const x = interpolate(f, [0, s.frames + OVER], i % 2 ? [-18, 18] : [18, -18], clamp);
   const top = s.pos === 'top';
   const k = pop(f, 3);
+  const phone = s.layout === 'phone' && s.screen;
   return (
     <AbsoluteFill style={{ background: '#060b18', overflow: 'hidden', ...enter(f, i) }}>
-      <Img src={staticFile(s.img)} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${z}) translateX(${x}px)` }} />
-      <AbsoluteFill style={{ background: top
+      {s.video
+        ? <OffthreadVideo src={staticFile(s.video)} muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${1.04 + f * 0.0006})` }} />
+        : <div style={{ position: 'absolute', inset: 0, transform: `scale(${z}) translateX(${x}px)`, filter: phone ? 'blur(26px) brightness(.5) saturate(1.2)' : 'none' }}>
+            <Img src={staticFile(s.img)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {!phone && s.screen && s.rect && <Screen s={s} style={{ position: 'absolute', left: s.rect[0], top: s.rect[1], width: s.rect[2], height: s.rect[3], borderRadius: s.rect[4] }} />}
+          </div>}
+      {phone && <Phone s={s} />}
+      <AbsoluteFill style={{ opacity: phone ? 0 : 1, background: top
         ? 'linear-gradient(180deg, rgba(6,11,24,.9) 0%, rgba(6,11,24,.6) 22%, rgba(6,11,24,0) 42%, rgba(6,11,24,0) 80%, rgba(6,11,24,.6) 100%)'
         : 'linear-gradient(180deg, rgba(6,11,24,.55) 0%, rgba(6,11,24,0) 22%, rgba(6,11,24,0) 48%, rgba(6,11,24,.74) 72%, rgba(6,11,24,.94) 100%)' }} />
       <Chips list={s.chips} />

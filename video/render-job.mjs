@@ -248,10 +248,25 @@ async function pubJob(script) {
   fs.mkdirSync('out', { recursive: true });
   const scenes = (script.scenes || []).filter(s => s && /^pub\/[\w-]+\.jpg$/.test(s.img || '') && fs.existsSync(path.join('public', s.img))).slice(0, 12)
     .map(s => ({ img: s.img, kicker: String(s.kicker || '').slice(0, 40), title: String(s.title || '').slice(0, 90), sub: String(s.sub || '').slice(0, 110), pos: s.pos === 'top' ? 'top' : 'bottom', dur: Math.max(1.4, Math.min(7, Number(s.dur) || 3)),
-      chips: (Array.isArray(s.chips) ? s.chips : []).slice(0, 4).map(c => String(c).slice(0, 24)), fx: String(s.fx || '').slice(0, 12), words: Array.isArray(s.words) ? s.words : null }));
+      chips: (Array.isArray(s.chips) ? s.chips : []).slice(0, 4).map(c => String(c).slice(0, 24)), fx: String(s.fx || '').slice(0, 12), words: Array.isArray(s.words) ? s.words : null,
+      // Vraie vidéo d'illustration (mots-clés), enregistrement de l'appli dans le téléphone (screen = nom du tutoriel), mise en page
+      broll_queries: (Array.isArray(s.broll_queries) ? s.broll_queries : []).slice(0, 4).map(q => String(q).slice(0, 60)),
+      screen: /^[a-z_]{3,30}$/.test(s.screen || '') ? s.screen : null, screenFrom: Math.max(0, Number(s.screenFrom) || 0), screenRate: Math.max(0.5, Math.min(2.5, Number(s.screenRate) || 1)),
+      layout: s.layout === 'phone' ? 'phone' : 'photo', rect: Array.isArray(s.rect) && s.rect.length === 5 ? s.rect.map(Number) : null }));
   if (!scenes.length) throw new Error('Aucune scène : les photos doivent être dans video/public/pub/');
   const end = { dur: 3.4, ...(script.end || {}) };
   const total = scenes.reduce((n, s) => n + s.dur, 0) + end.dur;
+  // Vraies vidéos d'illustration (Pixabay ou Pexels) : la photo reste en secours si rien de pertinent n'est trouvé
+  let t0 = 0;
+  scenes.forEach(s => { s.start = t0; s.end = t0 + s.dur + 0.6; t0 += s.dur; });
+  const clips = await fetchBroll(scenes);
+  scenes.forEach((s, i) => { if (s.broll_file) { const f = `pubclip-${i}.mp4`; fs.renameSync(path.join('public', s.broll_file), path.join('public', f)); s.video = f; } delete s.broll_file; delete s.end; });
+  // Enregistrements réels de l'appli (tutoriels du Studio) à montrer dans le téléphone
+  for (const id of [...new Set(scenes.map(s => s.screen).filter(Boolean))]) {
+    const r = await fetch(`${process.env.SUPABASE_URL}/storage/v1/object/public/social/tuto/${id}.mp4`);
+    if (r.ok) fs.writeFileSync(path.join('public', `screen-${id}.mp4`), Buffer.from(await r.arrayBuffer()));
+    else scenes.forEach(s => { if (s.screen === id) s.screen = null; });
+  }
   // Voix (ElevenLabs, déjà dans le stockage) : une piste par segment
   const segments = [];
   for (let k = 0; k < (script.segments || []).length; k++) {
@@ -277,7 +292,7 @@ async function pubJob(script) {
   const { data: cur } = await sb.from('social_posts').select('video_script').eq('id', ID).single();
   const { error } = await sb.from('social_posts').update({
     video_url: url, image_urls: [coverUrl],
-    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: fs.statSync('out/reel.mp4').size, error: null },
+    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', clips, cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: fs.statSync('out/reel.mp4').size, error: null },
   }).eq('id', ID);
   if (error) throw error;
   console.log('Pub prête :', url);
