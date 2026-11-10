@@ -58,7 +58,7 @@
   /* Textes */
   --color-text: #09090b;
   --color-text-secondary: #71717a;
-  --color-text-tertiary: #a1a1aa;
+  --color-text-tertiary: #76767e;
   --color-text-disabled: #d4d4d8;
 
   /* Typographie */
@@ -2424,3 +2424,9 @@ input::placeholder,textarea::placeholder,.search-box input::placeholder,.ac-box 
 #auth-login input.kh-input::placeholder,#auth-signup input.kh-input::placeholder{color:#667085 !important;-webkit-text-fill-color:#667085 !important}
 /* Applis : le double appui ne zoome plus la page (le défilement reste normal) */
 .kp-app,.kp-app body{touch-action:pan-x pan-y}
+
+/* Thème clair : les couleurs pensées pour le fond sombre (vert et rouge clairs, gris pâles) deviennent lisibles sur fond blanc */
+:root:not([data-theme="dark"]) [style*="color:#3fb950"],:root:not([data-theme="dark"]) [style*="color: #3fb950"]{color:#15803d !important}
+:root:not([data-theme="dark"]) [style*="color:#f87171"],:root:not([data-theme="dark"]) [style*="color: #f87171"]{color:#dc2626 !important}
+:root:not([data-theme="dark"]) [style*="color:#8e8e93"],:root:not([data-theme="dark"]) [style*="color: #8e8e93"]{color:#6b6b70 !important}
+:root:not([data-theme="dark"]) [style*="color:#c7c7cc"],:root:not([data-theme="dark"]) [style*="color: #c7c7cc"]{color:#71717a !important}

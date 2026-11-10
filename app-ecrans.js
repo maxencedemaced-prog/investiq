@@ -334,7 +334,7 @@ function setupProgressHTML() {
 // Par défaut : niveau 3 (tout) → aucun changement pour les comptes existants.
 // ═══════════════════════════════════════════════════════════════════════════
 const KP_LEVELS = {
-  1: { label: 'Je débute', emoji: '🌱', desc: 'L\'essentiel : accueil, portefeuille, objectif et assistant IA.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan'] },
+  1: { label: 'Je débute', emoji: '🌱', desc: 'L\'essentiel : accueil, portefeuille, objectif, assistant IA et calculateurs.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan'] },
   2: { label: 'J\'ai déjà quelques placements', emoji: '📈', desc: 'En plus : le score de santé, le calculateur de dépenses et les actualités.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan', 'sante', 'depenses', 'news'] },
   3: { label: 'Je gère un vrai portefeuille', emoji: '🚀', desc: 'Tous les outils, avec en plus : scénario de crise, simulateur DCA, aide à la décision.', tools: 'all' },
 };
@@ -368,12 +368,18 @@ function kpUnlockTool(page) {
 }
 function kpAskedKey() { try { return 'kp_level_asked_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch { return 'kp_level_asked_anon'; } }
 
+// Outils accessibles au niveau choisi (plus ceux débloqués en les ouvrant). Les calculateurs sont ouverts à tous les niveaux.
+function kpAllowedTools() {
+  const cfg = KP_LEVELS[kpGetLevel()] || KP_LEVELS[3];
+  const allowed = cfg.tools === 'all' ? KP_ALL_TOOLS.slice() : cfg.tools.slice();
+  try { const _u = JSON.parse(localStorage.getItem(kpUnlockKey()) || '[]'); if (Array.isArray(_u)) _u.forEach(t => { if (!allowed.includes(t)) allowed.push(t); }); } catch (e) {}
+  allowed.push('calc');
+  return allowed;
+}
+
 function applyUserLevel() {
   try {
-    const lvl = kpGetLevel();
-    const cfg = KP_LEVELS[lvl] || KP_LEVELS[3];
-    const allowed = cfg.tools === 'all' ? KP_ALL_TOOLS.slice() : cfg.tools.slice();
-    try { const _u = JSON.parse(localStorage.getItem(kpUnlockKey()) || '[]'); if (Array.isArray(_u)) _u.forEach(t => { if (!allowed.includes(t)) allowed.push(t); }); } catch (e) {}
+    const allowed = kpAllowedTools();
     KP_ALL_TOOLS.forEach(t => {
       const btn = document.getElementById('nav-' + t);
       if (btn) btn.style.display = allowed.includes(t) ? '' : 'none';
@@ -506,10 +512,36 @@ async function kpTutoForPage(page) {
     else if (!h1.querySelector('.kp-tuto-btn')) h1.insertAdjacentHTML('beforeend', ' <button type="button" class="kp-tuto-btn" onclick="kpOpenTuto(\'' + id + '\')" style="vertical-align:middle;margin-left:6px;padding:4px 10px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:inherit;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0">▶ C’est quoi ?</button>');
   } catch (e) {}
 }
+// Première visite : l'appli reste floutée derrière la vidéo et le questionnaire, pour la découvrir vraiment une fois le tutoriel fini.
+// Le voile part seul dès qu'aucun de ces écrans n'est ouvert (vérifié plusieurs fois de suite pour couvrir le passage vidéo → questionnaire).
+function kpFirstVeil() {
+  if (document.getElementById('kp-first-veil')) return;
+  const v = document.createElement('div');
+  v.id = 'kp-first-veil';
+  v.setAttribute('aria-hidden', 'true');
+  v.style.cssText = 'position:fixed;inset:0;z-index:999;background:rgba(6,10,18,0.55);backdrop-filter:blur(26px) saturate(0.8);-webkit-backdrop-filter:blur(26px) saturate(0.8);transition:opacity .6s ease';
+  document.body.appendChild(v);
+  const t0 = Date.now();
+  let empty = 0;
+  const open = () => {
+    const ob = document.getElementById('onboarding-modal');
+    return (ob && ob.style.display === 'flex') || document.getElementById('kp-tuto-modal') || document.getElementById('legal-accept') || document.getElementById('kp-level-modal');
+  };
+  const iv = setInterval(() => {
+    empty = open() ? 0 : empty + 1;
+    if ((empty >= 3 && Date.now() - t0 > 2500) || Date.now() - t0 > 30 * 60 * 1000) {
+      clearInterval(iv);
+      v.style.opacity = '0';
+      setTimeout(() => v.remove(), 650);
+    }
+  }, 400);
+}
+
 // Première ouverture d'un nouveau compte : la présentation passe avant le tutoriel (on peut la passer)
 async function kpMaybePresentation() {
   try {
     const willOnboard = !localStorage.getItem(obKey()) && (isDemo || positions.length === 0);
+    if (willOnboard && !isDemo) kpFirstVeil();
     if (!willOnboard || isDemo || localStorage.getItem(kpTutoSeenKey('presentation'))) return showOnboarding();
     const m = await kpTutoManifest();
     if (!m || !m.presentation) return showOnboarding();
@@ -797,7 +829,7 @@ async function renderHome() {
     ['depenses', 'Mes dépenses', "nav('depenses')"],
     ['bilan', 'Mon bilan', 'openBilan()'],
     ['news', 'Actualités', "nav('news')"],
-  ];
+  ].filter(([id]) => kpAllowedTools().includes(id));   // seulement les outils du niveau choisi
   html += `
   <div class="kph-tools-title">Mes outils</div>
   <div class="kph-tools">
@@ -1186,10 +1218,40 @@ function kpSetPortSort(k) {
   try { localStorage.setItem('kp_port_sort', k); } catch (e) {}
   renderPortfolio(true);
 }
+// Catégories du portefeuille : cases à cocher pour afficher ou masquer chaque famille, et regroupement facultatif
+const KP_PORT_CATS = [['action', 'Actions'], ['etf', 'ETF'], ['crypto', 'Cryptos'], ['matiere', 'Matières premières'], ['devise', 'Devises']];
+function kpPortCat(p) {
+  const t = String(p.type || ''), n = String(p.name || '');
+  if (t === 'Crypto') return 'crypto';
+  if (t === 'Devise' || /^CUR-[A-Z]{3}$/.test(n)) return 'devise';
+  if (/mati[eè]re/i.test(t) || /^X(AU|AG|PT)-G$/.test(n) || (typeof ETC_TICKERS !== 'undefined' && ETC_TICKERS.includes(n))) return 'matiere';
+  if (/ETF|ETC/i.test(t)) return 'etf';
+  return 'action';
+}
+function kpPortHidden() {
+  try { const a = JSON.parse(localStorage.getItem('kp_port_hide') || '[]'); if (Array.isArray(a)) return a.filter(k => KP_PORT_CATS.some(x => x[0] === k)); } catch (e) {}
+  return [];
+}
+function kpTogglePortCat(k) {
+  const h = kpPortHidden(), i = h.indexOf(k);
+  if (i >= 0) h.splice(i, 1); else h.push(k);
+  try { localStorage.setItem('kp_port_hide', JSON.stringify(h)); } catch (e) {}
+  renderPortfolio(true);
+}
+function kpShowAllPortCats() {
+  try { localStorage.removeItem('kp_port_hide'); } catch (e) {}
+  renderPortfolio(true);
+}
+function kpPortGrouped() { try { return localStorage.getItem('kp_port_group') === '1'; } catch (e) { return false; } }
+function kpTogglePortGroup() {
+  try { localStorage.setItem('kp_port_group', kpPortGrouped() ? '0' : '1'); } catch (e) {}
+  renderPortfolio(true);
+}
 function kpSortPositions(list) {
   const cmp = (KP_PORT_SORTS.find(x => x[0] === kpPortSort()) || KP_PORT_SORTS[0])[2];
   const key = p => { const val = p.qty * p.price, inv = p.qty * p.pru; return { val, inv, pnl: val - inv, pct: inv ? (val - inv) / inv * 100 : 0, chg: p.change_pct || 0, label: displayName(p.name) }; };
-  return list.map(p => ({ p, k: key(p) })).sort((a, b) => cmp(a.k, b.k) || b.k.val - a.k.val).map(x => x.p);
+  const grp = kpPortGrouped(), rank = p => KP_PORT_CATS.findIndex(x => x[0] === kpPortCat(p));
+  return list.map(p => ({ p, k: key(p), r: grp ? rank(p) : 0 })).sort((a, b) => a.r - b.r || cmp(a.k, b.k) || b.k.val - a.k.val).map(x => x.p);
 }
 
 function renderPortfolio(auto=false) {
@@ -1282,7 +1344,33 @@ function renderPortfolio(auto=false) {
 
   // Tableau des positions
   setTimeout(() => { if (typeof selectMode !== 'undefined' && selectMode) toggleSelectMode(true); }, 30);
-  const sorted = kpSortPositions(dedupPositions);
+  const catCount = {};
+  dedupPositions.forEach(p => { const k = kpPortCat(p); catCount[k] = (catCount[k] || 0) + 1; });
+  const catsHere = KP_PORT_CATS.filter(x => catCount[x[0]]);
+  const hiddenCats = catsHere.length > 1 ? kpPortHidden().filter(k => catCount[k]) : [];
+  const sorted = kpSortPositions(dedupPositions.filter(p => !hiddenCats.includes(kpPortCat(p))));
+  // Liste regroupée : un bandeau (nom de la famille, nombre de lignes, valeur, part du portefeuille) avant chaque famille
+  const grpHead = {};
+  if (kpPortGrouped() && catsHere.length > 1) {
+    const shownTotal = sorted.reduce((t, p) => t + p.qty * p.price, 0);
+    KP_PORT_CATS.forEach(([k, label]) => {
+      const rows = sorted.filter(p => kpPortCat(p) === k);
+      if (!rows.length) return;
+      const v = rows.reduce((t, p) => t + p.qty * p.price, 0);
+      const first = !Object.keys(grpHead).length;
+      grpHead[rows[0].id] = `<div class="pos-group-head" data-cat="${k}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 16px;${first ? '' : 'margin-top:18px;border-top:1px solid ' + borderCol + ';'}border-bottom:1px solid ${borderCol};border-left:3px solid #16a34a;background:${isDark ? 'rgba(255,255,255,0.045)' : '#f4f6f8'}">
+        <div style="font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:${textCol}">${label} <span style="font-weight:600;color:${subCol};letter-spacing:0;text-transform:none">· ${rows.length} ligne${rows.length > 1 ? 's' : ''}</span></div>
+        <div style="font-size:12.5px;font-weight:700;color:${textCol}">${v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € <span style="font-weight:600;color:${subCol}">· ${shownTotal ? (v / shownTotal * 100).toFixed(0) : 0} %</span></div>
+      </div>`;
+    });
+  }
+  const chip = (on, click, label, id) => `<button type="button" ${id ? `id="${id}" ` : ''}role="checkbox" aria-checked="${on}" onclick="${click}" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${on ? '#16a34a' : borderCol};background:${on ? 'rgba(22,163,74,0.12)' : 'transparent'};color:${on ? textCol : subCol}"><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:4px;font-size:11px;line-height:1;border:1.5px solid ${on ? '#16a34a' : subCol};background:${on ? '#16a34a' : 'transparent'};color:#fff">${on ? '✓' : ''}</span>${label}</button>`;
+  const catsHtml = catsHere.length > 1 ? `<div id="port-cats" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px 2px">
+      <span style="font-size:12px;font-weight:600;color:${subCol}">Afficher</span>
+      ${catsHere.map(([k, label]) => chip(!hiddenCats.includes(k), `kpTogglePortCat('${k}')`, `${label} <span style="opacity:0.65;font-weight:500">${catCount[k]}</span>`, 'port-cat-' + k)).join('')}
+      <span style="width:1px;height:20px;background:${borderCol}"></span>
+      ${chip(kpPortGrouped(), 'kpTogglePortGroup()', 'Regrouper par catégorie', 'port-group')}
+    </div>` : '';
   const tableHtml = `
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
     <!-- Header tableau -->
@@ -1301,6 +1389,7 @@ function renderPortfolio(auto=false) {
         <button onclick="toggleSelectMode(false)" style="padding:6px 13px;background:transparent;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer">Annuler</button>
       </div>
     </div>
+    ${catsHtml}
     ${dedupPositions.length > 1 ? `<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 16px;border-bottom:1px solid ${borderCol}">
       <label for="port-sort" style="font-size:12px;font-weight:600;color:${subCol};white-space:nowrap">Trier par</label>
       <select id="port-sort" onchange="kpSetPortSort(this.value)" style="width:auto;max-width:70%;padding:7px 10px;font-size:13px;font-weight:600;border:1px solid ${borderCol};border-radius:9px">
@@ -1311,6 +1400,7 @@ function renderPortfolio(auto=false) {
       ${['ACTIF','INVESTI','PRIX MOY.','VALEUR','PERF.','',''].map(h=>`<div style="font-size:10px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.06em">${h}</div>`).join('')}
     </div>
     <!-- Lignes positions -->
+    ${sorted.length ? '' : `<div id="port-empty-filter" style="padding:26px 16px;text-align:center;font-size:13px;color:${subCol}">Toutes les catégories sont masquées. <button type="button" onclick="kpShowAllPortCats()" style="background:none;border:none;padding:0;color:#16a34a;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline">Tout afficher</button></div>`}
     ${sorted.map(p => {
       const val = p.qty*p.price;
       const inv = p.qty*p.pru;
@@ -1321,7 +1411,7 @@ function renderPortfolio(auto=false) {
       const chgColor = chg>=0?'#3fb950':'#f87171';
       const initials = p.name.replace(/[^A-Z0-9]/g,'').slice(0,2)||p.name.slice(0,2).toUpperCase();
       const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
-      return `
+      return `${grpHead[p.id] || ''}
       <div id="row-${p.id}" class="pos-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
         onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'"
         onclick="togglePos('${p.id}')">

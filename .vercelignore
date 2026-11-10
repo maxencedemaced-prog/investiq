@@ -6,3 +6,9 @@ codemagic.yaml
 
 # Tests automatiques : jamais servis par le site
 tests
+
+# Fichiers internes (schémas de base, automatisations, scripts de fabrication) : jamais servis par le site
+*.sql
+.github
+generate_icons.sh
+tuto
