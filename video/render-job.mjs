@@ -263,7 +263,7 @@ async function pubJob(script) {
   scenes.forEach((s, i) => { if (s.broll_file) { const f = `pubclip-${i}.mp4`; fs.renameSync(path.join('public', s.broll_file), path.join('public', f)); s.video = f; } delete s.broll_file; delete s.end; });
   // Enregistrements réels de l'appli (tutoriels du Studio) à montrer dans le téléphone
   for (const id of [...new Set(scenes.map(s => s.screen).filter(Boolean))]) {
-    const r = await fetch(`${process.env.SUPABASE_URL}/storage/v1/object/public/social/tuto/${id}.mp4`);
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/public/social/tuto/${id}.mp4`);
     if (r.ok) fs.writeFileSync(path.join('public', `screen-${id}.mp4`), Buffer.from(await r.arrayBuffer()));
     else scenes.forEach(s => { if (s.screen === id) s.screen = null; });
   }
