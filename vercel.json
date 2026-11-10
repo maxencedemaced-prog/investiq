@@ -18,6 +18,7 @@
     "api/claude.js": { "maxDuration": 120 },
     "api/parse-statement.js": { "maxDuration": 120 },
     "api/push-send.js": { "maxDuration": 120 },
+    "api/feed.js": { "maxDuration": 120 },
     "api/social.js": { "maxDuration": 180 },
     "api/social-publish.js": { "maxDuration": 180 }
   },

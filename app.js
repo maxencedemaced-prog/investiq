@@ -448,68 +448,7 @@ function getCachedMonthlyPlan() {
 
 // ═══ ANALYSE RÉELLE AVANT LE PLAN DU MOIS ═══
 // Liste fermée de grandes valeurs (France, Europe, États-Unis) : l'IA ne peut choisir QUE dedans (ou parmi ce que l'utilisateur détient déjà).
-const PLAN_UNIVERSE_BASE = [
-  ['MC.PA','LVMH','Luxe','France'], ['RMS.PA','Hermès','Luxe','France'], ['OR.PA',"L'Oréal",'Consommation','France'], ['BN.PA','Danone','Consommation de base','France'],
-  ['AI.PA','Air Liquide','Industrie','France'], ['SU.PA','Schneider Electric','Industrie','France'], ['AIR.PA','Airbus','Aéronautique','France'], ['SAF.PA','Safran','Aéronautique','France'],
-  ['DG.PA','Vinci','Construction','France'], ['SAN.PA','Sanofi','Santé','France'], ['EL.PA','EssilorLuxottica','Santé','France'], ['TTE.PA','TotalEnergies','Énergie','France'],
-  ['BNP.PA','BNP Paribas','Finance','France'], ['CS.PA','AXA','Finance','France'], ['ORA.PA','Orange','Télécoms','France'], ['FDJU.PA','FDJ United','Jeux','France'],
-  ['ASML.AS','ASML','Technologie','Europe'], ['SAP.DE','SAP','Technologie','Europe'], ['SIE.DE','Siemens','Industrie','Europe'], ['ALV.DE','Allianz','Finance','Europe'],
-  ['NESN.SW','Nestlé','Consommation de base','Europe'], ['NOVN.SW','Novartis','Santé','Europe'], ['NOVO-B.CO','Novo Nordisk','Santé','Europe'], ['IBE.MC','Iberdrola','Services publics','Europe'],
-  ['AAPL','Apple','Technologie','États-Unis'], ['MSFT','Microsoft','Technologie','États-Unis'], ['NVDA','Nvidia','Technologie','États-Unis'], ['GOOGL','Alphabet','Technologie','États-Unis'],
-  ['AMZN','Amazon','Consommation','États-Unis'], ['JNJ','Johnson & Johnson','Santé','États-Unis'], ['JPM','JPMorgan','Finance','États-Unis'], ['V','Visa','Finance','États-Unis'],
-  ['KO','Coca-Cola','Consommation de base','États-Unis'], ['PG','Procter & Gamble','Consommation de base','États-Unis'], ['XOM','ExxonMobil','Énergie','États-Unis'],
-  // Élargissement (nov. 2026) : CAC 40 et grandes valeurs européennes ; le plan en présélectionne une quarantaine selon le marché
-  ['KER.PA','Kering','Luxe','France'], ['GLE.PA','Société Générale','Finance','France'], ['ACA.PA','Crédit Agricole','Finance','France'], ['RI.PA','Pernod Ricard','Consommation de base','France'],
-  ['CAP.PA','Capgemini','Technologie','France'], ['DSY.PA','Dassault Systèmes','Technologie','France'], ['STMPA.PA','STMicroelectronics','Technologie','France'], ['SGO.PA','Saint-Gobain','Construction','France'],
-  ['ENGI.PA','Engie','Services publics','France'], ['VIE.PA','Veolia','Services publics','France'], ['HO.PA','Thales','Aéronautique','France'], ['LR.PA','Legrand','Industrie','France'],
-  ['ML.PA','Michelin','Automobile','France'], ['RNO.PA','Renault','Automobile','France'], ['STLAP.PA','Stellantis','Automobile','France'], ['PUB.PA','Publicis','Médias','France'],
-  ['EN.PA','Bouygues','Construction','France'], ['CA.PA','Carrefour','Consommation de base','France'], ['AC.PA','Accor','Consommation','France'], ['ERF.PA','Eurofins Scientific','Santé','France'],
-  ['BVI.PA','Bureau Veritas','Industrie','France'],
-  ['UBSG.SW','UBS','Finance','Europe'], ['ZURN.SW','Zurich Insurance','Finance','Europe'], ['ABBN.SW','ABB','Industrie','Europe'], ['DTE.DE','Deutsche Telekom','Télécoms','Europe'],
-  ['MUV2.DE','Munich Re','Finance','Europe'], ['BAS.DE','BASF','Matériaux','Europe'], ['BMW.DE','BMW','Automobile','Europe'], ['MBG.DE','Mercedes-Benz','Automobile','Europe'],
-  ['IFX.DE','Infineon','Technologie','Europe'], ['ADS.DE','Adidas','Consommation','Europe'], ['RHM.DE','Rheinmetall','Aéronautique','Europe'], ['DB1.DE','Deutsche Börse','Finance','Europe'],
-  ['SAN.MC','Banco Santander','Finance','Europe'], ['ITX.MC','Inditex','Consommation','Europe'], ['ENEL.MI','Enel','Services publics','Europe'], ['ISP.MI','Intesa Sanpaolo','Finance','Europe'],
-  ['RACE.MI','Ferrari','Automobile','Europe'], ['UCG.MI','UniCredit','Finance','Europe'], ['INGA.AS','ING','Finance','Europe'], ['AD.AS','Ahold Delhaize','Consommation de base','Europe'],
-  ['PRX.AS','Prosus','Technologie','Europe'], ['HEIA.AS','Heineken','Consommation de base','Europe'], ['ABI.BR','AB InBev','Consommation de base','Europe'], ['NOKIA.HE','Nokia','Télécoms','Europe'],
-  ['ATCO-A.ST','Atlas Copco','Industrie','Europe'], ['VOLV-B.ST','Volvo','Industrie','Europe'], ['EQNR.OL','Equinor','Énergie','Europe'], ['ENI.MI','Eni','Énergie','Europe'],
-  // Élargissement 2 : SBF 120 et grandes valeurs européennes (Suisse, Allemagne, Pays-Bas, Europe du Sud, pays nordiques)
-  ['ALO.PA','Alstom','Industrie','France'], ['AMUN.PA','Amundi','Finance','France'], ['BIM.PA','bioMérieux','Santé','France'], ['COFA.PA','Coface','Finance','France'],
-  ['DIM.PA','Sartorius Stedim','Santé','France'], ['EDEN.PA','Edenred','Finance','France'], ['ELIS.PA','Elis','Industrie','France'], ['ERA.PA','Eramet','Matériaux','France'],
-  ['FGR.PA','Eiffage','Construction','France'], ['GET.PA','Getlink','Industrie','France'], ['RXL.PA','Rexel','Industrie','France'], ['SK.PA','SEB','Consommation','France'],
-  ['SOP.PA','Sopra Steria','Technologie','France'], ['SPIE.PA','Spie','Industrie','France'], ['TFI.PA','TF1','Médias','France'], ['VK.PA','Vallourec','Industrie','France'],
-  ['IPN.PA','Ipsen','Santé','France'], ['NEX.PA','Nexans','Industrie','France'], ['RCO.PA','Rémy Cointreau','Consommation de base','France'], ['SW.PA','Sodexo','Consommation','France'],
-  ['TE.PA','Technip Energies','Énergie','France'], ['DEC.PA','JCDecaux','Médias','France'], ['AKE.PA','Arkema','Matériaux','France'], ['IPS.PA','Ipsos','Médias','France'],
-  ['GTT.PA','GTT','Énergie','France'], ['SCR.PA','SCOR','Finance','France'], ['VIV.PA','Vivendi','Médias','France'], ['BOL.PA','Bolloré','Industrie','France'],
-  ['LI.PA','Klépierre','Immobilier','France'], ['URW.PA','Unibail-Rodamco-Westfield','Immobilier','France'], ['COV.PA','Covivio','Immobilier','France'], ['GFC.PA','Gecina','Immobilier','France'],
-  ['TRI.PA','Trigano','Consommation','France'], ['VCT.PA','Vicat','Construction','France'], ['FR.PA','Valeo','Automobile','France'], ['FRVIA.PA','Forvia','Automobile','France'],
-  ['SOI.PA','Soitec','Technologie','France'], ['AYV.PA','Ayvens','Finance','France'], ['AF.PA','Air France-KLM','Industrie','France'], ['UBI.PA','Ubisoft','Technologie','France'],
-  ['RO.SW','Roche','Santé','Europe'], ['CFR.SW','Richemont','Luxe','Europe'], ['LONN.SW','Lonza','Santé','Europe'], ['SIKA.SW','Sika','Matériaux','Europe'],
-  ['GIVN.SW','Givaudan','Matériaux','Europe'], ['SREN.SW','Swiss Re','Finance','Europe'], ['ALC.SW','Alcon','Santé','Europe'], ['HOLN.SW','Holcim','Construction','Europe'],
-  ['SCMN.SW','Swisscom','Télécoms','Europe'], ['LOGN.SW','Logitech','Technologie','Europe'], ['PGHN.SW','Partners Group','Finance','Europe'], ['BAYN.DE','Bayer','Santé','Europe'],
-  ['BEI.DE','Beiersdorf','Consommation de base','Europe'], ['CON.DE','Continental','Automobile','Europe'], ['DHL.DE','DHL Group','Industrie','Europe'], ['DBK.DE','Deutsche Bank','Finance','Europe'],
-  ['EOAN.DE','E.ON','Services publics','Europe'], ['RWE.DE','RWE','Services publics','Europe'], ['HEN3.DE','Henkel','Consommation de base','Europe'], ['MRK.DE','Merck KGaA','Santé','Europe'],
-  ['MTX.DE','MTU Aero Engines','Aéronautique','Europe'], ['VOW3.DE','Volkswagen','Automobile','Europe'], ['P911.DE','Porsche','Automobile','Europe'], ['SHL.DE','Siemens Healthineers','Santé','Europe'],
-  ['ENR.DE','Siemens Energy','Énergie','Europe'], ['HNR1.DE','Hannover Re','Finance','Europe'], ['CBK.DE','Commerzbank','Finance','Europe'], ['ZAL.DE','Zalando','Consommation','Europe'],
-  ['SY1.DE','Symrise','Matériaux','Europe'], ['HEI.DE','Heidelberg Materials','Construction','Europe'], ['VNA.DE','Vonovia','Immobilier','Europe'], ['QIA.DE','Qiagen','Santé','Europe'],
-  ['PUM.DE','Puma','Consommation','Europe'], ['ADYEN.AS','Adyen','Finance','Europe'], ['ASM.AS','ASM International','Technologie','Europe'], ['BESI.AS','BE Semiconductor','Technologie','Europe'],
-  ['PHIA.AS','Philips','Santé','Europe'], ['WKL.AS','Wolters Kluwer','Médias','Europe'], ['KPN.AS','KPN','Télécoms','Europe'], ['NN.AS','NN Group','Finance','Europe'],
-  ['ASRNL.AS','ASR Nederland','Finance','Europe'], ['UMG.AS','Universal Music Group','Médias','Europe'], ['AKZA.AS','Akzo Nobel','Matériaux','Europe'], ['DSFIR.AS','DSM-Firmenich','Matériaux','Europe'],
-  ['RAND.AS','Randstad','Industrie','Europe'], ['IMCD.AS','IMCD','Matériaux','Europe'], ['EXO.AS','Exor','Finance','Europe'], ['MT.AS','ArcelorMittal','Matériaux','Europe'],
-  ['UNA.AS','Unilever','Consommation de base','Europe'], ['SHELL.AS','Shell','Énergie','Europe'], ['BBVA.MC','BBVA','Finance','Europe'], ['CABK.MC','CaixaBank','Finance','Europe'],
-  ['TEF.MC','Telefónica','Télécoms','Europe'], ['AMS.MC','Amadeus','Technologie','Europe'], ['REP.MC','Repsol','Énergie','Europe'], ['FER.MC','Ferrovial','Construction','Europe'],
-  ['AENA.MC','Aena','Industrie','Europe'], ['CLNX.MC','Cellnex','Télécoms','Europe'], ['ELE.MC','Endesa','Services publics','Europe'], ['IAG.MC','IAG','Industrie','Europe'],
-  ['GRF.MC','Grifols','Santé','Europe'], ['G.MI','Generali','Finance','Europe'], ['MONC.MI','Moncler','Luxe','Europe'], ['PRY.MI','Prysmian','Industrie','Europe'],
-  ['LDO.MI','Leonardo','Aéronautique','Europe'], ['SRG.MI','Snam','Services publics','Europe'], ['TRN.MI','Terna','Services publics','Europe'], ['MB.MI','Mediobanca','Finance','Europe'],
-  ['PST.MI','Poste Italiane','Finance','Europe'], ['CPR.MI','Campari','Consommation de base','Europe'], ['UCB.BR','UCB','Santé','Europe'], ['KBC.BR','KBC','Finance','Europe'],
-  ['ARGX.BR','argenx','Santé','Europe'], ['SOLB.BR','Solvay','Matériaux','Europe'], ['AGS.BR','Ageas','Finance','Europe'], ['EDP.LS','EDP','Services publics','Europe'],
-  ['GALP.LS','Galp Energia','Énergie','Europe'], ['JMT.LS','Jerónimo Martins','Consommation de base','Europe'], ['OMV.VI','OMV','Énergie','Europe'], ['EBS.VI','Erste Group','Finance','Europe'],
-  ['VER.VI','Verbund','Services publics','Europe'], ['DSV.CO','DSV','Industrie','Europe'], ['MAERSK-B.CO','Maersk','Industrie','Europe'], ['ORSTED.CO','Ørsted','Services publics','Europe'],
-  ['CARL-B.CO','Carlsberg','Consommation de base','Europe'], ['VWS.CO','Vestas','Industrie','Europe'], ['COLO-B.CO','Coloplast','Santé','Europe'], ['GMAB.CO','Genmab','Santé','Europe'],
-  ['NDA-FI.HE','Nordea','Finance','Europe'], ['SAMPO.HE','Sampo','Finance','Europe'], ['KNEBV.HE','Kone','Industrie','Europe'], ['NESTE.HE','Neste','Énergie','Europe'],
-  ['UPM.HE','UPM','Matériaux','Europe'], ['ERIC-B.ST','Ericsson','Télécoms','Europe'], ['INVE-B.ST','Investor AB','Finance','Europe'], ['SAND.ST','Sandvik','Industrie','Europe'],
-  ['HM-B.ST','H&M','Consommation','Europe'], ['SEB-A.ST','SEB','Finance','Europe'], ['ASSA-B.ST','Assa Abloy','Industrie','Europe'], ['EVO.ST','Evolution','Jeux','Europe'],
-  ['DNB.OL','DNB','Finance','Europe'], ['TEL.OL','Telenor','Télécoms','Europe'], ['MOWI.OL','Mowi','Consommation de base','Europe'], ['NHY.OL','Norsk Hydro','Matériaux','Europe'],
-];
+// PLAN_UNIVERSE_BASE et PLAN_US_EXTRA : voir universe.js (chargé avant ce fichier, partagé avec le serveur)
 // ETF proposés dans les plans : lignes cotées dans la devise de l'utilisateur, sur une place locale (pas de frais de change).
 // France / UE / autres : ETF UCITS en euros. Royaume-Uni : lignes en livres (GBP, pas en pence). États-Unis : ETF américains (les UCITS n'y sont pas accessibles).
 const PLAN_ETFS_BY_REGION = {
@@ -521,43 +460,6 @@ const PLAN_REGION = (() => { try { const r = window.kpI18n && window.kpI18n.isEN
 const PLAN_ETFS = PLAN_ETFS_BY_REGION[PLAN_REGION];
 // Actions proposées : aux États-Unis, uniquement des valeurs américaines (cotées en dollars, sans frais de change), avec plus de secteurs.
 // Ailleurs : France, Europe et États-Unis (environ 360 valeurs), comme décidé pour la version française.
-const PLAN_US_EXTRA = [
-  ['UNH','UnitedHealth','Santé','États-Unis'], ['LLY','Eli Lilly','Santé','États-Unis'], ['MRK','Merck & Co','Santé','États-Unis'],
-  ['MA','Mastercard','Finance','États-Unis'], ['BRK-B','Berkshire Hathaway','Finance','États-Unis'], ['HD','Home Depot','Consommation','États-Unis'],
-  ['COST','Costco','Consommation de base','États-Unis'], ['PEP','PepsiCo','Consommation de base','États-Unis'], ['WMT','Walmart','Consommation de base','États-Unis'],
-  ['CAT','Caterpillar','Industrie','États-Unis'], ['HON','Honeywell','Industrie','États-Unis'], ['NEE','NextEra Energy','Services publics','États-Unis'],
-  ['VZ','Verizon','Télécoms','États-Unis'], ['CVX','Chevron','Énergie','États-Unis'], ['LIN','Linde','Matériaux','États-Unis'],
-  ['META','Meta Platforms','Technologie','États-Unis'], ['AVGO','Broadcom','Technologie','États-Unis'], ['ORCL','Oracle','Technologie','États-Unis'], ['CRM','Salesforce','Technologie','États-Unis'],
-  ['ADBE','Adobe','Technologie','États-Unis'], ['AMD','AMD','Technologie','États-Unis'], ['CSCO','Cisco','Technologie','États-Unis'], ['IBM','IBM','Technologie','États-Unis'],
-  ['TSLA','Tesla','Automobile','États-Unis'], ['NFLX','Netflix','Médias','États-Unis'], ['DIS','Disney','Médias','États-Unis'], ['MCD',"McDonald's",'Consommation','États-Unis'],
-  ['NKE','Nike','Consommation','États-Unis'], ['BAC','Bank of America','Finance','États-Unis'], ['GS','Goldman Sachs','Finance','États-Unis'], ['BLK','BlackRock','Finance','États-Unis'],
-  ['ABBV','AbbVie','Santé','États-Unis'], ['PFE','Pfizer','Santé','États-Unis'], ['TMO','Thermo Fisher','Santé','États-Unis'], ['T','AT&T','Télécoms','États-Unis'],
-  ['UPS','UPS','Industrie','États-Unis'], ['GE','GE Aerospace','Aéronautique','États-Unis'], ['RTX','RTX','Aéronautique','États-Unis'], ['DUK','Duke Energy','Services publics','États-Unis'],
-  ['SO','Southern Company','Services publics','États-Unis'], ['MDLZ','Mondelez','Consommation de base','États-Unis'],
-  ['INTC','Intel','Technologie','États-Unis'], ['QCOM','Qualcomm','Technologie','États-Unis'], ['TXN','Texas Instruments','Technologie','États-Unis'], ['INTU','Intuit','Technologie','États-Unis'],
-  ['NOW','ServiceNow','Technologie','États-Unis'], ['AMAT','Applied Materials','Technologie','États-Unis'], ['MU','Micron','Technologie','États-Unis'], ['ACN','Accenture','Technologie','États-Unis'],
-  ['PANW','Palo Alto Networks','Technologie','États-Unis'], ['SNPS','Synopsys','Technologie','États-Unis'], ['CDNS','Cadence','Technologie','États-Unis'], ['ANET','Arista Networks','Technologie','États-Unis'],
-  ['KLAC','KLA','Technologie','États-Unis'], ['LRCX','Lam Research','Technologie','États-Unis'], ['ADI','Analog Devices','Technologie','États-Unis'], ['MSI','Motorola Solutions','Technologie','États-Unis'],
-  ['UBER','Uber','Technologie','États-Unis'], ['PYPL','PayPal','Finance','États-Unis'], ['AXP','American Express','Finance','États-Unis'], ['MS','Morgan Stanley','Finance','États-Unis'],
-  ['C','Citigroup','Finance','États-Unis'], ['WFC','Wells Fargo','Finance','États-Unis'], ['SCHW','Charles Schwab','Finance','États-Unis'], ['SPGI','S&P Global','Finance','États-Unis'],
-  ['CB','Chubb','Finance','États-Unis'], ['PGR','Progressive','Finance','États-Unis'], ['ICE','Intercontinental Exchange','Finance','États-Unis'], ['CME','CME Group','Finance','États-Unis'],
-  ['ABT','Abbott','Santé','États-Unis'], ['DHR','Danaher','Santé','États-Unis'], ['BMY','Bristol-Myers Squibb','Santé','États-Unis'], ['AMGN','Amgen','Santé','États-Unis'],
-  ['GILD','Gilead','Santé','États-Unis'], ['ISRG','Intuitive Surgical','Santé','États-Unis'], ['MDT','Medtronic','Santé','États-Unis'], ['SYK','Stryker','Santé','États-Unis'],
-  ['CVS','CVS Health','Santé','États-Unis'], ['ELV','Elevance Health','Santé','États-Unis'], ['CI','Cigna','Santé','États-Unis'], ['VRTX','Vertex','Santé','États-Unis'],
-  ['REGN','Regeneron','Santé','États-Unis'], ['ZTS','Zoetis','Santé','États-Unis'], ['LOW',"Lowe's",'Consommation','États-Unis'], ['SBUX','Starbucks','Consommation','États-Unis'],
-  ['BKNG','Booking','Consommation','États-Unis'], ['TJX','TJX','Consommation','États-Unis'], ['CMG','Chipotle','Consommation','États-Unis'], ['MAR','Marriott','Consommation','États-Unis'],
-  ['ABNB','Airbnb','Consommation','États-Unis'], ['F','Ford','Automobile','États-Unis'], ['GM','General Motors','Automobile','États-Unis'], ['CL','Colgate-Palmolive','Consommation de base','États-Unis'],
-  ['KMB','Kimberly-Clark','Consommation de base','États-Unis'], ['GIS','General Mills','Consommation de base','États-Unis'], ['TGT','Target','Consommation de base','États-Unis'], ['DE','Deere','Industrie','États-Unis'],
-  ['MMM','3M','Industrie','États-Unis'], ['UNP','Union Pacific','Industrie','États-Unis'], ['ETN','Eaton','Industrie','États-Unis'], ['EMR','Emerson','Industrie','États-Unis'],
-  ['ADP','ADP','Industrie','États-Unis'], ['FDX','FedEx','Industrie','États-Unis'], ['WM','Waste Management','Industrie','États-Unis'], ['LMT','Lockheed Martin','Aéronautique','États-Unis'],
-  ['BA','Boeing','Aéronautique','États-Unis'], ['NOC','Northrop Grumman','Aéronautique','États-Unis'], ['GD','General Dynamics','Aéronautique','États-Unis'], ['COP','ConocoPhillips','Énergie','États-Unis'],
-  ['SLB','SLB','Énergie','États-Unis'], ['EOG','EOG Resources','Énergie','États-Unis'], ['PSX','Phillips 66','Énergie','États-Unis'], ['D','Dominion Energy','Services publics','États-Unis'],
-  ['AEP','American Electric Power','Services publics','États-Unis'], ['EXC','Exelon','Services publics','États-Unis'], ['SRE','Sempra','Services publics','États-Unis'], ['AMT','American Tower','Immobilier','États-Unis'],
-  ['PLD','Prologis','Immobilier','États-Unis'], ['CCI','Crown Castle','Immobilier','États-Unis'], ['SPG','Simon Property','Immobilier','États-Unis'], ['O','Realty Income','Immobilier','États-Unis'],
-  ['EQIX','Equinix','Immobilier','États-Unis'], ['CMCSA','Comcast','Médias','États-Unis'], ['CHTR','Charter','Médias','États-Unis'], ['TMUS','T-Mobile US','Télécoms','États-Unis'],
-  ['APD','Air Products','Matériaux','États-Unis'], ['SHW','Sherwin-Williams','Matériaux','États-Unis'], ['ECL','Ecolab','Matériaux','États-Unis'], ['FCX','Freeport-McMoRan','Matériaux','États-Unis'],
-  ['NEM','Newmont','Matériaux','États-Unis'], ['DOW','Dow','Matériaux','États-Unis'],
-];
 const PLAN_UNIVERSE = PLAN_REGION === 'US' ? [...PLAN_UNIVERSE_BASE.filter(u => u[3] === 'États-Unis'), ...PLAN_US_EXTRA] : [...PLAN_UNIVERSE_BASE, ...PLAN_US_EXTRA];
 const PLAN_SHORTLIST_SIZE = 40;   // nombre de valeurs remises à l'IA, présélectionnées parmi tout l'univers selon le marché du moment
 let PLAN_SHORT = null;            // présélection du dernier chargement des cours (sous-ensemble de PLAN_UNIVERSE)
@@ -5834,8 +5736,9 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
   // Les deux parties avancent en même temps, chaque carte s'affiche dès qu'elle est prête
   let total = myTickers.length + oppoCount, ready = 0;
   const setStatus = () => { const st = part('status'); if (st) st.textContent = `🧠 L'IA analyse le marché... ${ready}/${total}`; };
+  let sharedMedian = null;
   const fillMedian = () => {
-    const med = sigMarketMedian();
+    const med = sharedMedian || sigMarketMedian();
     if (!med) return;
     root.querySelectorAll('[data-sigmed]').forEach(e => { e.textContent = 'médiane ' + kpSigned(med.value); });
     const note = part('note');
@@ -5856,6 +5759,20 @@ Réponds UNIQUEMENT : ["TICKER1","TICKER2",...]`;
       }
     })(),
     (async () => {
+      // Valeurs à découvrir déjà calculées pour tout le monde : affichage immédiat (sans celles que je détiens)
+      const shared = await kpSharedFeed('signals');
+      if (shared) {
+        const held = new Set(myTickers.map(t => kpTickerOf(t)));
+        const picks = shared.items.filter(x => x && x.ticker && x.signal && !held.has(x.ticker)).slice(0, 9);
+        if (picks.length >= 6) {
+          sharedMedian = shared.median && Number.isFinite(shared.median.value) ? shared.median : null;
+          total = myTickers.length + picks.length;
+          const sk = part('oppo-skel');
+          while (sk.children.length > picks.length) sk.lastElementChild.remove();
+          picks.forEach(x => addCard(part('oppo'), sk, x, false));
+          return;
+        }
+      }
       const oppoTickers = await getOppoTickers();
       fillMedian();
       total = myTickers.length + oppoTickers.length;
@@ -7210,12 +7127,12 @@ function loadNewsCache() {
   try {
     const cached = JSON.parse(localStorage.getItem(CACHE_NEWS)||'{}');
     const today = new Date().toDateString();
-    if (cached.date === today && cached.data?.length) { newsData = cached.data; return true; }
+    if (cached.date === today && cached.data?.length && (!cached.ts || Date.now() - cached.ts < 3600000)) { newsData = cached.data; return true; }
   } catch {}
   return false;
 }
 function saveNewsCache() {
-  try { localStorage.setItem(CACHE_NEWS, JSON.stringify({ date: new Date().toDateString(), data: newsData })); } catch {}
+  try { localStorage.setItem(CACHE_NEWS, JSON.stringify({ date: new Date().toDateString(), ts: Date.now(), data: newsData })); } catch {}
 }
 
 
@@ -11365,6 +11282,23 @@ function parseJSONArrayLenient(raw) {
   return items;
 }
 
+// Contenu commun à tous les utilisateurs (api/feed.js) : affiché tout de suite. S'il est périmé, son recalcul est lancé
+// en arrière-plan pour les suivants, sans attendre. Renvoie null si rien d'utilisable : l'appli reprend alors son calcul habituel.
+async function kpSharedFeed(kind) {
+  if (PLAN_REGION !== 'EU' || isDemo || !currentUser) return null;
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return null;
+    const headers = { Authorization: 'Bearer ' + token };
+    const r = await fetch('/api/feed?kind=' + kind, { headers });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j.stale) fetch('/api/feed?kind=' + kind + '&refresh=1', { headers }).catch(() => {});
+    return Array.isArray(j.items) && j.items.length ? j : null;
+  } catch (e) { return null; }
+}
+
 let _newsStreaming = false;
 async function loadNews(force=false) {
   if (!force && loadNewsCache()) { renderNewsList(); return; }
@@ -11377,6 +11311,21 @@ async function loadNews(force=false) {
 
   _newsStreaming = true;
   if (list) list.innerHTML = kpSkelCards(10);
+
+  // Actualités communes déjà calculées : affichage immédiat, les thèmes qui touchent mes lignes en premier
+  const shared = await kpSharedFeed('news');
+  if (shared && shared.items.length >= 5) {
+    const mine = new Set(apos().map(p => kpTickerOf(p.name)));
+    const touches = n => (n.actifs_cibles || []).some(t => mine.has(t)) ? 0 : 1;
+    newsData = shared.items.map((n, i) => ({ n, i })).sort((a, b) => touches(a.n) - touches(b.n) || a.i - b.i).map(x => x.n);
+    _newsStreaming = false;
+    saveNewsCache();
+    if (ico) ico.classList.remove('spinning');
+    if (btn) btn.disabled = false;
+    if (['tous', 'macro', 'banque', 'marche', 'geo', 'secteur'].includes(newsFilter)) renderNewsList();
+    addNewsNotifications();
+    return;
+  }
 
   const myAssets = apos().map(p => p.name).join(', ') || 'IWDA, VWCE';
   const _hc = await holdingsContextBlock(10);
