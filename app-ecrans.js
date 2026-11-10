@@ -334,7 +334,7 @@ function setupProgressHTML() {
 // Par défaut : niveau 3 (tout) → aucun changement pour les comptes existants.
 // ═══════════════════════════════════════════════════════════════════════════
 const KP_LEVELS = {
-  1: { label: 'Je débute', emoji: '🌱', desc: 'L\'essentiel : accueil, portefeuille, objectif et assistant IA.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan'] },
+  1: { label: 'Je débute', emoji: '🌱', desc: 'L\'essentiel : accueil, portefeuille, objectif, assistant IA et calculateurs.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan'] },
   2: { label: 'J\'ai déjà quelques placements', emoji: '📈', desc: 'En plus : le score de santé, le calculateur de dépenses et les actualités.', tools: ['home', 'portfolio', 'objectif', 'ai', 'bilan', 'sante', 'depenses', 'news'] },
   3: { label: 'Je gère un vrai portefeuille', emoji: '🚀', desc: 'Tous les outils, avec en plus : scénario de crise, simulateur DCA, aide à la décision.', tools: 'all' },
 };
@@ -368,12 +368,18 @@ function kpUnlockTool(page) {
 }
 function kpAskedKey() { try { return 'kp_level_asked_' + ((currentUser && currentUser.id) ? currentUser.id : 'anon'); } catch { return 'kp_level_asked_anon'; } }
 
+// Outils accessibles au niveau choisi (plus ceux débloqués en les ouvrant). Les calculateurs sont ouverts à tous les niveaux.
+function kpAllowedTools() {
+  const cfg = KP_LEVELS[kpGetLevel()] || KP_LEVELS[3];
+  const allowed = cfg.tools === 'all' ? KP_ALL_TOOLS.slice() : cfg.tools.slice();
+  try { const _u = JSON.parse(localStorage.getItem(kpUnlockKey()) || '[]'); if (Array.isArray(_u)) _u.forEach(t => { if (!allowed.includes(t)) allowed.push(t); }); } catch (e) {}
+  allowed.push('calc');
+  return allowed;
+}
+
 function applyUserLevel() {
   try {
-    const lvl = kpGetLevel();
-    const cfg = KP_LEVELS[lvl] || KP_LEVELS[3];
-    const allowed = cfg.tools === 'all' ? KP_ALL_TOOLS.slice() : cfg.tools.slice();
-    try { const _u = JSON.parse(localStorage.getItem(kpUnlockKey()) || '[]'); if (Array.isArray(_u)) _u.forEach(t => { if (!allowed.includes(t)) allowed.push(t); }); } catch (e) {}
+    const allowed = kpAllowedTools();
     KP_ALL_TOOLS.forEach(t => {
       const btn = document.getElementById('nav-' + t);
       if (btn) btn.style.display = allowed.includes(t) ? '' : 'none';
@@ -797,7 +803,7 @@ async function renderHome() {
     ['depenses', 'Mes dépenses', "nav('depenses')"],
     ['bilan', 'Mon bilan', 'openBilan()'],
     ['news', 'Actualités', "nav('news')"],
-  ];
+  ].filter(([id]) => kpAllowedTools().includes(id));   // seulement les outils du niveau choisi
   html += `
   <div class="kph-tools-title">Mes outils</div>
   <div class="kph-tools">

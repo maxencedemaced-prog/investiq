@@ -418,6 +418,24 @@ await run('Portefeuille : cases par catégorie et regroupement', demo, {}, async
   assert(!r.bad.length, r.bad.join(' | '));
 });
 
+await run('Accueil : « Mes outils » suit le niveau choisi', demo, {}, async page => {
+  const r = await page.evaluate(async () => {
+    const wait = ms => new Promise(x => setTimeout(x, ms));
+    const tools = () => [...document.querySelectorAll('.kph-tools .kph-tool')].map(b => b.innerText.trim());
+    const out = {};
+    for (const l of [1, 2, 3]) {
+      try { localStorage.setItem('kp_level', String(l)); localStorage.removeItem(kpUnlockKey()); } catch (e) {}
+      nav('home'); renderHome(); await wait(400);
+      out[l] = tools();
+    }
+    return out;
+  });
+  assert(r[1].includes('Calculateurs'), 'Les calculateurs doivent apparaître au niveau débutant : ' + r[1].join(', '));
+  assert(!r[1].includes('Scénario crise') && !r[1].includes('Actualités'), 'Le niveau débutant montre des outils avancés : ' + r[1].join(', '));
+  assert(r[2].includes('Actualités') && !r[2].includes('Scénario crise'), 'Niveau 2 incorrect : ' + r[2].join(', '));
+  assert(r[3].length === 8, 'Le niveau 3 doit montrer les 8 outils : ' + r[3].join(', '));
+});
+
 await run('Offres : les prix affichés sont 11,99 € et 94,99 €', demo, {}, async page => {
   const r = await page.evaluate(() => {
     plansBilling = 'monthly'; showPlansModal();
