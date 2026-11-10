@@ -2422,3 +2422,5 @@ button.set-row:hover,a.set-row:hover{background:var(--color-bg-subtle)}
 input::placeholder,textarea::placeholder,.search-box input::placeholder,.ac-box input::placeholder{color:#71717a;opacity:1}
 [data-theme="dark"] input::placeholder,[data-theme="dark"] textarea::placeholder,[data-theme="dark"] .search-box input::placeholder,[data-theme="dark"] .ac-box input::placeholder,[data-theme="dark"] #ai-in::placeholder{color:#9aa3ae;opacity:1}
 #auth-login input.kh-input::placeholder,#auth-signup input.kh-input::placeholder{color:#667085 !important;-webkit-text-fill-color:#667085 !important}
+/* Applis : le double appui ne zoome plus la page (le défilement reste normal) */
+.kp-app,.kp-app body{touch-action:pan-x pan-y}
