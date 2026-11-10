@@ -547,6 +547,18 @@ await run('Première visite : appli floutée derrière le tutoriel, puis découv
   assert(!r.after, 'Le voile doit disparaître une fois le tutoriel fini');
 });
 
+await run('Page Applis : « Bientôt » tant que les applis ne sont pas publiées, liens quand elles le sont', demo, {}, async page => {
+  await page.goto(ORIGIN + '/applis.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(500);
+  const avant = await page.evaluate(() => ({ ios: document.getElementById('btn-ios').textContent, href: document.getElementById('btn-ios').getAttribute('href') }));
+  assert(/Bientôt/.test(avant.ios) && !avant.href, 'Le bouton App Store doit rester « Bientôt » sans lien : ' + JSON.stringify(avant));
+  await page.addInitScript(() => { Object.defineProperty(window, 'KP_STORES', { configurable: true, set(v) { v.ios.live = true; v.android.live = true; this._kps = v; }, get() { return this._kps; } }); });
+  await page.goto(ORIGIN + '/applis.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(500);
+  const apres = await page.evaluate(() => ({ ios: document.getElementById('btn-ios').getAttribute('href'), android: document.getElementById('btn-android').getAttribute('href') }));
+  assert(/apps\.apple\.com/.test(apres.ios || '') && /play\.google\.com/.test(apres.android || ''), 'Liens des magasins absents : ' + JSON.stringify(apres));
+});
+
 await run('Offres : les prix affichés sont 11,99 € et 94,99 €', demo, {}, async page => {
   const r = await page.evaluate(() => {
     plansBilling = 'monthly'; showPlansModal();

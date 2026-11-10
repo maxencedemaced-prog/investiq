@@ -259,6 +259,8 @@ function installMode() {
 // Explication du geste ; strong = couleur du texte mis en avant (blanc sur la page de connexion sombre)
 function installHowHTML(mode, strong) {
   const s = t => `<strong${strong ? ` style="color:${strong}"` : ''}>${t}</strong>`;
+  const store = window.kpStoreLink ? window.kpStoreLink() : null;   // appli publiée sur le magasin de cet appareil (stores.js)
+  if (store) return `Disponible sur ${s(store.name)} : gratuite, avec les notifications et le même compte.`;
   if (mode === 'ios') return `Touche ${s('Partager')} <span style="font-size:13px">⬆️</span> (en bas dans Safari, en haut dans Chrome), puis ${s('« Sur l\'écran d\'accueil »')}.`;
   if (mode === 'android') return `Ouvre le menu ${s('⋮')} de ton navigateur, puis ${s('« Installer l\'application »')} ou ${s('« Ajouter à l\'écran d\'accueil »')}.`;
   return "Sur ton écran d'accueil, en plein écran, avec les notifications. Gratuit, sans passer par un magasin d'applications.";
@@ -316,6 +318,8 @@ function installAppRender() {
 }
 
 async function installApp() {
+  const store = window.kpStoreLink ? window.kpStoreLink() : null;
+  if (store) { try { window.va && window.va('event', { name: 'store_click', store: store.name }); } catch {} window.open(store.url, '_blank', 'noopener'); return; }
   const evt = window._installEvt;
   if (!evt) { installGuide(installMode() || (isIOSDevice() ? 'ios' : 'android')); return; }
   evt.prompt();
