@@ -1,0 +1,9 @@
+Statement,Header,Field Name,Field Value
+Statement,Data,Title,Activity Statement
+Statement,Data,Period,"January 1, 2026 - June 30, 2026"
+Open Positions,Header,DataDiscriminator,Asset Category,Currency,Symbol,Quantity,Mult,Cost Price,Cost Basis,Close Price,Value,Unrealized P/L,Code
+Open Positions,Data,Summary,Stocks,USD,AAPL,10,1,150.25,1502.5,190,1900,397.5,
+Open Positions,Data,Summary,Stocks,EUR,AI,"1,200",1,160.5,192600,179,214800,22200,
+Open Positions,Total,,Stocks,USD,,,,,1502.5,,1900,397.5,
+Trades,Header,DataDiscriminator,Asset Category,Currency,Symbol,Date/Time,Quantity,T. Price
+Trades,Data,Order,Stocks,USD,AAPL,"2026-01-05, 10:00:00",10,150.25

@@ -1,0 +1,7 @@
+Action,Time,ISIN,Ticker,Name,No. of shares,Price / share,Currency (Price / share),Exchange rate,Result,Currency (Result),Total,Currency (Total),Withholding tax,Currency (Withholding tax),Notes,ID,Currency conversion fee,Currency (Currency conversion fee)
+Deposit,2026-01-05 10:00:00.000,,,,,,,,,,2000.00,"EUR",,,"Transaction ID: T0",d0,,
+Market buy,2026-01-06 15:30:00.000,US5949181045,MSFT,"Microsoft",2.0000000000,400.00,USD,1.10,,"EUR",727.27,"EUR",,,,EOF1,1.09,"EUR"
+Limit buy,2026-01-07 09:00:00.000,FR0000120271,TTE,"TotalEnergies",10.0000000000,55.00,EUR,1.00,,"EUR",550.00,"EUR",,,,EOF3,,
+Market buy,2026-02-06 15:30:00.000,US5949181045,MSFT,"Microsoft",1.0000000000,440.00,USD,1.10,,"EUR",400.00,"EUR",,,,EOF2,0.60,"EUR"
+Dividend (Dividend),2026-02-20 10:00:00.000,FR0000120271,TTE,"TotalEnergies",10.0000000000,0.79,EUR,,,,7.90,"EUR",0.00,EUR,,,,
+Market sell,2026-03-01 09:00:00.000,FR0000120271,TTE,"TotalEnergies",4.0000000000,60.00,EUR,1.00,20.00,"EUR",240.00,"EUR",,,,EOF4,,

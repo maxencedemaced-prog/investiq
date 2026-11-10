@@ -1,0 +1,8 @@
+Compte de démonstration;;;
+Devise;EUR;;
+
+Position;Symbol;Type;Volume;Open time;Open price;Market price;Purchase value;SL;TP;Margin;Commission;Swap;Rollover;Gross P/L;Comment
+111;SAN.FR;BUY;3;10.01.2026 10:00:00;88.00;92.00;264.00;0;0;0;0;0;0;12.00;
+112;SAN.FR;BUY;2;12.02.2026 10:00:00;93.00;92.00;186.00;0;0;0;0;0;0;-2.00;
+113;MSFT.US;BUY;1.5;20.02.2026 15:30:00;400.00;410.00;600.00;0;0;0;0;0;0;15.00;
+;;;;;;;1050.00;;;;;;;25.00;

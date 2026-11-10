@@ -319,6 +319,90 @@ await run('Import : les 12 fichiers types sont bien lus', demo, {}, async page =
   assert(!out.length, out.join('\n'));
 });
 
+// Exports de courtiers (fichiers fabriqués d'après les formats réels) : courtier reconnu, nombre de lignes, parts et prix moyen
+const IMPORTS = path.join(ROOT, 'tests', 'fixtures', 'imports');
+const readFixtures = (dir, names) => Object.fromEntries(names.map(n => [n, fs.readFileSync(path.join(dir, n), 'utf8')]));
+await run('Import : les exports des courtiers sont reconnus', demo, {}, async page => {
+  const att = JSON.parse(fs.readFileSync(path.join(IMPORTS, 'attentes-courtiers.json'), 'utf8'));
+  const files = readFixtures(IMPORTS, Object.keys(att));
+  const out = await page.evaluate(([att, files]) => {
+    const bad = [];
+    for (const [n, v] of Object.entries(att)) {
+      let rows;
+      try { rows = parseCSVSmart(files[n]); } catch (e) { bad.push(`${n} : erreur ${e.message}`); continue; }
+      if (rows.broker !== v.broker) bad.push(`${n} : courtier ${rows.broker || 'non reconnu'}, attendu ${v.broker}`);
+      if (rows.length !== v.rows) bad.push(`${n} : ${rows.length} lignes lues, ${v.rows} attendues (${rows.map(r => r.name).join(', ')})`);
+      for (const [k, q, p] of v.expected) {
+        const r = rows.find(x => (x.name + ' ' + (x.isin || '') + ' ' + (x.fullName || '')).toUpperCase().includes(k.toUpperCase()));
+        if (!r) bad.push(`${n} : ${k} manquant`);
+        else if (Math.abs(r.qty - q) > 1e-6 || Math.abs(r.pru - p) > 1e-4) bad.push(`${n} : ${k} lu ${r.qty} parts à ${r.pru}, attendu ${q} à ${p}`);
+        else if (!r.checked || r.needsQty) bad.push(`${n} : ${k} devrait être prêt à importer`);
+      }
+    }
+    return bad;
+  }, [att, files]);
+  assert(!out.length, out.join('\n'));
+});
+
+// Les 15 fichiers d'essai (test-imports) : même résultat qu'avant l'ajout des modèles par courtier
+await run('Import : les 15 fichiers d\'essai donnent toujours le résultat attendu', demo, {}, async page => {
+  const dir = path.join(IMPORTS, 'test-imports');
+  const att = JSON.parse(fs.readFileSync(path.join(dir, 'attentes.json'), 'utf8'));
+  const names = fs.readdirSync(dir).filter(n => /^\d\d-.*\.(csv|txt)$/.test(n));
+  const files = readFixtures(dir, names);
+  const out = await page.evaluate(([att, files]) => {
+    const bad = [];
+    const BROKER = { '02-xtb.csv': 'XTB', '04-degiro.csv': 'Degiro' };   // les autres ne sont pas des exports réels : lecture générique
+    for (const [n, text] of Object.entries(files)) {
+      let rows;
+      try { rows = parseCSVSmart(text); } catch (e) { bad.push(`${n} : erreur ${e.message}`); continue; }
+      if ((rows.broker || '') !== (BROKER[n] || '')) bad.push(`${n} : courtier ${rows.broker || 'non reconnu'}, attendu ${BROKER[n] || 'non reconnu'}`);
+      const v = att[n];
+      if (v) {
+        if (rows.length !== v.expected.length) bad.push(`${n} : ${rows.length} lignes lues, ${v.expected.length} attendues`);
+        for (const [k, q, p] of v.expected) {
+          const r = rows.find(x => (x.name + ' ' + (x.isin || '') + ' ' + (x.fullName || '')).toUpperCase().includes(k.toUpperCase()));
+          if (!r) bad.push(`${n} : ${k} manquant`);
+          else if (Math.abs(r.qty - q) > 1e-6 || Math.abs(r.pru - p) > 1e-6) bad.push(`${n} : ${k} lu ${r.qty} parts à ${r.pru}, attendu ${q} à ${p}`);
+        }
+      } else if (!rows.length) bad.push(`${n} : aucune ligne lue`);
+    }
+    const noms = parseCSVSmart(files['14-noms-seulement.csv']), liste = parseCSVSmart(files['15-liste-sans-en-tete.txt']);
+    if (noms.length !== 5 || !noms.every(r => r.needsQty && !r.checked)) bad.push('14-noms-seulement.csv : 5 lignes à compléter attendues');
+    if (liste.length !== 3 || !liste.every(r => r.needsQty && !r.checked)) bad.push('15-liste-sans-en-tete.txt : 3 lignes à compléter attendues');
+    return bad;
+  }, [att, files]);
+  assert(Object.keys(att).length === 12, 'attentes.json devrait décrire 12 fichiers');
+  assert(!out.length, out.join('\n'));
+});
+
+// Fenêtre de vérification : « Format reconnu » et plateforme préremplie avec le courtier
+await run('Import : format reconnu affiché et plateforme préremplie', demo, {}, async page => {
+  const text = fs.readFileSync(path.join(IMPORTS, 'trade-republic-transactions.csv'), 'utf8');
+  const r = await page.evaluate(async text => {
+    await handleCSVImport(new File([text], 'export.csv', { type: 'text/csv' }));
+    await new Promise(x => setTimeout(x, 400));
+    const m = document.getElementById('csv-preview-modal');
+    const out = { modal: !!m, rows: (window._csvRows || []).length };
+    if (!m) return out;
+    out.format = (document.getElementById('csv-broker') || {}).innerText || '';
+    out.platform = document.getElementById('csv-platform-sel').value;
+    m.remove();
+    await handleCSVImport(new File(['Nom;Quantité;PRU\nKering;2;300\n'], 'export.csv', { type: 'text/csv' }));
+    await new Promise(x => setTimeout(x, 400));
+    out.unknown = !document.getElementById('csv-broker');
+    document.getElementById('csv-preview-modal')?.remove();
+    showCSVHelp();
+    out.help = document.getElementById('csv-help-modal').innerText;
+    return out;
+  }, text);
+  assert(r.modal && r.rows === 3, "La fenêtre de vérification ne s'ouvre pas avec 3 lignes : " + JSON.stringify(r));
+  assert(/Format reconnu : Trade Republic/.test(r.format), 'Mention « Format reconnu » absente : ' + r.format);
+  assert(r.platform === 'Trade Republic', 'Plateforme non préremplie : ' + r.platform);
+  assert(r.unknown, 'Un fichier inconnu ne doit pas afficher de format reconnu');
+  assert(/Degiro/.test(r.help) && /Trade Republic/.test(r.help), "L'aide d'import ne liste pas les courtiers");
+});
+
 await run('Import : fichiers incomplets et textes refusés', demo, {}, async page => {
   const r = await page.evaluate(() => {
     const t = s => parseCSVSmart(s).map(x => [x.name, x.qty, !!x.needsQty, !!x.checked].join('|'));
