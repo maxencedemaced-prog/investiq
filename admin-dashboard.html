@@ -318,15 +318,15 @@ function render(d) {
       + kp(n0(ga.inscrits_site) + (ga.premium_site ? ' (' + ga.premium_site + ' Premium)' : ''), 'Inscrits venus de Google')
       + kp(e2(ga.cout_inscrit_site), 'Coût par inscrit')
       + '</div>';
-    var days = (ga.days || []).slice(-14);
-    if (days.length) h += '<canvas id="chart-gads" style="margin-top:14px;max-height:220px"></canvas>';
+    var gDays = (ga.days || []).slice(-14);
+    if (gDays.length) h += '<canvas id="chart-gads" style="margin-top:14px;max-height:220px"></canvas>';
     if ((ga.keywords || []).length) h += '<h4 style="margin:16px 0 6px">Mots-clés (depuis le début)</h4>' + gtab(gth('Mot-clé') + gth('Clics', 1) + gth('Affichages', 1) + gth('CTR', 1) + gth('Coût', 1) + gth('Conv.', 1),
       ga.keywords.slice(0, 15).map(function (k) { return '<tr style="border-top:1px solid rgba(127,127,127,.2)">' + gtd(esc(k.text) + ' <span style="opacity:.55;font-size:11px">' + esc(k.match || '') + '</span>') + gtd(n0(k.clicks), 1) + gtd(n0(k.impressions), 1) + gtd(gpct(k.impressions ? k.clicks / k.impressions : null), 1) + gtd(e2(k.cost), 1) + gtd(n0(k.conversions), 1) + '</tr>'; }).join(''));
     if ((ga.terms || []).length) h += '<h4 style="margin:16px 0 6px">Ce que les gens ont tapé (30 derniers jours)</h4>' + gtab(gth('Recherche') + gth('Clics', 1) + gth('Affichages', 1) + gth('Coût', 1) + gth('Conv.', 1),
       ga.terms.slice(0, 20).map(function (k) { return '<tr style="border-top:1px solid rgba(127,127,127,.2)">' + gtd(esc(k.term)) + gtd(n0(k.clicks), 1) + gtd(n0(k.impressions), 1) + gtd(e2(k.cost), 1) + gtd(n0(k.conversions), 1) + '</tr>'; }).join(''));
     h += '<div class="sub" style="margin-top:8px">Ce mois : ' + e2(gm.cost) + ' (inclus dans les coûts) · Conversions comptées par Google : ' + n0(gt.conversions) + ' · Mise à jour ' + (ago == null ? '—' : ago < 2 ? "à l'instant" : 'il y a ' + (ago < 120 ? ago + ' min' : Math.round(ago / 60) + ' h')) + ' (Google affiche ses chiffres avec environ 3 h de retard).</div>';
     gBox.innerHTML = h;
-    if (days.length) mkChart('chart-gads', 'bar', days.map(function (x) { return x.date.slice(5); }), [{ label: 'Clics', data: days.map(function (x) { return x.clicks || 0; }), color: '#3b82f6' }, { label: 'Dépense (€)', data: days.map(function (x) { return Math.round((x.cost || 0) * 100) / 100; }), color: '#f59e0b' }]);
+    if (gDays.length) mkChart('chart-gads', 'bar', gDays.map(function (x) { return x.date.slice(5); }), [{ label: 'Clics', data: gDays.map(function (x) { return x.clicks || 0; }), color: '#3b82f6' }, { label: 'Dépense (€)', data: days.map(function (x) { return Math.round((x.cost || 0) * 100) / 100; }), color: '#f59e0b' }]);
   }
 
   // Provenance des inscrits : inscriptions et abonnés actuels par canal

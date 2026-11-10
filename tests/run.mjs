@@ -102,7 +102,7 @@ const ORIGIN = 'https://kapitaro.fr';
 function claudeText(body) {
   const p = String(body.prompt || '');
   let m;
-  if ((m = p.match(/pour ces actifs : (.+)\.\n/))) {
+  if ((m = p.match(/Donne un signal pédagogique pour ces actifs : (.+)\.\n/))) {
     return JSON.stringify(m[1].split(', ').map((t, i) => ({ ticker: t, name: 'Nom ' + t, signal: i === 0 ? 'vendre' : 'attendre', conviction: 'modérée', risque: 2, horizon: '2-4 semaines', raison: 'raison de test', type: 'Action', secteur: 'Test' })));
   }
   if (/Sélectionne 9 valeurs/.test(p)) {
