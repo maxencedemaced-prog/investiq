@@ -512,10 +512,36 @@ async function kpTutoForPage(page) {
     else if (!h1.querySelector('.kp-tuto-btn')) h1.insertAdjacentHTML('beforeend', ' <button type="button" class="kp-tuto-btn" onclick="kpOpenTuto(\'' + id + '\')" style="vertical-align:middle;margin-left:6px;padding:4px 10px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#16a34a;font:inherit;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0">▶ C’est quoi ?</button>');
   } catch (e) {}
 }
+// Première visite : l'appli reste floutée derrière la vidéo et le questionnaire, pour la découvrir vraiment une fois le tutoriel fini.
+// Le voile part seul dès qu'aucun de ces écrans n'est ouvert (vérifié plusieurs fois de suite pour couvrir le passage vidéo → questionnaire).
+function kpFirstVeil() {
+  if (document.getElementById('kp-first-veil')) return;
+  const v = document.createElement('div');
+  v.id = 'kp-first-veil';
+  v.setAttribute('aria-hidden', 'true');
+  v.style.cssText = 'position:fixed;inset:0;z-index:999;background:rgba(6,10,18,0.55);backdrop-filter:blur(26px) saturate(0.8);-webkit-backdrop-filter:blur(26px) saturate(0.8);transition:opacity .6s ease';
+  document.body.appendChild(v);
+  const t0 = Date.now();
+  let empty = 0;
+  const open = () => {
+    const ob = document.getElementById('onboarding-modal');
+    return (ob && ob.style.display === 'flex') || document.getElementById('kp-tuto-modal') || document.getElementById('legal-accept') || document.getElementById('kp-level-modal');
+  };
+  const iv = setInterval(() => {
+    empty = open() ? 0 : empty + 1;
+    if ((empty >= 3 && Date.now() - t0 > 2500) || Date.now() - t0 > 30 * 60 * 1000) {
+      clearInterval(iv);
+      v.style.opacity = '0';
+      setTimeout(() => v.remove(), 650);
+    }
+  }, 400);
+}
+
 // Première ouverture d'un nouveau compte : la présentation passe avant le tutoriel (on peut la passer)
 async function kpMaybePresentation() {
   try {
     const willOnboard = !localStorage.getItem(obKey()) && (isDemo || positions.length === 0);
+    if (willOnboard && !isDemo) kpFirstVeil();
     if (!willOnboard || isDemo || localStorage.getItem(kpTutoSeenKey('presentation'))) return showOnboarding();
     const m = await kpTutoManifest();
     if (!m || !m.presentation) return showOnboarding();

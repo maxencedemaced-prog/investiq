@@ -436,6 +436,24 @@ await run('Accueil : « Mes outils » suit le niveau choisi', demo, {}, async pa
   assert(r[3].length === 8, 'Le niveau 3 doit montrer les 8 outils : ' + r[3].join(', '));
 });
 
+await run('Première visite : appli floutée derrière le tutoriel, puis découverte', demo, {}, async page => {
+  const r = await page.evaluate(async () => {
+    const wait = ms => new Promise(x => setTimeout(x, ms));
+    const ob = document.getElementById('onboarding-modal');
+    ob.style.display = 'flex';
+    kpFirstVeil();
+    await wait(3200);
+    const during = !!document.getElementById('kp-first-veil');
+    const blur = getComputedStyle(document.getElementById('kp-first-veil')).backdropFilter || '';
+    ob.style.display = 'none';
+    await wait(2600);
+    return { during, blur, after: !!document.getElementById('kp-first-veil') };
+  });
+  assert(r.during, 'Le voile flouté doit rester pendant le questionnaire');
+  assert(/blur/.test(r.blur), 'Le voile doit flouter l’arrière-plan (' + r.blur + ')');
+  assert(!r.after, 'Le voile doit disparaître une fois le tutoriel fini');
+});
+
 await run('Offres : les prix affichés sont 11,99 € et 94,99 €', demo, {}, async page => {
   const r = await page.evaluate(() => {
     plansBilling = 'monthly'; showPlansModal();
