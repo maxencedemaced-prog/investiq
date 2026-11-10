@@ -247,16 +247,25 @@ async function pubJob(script) {
   await patchScript({ status: 'rendering', rendering_at: new Date().toISOString(), error: null });
   fs.mkdirSync('out', { recursive: true });
   const scenes = (script.scenes || []).filter(s => s && /^pub\/[\w-]+\.jpg$/.test(s.img || '') && fs.existsSync(path.join('public', s.img))).slice(0, 12)
-    .map(s => ({ img: s.img, kicker: String(s.kicker || '').slice(0, 40), title: String(s.title || '').slice(0, 90), sub: String(s.sub || '').slice(0, 110), pos: s.pos === 'top' ? 'top' : 'bottom', dur: Math.max(1.5, Math.min(6, Number(s.dur) || 3)) }));
+    .map(s => ({ img: s.img, kicker: String(s.kicker || '').slice(0, 40), title: String(s.title || '').slice(0, 90), sub: String(s.sub || '').slice(0, 110), pos: s.pos === 'top' ? 'top' : 'bottom', dur: Math.max(1.4, Math.min(7, Number(s.dur) || 3)),
+      chips: (Array.isArray(s.chips) ? s.chips : []).slice(0, 4).map(c => String(c).slice(0, 24)), fx: String(s.fx || '').slice(0, 12), words: Array.isArray(s.words) ? s.words : null }));
   if (!scenes.length) throw new Error('Aucune scène : les photos doivent être dans video/public/pub/');
   const end = { dur: 3.4, ...(script.end || {}) };
   const total = scenes.reduce((n, s) => n + s.dur, 0) + end.dur;
+  // Voix (ElevenLabs, déjà dans le stockage) : une piste par segment
+  const segments = [];
+  for (let k = 0; k < (script.segments || []).length; k++) {
+    const r = await fetch(script.segments[k].url);
+    if (!r.ok) throw new Error('Voix introuvable dans le stockage (' + r.status + ')');
+    fs.writeFileSync(path.join('public', `seg-${k}.mp3`), Buffer.from(await r.arrayBuffer()));
+    segments.push({ file: `seg-${k}.mp3`, start: script.segments[k].start });
+  }
   const chosen = typeof script.music_file === 'string' && /^[\w.-]+\.mp3$/.test(script.music_file) && fs.existsSync(path.join('public', 'music', script.music_file)) ? 'music/' + script.music_file : null;
   const musicFile = script.music === false ? null : (chosen || pickMusic(total));
-  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ style: 'pub', beats: [], segments: [], scenes, end, musicFile, jingle: false }));
+  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ style: 'pub', beats: [], segments, scenes, end, musicFile, jingle: false }));
   execSync('npx remotion render src/index.js Reel out/reel.mp4 --codec=h264 --crf=19 --concurrency=100% --log=warn', { stdio: 'inherit' });
   // Couverture : une image de la première scène, avec son texte
-  execSync('npx remotion still src/index.js Reel out/cover.jpg --frame=40 --image-format=jpeg --jpeg-quality=88 --log=warn', { stdio: 'inherit' });
+  execSync('npx remotion still src/index.js Reel out/cover.jpg --frame=55 --image-format=jpeg --jpeg-quality=88 --log=warn', { stdio: 'inherit' });
   const stamp = Date.now();
   const send = async (name, file, type) => {
     const up = await sb.storage.from('social').upload(`${ID}/${name}`, fs.readFileSync(file), { contentType: type, upsert: true });

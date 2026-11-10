@@ -1027,6 +1027,33 @@ export default async function handler(req, res) {
       return res.status(200).json({ post: await dossierReel(d, { voice, pair, music: b.music, topic: d.style === 'duo' ? b.topic.replace(/^duo-/, '') : undefined }) });
     }
     // 3 Reels « Duo » d'un coup : sujets jamais traités, scénarios écrits par l'IA (en parallèle), voix puis rendu
+    // Pub « scènes réelles » (video/src/Pub.jsx) : voix habituelle sur le texte de chaque scène, musique dynamique créée pour l'occasion, puis rendu
+    if (b.action === 'pub-create') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
+      const { data: post, error: pe } = await sb.from('social_posts').select('id, video_script').eq('id', b.id).single();
+      if (pe || !post || (post.video_script || {}).style !== 'pub') return res.status(400).json({ error: 'Ce post n’est pas une pub « scènes réelles »' });
+      const script = { ...post.video_script };
+      const scenes = (script.scenes || []).filter(x => x && x.img && x.say);
+      if (!scenes.length) return res.status(400).json({ error: 'Scènes sans texte à dire' });
+      const voices = await tutoVoices();
+      if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
+      const voice = voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
+      const end = { ...(script.end || {}) };
+      const beats = scenes.map(x => ({ say: String(x.say) })).concat(end.say ? [{ say: String(end.say) }] : []);
+      const music = b.music === false ? Promise.resolve(undefined)
+        : createMusic(String(b.music_prompt || 'Upbeat modern pop beat, punchy drums, bright plucky synths, catchy hook, 122 BPM, energetic, positive and confident').slice(0, 400), 40, 'pub')
+          .catch(e => { console.warn('[pub] musique :', e.message); return undefined; });
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: 1.08 });
+      scenes.forEach((x, i) => { x.start = beats[i].start; x.dur = Math.max(1.4, beats[i].end - beats[i].start); x.words = beats[i].words; });
+      if (end.say) { const e = beats[beats.length - 1]; end.start = e.start; end.dur = Math.max(3.2, e.end - e.start + 1.4); end.words = e.words; }
+      const file = await music;
+      const next = { ...script, scenes, end, segments, voice: voice.name, music_file: file || script.music_file, created_at: new Date().toISOString() };
+      let status = 'queued', err = null;
+      try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
+      const { data: row, error } = await sb.from('social_posts').update({ video_script: { ...next, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
+      if (error) throw error;
+      return res.status(200).json({ post: row });
+    }
     if (b.action === 'duo-batch') {
       const voices = await tutoVoices();
       if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
