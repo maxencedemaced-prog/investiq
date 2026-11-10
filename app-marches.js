@@ -1036,7 +1036,7 @@ function kpSignalTrackHTML(t) {
     const from = day(t.from), to = day(t.to);
     const extra = [num(t.neutre && t.neutre.n) ? plural(num(t.neutre.n), 'signal Neutre non compté', 'signaux Neutres non comptés') : '', num(t.indispo) ? plural(num(t.indispo), 'signal écarté faute de cours', 'signaux écartés faute de cours') : '', num(t.pending) ? plural(num(t.pending), 'signal en cours', 'signaux en cours') : ''].filter(Boolean).join(' · ');
     body = `<div data-track="taux" style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:4px"><span style="font-size:24px;font-weight:800;color:var(--color-text)">${rate} %</span><span style="font-size:12.5px;color:var(--color-text)">de signaux justes : ${justes} sur ${n}, ${plural(faux, 'faux', 'faux')}</span></div>`
-      + (from && to ? small(`Période : signaux du ${from}, jugés jusqu’au ${to}.`) : '')
+      + (from && to ? small(`Période : du ${from} (premier signal) au ${to} (dernière échéance).`) : '')
       + g('↑ Favorable', t.favorable) + g('↓ Prudence et Risqué', t.prudence)
       + small(`Repère : en choisissant au hasard, on serait autour de 50 %.${extra ? ' ' + extra + '.' : ''}`);
   }
