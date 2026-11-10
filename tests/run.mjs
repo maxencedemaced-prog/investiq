@@ -100,6 +100,8 @@ const ORIGIN = 'https://kapitaro.fr';
 
 // Flux partagé simulé : « vide » = rien de calculé (l'appli doit reprendre son calcul habituel), « plein » = contenu prêt
 const FEED = { mode: 'vide' };
+// Bilan simulé de la fiabilité des signaux passés (api/feed?kind=signals_track) : null = pas encore calculé (réponse 503)
+const TRACK = { data: null };
 // Réponses de l'IA simulée, choisies d'après la demande envoyée par l'appli
 function claudeText(body) {
   const p = String(body.prompt || '');
@@ -134,9 +136,16 @@ function api(route, u, req, calls) {
   }
   if (name === 'commodity-news') return json({ news: Array.from({ length: 5 }, (_, i) => ({ title: 'Actualité de test ' + (i + 1), link: 'https://fr.investing.com/news/test-' + i, ts: Date.now() - i * 3600e3, source: 'Investing.com' })) });
   if (name === 'chart') return json({ points: [] });
+  if (name === 'play-verify') {   // vérification Google Play simulée : seul le jeton de test donne Premium
+    let body = {};
+    try { body = JSON.parse(req.postData() || '{}'); } catch {}
+    if (body.purchaseToken !== 'jeton-play-test') return json({ error: 'Achat introuvable chez Google Play' }, 400);
+    return json({ ok: true, premium: true, premium_until: new Date(Date.now() + 365 * 864e5).toISOString(), subscription_status: 'active', subscription_plan: body.productId === 'kapitaro_premium_annual' ? 'annual' : 'monthly' });
+  }
   if (name === 'agenda') return json({ events: [], unavailable: true });
   if (name === 'search') return json({ results: [] });
   if (name === 'feed') {
+    if (u.searchParams.get('kind') === 'signals_track') return TRACK.data ? json({ ...TRACK.data, generated_at: new Date().toISOString(), stale: false }) : json({ error: 'Contenu indisponible' }, 503);
     if (FEED.mode === 'vide') return json({ generated_at: '2000-01-01T00:00:00Z', stale: true });
     if (u.searchParams.get('refresh') === '1') return json({ ok: true, skipped: 'fresh' });
     if (u.searchParams.get('kind') === 'news') return json({ items: Array.from({ length: 10 }, (_, i) => ({ titre: 'Thème partagé ' + (i + 1), resume: 'Résumé partagé.', categorie: ['macro', 'banque', 'marche', 'geo', 'secteur'][i % 5], impact: 'moyen', signal: 'neutre', reco_texte: 'Texte partagé.', actifs_cibles: i === 7 ? ['VWCE.DE'] : [] })), generated_at: new Date().toISOString(), stale: false });
@@ -230,7 +239,7 @@ async function run(name, maker, opts, fn) {
 await run('Page publique : se charge sans erreur', open, {}, async page => {
   const r = await page.evaluate(() => ({
     auth: getComputedStyle(document.getElementById('auth-screen')).display !== 'none',
-    missing: ['nav', 'enterDemo', 'login', 'signup', 'parseCSVSmart', 'showCSVPreview', 'renderSignaux', 'callClaude', 'callClaudeStream', 'kpOpenAnalysis', 'renderForex', 'renderMatieres', 'kpStoreBuy', 'showPremiumWelcome', 'showPlansModal', 'kpTogglePass', 'sendAI', 'renderHome', 'renderPortfolio', 'renderSante', 'renderCrise'].filter(f => typeof window[f] !== 'function'),
+    missing: ['nav', 'enterDemo', 'login', 'signup', 'parseCSVSmart', 'showCSVPreview', 'renderSignaux', 'callClaude', 'callClaudeStream', 'kpOpenAnalysis', 'renderForex', 'renderMatieres', 'kpStoreBuy', 'kpPlayBuy', 'kpPlayRestore', 'showPremiumWelcome', 'showPlansModal', 'kpTogglePass', 'sendAI', 'renderHome', 'renderPortfolio', 'renderSante', 'renderCrise'].filter(f => typeof window[f] !== 'function'),
   }));
   assert(r.auth, "L'écran de connexion n'est pas affiché");
   assert(!r.missing.length, 'Fonctions absentes : ' + r.missing.join(', '));
@@ -317,6 +326,90 @@ await run('Import : les 12 fichiers types sont bien lus', demo, {}, async page =
     return bad;
   }, cases);
   assert(!out.length, out.join('\n'));
+});
+
+// Exports de courtiers (fichiers fabriqués d'après les formats réels) : courtier reconnu, nombre de lignes, parts et prix moyen
+const IMPORTS = path.join(ROOT, 'tests', 'fixtures', 'imports');
+const readFixtures = (dir, names) => Object.fromEntries(names.map(n => [n, fs.readFileSync(path.join(dir, n), 'utf8')]));
+await run('Import : les exports des courtiers sont reconnus', demo, {}, async page => {
+  const att = JSON.parse(fs.readFileSync(path.join(IMPORTS, 'attentes-courtiers.json'), 'utf8'));
+  const files = readFixtures(IMPORTS, Object.keys(att));
+  const out = await page.evaluate(([att, files]) => {
+    const bad = [];
+    for (const [n, v] of Object.entries(att)) {
+      let rows;
+      try { rows = parseCSVSmart(files[n]); } catch (e) { bad.push(`${n} : erreur ${e.message}`); continue; }
+      if (rows.broker !== v.broker) bad.push(`${n} : courtier ${rows.broker || 'non reconnu'}, attendu ${v.broker}`);
+      if (rows.length !== v.rows) bad.push(`${n} : ${rows.length} lignes lues, ${v.rows} attendues (${rows.map(r => r.name).join(', ')})`);
+      for (const [k, q, p] of v.expected) {
+        const r = rows.find(x => (x.name + ' ' + (x.isin || '') + ' ' + (x.fullName || '')).toUpperCase().includes(k.toUpperCase()));
+        if (!r) bad.push(`${n} : ${k} manquant`);
+        else if (Math.abs(r.qty - q) > 1e-6 || Math.abs(r.pru - p) > 1e-4) bad.push(`${n} : ${k} lu ${r.qty} parts à ${r.pru}, attendu ${q} à ${p}`);
+        else if (!r.checked || r.needsQty) bad.push(`${n} : ${k} devrait être prêt à importer`);
+      }
+    }
+    return bad;
+  }, [att, files]);
+  assert(!out.length, out.join('\n'));
+});
+
+// Les 15 fichiers d'essai (test-imports) : même résultat qu'avant l'ajout des modèles par courtier
+await run('Import : les 15 fichiers d\'essai donnent toujours le résultat attendu', demo, {}, async page => {
+  const dir = path.join(IMPORTS, 'test-imports');
+  const att = JSON.parse(fs.readFileSync(path.join(dir, 'attentes.json'), 'utf8'));
+  const names = fs.readdirSync(dir).filter(n => /^\d\d-.*\.(csv|txt)$/.test(n));
+  const files = readFixtures(dir, names);
+  const out = await page.evaluate(([att, files]) => {
+    const bad = [];
+    const BROKER = { '02-xtb.csv': 'XTB', '04-degiro.csv': 'Degiro' };   // les autres ne sont pas des exports réels : lecture générique
+    for (const [n, text] of Object.entries(files)) {
+      let rows;
+      try { rows = parseCSVSmart(text); } catch (e) { bad.push(`${n} : erreur ${e.message}`); continue; }
+      if ((rows.broker || '') !== (BROKER[n] || '')) bad.push(`${n} : courtier ${rows.broker || 'non reconnu'}, attendu ${BROKER[n] || 'non reconnu'}`);
+      const v = att[n];
+      if (v) {
+        if (rows.length !== v.expected.length) bad.push(`${n} : ${rows.length} lignes lues, ${v.expected.length} attendues`);
+        for (const [k, q, p] of v.expected) {
+          const r = rows.find(x => (x.name + ' ' + (x.isin || '') + ' ' + (x.fullName || '')).toUpperCase().includes(k.toUpperCase()));
+          if (!r) bad.push(`${n} : ${k} manquant`);
+          else if (Math.abs(r.qty - q) > 1e-6 || Math.abs(r.pru - p) > 1e-6) bad.push(`${n} : ${k} lu ${r.qty} parts à ${r.pru}, attendu ${q} à ${p}`);
+        }
+      } else if (!rows.length) bad.push(`${n} : aucune ligne lue`);
+    }
+    const noms = parseCSVSmart(files['14-noms-seulement.csv']), liste = parseCSVSmart(files['15-liste-sans-en-tete.txt']);
+    if (noms.length !== 5 || !noms.every(r => r.needsQty && !r.checked)) bad.push('14-noms-seulement.csv : 5 lignes à compléter attendues');
+    if (liste.length !== 3 || !liste.every(r => r.needsQty && !r.checked)) bad.push('15-liste-sans-en-tete.txt : 3 lignes à compléter attendues');
+    return bad;
+  }, [att, files]);
+  assert(Object.keys(att).length === 12, 'attentes.json devrait décrire 12 fichiers');
+  assert(!out.length, out.join('\n'));
+});
+
+// Fenêtre de vérification : « Format reconnu » et plateforme préremplie avec le courtier
+await run('Import : format reconnu affiché et plateforme préremplie', demo, {}, async page => {
+  const text = fs.readFileSync(path.join(IMPORTS, 'trade-republic-transactions.csv'), 'utf8');
+  const r = await page.evaluate(async text => {
+    await handleCSVImport(new File([text], 'export.csv', { type: 'text/csv' }));
+    await new Promise(x => setTimeout(x, 400));
+    const m = document.getElementById('csv-preview-modal');
+    const out = { modal: !!m, rows: (window._csvRows || []).length };
+    if (!m) return out;
+    out.format = (document.getElementById('csv-broker') || {}).innerText || '';
+    out.platform = document.getElementById('csv-platform-sel').value;
+    m.remove();
+    await handleCSVImport(new File(['Nom;Quantité;PRU\nKering;2;300\n'], 'export.csv', { type: 'text/csv' }));
+    await new Promise(x => setTimeout(x, 400));
+    out.unknown = !document.getElementById('csv-broker');
+    document.getElementById('csv-preview-modal')?.remove();
+    showCSVHelp();
+    out.help = document.getElementById('csv-help-modal').innerText;
+    return out;
+  }, text);
+  assert(r.modal && r.rows === 3, "La fenêtre de vérification ne s'ouvre pas avec 3 lignes : " + JSON.stringify(r));
+  assert(/Format reconnu : Trade Republic/.test(r.format), 'Mention « Format reconnu » absente : ' + r.format);
+  assert(r.platform === 'Trade Republic', 'Plateforme non préremplie : ' + r.platform);
+  assert(r.unknown, 'Un fichier inconnu ne doit pas afficher de format reconnu');
+  assert(/Degiro/.test(r.help) && /Trade Republic/.test(r.help), "L'aide d'import ne liste pas les courtiers");
 });
 
 await run('Import : fichiers incomplets et textes refusés', demo, {}, async page => {
@@ -496,6 +589,49 @@ await run('Achat dans l’appli iOS (simulé)', premium, {}, async page => {
   assert(/Plan du mois/.test(r.buy.text) && /Notifications importantes/.test(r.buy.text), 'Le message de bienvenue ne détaille pas ce qui est débloqué');
 });
 
+await run('Achat dans l’appli Android : Google Play, jamais Stripe', premium, { query: '?android_app=1', mobile: true }, async (page, s) => {
+  const r = await page.evaluate(async () => {
+    const log = [];
+    window.getDigitalGoodsService = async url => { log.push('service:' + url); return { listPurchases: async () => [], getDetails: async ids => ids.map(itemId => ({ itemId })) }; };
+    window.PaymentRequest = class {
+      constructor(methods) { log.push('paiement:' + methods[0].supportedMethods + ':' + (methods[0].data || {}).sku); }
+      async show() { return { details: { purchaseToken: 'jeton-play-test' }, complete: async st => { log.push('fin:' + st); } }; }
+    };
+    Object.assign(profile, { is_premium: false, premium_until: null, subscription_status: null, premium_source: null });
+    plansBilling = 'annual'; showPlansModal();
+    const modal = document.getElementById('plans-modal');
+    const btn = modal.querySelector('.plan-btn-main');
+    const out = { isButton: !!btn && btn.tagName === 'BUTTON', foot: /Google Play/.test(modal.innerText) && /Restaurer mes achats/.test(modal.innerText) };
+    btn.click();
+    for (let i = 0; i < 50 && !document.getElementById('premium-welcome'); i++) await new Promise(x => setTimeout(x, 100));
+    Object.assign(out, { welcome: !!document.getElementById('premium-welcome'), premium: profile.is_premium, source: profile.premium_source, plan: profile.subscription_plan, log });
+    return out;
+  });
+  assert(r.isButton, 'Le bouton S’abonner est absent dans l’appli Android');
+  assert(r.foot, 'Mention Google Play ou « Restaurer mes achats » absente');
+  assert(r.log.includes('paiement:https://play.google.com/billing:kapitaro_premium_annual'), 'Le paiement ne passe pas par Google Play : ' + r.log.join(', '));
+  assert(s.calls.includes('play-verify'), "L'achat n'est pas vérifié par le serveur (play-verify)");
+  assert(!s.calls.includes('create-checkout'), 'Stripe a été appelé dans l’appli Android');
+  assert(r.log.includes('fin:success'), 'La fenêtre Google Play n’est pas fermée sur un succès : ' + r.log.join(', '));
+  assert(r.welcome && r.premium && r.source === 'play' && r.plan === 'annual', 'Premium non activé après l’achat Google Play');
+});
+
+await run('Appli Android sans paiement Google Play : message clair, jamais Stripe', premium, { query: '?android_app=1', mobile: true }, async (page, s) => {
+  const r = await page.evaluate(async () => {
+    try { delete window.getDigitalGoodsService; } catch (e) {}
+    Object.assign(profile, { is_premium: false, premium_until: null, subscription_status: null });
+    showPlansModal();
+    const modal = document.getElementById('plans-modal');
+    const out = { msg: /mets à jour l’appli Kapitaro/.test(modal.innerText), buttons: [...modal.querySelectorAll('button')].filter(b => /S'abonner|Reprendre/.test(b.textContent)).length };
+    modal.remove();
+    await startCheckout(null, 'monthly');
+    return out;
+  });
+  assert(r.msg, 'Le message « mets à jour l’appli » est absent');
+  assert(r.buttons === 0, 'Un bouton d’abonnement reste proposé sans Google Play');
+  assert(!s.calls.includes('create-checkout') && !s.calls.includes('play-verify'), 'Un paiement a été lancé : ' + s.calls.filter(c => /checkout|play/.test(c)).join(', '));
+});
+
 await run('Actualités : 10 thèmes, puis analyse complète avec sources', premium, {}, async page => {
   await page.evaluate(() => nav('news'));
   await page.waitForFunction(() => !_newsStreaming && Array.isArray(newsData) && newsData.length === 10, null, { timeout: 20000 });
@@ -546,6 +682,36 @@ await run('Signaux : toutes les positions, repère du marché, alerte Prudence',
   assert(r.notif, "Un signal Prudence sur une position n'apparaît pas dans les notifications");
   assert(r.cached, 'Les signaux ne sont pas gardés en mémoire');
   console.log(`    (signaux complets en ${Date.now() - t0} ms avec une IA simulée)`);
+});
+
+await run('Signaux : fiabilité des signaux passés, peu puis assez de recul', premium, {}, async page => {
+  const trackText = async () => {
+    await page.waitForFunction(() => _sigRun && _sigRun.done, null, { timeout: 30000 });
+    return page.evaluate(() => { const b = _sigRun.root.querySelector('[data-sig-track]'); return b ? b.innerText : ''; });
+  };
+  TRACK.data = { min: 20, evaluated: 7, justes: 6, faux: 1, rate: 85.7, pending: 30, favorable: { n: 4, justes: 4, avgExcess: 3.1 }, prudence: { n: 3, justes: 2, avgExcess: -0.5 }, neutre: { n: 5 }, indispo: 0, from: '2026-09-01T10:00:00Z', to: '2026-11-06T10:00:00Z' };
+  try {
+    await page.evaluate(() => nav('news'));
+    await sleep(500);
+    await page.evaluate(() => document.getElementById('news-fil-signaux').click());
+    const few = await trackText();
+    assert(few, "L'encart « Fiabilité des signaux passés » est absent");
+    assert(/Pas encore assez de recul \(7 signaux évalués\)/.test(few), 'Message « pas encore assez de recul » absent : ' + few);
+    assert(!/\d\s*%/.test(few), 'Un pourcentage est affiché avec trop peu de signaux : ' + few);
+    assert(/ne préjugent pas des performances futures/.test(few) && /pas un conseil/.test(few), 'Mentions obligatoires absentes : ' + few);
+
+    // Assez de recul, et un résultat décevant : il doit être affiché tel quel
+    TRACK.data = { min: 20, evaluated: 60, justes: 26, faux: 34, rate: 43.3, pending: 40, favorable: { n: 35, justes: 14, avgExcess: -1.2 }, prudence: { n: 25, justes: 12, avgExcess: 0.4 }, neutre: { n: 18 }, indispo: 2, from: '2026-09-01T10:00:00Z', to: '2026-11-06T10:00:00Z' };
+    await page.evaluate(() => { newsTabCache.signaux.ts = 0; _sigRun = null; renderSignaux(); });
+    const many = await trackText();
+    assert(/43 %/.test(many) && /26 sur 60/.test(many) && /34 faux/.test(many), 'Taux, signaux justes ou faux absents : ' + many);
+    assert(/Favorable : 14 justes sur 35/.test(many) && /−1,2 pt/.test(many), 'Le mauvais résultat des signaux Favorables est masqué : ' + many);
+    assert(/Prudence et Risqué : 12 justes sur 25/.test(many), 'Détail Prudence absent : ' + many);
+    assert(/01\/09\/2026/.test(many) && /06\/11\/2026/.test(many), 'Période absente : ' + many);
+    assert(/50 %/.test(many), 'Le repère du hasard est absent : ' + many);
+    assert(/ne préjugent pas des performances futures/.test(many) && /pas un conseil/.test(many), 'Mentions obligatoires absentes : ' + many);
+    assert(!/Pas encore assez de recul/.test(many), 'Le message « pas assez de recul » reste affiché');
+  } finally { TRACK.data = null; }
 });
 
 await run('Entreprises, matières premières et forex', premium, {}, async (page, s) => {

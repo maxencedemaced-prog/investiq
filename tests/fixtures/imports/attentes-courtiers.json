@@ -1,0 +1,199 @@
+{
+ "trade-republic-transactions.csv": {
+  "broker": "Trade Republic",
+  "rows": 3,
+  "expected": [
+   [
+    "FR0000120073",
+    8,
+    160.0
+   ],
+   [
+    "IE00B4L5Y983",
+    4.243133,
+    94.269961
+   ],
+   [
+    "Bitcoin",
+    0.0011,
+    81818.181818
+   ]
+  ]
+ },
+ "degiro-transactions.csv": {
+  "broker": "Degiro",
+  "rows": 2,
+  "expected": [
+   [
+    "IE00B3RBWM25",
+    8,
+    95.0
+   ],
+   [
+    "US0378331005",
+    3,
+    166.666667
+   ]
+  ]
+ },
+ "degiro-releve-compte.csv": {
+  "broker": "Degiro",
+  "rows": 2,
+  "expected": [
+   [
+    "FR0000120073",
+    8,
+    158.0
+   ],
+   [
+    "US0378331005",
+    2,
+    200.0
+   ]
+  ]
+ },
+ "degiro-portefeuille.csv": {
+  "broker": "Degiro",
+  "rows": 2,
+  "expected": [
+   [
+    "IE00B3RBWM25",
+    8,
+    0
+   ],
+   [
+    "US0378331005",
+    3,
+    0
+   ]
+  ]
+ },
+ "xtb-operations.csv": {
+  "broker": "XTB",
+  "rows": 2,
+  "expected": [
+   [
+    "TTE",
+    7,
+    54.0
+   ],
+   [
+    "AAPL",
+    2,
+    175.925
+   ]
+  ]
+ },
+ "xtb-positions.csv": {
+  "broker": "XTB",
+  "rows": 2,
+  "expected": [
+   [
+    "SAN",
+    5,
+    90.0
+   ],
+   [
+    "MSFT",
+    1.5,
+    400.0
+   ]
+  ]
+ },
+ "revolut-releve.csv": {
+  "broker": "Revolut",
+  "rows": 2,
+  "expected": [
+   [
+    "AAPL",
+    1,
+    186.666667
+   ],
+   [
+    "TSLA",
+    4,
+    500.0
+   ]
+  ]
+ },
+ "trading212-historique.csv": {
+  "broker": "Trading 212",
+  "rows": 2,
+  "expected": [
+   [
+    "US5949181045",
+    3,
+    375.757576
+   ],
+   [
+    "FR0000120271",
+    6,
+    55.0
+   ]
+  ]
+ },
+ "ibkr-releve-activite.csv": {
+  "broker": "Interactive Brokers",
+  "rows": 2,
+  "expected": [
+   [
+    "AAPL",
+    10,
+    150.25
+   ],
+   [
+    "AI",
+    1200,
+    160.5
+   ]
+  ]
+ },
+ "ibkr-flex-transactions.csv": {
+  "broker": "Interactive Brokers",
+  "rows": 2,
+  "expected": [
+   [
+    "IE00B4L5Y983",
+    15,
+    90.0
+   ],
+   [
+    "US0378331005",
+    3,
+    180.0
+   ]
+  ]
+ },
+ "saxo-transactions.csv": {
+  "broker": "Saxo",
+  "rows": 2,
+  "expected": [
+   [
+    "IE00BK5BQT80",
+    8,
+    126.0
+   ],
+   [
+    "FR0000120073",
+    3,
+    160.0
+   ]
+  ]
+ },
+ "boursobank-positions.csv": {
+  "broker": "Boursorama",
+  "rows": 2,
+  "expected": [
+   [
+    "FR0000121014",
+    3,
+    702.1
+   ],
+   [
+    "FR0000120073",
+    1200,
+    150.0
+   ]
+  ]
+ }
+}

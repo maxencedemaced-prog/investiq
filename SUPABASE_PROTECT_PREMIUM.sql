@@ -12,6 +12,8 @@ alter table profiles add column if not exists subscription_status text;
 alter table profiles add column if not exists subscription_plan text;
 alter table profiles add column if not exists stripe_customer_id text;
 alter table profiles add column if not exists stripe_subscription_id text;
+alter table profiles add column if not exists premium_source text;        -- 'play' : abonnement Google Play (voir SUPABASE_PLAY_BILLING.sql)
+alter table profiles add column if not exists play_purchase_token text;
 
 create or replace function public.protect_profile_billing()
 returns trigger
@@ -29,6 +31,8 @@ begin
       new.subscription_plan := null;
       new.stripe_customer_id := null;
       new.stripe_subscription_id := null;
+      new.premium_source := null;
+      new.play_purchase_token := null;
     else
       new.is_premium := old.is_premium;
       new.premium_until := old.premium_until;
@@ -36,6 +40,8 @@ begin
       new.subscription_plan := old.subscription_plan;
       new.stripe_customer_id := old.stripe_customer_id;
       new.stripe_subscription_id := old.stripe_subscription_id;
+      new.premium_source := old.premium_source;
+      new.play_purchase_token := old.play_purchase_token;
     end if;
   end if;
   return new;

@@ -36,6 +36,10 @@
       "schedule": "*/15 7-20 * * 1-5"
     },
     {
+      "path": "/api/feed?cron=track",
+      "schedule": "30 21 * * 1-5"
+    },
+    {
       "path": "/api/email-send",
       "schedule": "0 8 * * *"
     },
