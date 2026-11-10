@@ -3058,9 +3058,128 @@ async function kpStoreRestore(btn) {
   if (btn && btn.isConnected) btn.disabled = false;
 }
 
-// Lance le paiement (App Store dans l'appli iOS, Stripe sur le site)
+// ═══ ABONNEMENT DANS L'APPLI ANDROID (Google Play Billing) ═══
+// L'appli Android ouvre le site dans Chrome (Trusted Web Activity). Google y fournit la Digital Goods API
+// (prix et achats du compte Google) et le paiement passe par la Payment Request API avec la méthode Google Play.
+// Le serveur (api/play-verify.js) vérifie l'achat chez Google, l'accuse réception et active Premium : jamais Stripe ici.
+const KP_PLAY_BILLING = 'https://play.google.com/billing';
+const KP_PLAY_OLD_APP_MSG = 'Pour t’abonner, mets à jour l’appli Kapitaro depuis Google Play.';
+const KP_PLAY_SKUS = Object.values(KP_RC_PRODUCTS);   // mêmes identifiants que sur l'App Store
+function kpIsPlayApp() {
+  try { return KP_ANDROID_APP && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; }
+}
+// Ancienne version de l'appli (sans paiement Google Play) : l'API est absente
+function kpPlayAvailable() {
+  return kpIsPlayApp() && 'getDigitalGoodsService' in window && typeof window.PaymentRequest === 'function';
+}
+let kpPlayService = null;   // promesse partagée : un seul appel à Google même si plusieurs boutons le demandent
+function kpPlayGetService() {
+  if (!kpPlayAvailable()) return Promise.resolve(null);
+  if (!kpPlayService) {
+    kpPlayService = Promise.resolve().then(() => window.getDigitalGoodsService(KP_PLAY_BILLING))
+      .catch(e => { console.warn('[play] service :', e); kpPlayService = null; return null; });
+  }
+  return kpPlayService;
+}
+function kpPlaySubsUrl() {
+  const sku = KP_RC_PRODUCTS[profile?.subscription_plan === 'annual' ? 'annual' : 'monthly'];
+  return `https://play.google.com/store/account/subscriptions?sku=${sku}&package=fr.kapitaro.app`;
+}
+// Envoie le jeton d'achat au serveur, qui vérifie chez Google et active Premium sur le compte connecté
+async function kpPlaySend(purchaseToken, productId, restore) {
+  const { data } = await sb.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) throw new Error('Session expirée, reconnecte-toi');
+  const res = await fetch('/api/play-verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ purchaseToken, productId, restore: !!restore }),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || 'Vérification impossible, réessaie');
+  return out;
+}
+function kpPlayApply(out) {
+  if (!out || !out.premium) return false;
+  profile.is_premium = true;
+  profile.premium_until = out.premium_until || null;
+  profile.subscription_status = out.subscription_status || 'active';
+  profile.subscription_plan = out.subscription_plan || profile.subscription_plan || null;
+  profile.premium_source = 'play';
+  return true;
+}
+async function kpPlayBuy(btn, plan) {
+  if (isDemo || !currentUser) { showToast('🔒 Crée un compte pour t\'abonner'); return; }
+  const sku = KP_RC_PRODUCTS[plan === 'annual' ? 'annual' : 'monthly'];
+  const label = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Ouverture...'; btn.style.opacity = '0.6'; }
+  try {
+    const service = await kpPlayGetService();
+    if (!service) { showToast(KP_PLAY_OLD_APP_MSG); return; }
+    const request = new PaymentRequest(
+      [{ supportedMethods: KP_PLAY_BILLING, data: { sku } }],
+      { total: { label: 'Total', amount: { currency: 'EUR', value: '0' } } });   // montant ignoré : Google affiche son prix
+    let response;
+    try { response = await request.show(); }
+    catch (e) { if (e && e.name === 'AbortError') return; throw e; }   // fenêtre Google fermée : rien à faire
+    const purchaseToken = response?.details?.purchaseToken;
+    if (!purchaseToken) { try { await response.complete('fail'); } catch (e) {} throw new Error('achat non confirmé par Google Play'); }
+    trackEvent('store_purchase', { plan, store: 'play' });
+    if (btn) btn.innerHTML = 'Activation...';
+    let out;
+    try { out = await kpPlaySend(purchaseToken, sku, false); }
+    catch (e) {
+      try { await response.complete('fail'); } catch (x) {}
+      // Paiement fait chez Google : il sera relié au compte au prochain lancement, ou avec « Restaurer mes achats »
+      showToast('⚠️ ' + e.message + ' · Ton paiement est bien reçu : touche « Restaurer mes achats » dans un instant.');
+      return;
+    }
+    try { await response.complete('success'); } catch (e) {}
+    if (kpPlayApply(out)) kpStoreShowActive();
+    else showToast('⏳ Paiement en attente de validation par Google Play : ton accès s’activera dès qu’il sera confirmé.');
+  } catch (e) {
+    console.warn('[play] achat :', e);
+    showToast('Achat impossible : ' + (e?.message || 'réessaie plus tard'));
+  } finally {
+    if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = label; btn.style.opacity = ''; }
+  }
+}
+// Retrouve un abonnement Google Play déjà payé (nouvel appareil, réinstallation, activation interrompue)
+async function kpPlayRestore(btn, silent) {
+  if (isDemo || !currentUser) return false;
+  if (btn) btn.disabled = true;
+  let ok = false;
+  try {
+    const service = await kpPlayGetService();
+    if (!service) { if (!silent) showToast(KP_PLAY_OLD_APP_MSG); return false; }
+    const purchases = ((await service.listPurchases()) || []).filter(p => KP_PLAY_SKUS.includes(p.itemId) && p.purchaseToken);
+    let lastError = null;
+    for (const p of purchases) {
+      try { if (kpPlayApply(await kpPlaySend(p.purchaseToken, p.itemId, true))) { ok = true; break; } }
+      catch (e) { lastError = e; }
+    }
+    if (ok) { if (silent) renderSubscriptionCard(); else kpStoreShowActive(); }
+    else if (!silent) showToast(lastError ? '⚠️ ' + lastError.message : 'Aucun abonnement Google Play actif sur ce compte Google');
+  } catch (e) {
+    console.warn('[play] restauration :', e);
+    if (!silent) showToast('Restauration impossible, réessaie plus tard');
+  } finally {
+    if (btn && btn.isConnected) btn.disabled = false;
+  }
+  return ok;
+}
+// Au lancement de l'appli Android : rattrape un achat pas encore activé, ou un renouvellement pas encore reçu par le serveur
+function kpPlaySync() {
+  if (!kpPlayAvailable() || isDemo || !currentUser) return;
+  const until = profile?.premium_until ? new Date(profile.premium_until).getTime() : 0;
+  if (isPremiumUser() && !(profile?.premium_source === 'play' && until < Date.now() + 2 * 86400000)) return;
+  kpPlayRestore(null, true);
+}
+
+// Lance le paiement (App Store dans l'appli iOS, Google Play dans l'appli Android, Stripe sur le site)
 async function startCheckout(btn, plan) {
   if (kpStore()) return kpStoreBuy(btn, plan);
+  if (kpIsPlayApp()) return kpPlayBuy(btn, plan);
   if (KP_ANDROID_APP) { showToast(KP_ANDROID_APP_MSG); return; }
   if (isDemo || !currentUser) {
     showToast('🔒 Crée un compte pour t\'abonner');
@@ -3092,6 +3211,12 @@ async function startCheckout(btn, plan) {
 
 // Ouvre le portail Stripe (facturation, moyen de paiement, résiliation)
 async function openBillingPortal(btn) {
+  // Abonnement pris dans l'appli Android : il se gère dans Google Play
+  if (profile?.premium_source === 'play' && profile?.subscription_status !== 'gift') {
+    try { window.open(kpPlaySubsUrl(), '_blank'); } catch (e) {}
+    showToast('Ton abonnement se gère dans Google Play : Profil, Paiements et abonnements, Abonnements');
+    return;
+  }
   // Abonnement pris dans l'appli : il se gère dans le compte Apple, pas chez Stripe
   if (!profile?.stripe_customer_id && profile?.subscription_status !== 'gift') {
     const c = window.Capacitor;
@@ -3161,7 +3286,8 @@ function plansComparisonHTML(lapsed) {
   const seg = (key, label, extra) => `<button type="button" class="plan-seg${plansBilling === key ? ' on' : ''}" onclick="setPlansBilling('${key}')">${label}${extra || ''}</button>`;
   const row = t => `<li><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg><span>${t}</span></li>`;
   const premium = isPremiumUser();
-  const promo = referralPromo && !premium && !lapsed && !kpStore();   // pas de réduction parrainage sur l'App Store
+  const play = kpIsPlayApp();
+  const promo = referralPromo && !premium && !lapsed && !kpStore() && !play;   // pas de réduction parrainage sur l'App Store ni Google Play
   return `
   <div class="plans-grid">
     <div class="plan-card plan-free">
@@ -3196,9 +3322,11 @@ function plansComparisonHTML(lapsed) {
              <div class="plan-save">Tu économises ${_eur(yearSaving)} par an</div>`
           : `<div class="plan-note">facturé chaque mois · sans engagement</div>
              <div class="plan-save plan-save-link" onclick="setPlansBilling('annual')">Passe à l'annuel et économise ${_eur(yearSaving)} par an →</div>`}
-        ${KP_ANDROID_APP && !kpStore() ? `<div class="plan-btn plan-btn-main" style="cursor:default;opacity:.75">${KP_ANDROID_APP_MSG}</div>` : `<button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>`}
+        ${play && !kpPlayAvailable() ? `<div class="plan-btn plan-btn-main" style="cursor:default;opacity:.75">${KP_PLAY_OLD_APP_MSG}</div>`
+          : KP_ANDROID_APP && !kpStore() && !play ? `<div class="plan-btn plan-btn-main" style="cursor:default;opacity:.75">${KP_ANDROID_APP_MSG}</div>` : `<button class="plan-btn plan-btn-main" onclick="startCheckout(this,plansBilling)">${lapsed ? 'Reprendre' : "S'abonner"} — ${annual ? PREMIUM_PRICE_ANNUAL + '/an' : promo ? PROMO_PRICE + ' le 1er mois' : PREMIUM_PRICE + '/mois'}</button>`}
         <div class="plan-foot">Résiliable à tout moment</div>
         ${kpStore() ? `<div class="plan-foot" style="line-height:1.5">Abonnement renouvelé automatiquement au même prix, sauf résiliation au moins 24 h avant la fin de la période. Paiement et résiliation via ton compte Apple.<br><button type="button" onclick="kpStoreRestore(this)" style="background:none;border:none;padding:0;color:inherit;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer">Restaurer mes achats</button> · <button type="button" onclick="openLegalDoc('cgu')" style="background:none;border:none;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">Conditions</button> · <button type="button" onclick="openLegalDoc('privacy')" style="background:none;border:none;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">Confidentialité</button></div>` : ''}
+        ${play && kpPlayAvailable() ? `<div class="plan-foot" style="line-height:1.5">Abonnement renouvelé automatiquement au même prix, sauf résiliation. Paiement et résiliation via ton compte Google Play.<br><button type="button" onclick="kpPlayRestore(this)" style="background:none;border:none;padding:0;color:inherit;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer">Restaurer mes achats</button> · <button type="button" onclick="openLegalDoc('cgu')" style="background:none;border:none;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">Conditions</button> · <button type="button" onclick="openLegalDoc('privacy')" style="background:none;border:none;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer">Confidentialité</button></div>` : ''}
       </div>
       <div class="plan-list">
         <div class="plan-list-title">Tout ce qui est inclus dans Gratuit, plus :</div>
@@ -3214,7 +3342,7 @@ function plansComparisonHTML(lapsed) {
 function showPlansModal(opts) {
   try { const _ob = document.getElementById('onboarding-modal'); if (_ob && _ob.style.display === 'flex') return; } catch (e) {}
   trackEvent('paywall_view', { feature: (opts && opts.feature) || 'offre' });
-  try { kpStorePreload(); } catch (e) {}
+  try { kpStorePreload(); kpPlayGetService(); } catch (e) {}
   document.getElementById('premium-gate')?.remove();
   document.getElementById('plans-modal')?.remove();
   const lapsed = profile?.subscription_status === 'canceled' || profile?.subscription_status === 'unpaid';
@@ -3260,13 +3388,14 @@ function renderSubscriptionCard() {
     // (il n'est remis à 'active' qu'au prochain vrai réabonnement) : ça distingue
     // un ancien abonné d'une personne qui n'a jamais souscrit.
     const lapsed = status === 'canceled' || status === 'unpaid';
+    const rp = referralPromo && !kpStore() && !kpIsPlayApp();   // réduction parrainage : seulement par Stripe, sur le site
     el.innerHTML = `
       <div class="set-row">
         <div class="set-row-main">
-          <div class="set-row-title">${lapsed ? 'Ton abonnement Premium est terminé' : referralPromo ? '🎁 Offre gratuite · réduction parrainage active' : 'Offre gratuite'}</div>
-          <div class="set-row-sub">${lapsed ? 'Retrouve l\'IA illimitée, le bilan complet et tous les outils.' : referralPromo ? `Invité par un ami : ton 1er mois Premium à <strong>${PROMO_PRICE}</strong> au lieu de ${PREMIUM_PRICE} (formule mensuelle), puis ${PREMIUM_PRICE}/mois, sans engagement.` : `Premium : IA illimitée, bilan complet, analyse de tes dépenses. Dès ${PREMIUM_PRICE}/mois, sans engagement.`}</div>
+          <div class="set-row-title">${lapsed ? 'Ton abonnement Premium est terminé' : rp ? '🎁 Offre gratuite · réduction parrainage active' : 'Offre gratuite'}</div>
+          <div class="set-row-sub">${lapsed ? 'Retrouve l\'IA illimitée, le bilan complet et tous les outils.' : rp ? `Invité par un ami : ton 1er mois Premium à <strong>${PROMO_PRICE}</strong> au lieu de ${PREMIUM_PRICE} (formule mensuelle), puis ${PREMIUM_PRICE}/mois, sans engagement.` : `Premium : IA illimitée, bilan complet, analyse de tes dépenses. Dès ${PREMIUM_PRICE}/mois, sans engagement.`}</div>
         </div>
-        <div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="${referralPromo && !lapsed ? "plansBilling='monthly';showPlansModal()" : 'showPlansModal()'}">${lapsed ? 'Reprendre' : referralPromo ? 'En profiter' : 'Voir Premium'}</button></div>
+        <div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="${rp && !lapsed ? "plansBilling='monthly';showPlansModal()" : 'showPlansModal()'}">${lapsed ? 'Reprendre' : rp ? 'En profiter' : 'Voir Premium'}</button></div>
       </div>`;
     return;
   }
@@ -3277,7 +3406,7 @@ function renderSubscriptionCard() {
     <div class="set-row">
       <div class="set-row-main">
         <div class="set-row-title">🎁 Premium offert</div>
-        <div class="set-row-sub">Grâce au parrainage, jusqu'au ${until}. Tu peux t'abonner dès maintenant : la facturation ne commencera qu'à la fin de tes mois offerts.</div>
+        <div class="set-row-sub">Grâce au parrainage, jusqu'au ${until}.${kpStore() || kpIsPlayApp() ? '' : ' Tu peux t\'abonner dès maintenant : la facturation ne commencera qu\'à la fin de tes mois offerts.'}</div>
       </div>
       <div class="set-row-ctrl"><button type="button" class="set-pill primary" onclick="showPlansModal()">S'abonner</button></div>
     </div>`;

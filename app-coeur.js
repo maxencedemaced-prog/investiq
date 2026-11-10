@@ -186,7 +186,7 @@ async function initApp(user) {
   document.getElementById('demo-banner').style.display = 'none';
   openNotifPanelByDefault();
   try { trackEvent('login'); startHeartbeat(); } catch(e) {}
-  setTimeout(() => { try { kpStorePreload(); kpLoadSellSignals(); kpOpenFromNotif(); } catch (e) {} }, 1500);
+  setTimeout(() => { try { kpStorePreload(); kpLoadSellSignals(); kpOpenFromNotif(); } catch (e) {} try { kpPlaySync(); } catch (e) {} }, 1500);
   requestWelcomeEmail(user);
   attachReferral(user).then(loadReferralPromo);
   try { if (typeof installAfterSignup === 'function') installAfterSignup(user); } catch (e) {}
@@ -523,6 +523,7 @@ async function loadProfile() {
                 subscription_status: data.subscription_status || null,
                 subscription_plan: data.subscription_plan || null,
                 stripe_customer_id: data.stripe_customer_id || null,
+                premium_source: data.premium_source || null,
                 email_opt_out: data.email_opt_out === true };
     document.getElementById('s-bankroll').value = profile.bankroll;
     document.getElementById('s-horizon').value = profile.horizon;
