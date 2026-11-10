@@ -406,6 +406,7 @@ await run('Portefeuille : cases par catégorie et regroupement', demo, {}, async
     kpTogglePortCat('crypto'); kpTogglePortGroup(); await wait(300);
     const order = ['action', 'etf', 'crypto', 'matiere', 'devise'], seq = cats().map(k => order.indexOf(k));
     if (seq.length !== out.all || seq.some((x, i) => i && x < seq[i - 1])) out.bad.push('regroupement incorrect : ' + cats().join(','));
+    if (document.querySelectorAll('#sec-portfolio .pos-group-head').length !== new Set(cats()).size) out.bad.push('bandeaux de famille absents');
     [...new Set(cats())].forEach(k => kpTogglePortCat(k)); await wait(300);
     if (cats().length || !document.getElementById('port-empty-filter')) out.bad.push('message « tout est masqué » absent');
     kpShowAllPortCats(); kpTogglePortGroup(); await wait(300);

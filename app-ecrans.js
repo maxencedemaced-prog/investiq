@@ -1317,6 +1317,21 @@ function renderPortfolio(auto=false) {
   const catsHere = KP_PORT_CATS.filter(x => catCount[x[0]]);
   const hiddenCats = catsHere.length > 1 ? kpPortHidden().filter(k => catCount[k]) : [];
   const sorted = kpSortPositions(dedupPositions.filter(p => !hiddenCats.includes(kpPortCat(p))));
+  // Liste regroupée : un bandeau (nom de la famille, nombre de lignes, valeur, part du portefeuille) avant chaque famille
+  const grpHead = {};
+  if (kpPortGrouped() && catsHere.length > 1) {
+    const shownTotal = sorted.reduce((t, p) => t + p.qty * p.price, 0);
+    KP_PORT_CATS.forEach(([k, label]) => {
+      const rows = sorted.filter(p => kpPortCat(p) === k);
+      if (!rows.length) return;
+      const v = rows.reduce((t, p) => t + p.qty * p.price, 0);
+      const first = !Object.keys(grpHead).length;
+      grpHead[rows[0].id] = `<div class="pos-group-head" data-cat="${k}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 16px;${first ? '' : 'margin-top:18px;border-top:1px solid ' + borderCol + ';'}border-bottom:1px solid ${borderCol};border-left:3px solid #16a34a;background:${isDark ? 'rgba(255,255,255,0.045)' : '#f4f6f8'}">
+        <div style="font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:${textCol}">${label} <span style="font-weight:600;color:${subCol};letter-spacing:0;text-transform:none">· ${rows.length} ligne${rows.length > 1 ? 's' : ''}</span></div>
+        <div style="font-size:12.5px;font-weight:700;color:${textCol}">${v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € <span style="font-weight:600;color:${subCol}">· ${shownTotal ? (v / shownTotal * 100).toFixed(0) : 0} %</span></div>
+      </div>`;
+    });
+  }
   const chip = (on, click, label, id) => `<button type="button" ${id ? `id="${id}" ` : ''}role="checkbox" aria-checked="${on}" onclick="${click}" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${on ? '#16a34a' : borderCol};background:${on ? 'rgba(22,163,74,0.12)' : 'transparent'};color:${on ? textCol : subCol}"><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:4px;font-size:11px;line-height:1;border:1.5px solid ${on ? '#16a34a' : subCol};background:${on ? '#16a34a' : 'transparent'};color:#fff">${on ? '✓' : ''}</span>${label}</button>`;
   const catsHtml = catsHere.length > 1 ? `<div id="port-cats" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px 2px">
       <span style="font-size:12px;font-weight:600;color:${subCol}">Afficher</span>
@@ -1364,7 +1379,7 @@ function renderPortfolio(auto=false) {
       const chgColor = chg>=0?'#3fb950':'#f87171';
       const initials = p.name.replace(/[^A-Z0-9]/g,'').slice(0,2)||p.name.slice(0,2).toUpperCase();
       const hoverBg = isDark ? 'rgba(255,255,255,0.03)' : '#fafafa';
-      return `
+      return `${grpHead[p.id] || ''}
       <div id="row-${p.id}" class="pos-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 80px 32px;gap:0;padding:12px 16px;border-bottom:1px solid ${borderCol};transition:background 0.15s;cursor:pointer"
         onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='transparent'"
         onclick="togglePos('${p.id}')">
