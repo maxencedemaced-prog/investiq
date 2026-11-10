@@ -134,6 +134,12 @@ function api(route, u, req, calls) {
   }
   if (name === 'commodity-news') return json({ news: Array.from({ length: 5 }, (_, i) => ({ title: 'Actualité de test ' + (i + 1), link: 'https://fr.investing.com/news/test-' + i, ts: Date.now() - i * 3600e3, source: 'Investing.com' })) });
   if (name === 'chart') return json({ points: [] });
+  if (name === 'play-verify') {   // vérification Google Play simulée : seul le jeton de test donne Premium
+    let body = {};
+    try { body = JSON.parse(req.postData() || '{}'); } catch {}
+    if (body.purchaseToken !== 'jeton-play-test') return json({ error: 'Achat introuvable chez Google Play' }, 400);
+    return json({ ok: true, premium: true, premium_until: new Date(Date.now() + 365 * 864e5).toISOString(), subscription_status: 'active', subscription_plan: body.productId === 'kapitaro_premium_annual' ? 'annual' : 'monthly' });
+  }
   if (name === 'agenda') return json({ events: [], unavailable: true });
   if (name === 'search') return json({ results: [] });
   if (name === 'feed') {
@@ -230,7 +236,7 @@ async function run(name, maker, opts, fn) {
 await run('Page publique : se charge sans erreur', open, {}, async page => {
   const r = await page.evaluate(() => ({
     auth: getComputedStyle(document.getElementById('auth-screen')).display !== 'none',
-    missing: ['nav', 'enterDemo', 'login', 'signup', 'parseCSVSmart', 'showCSVPreview', 'renderSignaux', 'callClaude', 'callClaudeStream', 'kpOpenAnalysis', 'renderForex', 'renderMatieres', 'kpStoreBuy', 'showPremiumWelcome', 'showPlansModal', 'kpTogglePass', 'sendAI', 'renderHome', 'renderPortfolio', 'renderSante', 'renderCrise'].filter(f => typeof window[f] !== 'function'),
+    missing: ['nav', 'enterDemo', 'login', 'signup', 'parseCSVSmart', 'showCSVPreview', 'renderSignaux', 'callClaude', 'callClaudeStream', 'kpOpenAnalysis', 'renderForex', 'renderMatieres', 'kpStoreBuy', 'kpPlayBuy', 'kpPlayRestore', 'showPremiumWelcome', 'showPlansModal', 'kpTogglePass', 'sendAI', 'renderHome', 'renderPortfolio', 'renderSante', 'renderCrise'].filter(f => typeof window[f] !== 'function'),
   }));
   assert(r.auth, "L'écran de connexion n'est pas affiché");
   assert(!r.missing.length, 'Fonctions absentes : ' + r.missing.join(', '));
@@ -494,6 +500,49 @@ await run('Achat dans l’appli iOS (simulé)', premium, {}, async page => {
   assert(r.buy.welcome && r.buy.premium, "Après l'achat, Premium doit s'activer et le message s'afficher");
   assert(r.buy.calls.includes('achat:kapitaro_premium_annual'), 'Mauvais produit acheté : ' + r.buy.calls.join(', '));
   assert(/Plan du mois/.test(r.buy.text) && /Notifications importantes/.test(r.buy.text), 'Le message de bienvenue ne détaille pas ce qui est débloqué');
+});
+
+await run('Achat dans l’appli Android : Google Play, jamais Stripe', premium, { query: '?android_app=1', mobile: true }, async (page, s) => {
+  const r = await page.evaluate(async () => {
+    const log = [];
+    window.getDigitalGoodsService = async url => { log.push('service:' + url); return { listPurchases: async () => [], getDetails: async ids => ids.map(itemId => ({ itemId })) }; };
+    window.PaymentRequest = class {
+      constructor(methods) { log.push('paiement:' + methods[0].supportedMethods + ':' + (methods[0].data || {}).sku); }
+      async show() { return { details: { purchaseToken: 'jeton-play-test' }, complete: async st => { log.push('fin:' + st); } }; }
+    };
+    Object.assign(profile, { is_premium: false, premium_until: null, subscription_status: null, premium_source: null });
+    plansBilling = 'annual'; showPlansModal();
+    const modal = document.getElementById('plans-modal');
+    const btn = modal.querySelector('.plan-btn-main');
+    const out = { isButton: !!btn && btn.tagName === 'BUTTON', foot: /Google Play/.test(modal.innerText) && /Restaurer mes achats/.test(modal.innerText) };
+    btn.click();
+    for (let i = 0; i < 50 && !document.getElementById('premium-welcome'); i++) await new Promise(x => setTimeout(x, 100));
+    Object.assign(out, { welcome: !!document.getElementById('premium-welcome'), premium: profile.is_premium, source: profile.premium_source, plan: profile.subscription_plan, log });
+    return out;
+  });
+  assert(r.isButton, 'Le bouton S’abonner est absent dans l’appli Android');
+  assert(r.foot, 'Mention Google Play ou « Restaurer mes achats » absente');
+  assert(r.log.includes('paiement:https://play.google.com/billing:kapitaro_premium_annual'), 'Le paiement ne passe pas par Google Play : ' + r.log.join(', '));
+  assert(s.calls.includes('play-verify'), "L'achat n'est pas vérifié par le serveur (play-verify)");
+  assert(!s.calls.includes('create-checkout'), 'Stripe a été appelé dans l’appli Android');
+  assert(r.log.includes('fin:success'), 'La fenêtre Google Play n’est pas fermée sur un succès : ' + r.log.join(', '));
+  assert(r.welcome && r.premium && r.source === 'play' && r.plan === 'annual', 'Premium non activé après l’achat Google Play');
+});
+
+await run('Appli Android sans paiement Google Play : message clair, jamais Stripe', premium, { query: '?android_app=1', mobile: true }, async (page, s) => {
+  const r = await page.evaluate(async () => {
+    try { delete window.getDigitalGoodsService; } catch (e) {}
+    Object.assign(profile, { is_premium: false, premium_until: null, subscription_status: null });
+    showPlansModal();
+    const modal = document.getElementById('plans-modal');
+    const out = { msg: /mets à jour l’appli Kapitaro/.test(modal.innerText), buttons: [...modal.querySelectorAll('button')].filter(b => /S'abonner|Reprendre/.test(b.textContent)).length };
+    modal.remove();
+    await startCheckout(null, 'monthly');
+    return out;
+  });
+  assert(r.msg, 'Le message « mets à jour l’appli » est absent');
+  assert(r.buttons === 0, 'Un bouton d’abonnement reste proposé sans Google Play');
+  assert(!s.calls.includes('create-checkout') && !s.calls.includes('play-verify'), 'Un paiement a été lancé : ' + s.calls.filter(c => /checkout|play/.test(c)).join(', '));
 });
 
 await run('Actualités : 10 thèmes, puis analyse complète avec sources', premium, {}, async page => {
