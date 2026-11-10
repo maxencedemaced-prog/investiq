@@ -1,0 +1,36 @@
+# Filet de sécurité : à chaque envoi sur dev ou main, vérifie que le code se charge et que les parcours clés marchent.
+# Tout est simulé (aucun appel réel à l'IA, à la base ni aux cours) : voir tests/run.mjs.
+name: Tests
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev, main]
+    paths-ignore:
+      - 'tuto/**'
+      - 'video/**'
+      - 'ios-app/**'
+      - '**.md'
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dépendances
+        run: npm install --no-audit --no-fund
+      - name: Navigateur
+        run: npx playwright install --with-deps chromium
+      - name: Tests
+        run: node run.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tests-out
+          path: tests/out/
+          if-no-files-found: ignore
