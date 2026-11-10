@@ -326,7 +326,7 @@ function render(d) {
       ga.terms.slice(0, 20).map(function (k) { return '<tr style="border-top:1px solid rgba(127,127,127,.2)">' + gtd(esc(k.term)) + gtd(n0(k.clicks), 1) + gtd(n0(k.impressions), 1) + gtd(e2(k.cost), 1) + gtd(n0(k.conversions), 1) + '</tr>'; }).join(''));
     h += '<div class="sub" style="margin-top:8px">Ce mois : ' + e2(gm.cost) + ' (inclus dans les coûts) · Conversions comptées par Google : ' + n0(gt.conversions) + ' · Mise à jour ' + (ago == null ? '—' : ago < 2 ? "à l'instant" : 'il y a ' + (ago < 120 ? ago + ' min' : Math.round(ago / 60) + ' h')) + ' (Google affiche ses chiffres avec environ 3 h de retard).</div>';
     gBox.innerHTML = h;
-    if (gDays.length) mkChart('chart-gads', 'bar', gDays.map(function (x) { return x.date.slice(5); }), [{ label: 'Clics', data: gDays.map(function (x) { return x.clicks || 0; }), color: '#3b82f6' }, { label: 'Dépense (€)', data: days.map(function (x) { return Math.round((x.cost || 0) * 100) / 100; }), color: '#f59e0b' }]);
+    if (gDays.length) mkChart('chart-gads', 'bar', gDays.map(function (x) { return x.date.slice(5); }), [{ label: 'Clics', data: gDays.map(function (x) { return x.clicks || 0; }), color: '#3b82f6' }, { label: 'Dépense (€)', data: gDays.map(function (x) { return Math.round((x.cost || 0) * 100) / 100; }), color: '#f59e0b' }]);
   }
 
   // Provenance des inscrits : inscriptions et abonnés actuels par canal
