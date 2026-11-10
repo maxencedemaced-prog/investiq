@@ -1186,10 +1186,40 @@ function kpSetPortSort(k) {
   try { localStorage.setItem('kp_port_sort', k); } catch (e) {}
   renderPortfolio(true);
 }
+// Catégories du portefeuille : cases à cocher pour afficher ou masquer chaque famille, et regroupement facultatif
+const KP_PORT_CATS = [['action', 'Actions'], ['etf', 'ETF'], ['crypto', 'Cryptos'], ['matiere', 'Matières premières'], ['devise', 'Devises']];
+function kpPortCat(p) {
+  const t = String(p.type || ''), n = String(p.name || '');
+  if (t === 'Crypto') return 'crypto';
+  if (t === 'Devise' || /^CUR-[A-Z]{3}$/.test(n)) return 'devise';
+  if (/mati[eè]re/i.test(t) || /^X(AU|AG|PT)-G$/.test(n) || (typeof ETC_TICKERS !== 'undefined' && ETC_TICKERS.includes(n))) return 'matiere';
+  if (/ETF|ETC/i.test(t)) return 'etf';
+  return 'action';
+}
+function kpPortHidden() {
+  try { const a = JSON.parse(localStorage.getItem('kp_port_hide') || '[]'); if (Array.isArray(a)) return a.filter(k => KP_PORT_CATS.some(x => x[0] === k)); } catch (e) {}
+  return [];
+}
+function kpTogglePortCat(k) {
+  const h = kpPortHidden(), i = h.indexOf(k);
+  if (i >= 0) h.splice(i, 1); else h.push(k);
+  try { localStorage.setItem('kp_port_hide', JSON.stringify(h)); } catch (e) {}
+  renderPortfolio(true);
+}
+function kpShowAllPortCats() {
+  try { localStorage.removeItem('kp_port_hide'); } catch (e) {}
+  renderPortfolio(true);
+}
+function kpPortGrouped() { try { return localStorage.getItem('kp_port_group') === '1'; } catch (e) { return false; } }
+function kpTogglePortGroup() {
+  try { localStorage.setItem('kp_port_group', kpPortGrouped() ? '0' : '1'); } catch (e) {}
+  renderPortfolio(true);
+}
 function kpSortPositions(list) {
   const cmp = (KP_PORT_SORTS.find(x => x[0] === kpPortSort()) || KP_PORT_SORTS[0])[2];
   const key = p => { const val = p.qty * p.price, inv = p.qty * p.pru; return { val, inv, pnl: val - inv, pct: inv ? (val - inv) / inv * 100 : 0, chg: p.change_pct || 0, label: displayName(p.name) }; };
-  return list.map(p => ({ p, k: key(p) })).sort((a, b) => cmp(a.k, b.k) || b.k.val - a.k.val).map(x => x.p);
+  const grp = kpPortGrouped(), rank = p => KP_PORT_CATS.findIndex(x => x[0] === kpPortCat(p));
+  return list.map(p => ({ p, k: key(p), r: grp ? rank(p) : 0 })).sort((a, b) => a.r - b.r || cmp(a.k, b.k) || b.k.val - a.k.val).map(x => x.p);
 }
 
 function renderPortfolio(auto=false) {
@@ -1282,7 +1312,18 @@ function renderPortfolio(auto=false) {
 
   // Tableau des positions
   setTimeout(() => { if (typeof selectMode !== 'undefined' && selectMode) toggleSelectMode(true); }, 30);
-  const sorted = kpSortPositions(dedupPositions);
+  const catCount = {};
+  dedupPositions.forEach(p => { const k = kpPortCat(p); catCount[k] = (catCount[k] || 0) + 1; });
+  const catsHere = KP_PORT_CATS.filter(x => catCount[x[0]]);
+  const hiddenCats = catsHere.length > 1 ? kpPortHidden().filter(k => catCount[k]) : [];
+  const sorted = kpSortPositions(dedupPositions.filter(p => !hiddenCats.includes(kpPortCat(p))));
+  const chip = (on, click, label, id) => `<button type="button" ${id ? `id="${id}" ` : ''}role="checkbox" aria-checked="${on}" onclick="${click}" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${on ? '#16a34a' : borderCol};background:${on ? 'rgba(22,163,74,0.12)' : 'transparent'};color:${on ? textCol : subCol}"><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:4px;font-size:11px;line-height:1;border:1.5px solid ${on ? '#16a34a' : subCol};background:${on ? '#16a34a' : 'transparent'};color:#fff">${on ? '✓' : ''}</span>${label}</button>`;
+  const catsHtml = catsHere.length > 1 ? `<div id="port-cats" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px 2px">
+      <span style="font-size:12px;font-weight:600;color:${subCol}">Afficher</span>
+      ${catsHere.map(([k, label]) => chip(!hiddenCats.includes(k), `kpTogglePortCat('${k}')`, `${label} <span style="opacity:0.65;font-weight:500">${catCount[k]}</span>`, 'port-cat-' + k)).join('')}
+      <span style="width:1px;height:20px;background:${borderCol}"></span>
+      ${chip(kpPortGrouped(), 'kpTogglePortGroup()', 'Regrouper par catégorie', 'port-group')}
+    </div>` : '';
   const tableHtml = `
   <div style="background:${surfaceBg};border:1px solid ${borderCol};border-radius:16px;overflow:hidden;margin-bottom:20px">
     <!-- Header tableau -->
@@ -1301,6 +1342,7 @@ function renderPortfolio(auto=false) {
         <button onclick="toggleSelectMode(false)" style="padding:6px 13px;background:transparent;border:1px solid ${borderCol};border-radius:8px;font-size:12px;font-weight:600;color:${subCol};cursor:pointer">Annuler</button>
       </div>
     </div>
+    ${catsHtml}
     ${dedupPositions.length > 1 ? `<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 16px;border-bottom:1px solid ${borderCol}">
       <label for="port-sort" style="font-size:12px;font-weight:600;color:${subCol};white-space:nowrap">Trier par</label>
       <select id="port-sort" onchange="kpSetPortSort(this.value)" style="width:auto;max-width:70%;padding:7px 10px;font-size:13px;font-weight:600;border:1px solid ${borderCol};border-radius:9px">
@@ -1311,6 +1353,7 @@ function renderPortfolio(auto=false) {
       ${['ACTIF','INVESTI','PRIX MOY.','VALEUR','PERF.','',''].map(h=>`<div style="font-size:10px;font-weight:600;color:${subCol};text-transform:uppercase;letter-spacing:0.06em">${h}</div>`).join('')}
     </div>
     <!-- Lignes positions -->
+    ${sorted.length ? '' : `<div id="port-empty-filter" style="padding:26px 16px;text-align:center;font-size:13px;color:${subCol}">Toutes les catégories sont masquées. <button type="button" onclick="kpShowAllPortCats()" style="background:none;border:none;padding:0;color:#16a34a;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline">Tout afficher</button></div>`}
     ${sorted.map(p => {
       const val = p.qty*p.price;
       const inv = p.qty*p.pru;

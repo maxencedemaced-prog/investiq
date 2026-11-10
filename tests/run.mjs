@@ -387,6 +387,36 @@ await run('Portefeuille : le tri des lignes', demo, {}, async page => {
   assert(!r.bad.length, 'Tri incorrect : ' + r.bad.join(' | '));
 });
 
+await run('Portefeuille : cases par catégorie et regroupement', demo, {}, async page => {
+  const r = await page.evaluate(async () => {
+    const wait = ms => new Promise(x => setTimeout(x, ms));
+    try { localStorage.removeItem('kp_port_hide'); localStorage.removeItem('kp_port_group'); localStorage.removeItem('kp_port_sort'); } catch (e) {}
+    // Portefeuille d'essai complété pour couvrir plusieurs familles
+    const base = positions[0];
+    positions.push({ ...base, id: 'tcat1', name: 'BTC-USD', type: 'Crypto', qty: 1, pru: 100, price: 150 }, { ...base, id: 'tcat2', name: 'XAU-G', type: 'Matière première', qty: 2, pru: 50, price: 60 }, { ...base, id: 'tcat3', name: 'CUR-USD', type: 'Devise', qty: 10, pru: 1, price: 1 });
+    nav('portfolio'); renderPortfolio(true);
+    await wait(600);
+    const byId = Object.fromEntries(positions.map(p => [String(p.id), p]));
+    const cats = () => [...document.querySelectorAll('#sec-portfolio .pos-row')].map(e => kpPortCat(byId[e.id.replace('row-', '')]));
+    const out = { chips: document.querySelectorAll('#port-cats [id^="port-cat-"]').length, all: cats().length, bad: [] };
+    kpTogglePortCat('crypto'); await wait(300);
+    if (cats().includes('crypto')) out.bad.push('les cryptos restent affichées');
+    if (cats().length !== out.all - 1) out.bad.push('mauvais nombre de lignes après masquage');
+    if (document.getElementById('port-cat-crypto').getAttribute('aria-checked') !== 'false') out.bad.push('case crypto encore cochée');
+    kpTogglePortCat('crypto'); kpTogglePortGroup(); await wait(300);
+    const order = ['action', 'etf', 'crypto', 'matiere', 'devise'], seq = cats().map(k => order.indexOf(k));
+    if (seq.length !== out.all || seq.some((x, i) => i && x < seq[i - 1])) out.bad.push('regroupement incorrect : ' + cats().join(','));
+    [...new Set(cats())].forEach(k => kpTogglePortCat(k)); await wait(300);
+    if (cats().length || !document.getElementById('port-empty-filter')) out.bad.push('message « tout est masqué » absent');
+    kpShowAllPortCats(); kpTogglePortGroup(); await wait(300);
+    if (cats().length !== out.all) out.bad.push('« Tout afficher » ne rétablit pas la liste');
+    positions.splice(positions.length - 3, 3); renderPortfolio(true);
+    return out;
+  });
+  assert(r.chips >= 4, 'Cases de catégorie absentes (' + r.chips + ')');
+  assert(!r.bad.length, r.bad.join(' | '));
+});
+
 await run('Offres : les prix affichés sont 11,99 € et 94,99 €', demo, {}, async page => {
   const r = await page.evaluate(() => {
     plansBilling = 'monthly'; showPlansModal();
