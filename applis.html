@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="/errlog.js?v=20261002"></script>
+  <script src="/inapp.js?v=20261002170000" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Applis Kapitaro : iPhone, iPad et Android</title>
+  <meta name="description" content="Télécharge l'appli Kapitaro sur iPhone, iPad et Android : ton portefeuille, ton score de santé, tes objectifs et l'assistant IA, avec les notifications.">
+  <link rel="canonical" href="https://kapitaro.fr/applis">
+  <meta name="theme-color" content="#080e1e">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="L'appli Kapitaro sur iPhone, iPad et Android">
+  <meta property="og:description" content="Ton portefeuille, ton score de santé et l'assistant IA dans ta poche.">
+  <meta property="og:url" content="https://kapitaro.fr/applis">
+  <meta property="og:image" content="https://kapitaro.fr/icons/og-image.jpg">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <link rel="stylesheet" href="outils.css?v=20260929b">
+  <style>
+    .apps{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media (max-width:700px){.apps{grid-template-columns:1fr}}
+    .app-card{display:flex;flex-direction:column;gap:10px}
+    .app-card.mine{border-color:var(--green);box-shadow:0 0 0 2px var(--green-soft),0 10px 30px rgba(0,0,0,.06)}
+    .app-ico{font-size:30px;line-height:1}
+    .app-card h2{margin:0;font-size:20px;letter-spacing:-.02em}
+    .app-card p{margin:0;color:var(--muted);font-size:14.5px}
+    .store-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:auto;padding:13px 16px;border-radius:12px;font-weight:800;font-size:15px;text-decoration:none;background:var(--navy);color:#fff;border:1px solid var(--navy)}
+    .store-btn.soon{background:transparent;color:var(--muted);border:1px dashed var(--border);cursor:default}
+    .tag{align-self:flex-start;font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--green);background:var(--green-soft);padding:3px 9px;border-radius:99px}
+    .perks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+    @media (max-width:700px){.perks{grid-template-columns:1fr}}
+    .perk b{display:block;font-size:15px;margin-bottom:2px}
+    .perk span{font-size:14px;color:var(--muted)}
+    .note{font-size:13.5px;color:var(--muted);text-align:center;margin:18px 0 0}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <a class="brand" href="/"><img src="icons/kapitaro-tile.svg" alt="">Kapitaro</a>
+      <a class="top-cta" href="/">Ouvrir Kapitaro</a>
+    </div>
+  </header>
+  <section class="hero"><div class="hero-in"><h1>Kapitaro dans ta poche</h1><p>Ton portefeuille, ton score de santé, tes objectifs et l'assistant IA, avec les notifications quand le marché bouge. Le même compte que sur le site.</p></div></section>
+  <main>
+    <div class="apps">
+      <div class="card app-card" id="app-ios">
+        <div class="app-ico" aria-hidden="true">📱</div>
+        <h2>iPhone et iPad</h2>
+        <p>Connexion avec Apple ou Google, notifications, Premium par l'App Store.</p>
+        <a class="store-btn soon" id="btn-ios" aria-disabled="true">Bientôt sur l'App Store</a>
+      </div>
+      <div class="card app-card" id="app-android">
+        <div class="app-ico" aria-hidden="true">🤖</div>
+        <h2>Android</h2>
+        <p>Connexion avec Google, notifications, Premium par Google Play.</p>
+        <a class="store-btn soon" id="btn-android" aria-disabled="true">Bientôt sur Google Play</a>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="perks">
+        <div class="perk"><b>📊 Ton portefeuille</b><span>Tes lignes, ta performance et ton score de santé, à jour en temps réel.</span></div>
+        <div class="perk"><b>🎯 Tes objectifs</b><span>Ta progression et ton plan du mois, au même endroit.</span></div>
+        <div class="perk"><b>🔔 Les alertes</b><span>Une notification quand une de tes lignes bouge fortement.</span></div>
+      </div>
+    </div>
+    <p class="note" id="apps-note">En attendant, Kapitaro fonctionne déjà dans ton navigateur : <a href="/">ouvre kapitaro.fr</a>, ton compte est le même partout.</p>
+    <section class="cta">
+      <h2>Une question sur l'appli ?</h2>
+      <p>Écris-nous, on répond rapidement.</p>
+      <a href="mailto:contact@kapitaro.fr">contact@kapitaro.fr</a>
+    </section>
+  </main>
+  <footer>
+    <p>Kapitaro est un outil d'aide à la décision et ne constitue pas un conseil en investissement. Investir comporte un risque de perte en capital.</p>
+    <p><a href="/mentions-legales">Mentions légales</a> · <a href="/cgu">CGU / CGV</a> · <a href="/confidentialite">Confidentialité</a> · <a href="/risques">Risques</a> · <a href="/faq">FAQ</a></p>
+  </footer>
+  <script src="/stores.js?v=20261110230000"></script>
+  <script>
+    (function () {
+      var S = window.KP_STORES || {}, mine = window.kpStoreLink ? kpStoreLink() : null, anyLive = false;
+      var ua = navigator.userAgent || '', isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), isAndroid = /Android/i.test(ua);
+      [['ios', 'btn-ios', 'app-ios', 'Télécharger sur l’App Store'], ['android', 'btn-android', 'app-android', 'Disponible sur Google Play']].forEach(function (x) {
+        var s = S[x[0]], b = document.getElementById(x[1]);
+        if (s && s.live) {
+          anyLive = true;
+          b.className = 'store-btn'; b.href = s.url; b.target = '_blank'; b.rel = 'noopener'; b.removeAttribute('aria-disabled'); b.textContent = x[3];
+        }
+        if ((x[0] === 'ios' && isIOS) || (x[0] === 'android' && isAndroid)) document.getElementById(x[2]).classList.add('mine');
+      });
+      if (anyLive) document.getElementById('apps-note').innerHTML = 'Tu préfères le navigateur ? <a href="/">Kapitaro fonctionne aussi sur kapitaro.fr</a>, avec le même compte.';
+    })();
+  </script>
+  <script defer src="/help-bot.js?v=20261104210000"></script>
+</body>
+</html>
