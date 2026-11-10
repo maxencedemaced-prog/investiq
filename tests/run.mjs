@@ -98,6 +98,8 @@ await test('Versions de cache : chaque script de index.html existe', () => {
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.json': 'application/json', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.mp4': 'video/mp4', '.webmanifest': 'application/manifest+json' };
 const ORIGIN = 'https://kapitaro.fr';
 
+// Flux partagé simulé : « vide » = rien de calculé (l'appli doit reprendre son calcul habituel), « plein » = contenu prêt
+const FEED = { mode: 'vide' };
 // Réponses de l'IA simulée, choisies d'après la demande envoyée par l'appli
 function claudeText(body) {
   const p = String(body.prompt || '');
@@ -134,6 +136,12 @@ function api(route, u, req, calls) {
   if (name === 'chart') return json({ points: [] });
   if (name === 'agenda') return json({ events: [], unavailable: true });
   if (name === 'search') return json({ results: [] });
+  if (name === 'feed') {
+    if (FEED.mode === 'vide') return json({ generated_at: '2000-01-01T00:00:00Z', stale: true });
+    if (u.searchParams.get('refresh') === '1') return json({ ok: true, skipped: 'fresh' });
+    if (u.searchParams.get('kind') === 'news') return json({ items: Array.from({ length: 10 }, (_, i) => ({ titre: 'Thème partagé ' + (i + 1), resume: 'Résumé partagé.', categorie: ['macro', 'banque', 'marche', 'geo', 'secteur'][i % 5], impact: 'moyen', signal: 'neutre', reco_texte: 'Texte partagé.', actifs_cibles: i === 7 ? ['VWCE.DE'] : [] })), generated_at: new Date().toISOString(), stale: false });
+    return json({ items: ['MC.PA', 'OR.PA', 'SAN.PA', 'TTE.PA', 'SAP.DE', 'ASML.AS', 'MSFT', 'JNJ', 'KO', 'NESN.SW', 'VWCE.DE', 'IBE.MC'].map(t => ({ ticker: t, name: 'Nom ' + t, signal: 'attendre', conviction: 'modérée', risque: 2, horizon: '2-4 semaines', raison: 'raison partagée', type: 'Action', secteur: 'Test', p1y: 12.3, dd: -9.1 })), median: { value: 11.6, count: 360 }, generated_at: new Date().toISOString(), stale: false });
+  }
   if (name === 'claude') {
     let body = {};
     try { body = JSON.parse(req.postData() || '{}'); } catch {}
@@ -356,6 +364,29 @@ await run('Import : une ligne sans nombre de parts reste à compléter', demo, {
   assert(r.added === 1 && r.closed, `Une seule ligne devait être importée (${r.added})`);
 });
 
+await run('Portefeuille : le tri des lignes', demo, {}, async page => {
+  const r = await page.evaluate(async () => {
+    try { localStorage.removeItem('kp_port_sort'); } catch (e) {}
+    nav('portfolio');
+    await new Promise(x => setTimeout(x, 700));
+    const names = () => [...document.querySelectorAll('#sec-portfolio .pos-row')].map(e => e.id.replace('row-', ''));
+    const byId = Object.fromEntries(positions.map(p => [String(p.id), p]));
+    const metric = { valeur: p => p.qty * p.price, investi: p => p.qty * p.pru, perf_haut: p => (p.price - p.pru) / p.pru, perf_bas: p => -(p.price - p.pru) / p.pru, gain_haut: p => p.qty * (p.price - p.pru), gain_bas: p => -p.qty * (p.price - p.pru) };
+    const out = { select: !!document.getElementById('port-sort'), rows: names().length, bad: [] };
+    for (const [k, f] of Object.entries(metric)) {
+      kpSetPortSort(k);
+      await new Promise(x => setTimeout(x, 300));
+      const v = names().map(id => f(byId[id]));
+      if (v.some((x, i) => i && x > v[i - 1] + 1e-9)) out.bad.push(k + ' : ' + names().join(','));
+      if (document.getElementById('port-sort').value !== k) out.bad.push(k + ' : le menu ne garde pas le choix');
+    }
+    kpSetPortSort('valeur');
+    return out;
+  });
+  assert(r.select && r.rows >= 4, 'Le menu de tri ou les lignes sont absents');
+  assert(!r.bad.length, 'Tri incorrect : ' + r.bad.join(' | '));
+});
+
 await run('Offres : les prix affichés sont 11,99 € et 94,99 €', demo, {}, async page => {
   const r = await page.evaluate(() => {
     plansBilling = 'monthly'; showPlansModal();
@@ -487,6 +518,24 @@ await run('Agent IA : répond, reçoit les matières premières, oublie les mess
   const noise = await page.evaluate(() => [kpAgentNoise('🔒 Limite du jour atteinte : x'), kpAgentNoise('Erreur de connexion.'), kpAgentNoise('Ton portefeuille est bien réparti.')]);
   assert(noise[0] && noise[1] && !noise[2], 'Le tri des messages d’erreur est faux : ' + noise.join(','));
 });
+
+FEED.mode = 'plein';
+await run('Flux partagé : actualités et valeurs à découvrir sans attendre l’IA', premium, {}, async (page, s) => {
+  await page.evaluate(() => nav('news'));
+  await page.waitForFunction(() => !_newsStreaming && Array.isArray(newsData) && newsData.length === 10, null, { timeout: 15000 });
+  const news = await page.evaluate(() => ({ first: newsData[0].titre, cards: document.querySelectorAll('#news-list .news-item').length }));
+  assert(news.cards === 10, `10 actualités partagées attendues (${news.cards})`);
+  assert(news.first === 'Thème partagé 8', 'Le thème qui touche une ligne détenue devrait passer en premier : ' + news.first);
+  assert(!s.calls.includes('claude'), "Les actualités partagées ne doivent pas relancer l'IA");
+  await page.evaluate(() => document.getElementById('news-fil-signaux').click());
+  await page.waitForFunction(() => _sigRun && _sigRun.done, null, { timeout: 30000 });
+  const sig = await page.evaluate(() => { const r = _sigRun.root; return { oppo: [...r.querySelectorAll('[data-sig="oppo"] [id^="sig-card-"]')].map(c => c.id.slice(9)), text: r.innerText, mine: r.querySelectorAll('[data-sig="mine"] [id^="sig-card-"]').length, skel: r.querySelectorAll('.skeleton').length }; });
+  assert(sig.oppo.length === 9, `9 valeurs à découvrir partagées attendues (${sig.oppo.length})`);
+  assert(!sig.oppo.includes('VWCE.DE'), 'Une valeur déjà détenue apparaît dans les valeurs à découvrir');
+  assert(sig.text.includes('raison partagée') && sig.text.includes('médiane +11,6 %'), 'Contenu ou médiane partagés absents');
+  assert(sig.mine > 0 && sig.skel === 0, 'Les signaux sur mes positions doivent rester calculés');
+});
+FEED.mode = 'vide';
 
 await run('Notification : le lien ouvre les signaux', premium, { query: '?open=signaux' }, async page => {
   await page.evaluate(() => kpOpenFromNotif());
