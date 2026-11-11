@@ -95,7 +95,7 @@ const Scene = ({ s, i }) => {
   return (
     <AbsoluteFill style={{ background: '#060b18', overflow: 'hidden', ...enter(f, i) }}>
       {s.video
-        ? <OffthreadVideo src={staticFile(s.video)} muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${1.04 + f * 0.0006})` }} />
+        ? <OffthreadVideo src={staticFile(s.video)} muted playbackRate={s.videoRate || 1} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${1.04 + f * 0.0006})` }} />
         : <div style={{ position: 'absolute', inset: 0, transform: `scale(${z}) translateX(${x}px)`, filter: phone ? 'blur(26px) brightness(.5) saturate(1.2)' : 'none' }}>
             <Img src={staticFile(s.img)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             {!phone && s.screen && s.rect && <Screen s={s} style={{ position: 'absolute', left: s.rect[0], top: s.rect[1], width: s.rect[2], height: s.rect[3], borderRadius: s.rect[4] }} />}

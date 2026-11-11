@@ -261,6 +261,8 @@ async function pubJob(script) {
   scenes.forEach(s => { s.start = t0; s.end = t0 + s.dur + 0.6; t0 += s.dur; });
   const clips = await fetchBroll(scenes);
   scenes.forEach((s, i) => { if (s.broll_file) { const f = `pubclip-${i}.mp4`; fs.renameSync(path.join('public', s.broll_file), path.join('public', f)); s.video = f; } delete s.broll_file; delete s.end; });
+  // Clip animé de la photo (image vers vidéo, rangé à côté : pub/a1.mp4 pour pub/a1.jpg) : il remplace la photo fixe
+  scenes.forEach(s => { const clip = s.img.replace(/\.jpg$/, '.mp4'); if (!s.video && !s.screen && fs.existsSync(path.join('public', clip))) { s.video = clip; s.videoRate = Math.min(1.5, Math.max(1, 4.6 / (s.dur + 0.6))); } });
   // Enregistrements réels de l'appli (tutoriels du Studio) à montrer dans le téléphone
   for (const id of [...new Set(scenes.map(s => s.screen).filter(Boolean))]) {
     const r = await fetch(`${SUPABASE_URL}/storage/v1/object/public/social/tuto/${id}.mp4`);
