@@ -22,6 +22,8 @@ const endData = data.end || {};
 const END = Math.round((endData.dur || 3.4) * FPS);
 export const pubFrames = Math.max(1, acc) + END;
 const hasVoice = (data.segments || []).length > 0;
+// Mode « doux » : fondus enchaînés, téléphone qui reste en place d'un écran à l'autre (seul l'écran change), pas d'éclair
+const SOFT = !!data.soft, FADE = 16;
 
 // Titre découpé en mots ; *…* = en vert. Chaque mot arrive à son tour, calé sur la durée de la phrase dite.
 const titleWords = text => {
@@ -62,6 +64,7 @@ const Chips = ({ list }) => {
 // Entrée de scène : zoom, glissement latéral ou montée, à tour de rôle
 const enter = (f, i) => {
   const t = interpolate(f, [0, OVER], [0, 1], { ...clamp, easing: ease });
+  if (SOFT) return { opacity: i === 0 ? interpolate(f, [0, 8], [0, 1], clamp) : interpolate(f, [0, FADE], [0, 1], { ...clamp, easing: Easing.inOut(Easing.sin) }) };
   if (i === 0) return { opacity: interpolate(f, [0, 8], [0, 1], clamp) };
   if (i % 3 === 1) return { transform: `translateX(${(1 - t) * 100}%)` };
   if (i % 3 === 2) return { transform: `translateY(${(1 - t) * 100}%)` };
@@ -73,12 +76,15 @@ const Screen = ({ s, style }) => <OffthreadVideo src={staticFile(`screen-${s.scr
 
 // Grand téléphone en 3D qui arrive, pivote et flotte, avec l'appli qui tourne dedans
 const Phone = ({ s }) => {
-  const f = useCurrentFrame(), p = pop(f, 4, { damping: 15, stiffness: 110 });
-  const ry = interpolate(f, [0, s.frames + OVER], [20, -10], clamp), rx = interpolate(f, [0, s.frames + OVER], [8, 2], clamp);
+  const f = useCurrentFrame(), G = s.from + f;   // G : image globale, pour que le téléphone soit au même endroit d'une scène à l'autre
+  const p = SOFT && s.from > 0 ? 1 : pop(f, 4, { damping: 15, stiffness: 110 });
+  const ry = SOFT ? -4 + Math.sin(G / 50) * 9 : interpolate(f, [0, s.frames + OVER], [20, -10], clamp);
+  const rx = SOFT ? 4 + Math.sin(G / 70) * 2 : interpolate(f, [0, s.frames + OVER], [8, 2], clamp);
+  const bobF = SOFT ? G : f;
   const W = 600, H = Math.round(W * 1558 / 720);
   return (
     <div style={{ position: 'absolute', left: (1080 - W) / 2 - 16, top: 500, perspective: 1900 }}>
-      <div style={{ width: W + 32, height: H + 32, borderRadius: 84, background: '#0a0a0c', padding: 16, boxShadow: '0 60px 120px rgba(0,0,0,.65), 0 0 0 3px rgba(255,255,255,.14), 0 0 90px rgba(52,211,153,.28)', transform: `translateY(${(1 - p) * 900 + Math.sin(f / 16) * 10}px) rotateY(${ry}deg) rotateX(${rx}deg) scale(${0.9 + 0.1 * p})` }}>
+      <div style={{ width: W + 32, height: H + 32, borderRadius: 84, background: '#0a0a0c', padding: 16, boxShadow: '0 60px 120px rgba(0,0,0,.65), 0 0 0 3px rgba(255,255,255,.14), 0 0 90px rgba(52,211,153,.28)', transform: `translateY(${(1 - p) * 900 + Math.sin(bobF / 16) * 10}px) rotateY(${ry}deg) rotateX(${rx}deg) scale(${0.9 + 0.1 * p})` }}>
         <div style={{ width: W, height: H, borderRadius: 70, overflow: 'hidden', background: '#fff' }}><Screen s={s} style={{ width: W, height: H }} /></div>
       </div>
     </div>
@@ -111,19 +117,19 @@ const Scene = ({ s, i }) => {
         {s.sub && <div style={{ color: 'rgba(255,255,255,.88)', fontSize: 38, fontWeight: 600, lineHeight: 1.3, marginTop: 20, opacity: interpolate(f, [18, 30], [0, 1], clamp), textShadow: '0 4px 20px rgba(0,0,0,.6)' }}>{s.sub}</div>}
       </div>
       {/* Éclair bref au changement de plan */}
-      {i > 0 && <AbsoluteFill style={{ background: '#fff', opacity: interpolate(f, [OVER - 2, OVER + 5], [0.28, 0], clamp) }} />}
+      {i > 0 && !SOFT && <AbsoluteFill style={{ background: '#fff', opacity: interpolate(f, [OVER - 2, OVER + 5], [0.28, 0], clamp) }} />}
     </AbsoluteFill>
   );
 };
 
 const EndCard = () => {
   const f = useCurrentFrame(), e = endData;
-  const t = interpolate(f, [0, OVER], [0, 1], { ...clamp, easing: ease });
+  const t = interpolate(f, [0, SOFT ? FADE : OVER], [0, 1], { ...clamp, easing: ease });
   const up = d => { const p = pop(f, d); return { opacity: Math.min(1, p * 1.4), transform: `translateY(${(1 - p) * 40}px) scale(${0.8 + 0.2 * p})` }; };
   const beat = 1 + Math.max(0, Math.sin((f - 30) / 5)) * 0.045;
   const sweep = interpolate((f - 34) % 50, [0, 22], [-120, 520], clamp);
   return (
-    <AbsoluteFill style={{ transform: `scale(${1.25 - 0.25 * t})`, opacity: t, background: 'linear-gradient(160deg,#0b1220,#07101c)', alignItems: 'center', justifyContent: 'center', fontFamily, overflow: 'hidden' }}>
+    <AbsoluteFill style={{ transform: `scale(${SOFT ? 1.06 - 0.06 * t : 1.25 - 0.25 * t})`, opacity: t, background: 'linear-gradient(160deg,#0b1220,#07101c)', alignItems: 'center', justifyContent: 'center', fontFamily, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', width: 1100, height: 1100, left: 320 + Math.sin(f / 30) * 60, top: -380 + Math.cos(f / 36) * 50, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,.34), transparent 65%)' }} />
       <div style={{ position: 'absolute', width: 900, height: 900, left: -380 + Math.cos(f / 32) * 50, bottom: -300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,.22), transparent 65%)' }} />
       <Img src={staticFile('logo.svg')} style={{ width: 200, height: 200, borderRadius: 46, boxShadow: '0 24px 70px rgba(0,0,0,.5)', ...up(4) }} />
@@ -158,7 +164,7 @@ export const Pub = () => {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill style={{ background: '#060b18', fontFamily }}>
-      {scenes.map((s, i) => <Sequence key={i} from={s.from} durationInFrames={s.frames + OVER}><Scene s={s} i={i} /></Sequence>)}
+      {scenes.map((s, i) => <Sequence key={i} from={s.from} durationInFrames={s.frames + (SOFT ? FADE : OVER)}><Scene s={s} i={i} /></Sequence>)}
       <Sequence from={acc} durationInFrames={END}><EndCard /></Sequence>
       <Bars />
       {f < acc && (
