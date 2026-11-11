@@ -23,7 +23,7 @@ const END = Math.round((endData.dur || 3.4) * FPS);
 export const pubFrames = Math.max(1, acc) + END;
 const hasVoice = (data.segments || []).length > 0;
 // Mode « doux » : fondus enchaînés, téléphone qui reste en place d'un écran à l'autre (seul l'écran change), pas d'éclair
-const SOFT = !!data.soft, FADE = 16;
+const SOFT = !!data.soft, FADE = 16, BARS = data.bars !== false;
 
 // Titre découpé en mots ; *…* = en vert. Chaque mot arrive à son tour, calé sur la durée de la phrase dite.
 const titleWords = text => {
@@ -122,6 +122,19 @@ const Scene = ({ s, i }) => {
   );
 };
 
+// Badges des magasins d'applications (fin de pub quand les applis sont sorties : end.stores = true)
+const AppleIcon = () => <svg width="54" height="64" viewBox="0 0 384 512"><path fill="#fff" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>;
+const PlayIcon = () => <svg width="56" height="62" viewBox="0 0 28 31"><path fill="#34d399" d="M1 1l15 14.5L1 30c-.6-.3-1-.9-1-1.7V2.7C0 1.9.4 1.3 1 1z"/><path fill="#fbbf24" d="M21 10.5l-5 5 5 5 5.6-3.2c1.6-.9 1.6-2.8 0-3.7z"/><path fill="#ef4444" d="M16 15.5L1 30c.5.3 1.2.3 1.9-.1L21 20.5z"/><path fill="#3b82f6" d="M16 15.5L21 10.5 2.9 1.1C2.2.7 1.5.7 1 1z"/></svg>;
+const StoreBadge = ({ icon, small, big, style }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 20, background: '#000', border: '3px solid rgba(255,255,255,.55)', borderRadius: 26, padding: '18px 34px 18px 28px', boxShadow: '0 16px 44px rgba(0,0,0,.45)', ...style }}>
+    {icon}
+    <div style={{ display: 'flex', flexDirection: 'column', color: '#fff', lineHeight: 1.05 }}>
+      <span style={{ fontSize: 24, fontWeight: 600 }}>{small}</span>
+      <span style={{ fontSize: 44, fontWeight: 800, letterSpacing: -0.5 }}>{big}</span>
+    </div>
+  </div>
+);
+
 const EndCard = () => {
   const f = useCurrentFrame(), e = endData;
   const t = interpolate(f, [0, SOFT ? FADE : OVER], [0, 1], { ...clamp, easing: ease });
@@ -135,11 +148,19 @@ const EndCard = () => {
       <Img src={staticFile('logo.svg')} style={{ width: 200, height: 200, borderRadius: 46, boxShadow: '0 24px 70px rgba(0,0,0,.5)', ...up(4) }} />
       <div style={{ color: '#fff', fontSize: 96, fontWeight: 900, letterSpacing: -2, marginTop: 30, ...up(9) }}>Kapitaro</div>
       <div style={{ marginTop: 40, padding: '0 70px' }}><Title s={{ title: e.tagline || 'Ton épargne, *enfin claire.*', frames: END, words: null }} size={62} /></div>
+      {e.stores ? (
+        <div style={{ marginTop: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 26 }}>
+          <div style={{ color: '#fff', fontSize: 46, fontWeight: 800, ...up(20) }}>{e.cta || 'Télécharge l’appli gratuite'}</div>
+          <StoreBadge icon={<AppleIcon />} small="Télécharger dans l’" big="App Store" style={up(24)} />
+          <StoreBadge icon={<PlayIcon />} small="DISPONIBLE SUR" big="Google Play" style={up(29)} />
+        </div>
+      ) : (<>
       <div style={{ position: 'relative', overflow: 'hidden', marginTop: 64, background: '#16a34a', color: '#fff', fontSize: 46, fontWeight: 800, padding: '28px 64px', borderRadius: 28, boxShadow: '0 18px 54px rgba(22,163,74,.5)', ...up(22), transform: `scale(${pop(f, 22) * beat})` }}>
         {e.cta || 'Essaie gratuitement'}
         <div style={{ position: 'absolute', top: 0, bottom: 0, left: sweep, width: 90, background: 'linear-gradient(100deg, transparent, rgba(255,255,255,.4), transparent)', transform: 'skewX(-18deg)' }} />
       </div>
       <div style={{ color: 'rgba(255,255,255,.85)', fontSize: 42, fontWeight: 700, marginTop: 32, ...up(28) }}>sur <span style={{ color: GREEN }}>kapitaro.fr</span></div>
+      </>)}
       <div style={{ position: 'absolute', bottom: 150, left: 90, right: 90, textAlign: 'center', color: 'rgba(255,255,255,.5)', fontSize: 24, fontWeight: 500, lineHeight: 1.4, opacity: interpolate(f, [30, 42], [0, 1], clamp) }}>{e.note || 'Outil pédagogique, pas un conseil en investissement. Investir comporte un risque de perte en capital.'}</div>
     </AbsoluteFill>
   );
@@ -166,7 +187,7 @@ export const Pub = () => {
     <AbsoluteFill style={{ background: '#060b18', fontFamily }}>
       {scenes.map((s, i) => <Sequence key={i} from={s.from} durationInFrames={s.frames + (SOFT ? FADE : OVER)}><Scene s={s} i={i} /></Sequence>)}
       <Sequence from={acc} durationInFrames={END}><EndCard /></Sequence>
-      <Bars />
+      {BARS && <Bars />}
       {f < acc && (
         <div style={{ position: 'absolute', top: 78, left: 50, display: 'flex', alignItems: 'center', gap: 14, opacity: 0.95 }}>
           <Img src={staticFile('logo.svg')} style={{ width: 56, height: 56, borderRadius: 14 }} />
