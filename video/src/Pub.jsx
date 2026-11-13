@@ -29,14 +29,32 @@ const NEUTRAL = data.bg === 'neutral';
 // Mode « énergie » : fonds de couleur vive qui changent à chaque plan, coupes rapides (glissé + flou de vitesse),
 // zooms caméra sur le téléphone, secousse à l'arrivée, mots surlignés en jaune
 const ENERGY = data.energy === 'high';
-const PALETTE = [['#16a34a', '#22c55e'], ['#2563eb', '#38bdf8'], ['#7c3aed', '#c084fc'], ['#f97316', '#fbbf24'], ['#db2777', '#f472b6'], ['#0891b2', '#2dd4bf'], ['#16a34a', '#a3e635']];
+// Fond : une seule teinte (vert Kapitaro) en dégradés profonds qui bougent, sans arc-en-ciel
 const FlashBg = ({ i, f }) => {
-  const [a, b] = PALETTE[i % PALETTE.length];
+  const G = f + i * 47;
   return (
-    <AbsoluteFill style={{ background: `linear-gradient(${150 + i * 25}deg, ${a} 0%, ${b} 100%)`, overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', left: '50%', top: '48%', width: 3200, height: 3200, marginLeft: -1600, marginTop: -1600, background: 'repeating-conic-gradient(rgba(255,255,255,.13) 0deg 9deg, transparent 9deg 22deg)', transform: `rotate(${f * 0.45 * (i % 2 ? -1 : 1)}deg)` }} />
-      <div style={{ position: 'absolute', width: 1200, height: 1200, left: -200 + Math.sin(f / 18) * 120, top: 500 + Math.cos(f / 22) * 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,.35), transparent 60%)' }} />
-      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(0,0,0,.28) 100%)' }} />
+    <AbsoluteFill style={{ background: `linear-gradient(${160 + Math.sin(G / 60) * 25}deg, #03170d 0%, #065f46 45%, #16a34a 100%)`, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', width: 1500, height: 1500, left: -500 + Math.sin(G / 30) * 260, top: -300 + Math.cos(G / 36) * 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(74,222,128,.55), transparent 62%)', filter: 'blur(20px)' }} />
+      <div style={{ position: 'absolute', width: 1300, height: 1300, left: 300 + Math.cos(G / 26) * 280, top: 1000 + Math.sin(G / 32) * 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,.5), transparent 62%)', filter: 'blur(20px)' }} />
+      <div style={{ position: 'absolute', width: 900, height: 900, left: 500 + Math.sin(G / 22) * 200, top: 300 + Math.cos(G / 28) * 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(2,44,34,.7), transparent 65%)' }} />
+      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,.35) 100%)' }} />
+    </AbsoluteFill>
+  );
+};
+// Gros mots qui claquent à l'écran, un par un (scènes texte en mode énergie) ; *mot* = surligné en jaune
+const BigWords = ({ s }) => {
+  const f = useCurrentFrame(), words = titleWords(s.title), span = Math.max(10, spokenFrames(s) * 0.85);
+  const hits = words.map((_, i) => 3 + Math.round((i / Math.max(1, words.length)) * span));
+  const last = hits.filter(h => h <= f).pop();
+  const shake = last !== undefined && f - last < 6 ? Math.sin((f - last) * 2.8) * 16 * (1 - (f - last) / 6) : 0;
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', padding: '0 70px', transform: `translate(${shake}px, ${shake * 0.5}px)` }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '10px 26px', textAlign: 'center' }}>
+        {words.map((x, i) => {
+          const p = spring({ frame: f - hits[i], fps: FPS, config: { damping: 14, stiffness: 260, mass: 0.6 } });
+          return <span key={i} style={{ display: 'inline-block', fontSize: x.w.length > 9 ? 120 : 150, fontWeight: 900, letterSpacing: -4, lineHeight: 1, textTransform: 'uppercase', color: x.green ? '#0b1220' : '#fff', background: x.green ? '#fde047' : 'transparent', padding: x.green ? '6px 22px' : 0, borderRadius: 16, textShadow: x.green ? 'none' : '0 10px 0 rgba(0,0,0,.25)', opacity: f < hits[i] ? 0 : Math.min(1, p * 2), transform: `scale(${2.6 - 1.6 * p}) rotate(${x.green ? -3 : 0}deg)`, filter: `blur(${(1 - p) * 10}px)` }}>{x.w}</span>;
+        })}
+      </div>
     </AbsoluteFill>
   );
 };
@@ -160,12 +178,12 @@ const Scene = ({ s, i }) => {
       <AbsoluteFill style={{ opacity: phone || NEUTRAL || ENERGY ? 0 : 1, background: top
         ? 'linear-gradient(180deg, rgba(6,11,24,.9) 0%, rgba(6,11,24,.6) 22%, rgba(6,11,24,0) 42%, rgba(6,11,24,0) 80%, rgba(6,11,24,.6) 100%)'
         : 'linear-gradient(180deg, rgba(6,11,24,.55) 0%, rgba(6,11,24,0) 22%, rgba(6,11,24,0) 48%, rgba(6,11,24,.74) 72%, rgba(6,11,24,.94) 100%)' }} />
-      <Chips list={s.chips} />
-      <div style={{ position: 'absolute', left: 60, right: 60, ...(textOnly ? { top: 1010 } : top ? { top: 190 } : { bottom: 330 }), textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {ENERGY && textOnly ? <BigWords s={s} /> : <Chips list={s.chips} />}
+      {!(ENERGY && textOnly) && <div style={{ position: 'absolute', left: 60, right: 60, ...(textOnly ? { top: 1010 } : top ? { top: 190 } : { bottom: 330 }), textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {s.kicker && <div style={{ background: ENERGY ? '#0b1220' : '#16a34a', color: '#fff', fontSize: 30, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase', padding: '12px 26px', borderRadius: 40, marginBottom: 22, transform: `scale(${k})`, opacity: Math.min(1, k * 1.5), boxShadow: '0 10px 30px rgba(22,163,74,.45)' }}>{s.kicker}</div>}
         <Title s={s} size={textOnly ? 96 : 80} />
         {s.sub && <div style={{ color: 'rgba(255,255,255,.88)', fontSize: 38, fontWeight: 600, lineHeight: 1.3, marginTop: 20, opacity: interpolate(f, [18, 30], [0, 1], clamp), textShadow: '0 4px 20px rgba(0,0,0,.6)' }}>{s.sub}</div>}
-      </div>
+      </div>}
       {/* Éclair bref au changement de plan */}
       {i > 0 && !SOFT && <AbsoluteFill style={{ background: '#fff', opacity: interpolate(f, [OVER - 2, OVER + 5], [0.28, 0], clamp) }} />}
     </AbsoluteFill>
