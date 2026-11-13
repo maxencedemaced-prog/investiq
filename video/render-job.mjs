@@ -16,6 +16,14 @@ if (!KEY) { console.error('::error::Secret SUPABASE_SERVICE_KEY absent (GitHub >
 if (!/^[0-9a-f-]{36}$/i.test(ID)) { console.error('::error::POST_ID invalide'); process.exit(1); }
 const sb = createClient(SUPABASE_URL, KEY);
 
+// Efface les anciens rendus de ce post (vidéos et couvertures remplacées) pour ne pas remplir le stockage
+async function pruneOld(keep, re = /^(reel|pub|slideshow)-\d+\.mp4$|^cover-\d+\.jpg$/) {
+  try {
+    const { data } = await sb.storage.from('social').list(ID, { limit: 1000 });
+    const old = (data || []).map(f => f.name).filter(n => re.test(n) && !keep.includes(n));
+    if (old.length) { await sb.storage.from('social').remove(old.map(n => `${ID}/${n}`)); console.log('Anciens rendus effacés :', old.length); }
+  } catch (e) { console.warn('Nettoyage :', e.message); }
+}
 async function patchScript(patch) {
   const { data } = await sb.from('social_posts').select('video_script').eq('id', ID).single();
   const { error } = await sb.from('social_posts').update({ video_script: { ...(data?.video_script || {}), ...patch } }).eq('id', ID);
@@ -227,6 +235,7 @@ async function slideshowJob(script) {
     video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
   }).eq('id', ID);
   if (error) throw error;
+  await pruneOld([file.split('/').pop()], /^(reel|pub|slideshow)-\d+\.mp4$/);
   console.log('Diaporama prêt :', url);
 }
 
@@ -242,12 +251,72 @@ async function syncMusic() {
     }
   } catch (e) { console.log('musiques en ligne :', e.message); }
 }
+// ── Pub « scènes réelles » : photos de public/pub/ (accroche, appli, clôture), textes du script, musique, carte de fin ──
+async function pubJob(script) {
+  await patchScript({ status: 'rendering', rendering_at: new Date().toISOString(), error: null });
+  fs.mkdirSync('out', { recursive: true });
+  const scenes = (script.scenes || []).filter(s => s && /^pub\/[\w-]+\.jpg$/.test(s.img || '') && fs.existsSync(path.join('public', s.img))).slice(0, 12)
+    .map(s => ({ img: s.img, kicker: String(s.kicker || '').slice(0, 40), title: String(s.title || '').slice(0, 90), sub: String(s.sub || '').slice(0, 110), pos: s.pos === 'top' ? 'top' : 'bottom', dur: Math.max(1.4, Math.min(7, Number(s.dur) || 3)),
+      chips: (Array.isArray(s.chips) ? s.chips : []).slice(0, 4).map(c => String(c).slice(0, 24)), fx: String(s.fx || '').slice(0, 12), words: Array.isArray(s.words) ? s.words : null,
+      // Vraie vidéo d'illustration (mots-clés), enregistrement de l'appli dans le téléphone (screen = nom du tutoriel), mise en page
+      broll_queries: (Array.isArray(s.broll_queries) ? s.broll_queries : []).slice(0, 4).map(q => String(q).slice(0, 60)),
+      screen: /^[a-z_]{3,30}$/.test(s.screen || '') ? s.screen : null, screenFrom: Math.max(0, Number(s.screenFrom) || 0), screenRate: Math.max(0.5, Math.min(2.5, Number(s.screenRate) || 1)),
+      layout: ['phone', 'text'].includes(s.layout) ? s.layout : 'photo', back: String(s.back || '').slice(0, 16), rect: Array.isArray(s.rect) && s.rect.length === 5 ? s.rect.map(Number) : null }));
+  if (!scenes.length) throw new Error('Aucune scène : les photos doivent être dans video/public/pub/');
+  const end = { dur: 3.4, ...(script.end || {}) };
+  const total = scenes.reduce((n, s) => n + s.dur, 0) + end.dur;
+  // Vraies vidéos d'illustration (Pixabay ou Pexels) : la photo reste en secours si rien de pertinent n'est trouvé
+  let t0 = 0;
+  scenes.forEach(s => { s.start = t0; s.end = t0 + s.dur + 0.6; t0 += s.dur; });
+  const clips = await fetchBroll(scenes);
+  scenes.forEach((s, i) => { if (s.broll_file) { const f = `pubclip-${i}.mp4`; fs.renameSync(path.join('public', s.broll_file), path.join('public', f)); s.video = f; } delete s.broll_file; delete s.end; });
+  // Clip animé de la photo (image vers vidéo, rangé à côté : pub/a1.mp4 pour pub/a1.jpg) : il remplace la photo fixe
+  scenes.forEach(s => { const clip = s.img.replace(/\.jpg$/, '.mp4'); if (!s.video && !s.screen && fs.existsSync(path.join('public', clip))) { s.video = clip; s.videoRate = Math.min(1.5, Math.max(1, 4.6 / (s.dur + 0.6))); } });
+  // Enregistrements réels de l'appli (tutoriels du Studio) à montrer dans le téléphone
+  for (const id of [...new Set(scenes.map(s => s.screen).filter(Boolean))]) {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/public/social/tuto/${id}.mp4`);
+    if (r.ok) fs.writeFileSync(path.join('public', `screen-${id}.mp4`), Buffer.from(await r.arrayBuffer()));
+    else scenes.forEach(s => { if (s.screen === id) s.screen = null; });
+  }
+  // Voix (ElevenLabs, déjà dans le stockage) : une piste par segment
+  const segments = [];
+  for (let k = 0; k < (script.segments || []).length; k++) {
+    const r = await fetch(script.segments[k].url);
+    if (!r.ok) throw new Error('Voix introuvable dans le stockage (' + r.status + ')');
+    fs.writeFileSync(path.join('public', `seg-${k}.mp3`), Buffer.from(await r.arrayBuffer()));
+    segments.push({ file: `seg-${k}.mp3`, start: script.segments[k].start });
+  }
+  const chosen = typeof script.music_file === 'string' && /^[\w.-]+\.mp3$/.test(script.music_file) && fs.existsSync(path.join('public', 'music', script.music_file)) ? 'music/' + script.music_file : null;
+  const musicFile = script.music === false ? null : (chosen || pickMusic(total));
+  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ style: 'pub', beats: [], segments, scenes, end, musicFile, jingle: false, soft: script.transition === 'soft', bars: script.bars !== false, bg: script.bg === 'neutral' ? 'neutral' : null, energy: script.energy === 'high' ? 'high' : null, palette: ['blue', 'green'].includes(script.palette) ? script.palette : null }));
+  execSync('npx remotion render src/index.js Reel out/reel.mp4 --codec=h264 --crf=19 --concurrency=100% --log=warn', { stdio: 'inherit' });
+  // Couverture : une image de la première scène, avec son texte
+  execSync('npx remotion still src/index.js Reel out/cover.jpg --frame=55 --image-format=jpeg --jpeg-quality=88 --log=warn', { stdio: 'inherit' });
+  const stamp = Date.now();
+  const send = async (name, file, type) => {
+    const up = await sb.storage.from('social').upload(`${ID}/${name}`, fs.readFileSync(file), { contentType: type, upsert: true });
+    if (up.error) throw up.error;
+    return sb.storage.from('social').getPublicUrl(`${ID}/${name}`).data.publicUrl;
+  };
+  const url = await send(`pub-${stamp}.mp4`, 'out/reel.mp4', 'video/mp4');
+  const coverUrl = await send(`cover-${stamp}.jpg`, 'out/cover.jpg', 'image/jpeg');
+  const { data: cur } = await sb.from('social_posts').select('video_script').eq('id', ID).single();
+  const { error } = await sb.from('social_posts').update({
+    video_url: url, image_urls: [coverUrl],
+    video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', clips, cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: fs.statSync('out/reel.mp4').size, error: null },
+  }).eq('id', ID);
+  if (error) throw error;
+  await pruneOld([`pub-${stamp}.mp4`, `cover-${stamp}.jpg`]);
+  console.log('Pub prête :', url);
+}
+
 async function main() {
   await syncMusic();
   const { data: post, error } = await sb.from('social_posts').select('id, format, video_script').eq('id', ID).single();
   if (error) throw error;
   if (post.format === 'story') return storyJob(post);
   if ((post.video_script || {}).style === 'slideshow') return slideshowJob(post.video_script);
+  if ((post.video_script || {}).style === 'pub') return pubJob(post.video_script);
   const script = post.video_script || {};
   if (!Array.isArray(script.beats) || !script.beats.length) throw new Error('Script vidéo absent : relance la création depuis le Studio');
   await patchScript({ status: 'rendering', rendering_at: new Date().toISOString(), error: null });
@@ -290,7 +359,7 @@ async function main() {
   let coverUrl = null;
   try {
     execSync('npx remotion still src/index.js Reel out/cover.jpg --frame=45 --image-format=jpeg --jpeg-quality=90 --log=warn', { stdio: 'inherit' });
-    const cover = `${ID}/cover-${Date.now()}.jpg`;
+    var cover = `${ID}/cover-${Date.now()}.jpg`;
     const upc = await sb.storage.from('social').upload(cover, fs.readFileSync('out/cover.jpg'), { contentType: 'image/jpeg', upsert: true });
     if (!upc.error) coverUrl = sb.storage.from('social').getPublicUrl(cover).data.publicUrl;
   } catch (e) { console.warn('Couverture :', e.message); }
@@ -300,6 +369,7 @@ async function main() {
     video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', clips, cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
   }).eq('id', ID);
   if (e2) throw e2;
+  await pruneOld([file.split('/').pop(), coverUrl ? coverUrl.split('/').pop() : '']);
   console.log('Vidéo prête :', pub.publicUrl, (buf.length / 1e6).toFixed(1) + ' Mo');
 }
 

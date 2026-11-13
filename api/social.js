@@ -1027,6 +1027,71 @@ export default async function handler(req, res) {
       return res.status(200).json({ post: await dossierReel(d, { voice, pair, music: b.music, topic: d.style === 'duo' ? b.topic.replace(/^duo-/, '') : undefined }) });
     }
     // 3 Reels « Duo » d'un coup : sujets jamais traités, scénarios écrits par l'IA (en parallèle), voix puis rendu
+    // Pub « scènes réelles » (video/src/Pub.jsx) : voix habituelle sur le texte de chaque scène, musique dynamique créée pour l'occasion, puis rendu
+    // Ménage du stockage : anciennes versions des vidéos et couvertures (non utilisées par le post) + archives des tutoriels.
+    // dry: true = simple bilan, rien n'est effacé.
+    if (b.action === 'storage-cleanup') {
+      const RE = /^(reel|pub|slideshow)-\d+\.mp4$|^cover-\d+\.jpg$/;
+      const { data: posts, error: pe } = await sb.from('social_posts').select('id, status, published_at, video_url, image_urls, video_script');
+      if (pe) throw pe;
+      const victims = []; let bytes = 0;
+      for (const p of posts || []) {
+        const used = [p.video_url, ...(p.image_urls || []), (p.video_script || {}).cover_url].filter(Boolean).join(' ');
+        const { data: files } = await sb.storage.from('social').list(p.id, { limit: 1000 });
+        for (const f of files || []) if (RE.test(f.name) && !used.includes(f.name)) { victims.push(`${p.id}/${f.name}`); bytes += (f.metadata && f.metadata.size) || 0; }
+      }
+      // Vidéos des posts rejetés et des posts publiés depuis plus de 14 jours (b.old = true, accord de l'utilisateur)
+      const cleared = [];
+      if (b.old) {
+        const limit = Date.now() - 14 * 864e5;
+        for (const p of posts || []) {
+          if (!(p.status === 'rejected' || (p.status === 'published' && p.published_at && new Date(p.published_at).getTime() < limit))) continue;
+          const { data: files } = await sb.storage.from('social').list(p.id, { limit: 1000 });
+          const vids = (files || []).filter(f => /\.mp4$/.test(f.name) && !victims.includes(`${p.id}/${f.name}`));
+          vids.forEach(f => { victims.push(`${p.id}/${f.name}`); bytes += (f.metadata && f.metadata.size) || 0; });
+          if (vids.length && p.video_url) cleared.push(p);
+        }
+      }
+      const { data: arch } = await sb.storage.from('social').list('tuto/archive', { limit: 1000 });
+      for (const d of arch || []) {
+        const { data: files } = await sb.storage.from('social').list('tuto/archive/' + d.name, { limit: 1000 });
+        for (const f of files || []) if (f.metadata) { victims.push(`tuto/archive/${d.name}/${f.name}`); bytes += f.metadata.size || 0; }
+      }
+      let removed = 0;
+      if (!b.dry) for (let i = 0; i < victims.length; i += 100) {
+        const { data: r, error } = await sb.storage.from('social').remove(victims.slice(i, i + 100));
+        if (error) throw error;
+        removed += (r || []).length;
+      }
+      if (!b.dry) for (const p of cleared) await sb.from('social_posts').update({ video_url: null, video_script: { ...(p.video_script || {}), video_removed: new Date().toISOString() } }).eq('id', p.id);
+      return res.status(200).json({ found: victims.length, mb: Math.round(bytes / 1e6), removed, cleared: cleared.length, dry: !!b.dry });
+    }
+    if (b.action === 'pub-create') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
+      const { data: post, error: pe } = await sb.from('social_posts').select('id, video_script').eq('id', b.id).single();
+      if (pe || !post || (post.video_script || {}).style !== 'pub') return res.status(400).json({ error: 'Ce post n’est pas une pub « scènes réelles »' });
+      const script = { ...post.video_script };
+      const scenes = (script.scenes || []).filter(x => x && x.img && x.say);
+      if (!scenes.length) return res.status(400).json({ error: 'Scènes sans texte à dire' });
+      const voices = await tutoVoices();
+      if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
+      const voice = voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
+      const end = { ...(script.end || {}) };
+      const beats = scenes.map(x => ({ say: String(x.say) })).concat(end.say ? [{ say: String(end.say) }] : []);
+      const music = b.music === false ? Promise.resolve(undefined)
+        : createMusic(String(b.music_prompt || 'Upbeat modern pop beat, punchy drums, bright plucky synths, catchy hook, 122 BPM, energetic, positive and confident').slice(0, 400), 40, 'pub')
+          .catch(e => { console.warn('[pub] musique :', e.message); return undefined; });
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: Math.max(0.9, Math.min(1.2, Number(b.speed) || 1.08)) });
+      scenes.forEach((x, i) => { x.start = beats[i].start; x.dur = Math.max(1.4, beats[i].end - beats[i].start); x.words = beats[i].words; });
+      if (end.say) { const e = beats[beats.length - 1]; end.start = e.start; end.dur = Math.max(3.2, e.end - e.start + 1.4); end.words = e.words; }
+      const file = await music;
+      const next = { ...script, scenes, end, segments, voice: voice.name, music_file: file || script.music_file, created_at: new Date().toISOString() };
+      let status = 'queued', err = null;
+      try { await dispatchRender(post.id); } catch (e) { status = 'error'; err = e.message; }
+      const { data: row, error } = await sb.from('social_posts').update({ video_script: { ...next, status, error: err, queued_at: new Date().toISOString() } }).eq('id', post.id).select().single();
+      if (error) throw error;
+      return res.status(200).json({ post: row });
+    }
     if (b.action === 'duo-batch') {
       const voices = await tutoVoices();
       if (!voices.length) return res.status(400).json({ error: 'Voix ElevenLabs indisponible : vérifie la clé ElevenLabs dans Vercel.' });
