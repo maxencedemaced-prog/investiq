@@ -30,13 +30,19 @@ const NEUTRAL = data.bg === 'neutral';
 // zooms caméra sur le téléphone, secousse à l'arrivée, mots surlignés en jaune
 const ENERGY = data.energy === 'high';
 // Fond : une seule teinte (vert Kapitaro) en dégradés profonds qui bougent, sans arc-en-ciel
-const FlashBg = ({ i, f }) => {
-  const G = f + i * 47;
+// Teintes : bleu électrique (défaut, contraste fort avec le jaune et confiance pour la finance) ou vert Kapitaro
+const TINTS = {
+  blue: { grad: ['#06103a', '#1e3fd8', '#3b82f6'], a: 'rgba(96,165,250,.6)', b: 'rgba(59,130,246,.55)', c: 'rgba(3,7,30,.65)' },
+  green: { grad: ['#03170d', '#065f46', '#16a34a'], a: 'rgba(74,222,128,.55)', b: 'rgba(16,185,129,.5)', c: 'rgba(2,44,34,.7)' },
+};
+const TINT = TINTS[data.palette] || TINTS.blue;
+const FlashBg = ({ i, f, G0 }) => {
+  const G = G0 !== undefined ? G0 : f + i * 47, T = TINT;
   return (
-    <AbsoluteFill style={{ background: `linear-gradient(${160 + Math.sin(G / 60) * 25}deg, #03170d 0%, #065f46 45%, #16a34a 100%)`, overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', width: 1500, height: 1500, left: -500 + Math.sin(G / 30) * 260, top: -300 + Math.cos(G / 36) * 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(74,222,128,.55), transparent 62%)', filter: 'blur(20px)' }} />
-      <div style={{ position: 'absolute', width: 1300, height: 1300, left: 300 + Math.cos(G / 26) * 280, top: 1000 + Math.sin(G / 32) * 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,.5), transparent 62%)', filter: 'blur(20px)' }} />
-      <div style={{ position: 'absolute', width: 900, height: 900, left: 500 + Math.sin(G / 22) * 200, top: 300 + Math.cos(G / 28) * 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(2,44,34,.7), transparent 65%)' }} />
+    <AbsoluteFill style={{ background: `linear-gradient(${160 + Math.sin(G / 60) * 25}deg, ${T.grad[0]} 0%, ${T.grad[1]} 50%, ${T.grad[2]} 100%)`, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', width: 1500, height: 1500, left: -500 + Math.sin(G / 30) * 260, top: -300 + Math.cos(G / 36) * 240, borderRadius: '50%', background: `radial-gradient(circle, ${T.a}, transparent 62%)`, filter: 'blur(20px)' }} />
+      <div style={{ position: 'absolute', width: 1300, height: 1300, left: 300 + Math.cos(G / 26) * 280, top: 1000 + Math.sin(G / 32) * 220, borderRadius: '50%', background: `radial-gradient(circle, ${T.b}, transparent 62%)`, filter: 'blur(20px)' }} />
+      <div style={{ position: 'absolute', width: 900, height: 900, left: 500 + Math.sin(G / 22) * 200, top: 300 + Math.cos(G / 28) * 300, borderRadius: '50%', background: `radial-gradient(circle, ${T.c}, transparent 65%)` }} />
       <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,.35) 100%)' }} />
     </AbsoluteFill>
   );
@@ -129,9 +135,10 @@ const Chips = ({ list }) => {
 const enter = (f, i) => {
   const t = interpolate(f, [0, OVER], [0, 1], { ...clamp, easing: ease });
   if (ENERGY) {
-    if (i === 0) return { transform: `scale(${1.3 - 0.3 * t})` };
-    const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][i % 4];
-    return { transform: `translate(${d[0] * (1 - t) * 105}%, ${d[1] * (1 - t) * 105}%) skew(${d[0] * (1 - t) * -14}deg, ${d[1] * (1 - t) * -8}deg) scale(${1.15 - 0.15 * t})`, filter: `blur(${(1 - t) * 14}px)` };
+    // Fondu court + léger recul : le téléphone reste au même endroit, seul le contenu change (pas d'éclair ni de flou)
+    const u = interpolate(f, [0, 8], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
+    if (i === 0) return { opacity: interpolate(f, [0, 5], [0, 1], clamp) };
+    return { opacity: u, transform: `scale(${1.05 - 0.05 * u})` };
   }
   if (SOFT) return { opacity: i === 0 ? interpolate(f, [0, 8], [0, 1], clamp) : interpolate(f, [0, FADE], [0, 1], { ...clamp, easing: Easing.inOut(Easing.sin) }) };
   if (i === 0) return { opacity: interpolate(f, [0, 8], [0, 1], clamp) };
@@ -152,12 +159,13 @@ const Phone = ({ s }) => {
   const bobF = SOFT ? G : f;
   const W = 600, H = Math.round(W * 1558 / 720);
   if (ENERGY) {
-    const F = s.frames, q = pop(f, 0, { damping: 11, stiffness: 190, mass: 0.6 });
-    const dir = s.from % 2 ? 1 : -1;
-    const cam = interpolate(f, [0, F * 0.38, F * 0.55, F * 0.85, F + OVER], [1, 1, 1.32, 1.32, 1.12], { ...clamp, easing: Easing.inOut(Easing.cubic) });
-    const camY = interpolate(f, [0, F * 0.38, F * 0.55, F * 0.85, F + OVER], [0, 0, 260, 260, 80], { ...clamp, easing: Easing.inOut(Easing.cubic) });
-    const shake = f < 8 ? Math.sin(f * 2.6) * 14 * (1 - f / 8) : 0;
-    const ryE = dir * interpolate(f, [0, F + OVER], [24, -12], clamp), rxE = interpolate(f, [0, F + OVER], [12, 3], clamp);
+    const F = s.frames, q = s.phoneIn ? pop(f, 0, { damping: 13, stiffness: 170, mass: 0.6 }) : 1;
+    const dir = -1;
+    const io = { ...clamp, easing: Easing.inOut(Easing.cubic) };
+    const cam = interpolate(f, [0, F * 0.3, F * 0.5, F * 0.78, F], [1, 1, 1.28, 1.28, 1], io);
+    const camY = interpolate(f, [0, F * 0.3, F * 0.5, F * 0.78, F], [0, 0, 240, 240, 0], io);
+    const shake = s.phoneIn && f < 8 ? Math.sin(f * 2.6) * 10 * (1 - f / 8) : 0;
+    const ryE = -6 + Math.sin(G / 40) * 14, rxE = 6 + Math.sin(G / 55) * 4;
     return (
       <div style={{ position: 'absolute', left: (1080 - W) / 2 - 16, top: 520, perspective: 1600, transform: `translate(${shake}px, ${camY}px) scale(${cam})`, transformOrigin: '50% 30%' }}>
         <div style={{ width: W + 32, height: H + 32, borderRadius: 84, background: '#0a0a0c', padding: 16, boxShadow: '0 70px 120px rgba(0,0,0,.45), 0 0 0 4px rgba(255,255,255,.35)', transform: `translateY(${(1 - q) * 700}px) rotateY(${ryE}deg) rotateX(${rxE}deg) rotateZ(${dir * (1 - q) * 18}deg) scale(${0.75 + 0.25 * q})` }}>
@@ -184,7 +192,7 @@ const Scene = ({ s, i }) => {
   const phone = s.layout === 'phone' && s.screen, textOnly = s.layout === 'text';
   return (
     <AbsoluteFill style={{ background: '#060b18', overflow: 'hidden', ...enter(f, i) }}>
-      {ENERGY ? <><FlashBg i={i} f={f} />{s.back && phone && <BackWord s={s} f={f} />}</> : NEUTRAL ? <><NeutralBg G={s.from + f} />{s.back && phone && <BackWord s={s} f={f} />}</> : s.video
+      {ENERGY ? <><FlashBg i={i} f={f} G0={s.from + f} />{s.back && phone && <BackWord s={s} f={f} />}</> : NEUTRAL ? <><NeutralBg G={s.from + f} />{s.back && phone && <BackWord s={s} f={f} />}</> : s.video
         ? <OffthreadVideo src={staticFile(s.video)} muted playbackRate={s.videoRate || 1} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${1.04 + f * 0.0006})` }} />
         : <div style={{ position: 'absolute', inset: 0, transform: `scale(${z}) translateX(${x}px)`, filter: phone ? 'blur(26px) brightness(.5) saturate(1.2)' : 'none' }}>
             <Img src={staticFile(s.img)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -201,7 +209,7 @@ const Scene = ({ s, i }) => {
         {s.sub && <div style={{ color: 'rgba(255,255,255,.88)', fontSize: 38, fontWeight: 600, lineHeight: 1.3, marginTop: 20, opacity: interpolate(f, [18, 30], [0, 1], clamp), textShadow: '0 4px 20px rgba(0,0,0,.6)' }}>{s.sub}</div>}
       </div>}
       {/* Éclair bref au changement de plan */}
-      {i > 0 && !SOFT && <AbsoluteFill style={{ background: '#fff', opacity: interpolate(f, [OVER - 2, OVER + 5], [0.28, 0], clamp) }} />}
+      {i > 0 && !SOFT && !ENERGY && <AbsoluteFill style={{ background: '#fff', opacity: interpolate(f, [OVER - 2, OVER + 5], [0.28, 0], clamp) }} />}
     </AbsoluteFill>
   );
 };
@@ -226,7 +234,7 @@ const EndCard = () => {
   const beat = 1 + Math.max(0, Math.sin((f - 30) / 5)) * 0.045;
   const sweep = interpolate((f - 34) % 50, [0, 22], [-120, 520], clamp);
   return (
-    <AbsoluteFill style={{ transform: `scale(${SOFT ? 1.06 - 0.06 * t : 1.25 - 0.25 * t})`, opacity: t, background: ENERGY ? 'linear-gradient(160deg,#16a34a,#065f46)' : 'linear-gradient(160deg,#0b1220,#07101c)', alignItems: 'center', justifyContent: 'center', fontFamily, overflow: 'hidden' }}>
+    <AbsoluteFill style={{ transform: `scale(${SOFT || ENERGY ? 1.06 - 0.06 * t : 1.25 - 0.25 * t})`, opacity: t, background: ENERGY ? `linear-gradient(160deg,${TINT.grad[1]},${TINT.grad[0]})` : 'linear-gradient(160deg,#0b1220,#07101c)', alignItems: 'center', justifyContent: 'center', fontFamily, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', width: 1100, height: 1100, left: 320 + Math.sin(f / 30) * 60, top: -380 + Math.cos(f / 36) * 50, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,.34), transparent 65%)' }} />
       <div style={{ position: 'absolute', width: 900, height: 900, left: -380 + Math.cos(f / 32) * 50, bottom: -300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,.22), transparent 65%)' }} />
       <Img src={staticFile('logo.svg')} style={{ width: 200, height: 200, borderRadius: 46, boxShadow: '0 24px 70px rgba(0,0,0,.5)', ...up(4) }} />
