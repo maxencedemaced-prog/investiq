@@ -24,6 +24,21 @@ export const pubFrames = Math.max(1, acc) + END;
 const hasVoice = (data.segments || []).length > 0;
 // Mode « doux » : fondus enchaînés, téléphone qui reste en place d'un écran à l'autre (seul l'écran change), pas d'éclair
 const SOFT = !!data.soft, FADE = 16, BARS = data.bars !== false;
+// Fond « neutre » : dégradé graphite avec des halos qui bougent lentement (continu d'une scène à l'autre)
+const NEUTRAL = data.bg === 'neutral';
+const NeutralBg = ({ G }) => (
+  <AbsoluteFill style={{ background: 'linear-gradient(165deg,#111827 0%,#0b1220 55%,#0a0f1a 100%)', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', width: 1300, height: 1300, left: -300 + Math.sin(G / 70) * 220, top: 120 + Math.cos(G / 90) * 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,211,153,.22), transparent 62%)' }} />
+    <div style={{ position: 'absolute', width: 1100, height: 1100, left: 300 + Math.cos(G / 60) * 240, top: 900 + Math.sin(G / 80) * 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,.18), transparent 62%)' }} />
+    <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(rgba(255,255,255,.07) 1.5px, transparent 1.5px)', backgroundSize: '44px 44px', transform: `translateY(${(G * 0.6) % 44}px)` }} />
+  </AbsoluteFill>
+);
+// Grand mot derrière le téléphone, qui glisse doucement
+const BackWord = ({ s, f }) => (
+  <div style={{ position: 'absolute', top: 820, left: 0, right: 0, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+    <div style={{ fontSize: s.back.length > 9 ? 170 : 230, fontWeight: 900, letterSpacing: -6, color: 'rgba(255,255,255,.07)', WebkitTextStroke: '2px rgba(52,211,153,.35)', whiteSpace: 'nowrap', transform: `translateX(${interpolate(f, [0, s.frames + FADE], [60, -60], clamp)}px)` }}>{s.back}</div>
+  </div>
+);
 
 // Titre découpé en mots ; *…* = en vert. Chaque mot arrive à son tour, calé sur la durée de la phrase dite.
 const titleWords = text => {
@@ -78,8 +93,8 @@ const Screen = ({ s, style }) => <OffthreadVideo src={staticFile(`screen-${s.scr
 const Phone = ({ s }) => {
   const f = useCurrentFrame(), G = s.from + f;   // G : image globale, pour que le téléphone soit au même endroit d'une scène à l'autre
   const p = SOFT && s.from > 0 ? 1 : pop(f, 4, { damping: 15, stiffness: 110 });
-  const ry = SOFT ? -4 + Math.sin(G / 50) * 9 : interpolate(f, [0, s.frames + OVER], [20, -10], clamp);
-  const rx = SOFT ? 4 + Math.sin(G / 70) * 2 : interpolate(f, [0, s.frames + OVER], [8, 2], clamp);
+  const ry = SOFT ? -4 + Math.sin(G / 50) * (NEUTRAL ? 16 : 9) : interpolate(f, [0, s.frames + OVER], [20, -10], clamp);
+  const rx = SOFT ? 4 + Math.sin(G / 70) * (NEUTRAL ? 5 : 2) : interpolate(f, [0, s.frames + OVER], [8, 2], clamp);
   const bobF = SOFT ? G : f;
   const W = 600, H = Math.round(W * 1558 / 720);
   return (
@@ -97,23 +112,23 @@ const Scene = ({ s, i }) => {
   const x = interpolate(f, [0, s.frames + OVER], i % 2 ? [-18, 18] : [18, -18], clamp);
   const top = s.pos === 'top';
   const k = pop(f, 3);
-  const phone = s.layout === 'phone' && s.screen;
+  const phone = s.layout === 'phone' && s.screen, textOnly = s.layout === 'text';
   return (
     <AbsoluteFill style={{ background: '#060b18', overflow: 'hidden', ...enter(f, i) }}>
-      {s.video
+      {NEUTRAL ? <><NeutralBg G={s.from + f} />{s.back && phone && <BackWord s={s} f={f} />}</> : s.video
         ? <OffthreadVideo src={staticFile(s.video)} muted playbackRate={s.videoRate || 1} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${1.04 + f * 0.0006})` }} />
         : <div style={{ position: 'absolute', inset: 0, transform: `scale(${z}) translateX(${x}px)`, filter: phone ? 'blur(26px) brightness(.5) saturate(1.2)' : 'none' }}>
             <Img src={staticFile(s.img)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             {!phone && s.screen && s.rect && <Screen s={s} style={{ position: 'absolute', left: s.rect[0], top: s.rect[1], width: s.rect[2], height: s.rect[3], borderRadius: s.rect[4] }} />}
           </div>}
       {phone && <Phone s={s} />}
-      <AbsoluteFill style={{ opacity: phone ? 0 : 1, background: top
+      <AbsoluteFill style={{ opacity: phone || NEUTRAL ? 0 : 1, background: top
         ? 'linear-gradient(180deg, rgba(6,11,24,.9) 0%, rgba(6,11,24,.6) 22%, rgba(6,11,24,0) 42%, rgba(6,11,24,0) 80%, rgba(6,11,24,.6) 100%)'
         : 'linear-gradient(180deg, rgba(6,11,24,.55) 0%, rgba(6,11,24,0) 22%, rgba(6,11,24,0) 48%, rgba(6,11,24,.74) 72%, rgba(6,11,24,.94) 100%)' }} />
       <Chips list={s.chips} />
-      <div style={{ position: 'absolute', left: 60, right: 60, ...(top ? { top: 190 } : { bottom: 330 }), textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ position: 'absolute', left: 60, right: 60, ...(textOnly ? { top: 1010 } : top ? { top: 190 } : { bottom: 330 }), textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {s.kicker && <div style={{ background: '#16a34a', color: '#fff', fontSize: 30, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase', padding: '12px 26px', borderRadius: 40, marginBottom: 22, transform: `scale(${k})`, opacity: Math.min(1, k * 1.5), boxShadow: '0 10px 30px rgba(22,163,74,.45)' }}>{s.kicker}</div>}
-        <Title s={s} />
+        <Title s={s} size={textOnly ? 96 : 80} />
         {s.sub && <div style={{ color: 'rgba(255,255,255,.88)', fontSize: 38, fontWeight: 600, lineHeight: 1.3, marginTop: 20, opacity: interpolate(f, [18, 30], [0, 1], clamp), textShadow: '0 4px 20px rgba(0,0,0,.6)' }}>{s.sub}</div>}
       </div>
       {/* Éclair bref au changement de plan */}

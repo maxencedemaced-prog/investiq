@@ -252,7 +252,7 @@ async function pubJob(script) {
       // Vraie vidéo d'illustration (mots-clés), enregistrement de l'appli dans le téléphone (screen = nom du tutoriel), mise en page
       broll_queries: (Array.isArray(s.broll_queries) ? s.broll_queries : []).slice(0, 4).map(q => String(q).slice(0, 60)),
       screen: /^[a-z_]{3,30}$/.test(s.screen || '') ? s.screen : null, screenFrom: Math.max(0, Number(s.screenFrom) || 0), screenRate: Math.max(0.5, Math.min(2.5, Number(s.screenRate) || 1)),
-      layout: s.layout === 'phone' ? 'phone' : 'photo', rect: Array.isArray(s.rect) && s.rect.length === 5 ? s.rect.map(Number) : null }));
+      layout: ['phone', 'text'].includes(s.layout) ? s.layout : 'photo', back: String(s.back || '').slice(0, 16), rect: Array.isArray(s.rect) && s.rect.length === 5 ? s.rect.map(Number) : null }));
   if (!scenes.length) throw new Error('Aucune scène : les photos doivent être dans video/public/pub/');
   const end = { dur: 3.4, ...(script.end || {}) };
   const total = scenes.reduce((n, s) => n + s.dur, 0) + end.dur;
@@ -279,7 +279,7 @@ async function pubJob(script) {
   }
   const chosen = typeof script.music_file === 'string' && /^[\w.-]+\.mp3$/.test(script.music_file) && fs.existsSync(path.join('public', 'music', script.music_file)) ? 'music/' + script.music_file : null;
   const musicFile = script.music === false ? null : (chosen || pickMusic(total));
-  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ style: 'pub', beats: [], segments, scenes, end, musicFile, jingle: false, soft: script.transition === 'soft', bars: script.bars !== false }));
+  fs.writeFileSync(path.join('src', 'data.json'), JSON.stringify({ style: 'pub', beats: [], segments, scenes, end, musicFile, jingle: false, soft: script.transition === 'soft', bars: script.bars !== false, bg: script.bg === 'neutral' ? 'neutral' : null }));
   execSync('npx remotion render src/index.js Reel out/reel.mp4 --codec=h264 --crf=19 --concurrency=100% --log=warn', { stdio: 'inherit' });
   // Couverture : une image de la première scène, avec son texte
   execSync('npx remotion still src/index.js Reel out/cover.jpg --frame=55 --image-format=jpeg --jpeg-quality=88 --log=warn', { stdio: 'inherit' });
