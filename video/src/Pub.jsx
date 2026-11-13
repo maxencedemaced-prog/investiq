@@ -44,7 +44,7 @@ const FlashBg = ({ i, f }) => {
 // Gros mots qui claquent à l'écran, un par un (scènes texte en mode énergie) ; *mot* = surligné en jaune
 const BigWords = ({ s }) => {
   const f = useCurrentFrame(), words = titleWords(s.title), span = Math.max(10, spokenFrames(s) * 0.85);
-  const hits = words.map((_, i) => 3 + Math.round((i / Math.max(1, words.length)) * span));
+  const hits = wordFrames(s, words, i => 3 + Math.round((i / Math.max(1, words.length)) * span));
   const last = hits.filter(h => h <= f).pop();
   const shake = last !== undefined && f - last < 6 ? Math.sin((f - last) * 2.8) * 16 * (1 - (f - last) / 6) : 0;
   return (
@@ -83,12 +83,28 @@ const spokenFrames = s => {
   return w ? Math.round((w.t + w.d) * FPS) : Math.round(s.frames * 0.55);
 };
 
+// Image où chaque mot du titre doit apparaître : calée sur l'instant où la voix le prononce (horodatage ElevenLabs),
+// sinon réparti sur la durée de la phrase
+const norm = w => String(w).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+const wordFrames = (s, words, fallback) => {
+  const spoken = (s.words || []).map(x => ({ n: norm(x.w), t: x.t }));
+  let k = 0;
+  return words.map((x, i) => {
+    const n = norm(x.w);
+    for (let j = k; j < spoken.length && n; j++) {
+      if (spoken[j].n === n || (n.length > 3 && (spoken[j].n.startsWith(n) || n.startsWith(spoken[j].n)))) { k = j + 1; return Math.max(0, Math.round(spoken[j].t * FPS) - 2); }
+    }
+    return fallback(i);
+  });
+};
+
 const Title = ({ s, size = 80 }) => {
   const f = useCurrentFrame(), words = titleWords(s.title), span = Math.max(8, spokenFrames(s) * 0.8);
+  const at = wordFrames(s, words, i => 6 + (i / Math.max(1, words.length)) * span);
   return (
     <div style={{ color: '#fff', fontSize: size, fontWeight: 900, lineHeight: 1.1, letterSpacing: -2, textShadow: '0 6px 30px rgba(0,0,0,.6)', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0 20px' }}>
       {words.map((x, i) => {
-        const p = pop(f, 6 + (i / Math.max(1, words.length)) * span);
+        const p = pop(f, at[i]);
         if (ENERGY) return <span key={i} style={{ display: 'inline-block', color: x.green ? '#0b1220' : '#fff', background: x.green ? '#fde047' : 'transparent', padding: x.green ? '0 14px' : 0, borderRadius: 12, textShadow: x.green ? 'none' : '0 6px 0 rgba(0,0,0,.28)', opacity: Math.min(1, p * 1.6), transform: `translateY(${(1 - p) * 70}px) scale(${0.4 + 0.6 * p}) rotate(${x.green ? -2 : 0}deg)` }}>{x.w}</span>;
         return <span key={i} style={{ display: 'inline-block', color: x.green ? GREEN : '#fff', opacity: Math.min(1, p * 1.4), transform: `translateY(${(1 - p) * 40}px) scale(${0.7 + 0.3 * p})` }}>{x.w}</span>;
       })}
