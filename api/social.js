@@ -1032,13 +1032,25 @@ export default async function handler(req, res) {
     // dry: true = simple bilan, rien n'est effacé.
     if (b.action === 'storage-cleanup') {
       const RE = /^(reel|pub|slideshow)-\d+\.mp4$|^cover-\d+\.jpg$/;
-      const { data: posts, error: pe } = await sb.from('social_posts').select('id, video_url, image_urls, video_script');
+      const { data: posts, error: pe } = await sb.from('social_posts').select('id, status, published_at, video_url, image_urls, video_script');
       if (pe) throw pe;
       const victims = []; let bytes = 0;
       for (const p of posts || []) {
         const used = [p.video_url, ...(p.image_urls || []), (p.video_script || {}).cover_url].filter(Boolean).join(' ');
         const { data: files } = await sb.storage.from('social').list(p.id, { limit: 1000 });
         for (const f of files || []) if (RE.test(f.name) && !used.includes(f.name)) { victims.push(`${p.id}/${f.name}`); bytes += (f.metadata && f.metadata.size) || 0; }
+      }
+      // Vidéos des posts rejetés et des posts publiés depuis plus de 14 jours (b.old = true, accord de l'utilisateur)
+      const cleared = [];
+      if (b.old) {
+        const limit = Date.now() - 14 * 864e5;
+        for (const p of posts || []) {
+          if (!(p.status === 'rejected' || (p.status === 'published' && p.published_at && new Date(p.published_at).getTime() < limit))) continue;
+          const { data: files } = await sb.storage.from('social').list(p.id, { limit: 1000 });
+          const vids = (files || []).filter(f => /\.mp4$/.test(f.name) && !victims.includes(`${p.id}/${f.name}`));
+          vids.forEach(f => { victims.push(`${p.id}/${f.name}`); bytes += (f.metadata && f.metadata.size) || 0; });
+          if (vids.length && p.video_url) cleared.push(p);
+        }
       }
       const { data: arch } = await sb.storage.from('social').list('tuto/archive', { limit: 1000 });
       for (const d of arch || []) {
@@ -1051,7 +1063,8 @@ export default async function handler(req, res) {
         if (error) throw error;
         removed += (r || []).length;
       }
-      return res.status(200).json({ found: victims.length, mb: Math.round(bytes / 1e6), removed, dry: !!b.dry });
+      if (!b.dry) for (const p of cleared) await sb.from('social_posts').update({ video_url: null, video_script: { ...(p.video_script || {}), video_removed: new Date().toISOString() } }).eq('id', p.id);
+      return res.status(200).json({ found: victims.length, mb: Math.round(bytes / 1e6), removed, cleared: cleared.length, dry: !!b.dry });
     }
     if (b.action === 'pub-create') {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
