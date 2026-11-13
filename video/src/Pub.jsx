@@ -17,7 +17,7 @@ const pop = (f, delay = 0, cfg = {}) => spring({ frame: f - delay, fps: FPS, con
 
 const scenes = (data.scenes || []).map(s => ({ ...s, frames: Math.max(36, Math.round((s.dur || 3) * FPS)) }));
 let acc = 0;
-scenes.forEach(s => { s.from = acc; acc += s.frames; });
+scenes.forEach((s, i) => { s.from = acc; acc += s.frames; s.phoneIn = !(i > 0 && scenes[i - 1].layout === 'phone' && scenes[i - 1].screen); });   // phoneIn : le téléphone entre (pas de téléphone juste avant)
 const endData = data.end || {};
 const END = Math.round((endData.dur || 3.4) * FPS);
 export const pubFrames = Math.max(1, acc) + END;
@@ -92,7 +92,7 @@ const Screen = ({ s, style }) => <OffthreadVideo src={staticFile(`screen-${s.scr
 // Grand téléphone en 3D qui arrive, pivote et flotte, avec l'appli qui tourne dedans
 const Phone = ({ s }) => {
   const f = useCurrentFrame(), G = s.from + f;   // G : image globale, pour que le téléphone soit au même endroit d'une scène à l'autre
-  const p = SOFT && s.from > 0 ? 1 : pop(f, 4, { damping: 15, stiffness: 110 });
+  const p = SOFT && !s.phoneIn ? 1 : pop(f, 4, { damping: 15, stiffness: 110 });
   const ry = SOFT ? -4 + Math.sin(G / 50) * (NEUTRAL ? 16 : 9) : interpolate(f, [0, s.frames + OVER], [20, -10], clamp);
   const rx = SOFT ? 4 + Math.sin(G / 70) * (NEUTRAL ? 5 : 2) : interpolate(f, [0, s.frames + OVER], [8, 2], clamp);
   const bobF = SOFT ? G : f;
