@@ -16,6 +16,14 @@ if (!KEY) { console.error('::error::Secret SUPABASE_SERVICE_KEY absent (GitHub >
 if (!/^[0-9a-f-]{36}$/i.test(ID)) { console.error('::error::POST_ID invalide'); process.exit(1); }
 const sb = createClient(SUPABASE_URL, KEY);
 
+// Efface les anciens rendus de ce post (vidéos et couvertures remplacées) pour ne pas remplir le stockage
+async function pruneOld(keep, re = /^(reel|pub|slideshow)-\d+\.mp4$|^cover-\d+\.jpg$/) {
+  try {
+    const { data } = await sb.storage.from('social').list(ID, { limit: 1000 });
+    const old = (data || []).map(f => f.name).filter(n => re.test(n) && !keep.includes(n));
+    if (old.length) { await sb.storage.from('social').remove(old.map(n => `${ID}/${n}`)); console.log('Anciens rendus effacés :', old.length); }
+  } catch (e) { console.warn('Nettoyage :', e.message); }
+}
 async function patchScript(patch) {
   const { data } = await sb.from('social_posts').select('video_script').eq('id', ID).single();
   const { error } = await sb.from('social_posts').update({ video_script: { ...(data?.video_script || {}), ...patch } }).eq('id', ID);
@@ -227,6 +235,7 @@ async function slideshowJob(script) {
     video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
   }).eq('id', ID);
   if (error) throw error;
+  await pruneOld([file.split('/').pop()], /^(reel|pub|slideshow)-\d+\.mp4$/);
   console.log('Diaporama prêt :', url);
 }
 
@@ -297,6 +306,7 @@ async function pubJob(script) {
     video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', clips, cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: fs.statSync('out/reel.mp4').size, error: null },
   }).eq('id', ID);
   if (error) throw error;
+  await pruneOld([`pub-${stamp}.mp4`, `cover-${stamp}.jpg`]);
   console.log('Pub prête :', url);
 }
 
@@ -349,7 +359,7 @@ async function main() {
   let coverUrl = null;
   try {
     execSync('npx remotion still src/index.js Reel out/cover.jpg --frame=45 --image-format=jpeg --jpeg-quality=90 --log=warn', { stdio: 'inherit' });
-    const cover = `${ID}/cover-${Date.now()}.jpg`;
+    var cover = `${ID}/cover-${Date.now()}.jpg`;
     const upc = await sb.storage.from('social').upload(cover, fs.readFileSync('out/cover.jpg'), { contentType: 'image/jpeg', upsert: true });
     if (!upc.error) coverUrl = sb.storage.from('social').getPublicUrl(cover).data.publicUrl;
   } catch (e) { console.warn('Couverture :', e.message); }
@@ -359,6 +369,7 @@ async function main() {
     video_script: { ...(cur?.video_script || {}), status: 'done', review: 'pending', clips, cover_url: coverUrl, done_at: new Date().toISOString(), seconds: Math.round(total), size: buf.length, error: null },
   }).eq('id', ID);
   if (e2) throw e2;
+  await pruneOld([file.split('/').pop(), coverUrl ? coverUrl.split('/').pop() : '']);
   console.log('Vidéo prête :', pub.publicUrl, (buf.length / 1e6).toFixed(1) + ' Mo');
 }
 

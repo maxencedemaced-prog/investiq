@@ -1028,6 +1028,31 @@ export default async function handler(req, res) {
     }
     // 3 Reels « Duo » d'un coup : sujets jamais traités, scénarios écrits par l'IA (en parallèle), voix puis rendu
     // Pub « scènes réelles » (video/src/Pub.jsx) : voix habituelle sur le texte de chaque scène, musique dynamique créée pour l'occasion, puis rendu
+    // Ménage du stockage : anciennes versions des vidéos et couvertures (non utilisées par le post) + archives des tutoriels.
+    // dry: true = simple bilan, rien n'est effacé.
+    if (b.action === 'storage-cleanup') {
+      const RE = /^(reel|pub|slideshow)-\d+\.mp4$|^cover-\d+\.jpg$/;
+      const { data: posts, error: pe } = await sb.from('social_posts').select('id, video_url, image_urls, video_script');
+      if (pe) throw pe;
+      const victims = []; let bytes = 0;
+      for (const p of posts || []) {
+        const used = [p.video_url, ...(p.image_urls || []), (p.video_script || {}).cover_url].filter(Boolean).join(' ');
+        const { data: files } = await sb.storage.from('social').list(p.id, { limit: 1000 });
+        for (const f of files || []) if (RE.test(f.name) && !used.includes(f.name)) { victims.push(`${p.id}/${f.name}`); bytes += (f.metadata && f.metadata.size) || 0; }
+      }
+      const { data: arch } = await sb.storage.from('social').list('tuto/archive', { limit: 1000 });
+      for (const d of arch || []) {
+        const { data: files } = await sb.storage.from('social').list('tuto/archive/' + d.name, { limit: 1000 });
+        for (const f of files || []) if (f.metadata) { victims.push(`tuto/archive/${d.name}/${f.name}`); bytes += f.metadata.size || 0; }
+      }
+      let removed = 0;
+      if (!b.dry) for (let i = 0; i < victims.length; i += 100) {
+        const { data: r, error } = await sb.storage.from('social').remove(victims.slice(i, i + 100));
+        if (error) throw error;
+        removed += (r || []).length;
+      }
+      return res.status(200).json({ found: victims.length, mb: Math.round(bytes / 1e6), removed, dry: !!b.dry });
+    }
     if (b.action === 'pub-create') {
       if (!/^[0-9a-f-]{36}$/i.test(String(b.id))) return res.status(400).json({ error: 'Post invalide' });
       const { data: post, error: pe } = await sb.from('social_posts').select('id, video_script').eq('id', b.id).single();
