@@ -1043,7 +1043,7 @@ export default async function handler(req, res) {
       const music = b.music === false ? Promise.resolve(undefined)
         : createMusic(String(b.music_prompt || 'Upbeat modern pop beat, punchy drums, bright plucky synths, catchy hook, 122 BPM, energetic, positive and confident').slice(0, 400), 40, 'pub')
           .catch(e => { console.warn('[pub] musique :', e.message); return undefined; });
-      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: 1.08 });
+      const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: Math.max(0.9, Math.min(1.2, Number(b.speed) || 1.08)) });
       scenes.forEach((x, i) => { x.start = beats[i].start; x.dur = Math.max(1.4, beats[i].end - beats[i].start); x.words = beats[i].words; });
       if (end.say) { const e = beats[beats.length - 1]; end.start = e.start; end.dur = Math.max(3.2, e.end - e.start + 1.4); end.words = e.words; }
       const file = await music;

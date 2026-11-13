@@ -26,6 +26,20 @@ const hasVoice = (data.segments || []).length > 0;
 const SOFT = !!data.soft, FADE = 16, BARS = data.bars !== false;
 // Fond « neutre » : dégradé graphite avec des halos qui bougent lentement (continu d'une scène à l'autre)
 const NEUTRAL = data.bg === 'neutral';
+// Mode « énergie » : fonds de couleur vive qui changent à chaque plan, coupes rapides (glissé + flou de vitesse),
+// zooms caméra sur le téléphone, secousse à l'arrivée, mots surlignés en jaune
+const ENERGY = data.energy === 'high';
+const PALETTE = [['#16a34a', '#22c55e'], ['#2563eb', '#38bdf8'], ['#7c3aed', '#c084fc'], ['#f97316', '#fbbf24'], ['#db2777', '#f472b6'], ['#0891b2', '#2dd4bf'], ['#16a34a', '#a3e635']];
+const FlashBg = ({ i, f }) => {
+  const [a, b] = PALETTE[i % PALETTE.length];
+  return (
+    <AbsoluteFill style={{ background: `linear-gradient(${150 + i * 25}deg, ${a} 0%, ${b} 100%)`, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: '50%', top: '48%', width: 3200, height: 3200, marginLeft: -1600, marginTop: -1600, background: 'repeating-conic-gradient(rgba(255,255,255,.13) 0deg 9deg, transparent 9deg 22deg)', transform: `rotate(${f * 0.45 * (i % 2 ? -1 : 1)}deg)` }} />
+      <div style={{ position: 'absolute', width: 1200, height: 1200, left: -200 + Math.sin(f / 18) * 120, top: 500 + Math.cos(f / 22) * 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,.35), transparent 60%)' }} />
+      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(0,0,0,.28) 100%)' }} />
+    </AbsoluteFill>
+  );
+};
 const NeutralBg = ({ G }) => (
   <AbsoluteFill style={{ background: 'linear-gradient(165deg,#111827 0%,#0b1220 55%,#0a0f1a 100%)', overflow: 'hidden' }}>
     <div style={{ position: 'absolute', width: 1300, height: 1300, left: -300 + Math.sin(G / 70) * 220, top: 120 + Math.cos(G / 90) * 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,211,153,.22), transparent 62%)' }} />
@@ -36,7 +50,7 @@ const NeutralBg = ({ G }) => (
 // Grand mot derrière le téléphone, qui glisse doucement
 const BackWord = ({ s, f }) => (
   <div style={{ position: 'absolute', top: 820, left: 0, right: 0, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
-    <div style={{ fontSize: s.back.length > 9 ? 170 : 230, fontWeight: 900, letterSpacing: -6, color: 'rgba(255,255,255,.07)', WebkitTextStroke: '2px rgba(52,211,153,.35)', whiteSpace: 'nowrap', transform: `translateX(${interpolate(f, [0, s.frames + FADE], [60, -60], clamp)}px)` }}>{s.back}</div>
+    <div style={{ fontSize: s.back.length > 9 ? 170 : 230, fontWeight: 900, letterSpacing: -6, color: ENERGY ? 'rgba(255,255,255,.2)' : 'rgba(255,255,255,.07)', WebkitTextStroke: ENERGY ? '0' : '2px rgba(52,211,153,.35)', whiteSpace: 'nowrap', transform: `translateX(${interpolate(f, [0, s.frames + FADE], ENERGY ? [260, -260] : [60, -60], clamp)}px)` }}>{s.back}</div>
   </div>
 );
 
@@ -57,6 +71,7 @@ const Title = ({ s, size = 80 }) => {
     <div style={{ color: '#fff', fontSize: size, fontWeight: 900, lineHeight: 1.1, letterSpacing: -2, textShadow: '0 6px 30px rgba(0,0,0,.6)', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0 20px' }}>
       {words.map((x, i) => {
         const p = pop(f, 6 + (i / Math.max(1, words.length)) * span);
+        if (ENERGY) return <span key={i} style={{ display: 'inline-block', color: x.green ? '#0b1220' : '#fff', background: x.green ? '#fde047' : 'transparent', padding: x.green ? '0 14px' : 0, borderRadius: 12, textShadow: x.green ? 'none' : '0 6px 0 rgba(0,0,0,.28)', opacity: Math.min(1, p * 1.6), transform: `translateY(${(1 - p) * 70}px) scale(${0.4 + 0.6 * p}) rotate(${x.green ? -2 : 0}deg)` }}>{x.w}</span>;
         return <span key={i} style={{ display: 'inline-block', color: x.green ? GREEN : '#fff', opacity: Math.min(1, p * 1.4), transform: `translateY(${(1 - p) * 40}px) scale(${0.7 + 0.3 * p})` }}>{x.w}</span>;
       })}
     </div>
@@ -79,6 +94,11 @@ const Chips = ({ list }) => {
 // Entrée de scène : zoom, glissement latéral ou montée, à tour de rôle
 const enter = (f, i) => {
   const t = interpolate(f, [0, OVER], [0, 1], { ...clamp, easing: ease });
+  if (ENERGY) {
+    if (i === 0) return { transform: `scale(${1.3 - 0.3 * t})` };
+    const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][i % 4];
+    return { transform: `translate(${d[0] * (1 - t) * 105}%, ${d[1] * (1 - t) * 105}%) skew(${d[0] * (1 - t) * -14}deg, ${d[1] * (1 - t) * -8}deg) scale(${1.15 - 0.15 * t})`, filter: `blur(${(1 - t) * 14}px)` };
+  }
   if (SOFT) return { opacity: i === 0 ? interpolate(f, [0, 8], [0, 1], clamp) : interpolate(f, [0, FADE], [0, 1], { ...clamp, easing: Easing.inOut(Easing.sin) }) };
   if (i === 0) return { opacity: interpolate(f, [0, 8], [0, 1], clamp) };
   if (i % 3 === 1) return { transform: `translateX(${(1 - t) * 100}%)` };
@@ -97,6 +117,21 @@ const Phone = ({ s }) => {
   const rx = SOFT ? 4 + Math.sin(G / 70) * (NEUTRAL ? 5 : 2) : interpolate(f, [0, s.frames + OVER], [8, 2], clamp);
   const bobF = SOFT ? G : f;
   const W = 600, H = Math.round(W * 1558 / 720);
+  if (ENERGY) {
+    const F = s.frames, q = pop(f, 0, { damping: 11, stiffness: 190, mass: 0.6 });
+    const dir = s.from % 2 ? 1 : -1;
+    const cam = interpolate(f, [0, F * 0.38, F * 0.55, F * 0.85, F + OVER], [1, 1, 1.32, 1.32, 1.12], { ...clamp, easing: Easing.inOut(Easing.cubic) });
+    const camY = interpolate(f, [0, F * 0.38, F * 0.55, F * 0.85, F + OVER], [0, 0, 260, 260, 80], { ...clamp, easing: Easing.inOut(Easing.cubic) });
+    const shake = f < 8 ? Math.sin(f * 2.6) * 14 * (1 - f / 8) : 0;
+    const ryE = dir * interpolate(f, [0, F + OVER], [24, -12], clamp), rxE = interpolate(f, [0, F + OVER], [12, 3], clamp);
+    return (
+      <div style={{ position: 'absolute', left: (1080 - W) / 2 - 16, top: 520, perspective: 1600, transform: `translate(${shake}px, ${camY}px) scale(${cam})`, transformOrigin: '50% 30%' }}>
+        <div style={{ width: W + 32, height: H + 32, borderRadius: 84, background: '#0a0a0c', padding: 16, boxShadow: '0 70px 120px rgba(0,0,0,.45), 0 0 0 4px rgba(255,255,255,.35)', transform: `translateY(${(1 - q) * 700}px) rotateY(${ryE}deg) rotateX(${rxE}deg) rotateZ(${dir * (1 - q) * 18}deg) scale(${0.75 + 0.25 * q})` }}>
+          <div style={{ width: W, height: H, borderRadius: 70, overflow: 'hidden', background: '#fff' }}><Screen s={s} style={{ width: W, height: H }} /></div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{ position: 'absolute', left: (1080 - W) / 2 - 16, top: 500, perspective: 1900 }}>
       <div style={{ width: W + 32, height: H + 32, borderRadius: 84, background: '#0a0a0c', padding: 16, boxShadow: '0 60px 120px rgba(0,0,0,.65), 0 0 0 3px rgba(255,255,255,.14), 0 0 90px rgba(52,211,153,.28)', transform: `translateY(${(1 - p) * 900 + Math.sin(bobF / 16) * 10}px) rotateY(${ry}deg) rotateX(${rx}deg) scale(${0.9 + 0.1 * p})` }}>
@@ -115,19 +150,19 @@ const Scene = ({ s, i }) => {
   const phone = s.layout === 'phone' && s.screen, textOnly = s.layout === 'text';
   return (
     <AbsoluteFill style={{ background: '#060b18', overflow: 'hidden', ...enter(f, i) }}>
-      {NEUTRAL ? <><NeutralBg G={s.from + f} />{s.back && phone && <BackWord s={s} f={f} />}</> : s.video
+      {ENERGY ? <><FlashBg i={i} f={f} />{s.back && phone && <BackWord s={s} f={f} />}</> : NEUTRAL ? <><NeutralBg G={s.from + f} />{s.back && phone && <BackWord s={s} f={f} />}</> : s.video
         ? <OffthreadVideo src={staticFile(s.video)} muted playbackRate={s.videoRate || 1} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${1.04 + f * 0.0006})` }} />
         : <div style={{ position: 'absolute', inset: 0, transform: `scale(${z}) translateX(${x}px)`, filter: phone ? 'blur(26px) brightness(.5) saturate(1.2)' : 'none' }}>
             <Img src={staticFile(s.img)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             {!phone && s.screen && s.rect && <Screen s={s} style={{ position: 'absolute', left: s.rect[0], top: s.rect[1], width: s.rect[2], height: s.rect[3], borderRadius: s.rect[4] }} />}
           </div>}
       {phone && <Phone s={s} />}
-      <AbsoluteFill style={{ opacity: phone || NEUTRAL ? 0 : 1, background: top
+      <AbsoluteFill style={{ opacity: phone || NEUTRAL || ENERGY ? 0 : 1, background: top
         ? 'linear-gradient(180deg, rgba(6,11,24,.9) 0%, rgba(6,11,24,.6) 22%, rgba(6,11,24,0) 42%, rgba(6,11,24,0) 80%, rgba(6,11,24,.6) 100%)'
         : 'linear-gradient(180deg, rgba(6,11,24,.55) 0%, rgba(6,11,24,0) 22%, rgba(6,11,24,0) 48%, rgba(6,11,24,.74) 72%, rgba(6,11,24,.94) 100%)' }} />
       <Chips list={s.chips} />
       <div style={{ position: 'absolute', left: 60, right: 60, ...(textOnly ? { top: 1010 } : top ? { top: 190 } : { bottom: 330 }), textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        {s.kicker && <div style={{ background: '#16a34a', color: '#fff', fontSize: 30, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase', padding: '12px 26px', borderRadius: 40, marginBottom: 22, transform: `scale(${k})`, opacity: Math.min(1, k * 1.5), boxShadow: '0 10px 30px rgba(22,163,74,.45)' }}>{s.kicker}</div>}
+        {s.kicker && <div style={{ background: ENERGY ? '#0b1220' : '#16a34a', color: '#fff', fontSize: 30, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase', padding: '12px 26px', borderRadius: 40, marginBottom: 22, transform: `scale(${k})`, opacity: Math.min(1, k * 1.5), boxShadow: '0 10px 30px rgba(22,163,74,.45)' }}>{s.kicker}</div>}
         <Title s={s} size={textOnly ? 96 : 80} />
         {s.sub && <div style={{ color: 'rgba(255,255,255,.88)', fontSize: 38, fontWeight: 600, lineHeight: 1.3, marginTop: 20, opacity: interpolate(f, [18, 30], [0, 1], clamp), textShadow: '0 4px 20px rgba(0,0,0,.6)' }}>{s.sub}</div>}
       </div>
@@ -157,7 +192,7 @@ const EndCard = () => {
   const beat = 1 + Math.max(0, Math.sin((f - 30) / 5)) * 0.045;
   const sweep = interpolate((f - 34) % 50, [0, 22], [-120, 520], clamp);
   return (
-    <AbsoluteFill style={{ transform: `scale(${SOFT ? 1.06 - 0.06 * t : 1.25 - 0.25 * t})`, opacity: t, background: 'linear-gradient(160deg,#0b1220,#07101c)', alignItems: 'center', justifyContent: 'center', fontFamily, overflow: 'hidden' }}>
+    <AbsoluteFill style={{ transform: `scale(${SOFT ? 1.06 - 0.06 * t : 1.25 - 0.25 * t})`, opacity: t, background: ENERGY ? 'linear-gradient(160deg,#16a34a,#065f46)' : 'linear-gradient(160deg,#0b1220,#07101c)', alignItems: 'center', justifyContent: 'center', fontFamily, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', width: 1100, height: 1100, left: 320 + Math.sin(f / 30) * 60, top: -380 + Math.cos(f / 36) * 50, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,.34), transparent 65%)' }} />
       <div style={{ position: 'absolute', width: 900, height: 900, left: -380 + Math.cos(f / 32) * 50, bottom: -300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,.22), transparent 65%)' }} />
       <Img src={staticFile('logo.svg')} style={{ width: 200, height: 200, borderRadius: 46, boxShadow: '0 24px 70px rgba(0,0,0,.5)', ...up(4) }} />
@@ -170,7 +205,7 @@ const EndCard = () => {
           <StoreBadge icon={<PlayIcon />} small="DISPONIBLE SUR" big="Google Play" style={up(29)} />
         </div>
       ) : (<>
-      <div style={{ position: 'relative', overflow: 'hidden', marginTop: 64, background: '#16a34a', color: '#fff', fontSize: 46, fontWeight: 800, padding: '28px 64px', borderRadius: 28, boxShadow: '0 18px 54px rgba(22,163,74,.5)', ...up(22), transform: `scale(${pop(f, 22) * beat})` }}>
+      <div style={{ position: 'relative', overflow: 'hidden', marginTop: 64, background: ENERGY ? '#0b1220' : '#16a34a', color: '#fff', fontSize: 46, fontWeight: 800, padding: '28px 64px', borderRadius: 28, boxShadow: '0 18px 54px rgba(22,163,74,.5)', ...up(22), transform: `scale(${pop(f, 22) * beat})` }}>
         {e.cta || 'Essaie gratuitement'}
         <div style={{ position: 'absolute', top: 0, bottom: 0, left: sweep, width: 90, background: 'linear-gradient(100deg, transparent, rgba(255,255,255,.4), transparent)', transform: 'skewX(-18deg)' }} />
       </div>
