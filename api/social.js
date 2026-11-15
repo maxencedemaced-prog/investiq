@@ -639,7 +639,7 @@ const DUO_MUSIC = [
 
 // Nombre de Reels « Duo » déjà créés : sert à faire tourner les duos de prénoms
 async function duoCount() {
-  const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo');
+  const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).or('video_script->>style.eq.duo,video_script->>duo_topic.like.decode-*');
   return count || 0;
 }
 // Prochains créneaux libres pour des Reels : un seul par jour, à 20 h (heure de Paris, le pic d'audience du soir), à partir de demain

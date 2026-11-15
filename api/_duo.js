@@ -168,6 +168,10 @@ Visuels :
 Scène de fin (dernière) : { "visual": "end", "hud": "DÉCODÉ", "hudLabel": "DOSSIER CLOS", "hudColor": "green", "cta": celui du dossier, "note": celle du dossier,
   "say": "… Et toi, tu es plutôt {A} ou {B} ? " + la phrase d'appel du dossier }
 Les personnages s'écrivent TOUJOURS {A} et {B} avec les accolades, jamais de vrais prénoms, jamais « A » ou « B » seuls.
+Les prénoms ajoutés ensuite peuvent être masculins ou féminins : n'utilise JAMAIS il, elle, lui, celui-ci pour {A} ou {B} (répète le prénom), et aucun accord masculin/féminin les concernant.
+Pas de « chacun / chacune », « tous les deux / toutes les deux » : écris « {A} et {B} ».
+Chaque scène apporte une idée nouvelle : ne répète jamais une phrase ou une idée d'une scène à l'autre.
+Dans "say", écris « Kapitaro » (jamais « kapitaro.fr », la voix le lirait mal), et la scène de fin ne contient qu'UNE phrase d'appel.
 Réponds uniquement par un tableau JSON contenant UN objet : [ { … } ].`;
 
 export function decodePrompt(id, dossier, tool) {
@@ -187,6 +191,8 @@ export function cleanDecodeScript(raw, dossier) {
   if (scenes.length < 3 || scenes[0].visual !== 'duo') throw new Error('Scénario Duo décodé incomplet');
   const voice = scenes.map(b => b.say).join(' ');
   if (!/\{A\}/.test(voice) || !/\{B\}/.test(voice) || /(^|[\s,.;:!?«(])[AB](?=[\s,.;:!?»)]|$)/.test(voice.replace(/\{[AB]\}/g, ''))) throw new Error('Scénario Duo décodé sans {A} / {B}');
+  // Accords impossibles à garantir (prénoms masculins ou féminins) : « Léa, lui », « chacune »… → scénario refusé (2e tentative)
+  if (/\{[AB]\},? (lui|elle)\b|\bchacune?\b|\b(tous|toutes) les deux\b/i.test(voice)) throw new Error('Scénario Duo décodé avec il/elle');
   // Nombres de la voix (écrits en lettres) non contrôlables ici : les nombres en chiffres des réglages et du compteur doivent venir du dossier
   const beats = [];
   let ch = 0;
