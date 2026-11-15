@@ -288,6 +288,7 @@ async function askClaude(prompt, system = SYSTEM, model = MODEL) {
   catch {
     // Objet seul renvoyé au lieu d'un tableau (le 1er « [ » est alors à l'intérieur) : on lit l'objet
     try { const o = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)); if (o && typeof o === 'object') return [o]; } catch {}
+    console.warn('[askClaude] illisible', data.stop_reason, text.length, text.slice(0, 200), '…', text.slice(-300));
     throw new Error('Réponse IA illisible, réessaie');
   }
 }
