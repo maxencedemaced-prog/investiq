@@ -285,7 +285,11 @@ async function askClaude(prompt, system = SYSTEM, model = MODEL) {
   logStudioUsage(model, data.usage, system);
   const text = (data.content || []).map(c => c.text || '').join('');
   try { const arr = JSON.parse(text.slice(text.indexOf('['), text.lastIndexOf(']') + 1)); return Array.isArray(arr) ? arr : []; }
-  catch { throw new Error('Réponse IA illisible, réessaie'); }
+  catch {
+    // Objet seul renvoyé au lieu d'un tableau (le 1er « [ » est alors à l'intérieur) : on lit l'objet
+    try { const o = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)); if (o && typeof o === 'object') return [o]; } catch {}
+    throw new Error('Réponse IA illisible, réessaie');
+  }
 }
 
 // Posts pédagogiques : sujets, formats et ambiances tous différents dans le lot
