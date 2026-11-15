@@ -273,12 +273,15 @@ function logStudioUsage(model, usage, system) {
   sb.from('ai_usage_log').insert({ user_id: null, model, input_tokens: usage.input_tokens || 0, output_tokens: usage.output_tokens || 0,
     cost_usd: (usage.input_tokens || 0) / 1e6 * p.in + (usage.output_tokens || 0) / 1e6 * p.out, call_label: label }).then(() => {}, () => {});
 }
-async function askClaude(prompt, system = SYSTEM, model = MODEL) {
+// opts.effort : réflexion plus courte (sinon la réflexion peut consommer tout max_tokens et la réponse arrive vide) ; opts.maxTokens : plafond
+async function askClaude(prompt, system = SYSTEM, model = MODEL, opts = {}) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
+  const body = { model, max_tokens: opts.maxTokens || (model === MODEL ? 8000 : 2000), system, messages: [{ role: 'user', content: prompt }] };
+  if (opts.effort) body.output_config = { effort: opts.effort };
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model, max_tokens: model === MODEL ? 8000 : 2000, system, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify(body),
   });
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error?.message || 'Erreur IA');
@@ -1126,7 +1129,7 @@ export default async function handler(req, res) {
             if (b.mode === 'decode') {
               // « Duo décodé » : le dossier réécrit avec {A} et {B}, rendu avec le décor d'enquête (Dossier.jsx)
               const dossier = DOSSIERS[s.key.replace(/^decode-/, '')];
-              const [raw] = await askClaude(decodePrompt(s.key, dossier, duoToolFor(s.key)), DECODE_SYSTEM);
+              const [raw] = await askClaude(decodePrompt(s.key, dossier, duoToolFor(s.key)), DECODE_SYSTEM, MODEL, { effort: 'medium', maxTokens: 16000 });
               d = cleanDecodeScript(raw, dossier);
             } else { const [raw] = await askClaude(duoPrompt(s, usedTitles), DUO_SYSTEM); d = { ...cleanDuoScript(raw), num: 'IA' }; }
           }
