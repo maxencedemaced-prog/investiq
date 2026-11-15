@@ -43,6 +43,9 @@ const TOOL_OF = {
   abonnements: 'abonnements', comparer: 'abonnements', 'petites-depenses': 'petites', livraisons: 'petites', courses: 'petites', 'achat-impulsif': 'petites', promos: 'petites',
   'se-payer-en-premier': 'budget', 'budget-50-30-20': 'budget', augmentation: 'budget', 'suivre-budget': 'budget', 'credit-conso': 'credit', 'paiement-4-fois': 'credit',
   'dettes-cheres': 'dettes', decouvert: 'dettes', 'argent-qui-dort': 'inflation', objectif: 'objectif', regulier: 'programme', diversifier: 'sante',
+  // « Duo décodé » : un Dossier décodé repris en Duo (clé 'decode-' + id du dossier)
+  'decode-interets-composes': 'objectif', 'decode-inflation': 'inflation', 'decode-livret': 'inflation', 'decode-dca': 'programme',
+  'decode-etf': 'sante', 'decode-krach': 'objectif',
 };
 export const duoToolFor = key => DUO_TOOLS[TOOL_OF[key]] || null;
 // Sujets déjà faits à la main (api/_dossier.js) : jamais repris par l'IA
@@ -122,6 +125,113 @@ export function pickDuoSubjects(n, usedKeys) {
   const out = free.slice(0, n);
   while (out.length < n) out.push({ key: 'libre-' + Date.now().toString(36) + out.length, title: '', brief: 'invente un sujet d’argent du quotidien NOUVEAU (différent de tous les sujets déjà traités ci-dessous) où {A} fait le bon choix et {B} non.' });
   return out;
+}
+
+// « Duo décodé » : Dossiers décodés (api/_dossier.js) pas encore repris en Duo. Les dossiers déjà faits en Duo à la main
+// (commencer-tot, frais-caches, precaution) et les versions pub sont exclus. Le brief contient le texte et les chiffres vérifiés du dossier.
+const DECODE_SKIP = ['commencer-tot', 'frais-caches', 'precaution'];
+export function pickDecodeSubjects(dossiers, n, usedKeys) {
+  const free = Object.entries(dossiers).filter(([id, d]) => d.style !== 'duo' && !/^pub-/.test(id) && !DECODE_SKIP.includes(id) && !usedKeys.includes('decode-' + id));
+  for (let i = free.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [free[i], free[j]] = [free[j], free[i]]; }
+  return free.slice(0, n).map(([id, d]) => {
+    const scenes = d.beats.filter(b => b.visual !== 'end');
+    const end = d.beats.find(b => b.visual === 'end') || {};
+    const figures = scenes.map(b => [b.hud && b.hud + ' (' + (b.hudLabel || '') + ')', b.leftValue && (b.left || 'gauche') + ' = ' + b.leftValue + ' €', b.rightValue && (b.right || 'droite') + ' = ' + b.rightValue + ' €']
+      .filter(Boolean).join(', ')).filter(Boolean).join(' ; ');
+    return {
+      key: 'decode-' + id, title: 'DÉCODÉ · ' + d.title,
+      brief: `adapte le « Dossier décodé » n° ${d.num} (${d.title}) en Reel Duo : {A} applique le bon réflexe expliqué dans le dossier, {B} tombe dans le piège. ` +
+        `Garde le même message pédagogique, les mêmes exemples et UNIQUEMENT les chiffres et hypothèses du dossier (ils sont vérifiés), sans en inventer d'autres. ` +
+        `Texte du dossier : « ${scenes.map(b => b.say).join(' ')} » Chiffres du dossier : ${figures || 'aucun'}. Note d'hypothèses : « ${end.note || ''} ».`,
+    };
+  });
+}
+
+// ── « Duo décodé » : le Dossier décodé réécrit avec {A} et {B}, rendu avec le décor d'enquête (video/src/Dossier.jsx, visuels duo / solo en plus).
+// L'IA garde les scènes chiffrées du dossier (mêmes valeurs) ; le contrôle refuse tout chiffre absent du dossier.
+export const DECODE_SYSTEM = `Tu es le réalisateur des Reels « Duo décodé » de Kapitaro, une app française qui aide les débutants à comprendre leur argent.
+Tu reçois un « Dossier décodé » (Reel façon enquête : chapitres, compteur en haut, mots-clés en très gros) et tu le réécris en histoire à deux personnages :
+{A} applique le bon réflexe, {B} tombe dans le piège. Ton vivant et bienveillant (on ne se moque pas de {B}), en français, en tutoyant le spectateur.
+
+RÈGLES ABSOLUES (réglementation AMF) : éducatif uniquement, jamais de conseil personnalisé ni de produit, fonds, action ou crypto précis, jamais de promesse de gain ;
+tout rendement est un exemple ou une hypothèse ; si le dossier parle de placement ou de bourse, une scène rappelle que rien n'est garanti.
+CHIFFRES : uniquement ceux du dossier, avec les mêmes hypothèses. N'invente aucun nombre.
+
+FORME (JSON) : { "hook": "1 à 2 phrases d'accroche pour la légende Instagram, avec {A} et {B}", "beats": [ 5 à 7 scènes, puis la scène de fin ] }
+Scène : { "chapter": 0|1|2 (dans l'ordre, comme le dossier), "visual": …, "hud": "≤ 10 car.", "hudLabel": "≤ 26 car. MAJUSCULES", "hudColor": "green" (optionnel, pour le bon réflexe),
+  "kw": [ 2 à 4 × ["MOT-CLÉ AFFICHÉ ≤ 18 car.", "mot déclencheur présent tel quel dans say"] ], "say": "1 à 3 phrases, nombres écrits EN LETTRES" }
+Visuels :
+- duo : les deux personnages côte à côte. pillA, pillB (≤ 22 car. MAJUSCULES), moodA, moodB parmi neutre|joie|triste|surpris|choque|reflechit|victoire|montre. OBLIGATOIRE en 1re scène.
+- solo : un personnage en grand. who: "A"|"B", mood (même liste), label (≤ 18 car.), sub (≤ 30 car.). Au moins un solo.
+- et les visuels chiffrés du dossier, recopiés avec EXACTEMENT les mêmes réglages (result, rule, leak, shrink, dca, compare, curve, snowball, title) ;
+  pour compare / result, left = "{A}" et right = "{B}" (ou l'inverse selon qui a le bon résultat), leftSub / rightSub courts.
+Scène de fin (dernière) : { "visual": "end", "hud": "DÉCODÉ", "hudLabel": "DOSSIER CLOS", "hudColor": "green", "cta": celui du dossier, "note": celle du dossier,
+  "say": "… Et toi, tu es plutôt {A} ou {B} ? " + la phrase d'appel du dossier }
+Les personnages s'écrivent TOUJOURS {A} et {B} avec les accolades, jamais de vrais prénoms, jamais « A » ou « B » seuls.
+Les prénoms ajoutés ensuite peuvent être masculins ou féminins : n'utilise JAMAIS il, elle, lui, celui-ci pour {A} ou {B} (répète le prénom), et aucun accord masculin/féminin les concernant.
+Pas de « chacun / chacune », « tous les deux / toutes les deux » : écris « {A} et {B} ».
+Chaque scène apporte une idée nouvelle : ne répète jamais une phrase ou une idée d'une scène à l'autre.
+Dans "say", écris « Kapitaro » (jamais « kapitaro.fr », la voix le lirait mal), et la scène de fin ne contient qu'UNE phrase d'appel.
+Réponds uniquement par un tableau JSON contenant UN objet : [ { … } ].`;
+
+export function decodePrompt(id, dossier, tool) {
+  return `Dossier décodé n° ${dossier.num} « ${dossier.title} » (chapitres : ${dossier.chapters.join(' / ')}) :\n${JSON.stringify(dossier.beats)}\n` +
+    (tool ? `Phrase d'appel de fin : « ${tool.cta} ».` : '');
+}
+
+// Contrôle du scénario « Duo décodé » : visuels connus, chiffres tous présents dans le dossier d'origine, {A}/{B} dans la voix.
+const DECODE_VISUALS = ['duo', 'solo', 'result', 'rule', 'leak', 'shrink', 'dca', 'compare', 'curve', 'snowball', 'title'];
+export function cleanDecodeScript(raw, dossier) {
+  if (!raw || !Array.isArray(raw.beats)) throw new Error('Scénario Duo décodé illisible');
+  const orig = dossier.beats.filter(b => b.visual !== 'end'), oend = dossier.beats.find(b => b.visual === 'end') || {};
+  const okNums = new Set(JSON.stringify(dossier.beats).match(/\d+(?:[.,]\d+)?/g) || []);
+  const numsOk = o => Object.entries(o).every(([k, v]) => !['leftValue', 'rightValue', 'shrinkFrom', 'shrinkTo', 'shrinkYears', 'amount'].includes(k) || okNums.has(String(v)))
+    && (!o.prices || o.prices.every(p => okNums.has(String(p))));
+  const scenes = raw.beats.filter(b => b && b.visual !== 'end' && DECODE_VISUALS.includes(b.visual) && typeof b.say === 'string' && b.say.trim()).slice(0, 8);
+  if (scenes.length < 3 || scenes[0].visual !== 'duo') throw new Error('Scénario Duo décodé incomplet');
+  const voice = scenes.map(b => b.say).join(' ');
+  if (!/\{A\}/.test(voice) || !/\{B\}/.test(voice) || /(^|[\s,.;:!?«(])[AB](?=[\s,.;:!?»)]|$)/.test(voice.replace(/\{[AB]\}/g, ''))) throw new Error('Scénario Duo décodé sans {A} / {B}');
+  // Accords impossibles à garantir (prénoms masculins ou féminins) : « Léa, lui », « chacune »… → scénario refusé (2e tentative)
+  if (/\{[AB]\},? (lui|elle)\b|\bchacune?\b|\b(tous|toutes) les deux\b/i.test(voice)) throw new Error('Scénario Duo décodé avec il/elle');
+  // Nombres de la voix (écrits en lettres) non contrôlables ici : les nombres en chiffres des réglages et du compteur doivent venir du dossier
+  const beats = [];
+  let ch = 0;
+  for (const b of scenes) {
+    const o = { chapter: Math.max(ch, Math.min(2, Math.round(+b.chapter) || 0)), visual: b.visual, say: txt(b.say, 320), hud: txt(b.hud, 12), hudLabel: txt(b.hudLabel, 30).toUpperCase() };
+    ch = o.chapter;
+    if (b.hudColor === 'green') o.hudColor = 'green';
+    if ((o.hud.match(/\d+(?:[.,]\d+)?/g) || []).some(n => !okNums.has(n.replace(/\s/g, '')) && !okNums.has(n))) o.hud = '';
+    const words = o.say.split(/\s+/).map(norm);
+    o.kw = (Array.isArray(b.kw) ? b.kw : []).filter(k => Array.isArray(k) && typeof k[0] === 'string' && typeof k[1] === 'string' && words.some(w => w.includes(norm(k[1])) && norm(k[1])))
+      .slice(0, 4).map(k => [k[0].slice(0, 22).toUpperCase(), k[1]]);
+    if (b.visual === 'duo') {
+      for (const f of ['pillA', 'pillB']) if (typeof b[f] === 'string') o[f] = txt(b[f], 24).toUpperCase();
+      o.moodA = b.moodA; o.moodB = b.moodB;
+    } else if (b.visual === 'solo') {
+      o.who = b.who === 'B' ? 'B' : 'A'; o.mood = b.mood; o.label = txt(b.label, 20).toUpperCase(); o.sub = txt(b.sub, 32).toUpperCase();
+    } else {
+      // Visuel chiffré : on reprend les réglages du dossier pour ce visuel (jamais ceux inventés), seuls les libellés changent
+      const src = orig.find(x => x.visual === b.visual && (!b.leftValue || x.leftValue === b.leftValue)) || orig.find(x => x.visual === b.visual);
+      if (!src && !['title', 'compare'].includes(b.visual)) continue;
+      const keep = ['leftValue', 'rightValue', 'rows', 'caption', 'rate', 'years', 'shrinkFrom', 'shrinkTo', 'shrinkYears', 'prices', 'amount', 'showParts', 'leakLabel', 'leakSub'];
+      if (src) for (const f of keep) if (src[f] !== undefined) o[f] = src[f];
+      for (const f of ['left', 'leftSub', 'right', 'rightSub']) if (typeof b[f] === 'string') o[f] = txt(b[f], 24).toUpperCase(); else if (src && src[f]) o[f] = src[f];
+      if (!numsOk(o)) continue;
+    }
+    beats.push(o);
+  }
+  if (beats.length < 3) throw new Error('Scénario Duo décodé trop court');
+  const end = raw.beats.find(b => b && b.visual === 'end') || {};
+  beats.push({ chapter: 2, visual: 'end', hud: 'DÉCODÉ', hudLabel: 'DOSSIER CLOS', hudColor: 'green', cta: oend.cta || 'Essaie Kapitaro · kapitaro.fr', note: oend.note || '',
+    say: (/\{A\}/.test(end.say || '') && /\{B\}/.test(end.say || '') ? txt(end.say, 240) : 'Et toi, tu es plutôt {A} ou {B} ? ' + (oend.say || '').split('. ').pop()).replace(/kapitaro\.fr/gi, 'Kapitaro') });
+  for (const b of beats) b.say = b.say.replace(/kapitaro\.fr/gi, 'Kapitaro');
+  // Légende : accroche de l'IA + question, puis les paragraphes du dossier (hypothèses, risques, appel), inchangés
+  const rest = String(dossier.caption || '').split('\n\n').slice(1).join('\n\n');
+  return {
+    style: 'dossier', duoDecode: true, num: dossier.num, dossierTitle: dossier.title, chapters: dossier.chapters, title: '{A} ET {B} · ' + dossier.title, beats,
+    caption: (txt(raw.hook, 300) || '{A} et {B} face au même choix… mais pas la même fin.') + ' 🕵️\n\nEt toi, tu es plutôt {A} ou {B} ? 👇' + (rest ? '\n\n' + rest : ''),
+    hashtags: dossier.hashtags,
+  };
 }
 
 const norm = w => String(w).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');

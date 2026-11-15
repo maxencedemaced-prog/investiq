@@ -122,6 +122,7 @@
     <button class="nav" id="btn-dossier" onclick="createDossier(this)"><span class="ic">📁</span>Reel « Dossier décodé »</button>
     <button class="nav" id="btn-gen" onclick="generate()"><span class="ic">✨</span>3 posts pédagogiques</button>
     <button class="nav" id="btn-duo" onclick="makeDuoBatch(this)"><span class="ic">👥</span>3 Reels « Duo »</button>
+    <button class="nav" id="btn-duo-decode" onclick="makeDuoBatch(this, 'decode')"><span class="ic">🕵️</span>3 Reels « Duo décodé »</button>
     <button class="nav" onclick="generateMode('agenda', this)"><span class="ic">🗓</span>Agenda de la semaine</button>
     <button class="nav" onclick="generateMode('recap', this)"><span class="ic">📈</span>Bilan des marchés</button>
 
@@ -326,11 +327,13 @@ async function makeDossier(btn) {
 }
 
 // ── 3 Reels « Duo » : sujets jamais traités, scénarios écrits par l'IA, voix de David Vautrin ──
-async function makeDuoBatch(btn) {
-  if (!confirm('Créer 3 Reels « Duo » sur des sujets jamais traités ?\n\nL’IA écrit les scénarios, puis la voix ElevenLabs est préparée (≈ 3 × 500 caractères). Les Reels arrivent dans « À valider ».')) return;
+// mode 'decode' = « Duo décodé » : l'IA reprend un Dossier décodé (inflation, ETF, krach…) en Duo, avec les chiffres vérifiés du dossier
+async function makeDuoBatch(btn, mode) {
+  var what = mode === 'decode' ? '3 Reels « Duo décodé » (des Dossiers décodés repris en Duo, jamais faits en Duo)' : '3 Reels « Duo » sur des sujets jamais traités';
+  if (!confirm('Créer ' + what + ' ?\n\nL’IA écrit les scénarios, puis la voix ElevenLabs est préparée (≈ 3 × 500 caractères). Les Reels arrivent dans « À valider ».')) return;
   var label = btn.innerHTML; btn.disabled = true; btn.textContent = 'Écriture + voix (≈ 2 min)…';
   try {
-    var d = await api('POST', { action: 'duo-batch', count: 3 });
+    var d = await api('POST', { action: 'duo-batch', count: 3, mode: mode || '' });
     POSTS = (d.posts || []).concat(POSTS); setFilter('draft');
     toast('👥 ' + (d.posts || []).length + ' Reel' + ((d.posts || []).length > 1 ? 's' : '') + ' Duo en fabrication : ils arrivent dans « À valider » dans quelques minutes' + ((d.errors || []).length ? ' (' + d.errors.length + ' raté : ' + d.errors[0] + ')' : ''), 8000);
     try { watchReels(); } catch (e) {}

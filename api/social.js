@@ -19,7 +19,7 @@ import { createClient } from '@supabase/supabase-js';
 import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns, ttsSettings, calmVoice } from './_reel.js';
 import { TUTOS } from './_tuto.js';
 import { DOSSIERS, duoScript } from './_dossier.js';
-import { DUO_SYSTEM, DUO_SUBJECTS, DUO_DONE, duoPrompt, pickDuoSubjects, cleanDuoScript, duoToolFor } from './_duo.js';
+import { DUO_SYSTEM, DUO_SUBJECTS, DUO_DONE, duoPrompt, pickDuoSubjects, pickDecodeSubjects, cleanDuoScript, duoToolFor, DECODE_SYSTEM, decodePrompt, cleanDecodeScript } from './_duo.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
 const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ'];
@@ -273,19 +273,27 @@ function logStudioUsage(model, usage, system) {
   sb.from('ai_usage_log').insert({ user_id: null, model, input_tokens: usage.input_tokens || 0, output_tokens: usage.output_tokens || 0,
     cost_usd: (usage.input_tokens || 0) / 1e6 * p.in + (usage.output_tokens || 0) / 1e6 * p.out, call_label: label }).then(() => {}, () => {});
 }
-async function askClaude(prompt, system = SYSTEM, model = MODEL) {
+// opts.effort : réflexion plus courte (sinon la réflexion peut consommer tout max_tokens et la réponse arrive vide) ; opts.maxTokens : plafond
+async function askClaude(prompt, system = SYSTEM, model = MODEL, opts = {}) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY manquante');
+  const body = { model, max_tokens: opts.maxTokens || (model === MODEL ? 8000 : 2000), system, messages: [{ role: 'user', content: prompt }] };
+  if (opts.effort) body.output_config = { effort: opts.effort };
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model, max_tokens: model === MODEL ? 8000 : 2000, system, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify(body),
   });
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error?.message || 'Erreur IA');
   logStudioUsage(model, data.usage, system);
   const text = (data.content || []).map(c => c.text || '').join('');
   try { const arr = JSON.parse(text.slice(text.indexOf('['), text.lastIndexOf(']') + 1)); return Array.isArray(arr) ? arr : []; }
-  catch { throw new Error('Réponse IA illisible, réessaie'); }
+  catch {
+    // Objet seul renvoyé au lieu d'un tableau (le 1er « [ » est alors à l'intérieur) : on lit l'objet
+    try { const o = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)); if (o && typeof o === 'object') return [o]; } catch {}
+    console.warn('[askClaude] illisible', data.stop_reason, text.length, text.slice(0, 200), '…', text.slice(-300));
+    throw new Error('Réponse IA illisible, réessaie');
+  }
 }
 
 // Posts pédagogiques : sujets, formats et ambiances tous différents dans le lot
@@ -635,7 +643,7 @@ const DUO_MUSIC = [
 
 // Nombre de Reels « Duo » déjà créés : sert à faire tourner les duos de prénoms
 async function duoCount() {
-  const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).eq('video_script->>style', 'duo');
+  const { count } = await sb.from('social_posts').select('id', { count: 'exact', head: true }).or('video_script->>style.eq.duo,video_script->>duo_topic.like.decode-*');
   return count || 0;
 }
 // Prochains créneaux libres pour des Reels : un seul par jour, à 20 h (heure de Paris, le pic d'audience du soir), à partir de demain
@@ -657,17 +665,17 @@ async function nextReelSlots(n, ignoreIds = []) {
 // Reel à partir d'un scénario écrit (dossier à la main ou duo de l'IA) : brouillon, voix, puis rendu sur GitHub Actions
 async function dossierReel(d, { voice, pair = 0, music, topic }) {
   let duo = null, title = d.title, caption = d.caption, beats = d.beats.map(x => ({ ...x }));
-  if (d.style === 'duo') ({ duo, title, caption, beats } = duoScript(d, pair));
+  if (d.style === 'duo' || d.duoDecode) ({ duo, title, caption, beats } = duoScript(d, pair));
   const subject = title.split('·').pop().trim().toLowerCase();
   const { data: post, error } = await sb.from('social_posts').insert({
     kind: 'weekly', format: 'reel', status: 'draft',
-    title: duo ? `Duo · ${duo.A.name} et ${duo.B.name} · ${subject}` : 'Dossier décodé · ' + title.charAt(0) + title.slice(1).toLowerCase(),
+    title: duo ? `${d.duoDecode ? 'Duo décodé' : 'Duo'} · ${duo.A.name} et ${duo.B.name} · ${subject}` : 'Dossier décodé · ' + title.charAt(0) + title.slice(1).toLowerCase(),
     slides: [{ t: 'text', kicker: 'DOSSIER ' + d.num, title, body: '' }], caption, hashtags: d.hashtags,
     platforms: ['instagram', 'facebook'], scheduled_at: new Date(Date.now() + 86400000).toISOString(),
   }).select().single();
   if (error) throw error;
   const segments = await voiceOver({ beats, voices: [voice], sb, id: post.id, speed: d.speed || 1.05 });
-  const script = { v: 1, style: d.style || 'dossier', dossier: { num: d.num, title, chapters: d.chapters }, duo, duo_topic: topic, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
+  const script = { v: 1, style: d.style || 'dossier', dossier: { num: d.num, title: d.dossierTitle || title, chapters: d.chapters }, duo, duo_topic: topic, voice: voice.name, beats, segments, created_at: new Date().toISOString() };
   // Musique de fond : 'none' = sans musique, un nom de fichier = ce morceau, sinon au hasard
   if (music === 'none') script.music = false;
   else if (typeof music === 'string' && /^[\w.-]+\.mp3$/.test(music)) script.music_file = music;
@@ -1098,11 +1106,14 @@ export default async function handler(req, res) {
       const voice = voices.find(v => /vautrin|david/i.test(v.name)) || voices[0];
       const n = Math.max(1, Math.min(3, parseInt(b.count, 10) || 3));
       // Sujets déjà traités = Reels Duo non rejetés (un sujet rejeté, raté par exemple, peut être refait)
-      const { data: done } = await sb.from('social_posts').select('title, video_script->duo_topic').eq('video_script->>style', 'duo').neq('status', 'rejected');
+      // (les « Duo décodé » ont le style 'dossier' : on repère tous les Duo par leur sujet)
+      const { data: done } = await sb.from('social_posts').select('title, video_script->duo_topic').or('video_script->>style.eq.duo,video_script->>duo_topic.like.decode-*').neq('status', 'rejected');
       const usedKeys = (done || []).map(r => r.duo_topic).filter(Boolean);
       const usedTitles = [...new Set([...DUO_DONE, ...usedKeys].map(k => (DUO_SUBJECTS.find(s => s.key === k) || {}).title || k)
         .concat((done || []).map(r => String(r.title || '').split('·').pop().trim()).filter(Boolean)))];
-      const subjects = pickDuoSubjects(n, usedKeys);
+      // mode 'decode' = « Duo décodé » : un Dossier décodé repris en Duo (chiffres du dossier), sinon sujets du quotidien
+      const subjects = b.mode === 'decode' ? pickDecodeSubjects(DOSSIERS, n, usedKeys) : pickDuoSubjects(n, usedKeys);
+      if (!subjects.length) return res.status(400).json({ error: 'Tous les Dossiers décodés ont déjà leur version Duo.' });
       const first = await duoCount();
       const made = await Promise.allSettled(subjects.map(async (s, i) => {
         // Musique créée en même temps que le scénario ; si elle échoue, le rendu prend une musique de la bibliothèque
@@ -1114,7 +1125,14 @@ export default async function handler(req, res) {
         // Scénario refusé par le contrôle (prénoms manquants, trop court…) : une 2e tentative
         let d;
         for (let attempt = 0; !d; attempt++) {
-          try { const [raw] = await askClaude(duoPrompt(s, usedTitles), DUO_SYSTEM); d = { ...cleanDuoScript(raw), num: 'IA' }; }
+          try {
+            if (b.mode === 'decode') {
+              // « Duo décodé » : le dossier réécrit avec {A} et {B}, rendu avec le décor d'enquête (Dossier.jsx)
+              const dossier = DOSSIERS[s.key.replace(/^decode-/, '')];
+              const [raw] = await askClaude(decodePrompt(s.key, dossier, duoToolFor(s.key)), DECODE_SYSTEM, MODEL, { effort: 'medium', maxTokens: 16000 });
+              d = cleanDecodeScript(raw, dossier);
+            } else { const [raw] = await askClaude(duoPrompt(s, usedTitles), DUO_SYSTEM); d = { ...cleanDuoScript(raw), num: 'IA' }; }
+          }
           catch (e) { if (attempt) throw e; }
         }
         return dossierReel(d, { voice, pair: first + i, topic: s.key, music: await music });

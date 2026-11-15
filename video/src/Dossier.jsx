@@ -6,6 +6,7 @@ import { AbsoluteFill, Audio, Img, Sequence, staticFile, useCurrentFrame, interp
 import { loadFont } from '@remotion/google-fonts/Inter';
 import { loadFont as loadMono } from '@remotion/google-fonts/JetBrainsMono';
 import data from './data.json';
+import SPR from './duo-sprites.json';
 
 const { fontFamily } = loadFont('normal', { weights: ['500', '700', '800', '900'], subsets: ['latin', 'latin-ext'] });
 const { fontFamily: mono } = loadMono('normal', { weights: ['500', '700'], subsets: ['latin', 'latin-ext'] });
@@ -57,7 +58,7 @@ const Hud = () => {
     <div style={{ position: 'absolute', top: 110, left: 70, right: 70, fontFamily: mono, color: '#e2e8f0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={{ fontSize: 26, letterSpacing: 3, color: DIM }}><span style={{ color: G, opacity: blink ? 1 : 0.3 }}>●</span> DOSSIER {D.num || '001'}</div>
+          <div style={{ fontSize: 26, letterSpacing: 3, color: DIM }}><span style={{ color: G, opacity: blink ? 1 : 0.3 }}>●</span> DOSSIER {D.num || '001'}{data.duo ? ' · ' + data.duo.A.name.toUpperCase() + ' VS ' + data.duo.B.name.toUpperCase() : ''}</div>
           <div style={{ fontFamily, fontSize: String(D.title || '').length > 16 ? 36 : 46, fontWeight: 900, letterSpacing: 1, marginTop: 10, color: '#fff', whiteSpace: 'nowrap' }}>{D.title || ''}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -116,6 +117,35 @@ const Label = ({ x, y, top, sub, color = '#fff', align = 'center', size = 40 }) 
     {sub && <div style={{ fontSize: 22, letterSpacing: 2, color: DIM, marginTop: 6 }}>{sub}</div>}
   </div>
 );
+
+// ── « Duo décodé » : les deux personnages 3D du style Duo (data.duo : prénoms + apparence) sur le décor d'enquête ──
+const DUO = data.duo || null;
+const MOODS = ['neutre', 'joie', 'triste', 'surpris', 'choque', 'reflechit', 'victoire', 'montre'];
+const Person = ({ who, mood, x, bottom, maxW, maxH, at = 4 }) => {
+  const f = useCurrentFrame(), p = DUO && DUO[who];
+  if (!p) return null;
+  const k = SPR[p.look + '-' + mood] ? p.look + '-' + mood : p.look + '-neutre', d = SPR[k];
+  if (!d) return null;
+  const s = Math.min(maxW / d[0], maxH / d[1]), w = d[0] * s, h = d[1] * s;
+  return <Img src={staticFile('duo/' + k + '.webp')} style={{ position: 'absolute', left: x - w / 2, top: bottom - h + io(f, at, at + 10, 40, 0), width: w, height: h, opacity: io(f, at, at + 8, 0, 1),
+    WebkitMaskImage: 'linear-gradient(180deg, #000 80%, transparent)', maskImage: 'linear-gradient(180deg, #000 80%, transparent)', filter: 'drop-shadow(0 0 40px rgba(34,224,138,.25))' }} />;
+};
+const mood = (m, def) => (MOODS.includes(m) ? m : def);
+// Les deux personnages côte à côte, prénom et étiquette dessous
+const DuoPair = ({ b }) => <>
+  <Person who="A" mood={mood(b.moodA, 'joie')} x={300} bottom={1060} maxW={440} maxH={500} at={2} />
+  <Person who="B" mood={mood(b.moodB, 'neutre')} x={780} bottom={1060} maxW={440} maxH={500} at={8} />
+  <Label x={300} y={1080} top={(DUO && DUO.A.name || '').toUpperCase()} sub={b.pillA} color={G} size={44} />
+  <Label x={780} y={1080} top={(DUO && DUO.B.name || '').toUpperCase()} sub={b.pillB} color={b.colB === 'r' ? RED : '#fff'} size={44} />
+</>;
+// Un seul personnage, en grand, avec une étiquette
+const Solo = ({ b }) => {
+  const who = b.who === 'B' ? 'B' : 'A';
+  return <>
+    <Person who={who} mood={mood(b.mood, who === 'A' ? 'joie' : 'triste')} x={540} bottom={1070} maxW={640} maxH={560} />
+    <Label x={540} y={1085} top={b.label || (DUO && DUO[who].name || '').toUpperCase()} sub={b.sub} color={who === 'A' ? G : RED} size={46} />
+  </>;
+};
 
 // ── Visuels par scène ──
 const Title = ({ b }) => {
@@ -229,7 +259,7 @@ const End = ({ b }) => {
     </div>
   );
 };
-const VISUALS = { title: Title, compare: Compare, snowball: Snowball, curve: Curve, result: Result, rule: Rule, end: End, leak: Leak, shrink: Shrink, dca: Dca };
+const VISUALS = { title: Title, compare: Compare, snowball: Snowball, curve: Curve, result: Result, rule: Rule, end: End, leak: Leak, shrink: Shrink, dca: Dca, duo: DuoPair, solo: Solo };
 
 const Scene = ({ b }) => {
   const f = useCurrentFrame(), last = b.i === beats.length - 1;
