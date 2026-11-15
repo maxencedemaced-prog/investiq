@@ -43,6 +43,9 @@ const TOOL_OF = {
   abonnements: 'abonnements', comparer: 'abonnements', 'petites-depenses': 'petites', livraisons: 'petites', courses: 'petites', 'achat-impulsif': 'petites', promos: 'petites',
   'se-payer-en-premier': 'budget', 'budget-50-30-20': 'budget', augmentation: 'budget', 'suivre-budget': 'budget', 'credit-conso': 'credit', 'paiement-4-fois': 'credit',
   'dettes-cheres': 'dettes', decouvert: 'dettes', 'argent-qui-dort': 'inflation', objectif: 'objectif', regulier: 'programme', diversifier: 'sante',
+  // « Duo décodé » : un Dossier décodé repris en Duo (clé 'decode-' + id du dossier)
+  'decode-interets-composes': 'objectif', 'decode-inflation': 'inflation', 'decode-livret': 'inflation', 'decode-dca': 'programme',
+  'decode-etf': 'sante', 'decode-krach': 'objectif',
 };
 export const duoToolFor = key => DUO_TOOLS[TOOL_OF[key]] || null;
 // Sujets déjà faits à la main (api/_dossier.js) : jamais repris par l'IA
@@ -122,6 +125,26 @@ export function pickDuoSubjects(n, usedKeys) {
   const out = free.slice(0, n);
   while (out.length < n) out.push({ key: 'libre-' + Date.now().toString(36) + out.length, title: '', brief: 'invente un sujet d’argent du quotidien NOUVEAU (différent de tous les sujets déjà traités ci-dessous) où {A} fait le bon choix et {B} non.' });
   return out;
+}
+
+// « Duo décodé » : Dossiers décodés (api/_dossier.js) pas encore repris en Duo. Les dossiers déjà faits en Duo à la main
+// (commencer-tot, frais-caches, precaution) et les versions pub sont exclus. Le brief contient le texte et les chiffres vérifiés du dossier.
+const DECODE_SKIP = ['commencer-tot', 'frais-caches', 'precaution'];
+export function pickDecodeSubjects(dossiers, n, usedKeys) {
+  const free = Object.entries(dossiers).filter(([id, d]) => d.style !== 'duo' && !/^pub-/.test(id) && !DECODE_SKIP.includes(id) && !usedKeys.includes('decode-' + id));
+  for (let i = free.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [free[i], free[j]] = [free[j], free[i]]; }
+  return free.slice(0, n).map(([id, d]) => {
+    const scenes = d.beats.filter(b => b.visual !== 'end');
+    const end = d.beats.find(b => b.visual === 'end') || {};
+    const figures = scenes.map(b => [b.hud && b.hud + ' (' + (b.hudLabel || '') + ')', b.leftValue && (b.left || 'gauche') + ' = ' + b.leftValue + ' €', b.rightValue && (b.right || 'droite') + ' = ' + b.rightValue + ' €']
+      .filter(Boolean).join(', ')).filter(Boolean).join(' ; ');
+    return {
+      key: 'decode-' + id, title: 'DÉCODÉ · ' + d.title,
+      brief: `adapte le « Dossier décodé » n° ${d.num} (${d.title}) en Reel Duo : {A} applique le bon réflexe expliqué dans le dossier, {B} tombe dans le piège. ` +
+        `Garde le même message pédagogique, les mêmes exemples et UNIQUEMENT les chiffres et hypothèses du dossier (ils sont vérifiés), sans en inventer d'autres. ` +
+        `Texte du dossier : « ${scenes.map(b => b.say).join(' ')} » Chiffres du dossier : ${figures || 'aucun'}. Note d'hypothèses : « ${end.note || ''} ».`,
+    };
+  });
 }
 
 const norm = w => String(w).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');

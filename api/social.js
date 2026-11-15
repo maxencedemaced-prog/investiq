@@ -19,7 +19,7 @@ import { createClient } from '@supabase/supabase-js';
 import { reelConfig, reelVoices, writeReelScript, voiceOver, dispatchRender, dispatchWorkflow, cancelWorkflowRuns, ttsSettings, calmVoice } from './_reel.js';
 import { TUTOS } from './_tuto.js';
 import { DOSSIERS, duoScript } from './_dossier.js';
-import { DUO_SYSTEM, DUO_SUBJECTS, DUO_DONE, duoPrompt, pickDuoSubjects, cleanDuoScript, duoToolFor } from './_duo.js';
+import { DUO_SYSTEM, DUO_SUBJECTS, DUO_DONE, duoPrompt, pickDuoSubjects, pickDecodeSubjects, cleanDuoScript, duoToolFor } from './_duo.js';
 
 // Voix des tutoriels : celles du Studio + voix à tester ajoutées par leur identifiant ElevenLabs
 const TUTO_EXTRA_VOICES = ['bts16wA7hWMfnlEIHuRo', 'HuLbOdhRlvQQN8oPP0AJ'];
@@ -1102,7 +1102,9 @@ export default async function handler(req, res) {
       const usedKeys = (done || []).map(r => r.duo_topic).filter(Boolean);
       const usedTitles = [...new Set([...DUO_DONE, ...usedKeys].map(k => (DUO_SUBJECTS.find(s => s.key === k) || {}).title || k)
         .concat((done || []).map(r => String(r.title || '').split('·').pop().trim()).filter(Boolean)))];
-      const subjects = pickDuoSubjects(n, usedKeys);
+      // mode 'decode' = « Duo décodé » : un Dossier décodé repris en Duo (chiffres du dossier), sinon sujets du quotidien
+      const subjects = b.mode === 'decode' ? pickDecodeSubjects(DOSSIERS, n, usedKeys) : pickDuoSubjects(n, usedKeys);
+      if (!subjects.length) return res.status(400).json({ error: 'Tous les Dossiers décodés ont déjà leur version Duo.' });
       const first = await duoCount();
       const made = await Promise.allSettled(subjects.map(async (s, i) => {
         // Musique créée en même temps que le scénario ; si elle échoue, le rendu prend une musique de la bibliothèque
