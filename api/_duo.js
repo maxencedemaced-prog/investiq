@@ -223,7 +223,8 @@ export function cleanDecodeScript(raw, dossier) {
   if (beats.length < 3) throw new Error('Scénario Duo décodé trop court');
   const end = raw.beats.find(b => b && b.visual === 'end') || {};
   beats.push({ chapter: 2, visual: 'end', hud: 'DÉCODÉ', hudLabel: 'DOSSIER CLOS', hudColor: 'green', cta: oend.cta || 'Essaie Kapitaro · kapitaro.fr', note: oend.note || '',
-    say: /\{A\}/.test(end.say || '') && /\{B\}/.test(end.say || '') ? txt(end.say, 240) : 'Et toi, tu es plutôt {A} ou {B} ? ' + (oend.say || '').split('. ').pop() });
+    say: (/\{A\}/.test(end.say || '') && /\{B\}/.test(end.say || '') ? txt(end.say, 240) : 'Et toi, tu es plutôt {A} ou {B} ? ' + (oend.say || '').split('. ').pop()).replace(/kapitaro\.fr/gi, 'Kapitaro') });
+  for (const b of beats) b.say = b.say.replace(/kapitaro\.fr/gi, 'Kapitaro');
   // Légende : accroche de l'IA + question, puis les paragraphes du dossier (hypothèses, risques, appel), inchangés
   const rest = String(dossier.caption || '').split('\n\n').slice(1).join('\n\n');
   return {
