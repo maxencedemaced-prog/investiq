@@ -1504,10 +1504,10 @@ async function renderForex(silent) {
 // Calendrier réel (api/feed.js?kind=ipo, commun à tous) : opérations à venir et récentes, avec la lecture de l'IA
 // (revendre dès la cotation, attendre, garder sur la durée, prudence). Information éducative, jamais un conseil personnalisé.
 const IPO_SCEN_UI = {
-  premier_jour: { label: '⚡ Revendre dès la cotation', note: 'spéculatif', bg: '#fff4e0', fg: '#b45309' },
-  attendre:     { label: '⏳ Attendre quelques mois', note: '', bg: '#eef2ff', fg: '#4338ca' },
-  long_terme:   { label: '🌱 À garder sur la durée', note: '', bg: '#e8f8f0', fg: '#1a7f5a' },
-  eviter:       { label: '⛔ Prudence', note: '', bg: '#fdecec', fg: '#c0392b' },
+  premier_jour: { label: '⚡ Revendre dès la cotation', note: 'spéculatif', bg: 'rgba(245,158,11,0.13)', fg: '#d97706' },
+  attendre:     { label: '⏳ Attendre quelques mois', note: '', bg: 'rgba(99,102,241,0.13)', fg: '#6366f1' },
+  long_terme:   { label: '🌱 À garder sur la durée', note: '', bg: 'rgba(22,163,74,0.13)', fg: '#16a34a' },
+  eviter:       { label: '⛔ Prudence', note: '', bg: 'rgba(220,38,38,0.12)', fg: '#dc2626' },
 };
 async function renderIpo(retry) {
   const list = document.getElementById('news-list');
@@ -1564,7 +1564,7 @@ async function renderIpo(retry) {
       ${x.activite ? `<div style="font-size:13px;color:var(--color-text);margin-top:10px;line-height:1.5">${esc(x.activite)}</div>` : ''}
       <div style="margin-top:12px;background:${s.bg};border-radius:12px;padding:10px 12px">
         <div style="font-size:13px;font-weight:800;color:${s.fg}">${s.label}${s.note ? ` <span style="font-weight:600;font-size:11px">(${s.note})</span>` : ''}</div>
-        <div style="font-size:12.5px;color:#1c1c1e;margin-top:4px;line-height:1.5">${esc(x.raison)}</div>
+        <div style="font-size:12.5px;color:var(--color-text);margin-top:4px;line-height:1.5">${esc(x.raison)}</div>
       </div>
       ${x.a_surveiller ? `<div style="font-size:12px;color:var(--color-text-secondary);margin-top:8px;line-height:1.5">👀 À surveiller : ${esc(x.a_surveiller)}</div>` : ''}
     </div>`;
