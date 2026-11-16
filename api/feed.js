@@ -214,14 +214,15 @@ async function buildIpo() {
   const cal = await getJson(`https://finnhub.io/api/v1/calendar/ipo?from=${ymd(now - 30 * DAY)}&to=${ymd(now + 45 * DAY)}&token=${key}`);
   const seen = new Set();
   const all = (cal.ipoCalendar || []).filter(x => x && x.symbol && x.name && x.date && x.status !== 'withdrawn'
-      && !/acquisition|blank check|\bspac\b/i.test(x.name) && !seen.has(x.symbol) && seen.add(x.symbol))
+      && !/acquisition|blank check|\bspac\b|capital corp/i.test(x.name) && !seen.has(x.symbol) && seen.add(x.symbol))
     .map(x => {
       const price = ipoPrice(x.price);
       const value = Number(x.totalSharesValue) > 0 ? Number(x.totalSharesValue) : (price && x.numberOfShares ? price * x.numberOfShares : 0);
       return { symbol: String(x.symbol).toUpperCase(), name: clean(x.name, 80), date: x.date, exchange: clean(x.exchange, 40), status: x.status,
         priceText: clean(x.price, 20), price, value, shares: Number(x.numberOfShares) || null, upcoming: x.date >= today };
     })
-    .filter(x => x.value >= 50e6);   // micro-opérations écartées : peu d'information, trop spéculatives
+    // micro-opérations, SPAC (part à 10 $) et opérations passées sans prix connu écartées : peu d'information, trop spéculatives
+    .filter(x => x.value >= 50e6 && (x.upcoming || x.price) && !(x.price === 10 && /U$/.test(x.symbol)));
   const upcoming = all.filter(x => x.upcoming).sort((a, b) => a.date.localeCompare(b.date) || b.value - a.value).slice(0, 7);
   const recent = all.filter(x => !x.upcoming).sort((a, b) => b.value - a.value).slice(0, 7);
   const list = [...upcoming, ...recent];
