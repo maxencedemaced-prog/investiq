@@ -256,6 +256,7 @@ function renderNewsPage(auto=false) {
       <button class="filter-pill" id="news-fil-entreprises" onclick="setNewsFilter('entreprises',this)" style="white-space:nowrap;flex-shrink:0">🏢 Entreprises</button>
       <button class="filter-pill" id="news-fil-favoris" onclick="setNewsFilter('favoris',this)" style="white-space:nowrap;flex-shrink:0">⭐ Favoris${watchlist.length > 0 ? ` <span style="background:#f59e0b;color:#fff;border-radius:99px;font-size:10px;font-weight:800;padding:1px 6px;margin-left:2px">${watchlist.length}</span>` : ''}</button>
       <button class="filter-pill" id="news-fil-agenda" onclick="setNewsFilter('agenda',this)" style="white-space:nowrap;flex-shrink:0">📅 Agenda</button>
+      <button class="filter-pill" id="news-fil-ipo" onclick="setNewsFilter('ipo',this)" style="white-space:nowrap;flex-shrink:0">🚀 Introductions en bourse</button>
       <button class="filter-pill" id="news-fil-matieres" onclick="setNewsFilter('matieres',this)" style="white-space:nowrap;flex-shrink:0">🛢️ Matières premières</button>
       <button class="filter-pill" id="news-fil-forex" onclick="setNewsFilter('forex',this)" style="white-space:nowrap;flex-shrink:0">💱 Forex</button>
     </div>
@@ -1329,7 +1330,7 @@ function setNewsFilter(filter, el) {
   // Titre dynamique de la section
   const titleMap = {
     tous:'Actualités du marché', signaux:'⚡ Signaux IA', entreprises:'🏢 Actualités entreprises',
-    favoris:'⭐ Mes favoris', agenda:'📅 Agenda économique', matieres:'🛢️ Matières premières', forex:'💱 Forex',
+    favoris:'⭐ Mes favoris', agenda:'📅 Agenda économique', ipo:'🚀 Introductions en bourse', matieres:'🛢️ Matières premières', forex:'💱 Forex',
     macro:'🌍 Macro-économie', banque:'🏦 Banques centrales', marche:'📈 Marchés', geo:'⚡ Géopolitique', secteur:'🏢 Secteurs'
   };
   const titleEl = document.getElementById('news-section-title');
@@ -1349,6 +1350,8 @@ function setNewsFilter(filter, el) {
   } else if (filter === 'agenda') {
     if (isCacheValid('agenda')) { restoreFromCache('agenda'); return; }
     renderAgenda();
+  } else if (filter === 'ipo') {
+    renderIpo();
   } else if (filter === 'matieres') {
     renderMatieres();
   } else if (filter === 'forex') {
@@ -1495,6 +1498,84 @@ async function renderForex(silent) {
     if (newsFilter !== 'forex' || !visible) { clearInterval(window._fxTimer); return; }
     renderForex(true);
   }, 120000);
+}
+
+// ===== INTRODUCTIONS EN BOURSE (onglet de l'Actualité) =====
+// Calendrier réel (api/feed.js?kind=ipo, commun à tous) : opérations à venir et récentes, avec la lecture de l'IA
+// (revendre dès la cotation, attendre, garder sur la durée, prudence). Information éducative, jamais un conseil personnalisé.
+const IPO_SCEN_UI = {
+  premier_jour: { label: '⚡ Revendre dès la cotation', note: 'spéculatif', bg: '#fff4e0', fg: '#b45309' },
+  attendre:     { label: '⏳ Attendre quelques mois', note: '', bg: '#eef2ff', fg: '#4338ca' },
+  long_terme:   { label: '🌱 À garder sur la durée', note: '', bg: '#e8f8f0', fg: '#1a7f5a' },
+  eviter:       { label: '⛔ Prudence', note: '', bg: '#fdecec', fg: '#c0392b' },
+};
+async function renderIpo(retry) {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+  if (!currentUser) { list.innerHTML = aiLockedStateHTML('Connecte-toi pour voir les introductions en bourse analysées par l\'IA.'); return; }
+  if (!retry) list.innerHTML = kpSkelCards(4);
+  let j = null;
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    const headers = { Authorization: 'Bearer ' + token };
+    const r = await fetch('/api/feed?kind=ipo', { headers });
+    if (r.ok) j = await r.json();
+    if (j && j.stale) {
+      const refresh = fetch('/api/feed?kind=ipo&refresh=1', { headers }).catch(() => null);
+      if (!(j.items || []).length && !retry) {   // tout premier calcul : on attend le résultat
+        list.innerHTML = kpSkelCards(4) + '<div style="text-align:center;font-size:12.5px;color:var(--color-text-secondary);margin-top:8px">L\'IA analyse les introductions en bourse du moment… (environ 1 minute)</div>';
+        await refresh;
+        if (newsFilter !== 'ipo') return;
+        return renderIpo(true);
+      }
+    }
+  } catch (e) { j = null; }
+  if (newsFilter !== 'ipo') return;   // l'utilisateur a changé d'onglet pendant le chargement
+  const items = (j && j.items) || [];
+  if (!items.length) {
+    list.innerHTML = '<div style="padding:16px;border-radius:14px;border:1px dashed var(--color-border);color:var(--color-text-secondary);font-size:13px;text-align:center">Aucune introduction en bourse importante à afficher pour le moment. Réessaie un peu plus tard.</div>';
+    return;
+  }
+  const esc = _escHtml;
+  const num = (v, d = 2) => Number(v).toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = v => v == null ? '' : `<span style="font-weight:800;color:${v >= 0 ? '#16a34a' : '#dc2626'}">${v >= 0 ? '+' : '−'}${num(Math.abs(v), 1)} %</span>`;
+  const money = v => v >= 1e9 ? num(v / 1e9, 1) + ' Md$' : Math.round(v / 1e6) + ' M$';
+  const day = d => new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+  const card = x => {
+    const s = IPO_SCEN_UI[x.scenario] || IPO_SCEN_UI.attendre;
+    const dots = '●'.repeat(x.risque) + '○'.repeat(5 - x.risque);
+    const facts = [
+      `${x.upcoming ? 'Prévue le' : 'Cotée le'} <b>${day(x.date)}</b>`,
+      esc(x.exchange || ''),
+      x.priceText ? `Prix d'intro : <b>${esc(x.priceText.replace('-', ' à ').replace(/\./g, ','))} $</b>` : '',
+      x.value ? `Levée : <b>${money(x.value)}</b>` : '',
+    ].filter(Boolean).join(' · ');
+    const perf = x.since != null ? `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--color-text-secondary);margin-top:8px">
+        <span>1er jour : ${pct(x.firstDay)}</span><span>Depuis l'intro : ${pct(x.since)}</span>${x.last ? `<span>Cours : <b style="color:var(--color-text)">${num(x.last)} ${x.cur === 'USD' ? '$' : esc(x.cur)}</b></span>` : ''}</div>` : '';
+    return `<div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="min-width:0"><div style="font-size:15px;font-weight:800;color:var(--color-text);line-height:1.3">${esc(x.name)}</div>
+          <div style="font-size:11.5px;color:var(--color-text-secondary);margin-top:2px">${esc(x.symbol)}${x.secteur ? ' · ' + esc(x.secteur) : ''}</div></div>
+        <div title="Niveau de risque ${x.risque}/5" style="font-size:11px;color:${x.risque >= 4 ? '#dc2626' : x.risque >= 3 ? '#d97706' : '#16a34a'};white-space:nowrap;letter-spacing:1px">${dots}</div>
+      </div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-top:8px;line-height:1.5">${facts}</div>
+      ${perf}
+      ${x.activite ? `<div style="font-size:13px;color:var(--color-text);margin-top:10px;line-height:1.5">${esc(x.activite)}</div>` : ''}
+      <div style="margin-top:12px;background:${s.bg};border-radius:12px;padding:10px 12px">
+        <div style="font-size:13px;font-weight:800;color:${s.fg}">${s.label}${s.note ? ` <span style="font-weight:600;font-size:11px">(${s.note})</span>` : ''}</div>
+        <div style="font-size:12.5px;color:#1c1c1e;margin-top:4px;line-height:1.5">${esc(x.raison)}</div>
+      </div>
+      ${x.a_surveiller ? `<div style="font-size:12px;color:var(--color-text-secondary);margin-top:8px;line-height:1.5">👀 À surveiller : ${esc(x.a_surveiller)}</div>` : ''}
+    </div>`;
+  };
+  const up = items.filter(x => x.upcoming), past = items.filter(x => !x.upcoming);
+  const head = t => `<div style="font-size:12px;font-weight:800;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 8px">${t}</div>`;
+  const updated = j.generated_at ? new Date(j.generated_at).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
+  list.innerHTML = `<div style="font-size:12.5px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:4px">Les grandes introductions en bourse récentes et à venir (surtout aux États-Unis). Pour chacune, l'IA indique le scénario qui lui paraît le plus raisonnable : <b>revendre dès la cotation</b>, <b>attendre</b> quelques mois, <b>garder</b> sur la durée, ou <b>prudence</b>.</div>
+    ${up.length ? head('À venir') + up.map(card).join('') : ''}
+    ${past.length ? head('Récemment cotées') + past.map(card).join('') : ''}
+    <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.5;margin-top:6px">Bon à savoir : depuis la France, on achète en général au premier cours coté, souvent plus haut que le prix d'introduction. Les premiers mois sont très agités et les anciens actionnaires peuvent vendre à la fin de leur période de blocage (souvent 3 à 6 mois).<br>Information éducative, pas un conseil personnalisé ; aucune performance n'est garantie. Données : calendrier Finnhub, cours Yahoo Finance${updated ? ' · mise à jour le ' + updated : ''}.</div>`;
 }
 
 // ===== COMPANY DETAIL PAGE =====
