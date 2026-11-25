@@ -74,7 +74,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="style.css?v=20261110190000">
+  <link rel="stylesheet" href="style.css?v=20261125183000">
   <style>
     /* ── Animations globales ── */
     .card { transition: box-shadow 0.2s ease, transform 0.15s ease; }
@@ -194,33 +194,29 @@
     <!-- COLONNE DROITE : aperçu + formulaire -->
     <div class="kh-right">
 
-      <!-- APERÇU ANIMÉ (exemple) -->
-      <div id="hero-dashboard" class="kh-dash">
-        <div class="kh-dash-label"><i></i> Portefeuille exemple</div>
-        <div class="kh-dash-head">
-          <div>
-            <div class="kh-dash-val" id="hero-portf-val">47,3 k€</div>
-            <div class="kh-dash-sub">Valeur totale</div>
-          </div>
-          <div class="kh-dash-pnl">
-            <div id="hero-pnl-val">+3,2 k€</div>
-            <small>+7,2 % au total</small>
-          </div>
+      <!-- SIMULATEUR DU PREMIER ÉCRAN : un résultat chiffré avant même de créer un compte -->
+      <div id="hero-sim" class="kh-dash ks">
+        <div class="kh-dash-label"><i></i> Ton épargne dans le futur, en 10 secondes</div>
+        <label class="ks-row" for="ks-age"><span>J’ai</span><b id="ks-age-v">25 ans</b></label>
+        <input class="ks-range" type="range" id="ks-age" min="18" max="50" step="1" value="25" aria-label="Ton âge">
+        <label class="ks-row" for="ks-cap"><span>J’ai déjà de côté</span><b id="ks-cap-v">1 000 €</b></label>
+        <input class="ks-range" type="range" id="ks-cap" min="0" max="50000" step="500" value="1000" aria-label="Somme déjà de côté">
+        <label class="ks-row" for="ks-mon"><span>Je mets chaque mois</span><b id="ks-mon-v">150 €</b></label>
+        <input class="ks-range" type="range" id="ks-mon" min="10" max="1000" step="10" value="150" aria-label="Versement par mois">
+        <div class="ks-res" aria-live="polite">
+          <div class="ks-res-lbl">À 60 ans, tu pourrais avoir</div>
+          <div class="ks-res-val" id="ks-total">0 €</div>
+          <div class="ks-res-sub">Tu aurais versé <b id="ks-paid">0 €</b>. Le reste, <b class="ks-g" id="ks-gain">0 €</b>, viendrait des intérêts.</div>
         </div>
-        <svg width="100%" height="56" viewBox="0 0 340 56" preserveAspectRatio="none" id="hero-mini-chart" style="display:block;margin:4px 0 12px">
-          <defs>
-            <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#16a34a" stop-opacity="0.18"/>
-              <stop offset="100%" stop-color="#16a34a" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <path id="hero-chart-fill" fill="url(#chartGrad)" d=""/>
-          <path id="hero-chart-line" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" d=""/>
+        <svg class="ks-chart" viewBox="0 0 340 96" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="ksGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#16a34a" stop-opacity="0.28"/><stop offset="100%" stop-color="#16a34a" stop-opacity="0.02"/></linearGradient></defs>
+          <path id="ks-fill" fill="url(#ksGrad)" d=""/>
+          <path id="ks-paid-line" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="4 4" d=""/>
+          <path id="ks-line" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" d=""/>
         </svg>
-        <div class="kh-pos"><b style="background:#dcfce7;color:#15803d">IW</b><div><span>MSCI World</span><small>ETF Monde · PEA</small></div><em id="hero-pos1-chg">+0,80 %</em><s>18,4 k€</s></div>
-        <div class="kh-pos"><b style="background:#e0e7ff;color:#4338ca">MC</b><div><span>LVMH</span><small>Action · Luxe</small></div><em id="hero-pos2-chg">+2,10 %</em><s>12,1 k€</s></div>
-        <div class="kh-pos"><b style="background:#fef3c7;color:#b45309">NV</b><div><span>NVIDIA</span><small>Action · Tech</small></div><em id="hero-pos3-chg" style="color:#dc2626">-0,40 %</em><s>8,7 k€</s></div>
-        <div class="kh-dash-ai"><i></i><span id="hero-ai-msg">Assistant IA · Analyse en cours…</span></div>
+        <div class="ks-leg"><span><i style="background:#16a34a"></i>Avec les intérêts</span><span><i style="background:#98a2b3"></i>Ce que tu verses</span><em id="ks-years"></em></div>
+        <button type="button" class="ks-cta" onclick="heroSimStart()">Créer mon plan gratuit →</button>
+        <div class="ks-note">Simulation avec une hypothèse de 6 % par an en moyenne, hors frais et impôts. Un placement peut baisser : rien n’est garanti. Outil éducatif, pas un conseil.</div>
       </div>
 
       <!-- FORMULAIRE -->
@@ -463,58 +459,76 @@
 </div>
 
 <script>
-// ===== APERÇU ANIMÉ DU PREMIER ÉCRAN (portefeuille exemple) =====
+// ===== SIMULATEUR DU PREMIER ÉCRAN =====
+// Trois curseurs (âge, somme de départ, versement mensuel) et la projection à 60 ans s'anime tout de suite.
+// Même formule que les calculateurs publics : capitalisation mensuelle (taux annuel / 12). Hypothèse fixe de 6 % par an.
 (function() {
-  let started = false;
-  function start() {
-    if (started) return; started = true;
-    const W = 340, pts = [];
-    let v = 32;
-    for (let i = 0; i < W; i += 5) { v += (Math.random() - 0.44) * 6; v = Math.max(8, Math.min(48, v)); pts.push({ x: i, y: 56 - v }); }
-    let d = `M${pts[0].x},${pts[0].y}`;
-    for (let i = 1; i < pts.length; i++) { const cp = { x: (pts[i-1].x + pts[i].x) / 2, y: (pts[i-1].y + pts[i].y) / 2 }; d += ` Q${pts[i-1].x},${pts[i-1].y} ${cp.x},${cp.y}`; }
-    const line = document.getElementById('hero-chart-line'), fill = document.getElementById('hero-chart-fill');
-    if (line) line.setAttribute('d', d);
-    if (fill) fill.setAttribute('d', d + ` L${pts[pts.length-1].x},56 L0,56 Z`);
-    // Messages de l'assistant : constats, jamais de consigne d'achat ou de vente
-    const msgs = [
-      'Assistant IA · Portefeuille en hausse de 1,2 % aujourd’hui',
-      '💡 Ton ETF Monde répartit déjà ton argent sur 1 500 entreprises',
-      '⚠️ La tech pèse 42 % du portefeuille : à surveiller',
-      '🎯 Objectif 50 000 € : sur la bonne trajectoire',
-      'Assistant IA · Analyse en cours…',
-    ];
-    let msgIdx = 0;
-    const msgEl = document.getElementById('hero-ai-msg');
-    setInterval(() => {
-      if (!msgEl) return;
-      msgEl.style.transition = 'opacity 0.4s ease'; msgEl.style.opacity = '0';
-      setTimeout(() => { msgIdx = (msgIdx + 1) % msgs.length; msgEl.textContent = msgs[msgIdx]; msgEl.style.opacity = '1'; }, 400);
-    }, 3200);
-    const vals = [
-      { el: 'hero-portf-val', base: 47300, range: 400, fmt: v => (v/1000).toFixed(1).replace('.', ',') + ' k€' },
-      { el: 'hero-pnl-val',   base: 3200,  range: 150, fmt: v => '+' + (v/1000).toFixed(1).replace('.', ',') + ' k€' },
-      { el: 'hero-pos1-chg', base: 0.8,   range: 0.3, fmt: v => (v>=0?'+':'') + v.toFixed(2).replace('.', ',') + ' %' },
-      { el: 'hero-pos2-chg', base: 2.1,   range: 0.4, fmt: v => (v>=0?'+':'') + v.toFixed(2).replace('.', ',') + ' %' },
-      { el: 'hero-pos3-chg', base: -0.4,  range: 0.2, fmt: v => (v>=0?'+':'') + v.toFixed(2).replace('.', ',') + ' %' },
-    ];
-    const tick = () => vals.forEach(({ el, base, range, fmt }) => {
-      const n = document.getElementById(el); if (!n) return;
-      const x = base + (Math.random() - 0.5) * range;
-      n.textContent = fmt(x);
-      if (el !== 'hero-portf-val') n.style.color = x < 0 ? '#dc2626' : '#16a34a';
-    });
-    tick(); setInterval(tick, 2500);
+  const box = document.getElementById('hero-sim');
+  if (!box) return;
+  const RATE = 6, GOAL_AGE = 60, W = 340, H = 96;
+  const $ = id => document.getElementById(id);
+  const age = $('ks-age'), cap = $('ks-cap'), mon = $('ks-mon');
+  const eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
+  const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Sur téléphone, le simulateur passe juste sous le titre, résultat en premier : c'est la première chose que l'on voit
+  const mq = window.matchMedia ? matchMedia('(max-width:760px)') : null;
+  const home = box.parentNode, homeNext = box.nextElementSibling;
+  function place() {
+    const sub = document.querySelector('.kh-left .kh-sub');
+    if (mq && mq.matches && sub) { sub.parentNode.insertBefore(box, sub); box.classList.add('ks-top'); }
+    else { home.insertBefore(box, homeNext); box.classList.remove('ks-top'); }
   }
-  if (!document.getElementById('hero-dash-style')) {
-    const s = document.createElement('style');
-    s.id = 'hero-dash-style';
-    s.textContent = '@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.8)}}';
-    document.head.appendChild(s);
-  }
-  if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
+  place();
+  if (mq) { if (mq.addEventListener) mq.addEventListener('change', place); else if (mq.addListener) mq.addListener(place); }
 
+  const shown = { total: 0, paid: 0, gain: 0 };
+  let raf = 0;
+  function countTo(target, ms) {
+    cancelAnimationFrame(raf);
+    const from = { total: shown.total, paid: shown.paid, gain: shown.gain }, t0 = performance.now();
+    const step = now => {
+      const k = ms ? Math.min(1, (now - t0) / ms) : 1, e = 1 - Math.pow(1 - k, 3);
+      for (const key in target) shown[key] = from[key] + (target[key] - from[key]) * e;
+      $('ks-total').textContent = eur(shown.total); $('ks-paid').textContent = eur(shown.paid); $('ks-gain').textContent = eur(shown.gain);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+  function path(vals, max) {
+    return vals.map((v, i) => (i ? 'L' : 'M') + (i / (vals.length - 1) * W).toFixed(1) + ',' + (H - 4 - v / max * (H - 12)).toFixed(1)).join(' ');
+  }
+  function update(first) {
+    const a = +age.value, c = +cap.value, m = +mon.value, years = GOAL_AGE - a, i = RATE / 100 / 12;
+    const tot = [c], paid = [c];
+    let v = c;
+    for (let y = 1; y <= years; y++) { for (let k = 0; k < 12; k++) v = v * (1 + i) + m; tot.push(v); paid.push(c + m * 12 * y); }
+    $('ks-age-v').textContent = a + ' ans'; $('ks-cap-v').textContent = eur(c); $('ks-mon-v').textContent = eur(m);
+    $('ks-years').textContent = 'sur ' + years + ' ans';
+    [age, cap, mon].forEach(el => el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%'));
+    const d = path(tot, v);
+    $('ks-line').setAttribute('d', d); $('ks-fill').setAttribute('d', d + ' L' + W + ',' + H + ' L0,' + H + ' Z'); $('ks-paid-line').setAttribute('d', path(paid, v));
+    countTo({ total: v, paid: paid[years], gain: v - paid[years] }, calm ? 0 : first ? 1400 : 350);
+    if (first && !calm) {   // la courbe se dessine à l'arrivée
+      const line = $('ks-line'), len = line.getTotalLength ? line.getTotalLength() : 600;
+      line.style.strokeDasharray = len; line.style.strokeDashoffset = len; $('ks-fill').style.opacity = 0;
+      requestAnimationFrame(() => { line.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(.2,.7,.2,1)'; $('ks-fill').style.transition = 'opacity 1s ease .5s'; line.style.strokeDashoffset = 0; $('ks-fill').style.opacity = 1; });
+      setTimeout(() => { line.style.transition = ''; line.style.strokeDasharray = ''; line.style.strokeDashoffset = ''; }, 1600);
+    }
+  }
+  let touched = false;
+  function onInput() {
+    update(false);
+    try { localStorage.setItem('kp_sim', JSON.stringify({ age: +age.value, cap: +cap.value, mon: +mon.value })); } catch (e) {}
+    if (!touched) { touched = true; try { window.va && window.va('event', { name: 'hero_sim' }); } catch (e) {} }
+  }
+  [age, cap, mon].forEach(el => el.addEventListener('input', onInput));
+  if (document.readyState === 'complete') update(true); else window.addEventListener('load', () => update(true));
 })();
+// Bouton du simulateur : ouvre l'inscription
+function heroSimStart() {
+  try { window.va && window.va('event', { name: 'hero_sim_cta' }); } catch (e) {}
+  heroStart('signup');
+}
 
 // Switcher onglets auth
 function _switchAuthStyle(tab) {
@@ -1795,7 +1809,7 @@ function heroStart(tab) {
 <script src="calc.js?v=20261103235000"></script>
 <script src="universe.js?v=20261110120000"></script>
 <script src="app-objectif.js?v=20261110150000"></script>
-<script src="app-positions.js?v=20261110150000"></script>
+<script src="app-positions.js?v=20261125193000"></script>
 <script src="app-marches.js?v=20261110191500"></script>
 <script src="app-coeur.js?v=20261110233000"></script>
 <script src="app-ecrans.js?v=20261110210000"></script>
