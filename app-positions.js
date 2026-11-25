@@ -1779,6 +1779,70 @@ function obCheckBudget() {
   if (err) err.style.display = filled ? 'none' : 'block';
 }
 
+// Tête du plan : le chiffre projeté, animé, avec la courbe (même calcul que la page Objectif : capitalisation mensuelle).
+let _obHero = null;
+function obPlanHeroHTML(capital, monthly, years, rate, target) {
+  const i = rate / 100 / 12, tot = [capital], paid = [capital];
+  let v = capital, reach = null;
+  for (let y = 1; y <= years; y++) { for (let k = 0; k < 12; k++) v = v * (1 + i) + monthly; tot.push(v); paid.push(capital + monthly * 12 * y); }
+  if (target > 0) {   // en combien d'années l'objectif serait atteint (60 ans au plus)
+    let w = capital;
+    if (w >= target) reach = 0;
+    else for (let m = 1; m <= 720; m++) { w = w * (1 + i) + monthly; if (w >= target) { reach = Math.ceil(m / 12); break; } }
+  }
+  const W = 340, H = 90, max = Math.max(v, 1);
+  const path = vals => vals.map((x, n) => (n ? 'L' : 'M') + (n / (vals.length - 1) * W).toFixed(1) + ',' + (H - 4 - x / max * (H - 12)).toFixed(1)).join(' ');
+  const d = path(tot);
+  _obHero = { total: v, paid: paid[years], gain: Math.max(0, v - paid[years]) };
+  const eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
+  const goal = !target ? '' : reach === 0 ? `🎯 Ton objectif de <b>${eur(target)}</b> est déjà atteint.`
+    : reach ? `🎯 Ton objectif de <b>${eur(target)}</b> serait atteint dans environ <b>${reach} an${reach > 1 ? 's' : ''}</b>.`
+    : `🎯 Pour viser <b>${eur(target)}</b>, il faudra verser un peu plus chaque mois.`;
+  return `
+    <div id="ob-hero" style="position:relative;overflow:hidden;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:16px;padding:16px 16px 12px;margin-bottom:10px;text-align:center">
+      <div style="font-size:12.5px;font-weight:700;color:#15803d">Dans ${years} an${years > 1 ? 's' : ''}, tu pourrais avoir</div>
+      <div id="ob-hero-total" style="font-size:clamp(34px,9vw,44px);font-weight:900;letter-spacing:-.04em;line-height:1.1;color:#0b1220;font-variant-numeric:tabular-nums;margin:2px 0 4px">0 €</div>
+      <div style="font-size:12.5px;line-height:1.5;color:#475467">Tu aurais versé <b id="ob-hero-paid" style="color:#0b1220">0 €</b>. Le reste, <b id="ob-hero-gain" style="color:#15803d">0 €</b>, viendrait des intérêts.</div>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="display:block;width:100%;height:90px;margin-top:10px">
+        <defs><linearGradient id="obHeroGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#16a34a" stop-opacity="0.3"/><stop offset="100%" stop-color="#16a34a" stop-opacity="0.02"/></linearGradient></defs>
+        <path id="ob-hero-fill" fill="url(#obHeroGrad)" d="${d} L${W},${H} L0,${H} Z"/>
+        <path fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-dasharray="4 4" d="${path(paid)}"/>
+        <path id="ob-hero-line" fill="none" stroke="#16a34a" stroke-width="2.6" stroke-linecap="round" d="${d}"/>
+      </svg>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:11px;color:#667085;margin-top:4px">
+        <span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:5px"></i>Avec les intérêts</span>
+        <span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#98a2b3;margin-right:5px"></i>Ce que tu verses</span>
+      </div>
+      ${goal ? `<div style="font-size:13px;color:#0b1220;line-height:1.5;margin-top:10px;background:#fff;border-radius:10px;padding:9px 12px">${goal}</div>` : ''}
+      <div style="font-size:10.5px;color:#667085;line-height:1.45;margin-top:8px">Simulation avec une hypothèse de ${String(rate).replace('.', ',')} % par an en moyenne, hors frais et impôts. Un placement peut baisser : rien n'est garanti.</div>
+    </div>`;
+}
+function obPlanHeroAnimate() {
+  const t = _obHero, box = document.getElementById('ob-hero');
+  if (!t || !box) return;
+  const eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
+  const set = k => { document.getElementById('ob-hero-total').textContent = eur(t.total * k); document.getElementById('ob-hero-paid').textContent = eur(t.paid * k); document.getElementById('ob-hero-gain').textContent = eur(t.gain * k); };
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { set(1); return; }
+  const t0 = performance.now(), ms = 1600;
+  const step = now => { const k = Math.min(1, (now - t0) / ms); set(1 - Math.pow(1 - k, 3)); if (k < 1 && document.getElementById('ob-hero-total')) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+  setTimeout(() => { if (document.getElementById('ob-hero-total')) set(1); }, ms + 400);   // filet de sécurité (onglet en arrière-plan)
+  // la courbe se dessine
+  const line = document.getElementById('ob-hero-line'), fill = document.getElementById('ob-hero-fill');
+  const len = line.getTotalLength ? line.getTotalLength() : 600;
+  line.style.strokeDasharray = len; line.style.strokeDashoffset = len; fill.style.opacity = 0;
+  requestAnimationFrame(() => { line.style.transition = 'stroke-dashoffset 1.6s cubic-bezier(.2,.7,.2,1)'; fill.style.transition = 'opacity 1s ease .6s'; line.style.strokeDashoffset = 0; fill.style.opacity = 1; });
+  // confettis discrets (verts et dorés), une seule fois
+  const colors = ['#16a34a', '#22c55e', '#86efac', '#f5c518', '#15803d'];
+  for (let n = 0; n < 36; n++) {
+    const c = document.createElement('i'), size = 5 + Math.random() * 5;
+    c.style.cssText = `position:absolute;top:-12px;left:${Math.random() * 100}%;width:${size}px;height:${size * (Math.random() > .5 ? 1 : .45)}px;background:${colors[n % colors.length]};border-radius:${Math.random() > .6 ? '50%' : '2px'};pointer-events:none;opacity:.95`;
+    box.appendChild(c);
+    const fall = c.animate([{ transform: 'translate(0,0) rotate(0deg)', opacity: 1 }, { transform: `translate(${(Math.random() - .5) * 90}px,${box.offsetHeight + 30}px) rotate(${360 + Math.random() * 540}deg)`, opacity: 0 }], { duration: 1500 + Math.random() * 1300, delay: Math.random() * 500, easing: 'cubic-bezier(.2,.6,.4,1)', fill: 'forwards' });
+    fall.onfinish = () => c.remove();
+  }
+}
+
 async function obGeneratePlan() {
   // Restaure les goals depuis localStorage si obGoals a été réinitialisé (rechargement de page)
   try {
@@ -1803,7 +1867,8 @@ async function obGeneratePlan() {
 
   const both = obGoals.long && obGoals.court;
 
-  let html = '';
+  const heroYears = Math.min(60, Math.max(1, parseInt(document.getElementById('ob-years')?.value) || 10));
+  let html = obPlanHeroHTML(bankroll, monthly, heroYears, alloc.rate, target);
 
   // PLAN LONG TERME — uniquement si l'utilisateur a coché "long terme"
   if (obGoals.long) {
@@ -1849,6 +1914,7 @@ async function obGeneratePlan() {
 
   html += `<div id="ob-ai-advice" style="text-align:center;padding:12px;color:#8e8e93;font-size:13px">💬 Analyse IA en cours...</div>`;
   planEl.innerHTML = html;
+  obPlanHeroAnimate();
 
   // Charge les actions en parallèle
   if (obGoals.court) {
